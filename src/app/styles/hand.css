@@ -180,7 +180,7 @@
 }
 .hand-card-top { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 6px; }
 /* The cost tag's colours and shapes are hand-costs.css's (issue 529). */
-.hand-range { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-range { font-family: var(--font-mono); font-size: 9px; color: var(--hand-ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .hand-art {
   position: relative;
@@ -216,7 +216,7 @@
 }
 .hand-numbers { display: flex; flex: none; flex-direction: column; gap: 1px; min-width: 0; }
 .hand-dice, .hand-roll {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 9.5px;
   line-height: 1.35;
   white-space: nowrap;
@@ -239,8 +239,8 @@
   color: var(--hand-ink-soft);
 }
 .hand-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
-.hand-resource { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hand-cond { font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-resource { font-family: var(--font-mono); font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-cond { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A legendary card's cost and what is left, stacked at the left edge. */
 .hand-resource[data-lines] { display: flex; flex-direction: column; line-height: 1.25; overflow: visible; }
 /* Its slot is wide enough that the next card leaves those lines showing,
@@ -325,7 +325,7 @@
 .hand-row:first-child { border-top: 0; }
 .hand-rows-box { border-radius: 8px; border: 1px solid var(--hand-panel-rule); background: var(--hand-panel); padding: 4px 10px; }
 .hand-row-key { flex: none; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; font-size: 8px; font-weight: 600; color: var(--hand-panel-mute); }
-.hand-row-value { min-width: 0; text-align: right; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1.4; color: var(--hand-panel-ink); }
+.hand-row-value { min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 10px; line-height: 1.4; color: var(--hand-panel-ink); }
 .hand-row-value[data-tone="damage"] { color: #ffbe8f; }
 .hand-row-value[data-tone="heal"] { color: #7ed6a4; }
 .hand-row-value[data-tone="save"] { color: #b8a6f5; }

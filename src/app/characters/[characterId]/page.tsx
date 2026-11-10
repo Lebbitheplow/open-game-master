@@ -434,7 +434,11 @@ export default function CharacterDetailPage({
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-amber-500/15 pt-3">
-          <button type="button" onClick={() => setSeating(true)} className={cn(ui.btnPrimary, "min-w-0 flex-1 sm:flex-none")}>
+          {/* A phone's row is too narrow for three lettered buttons side by
+              side: they shrank until their words were cut ("E IN A CAM").
+              There the first takes a row with the menu, and the other two
+              share the next without their glyphs. */}
+          <button type="button" onClick={() => setSeating(true)} className={cn(ui.btnPrimary, "order-1 min-w-0 flex-1 basis-[calc(100%-3rem)] sm:order-none sm:flex-none sm:basis-auto")}>
             <GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-6" />{" "}
             {character.role === "companion" ? "Bring to a campaign" : "Use in a campaign"}
           </button>
@@ -446,20 +450,22 @@ export default function CharacterDetailPage({
           {character.level < 20 && (character.sheet?.classes ?? []).length <= 1 ? (
             <Link
               href={`/characters/${characterId}/edit?levelUp=1`}
-              className={cn(ui.btnSecondary, "min-w-0 flex-1 sm:flex-none")}
+              className={cn(ui.btnSecondary, "order-3 min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:order-none sm:flex-none sm:basis-auto")}
             >
-              <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-6" /> Level up to {character.level + 1}
+              <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-6" className="hidden sm:inline-flex" /> Level up to {character.level + 1}
             </Link>
           ) : null}
-          <Link href={`/characters/${characterId}/edit`} className={cn(ui.btnSecondary, "min-w-0 flex-1 sm:flex-none")}>
-            <GameIcon icon={{ kind: "glyph", key: "ui-edit" }} size="size-6" /> Edit build
+          <Link href={`/characters/${characterId}/edit`} className={cn(ui.btnSecondary, "order-3 min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:order-none sm:flex-none sm:basis-auto")}>
+            <GameIcon icon={{ kind: "glyph", key: "ui-edit" }} size="size-6" className="hidden sm:inline-flex" /> Edit build
           </Link>
-          <KebabMenu
-            items={actions}
-            label={`More actions for ${character.name}`}
-            heading={character.name}
-            busy={working}
-          />
+          <span className="order-2 inline-flex sm:order-none">
+            <KebabMenu
+              items={actions}
+              label={`More actions for ${character.name}`}
+              heading={character.name}
+              busy={working}
+            />
+          </span>
           {working || portraitPending ? (
             <span role="status" className="live-in text-xs text-stone-400">
               {pdfBusy

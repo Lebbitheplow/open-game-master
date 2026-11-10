@@ -125,7 +125,7 @@ export function DmWorkbenchPanel({
           placeholder={"goblin x4\nhobgoblin"}
           data-tour="encounters-workbench-roster"
           aria-label="Roster to weigh"
-          className={cn(ui.input, "resize-y font-mono text-xs")}
+          className={cn(ui.input, "resize-y font-code text-xs")}
         />
         <div className="flex flex-wrap items-end gap-2">
           {/* An empty figure means "the party as it is", and is left out of

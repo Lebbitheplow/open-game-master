@@ -3,6 +3,7 @@
 import { Eye, EyeOff, Hand, Loader2, Send } from "lucide-react";
 import { memo, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from "react";
 import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -109,6 +110,7 @@ function ComposerInner({
   drops,
   mounts,
   genre,
+  handSlot,
   highlight = false,
   directorArm,
   storyCadence,
@@ -188,6 +190,10 @@ function ComposerInner({
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
   genre?: string | null;
+  // Where the Hand is drawn instead of its row in the desk: the slot on the
+  // staged board's lower edge (SessionView.tsx), so in a fight the cards lie
+  // on the map and the desk is the message box alone.
+  handSlot?: HTMLElement | null;
   // A gold pulse on the frame: the board says it is this player's turn.
   highlight?: boolean;
   directorArm: CampaignState["directorArm"];
@@ -351,6 +357,7 @@ function ComposerInner({
         ) : null}
         </div>
         <div className="session-compose-hand">
+        {((hands: ReactNode) => (handSlot ? createPortal(hands, handSlot) : hands))(<>
         {/* The Hand (docs/visual-overhaul-plan.md 5.2): a player's combat options
             as cards, only while a fight is on. It adds to everything below and
             takes nothing away: the pills, the box, the mic and the send button
@@ -400,6 +407,7 @@ function ComposerInner({
             genre={genre}
           />
         ) : null}
+        </>)}
         </div>
         <div className="session-compose-entry">
         <div data-pill-group="" className="mb-2 flex flex-wrap items-center gap-1.5" data-tour="composer-modes">

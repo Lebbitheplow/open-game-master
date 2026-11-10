@@ -379,8 +379,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-ui), system-ui, sans-serif;
+  /* Numbers and dice math are set in the interface face, whose figures are
+     tabular: a column of modifiers lines up without a terminal's letters.
+     What must be read character by character takes font-code instead. */
+  --font-mono: var(--font-ui), system-ui, sans-serif;
+  --font-code: var(--font-code-face), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* code, kbd and pre stay fixed-width (Tailwind's base reads this name). */
+  --default-mono-font-family: var(--font-code);
   --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
   --font-display: var(--font-display), var(--font-source-serif), Georgia, serif;
   /* lift the default corner radius app-wide */
@@ -408,7 +414,7 @@ body {
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui), system-ui, Arial, Helvetica, sans-serif;
   min-height: 100%;
   overflow-x: hidden;
   overscroll-behavior-y: none;
@@ -606,15 +612,15 @@ body::before {
      The workhorse card treatment; nothing on the app should read as flat. */
   .panel {
     position: relative;
-    background:
-      linear-gradient(180deg, rgba(48, 40, 83, 0.42), rgba(16, 13, 32, 0.85)),
-      radial-gradient(ellipse 120% 60% at 50% -20%, rgba(107, 99, 148, 0.12), transparent 60%);
-    border: 1px solid rgba(107, 99, 148, 0.3);
+    /* One quiet surface: a deep fill lit along its top edge, a hairline that
+       separates without drawing a box, one soft shadow. A screen is many of
+       these side by side, so each has to recede; what stands out is what
+       sits on them. */
+    background: linear-gradient(180deg, rgba(36, 30, 62, 0.5), rgba(15, 12, 30, 0.84));
+    border: 1px solid rgba(150, 142, 190, 0.16);
     box-shadow:
-      0 1px 0 rgba(233, 230, 244, 0.08) inset,
-      0 -1px 0 rgba(4, 2, 12, 0.6) inset,
-      0 2px 6px rgba(4, 2, 12, 0.55),
-      0 14px 36px rgba(4, 2, 12, 0.4);
+      0 1px 0 rgba(233, 230, 244, 0.06) inset,
+      0 8px 24px rgba(4, 2, 12, 0.3);
   }
 
   /* Dialogs and popup menus get a smokier panel: a heavier fill plus
@@ -633,7 +639,11 @@ body::before {
     -webkit-backdrop-filter: blur(14px);
   }
 
-  /* Gold corner brackets, the arcane frame signature. Pair with .panel. */
+  /* Gold corner brackets, the arcane frame signature. Pair with .panel.
+     They mark one thing on a screen: the card that is yours, the notice
+     that wants an answer, the frame of a title page. A card that only lifts
+     under the pointer (.motion-card) draws them as it is reached for and
+     lets them go again, so a shelf of tiles is not a shelf of brackets. */
   .ornate::before,
   .ornate::after {
     content: "";
@@ -643,6 +653,24 @@ body::before {
     pointer-events: none;
     border-color: rgba(212, 171, 58, 0.55);
     border-style: solid;
+    transition:
+      opacity var(--dur-quick) var(--ease-snap),
+      transform var(--dur-move) var(--ease-spring);
+  }
+  .ornate.motion-card::before,
+  .ornate.motion-card::after {
+    opacity: 0;
+  }
+  .ornate.motion-card::before { transform: translate(5px, 5px); }
+  .ornate.motion-card::after { transform: translate(-5px, -5px); }
+  .ornate.motion-card:is(:hover, :focus-visible, :focus-within, [aria-pressed="true"], [aria-selected="true"], [aria-current="true"], [data-on])::before,
+  .ornate.motion-card:is(:hover, :focus-visible, :focus-within, [aria-pressed="true"], [aria-selected="true"], [aria-current="true"], [data-on])::after {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ornate::before,
+    .ornate::after { transition: none; }
   }
   .ornate::before {
     top: 7px;
@@ -659,7 +687,9 @@ body::before {
   .eyebrow {
     font-family: var(--font-display), Georgia, serif;
     text-transform: uppercase;
-    letter-spacing: 0.22em;
+    /* Cinzel is already wide: past a sixth of an em its caps drift apart
+       into separate letters and a label stops reading as a word. */
+    letter-spacing: 0.14em;
     font-weight: 600;
   }
 

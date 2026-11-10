@@ -326,7 +326,7 @@ export function DmTablesPanel({
         placeholder={"1-3 A press gang is working the taproom.\n4. The harbourmaster has not been seen in a week.\nOr just paste a table straight out of a book."}
         aria-label="Table rows"
         data-tour="tables-body"
-        className={cn(inputClass, "mt-1.5 resize-y font-mono text-xs")}
+        className={cn(inputClass, "mt-1.5 resize-y font-code text-xs")}
       />
       <div className="mt-1.5">
         <RefPicker

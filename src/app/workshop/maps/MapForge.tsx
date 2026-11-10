@@ -93,7 +93,7 @@ function HistoryTile({
         className="block w-full bg-stone-900 bg-cover"
         style={{ aspectRatio: `${entry.map.width} / ${entry.map.height}`, backgroundImage: thumb ? `url("${thumb}")` : undefined }}
       />
-      <span className="block truncate px-1 py-0.5 font-mono text-[8px] text-stone-400">{entry.roll.seed}</span>
+      <span className="block truncate px-1 py-0.5 font-code text-[8px] text-stone-400">{entry.roll.seed}</span>
     </button>
   );
 }

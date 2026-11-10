@@ -1115,23 +1115,27 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
 }
 .cine-stage .cine-header .session-title + p { color: var(--cine-ink-soft); font-size: 0.8rem; }
 .cine-stage .cine-header .session-cluster { background: transparent; border-color: transparent; box-shadow: none; gap: 6px; padding: 0; }
+/* The instruments rest as their painted glyphs alone, each already on its
+   own lit plate; a second gold ring and a raised button round every one made
+   the header a row of eight medallions competing with the title. The ring is
+   the answer to the pointer, and the light of an instrument that is on. */
 .cine-stage .cine-header .session-hbtn {
   min-width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  border: 1px solid rgba(212, 171, 58, 0.35);
-  background: linear-gradient(180deg, rgba(48, 40, 83, 0.7), rgba(16, 13, 32, 0.9));
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--cine-ink-soft);
-  box-shadow: 0 1px 0 rgba(233, 230, 244, 0.08) inset, 0 4px 12px rgba(4, 2, 12, 0.45);
+  box-shadow: none;
   transition: border-color var(--dur-quick) var(--ease-snap), box-shadow var(--dur-move) var(--ease-snap), transform 220ms var(--ease-spring), background-color var(--dur-quick) var(--ease-snap);
 }
-.cine-stage .cine-header .session-hbtn:hover { border-color: rgba(212, 171, 58, 0.75); box-shadow: 0 0 18px rgba(212, 171, 58, 0.25), 0 4px 12px rgba(4, 2, 12, 0.45); transform: translateY(-1px); }
+.cine-stage .cine-header .session-hbtn:hover { border-color: rgba(212, 171, 58, 0.6); background: rgba(16, 13, 32, 0.7); box-shadow: 0 4px 12px rgba(4, 2, 12, 0.45); transform: translateY(-1px); }
 .cine-stage .cine-header .session-hbtn:active { transform: scale(0.93); transition-duration: var(--dur-instant); }
-.cine-stage .cine-header .session-hbtn-lit { border-color: rgba(212, 171, 58, 0.7); box-shadow: 0 0 16px rgba(212, 171, 58, 0.3); animation: cine-lit-on var(--dur-beat) var(--ease-spring); }
+.cine-stage .cine-header .session-hbtn-lit { border-color: rgba(212, 171, 58, 0.6); background: rgba(212, 171, 58, 0.1); box-shadow: 0 0 14px rgba(212, 171, 58, 0.22); animation: cine-lit-on var(--dur-beat) var(--ease-spring); }
 @keyframes cine-lit-on {
   from { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(244, 224, 166, 0.7); }
   60% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(244, 224, 166, 0); }
-  to { transform: none; box-shadow: 0 0 16px rgba(212, 171, 58, 0.3); }
+  to { transform: none; box-shadow: 0 0 14px rgba(212, 171, 58, 0.22); }
 }
 .cine-ribbon-round,
 .cine-ribbon-name,
@@ -1181,7 +1185,7 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--cine-gold);
   white-space: nowrap;
@@ -1386,14 +1390,14 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
   60% { scale: 1.06; box-shadow: 0 0 0 6px rgba(244, 224, 166, 0); }
   to { scale: 1; box-shadow: var(--shadow-glow-gold); }
 }
-.cine-stage .cine-desk .hand-pip {
+.cine-stage :is(.cine-desk, .cine-fight-hand) .hand-pip {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 9.5px;
   letter-spacing: 0.14em;
   padding: 4px 9px;
 }
-.cine-stage .cine-desk .hand-label { color: var(--cine-gold); letter-spacing: 0.28em; }
+.cine-stage :is(.cine-desk, .cine-fight-hand) .hand-label { color: var(--cine-gold); letter-spacing: 0.16em; }
 /* The cards: the concept's indigo faces with a gold hairline. */
 .cine-stage .hand {
   --hand-face: linear-gradient(180deg, #2a2247, #110e22);
@@ -2748,6 +2752,146 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-chat-staged > .cine-fight-controls > * { flex: none; }
   .cine-chat-staged > .cine-fight-controls > .cine-desk { flex: 0 1 auto; min-height: 0; }
 }
+/* The staged board is the scene, so its frame gives every row it can to the
+   picture. The heading goes (the order rail on the board names the round,
+   the turn HUD names whose turn, and it stays in the markup for a screen
+   reader); the player's tools ride on the board's top edge between the two;
+   the order under the board goes too, a third copy of the rail and the
+   header's ribbon; the hint shares the move modes' row. On a 900px window
+   that is 88px back to the board, which had 144. */
+@media (min-width: 64rem) {
+  .cine-chat-staged .cine-fight-board > .board-panel { position: relative; }
+  .cine-chat-staged .cine-fight-board .board-head {
+    position: absolute;
+    z-index: 11;
+    top: calc(0.65rem + 8px);
+    left: 50%;
+    translate: -50% 0;
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid rgba(212, 171, 58, 0.22);
+    background: rgba(13, 11, 28, 0.78);
+    box-shadow: 0 4px 14px rgba(4, 2, 12, 0.5);
+  }
+  .cine-chat-staged .cine-fight-board .board-head-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .cine-chat-staged .cine-fight-board .board-head-tools > button { color: #c9c6db; }
+  .cine-chat-staged .cine-fight-board .board-head-tools > button:hover { color: #f4e0a6; background: rgba(212, 171, 58, 0.14); }
+  .cine-chat-staged .cine-fight-board .board-head-tools > button[aria-pressed="true"] { color: #f4e0a6; background: rgba(212, 171, 58, 0.22); }
+  .cine-chat-staged .cine-fight-board > .board-panel > .board-view { margin-top: 0; }
+  .cine-chat-staged .cine-fight-board .board-order-strip { display: none; }
+  .cine-chat-staged .cine-fight-board .board-under-row { display: flex; align-items: center; gap: 0.75rem; min-height: 2rem; }
+  .cine-chat-staged .cine-fight-board .board-under-row > * { margin: 0; }
+  .cine-chat-staged .cine-fight-board .board-under-row > :not(.board-hint) { flex: none; }
+  .cine-chat-staged .cine-fight-board .board-hint {
+    flex: 1;
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-wrap: pretty;
+  }
+}
+/* With the Hand docked under the board its pips say what the turn has left,
+   beside the cards they pay for; the board's own three would be the same
+   three again, one row up. The board keeps whose turn it is and the stats. */
+@media (min-width: 64rem) {
+  .cine-chat-staged:has(.hand .hand-pip) .cine-fight-board .turn-hud-pips { display: none; }
+}
+/* The round's banner over a docked Hand. The ribbon in the header carries
+   the round and the order, and End turn is on the board above and a card in
+   the Hand below, so for a player the banner says nothing new and steps
+   aside. It stays, as a line and not a card, while it holds what only it
+   offers: the lead's Skip turn, or the words of a refused End turn. */
+@media (min-width: 1180px) {
+  .cine-chat-staged:has(.cine-fight-board:not([hidden])):has(.hand) .cine-desk .session-banner[data-tone="blood"]:not(:has([data-banner-lead], [role="alert"])) { display: none; }
+  .cine-chat-staged:has(.cine-fight-board:not([hidden])) .cine-desk .session-banner[data-tone="blood"] {
+    margin-bottom: 0.25rem;
+    padding: 0 0.25rem;
+    border-color: transparent;
+    background: none;
+    box-shadow: none;
+    min-height: 2rem;
+  }
+  .cine-chat-staged:has(.cine-fight-board:not([hidden])) .cine-desk .session-banner[data-tone="blood"] > :first-child:not(.session-banner-body) { display: none; }
+}
+/* The Hand on the board (SessionView.tsx hands Composer the slot). In a
+   staged fight the cards lie over the map's lower edge, as cards lie on a
+   table, and the board has the whole column down to the message box: the
+   Hand in a box of its own under the board took more of the column than the
+   board did. Night rises from the frame's foot so the cards and their
+   labels read over any map. Only what can be pressed takes the pointer, so
+   the map between and above the cards is still the map. The board's own
+   corner (End turn, the camera) stands on the Hand's top edge (--hand-foot,
+   written by SessionView), every row of controls goes above the board
+   where the cards cannot cover it, and the resting view fits the map in
+   what shows above the cards (useBoardCamera.ts footToClear). */
+.cine-fight-board.cine-board-frame > .cine-fight-hand[data-fit-foot] {
+  position: absolute;
+  z-index: 12;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  padding: 0 0.75rem 0.4rem;
+  border: 0;
+  border-radius: 0 0 3px 3px;
+  /* The frame gives its children the panel's surface and a scroll of their
+     own; this one is see-through and lies on the board. */
+  background: none;
+  overflow: visible;
+  pointer-events: none;
+}
+.cine-fight-hand:empty { display: none; }
+.cine-fight-hand::before {
+  content: "";
+  position: absolute;
+  inset: -3rem 0 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, transparent, rgba(10, 8, 23, 0.42) 26%, rgba(10, 8, 23, 0.86) 70%, rgba(10, 8, 23, 0.94));
+  pointer-events: none;
+}
+.cine-fight-hand > * { position: relative; max-width: 48rem; margin-inline: auto; pointer-events: none; }
+.cine-fight-hand > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex], .hand-preview) { pointer-events: auto; }
+.cine-fight-hand .hand { margin-bottom: 0; }
+/* On the board the Hand's words stand on a painting, in either theme: the
+   night's own ink, with a shadow to hold them over pale stone. */
+.cine-fight-hand .hand-label { color: #e3c15c; text-shadow: 0 1px 2px rgba(4, 2, 12, 0.95), 0 0 10px rgba(4, 2, 12, 0.7); }
+.cine-fight-hand .hand-hint { color: #c9c6db; text-shadow: 0 1px 2px rgba(4, 2, 12, 0.95), 0 0 8px rgba(4, 2, 12, 0.8); }
+.cine-fight-hand .hand > :first-child button { color: #c9c6db; filter: drop-shadow(0 1px 2px rgba(4, 2, 12, 0.9)); }
+.cine-fight-hand .hand > :first-child button:hover { color: #f4e0a6; }
+@media (min-width: 64rem) {
+  .cine-fight-board[data-hand-on-board] > .board-panel > :not(.board-view, .board-head) { order: -1; }
+  .cine-fight-board[data-hand-on-board] .board-under-row { padding-right: 6rem; }
+  .cine-fight-board[data-hand-on-board] .board-under-row:not(:has(> :not(.board-hint))) { min-height: 1.75rem; }
+  .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head {
+    top: 0.65rem;
+    right: 0.75rem;
+    left: auto;
+    translate: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  /* Off the board the tools stand on the panel again, parchment by day. */
+  .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head-tools > button { color: var(--color-stone-400); }
+  .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head-tools > button:hover { color: var(--color-amber-200); background: rgba(212, 171, 58, 0.14); }
+  .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head-tools > button[aria-pressed="true"] { color: var(--color-amber-300); background: rgba(212, 171, 58, 0.2); }
+  .cine-fight-board[data-hand-on-board] > .board-panel > .board-view { margin-top: 0.5rem; }
+  .cine-fight-board[data-hand-on-board] .board-corner { bottom: max(0px, calc(var(--hand-foot, 0px) - 0.75rem)); }
+  .cine-fight-board[data-hand-on-board] .board-keys-strip,
+  .cine-fight-board[data-hand-on-board] .board-foot-note { bottom: calc(var(--hand-foot, 0px) - 0.25rem); }
+}
+/* Where the order stands in a row above the board (a phone, the side panel)
+   the same names in chips under the board are the order a second time. */
+.board-panel:has(.board-order-above) .board-order-strip { display: none; }
 .cine-fight-controls { display: contents; }
 .cine-fight { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px 12px 4px; }
 .cine-fight .cine-chronicle { flex: 0 0 17rem; }
@@ -2790,6 +2934,16 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-chat-staged .hand-art { flex-basis: 36px; }
 }
 .cine-chat-staged .cine-desk { max-height: 62dvh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(107, 99, 148, 0.4) transparent; }
+/* A laptop's 768px: the board's floor comes down by what its frame stopped
+   spending on rows (the heading, the order, the hint), so the board is no
+   smaller than it was and the message box is on screen without a scroll;
+   it sat 65px under the fold. */
+@media (min-width: 64rem) and (max-height: 800px) {
+  .cine-chat.cine-chat-staged { grid-template-rows: minmax(calc(228px + 1rem), 1fr) minmax(0, auto); }
+  .cine-fight-board { min-height: 228px; }
+  .cine-chat-staged > .cine-fight { min-height: calc(228px + 1rem); }
+  .cine-chat-staged .cine-desk { max-height: 68dvh; }
+}
 
 /* ---- the ways into a game, each with a line saying where it leads ---- */
 .ts-menu-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }

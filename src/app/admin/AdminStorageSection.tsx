@@ -200,7 +200,7 @@ export function AdminStorageSection() {
             </div>
             <ul className="stagger space-y-1 pl-1">
               {orphans.sample.map((url) => (
-                <li key={url} className="truncate font-mono text-[11px] text-stone-600" title={url}>
+                <li key={url} className="truncate font-code text-[11px] text-stone-600" title={url}>
                   {url}
                 </li>
               ))}

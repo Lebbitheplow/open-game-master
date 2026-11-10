@@ -798,7 +798,11 @@ export function PartyPanel({
               </div>
             ) : null}
 
-            <div className="party-card-stats mt-2 grid grid-cols-3 gap-1.5 text-center">
+            {/* One line of figures, not three boxes: a party of five was
+                fifteen bordered wells down the panel, each with a glyph too
+                small to read. The label is small caps, the figure is the
+                thing read. */}
+            <div className="party-card-stats mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
               {(
                 [
                   ["AC", String(shape ? shape.beastAc : sheet.ac)],
@@ -808,25 +812,15 @@ export function PartyPanel({
               ).map(([statLabel, statValue]) => (
                 <span
                   key={statLabel}
-                  className={cn(
-                    "rounded-md border border-stone-700/50 bg-stone-950/60 py-1 shadow-[0_1px_2px_rgba(4,2,12,0.5)_inset]",
-                    shape && statLabel === "AC" && "border-lime-800/60 text-lime-300",
-                  )}
+                  className={cn("inline-flex items-baseline gap-1.5", shape && statLabel === "AC" && "text-lime-300")}
                   title={
                     shape && statLabel === "AC"
                       ? `The beast form's armor class; ${sheet.name}'s own is ${sheet.ac}.`
                       : undefined
                   }
                 >
-                  <span className="eyebrow block text-[8px] text-stone-500">
-                    <GameIcon
-                      icon={{ kind: "glyph", key: statLabel === "AC" ? "rest-ac" : statLabel === "PP" ? "sense-passive-perception" : "rest-initiative" }}
-                      size="size-3.5"
-                      className="mr-0.5 inline-block -translate-y-px align-middle"
-                    />
-                    {statLabel}
-                  </span>
-                  <span className="font-mono text-xs text-stone-200">{statValue}</span>
+                  <span className="eyebrow text-[9px] text-stone-500">{statLabel}</span>
+                  <span className={cn("font-mono text-[13px]", shape && statLabel === "AC" ? "text-lime-300" : "text-stone-100")}>{statValue}</span>
                 </span>
               ))}
             </div>

@@ -1546,7 +1546,7 @@ export function BattleMapPanel({
       {fieldRoll ? <FieldDie label={fieldRoll.label} /> : null}
       <BoardMoveNotes notes={moveNotes.notes} />
       {targeting ? (
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-[rgba(224,112,58,0.5)] bg-[rgba(13,11,28,0.94)] px-3 py-1.5 shadow-elev-2">
+        <div className="board-foot-note absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-[rgba(224,112,58,0.5)] bg-[rgba(13,11,28,0.94)] px-3 py-1.5 shadow-elev-2">
           <span className="whitespace-nowrap font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ffbe8f]">
             {targeting === "attack" ? "Attack" : "Cast"} · pick a target
           </span>
@@ -1560,7 +1560,7 @@ export function BattleMapPanel({
             className="motion-press rounded-md border border-[rgba(107,99,148,0.5)] bg-[rgba(21,18,41,0.8)] px-2 py-0.5 text-[#aeaac6] hover:text-[#e9e6f4]"
           >
             {/* The size sits on a span: globals.css resets a button's own font. */}
-            <span className="font-mono text-[11px]">esc</span>
+            <span className="font-code text-[11px]">esc</span>
           </button>
         </div>
       ) : null}
@@ -1608,7 +1608,7 @@ export function BattleMapPanel({
       </div>
       {cam.locked ? null : <BoardKeyStrip />}
       {cam.locked ? (
-        <div className="absolute bottom-2 left-2 z-10 flex items-center gap-2 rounded-md border border-amber-800/60 bg-stone-950/90 px-2 py-1 text-[11px] text-amber-200 shadow-elev-1">
+        <div className="board-foot-note absolute bottom-2 left-2 z-10 flex items-center gap-2 rounded-md border border-amber-800/60 bg-stone-950/90 px-2 py-1 text-[11px] text-amber-200 shadow-elev-1">
           <Lock className="size-3" />
           The GM is steering the view
           {cam.canRelease ? (
@@ -1638,30 +1638,34 @@ export function BattleMapPanel({
         stored={viewOptions}
         onOption={setViewOption}
       />
-      <BoardMoveHints
-        moveMode={moveMode}
-        moves={!canDirect && canMove && !areaAim.active ? view.moves : undefined}
-        onMode={setMoveMode}
-        areaHint={areaAim.hint}
-        caught={areaAim.caught}
-      />
-      <p className="text-[11px] leading-4 text-stone-500">
-        {boardHintText({
-          canDirect,
-          tool,
-          teleporting: Boolean(teleporting),
-          held: Boolean(held),
-          liveOrigin: Boolean(liveOrigin),
-          pointing,
-          drawing,
-          targeting: Boolean(targeting),
-          canMove,
-          moveAimed: Boolean(livePending),
-          scene,
-          budgetLeft: view.budgetLeft,
-          hasToken: Boolean(view.myTokenId),
-        })}
-      </p>
+      {/* One row on the fight stage, the hint beside the move modes
+          (world.css); stacked everywhere else, as they were. */}
+      <div className="board-under-row space-y-2">
+        <BoardMoveHints
+          moveMode={moveMode}
+          moves={!canDirect && canMove && !areaAim.active ? view.moves : undefined}
+          onMode={setMoveMode}
+          areaHint={areaAim.hint}
+          caught={areaAim.caught}
+        />
+        <p className="board-hint text-[11px] leading-4 text-stone-500">
+          {boardHintText({
+            canDirect,
+            tool,
+            teleporting: Boolean(teleporting),
+            held: Boolean(held),
+            liveOrigin: Boolean(liveOrigin),
+            pointing,
+            drawing,
+            targeting: Boolean(targeting),
+            canMove,
+            moveAimed: Boolean(livePending),
+            scene,
+            budgetLeft: view.budgetLeft,
+            hasToken: Boolean(view.myTokenId),
+          })}
+        </p>
+      </div>
       {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
       {targeting ? (
         <TargetChips
@@ -1717,8 +1721,11 @@ export function BattleMapPanel({
     // the shared screen, the side panel and the phone) its header and footer
     // stay put and the board takes what is left (world.css, issue 87).
     <div className="board-panel space-y-2">
-      {!nativeBattlefieldActive ? <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-sm font-medium text-stone-200">
+      {/* board-head: on the fight stage the heading is read off the frame
+          (the order rail names the round, the turn HUD names whose turn) and
+          the tools ride on the board, so the row is the board's (world.css). */}
+      {!nativeBattlefieldActive ? <div className="board-head flex items-center justify-between">
+        <h3 className="board-head-title flex items-center gap-1.5 text-sm font-medium text-stone-200">
           {scene ? (
             <>
               <Footprints className="size-4 text-amber-400" />
@@ -1737,7 +1744,7 @@ export function BattleMapPanel({
           )}
         </h3>
         {orderInRow && !canDirect ? orderAboveBoard : null}
-        <div className="flex items-center gap-1">
+        <div className="board-head-tools flex items-center gap-1">
           {playerTools}
           <button
             type="button"

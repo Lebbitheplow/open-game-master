@@ -365,9 +365,9 @@ export function AdminWorldsPanel() {
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
           A JSON index of downloadable campaigns, over https. None is built in. Blank falls
           through to the
-          <span className="font-mono"> WORLD_REGISTRY_URL </span>
+          <span className="font-code"> WORLD_REGISTRY_URL </span>
           environment variable, and
-          <span className="font-mono"> off </span>
+          <span className="font-code"> off </span>
           browses nothing even when that is set. Whatever a registry lists is third-party content
           this project neither ships nor vets, and nothing installs until you install it.
         </p>

@@ -839,7 +839,7 @@ function HandInner({
         >
           {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
-        <span className="hidden text-[11px] text-stone-500 sm:inline">
+        <span className="hand-hint hidden text-[11px] text-stone-500 sm:inline">
           {reactionsOnly ? `${sheet.isCompanion ? "A companion you play" : "A hero of yours"} was hit: answer it now or let it pass.` : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
         </span>
         <span className="ml-auto flex items-center gap-1">

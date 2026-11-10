@@ -119,7 +119,7 @@ export function ReportProblemDialog({
       {saved ? (
         <div className="reveal space-y-4" data-report-saved>
           <p className="text-sm leading-6 text-stone-300">
-            Saved <span className="font-mono text-amber-200">{saved.name}</span> to {saved.where || "this device"}. Add it
+            Saved <span className="font-code text-amber-200">{saved.name}</span> to {saved.where || "this device"}. Add it
             to the last box of the form: drop it there, or click the box and pick it. Open the file first if you want to
             see what it holds.
           </p>
