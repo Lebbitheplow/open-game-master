@@ -81,8 +81,11 @@ export function stopWordsFor(language: TableLanguage): ReadonlySet<string> {
   return set;
 }
 
+// One word's stem, remembered like the stems of a text below: the rulebook
+// search stems a passage word by word to cut each hit's snippet, the same
+// few thousand words every time.
 export function stemWord(word: string, language: TableLanguage): string {
-  return STEMMERS[language](word);
+  return memoStem(word, language);
 }
 
 // The text as the stems it is compared by: its words, lower-cased, minus the
