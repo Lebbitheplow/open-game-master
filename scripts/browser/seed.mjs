@@ -2482,6 +2482,23 @@ const noticeTables = {};
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
 const AFTER_ROLL_TITLE = "Lucky Table";
+// Lets every initiative still waiting on its roller's after-the-roll card
+// stand, as the player pressing Keep does, so a seeded fight has its order.
+async function keepOpeningRolls(campaignId) {
+  const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
+  const { landPendingRoll } = await import("../../src/lib/dm/pending-roll-land.ts");
+  for (let pass = 0; pass < 8; pass += 1) {
+    const waiting = listOpenPendingRolls(campaignId).filter((roll) => roll.kind === "initiative" && roll.parkedFor === "after_roll" && roll.thrown);
+    if (!waiting.length) {
+      return;
+    }
+    for (const roll of waiting) {
+      landPendingRoll(campaigns.getCampaignById(campaignId), roll, roll.thrown.outcome, roll.thrown.landing);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 const afterRollTables = {};
 for (const viewport of ["desktop", "phone"]) {
   const table = campaigns.createCampaign(player.id, {
@@ -2593,6 +2610,9 @@ const touchTables = {};
     if (!started.ok) {
       throw new Error(`the lucky swing table's fight did not start: ${started.error}`);
     }
+    // A hero who holds Lucky has an after-the-roll card on their initiative,
+    // and the fight's order waits on it: their player lets it stand here.
+    await keepOpeningRolls(table.id);
     const encounter = encounterRows.getActiveEncounter(table.id);
     const board = maps.getBattleMapForEncounter(encounter.id);
     maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
@@ -3410,6 +3430,7 @@ const bench2Titles = {};
     if (!started.ok) {
       throw new Error(`${campaigns.getCampaignById(table.id).title}'s fight did not start: ${started.error}`);
     }
+    await keepOpeningRolls(table.id);
     const encounter = encounterRows.getActiveEncounter(table.id);
     const board = maps.getBattleMapForEncounter(encounter.id);
     maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
