@@ -31,6 +31,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
+import { needRefusal } from "@/lib/dm/mt-mr-needs";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -178,6 +179,11 @@ export function authoredFeatureSpend(
     const refusal = gateSentence(spend);
     return { ...refusal, error: `${refusal.error} Nothing was spent.` };
   }
+  // What the row needs that a gate cannot say (mt-mr-needs.ts).
+  const unmet = spend.needs ? needRefusal(campaign, sheet, spend.name, spend.needs) : null;
+  if (unmet) {
+    return unmet;
+  }
   // A spend whose counter waits on a trigger (trigger-table.ts: Call the
   // Hunt's rage just entered) answers the record, refused before anything is
   // spent when none is open: the generic door (reaction-counters.ts) asks the
@@ -208,7 +214,9 @@ export function authoredFeatureSpend(
   let poolId: string | null = null;
   let units = 0;
   if (spend.pool) {
-    units = spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
+    units = spend.pool.free && needRefusal(campaign, sheet, spend.name, spend.pool.free) === null
+      ? 0
+      : spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
     if (spend.pool.max && units > spend.pool.max) {
       return { error: `${spend.name} takes at most ${spend.pool.max}; ${units} is more than it can hold. Nothing was spent.`, retry: true };
     }

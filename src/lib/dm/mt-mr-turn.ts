@@ -1,0 +1,87 @@
+// What a monk's or a rogue's subclass leaves on the turn it acts in (wave 2,
+// part mr): the marks the engine reads later in the same turn. Each sits in
+// the turn budget's once-per-turn list, so a revert takes it back with the
+// turn and a restart keeps it.
+//
+// Every swing goes through swingMarks and flurryStrikeRefusal
+// (pc-attack-spend.ts), every Flurry of Blows bought through flurryBought
+// (bonus-actions.ts), and the board's movement through turnBonusTiles
+// (battlemap/view.ts): a new door for a swing or a flurry calls them too.
+//
+// Pure: no database, so the board's view may import it.
+
+import { budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
+import { heldAuthored, type AuthoredSheet, type HeldAuthored } from "@/lib/srd/authored-effects";
+import type { ToolError } from "@/lib/dm/tool-errors";
+
+// A creature a Flurry of Blows strike of this turn was aimed at, one mark a
+// strike (Intoxicated Frenzy counts them and reads who they went to).
+export const FLURRY_AT = "mr:flurry-at:";
+// Drunken Technique's 10 feet, added to the turn's movement by the flurry.
+export const DRUNKEN_FEET = "mr:drunken-technique";
+// An unarmed strike made as part of the Attack action (Agile Parry).
+export const UNARMED_IN_ACTION = "mr:unarmed-in-action";
+// A Flurry of Blows strike that Hand of Healing took the place of.
+export const FLURRY_HEALED = "mr:flurry-healed";
+// The creature the turn's last unarmed hit landed on while a Flurry of Blows
+// strike made it (Flurry of Healing and Harm's free Hand of Harm).
+export const FLURRY_SWUNG = "mr:flurry-swung";
+// The creatures a rogue's Sneak Attack has struck this turn (Sudden Strike's
+// second, against a different creature).
+export const SNEAK_AT = "mr:sneak-at:";
+
+// The row of the authored table a sheet holds, by its key ("monk::Drunken
+// Technique"), with the level of the class that granted it.
+export function holdsRow(sheet: AuthoredSheet, key: string): HeldAuthored | null {
+  return heldAuthored(sheet).find((held) => held.key === key) ?? null;
+}
+
+// "Flurry of Blows also grants the benefit of Disengage and 10 feet of extra
+// movement" (Drunken Technique): what buying the flurry adds to the turn.
+export function flurryBought(sheet: AuthoredSheet, budget: TurnBudget): Partial<TurnBudget> {
+  if (!holdsRow(sheet, "monk::Drunken Technique")) {
+    return {};
+  }
+  return { disengaged: true, oncePerTurn: budget.oncePerTurn.includes(DRUNKEN_FEET) ? budget.oncePerTurn : [...budget.oncePerTurn, DRUNKEN_FEET] };
+}
+
+// The squares a turn's marks add to its owner's movement.
+export function turnBonusTiles(budget: TurnBudget | null | undefined, ownerId: string, round: number): number {
+  return budget && budgetApplies(budget, ownerId, round) && budget.oncePerTurn.includes(DRUNKEN_FEET) ? 2 : 0;
+}
+
+export type SwingFacts = { unarmed: boolean; inAttackAction: boolean; flurryStrike: boolean; enemyId: string };
+
+// The marks one swing leaves.
+export function swingMarks(budget: TurnBudget, swing: SwingFacts): TurnBudget {
+  const marks = [...budget.oncePerTurn];
+  if (swing.flurryStrike) {
+    marks.push(`${FLURRY_AT}${swing.enemyId}`);
+  }
+  if (swing.unarmed && swing.inAttackAction && !marks.includes(UNARMED_IN_ACTION)) {
+    marks.push(UNARMED_IN_ACTION);
+  }
+  // Which kind of strike the turn's latest unarmed one was: a flurry's, or not.
+  const withoutSwung = marks.filter((mark) => mark !== FLURRY_SWUNG);
+  const next = swing.unarmed && swing.flurryStrike ? [...withoutSwung, FLURRY_SWUNG] : swing.unarmed ? withoutSwung : marks;
+  return next.length === budget.oncePerTurn.length && next.every((mark, at) => mark === budget.oncePerTurn[at]) ? budget : { ...budget, oncePerTurn: next };
+}
+
+// "Flurry of Blows grants up to three extra attacks, provided each one hits a
+// different creature" (Intoxicated Frenzy): the flurry's own two strikes go
+// where the monk likes; each strike past them is at a creature no other
+// strike of this flurry was aimed at. `before` is the budget as the strike
+// found it.
+export function flurryStrikeRefusal(sheet: AuthoredSheet & { name?: string }, before: TurnBudget, enemyId: string): ToolError | null {
+  if (!holdsRow(sheet, "monk::Intoxicated Frenzy")) {
+    return null;
+  }
+  const aimed = before.oncePerTurn.filter((mark) => mark.startsWith(FLURRY_AT)).map((mark) => mark.slice(FLURRY_AT.length));
+  if (aimed.length < 2 || !aimed.includes(enemyId)) {
+    return null;
+  }
+  return {
+    error: `Intoxicated Frenzy's extra strikes each go to a different creature, and this Flurry of Blows has already struck at that one. ${sheet.name ?? "The monk"} strikes another creature in reach, or ends the flurry. Nothing was rolled.`,
+    refused: "rules",
+  };
+}

@@ -32,20 +32,22 @@ export const ONE_WITH_SHADOWS = "One with Shadows";
 
 // Why the warlock's square is too bright to vanish in, or null when it is dim
 // or dark (or there is no board to read the light from).
-export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">): ToolError | null {
+// `at`: another square than the one they stand on (where Shadow Step lands).
+export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, at?: { x: number; y: number }): ToolError | null {
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
   if (!map || !token) {
     return null;
   }
+  const spot = at ?? token;
   const clock = getClock(campaignId);
   const ambient = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
   const zones = lightsWithZones(map);
-  if (zones.length && magicalDarknessAt(zones, token.x, token.y)) {
+  if (zones.length && magicalDarknessAt(zones, spot.x, spot.y)) {
     return null;
   }
-  const local = zones.length ? ambientAt(zones, token.x, token.y, ambient) : ambient;
+  const local = zones.length ? ambientAt(zones, spot.x, spot.y, ambient) : ambient;
   // A lamp or a carried light on the square brightens it; the lit set does
   // not tell its bright radius from its dim one, so a lit square counts as
   // bright.
@@ -63,10 +65,10 @@ export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterShee
       },
       listTokens(map.id),
       map.lights,
-    ).has(tileIndex(map.width, token.x, token.y));
+    ).has(tileIndex(map.width, spot.x, spot.y));
   if (local === "bright" || lit) {
     return {
-      error: `${sheet.name} stands in bright light at (${token.x},${token.y}); One with Shadows works only in dim light or darkness. Nothing was spent.`,
+      error: `${sheet.name} stands in bright light at (${spot.x},${spot.y}); One with Shadows works only in dim light or darkness. Nothing was spent.`,
       refused: "rules",
     };
   }

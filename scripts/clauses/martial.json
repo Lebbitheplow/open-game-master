@@ -2167,9 +2167,9 @@
    },
    {
     "c": "between two patches of dim light or darkness",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe staged a lit square to see the step refused"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (shadows); src/lib/dm/mt-mr-spends.ts featureLandingRefusal",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-step-shadows"
    },
    {
     "c": "granting advantage on your next melee attack this turn",
@@ -2187,7 +2187,8 @@
   "clauses": [
    {
     "c": "Become invisible in dim light or darkness until you attack, cast, or step into light.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts cloakOfShadows, cloakIntoLight",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: cloak-of-shadows"
    }
   ]
@@ -2308,12 +2309,14 @@
   "clauses": [
    {
     "c": "Flurry of Blows also grants the benefit of Disengage",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts flurryBought",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: drunken-technique-disengage"
    },
    {
     "c": "and 10 feet of extra movement",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts turnBonusTiles (src/lib/battlemap/view.ts pcMoveBudget)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: drunken-technique-movement"
    }
   ]
@@ -2360,13 +2363,14 @@
   "clauses": [
    {
     "c": "Flurry of Blows grants up to three extra attacks",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only as the strikes the gap probe intoxicated-frenzy-different-creatures was granted; their count was not held on its own"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts monk::Intoxicated Frenzy (flurry, strikes 5)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: intoxicated-frenzy-strikes"
    },
    {
     "c": "provided each one hits a different creature",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts flurryStrikeRefusal",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: intoxicated-frenzy-different-creatures"
    }
   ]
@@ -2379,15 +2383,15 @@
   "clauses": [
    {
     "c": "Choose two kensei weapons, one melee and one ranged, from simple or martial weapons without the heavy or special property (the longbow allowed), and one more at 6th, 11th and 17th level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the kensei weapon pick (its count by level, the heavy and special exclusions) was not staged through the builder"
+    "is": "held",
+    "by": "src/lib/srd/subclass-training.ts KENSEI_WEAPONS, weaponKinds (src/lib/srd/feat-grants.ts applyFeatGrants)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapon-picks"
    },
    {
     "c": "they count as monk weapons, and you are proficient with them",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-kensei.ts kenseiStance (src/lib/dm/attack-logic.ts weaponAttackProfile)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapons-are-monk-weapons"
    },
    {
     "c": "and with calligrapher's or painter's supplies",
@@ -2397,14 +2401,15 @@
    },
    {
     "c": "Agile Parry: when you make an unarmed strike as part of the Attack action while holding a kensei melee weapon",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (unarmed_in_action)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: agile-parry-needs-an-unarmed-strike"
    },
    {
     "c": "you gain +2 AC until the start of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the +2 of the Agile Parry buff was not read (the gap probe stops at its precondition)"
+    "is": "held",
+    "by": "src/lib/srd/authored-conditions.ts agile_parry (acBonus 2)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: agile-parry-ac"
    }
   ]
  },
@@ -2430,13 +2435,14 @@
   "clauses": [
    {
     "c": "Kensei weapons count as magical",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no kensei weapon hit staged against a creature resisting nonmagical blows"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-kensei.ts kenseiStance (magical)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapons-magical"
    },
    {
     "c": "and 1 ki adds your martial arts die to a hit's damage once per turn",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts deftStrike",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: one-with-the-blade-deft-strike"
    }
   ]
@@ -2455,9 +2461,9 @@
    },
    {
     "c": "for a minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the buff's ten rounds were not walked"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts monk::Sharpen the Blade (rounds 10)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: sharpen-the-blade-minute"
    }
   ]
  },
@@ -2636,7 +2642,8 @@
    },
    {
     "c": "within 5 feet",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-healing-5-feet"
    },
    {
@@ -2647,9 +2654,9 @@
    },
    {
     "c": "or replace one Flurry of Blows attack with it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a flurry strike traded for a heal was not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing (flurry)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-healing-flurry"
    }
   ]
  },
@@ -2675,9 +2682,9 @@
   "clauses": [
    {
     "c": "Hand of Healing also ends one condition; Hand of Harm can poison the target until the end of your next turn.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Physician's Touch: \"Hand of Healing also ends a disease or condition (end_condition), and Hand of Harm can poison the creature (set_condition poisoned): the GM applies them.\"): a condition and its end, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts physiciansTouch, handOfHarm",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: physicians-touch"
    }
   ]
  },
@@ -2689,9 +2696,9 @@
   "clauses": [
    {
     "c": "Flurry of Blows can heal without ki cost, and one of its attacks can carry Hand of Harm free.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Flurry of Healing and Harm: \"the GM spends nothing for them\"): the free use is a counter the engine still charges unless the GM skips the spend"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing; src/lib/dm/mt-mr-needs.ts needRefusal (flurry_harm)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: flurry-of-healing-and-harm"
    }
   ]
  },

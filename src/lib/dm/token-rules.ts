@@ -1,5 +1,6 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
+import { cloakIntoLight } from "@/lib/dm/mt-mr-spends";
 import { tokenSides } from "@/lib/dm/combatant";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -286,6 +287,7 @@ export function walkCharacter(
   moveToken(token.id, walk.at.x, walk.at.y, token.movedThisRound + (readied ? 0 : spent));
   // Moving ends One with Shadows' invisibility (one-with-shadows.ts).
   endShadowInvisibility(campaign.id, sheet.id, "moves");
+  cloakIntoLight(campaign.id, sheet.id);
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }

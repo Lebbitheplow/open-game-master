@@ -48,11 +48,12 @@ import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
+import { mrSpend } from "@/lib/dm/mt-mr-spends";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
 // A spend's damage on one enemy, as the holder's dice card.
-const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
+export const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
   rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "damage", rollAgainst(ctx.spend.name, enemy.displayName), dice, sheetAttacker(ctx.sheet)).total;
 
 export type SpendContext = {
@@ -104,7 +105,7 @@ function conditionName(ctx: SpendContext, does: Extract<SpendDoes, { kind: "buff
 
 // The creature a spend aims at: the one named, else the one the character
 // attacked last this round.
-function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
+export function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter) {
     return { error: `${ctx.spend.name} aims at a creature in a fight; there is no fight. Nothing was spent.`, refused: "rules" };
@@ -123,7 +124,7 @@ function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
   return swallowCoverError(ctx.sheet.id, enemy.id) ?? enemy;
 }
 
-function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
+export function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter || amount <= 0) {
     return { damage: 0 };
@@ -141,7 +142,7 @@ function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, t
 
 // Whether it landed: not on a creature immune to it, stone's poison
 // included (damage-logic.ts immuneToCondition).
-function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>): boolean {
+export function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>): boolean {
   const fresh = getEnemy(enemy.id) ?? enemy;
   if (immuneToCondition(fresh, condition)) {
     return false;
@@ -558,6 +559,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "allies_join":
     case "action_attack":
       return martialSpend(ctx, does);
+    // The monk and rogue subclasses' own (src/lib/dm/mt-mr-spends.ts).
+    case "mr":
+      return mrSpend(ctx, does);
   }
 }
 

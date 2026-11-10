@@ -19,6 +19,7 @@ import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
 import { budgetApplies, dashCount } from "@/lib/dm/action-budget";
+import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
 import { listSheets } from "@/lib/db/sheets";
 import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
@@ -164,7 +165,8 @@ export function pcMoveBudget(
   // the mount spent its action on a Disengage or a Dodge (take_action mount).
   const mountActed = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? mountActionTaken(encounter.turnBudget.oncePerTurn) : null;
   const mountDash = mount?.controlled && (mountActed === null || mountActed === "dash") ? 1 : 0;
-  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) - token.movedThisRound);
+  // Drunken Technique's 10 feet ride the turn's marks (dm/mt-mr-turn.ts).
+  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
   // Prone: the character stands for half their speed and walks on what is
   // left, or crawls at double cost, whichever reaches farther. `tiles` is
   // what the board lights; `fullTiles` is the movement actually in hand,

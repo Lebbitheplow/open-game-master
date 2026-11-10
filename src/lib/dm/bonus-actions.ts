@@ -24,6 +24,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { classLevelFor } from "@/lib/srd/multiclass";
 import { authoredFlurryStrikes } from "@/lib/srd/authored-economy";
+import { flurryBought } from "@/lib/dm/mt-mr-turn";
 import { dashCount, spendAction, WIND_STEP } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -155,7 +156,7 @@ export function spendKiTechnique(
   if (price?.ok && encounter) {
     // Step of the Wind doubles the jump for the turn (jump-move.ts).
     const marks = technique === "step of the wind" ? { oncePerTurn: [...price.budget.oncePerTurn, WIND_STEP] } : {};
-    storeBudget(encounter, { ...price.budget, ...flags, ...marks });
+    storeBudget(encounter, { ...price.budget, ...flags, ...marks, ...(technique === "flurry" ? flurryBought(sheet, price.budget) : {}) });
   }
   const patch: FullPatchSheetInput = { resources: spent.resources };
   let applied: string;

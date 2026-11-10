@@ -12,6 +12,7 @@ import { ACTION_SURGED, attacksLeft, spendAction, spendAttack, type SpendResult,
 import { usesLeft } from "@/lib/dm/bonus-routes";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
+import { flurryStrikeRefusal, swingMarks } from "@/lib/dm/mt-mr-turn";
 import { loadingProblem, withLoadingFired } from "@/lib/dm/attack-rules";
 import { withClawsExtra } from "@/lib/dm/authored-attacks";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
@@ -143,7 +144,13 @@ export function spendAttackEconomy(input: {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }
     flurryStrike = (spend.budget.flurryStrikes ?? 0) < flurryBefore;
-    budget = spend.budget;
+    // The monk and rogue subclasses' marks on the swing, and Intoxicated
+    // Frenzy's different creatures (mt-mr-turn.ts).
+    const frenzy = flurryStrike ? flurryStrikeRefusal(sheet, budget, enemyId) : null;
+    if (frenzy) {
+      return { refused: frenzy };
+    }
+    budget = swingMarks(spend.budget, { unarmed: profile.weapon === "Unarmed strike", inAttackAction: usesAttackAction && !flurryStrike, flurryStrike, enemyId });
     // Form of the Beast's claws: one more claw attack in the Attack action,
     // once a turn (src/lib/dm/authored-attacks.ts).
     if (usesAttackAction) {

@@ -26,6 +26,7 @@ import {
 } from "@/lib/dm/attack-logic";
 import { handsRuling, otherHandArmed, thrownAtRange } from "@/lib/dm/attack-rules";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
+import { kenseiStance } from "@/lib/srd/mt-mr-kensei";
 import { shillelaghSwing, hexWarriorSwing } from "@/lib/dm/attack-features";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
@@ -403,6 +404,7 @@ export function buildAttackProfile(
       ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? weapon, {
         riders,
         martialArts: martialArtsApplies(sheet),
+        kensei: kenseiStance(sheet),
         brawler: brawlerUnarmed(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,

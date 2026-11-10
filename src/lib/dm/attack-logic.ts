@@ -351,6 +351,10 @@ export type AttackStance = {
   // with the unarmed strike (UNARMED_STRIKE_KEY), from
   // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
   worn?: WornWeaponRider[];
+  // Way of the Kensei: the weapons that count as monk weapons for this monk,
+  // by name key, and whether they count as magical (One with the Blade;
+  // src/lib/srd/mt-mr-kensei.ts kenseiStance).
+  kensei?: { weapons: string[]; magical: boolean };
 };
 
 // SRD 5.1 monk weapons: shortswords and any simple melee weapon that has
@@ -483,7 +487,8 @@ export function weaponAttackProfile(
   const properties = srd.properties ?? [];
   // A monk weapon in a monk's hands: DEX when it beats Strength and the
   // Martial Arts die when it beats the weapon's own (SRD 5.1, Martial Arts).
-  const monkWeapon = Boolean(martialArtsDie) && isMonkWeapon(srd);
+  const kensei = Boolean(stance.kensei?.weapons.includes(textKey(srd.name)));
+  const monkWeapon = Boolean(martialArtsDie) && (isMonkWeapon(srd) || kensei);
   const finesse = properties.includes("finesse") || monkWeapon;
   const thrown = properties.includes("thrown");
   const ranged = srd.kind === "ranged";
@@ -581,7 +586,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 || wornTotals.attack > 0 ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) ? { magicWeapon: true } : {}),
   };
 }
 

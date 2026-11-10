@@ -1,0 +1,42 @@
+// What shuts the card of a monk's or a rogue's subclass spend (wave 2, part
+// mr): the Hand's reading of the preconditions the engine asks in
+// src/lib/dm/mt-mr-needs.ts and src/lib/dm/mt-mr-spends.ts, from the turn's
+// marks and the board's verdict on the holder's own square. A precondition
+// added there is added here, or the Hand deals a card the engine refuses
+// (scripts/test-enforce-sweep-hand-monk.mjs holds the two together).
+//
+// Pure.
+
+import type { Gate, HandBoardFacts, HandTurn } from "@/lib/battlemap/hand-core";
+import { UNARMED_IN_ACTION } from "@/lib/dm/mt-mr-turn";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { AuthoredSpend } from "@/lib/srd/authored-effects-types";
+import { kenseiHeld } from "@/lib/srd/mt-mr-kensei";
+
+const shut = (reason: string): Gate => ({ reason, spent: false });
+
+export function mrCardGate(sheet: CharacterSheet, turn: HandTurn, spend: AuthoredSpend, board: HandBoardFacts | undefined): Gate {
+  const marks = turn.myTurn ? (turn.marks ?? []) : [];
+  if (spend.needs === "shadows" && board?.bright) {
+    return shut(`${spend.name} works only in dim light or darkness, and ${sheet.name} stands in bright light.`);
+  }
+  if (spend.needs === "unarmed_in_action") {
+    if (!kenseiHeld(sheet, "melee").length) {
+      return shut(`${spend.name} needs a kensei melee weapon in hand.`);
+    }
+    if (!marks.includes(UNARMED_IN_ACTION)) {
+      return shut(`${spend.name} follows an unarmed strike made as part of the Attack action.`);
+    }
+  }
+  const does = spend.does;
+  if (does.kind !== "mr") {
+    return null;
+  }
+  if (does.id === "flurry_healing" && !(turn.myTurn && (turn.flurryStrikes ?? 0) > 0)) {
+    return shut(`${spend.name} takes the place of a Flurry of Blows strike: buy the flurry after the Attack action first.`);
+  }
+  if (does.id === "deft_strike" && !kenseiHeld(sheet).length) {
+    return shut(`${spend.name} rides a hit with a kensei weapon, and ${sheet.name} holds none.`);
+  }
+  return null;
+}

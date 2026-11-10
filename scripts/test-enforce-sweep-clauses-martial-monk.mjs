@@ -12,6 +12,9 @@ const BARE = { equipment: [] };
 const UNARMED = { weapon: "unarmed strike" };
 const die = (level) => (level >= 17 ? 10 : level >= 11 ? 8 : level >= 5 ? 6 : 4);
 const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.damage?.expression ?? "");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+// The light on the fight's board, under a roof: no lamps, no spell areas.
+const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET ambient = ?, outdoors = 0, lights_json = '[]', zones_json = '[]' WHERE id = ?").run(ambient, kit.map().id);
 
 // ---- Way of Shadow ----
 {
@@ -21,6 +24,7 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
 
   await probe("shadow-step-advantage", async () => {
     const [enemy] = await stage(shadow);
+    light(kit, "dim");
     const out = await spend(shadow, "Shadow Step");
     assert.equal(out.ok, true, out.error);
     assert.equal(budget().bonusUsed, true, "the bonus action");
@@ -28,10 +32,46 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     assert.equal((await swing(shadow, enemy, [15, 15, 3], UNARMED)).toHit.advantage, "none", "only the next one");
   });
 
-  await probe("cloak-of-shadows", async () => {
+  // "Between two patches of dim light or darkness": the square left and the
+  // square landed on.
+  await probe("shadow-step-shadows", async () => {
     await stage(shadow);
+    light(kit, "bright");
+    const lit = await spend(shadow, "Shadow Step");
+    assert.equal(lit.ok, false, `from a bright square: ${show(lit)}`);
+    assert.equal(budget().bonusUsed ?? false, false, "and the refusal spent no bonus action");
+    light(kit, "dim");
+    assert.equal((await spend(shadow, "Shadow Step")).ok, true, "from a dim square");
+    const step = { token: shadow.id, x: 12, y: 8, teleport: true, spell: "Shadow Step", casterCharacterId: shadow.id };
+    light(kit, "bright");
+    const into = await world.invoke("move_token", step);
+    assert.equal(into.ok, false, `landing in bright light: ${show(into)}`);
+    light(kit, "dark");
+    const landed = await world.invoke("move_token", step);
+    assert.equal(landed.ok, true, landed.error);
+    assert.deepEqual([kit.token(shadow.id).x, kit.token(shadow.id).y], [12, 8], "35 feet off, in darkness");
+    light(kit, "bright");
+  });
+
+  await probe("cloak-of-shadows", async () => {
+    const [enemy] = await stage(shadow);
+    light(kit, "bright");
+    const lit = await spend(shadow, "Cloak of Shadows");
+    assert.equal(lit.ok, false, `in bright light: ${show(lit)}`);
+    light(kit, "dim");
     const out = await spend(shadow, "Cloak of Shadows");
     assert.ok(out.ok && has(shadow, "invisible"), `Cloak of Shadows: ${show(out)}; the monk carries [${sheet(shadow).conditions.join(", ")}]`);
+    assert.equal(budget().actionUsed, true, "the action");
+    r.untilTurnOf(shadow);
+    assert.ok(has(shadow, "invisible"), "a round on, having done nothing, the monk is still unseen");
+    await swing(shadow, enemy, [15, 15, 3], UNARMED);
+    assert.ok(!has(shadow, "invisible"), "the monk attacked and is still invisible");
+    await stage(shadow);
+    light(kit, "dim");
+    assert.equal((await spend(shadow, "Cloak of Shadows")).ok, true);
+    light(kit, "bright");
+    assert.equal(await r.walk(shadow, 3, 5), 200);
+    assert.ok(!has(shadow, "invisible"), "the monk stepped into bright light and is still invisible");
   });
 }
 
@@ -84,6 +124,18 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     assert.equal(swung.toHit.advantage, "none", `the poisoned monk's attack after Drunkard's Luck is rolled with ${swung.toHit.advantage}`);
   });
 
+  // Five strikes, the three extra each at a creature the flurry has not
+  // struck at, and no sixth.
+  await probe("intoxicated-frenzy-strikes", async () => {
+    const foes = await stage(drunk, { enemies: 5 });
+    [[6, 5], [4, 5], [5, 4], [5, 6], [6, 6]].forEach(([x, y], at) => kit.place(foes[at].id, x, y));
+    await swing(drunk, foes[0], [15, 3], UNARMED);
+    await swing(drunk, foes[0], [15, 3], UNARMED);
+    const strikes = [];
+    for (const foe of [...foes, foes[1]]) strikes.push((await swing(drunk, foe, [15, 3], { ...UNARMED, feature: "flurry of blows" })).ok);
+    assert.deepEqual(strikes, [true, true, true, true, true, false], "five strikes at five creatures, and no sixth");
+  });
+
   await probe("intoxicated-frenzy-different-creatures", async () => {
     const [enemy] = await stage(drunk);
     await swing(drunk, enemy, [15, 3], UNARMED);
@@ -98,13 +150,104 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
 {
   const r = await openRig();
   const { world, kit, hero, stage, spend, swing, sheet, used, budget, show } = r;
-  const SWORD = { equipment: [{ name: "Longsword", qty: 1, equipped: true }] };
+  // The kensei weapons chosen: a longsword and a longbow, a monk's training
+  // beside them (simple weapons and shortswords), no armor.
+  const PICKS = { "Path of the Kensei": { weapons: ["Longsword", "Longbow"] } };
+  const KENSEI = { simple: ["simple", "shortsword", "Longsword", "Longbow"] };
+  const SWORD = {
+    equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+    featChoices: PICKS,
+    proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: KENSEI.simple },
+    abilities: { str: 10, dex: 16 },
+  };
+  const NONMAGICAL = "bludgeoning, piercing, and slashing from nonmagical attacks";
+  const training = await import("../src/lib/srd/subclass-training.ts");
+  const featGrants = await import("../src/lib/srd/feat-grants.ts");
+  const { keyedFeatChoices } = await import("../src/lib/schemas/sheet.ts");
+  const { deriveAc } = await import("../src/lib/srd/index.ts");
+
+  // The grant's own picks: two at 3rd level, one more with the feature of
+  // 6th, 11th and 17th; no heavy or special weapon among them, the longbow in.
+  await probe("kensei-weapon-picks", () => {
+    const grants = training.subclassGrants([{ id: "monk", level: 17, subclass: "Way of the Kensei" }]);
+    const picks = Object.fromEntries(grants.filter((grant) => grant.spec.weapons > 0).map((grant) => [grant.name, grant.spec.weapons]));
+    assert.deepEqual(picks, { "Path of the Kensei": 2, "One with the Blade": 1, "Sharpen the Blade": 1, "Unerring Accuracy": 1 }, JSON.stringify(picks));
+    const offered = grants.find((grant) => grant.name === "Path of the Kensei").spec.weaponsFrom;
+    for (const name of ["Longsword", "Shortbow", "Longbow"]) assert.ok(offered.includes(name), `${name} is offered`);
+    for (const name of ["Greatsword", "Heavy Crossbow", "Net", "Lance"]) assert.ok(!offered.includes(name), `${name} (heavy or special) is offered`);
+    assert.equal(training.subclassGrants([{ id: "monk", level: 5, subclass: "Way of the Kensei" }]).filter((grant) => grant.spec.weapons > 0).length, 1, "at 5th level only the first two");
+    // "One melee and one ranged", and "you are proficient with them": the
+    // picks through the door a sheet's training goes through.
+    const path = grants.find((grant) => grant.name === "Path of the Kensei");
+    const through = (weapons) =>
+      featGrants.applyFeatGrants({
+        proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: ["simple", "shortsword"] },
+        feats: [{ name: path.name, desc: "", spec: path.spec }],
+        choices: keyedFeatChoices({ [path.name]: { weapons, tools: ["painter's supplies"] } }),
+        strict: true,
+      });
+    assert.match(through(["Longsword", "Scimitar"]).problems.join(" "), /ranged/, "two melee weapons were taken as the two kensei weapons");
+    const made = through(["Longsword", "Longbow"]);
+    assert.deepEqual(made.problems, [], made.problems.join(" "));
+    for (const name of ["Longsword", "Longbow"]) assert.ok(made.proficiencies.weapons.includes(name), `proficient with the ${name}: ${made.proficiencies.weapons.join(", ")}`);
+  });
+
+  // A longsword is no monk weapon (martial); chosen as a kensei weapon it
+  // swings with Dexterity and the martial arts die, proficient.
+  await probe("kensei-weapons-are-monk-weapons", async () => {
+    const kensei = hero("monk", "Way of the Kensei", 17, SWORD);
+    const [enemy] = await stage(kensei);
+    const hit = await swing(kensei, enemy, [10, 4]);
+    assert.equal(hit.ok, true, hit.error);
+    assert.match(String(hit.toHit.expression), new RegExp(`\\+${MOD + prof(17)}$`), `Dexterity and proficiency to hit: ${hit.toHit.expression}`);
+    assert.match(expr(hit), /^1d10/, `the martial arts die of 17th level for the longsword's d8: ${expr(hit)}`);
+    const plain = hero("monk", "Way of the Kensei", 17, { ...SWORD, featChoices: {} });
+    const [other] = await stage(plain);
+    const swung = await swing(plain, other, [10, 4]);
+    assert.match(expr(swung), /^1d8/, `the staging: a longsword not chosen keeps its own die (${expr(swung)})`);
+  });
 
   await probe("agile-parry-needs-an-unarmed-strike", async () => {
     const kensei = hero("monk", "Way of the Kensei", 3, SWORD);
-    await stage(kensei);
+    const [enemy] = await stage(kensei);
     const out = await spend(kensei, "Agile Parry");
     assert.equal(out.ok, false, `Agile Parry with no unarmed strike made this turn: ${show(out)}`);
+    await swing(kensei, enemy, [15, 3], UNARMED);
+    assert.equal((await spend(kensei, "Agile Parry")).ok, true, "after an unarmed strike of the Attack action, the longsword in hand");
+    const unarmedOnly = hero("monk", "Way of the Kensei", 3, { ...SWORD, equipment: [] });
+    const [other] = await stage(unarmedOnly);
+    await swing(unarmedOnly, other, [15, 3], UNARMED);
+    assert.equal((await spend(unarmedOnly, "Agile Parry")).ok, false, "with no kensei melee weapon held");
+  });
+  // +2 AC until the start of the monk's next turn.
+  await probe("agile-parry-ac", async () => {
+    const kensei = hero("monk", "Way of the Kensei", 3, SWORD);
+    const [enemy] = await stage(kensei);
+    const ac = () => deriveAc({ ...sheet(kensei), acOverride: false });
+    const bare = ac();
+    await swing(kensei, enemy, [15, 3], UNARMED);
+    const out = await spend(kensei, "Agile Parry");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(ac() - bare, 2, "+2 AC");
+    r.endTurn();
+    assert.equal(ac() - bare, 2, "still +2 on the next creature's turn");
+    r.untilTurnOf(kensei);
+    assert.equal(ac() - bare, 0, "gone as the monk's next turn starts");
+  });
+
+  // A hit with a kensei weapon passes resistance to nonmagical attacks from
+  // 6th level.
+  await probe("kensei-weapons-magical", async () => {
+    const kensei = hero("monk", "Way of the Kensei", 6, SWORD);
+    const [enemy] = await stage(kensei);
+    kit.setEnemy(enemy.id, { stats: { resist: NONMAGICAL } });
+    await swing(kensei, enemy, [15, 4]);
+    assert.equal(300 - r.foe(enemy).currentHp, 4 + MOD, "the longsword's 1d8 (a 4) + Dexterity, unhalved");
+    const young = hero("monk", "Way of the Kensei", 5, SWORD);
+    const [other] = await stage(young);
+    kit.setEnemy(other.id, { stats: { resist: NONMAGICAL } });
+    await swing(young, other, [15, 4]);
+    assert.equal(300 - r.foe(other).currentHp, Math.floor((4 + MOD) / 2), "the staging: at 5th level the same blow is halved");
   });
 
   const blade = hero("monk", "Way of the Kensei", 11, SWORD);
@@ -115,6 +258,12 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     const before = r.foe(enemy).currentHp;
     const out = await spend(blade, "One with the Blade", { targetEnemyId: enemy.id }, 4);
     assert.ok(out.ok && before - r.foe(enemy).currentHp === 4, `1 ki for the martial arts die on the hit: ${show(out)}`);
+    assert.equal(used(blade, "ki"), 1, "1 ki");
+    await swing(blade, enemy, [15, 4]);
+    assert.equal((await spend(blade, "One with the Blade", { targetEnemyId: enemy.id }, 4)).ok, false, "once per turn");
+    const [fresh] = await stage(blade);
+    assert.equal((await spend(blade, "One with the Blade", { targetEnemyId: fresh.id }, 4)).ok, false, "with no hit landed this turn");
+    assert.equal(used(blade, "ki"), 0, "and the refusal spent no ki");
   });
 
   await probe("sharpen-the-blade", async () => {
@@ -126,6 +275,17 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     const hit = await swing(blade, enemy, [10, 4]);
     assert.match(String(hit.toHit.expression), /\+2\b/, `the attack: ${hit.toHit.expression}`);
     assert.match(expr(hit), /\+2\b/, `the damage: ${expr(hit)}`);
+  });
+  // "For a minute": ten rounds, counted at the monk's own turns.
+  await probe("sharpen-the-blade-minute", async () => {
+    await stage(blade);
+    assert.equal((await spend(blade, "Sharpen the Blade", { amount: 1 })).ok, true);
+    const carried = () => sheet(blade).conditions.some((entry) => /^sharpen the blade/i.test(entry));
+    for (let round = 0; round < 9; round += 1) r.untilTurnOf(blade);
+    assert.ok(carried(), "nine rounds on the blade is still sharpened");
+    r.untilTurnOf(blade);
+    r.untilTurnOf(blade);
+    assert.ok(!carried(), "eleven rounds on it still is");
   });
 }
 
@@ -196,6 +356,78 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     world.patch(far.id, { currentHp: 40 });
     const out = await spend(mercy, "Hand of Healing", { targetCharacterId: far.id }, 4);
     assert.equal(out.ok, false, `an ally 20 feet away was healed for ${sheet(far).currentHp - 40}`);
+  });
+
+  // "Or replace one Flurry of Blows attack with it": a strike given up, no
+  // action and no ki, once a flurry before Flurry of Healing and Harm.
+  await probe("hand-of-healing-flurry", async () => {
+    const [enemy] = await stage(mercy, { cast: [[ally, 5, 6]] });
+    world.patch(ally.id, { currentHp: 40 });
+    assert.equal((await spend(mercy, "Flurry of Healing", { targetCharacterId: ally.id }, 4)).ok, false, "with no Flurry of Blows bought");
+    await swing(mercy, enemy, [15, 3], UNARMED);
+    await swing(mercy, enemy, [15, 3], UNARMED);
+    const bought = await world.invoke("use_resource", { characterId: mercy.id, resource: "Ki", variant: "flurry of blows" });
+    assert.equal(bought.ok, true, bought.error);
+    const out = await spend(mercy, "Flurry of Healing", { targetCharacterId: ally.id }, 4);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(sheet(ally).currentHp, 40 + 4 + MOD, "the martial arts die (a 4) + Wisdom");
+    assert.equal(used(mercy, "ki"), 1, "the flurry's 1 ki and none for the healing");
+    assert.equal(budget().flurryStrikes, 1, "one strike of the two given up");
+    assert.equal((await spend(mercy, "Flurry of Healing", { targetCharacterId: ally.id }, 4)).ok, false, "one strike of a flurry, at 6th level");
+    assert.equal((await swing(mercy, enemy, [15, 3], { ...UNARMED, feature: "flurry of blows" })).ok, true, "the other strike is still there to make");
+  });
+
+  // Physician's Touch (6th level): the healing ends one condition, and Hand
+  // of Harm poisons until the end of the monk's next turn.
+  await probe("physicians-touch", async () => {
+    const [enemy] = await stage(mercy, { cast: [[ally, 5, 6]] });
+    r.give(ally, "poisoned");
+    r.give(ally, "blinded");
+    world.patch(ally.id, { currentHp: 40 });
+    const out = await spend(mercy, "Hand of Healing", { targetCharacterId: ally.id, variant: "poisoned" }, 4);
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual([r.has(ally, "poisoned"), r.has(ally, "blinded")], [false, true], `one condition ended, the one named: ${show(out)}`);
+    kit.freshTurn();
+    await swing(mercy, enemy, [15, 3], UNARMED);
+    const harm = await spend(mercy, "Hand of Harm", { targetEnemyId: enemy.id }, 4);
+    assert.equal(harm.ok, true, harm.error);
+    assert.ok(r.foeHas(enemy, "poisoned"), `the creature is poisoned: ${show(harm)}`);
+    r.untilTurnOf(mercy);
+    assert.ok(r.foeHas(enemy, "poisoned"), "still poisoned as the monk's next turn starts");
+    r.endTurn();
+    assert.ok(!r.foeHas(enemy, "poisoned"), "and no longer once that turn has ended");
+    const novice = hero("monk", "Way of Mercy", 3, BARE);
+    const [other] = await stage(novice);
+    await swing(novice, other, [15, 3], UNARMED);
+    await spend(novice, "Hand of Harm", { targetEnemyId: other.id }, 4);
+    assert.ok(!r.foeHas(other, "poisoned"), "the staging: at 3rd level Hand of Harm poisons nobody");
+  });
+
+  // Flurry of Healing and Harm (11th level): every strike of the flurry may
+  // heal, and Hand of Harm on a flurry strike takes no ki.
+  await probe("flurry-of-healing-and-harm", async () => {
+    const adept = hero("monk", "Way of Mercy", 11, BARE);
+    const [enemy] = await stage(adept, { cast: [[ally, 5, 6]] });
+    world.patch(ally.id, { currentHp: 20 });
+    await swing(adept, enemy, [15, 3], UNARMED);
+    await swing(adept, enemy, [15, 3], UNARMED);
+    assert.equal((await world.invoke("use_resource", { characterId: adept.id, resource: "Ki", variant: "flurry of blows" })).ok, true);
+    assert.equal((await spend(adept, "Flurry of Healing", { targetCharacterId: ally.id }, 4)).ok, true, "the first strike heals");
+    assert.equal((await spend(adept, "Flurry of Healing", { targetCharacterId: ally.id }, 4)).ok, true, "and the second");
+    assert.equal(sheet(ally).currentHp, 20 + 2 * (4 + MOD));
+    assert.equal(used(adept, "ki"), 1, "the flurry's 1 ki only");
+    const [again] = await stage(adept);
+    await swing(adept, again, [15, 3], UNARMED);
+    await swing(adept, again, [15, 3], UNARMED);
+    const strike = await swing(adept, again, [15, 3], { ...UNARMED, feature: "flurry of blows" });
+    assert.equal(strike.result.hit, true, strike.error);
+    const harm = await spend(adept, "Hand of Harm", { targetEnemyId: again.id }, 4);
+    assert.equal(harm.ok, true, harm.error);
+    assert.equal(used(adept, "ki"), 1, `Hand of Harm on a flurry strike took ki: ${show(harm)}`);
+    const [third] = await stage(adept);
+    await swing(adept, third, [15, 3], UNARMED);
+    await spend(adept, "Hand of Harm", { targetEnemyId: third.id }, 4);
+    assert.equal(used(adept, "ki"), 1, "the staging: on a strike of the Attack action it costs its 1 ki");
   });
 
   await probe("hand-of-harm", async () => {

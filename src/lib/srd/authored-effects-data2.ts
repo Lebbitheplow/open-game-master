@@ -13,6 +13,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         name: "Shadow Step",
         action: "bonus",
+        // "Between two patches of dim light or darkness": the square left
+        // (here) and the one landed on (map-tools.ts featureLandingRefusal).
+        needs: "shadows",
         does: { kind: "buff", condition: "shadow step", rounds: 1, teleportFeet: 60 },
       },
     ],
@@ -43,13 +46,15 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "monk::Intoxicated Frenzy": {
     subclass: "Way of the Drunken Master",
-    effects: [{ kind: "flurry", strikes: 5, note: "Each extra strike is meant for a different creature; the GM keeps to that." }],
+    // Each strike past the flurry's own two goes to a creature no other
+    // strike of it was aimed at (src/lib/dm/mt-mr-turn.ts flurryStrikeRefusal).
+    effects: [{ kind: "flurry", strikes: 5 }],
   },
   // Agile Parry: after an unarmed strike in the Attack action while holding a
   // kensei melee weapon, +2 AC until the monk's next turn, for no action.
   "monk::Path of the Kensei": {
     subclass: "Way of the Kensei",
-    spends: [{ name: "Agile Parry", aliases: ["Path of the Kensei"], action: "none", fight: "in", does: { kind: "buff", condition: "agile parry", rounds: 1 } }],
+    spends: [{ name: "Agile Parry", aliases: ["Path of the Kensei"], action: "none", fight: "in", needs: "unarmed_in_action", does: { kind: "buff", condition: "agile parry", rounds: 1 } }],
   },
   "monk::Kensei's Shot": {
     subclass: "Way of the Kensei",

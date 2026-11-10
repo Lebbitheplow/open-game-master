@@ -21,6 +21,7 @@ import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import { unseenBecause } from "@/lib/dm/authored-saves";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { hideRefusal } from "@/lib/dm/hide-traits";
+import { shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { silenceAround } from "@/lib/dm/zone-rules";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getEnemy, type Encounter } from "@/lib/db/encounters";
@@ -131,5 +132,6 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   if (hide) out.hide = hide.error;
   const silence = silenceAround(campaignId, sheet.id);
   if (silence !== null) out.silence = { by: silence };
+  if (shadowLightProblem(campaignId, sheet)) out.bright = true;
   return out;
 }

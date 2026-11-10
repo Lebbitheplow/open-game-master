@@ -41,6 +41,7 @@ import type {
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
+import { AUTHORED_DATA_W2_MT_MR } from "@/lib/srd/authored-effects-w2-mt-mr";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -57,6 +58,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_CHANNEL,
   ...AUTHORED_DATA_COUNTERS,
   ...AUTHORED_DATA_W2_MARTIAL,
+  ...AUTHORED_DATA_W2_MT_MR,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };

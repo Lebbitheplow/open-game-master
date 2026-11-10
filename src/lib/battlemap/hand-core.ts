@@ -375,7 +375,9 @@ export type HandOptions = {
 // the Silence it stands in, by who cast it ("" for nobody named;
 // zone-rules.ts silenceAround). Absent off the map and from an older host,
 // whose cards are dealt as before.
-export type HandBoardFacts = { hide?: string; silence?: { by: string } };
+// `bright`: the square is in bright light, where a feature of dim light or
+// darkness is refused (Shadow Step, Cloak of Shadows; one-with-shadows.ts).
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: true };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,

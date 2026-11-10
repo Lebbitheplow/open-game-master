@@ -462,7 +462,16 @@ export type SpendDoes =
   | { kind: "action_attack"; note: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A monk's or a rogue's subclass spend wave 2 built, resolved by its id in
+  // src/lib/dm/mt-mr-spends.ts. `aims`: who the Hand's card is aimed at.
+  | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number };
+
+export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows";
+
+// A precondition of a spend that a gate's words cannot say: the light on the
+// holder's square, or a mark this turn left (src/lib/dm/mt-mr-needs.ts).
+export type SpendNeed = "shadows" | "unarmed_in_action" | "flurry_harm";
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -474,9 +483,14 @@ export type AuthoredSpend = {
   // (ki, bardic_inspiration, sorcery_points, wild_shape...). `perUnit`: the
   // call's amount is what is spent (Touch of the Long Death's ki); `optional`
   // lets a call spend none.
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string };
+  // `free`: the spend takes nothing from the pool while this holds (Flurry of
+  // Healing and Harm's Hand of Harm on a Flurry of Blows strike).
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; free?: SpendNeed };
   action?: SpendAction;
   gate?: Gate;
+  // Asked after the gate and before anything is spent; unmet, the refusal
+  // says what is missing.
+  needs?: SpendNeed;
   // Once per rage and similar: a marker condition the spend leaves.
   oncePer?: { marker: string; rounds: number };
   oncePerTurn?: boolean;
