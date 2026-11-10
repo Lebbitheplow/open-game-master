@@ -42,6 +42,7 @@ import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { DiceTapeCursor, nextDecided } from "@/lib/dm/held-call-logic";
+import type { RollTag } from "@/lib/dice-script-logic";
 
 // What a roll that must wait asks for: the card it parks.
 export type HeldPark = {
@@ -62,6 +63,15 @@ export type HeldPark = {
 
 type Trial = {
   campaignId: string;
+  // The dice the run has thrown, any kind, any source: a stop for a watcher
+  // comes only before the first, so nothing thrown is thrown again.
+  dice: number;
+  // The run has had its look for a watcher (or its stop was answered).
+  watched: boolean;
+  watchStop: string | null;
+  watchTag?: RollTag;
+  watchTapeAt?: number;
+  watchers?: boolean;
   decided: DecidedRoll[];
   used: Set<number>;
   feed: DiceTapeCursor;
@@ -71,7 +81,15 @@ type Trial = {
 
 declare global {
   var __odmHeldTrial: Trial | null | undefined;
+  // foresight.ts watchStopForRoll, registered there: the stop for the d20 a
+  // call is about to throw, or null.
+  var __odmWatchStop: ((campaign: Campaign, turn: DmTurn, call: HeldCallSpecShape, tag: RollTag, open?: boolean) => string | null) | undefined;
+  // Tables whose next held call is a watch stop's, already answered.
+  var __odmWatchAnswered: Map<string, Array<[number, number]>> | undefined;
+  var __odmAnyoneWatching: ((campaignId: string) => boolean) | undefined;
 }
+
+type HeldCallSpecShape = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 
 // Thrown to unwind the call to runHeld. Caught there; a handler that catches
 // it anyway still parks, since the park is read off the trial.
@@ -158,11 +176,17 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
     return run();
   }
   ensurePendingColumns();
+  const answeredTape = globalThis.__odmWatchAnswered?.get(campaign.id);
+  const answered = answeredTape !== undefined;
+  globalThis.__odmWatchAnswered?.delete(campaign.id);
   const trial: Trial = {
     campaignId: campaign.id,
+    dice: 0,
+    watched: answered,
+    watchStop: null,
     decided: [...(previous?.decided ?? [])],
     used: new Set(),
-    feed: new DiceTapeCursor(previous?.tape ?? []),
+    feed: new DiceTapeCursor(previous?.tape ?? answeredTape ?? []),
     drawn: [],
     park: null,
   };
@@ -171,11 +195,35 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   const deliveries = holdDeliveries();
   let result: T | undefined;
   let rolledBack = false;
+  // A handler that fails keeps what it did before it failed, as it always
+  // has: only a park takes the run back.
+  let failed: { error: unknown } | null = null;
   globalThis.__odmHeldTrial = trial;
   globalThis.__odmDiceTape = {
     taped: (sides) => trial.feed.next(sides),
     drawn: (sides, face) => {
       trial.drawn.push([sides, face]);
+    },
+    // A stop may come before any d20 of the call: a die thrown before it is
+    // on the tape, and the answered call throws it again the same.
+    before: (sides, frame) => {
+      trial.dice += 1;
+      if (trial.watched || sides !== 20 || !frame.purpose || trial.decided.length) {
+        return;
+      }
+      trial.watchers ??= globalThis.__odmAnyoneWatching?.(campaign.id) ?? false;
+      if (!trial.watchers) {
+        trial.watched = true;
+        return;
+      }
+      const stop = globalThis.__odmWatchStop?.(campaign, turn, { ...(call.toolCallId ? { id: call.toolCallId } : {}), name: call.name, rawArguments: call.rawArguments }, frame.purpose, false) ?? null;
+      if (stop) {
+        trial.watched = true;
+        trial.watchStop = stop;
+        trial.watchTag = frame.purpose;
+        trial.watchTapeAt = trial.drawn.length;
+        throw new HeldRollParked("waiting on a watcher");
+      }
     },
   };
   try {
@@ -183,11 +231,12 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
       try {
         result = run();
       } catch (error) {
-        if (!(error instanceof HeldRollParked) || !trial.park) {
-          throw error;
+        if (!(error instanceof HeldRollParked) || (!trial.park && !trial.watchStop)) {
+          failed = { error };
+          return;
         }
       }
-      if (trial.park) {
+      if (trial.park || trial.watchStop) {
         throw ROLLBACK;
       }
     })();
@@ -201,10 +250,16 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
     globalThis.__odmHeldTrial = null;
     globalThis.__odmDiceTape = null;
   }
-  if (!rolledBack || !trial.park) {
+  if (failed) {
+    deliveries.release(true);
+    throw (failed as { error: unknown }).error;
+  }
+  if (!rolledBack || (!trial.park && !trial.watchStop)) {
     deliveries.release(true);
     return result as T;
   }
+  // The watch's card was opened inside the run and rolled back with it:
+  // what the stop told the table is dropped, and it is opened again now.
   deliveries.release(false);
   // An async handler's rejection is the park itself, not an error.
   if (result && typeof (result as { catch?: unknown }).catch === "function") {
@@ -212,7 +267,38 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   }
   turn.rollIds.length = rollIds;
   rearm(campaign.id, armed);
+  if (!trial.park) {
+    return parkWatch(campaign, turn, call, trial);
+  }
   return parkCard(campaign, turn, call, trial, trial.park);
+}
+
+// The watcher's stop, opened again outside the rolled-back run: no die was
+// thrown before it, so the call runs fresh once it is answered.
+const WATCHED = new WeakMap<object, string>();
+
+export function watchStopOf(result: unknown): string | null {
+  return typeof result === "object" && result !== null ? (WATCHED.get(result) ?? null) : null;
+}
+
+function parkWatch(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: Trial): ToolResult {
+  const tag = trial.watchTag;
+  const tape = trial.drawn.slice(0, trial.watchTapeAt ?? 0);
+  const held = { ...(call.toolCallId ? { id: call.toolCallId } : {}), name: call.name, rawArguments: call.rawArguments, ...(tape.length ? { tape } : {}) };
+  const stop = tag ? (globalThis.__odmWatchStop?.(campaign, turn, held, tag) ?? null) : null;
+  const answer: ToolResult = { ok: true, parked: true, note: "Waiting on a player watching for Portent before the roll." };
+  PARKED.add(answer);
+  if (stop) {
+    WATCHED.set(answer, stop);
+  }
+  return answer;
+}
+
+// The next held call at this table is the one a watch stop held, answered:
+// it does not stop again for the roll its stop was for (turn.ts runHeldCalls,
+// foresight-release.ts for a person's turn).
+export function markWatchAnswered(campaignId: string, tape: Array<[number, number]> = []) {
+  (globalThis.__odmWatchAnswered ??= new Map()).set(campaignId, tape);
 }
 
 function parkCard(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: Trial, park: HeldPark & { tapeAt: number }): ToolResult {
@@ -321,4 +407,15 @@ export function runHeldAgain(
 export function claimHeldPending(pendingId: string, status: "submitted" | "fallback"): boolean {
   const result = getDatabase().prepare(`UPDATE pending_rolls SET status = ? WHERE id = ? AND status = 'pending'`).run(status, pendingId);
   return result.changes > 0;
+}
+
+export function clearWatchAnswered(campaignId: string) {
+  globalThis.__odmWatchAnswered?.delete(campaignId);
+}
+
+// A call a watch stop held, run now that the watcher has answered, held in
+// turn so a roll inside it may still wait on its player.
+export function runHeldCallNow(campaign: Campaign, turn: DmTurn, call: HeldCallSpec): ToolResult | null {
+  const runner = globalThis.__odmHeldRunner;
+  return runner ? (runHeld(campaign, turn, call, () => runner(campaign, turn, call)) as ToolResult) : null;
 }

@@ -52,8 +52,19 @@ await test("A group check: the die is spent only on the member it carries.", asy
   assert.ok(holds(), "a member who passes keeps the die");
   world.dice(8, 5);
   const carried = await world.invoke("group_check", { ability: "str", dc: 12, characterIds: [hero.id] });
-  world.clearDice();
   assert.equal(carried.ok, true, carried.error);
+  // Inside a GM's call the roll waits on its player, who adds the die
+  // (src/lib/dm/character-roll.ts; the 2026-11-09 gap sweep's findings
+  // dice-afterroll-*): it was added for them before. Outside one (the saves
+  // above, the ambush below) it is still settled for them.
+  const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.thrown?.options.some((option) => option.id === "bardic"));
+  assert.ok(card, "the 8 waits on the die its player holds");
+  world.signIn({ id: hero.userId });
+  const added = await call(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: card.id });
+  world.clearDice();
+  assert.equal(added.status, 200, JSON.stringify(added.json));
   assert.ok(!holds(), "8 and 5 make 13: spent");
 });
 
@@ -173,7 +184,9 @@ await test("Every site that rolls with a held die settles it after the d20, or n
   for (const file of fs.readdirSync(dir).filter((name) => name.endsWith(".ts"))) {
     const text = fs.readFileSync(path.join(dir, file), "utf8");
     const sites = (text.match(/spendRollCarriers\([^)]*resolved\.spendInspiration\)/g) ?? []).length;
-    const settled = (text.match(/settleHeldDie\(/g) ?? []).length;
+    // Settled by the site, or by the one door a character's d20 is thrown
+    // through (character-roll.ts), told to with settleHeldDie or settle.
+    const settled = (text.match(/settleHeldDie[(:]|\bsettle: /g) ?? []).length;
     if (sites > settled && !NO_TARGET.has(file)) {
       missing.push(`${file}: ${sites} rolls with carriers, ${settled} settled`);
     }

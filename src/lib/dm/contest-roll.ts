@@ -140,19 +140,14 @@ export function rollFeatureSave(
     return { success: false, total: null, notes: resolved.notes };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const outcome = rollCharacterD20(campaign, sheet, {
-    kind: "saving_throw",
-    expression: resolved.expression,
-    detail: `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120),
-    dc,
-    settleHeldDie: waits,
-  });
+  const said = `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120);
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: said, dc, settleHeldDie: waits });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "saving_throw",
-    detail: `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120),
+    detail: said,
     dc,
     result: outcome,
   });

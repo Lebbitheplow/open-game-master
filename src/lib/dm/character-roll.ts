@@ -33,6 +33,7 @@ import { afterRollDeadline } from "@/lib/dm/after-roll-timer";
 import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
+import { shiftArmedFor } from "@/lib/dm/chronal-shift";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -134,7 +135,10 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
   if (parks) {
     parkHeldCall({ ...card, parkedFor: parks, note: `Waiting on ${sheet.name} to roll ${roll.detail}: their player rolls it.` });
   }
-  const waits = mayWait && roll.kind !== "damage" && rollsCanWait(sheet);
+  // A watcher already answered this roll at the stop before it: their
+  // answer is armed and taken as the roll lands, so the card does not ask
+  // again (foresight.ts, chronal-shift.ts).
+  const waits = mayWait && roll.kind !== "damage" && rollsCanWait(sheet) && !shiftArmedFor(campaign.id, tag);
   // Portent replaces the d20 before it is thrown: a wizard holding a number
   // decides here, as on a requested check (invoke-roll.ts).
   if (waits && !roll.attack && roll.kind !== "initiative" && foretoldLeft(sheet).length > 0) {

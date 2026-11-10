@@ -89,7 +89,8 @@ export function rollEnemyContest(
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;
   const advantage = mergeAdvantage([...rollDerivation(enemy.conditions, "skill_check", "str").sources, ...(worn ? ["disadvantage" as const] : [])]);
-  const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage));
+  // Tagged as the creature's check, so a watcher's Portent may answer it.
+  const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage), undefined, { purpose: { roller: "enemy", kind: "check", who: enemy.displayName } });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: null,

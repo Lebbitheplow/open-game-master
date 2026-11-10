@@ -161,6 +161,14 @@ function tagFits(want: RollTag, got: RollTag): boolean {
   return want.roller === got.roller && want.kind === got.kind && [want.who ?? []].flat().map(textKey).some((name) => names.includes(name));
 }
 
+// Whether a watcher's answer is armed for this roll (a Chronal Shift, Flash of
+// Genius or Favored by the Gods decided at the stop before it): the roll's
+// own after-the-roll card would ask the same thing again (character-roll.ts).
+export function shiftArmedFor(campaignId: string, tag: RollTag | undefined): boolean {
+  const armed = globalThis.__odmArmedShifts?.get(campaignId);
+  return Boolean(armed && !armed.used && tag && armed.rolls.some((roll) => tagFits(roll.tag, tag)));
+}
+
 // The roll site's question once it knows the outcome: does an armed shift
 // answer this roll? When it does it is paid for here, and the caller rolls
 // the d20 again and keeps the new roll. Returns the wizard's name, or null.

@@ -76,7 +76,9 @@ export type ScriptedDie = (sides: number, frame: RollFrame) => number | null;
 // drawn again on the second, so a die nobody has seen yet is the same die
 // (`taped`), and every face drawn by chance is noted for a later run
 // (`drawn`). Registered the way the dice script is, for the same reason.
-export type DiceTape = { taped: (sides: number) => number | null; drawn: (sides: number, face: number) => void };
+// `before`: told of every die before it is thrown, so the held call may stop
+// for a player watching for Portent before the first d20 of a roll.
+export type DiceTape = { taped: (sides: number) => number | null; drawn: (sides: number, face: number) => void; before?: (sides: number, frame: RollFrame) => void };
 
 declare global {
   var __odmScriptedDie: ScriptedDie | undefined;
@@ -90,6 +92,7 @@ export function registerScriptedDice(hook: ScriptedDie) {
 let frame: RollFrame | null = null;
 
 export function defaultRng(sides: number) {
+  globalThis.__odmDiceTape?.before?.(sides, frame ?? { purpose: null, forcedD20: null });
   const scripted = globalThis.__odmScriptedDie?.(sides, frame ?? { purpose: null, forcedD20: null });
   if (scripted !== undefined && scripted !== null) {
     return scripted;

@@ -174,7 +174,9 @@ export function rollContest(
     ...(effect?.disadvantage ? ["disadvantage" as const] : []),
   ]);
   const modifier = creatureCheckMod(opponent.stats, theirs, ability) + (effect?.bonus ?? 0);
-  const outcome = derivation.autoFail ? null : rollExpression(d20Expression(modifier, advantage));
+  // Tagged as the creature's check, so a watcher's Portent may answer it
+  // ("an ability check made by ... a creature that you can see").
+  const outcome = derivation.autoFail ? null : rollExpression(d20Expression(modifier, advantage), undefined, { purpose: { roller: "enemy", kind: "check", who: opponent.name } });
   const total = outcome?.total ?? 0;
   if (outcome) {
     const roll = insertRoll({

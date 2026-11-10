@@ -540,7 +540,9 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
 
 // The calls a watch stop holds back, what the first is about to roll, and what
 // the watcher chose. Null face: let it roll.
-export type HeldCall = { id?: string; name: string; rawArguments: string };
+// `tape`: the faces the call drew by chance before a stop inside it
+// (src/lib/dm/held-call.ts), drawn again when it runs.
+export type HeldCall = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 // Which feature the stop is for: Portent's number before the roll, or a
 // Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
 // once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop
