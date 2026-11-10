@@ -63,6 +63,9 @@ import type { Combatant } from "@/lib/dm/combatant";
 
 type Found = { reaction: AuthoredReaction; held: HeldAuthored; holder: CharacterSheet; variant: string };
 
+// The variant that declines a miss's attack (Glorious Defense's card offers it).
+export const NO_ATTACK = "no attack";
+
 // The authored reaction a use_reaction call names, for the character taking
 // it: their own feature, or an ally's feature that serves them. The feature
 // may carry its option after the name ("Raging Storm tundra").
@@ -451,7 +454,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry));
       const settled = settle(ctx, hit.record, corrected, label);
-      const struck = does.strikeOnMiss ? strikeAttacker(ctx, reaction.name, hit.record) : {};
+      // Glorious Defense: "a resulting miss lets you attack the attacker". The
+      // attack is the paladin's choice (maintainer ruling R6,
+      // /tmp/odm-gapstudy/WAVE1.md): made unless the call says "no attack".
+      const declined = textKey(ctx.args.variant ?? "") === NO_ATTACK;
+      const struck = does.strikeOnMiss ? (declined ? { attack: `${ctx.sheet.name} lets the attack pass.` } : strikeAttacker(ctx, reaction.name, hit.record)) : {};
       return { ...struck, applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "disadv_vs_hit": {

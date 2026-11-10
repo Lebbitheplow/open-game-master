@@ -746,6 +746,11 @@ function subclassReactions(
         // Asked by what it does to the hit, as the engine asks it (reaction-tools.ts).
         fallen: timingOfDoes(does) === "answers",
         ...(misdirects ? { pickWithin: REDIRECT_FT } : {}),
+        // Glorious Defense: the miss "lets you attack", so the card asks. The
+        // attack comes first, as most paladins take it (ruling R6).
+        ...(does.kind === "ac_vs_hit" && does.strikeOnMiss
+          ? { choice: { arg: "variant", label: "On a miss", options: [{ value: "attack", label: "Attack the attacker" }, { value: "no attack", label: "No attack" }] } }
+          : {}),
       });
     }
   }

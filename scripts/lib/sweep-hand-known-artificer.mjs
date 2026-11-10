@@ -2,12 +2,10 @@
 // WRITTEN by scripts/lib/sweep-hand-triage.mjs --known; do not edit by hand.
 export const ROWS = {
   "test-enforce-sweep-hand-artificer": [
-    ["P1|*|*|feature:sub_perfected_armor", "hand-reaction-no-trigger"],
     ["P1|*|*|spell:ice storm", "hand-silence-open"],
     ["P1|*|*|spell:wall of fire", "hand-silence-open"],
     ["P1|*|*|spell:wall of force", "hand-silence-open"],
     ["P1|*|*|spell:wind wall", "hand-silence-open"],
-    ["P1|*|fresh,action-spent,bonus-spent,prone,grappled,blinded,darkness,concentrating,foe-30ft,foe-100ft,foe-invisible,out-of-fight,failed-save|spell:shield", "hand-reaction-no-trigger"],
     ["P1|*|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,silenced,no-free-hand,concentrating,foe-30ft,foe-100ft,foe-invisible|basic:hide", "hand-hide-seen"],
     ["P1|*|no-free-hand|basic:grapple", "hand-grapple-no-free-hand"],
     ["P1|*|out-of-fight|basic:hide", "hand-hide-out-of-fight-retry"],
@@ -19,7 +17,6 @@ export const ROWS = {
     ["P1|*|silenced|spell:heat metal", "hand-silence-open"],
     ["P1|*|silenced|spell:lesser restoration", "hand-silence-open"],
     ["P1|*|silenced|spell:shatter", "hand-silence-open"],
-    ["P1|*|silenced|spell:shield", "hand-silence-open"],
     ["P1|*|silenced|spell:thunderwave", "hand-silence-open"],
     ["P1|Alchemist@20|silenced,no-free-hand|spell:ray of sickness", "hand-silence-open"],
     ["P1|Alchemist@20|silenced|spell:acid arrow", "hand-silence-open"],

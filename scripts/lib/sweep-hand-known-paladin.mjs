@@ -2,7 +2,6 @@
 // WRITTEN by scripts/lib/sweep-hand-triage.mjs --known; do not edit by hand.
 export const ROWS = {
   "test-enforce-sweep-hand-paladin-a": [
-    ["P1|*|*|spell:counterspell", "hand-reaction-no-trigger"],
     ["P1|*|*|spell:dispel magic", "hand-silence-open"],
     ["P1|*|*|spell:ice storm", "hand-silence-open"],
     ["P1|*|*|spell:misty step", "hand-silence-open"],
@@ -123,7 +122,6 @@ export const ROWS = {
   ],
   "test-enforce-sweep-hand-paladin-b": [
     ["P1|*|*|spell:confusion", "hand-silence-open"],
-    ["P1|*|*|spell:counterspell", "hand-reaction-no-trigger"],
     ["P1|*|*|spell:detect magic", "hand-silence-open"],
     ["P1|*|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,silenced,no-free-hand,concentrating,foe-30ft,foe-100ft,foe-invisible|basic:hide", "hand-hide-seen"],
     ["P1|*|no-free-hand|basic:grapple", "hand-grapple-no-free-hand"],
@@ -162,15 +160,12 @@ export const ROWS = {
     ["P1|Oath of the Watchers@20|silenced|spell:moonbeam", "hand-silence-open"],
     ["P1|Oath of the Watchers@20|silenced|spell:see invisibility", "hand-silence-open"],
     ["P1|Oathbreaker@20|blinded|option:channel_divinity:control-undead", "hand-sight-required-open"],
-    ["P1|Oathbreaker@20|failed-save|spell:hellish rebuke", "hand-hellish-rebuke-save-damage"],
-    ["P1|Oathbreaker@20|fresh,action-spent,bonus-spent,prone,grappled,blinded,darkness,concentrating|spell:hellish rebuke", "hand-reaction-no-trigger"],
     ["P1|Oathbreaker@20|silenced|spell:bestow curse", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:blight", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:contagion", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:crown of madness", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:darkness", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:dominate person", "hand-silence-open"],
-    ["P1|Oathbreaker@20|silenced|spell:hellish rebuke", "hand-silence-open"],
     ["P1|Oathbreaker@20|silenced|spell:inflict wounds", "hand-silence-open"],
     ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P3|*|*|spell:aura of vitality", "hand-aura-of-vitality-modifier"],
@@ -228,7 +223,6 @@ export const ROWS = {
     ["P5|Oath of Glory@20|foe-30ft,foe-invisible|spell:compulsion", "hand-spell-no-mechanics"],
     ["P5|Oath of the Crown@20|foe-100ft|spell:guardian of faith", "hand-aoe-range-unchecked"],
     ["P5|Oath of the Crown@20|foe-30ft,foe-invisible|spell:compelled duel", "hand-spell-no-mechanics"],
-    ["P5|Oathbreaker@20|foe-30ft,foe-invisible|spell:hellish rebuke", "hand-reaction-no-trigger-aim"],
     ["P6|*|foe-30ft|attack:dagger", "hand-thrown-long-range"],
     ["P7|*|*|basic:ready:left", "hand-ready-attack-left"],
   ],

@@ -33,9 +33,9 @@ function eventOfHit(hit: PublicLastHit): TriggerEvent {
 
 const costOf = (action: string | undefined): HandCost => (action === "reaction" ? "reaction" : action === "bonus" ? "bonus" : action === "none" ? "free" : "action");
 
-function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string }): HandCard {
+function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean }): HandCard {
   const { event, spec } = input;
-  const target: HandTarget = spec.aimsAt && event.creatureId ? "enemy" : "none";
+  const target: HandTarget = input.onAlly ? "ally" : spec.aimsAt && event.creatureId ? "enemy" : "none";
   const base: HandCard = {
     id: `reaction:${textKey(input.name).replace(/\s+/g, "-")}:${event.id}`,
     type: "ward",
@@ -84,7 +84,11 @@ export function triggerCards(
     const spec = triggerSpecFor(def?.displayName ?? id, { counterId: id });
     if (!state || !def || !spec || state.max <= state.used) continue;
     const cost = costOf(def.action);
+    // A use that lands on another creature (Cosmic Omen's die) answers a roll
+    // that creature made; the engine refuses the holder's own.
+    const onAlly = def.effect.kind === "inspire" || (def.effect.kind === "buff" && def.effect.target === "ally");
     for (const event of openFor(spec, events, context(triggerKey(id, sheet.id))).slice(-2)) {
+      if (onAlly && (!event.characterId || event.characterId === sheet.id)) continue;
       cards.push(card(sheet, turn, {
         id,
         name: def.displayName,
@@ -94,6 +98,7 @@ export function triggerCards(
         intent: cost === "reaction" ? { card: "reaction", feature: def.displayName } : { card: "feature", resourceId: id },
         rules: def.guidance.split(". ")[0].replace(/\.?$/, "."),
         resource: def.atWill ? "" : `Uses ${state.max - state.used}/${state.max}`,
+        onAlly,
       }));
     }
   }

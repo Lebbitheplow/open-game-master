@@ -52,7 +52,6 @@ export const ROWS = {
     ["P1|*|silenced|spell:vicious mockery", "hand-silence-open"],
     ["P1|College of Eloquence@20|out-of-fight|feature:sub_infectious_inspiration", "hand-reaction-no-trigger"],
     ["P1|College of Spirits@20|silenced|spell:guidance", "hand-silence-open"],
-    ["P1|College of Whispers@20|out-of-fight|feature:sub_mantle_of_whispers", "hand-reaction-no-trigger"],
     ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|College of Spirits@20|action-spent|feature:sub_spirit_session", "hand-counter-cost-not-charged"],
     ["P2|College of Whispers@20|action-spent|feature:sub_words_of_terror", "hand-counter-cost-not-charged"],

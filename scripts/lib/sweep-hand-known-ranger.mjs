@@ -31,7 +31,6 @@ export const ROWS = {
     ["P7|*|*|basic:ready:left", "hand-ready-attack-left"],
   ],
   "test-enforce-sweep-hand-ranger-b": [
-    ["P1|*|*|feature:sub_reflexive_resistance", "hand-reaction-no-trigger"],
     ["P1|*|*|spell:arcane eye", "hand-silence-open"],
     ["P1|*|*|spell:dispel magic", "hand-silence-open"],
     ["P1|*|*|spell:insect plague", "hand-silence-open"],
@@ -50,7 +49,6 @@ export const ROWS = {
     ["P1|*|silenced|spell:spike growth", "hand-silence-open"],
     ["P1|Fey Wanderer@20|silenced|spell:charm person", "hand-silence-open"],
     ["P1|Fey Wanderer@20|silenced|spell:dimension door", "hand-silence-open"],
-    ["P1|Monster Slayer@20|out-of-fight|feature:sub_magic_users_nemesis", "hand-reaction-no-trigger"],
     ["P1|Monster Slayer@20|silenced|spell:banishment", "hand-silence-open"],
     ["P1|Monster Slayer@20|silenced|spell:hold monster", "hand-silence-open"],
     ["P1|Monster Slayer@20|silenced|spell:protection from evil and good", "hand-silence-open"],
