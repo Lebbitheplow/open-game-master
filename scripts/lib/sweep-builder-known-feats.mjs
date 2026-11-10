@@ -11,16 +11,6 @@ const FILL_FEAT_TRAINING = {
   note: "A player who takes Skilled, Linguist, Skill Expert or Weapon Master and presses the fill is still told \"Linguist: pick 3 languages.\"",
 };
 
-// A pack half-feat that raises any score: the gate passes with no score
-// chosen and the server refuses the save.
-const HALF_FEAT_ANY = {
-  rule:
-    "Level Up Adventurer's Guide, Destiny's Call: \"An ability score of your choice increases by 1.\" The server (src/lib/srd/level-up.ts applyFeatIncrease, and the creation check) refuses the feat until the score is named; the builder's gate must ask for the same pick.",
-  where: "src/app/characters/builder/submit.ts abilitiesBlocks (the half-feat ability check) against src/lib/srd/feat-effects.ts featAbilityIncrease, whose `from` is all six scores for this text",
-  severity: "medium",
-  note: "validateBuilder (with the feat judge) answers null for asiChoices [{ mode: \"feat\", feat: \"Destiny's Call\" }]; POST /api/characters answers 400 \"Destiny's Call raises one of STR, DEX, CON, INT, WIS, CHA by 1; choose which.\"",
-};
-
 export const KNOWN_FEATS = [
   {
     id: "fill-leaves-feat-training",
@@ -38,7 +28,6 @@ export const KNOWN_FEATS = [
       "feat:Woodcraft Training:fill",
     ],
   },
-  { id: "gate-passes-half-feat-without-score", ...HALF_FEAT_ANY, rows: ["feat:Destiny's Call:taken", "feat:Destiny’s Call:taken"] },
 ];
 export const SKIP_FEATS = {};
 
