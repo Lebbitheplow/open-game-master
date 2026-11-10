@@ -67,7 +67,8 @@ export type AuthoredEffect = Base &
     | { kind: "init_ability"; ability: Ability }
     // Advantage on checks: named skills, or checks of an ability about one
     // circumstance (the roll's `about`).
-    | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout }
+    // `creatures`: a check about creatures of these types (Lord of the Green).
+    | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout; creatures?: string[] }
     // Twice the proficiency bonus on checks with these skills the holder is
     // proficient in (a mystery class's "Double proficiency bonus on Insight").
     | { kind: "skill_expertise"; skills: string[] }
@@ -222,7 +223,8 @@ export type AuthoredEffect = Base &
     // Casting the spell gives temporary hit points, and damage never breaks
     // the concentration on it (Grasping Tentacles).
     // `school`: every spell of that school (Focused Conjuration).
-    | { kind: "concentration_guard"; spell?: string; school?: string; tempHp: Formula }
+    // `anySpell`: every spell the holder casts (The Word Made Iron's sermons).
+    | { kind: "concentration_guard"; spell?: string; school?: string; anySpell?: boolean; tempHp: Formula }
     // A single-target spell of the school and level range strikes a second
     // creature within 5 feet of the first (Improved Reaper: 1st to 5th level
     // necromancy; Reaper: a necromancy cantrip; Moon Fire: sacred flame).

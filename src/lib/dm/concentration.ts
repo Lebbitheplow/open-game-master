@@ -1,4 +1,5 @@
 import { concentrationFeat } from "@/lib/srd/feat-combat";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
@@ -396,6 +397,9 @@ export function concentrationDamageHook(
   // what this save adds.
   const feat = concentrationFeat(fresh);
   const warCaster = feat?.advantage === true;
+  // Redundant Systems: "Advantage on CON saves to maintain concentration on
+  // schematics", which are every spell the machinist casts.
+  const redundant = !warCaster && holdsGenreFeature(fresh, "machinist", "Redundant Systems");
   const floor = conditionConcentrationFloor(fresh.conditions);
   const save = rollCharacterSave(
     campaign,
@@ -406,7 +410,7 @@ export function concentrationDamageHook(
     `CON save to keep concentration (${spell})`,
     undefined,
     null,
-    warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : null,
+    warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : redundant ? { advantage: "advantage", reason: "Redundant Systems: advantage to keep concentration" } : null,
     false,
     { ...(feat?.die ? { die: feat.die } : {}), ...(floor ? { floor } : {}) },
   );

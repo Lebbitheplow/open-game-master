@@ -622,11 +622,9 @@
   "clauses": [
    {
     "c": "Advantage on checks to drive, ride, or repair vehicles",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Wheelman#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Wheelman: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Wheelman: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about vehicles (src/lib/dm/roll-about.ts CHECK_ABOUT, src/lib/srd/authored-effects.ts authoredRollRiders)"
    },
    {
     "c": "attacking from a moving vehicle carries no penalty",
@@ -1156,11 +1154,9 @@
   "clauses": [
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Predator Senses#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Predator Senses: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Predator Senses: darkvision 60 ft",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED darkvision (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet)"
    },
    {
     "c": "advantage on Perception checks using smell",
@@ -2485,11 +2481,9 @@
   "clauses": [
    {
     "c": "Concentration on your sermons cannot be broken by damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Word Made Iron#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to The Word Made Iron: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs The Word Made Iron: damage never breaks the preacher's concentration on any spell",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED concentration_guard anySpell (src/lib/srd/authored-effects-more.ts authoredConcentrationGuard, read by src/lib/dm/concentration.ts)"
    }
   ]
  },
@@ -2789,12 +2783,16 @@
   "sha": "97f2e8b77ed2",
   "clauses": [
    {
-    "c": "You and your beast track with advantage and cannot be surprised by beasts or mutants",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Scent the Wind#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Scent the Wind: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "c": "You and your beast track with advantage",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Scent the Wind: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about tracking (src/lib/srd/authored-effects.ts authoredRollRiders)"
+   },
+   {
+    "c": "cannot be surprised by beasts or mutants",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Scent the Wind: a beast or a mutant (a monstrosity) cannot surprise the packmaster; a goblin can",
+    "by": "src/lib/dm/genre-b-surprise.ts canSurprise (a mutant is a monstrosity), read by src/lib/dm/encounter-open.ts decideAmbush"
    }
   ]
  },
@@ -3000,11 +2998,9 @@
    },
    {
     "c": "advantage on all WIS checks involving them",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Lord of the Green#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Lord of the Green: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Lord of the Green: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv creatures beast and plant (src/lib/srd/authored-effects.ts authoredRollRiders, which now reads the check's creature)"
    }
   ]
  },

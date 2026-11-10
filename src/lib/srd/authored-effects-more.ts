@@ -190,7 +190,7 @@ export function authoredConcentrationGuard(
     // Focused Conjuration: any spell of the school.
     const bySchool = effect.school ? textKey(bundledSpellSchool(spell) ?? "") === textKey(effect.school) : false;
     const byName = effect.spell ? names.includes(textKey(effect.spell)) : false;
-    if (bySchool || byName) {
+    if (bySchool || byName || effect.anySpell) {
       return { feature: held.feature, tempHp: Math.max(0, Number(resolveFormula(effect.tempHp, held.level, mods)) || 0) };
     }
   }

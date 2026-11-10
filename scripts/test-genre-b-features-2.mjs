@@ -6,6 +6,10 @@
 //   auras        src/lib/dm/genre-b-auras.ts (saves through forced-save.ts
 //                rollExtrasFor, AC through ac-effects.ts acWithEffects) and
 //                the aura_resist row's types (authored-saves.ts)
+//   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
+//                engine's own readers: darkvision, a turn's heal, acid that
+//                ignores resistance, a concentration damage cannot break or
+//                saved with advantage, checks about a circumstance
 //
 // Dice forced; every check reads a sheet, a roll's total or a refusal.
 import assert from "node:assert/strict";
@@ -16,6 +20,9 @@ import { dice, clearDice, diceLog } from "./lib/enforce-world.mjs";
 
 const SRC = new URL("../src/", import.meta.url);
 const { acWithEffects } = await import(new URL("lib/dm/ac-effects.ts", SRC).href);
+const { authoredDarkvisionFeet, authoredConcentrationGuard } = await import(new URL("lib/srd/authored-effects-more.ts", SRC).href);
+const { authoredTurnStart } = await import(new URL("lib/dm/authored-turns.ts", SRC).href);
+const { authoredIgnoresResistance } = await import(new URL("lib/dm/authored-saves.ts", SRC).href);
 
 const { test, finish } = suite("test-genre-b-features-2");
 const rig = await clausesRig();
@@ -121,6 +128,98 @@ await run("Shield Coupling: an adjacent ally gains +1 AC only while the steam kn
   world.patch(hero.id, { equipment: world.sheet(hero.id).equipment.filter((item) => item.name !== "Shield") });
   const bare = allyAc();
   assert.deepEqual([adjacent - off, bare], [1, off], `adjacent ${adjacent}, 10 ft off ${off}, no shield ${bare}`);
+});
+
+// ---- passives ----
+
+await run("Predator Senses: darkvision 60 ft", () => {
+  const row = feature("aberrant", "Predator Senses", 3);
+  const hero = rig.holder(row);
+  const sheet = world.sheet(hero.id);
+  assert.equal(authoredDarkvisionFeet(sheet, 0), 60);
+  assert.equal(authoredDarkvisionFeet({ ...sheet, features: sheet.features.filter((entry) => entry.name !== row.name) }, 0), 0);
+});
+
+await run("The Engine Eternal: 5 hit points at the start of the turn below half, none above it or at 0", async () => {
+  const hero = rig.holder(feature("steam_knight", "The Engine Eternal", 20));
+  await rig.fight(hero);
+  const start = (hp, conditions = []) => {
+    world.patch(hero.id, { currentHp: hp, conditions });
+    authoredTurnStart(world.campaign(), world.encounter(), [hero.id]);
+    return world.sheet(hero.id).currentHp;
+  };
+  assert.equal(start(40), 45, "below half");
+  assert.equal(start(60), 60, "above half");
+  assert.equal(start(0, ["unconscious"]), 0, "at 0, unconscious");
+});
+
+await run("Alkahest: the alchemist's acid ignores resistance, and no other type does", async () => {
+  const hero = rig.holder(feature("alchemist", "Alkahest", 18));
+  await rig.fight(hero);
+  assert.equal(authoredIgnoresResistance(world.campaignId, "acid"), "Alkahest");
+  assert.equal(authoredIgnoresResistance(world.campaignId, "fire"), null);
+});
+
+await run("The Word Made Iron: damage never breaks the preacher's concentration on any spell", async () => {
+  const row = feature("waste_preacher", "The Word Made Iron", 18);
+  const hero = rig.holder(row);
+  const sheet = world.sheet(hero.id);
+  assert.equal(authoredConcentrationGuard(sheet, "Bless")?.feature, "The Word Made Iron");
+  assert.equal(authoredConcentrationGuard({ ...sheet, features: sheet.features.filter((entry) => entry.name !== row.name) }, "Bless"), null);
+});
+
+await run("Redundant Systems: the machinist saves to keep concentration with advantage", async () => {
+  const row = feature("machinist", "Redundant Systems", 15);
+  const hero = rig.holder(row);
+  const save = async () => {
+    world.patch(hero.id, { currentHp: 100, concentratingOn: "Bless" });
+    clearDice();
+    diceLog();
+    dice(15, 15);
+    rig.must(await world.invoke("apply_damage", { characterId: hero.id, amount: 10, type: "fire", reason: "test" }), "apply_damage");
+    const d20s = diceLog().filter((die) => die.sides === 20).length;
+    clearDice();
+    return d20s;
+  };
+  const { on, off } = await rig.both(hero, row, save);
+  assert.deepEqual([on, off], [2, 1], `the concentration save threw ${on} d20 with the feature, ${off} without`);
+});
+
+for (const [classId, name, level, args, plain] of [
+  ["road_warrior", "Wheelman", 2, { kind: "ability_check", ability: "dex", about: "vehicles" }, { kind: "ability_check", ability: "dex" }],
+  ["gadgeteer", "Quick Study", 3, { kind: "ability_check", ability: "int", about: "devices" }, { kind: "ability_check", ability: "int" }],
+  ["packmaster", "Scent the Wind", 6, { kind: "skill_check", skill: "survival", about: "tracking" }, { kind: "skill_check", skill: "survival" }],
+  ["grifter", "A New Face", 1, { kind: "skill_check", skill: "deception", about: "disguise" }, { kind: "skill_check", skill: "deception" }],
+  ["alienist", "Symbol Reading", 2, { kind: "ability_check", ability: "int", about: "hidden_message" }, { kind: "ability_check", ability: "int" }],
+  ["packmaster", "Lord of the Green", 17, { kind: "ability_check", ability: "wis", creature: "beast" }, { kind: "ability_check", ability: "wis", creature: "humanoid" }],
+]) {
+  await run(`${name}: advantage on a check about what its text names, and only then`, async () => {
+    const row = feature(classId, name, level);
+    const hero = rig.holder(row);
+    const { on, off } = await rig.both(hero, row, () => rig.d20sOf(hero, args));
+    const other = await rig.d20sOf(hero, plain);
+    assert.deepEqual([on, off, other], [2, 1, 1], `${JSON.stringify(args)}: ${on} d20 with ${name}, ${off} without; ${JSON.stringify(plain)}: ${other}`);
+  });
+}
+
+// ---- surprise (src/lib/dm/genre-b-surprise.ts, read by encounter-open.ts decideAmbush) ----
+
+// An ambush by one creature whose Stealth (a 20) beats every passive
+// Perception: whether the holder is named among the surprised.
+async function ambushedBy(monster) {
+  await kit.endFight();
+  clearDice();
+  dice(1, 20, 15, 15);
+  const opened = rig.must(await world.invoke("start_encounter", { enemies: [{ monster, count: 1 }], ambush: "enemies" }), "start_encounter");
+  clearDice();
+  await kit.endFight();
+  return /\bHolder\b[^.]*\bnotices? nothing\b/.test(String(opened.ambush ?? ""));
+}
+
+await run("Scent the Wind: a beast or a mutant (a monstrosity) cannot surprise the packmaster; a goblin can", async () => {
+  rig.holder(feature("packmaster", "Scent the Wind", 6));
+  assert.equal(await ambushedBy("wolf"), false, "a wolf surprised the packmaster");
+  assert.equal(await ambushedBy("goblin"), true, "the goblin's ambush caught nobody: the staging broke");
 });
 
 rig.world.close();

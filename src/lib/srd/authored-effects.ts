@@ -352,7 +352,7 @@ export function authoredSaveTraits(sheet: AuthoredSheet): Array<RollKey & { note
 export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { note: string }> {
   return activeAuthored(sheet, "check_adv").flatMap(({ effect, held }) => [
     ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills }] : []),
-    ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}) }] : []),
+    ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}), ...(effect.creatures ? { creatures: effect.creatures } : {}) }] : []),
   ].map((key) => ({ ...key, note: `${held.feature}: advantage` })));
 }
 
@@ -431,7 +431,8 @@ const HELD_CHECKS: Array<{ condition: string; skills: string[]; label: string }>
 
 export function authoredRollRiders(
   sheet: AuthoredSheet,
-  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout },
+  // `creature`: a check about a creature of a type (Lord of the Green's beasts and plants).
+  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout; creature?: string },
 ): { advantage: string[]; spent: string[] } {
   const advantage: string[] = [];
   const spent: string[] = [];
@@ -454,7 +455,7 @@ export function authoredRollRiders(
     }
     // The key's skills are ids ("sleight_of_hand"), which textKey above spells
     // with spaces: a two-word skill's advantage was never read.
-    const roll = { roll: "check" as const, skill: input.skill, ability: input.ability, about: input.about };
+    const roll = { roll: "check" as const, skill: input.skill, ability: input.ability, about: input.about, creature: input.creature };
     for (const note of new Set(authoredCheckTraits(sheet).filter((key) => keyFits(key, roll)).map((key) => key.note))) {
       advantage.push(note);
     }

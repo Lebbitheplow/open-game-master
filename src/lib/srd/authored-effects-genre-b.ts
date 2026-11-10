@@ -82,6 +82,35 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "opportunity attacks against you have disadvantage".
   row("Cat's Grace", ["aeronaut"], { effects: [{ kind: "oa_disadv" }] }),
 
+  // ---- passives on the engine's own readers (wave 2, second pass) ----
+  // "Darkvision 60 ft" (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet).
+  row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }] }),
+  // "While conscious, regain 5 HP at the start of your turn if below half HP"
+  // (src/lib/dm/authored-turns.ts authoredTurnStart): at 0 hit points the
+  // knight is unconscious, and regains nothing.
+  row("The Engine Eternal", ["steam_knight"], { effects: [{ kind: "turn_heal", when: "start", formula: "5", gate: { belowHalf: true, notCondition: "unconscious" } }] }),
+  // "Your acid formulae ignore resistance": the alchemist's acid is their
+  // formulae's (src/lib/dm/authored-saves.ts authoredIgnoresResistance).
+  row("Alkahest", ["alchemist"], { effects: [{ kind: "ignore_resist", types: ["acid"] }] }),
+  // "Concentration on your sermons cannot be broken by damage": every spell
+  // the preacher casts is a sermon (authored-effects-more.ts authoredConcentrationGuard).
+  row("The Word Made Iron", ["waste_preacher"], { effects: [{ kind: "concentration_guard", anySpell: true, tempHp: "0" }] }),
+  // Checks about one circumstance, which the check call names (src/lib/dm/roll-about.ts CHECK_ABOUT):
+  // "Advantage on checks to drive, ride, or repair vehicles".
+  row("Wheelman", ["road_warrior"], { effects: [{ kind: "check_adv", abilities: ["str", "dex", "con", "int", "wis", "cha"], about: "vehicles" }] }),
+  // "Advantage on checks to understand or copy unfamiliar technology".
+  row("Quick Study", ["gadgeteer"], { effects: [{ kind: "check_adv", abilities: ["str", "dex", "con", "int", "wis", "cha"], about: "devices" }] }),
+  // "You and your beast track with advantage" (the beast's tracking is the GM's: no pet rolls checks).
+  row("Scent the Wind", ["packmaster"], { effects: [{ kind: "check_adv", abilities: ["str", "dex", "con", "int", "wis", "cha"], about: "tracking" }] }),
+  // "Deception checks to hold it have advantage": a check about passing as someone else.
+  row("A New Face", ["grifter"], { effects: [{ kind: "check_adv", abilities: ["cha"], about: "disguise" }] }),
+  // "Advantage on checks to interpret dreams, art, ciphers, and ritual
+  // symbolism": a hidden message of a visual kind (art, a cipher, a symbol);
+  // a dream is no check the engine names.
+  row("Symbol Reading", ["alienist"], { effects: [{ kind: "check_adv", abilities: ["str", "dex", "con", "int", "wis", "cha"], about: "hidden_message" }] }),
+  // "advantage on all WIS checks involving them": beasts and plants, the check's creature.
+  row("Lord of the Green", ["packmaster"], { effects: [{ kind: "check_adv", abilities: ["wis"], creatures: ["beast", "plant"] }] }),
+
   // ---- spends on the feature's own counter (src/lib/classes/resources.json) ----
   // Each spends its counter through use_resource (src/lib/dm/authored-spends.ts),
   // so a bare spend does what the text says rather than reading it back. The
