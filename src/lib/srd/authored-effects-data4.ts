@@ -79,8 +79,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "bard::Guiding Whispers": {
     subclass: "College of Spirits",
+    // The cantrip is the spell table's; its 60 feet for this bard are
+    // cast-reach.ts spellReachProblem (ar-wbf-bard-casting-logic.ts).
     heldBy: SPELL_TABLE,
-    narrated: "Guidance at a 60-foot reach is the GM's to allow.",
   },
   "bard::Spiritual Focus": {
     subclass: "College of Spirits",
@@ -92,7 +93,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         damageTypes: ALL_DAMAGE,
         healing: true,
         gate: { level: 6 },
-        note: "Cast through the spiritual focus; the GM keeps to that.",
+        // The focus itself (a candle, a deck, a talking board carried) is
+        // cast-materials.ts focusProblem (ar-wbf-bard-casting-logic.ts).
+        note: "Cast through the spiritual focus: a candle, a deck or a talking board the bard carries.",
       },
     ],
   },

@@ -3420,9 +3420,9 @@
    },
    {
     "c": "and a creature charmed by you automatically fails its save against it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a command at a creature the bard charmed was not cast"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts majestyFailsSave, asked by cast-at-enemy.ts before the save is rolled",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-charmed"
    },
    {
     "c": "Once per long rest",
@@ -3466,9 +3466,9 @@
    },
    {
     "c": "your weapon can serve as a spellcasting focus",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a casting with a weapon in hand and no focus or pouch was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts subclassFocus and wieldedWeaponFocus, read by cast-materials.ts focusProblem and cast-rules.ts componentProblem: a wielded weapon answers a costless material and its hand handles it",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: swords-focus"
    }
   ]
  },
@@ -3823,9 +3823,9 @@
    },
    {
     "c": "and can cast it at 60 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves the reach to the GM (narrated: \"Guidance at a 60-foot reach is the GM's to allow.\"); a guidance at 60 feet was not cast"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts featureSpellReachFeet, read by cast-reach.ts spellReachProblem (every tool that names a spell's target)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: whispers-reach"
    }
   ]
  },
@@ -3837,9 +3837,9 @@
   "clauses": [
    {
     "c": "A candle, a deck, a talking board or the like serves as your spellcasting focus",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves the focus to the GM (\"Cast through the spiritual focus; the GM keeps to that.\"); a casting without one was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts subclassFocus, read by cast-materials.ts focusProblem: a candle, a deck or a talking board carried answers a costless material",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: spirits-focus"
    },
    {
     "c": "and from 6th level a bard spell cast through it that deals damage or restores hit points adds a d6 to one of its damage or healing rolls",

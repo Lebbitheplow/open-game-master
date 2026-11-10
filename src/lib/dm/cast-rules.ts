@@ -25,6 +25,7 @@ import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
+import { wieldedWeaponFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
 import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
@@ -360,7 +361,8 @@ export function componentProblem(sheet: Caster, facts: SpellFacts | null): ToolE
   const focusInHand = sheet.equipment.some(
     (item) => item.equipped === true && (hasItemTag(item, "staff") || hasItemTag(item, "rod") || hasItemTag(item, "wand")),
   );
-  if (emblem || focusInHand) {
+  // A Swords bard's weapon is their focus, in the hand that holds it.
+  if (emblem || focusInHand || wieldedWeaponFocus(sheet)) {
     return null;
   }
   return { error: `${facts.name} needs a free hand for its material component${facts.somatic ? " (the same hand makes the gestures)" : ""}, and both of ${sheet.name}'s hands are full${castsWithHandsFull(sheet) ? "; War Caster frees the gestures, not the material" : ""}. They must put a weapon away or lower the shield first (unequip it on the sheet).`, refused: "rules" };
