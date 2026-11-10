@@ -1213,23 +1213,15 @@
      "k": "club",
      "n": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Aura#0",
-    "observed": "damage of a club hit for 6: the engine gives 6, the text 5",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Sepulchral Aura#0"
    },
    {
     "c": "minimum 1",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Aura#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (at least 1 of a blow that dealt any)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Sepulchral Aura and Numb to the Lash"
    }
   ]
  },
@@ -1367,10 +1359,11 @@
      "k": "ally_hit",
      "feature": "Barrow Ward",
      "die": 6,
-     "ally": "prof+cha"
+     "ally": "prof+cha",
+     "aura": 1
     },
     "is": "held",
-    "by": "the authored reaction row in src/lib/srd/authored-effects-genre.ts (reduce / take_for_ally with rangeFt), played by src/lib/dm/authored-reactions.ts",
+    "by": "the authored reaction row in src/lib/srd/authored-effects-genre.ts (reduce / take_for_ally with rangeFt), played by src/lib/dm/authored-reactions.ts, after the knight's Sepulchral Aura",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Barrow Ward#1"
    }
   ]
@@ -2085,23 +2078,15 @@
      "k": "club",
      "less": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Numb to the Lash#0",
-    "observed": "damage of a club hit for 6: the engine gives 6, the text 3",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Numb to the Lash#0"
    },
    {
     "c": "minimum 1 damage taken",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Numb to the Lash#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts) (at least 1 of a blow that dealt any)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Sepulchral Aura and Numb to the Lash"
    }
   ]
  },

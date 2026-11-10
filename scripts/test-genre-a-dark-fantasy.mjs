@@ -90,5 +90,14 @@ await test("Immolate the Sin: for a minute a hit carries 2d8 fire and fire does 
   assert.equal(sheet(scene.holder.id).currentHp, 100);
 });
 
+await test("Sepulchral Aura and Numb to the Lash: a weapon blow loses 1 beside the knight and the penitent's Wisdom modifier, never below 1", async () => {
+  const knight = await t.stage({ classId: "grave_knight", level: 1 });
+  assert.equal((await t.clubs(knight, knight.holder, 16, 4)).totalDamage, 5, "a club for 6 beside the knight");
+  assert.equal((await t.clubs(knight, knight.ally, 16, 4)).totalDamage, 5, "the same club on the ally beside the knight");
+  const penitent = await t.stage({ classId: "penitent", level: 14 });
+  assert.equal((await t.clubs(penitent, penitent.holder, 16, 4)).totalDamage, 3, "a club for 6 on a Wisdom of 16");
+  assert.equal((await t.clubs(penitent, penitent.holder, 16, 1)).totalDamage, 1, "a club for 3 still deals 1");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

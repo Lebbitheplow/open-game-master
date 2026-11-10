@@ -62,6 +62,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import { naturesSanctuaryRefusal } from "@/lib/dm/srd-defenses";
 import { conditionRollRiders, conditionTurnShape } from "@/lib/srd/condition-effects";
+import { darkFantasyWeaponWard } from "@/lib/dm/genre-a-dark-fantasy-wards";
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
 import { swimsFrom } from "@/lib/battlemap/types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -744,7 +745,10 @@ export function handleEnemyAttack(
     const blow = blowByType(attack, damageOutcome, crit);
     // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
     const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
-    const dealt = shrunk(blow.amount);
+    // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const dealt = warded.amount;
+    notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
     // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
     // dice: a reaction that later leaves the target standing when it landed
