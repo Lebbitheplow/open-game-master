@@ -176,5 +176,19 @@ await run("Intimidating Presence: an enforcer's is a doubled Intimidation, never
   assert.equal(await rig.modifierOf(hero, { kind: "skill_check", skill: "intimidation" }), 3 + 2 * 2);
 });
 
+await run("Aether Capacitor: the INT modifier in expended slot levels comes back, the highest first", async () => {
+  const hero = rig.holder(feature("machinist", "Aether Capacitor", 13));
+  const sheet = world.sheet(hero.id);
+  world.patch(hero.id, { spellcasting: { ...sheet.spellcasting, slots: { 1: { max: 4, used: 2 }, 2: { max: 3, used: 1 }, 3: { max: 3, used: 0 } } } });
+  const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Aether Capacitor", reason: "test" });
+  assert.equal(out.ok, true, out.error);
+  const slots = world.sheet(hero.id).spellcasting.slots;
+  assert.deepEqual([slots[1].used, slots[2].used], [1, 0], `slots after: ${JSON.stringify(slots)}`);
+  world.patch(hero.id, { spellcasting: { ...world.sheet(hero.id).spellcasting, slots: { 1: { max: 4, used: 0 } } }, resources: { ...world.sheet(hero.id).resources, steampunk_aether_capacitor: { max: 1, used: 0 } } });
+  const none = await world.invoke("use_resource", { characterId: hero.id, resource: "Aether Capacitor", reason: "test" });
+  assert.equal(none.ok, false, "with nothing expended the use was spent");
+  assert.equal(world.sheet(hero.id).resources.steampunk_aether_capacitor.used, 0);
+});
+
 rig.world.close();
 finish();

@@ -420,6 +420,9 @@ export type SpendDoes =
   // A creature touched rolls the die and regains one spent spell slot of
   // that level or lower (Bolstering Magic).
   | { kind: "regain_slot"; die: string }
+  // The holder regains expended slots worth this many levels, the highest
+  // first (Aether Capacitor: the Intelligence modifier).
+  | { kind: "regain_slot_levels"; levels: Formula }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.

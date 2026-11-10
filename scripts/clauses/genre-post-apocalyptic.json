@@ -2573,23 +2573,27 @@
    },
    {
     "c": "your raised hand sheds sunlight in a 30-ft radius for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_dawnlight",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (the dawnlight condition for 100 rounds)"
    },
    {
     "c": "30-ft radius",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY",
+    "note": "The light's reach is not measured: only the preacher is guarded."
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_dawnlight",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (the dawnlight condition for 100 rounds)"
    },
    {
     "c": "undead and mutants in it have disadvantage on attacks",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY",
+    "note": "Built for an undead's attack on the preacher (attacked_disadv gated on dawnlight); an attack on an ally in the light, and a mutant (no creature type), are not."
    }
   ]
  },

@@ -129,6 +129,23 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "whack a machine or construct: restore 1d8 + INT HP to it".
   spend("Percussive Maintenance", ["salvage_tech"], "post_apocalyptic_percussive_maintenance", "action", { kind: "flames", healOnly: true, type: "", formula: "1d8+int" }),
 
+  // "1/long rest, regain expended slot levels equal to your INT modifier" (and CHA).
+  spend("Aether Capacitor", ["machinist"], "steampunk_aether_capacitor", undefined, { kind: "regain_slot_levels", levels: "int" }),
+  spend("Aetheric Battery", ["aether_channeler"], "steampunk_aetheric_battery", undefined, { kind: "regain_slot_levels", levels: "cha" }),
+  // "your raised hand sheds sunlight in a 30-ft radius for 10 minutes; undead
+  // and mutants in it have disadvantage on attacks": the light on the
+  // preacher, and an undead's attack on them at disadvantage while it burns.
+  {
+    feature: "Dawnlight",
+    classes: ["waste_preacher"],
+    entry: {
+      subclass: "genre",
+      counter: "post_apocalyptic_dawnlight",
+      effects: [{ kind: "attacked_disadv", from: ["undead"], gate: { condition: "dawnlight" } }],
+      spends: [{ name: "Dawnlight", pool: { id: "post_apocalyptic_dawnlight" }, does: { kind: "buff", condition: "dawnlight", rounds: 100 } }],
+    },
+  },
+
   // ---- reactions on the feature's own counter ----
   // "Reaction when attacked: your read of the attacker imposes disadvantage": the attack that hit is rolled again at disadvantage.
   react("Deductive Counter", ["detective"], "mystery_deductive_counter", { kind: "disadv_vs_hit" }),

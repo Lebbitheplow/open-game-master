@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { regainSlotLevels } from "@/lib/srd/slot-levels";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -544,6 +545,18 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    case "regain_slot_levels": {
+      const slots = sheet.spellcasting?.slots;
+      const levels = Math.max(1, Number(formula(ctx, does.levels)) || 0);
+      const back = slots ? regainSlotLevels(slots, levels) : null;
+      if (!slots || !sheet.spellcasting || !back?.regained.length) {
+        return { error: `${sheet.name} has no expended spell slot of ${levels} level${levels === 1 ? "" : "s"} or lower for ${ctx.spend.name} to restore. Nothing was spent.`, refused: "rules" };
+      }
+      return {
+        patch: { spellcasting: { ...sheet.spellcasting, slots: back.slots } },
+        result: { applied: [`${sheet.name} regains ${back.regained.map((level) => `a level ${level} slot`).join(", ")} (${levels} slot level${levels === 1 ? "" : "s"}).`] },
+      };
+    }
   }
 }
 

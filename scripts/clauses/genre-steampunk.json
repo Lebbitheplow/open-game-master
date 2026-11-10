@@ -282,8 +282,9 @@
    },
    {
     "c": "regain expended slot levels equal to your INT modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_aether_capacitor#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_aether_capacitor; scripts/test-genre-b-features.mjs Aether Capacitor",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (regain_slot_levels, src/lib/srd/slot-levels.ts)"
    }
   ]
  },
@@ -751,8 +752,9 @@
    },
    {
     "c": "when missed in melee",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:genre::duelist s flourish::Duelist's Flourish#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs test reaction:genre::duelist s flourish::Duelist's Flourish",
+    "by": "src/lib/srd/trigger-table.ts (\"duelist's flourish\": a melee attack that missed the holder), read by src/lib/dm/reaction-triggers.ts"
    },
    {
     "c": "riposte with one weapon attack",
@@ -2396,8 +2398,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_aetheric_battery#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_aetheric_battery",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (regain_slot_levels, src/lib/srd/slot-levels.ts)"
    }
   ]
  },
