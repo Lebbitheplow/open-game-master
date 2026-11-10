@@ -6,9 +6,11 @@
 //
 // Docked (desktop and laptop): the cards are drawn inside the board's frame
 // and not in the desk, the board is tall, End turn stands above the cards
-// and not under them, and the message box is whole inside the window. With
-// the Hand folded the board's corner comes down with it. A phone keeps the
-// Hand in the desk, where its rail is.
+// and not under them, and the message box is whole inside the window. The
+// Hand is put away to see the map it lies on, so that is a move the table
+// makes and not a cut: the cards fold, the board's corner glides down to
+// the frame's foot, and they deal back in. A phone keeps the Hand in the
+// desk, where its rail is.
 import { check, eventually, untilStill } from "../lib.mjs";
 
 export default {
@@ -46,11 +48,18 @@ export default {
     const end = await box(".board-endturn");
     check(end && hand && end.bottom <= hand.top + 16, `End turn (bottom ${Math.round(end?.bottom ?? 0)}) stands above the Hand (top ${Math.round(hand?.top ?? 0)})`);
     // Folded, the Hand is its heading alone and the corner comes down.
-    await page.getByRole("button", { name: /^Hide your hand$/ }).locator("visible=true").first().click();
+    const fold = page.getByRole("button", { name: /^Hide your hand$/ }).locator("visible=true").first();
+    check(/hide/i.test((await fold.textContent()) ?? ""), "on the board the fold button says Hide in a word");
+    await fold.click();
+    const motion = (selector) =>
+      page.evaluate((sel) => [...document.querySelectorAll(sel)].flatMap((el) => el.getAnimations().map((a) => a.animationName ?? a.transitionProperty)), `${root}${selector}`);
+    await eventually(async () => (await motion(".cine-fight-hand .hand-slot")).includes("hand-fan-out"), { timeoutMs: 2_000, every: 30, label: "the cards folding away" });
+    await eventually(async () => (await motion(".cine-fight-board .board-corner")).includes("bottom"), { timeoutMs: 3_000, every: 30, label: "the board's corner gliding down" });
     await eventually(async () => ((await box(".cine-fight-hand"))?.height ?? 999) < 80, { label: "the folded Hand" });
     await eventually(async () => ((await box(".board-endturn"))?.bottom ?? 0) > (end?.bottom ?? 0) + 60, { label: "End turn coming down with the folded Hand" });
     await t.shot("hand-folded");
     await page.getByRole("button", { name: /^Show your hand$/ }).locator("visible=true").first().click();
+    await eventually(async () => (await motion(".cine-fight-hand .hand-slot")).includes("hand-fan-in"), { timeoutMs: 2_000, every: 30, label: "the cards dealing back in" });
     await eventually(() => page.locator(`${root}.cine-fight-board .cine-fight-hand .hand-card`).locator("visible=true").count(), { label: "the cards back on the board" });
     await t.shot("hand-on-board");
   },

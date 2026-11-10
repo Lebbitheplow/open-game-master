@@ -2851,14 +2851,45 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   pointer-events: none;
 }
 .cine-fight-hand:empty { display: none; }
+/* The night under the cards stands as tall as the Hand (--hand-foot, on the
+   frame) and eases with it, so putting the Hand away lowers it like a
+   curtain instead of cutting it off. */
 .cine-fight-hand::before {
   content: "";
   position: absolute;
-  inset: -3rem 0 0;
+  inset: auto 0 0;
+  height: calc(var(--hand-foot, 0px) + 3rem);
   border-radius: inherit;
   background: linear-gradient(180deg, transparent, rgba(10, 8, 23, 0.42) 26%, rgba(10, 8, 23, 0.86) 70%, rgba(10, 8, 23, 0.94));
   pointer-events: none;
+  transition: height var(--dur-move) var(--ease-settle);
 }
+/* Putting the Hand away and bringing it back is the way to see the map it
+   lies on, so the button says so in a word, the board's corner glides down
+   to the frame's foot and back as the cards fold and deal (hand-motion.css),
+   and while the map is being dragged the Hand goes to glass on its own. */
+.cine-fight-hand .hand-fold {
+  width: auto;
+  height: 1.75rem;
+  gap: 0.3rem;
+  padding: 0 0.45rem 0 0.65rem;
+  border: 1px solid rgba(212, 171, 58, 0.4);
+  border-radius: 9999px;
+  background: rgba(13, 11, 28, 0.8);
+  filter: none;
+}
+.cine-fight-hand .hand-fold:hover { border-color: rgba(212, 171, 58, 0.75); background: rgba(33, 27, 58, 0.9); }
+.cine-fight-hand .hand-fold-word {
+  display: inline;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cine-fight-board > .cine-fight-hand { transition: opacity var(--dur-quick) var(--ease-snap); }
+.cine-fight-board:has(.board-view[data-panning]) > .cine-fight-hand { opacity: 0.2; }
 .cine-fight-hand > * { position: relative; max-width: 48rem; margin-inline: auto; pointer-events: none; }
 .cine-fight-hand > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex], .hand-preview) { pointer-events: auto; }
 .cine-fight-hand .hand { margin-bottom: 0; }
@@ -2887,9 +2918,14 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head-tools > button:hover { color: var(--color-amber-200); background: rgba(212, 171, 58, 0.14); }
   .cine-chat-staged .cine-fight-board[data-hand-on-board] .board-head-tools > button[aria-pressed="true"] { color: var(--color-amber-300); background: rgba(212, 171, 58, 0.2); }
   .cine-fight-board[data-hand-on-board] > .board-panel > .board-view { margin-top: 0.5rem; }
-  .cine-fight-board[data-hand-on-board] .board-corner { bottom: max(0px, calc(var(--hand-foot, 0px) - 0.75rem)); }
+  .cine-fight-board[data-hand-on-board] .board-corner { bottom: max(0px, calc(var(--hand-foot, 0px) - 0.75rem)); transition: bottom var(--dur-move) var(--ease-settle); }
   .cine-fight-board[data-hand-on-board] .board-keys-strip,
-  .cine-fight-board[data-hand-on-board] .board-foot-note { bottom: calc(var(--hand-foot, 0px) - 0.25rem); }
+  .cine-fight-board[data-hand-on-board] .board-foot-note { bottom: calc(var(--hand-foot, 0px) - 0.25rem); transition: bottom var(--dur-move) var(--ease-settle); }
+  @media (prefers-reduced-motion: reduce) {
+    .cine-fight-board[data-hand-on-board] :is(.board-corner, .board-keys-strip, .board-foot-note),
+    .cine-fight-hand::before,
+    .cine-fight-board > .cine-fight-hand { transition: none; }
+  }
 }
 /* Where the order stands in a row above the board (a phone, the side panel)
    the same names in chips under the board are the order a second time. */

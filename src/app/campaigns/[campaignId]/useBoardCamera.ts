@@ -348,7 +348,7 @@ export function useBoardCamera(
         observer.observe(corner);
       }
     };
-    const observer = new ResizeObserver(() => {
+    const observer = new ResizeObserver((entries) => {
       if (!enabledRef.current) return;
       const width = frameEl.clientWidth;
       if (!width) {
@@ -358,7 +358,9 @@ export function useBoardCamera(
       frameWidth.current = width;
       if (fittedRef.current) {
         const next = fit();
-        setEased(false);
+        // A window changing shape lands at once; the Hand folding away or
+        // dealing back in is a move on the table, and the board eases to it.
+        setEased(entries.length > 0 && entries.every((entry) => entry.target === foot) && !prefersReducedMotion());
         setCamera((current) =>
           current.zoom === next.zoom && current.x === next.x && current.y === next.y ? current : next,
         );

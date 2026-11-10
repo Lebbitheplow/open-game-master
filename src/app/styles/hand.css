@@ -37,6 +37,9 @@
 
 /* ---- the fan ---- */
 
+/* The fold button's word, shown only where the Hand lies on the board. */
+.hand-fold-word { display: none; }
+
 .hand-fan {
   position: relative;
   display: flex;

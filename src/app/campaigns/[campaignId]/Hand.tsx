@@ -892,8 +892,12 @@ function HandInner({
               }}
               aria-expanded={!collapsed}
               aria-label={collapsed ? "Show your hand" : "Hide your hand"}
-              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
+              // hand-fold: lying on the board the Hand covers part of the map,
+              // so there this is a lettered tab and not one glyph among three
+              // (world.css); in the desk it is the chevron it was.
+              className="hand-fold flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
             >
+              <span className="hand-fold-word" aria-hidden="true">{collapsed ? "Show hand" : "Hide"}</span>
               <ChevronDown className={cn("chevron-turn size-4", collapsed && "rotate-180")} />
             </button>
           </Tooltip>
