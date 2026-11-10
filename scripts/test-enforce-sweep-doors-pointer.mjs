@@ -79,16 +79,6 @@ const KNOWN = {
   ...Object.fromEntries(
     ["Voice of Authority", "Hold the Line", "Inspiring Surge", "Opportunist", "Slayer's Counter"].flatMap((name) => ["console", "ai"].map((door) => [`reaction-attack:${name}|${door}`, HELD_AS_OWN])),
   ),
-  ...Object.fromEntries(
-    ["console", "ai"].map((door) => [
-      `forced-move|${door}`,
-      {
-        where: "src/lib/dm/map-tools.ts move_token, the forced branch (`current?.kind === \"pc\" && current.characterId === resolved.token.refId`): reads the pointer alone",
-        severity: "high",
-        note: "A push, a drag or a carry by an enemy acting in the pass before the hero is answered \"It is Brom's own turn; they move their own token from the board ... Forced movement is for a push, drag or carry on someone else's turn\": it IS someone else's turn, and the hero stays where the rules moved them from.",
-      },
-    ]),
-  ),
 };
 
 const RULE = "SRD 5.1, Reactions: \"A reaction is an instant response to a trigger of some kind, which can occur on your turn or on someone else's\"; The Order of Combat: \"Each participant in the battle takes a turn in initiative order\", so the enemies grouped before a hero act before that hero's turn begins (src/lib/dm/held-turn.ts).";

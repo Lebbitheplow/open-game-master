@@ -45,7 +45,13 @@ const HANDLE_ITEM = {
   pick_up: {
     kind: "free",
     prelude: async (t) => {
+      // Sera drops it on her own turn (a drop is the turn's, gear-ground.ts),
+      // and the pointer goes back to where the stage had it.
+      const { saveEncounter } = await import("../../src/lib/db/encounters.ts");
+      const was = t.world.encounter();
+      t.kit.giveTurn(t.sera.id);
       const dropped = await t.world.invoke("handle_item", { characterId: t.sera.id, action: "drop", item: "Mace" });
+      saveEncounter(was);
       if (!dropped.ok) {
         throw new Error(`the stage's dropped mace: ${dropped.error}`);
       }
@@ -105,11 +111,16 @@ export function heroRows(catalog) {
     {
       id: "dismount", tool: "dismount", actor: "wren", kind: "move",
       // In the saddle since an earlier turn: this turn's move is whole.
+      // Laid on the record, not by mount_up: on the held stage mount_up is
+      // refused (it is the rider's move), and the saddle is from before.
       prelude: async (t) => {
-        const up = await t.world.invoke("mount_up", { characterId: t.wren.id, mount: "Riding Horse" });
-        if (!up.ok) {
+        const { checkMount } = await import("../../src/lib/srd/mounts.ts");
+        const { setMount } = await import("../../src/lib/db/mounts.ts");
+        const up = checkMount({ ref: "Riding Horse", riderSize: "medium" });
+        if ("error" in up) {
           throw new Error(`the stage's mount: ${up.error}`);
         }
+        setMount(t.world.campaignId, t.wren.id, up.state);
         t.kit.freshTurn();
         if (t.kit.token(t.wren.id)) {
           t.kit.place(t.wren.id, 3, 5, 0);

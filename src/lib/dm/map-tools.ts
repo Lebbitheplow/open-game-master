@@ -58,7 +58,8 @@ import { resolveSheetRef } from "@/lib/dm/rolls";
 import { resolvePcOpportunityAttacks } from "@/lib/dm/opportunity";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
-import { canEnemyAct } from "@/lib/dm/can-act";
+import { canAct, canEnemyAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
@@ -556,9 +557,11 @@ export function handleMoveToken(
     // and a companion a player commands, once they have given the order.
     const walker = resolveSheetRef(args.token, sheets, sheetsById);
     const fresh = walker ? (getSheetById(walker.id) ?? walker) : null;
-    const current = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
     const declared = fresh && turn.actor === "ai" && declaredThisTurn(campaign.id, fresh.id);
-    const ownTurn = current?.kind === "pc" && current.characterId === fresh?.id;
+    // Their own turn, not one held for the enemies before them (held-turn.ts
+    // ownTurnOf): the pointer resting on them while the goblins act is the
+    // goblins' turn.
+    const ownTurn = Boolean(fresh && ownTurnOf(encounter, fresh.id));
     // A player who said their character stays put is not walked, whatever
     // else they asked for (src/lib/dm/player-word-logic.ts).
     const held = fresh && ownTurn ? walkHeld(campaign.id, turn, fresh, " Nothing was moved.") : null;
@@ -570,8 +573,23 @@ export function handleMoveToken(
     }
     // The move a character readied releases off their turn, by whoever runs
     // the table (readied-release.ts: their reaction, up to their speed).
-    if (fresh && readiedHeld(fresh)?.holds === "move" && !(current?.kind === "pc" && current.characterId === fresh.id)) {
+    if (fresh && readiedHeld(fresh)?.holds === "move" && !ownTurn) {
       return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
+    }
+    // Off their own turn, a character in the order is the game saying no, as
+    // pc_attack and take_action say it (can-act.ts): answered as a retry that
+    // named forced:true, it invited the model to send the walk again as a
+    // push. The retry below stays for a walk on their turn nobody declared.
+    const placed = encounter.orderReady && encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === fresh?.id);
+    if (fresh && placed && !ownTurn) {
+      const heldOff = heldTurnRefusal(encounter, fresh);
+      if (heldOff) {
+        return heldOff;
+      }
+      const able = canAct({ sheet: fresh, encounter, kind: "move" });
+      if (!able.ok) {
+        return toolError(able);
+      }
     }
     return {
       error: fresh?.isCompanion && aiPlaysSheet(campaign, fresh)
@@ -584,10 +602,12 @@ export function handleMoveToken(
   }
   // On their own turn the player moves from the board; a "forced" move here
   // is the model walking a character for them (issue 17: a token that moved
-  // with no input). Pushes and drags happen on somebody else's turn.
+  // with no input). Pushes and drags happen on somebody else's turn, and the
+  // goblins' pass before a hero is theirs though the pointer already rests
+  // on the hero (held-turn.ts ownTurnOf): a goblin's shove of Brom then was
+  // refused as Brom walking himself.
   if (resolved.kind === "pc" && args.forced && encounter.orderReady) {
-    const current = encounter.order[encounter.turnIndex];
-    if (current?.kind === "pc" && current.characterId === resolved.token.refId) {
+    if (ownTurnOf(encounter, resolved.token.refId)) {
       return {
         error: `It is ${resolved.token.name}'s own turn; they move their own token from the board (a companion walks with move_token and no forced). Forced movement is for a push, drag or carry on someone else's turn.`,
         retry: true,

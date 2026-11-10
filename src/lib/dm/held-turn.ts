@@ -120,6 +120,21 @@ export function turnHeldForEnemies(encounter: Encounter | null, id: string): boo
   return Boolean(encounter && entry && orderEntryId(entry) === id && enemiesAhead(encounter, id).length);
 }
 
+// Whether it is `id`'s own turn: the pointer rests on them AND their turn is
+// not held for the enemies grouped before them. Every reader that asks "is
+// this X's turn" goes through here, never through order[turnIndex] or
+// actingCombatantId alone: a reader of the bare pointer answered "it is
+// Brom's own turn" in the middle of the goblins' before him, so a shove by
+// the first goblin was refused as a walk of Brom's (map-tools.ts move_token)
+// and a reaction to the goblin's move was refused as one taken on his own
+// turn. scripts/test-turn-pointer-readers.mjs holds every remaining raw read
+// to its ledger (scripts/turn-pointer-readers.json), each with its reason
+// (the pointer's own mechanics, a display of whose place it is).
+export function ownTurnOf(encounter: Encounter | null, id: string): boolean {
+  const entry = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return Boolean(encounter && entry && orderEntryId(entry) === id && !enemiesAhead(encounter, id).length);
+}
+
 // What they readied on their turn before, released while the enemies of the
 // pass before their turn are taking theirs (their turn begins once the turn
 // is handed on or the reply is narrated): off their own turn, with their

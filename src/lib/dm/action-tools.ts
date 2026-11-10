@@ -17,6 +17,7 @@ import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget"
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { charmedBy } from "@/lib/dm/enemy-profile";
 import { characterEscape } from "@/lib/dm/grapple";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -497,6 +498,15 @@ export function handleTakeAction(
       return help(campaign, sheet, encounter, args, sheets, sheetsById, spend);
     case "grapple":
     case "shove": {
+      // Each is "a special melee attack" (SRD 5.1, Grappling; Shoving a
+      // Creature), and "a charmed creature can't attack the charmer" (Charmed):
+      // refused as pc_attack refuses it (pc-attack-gate.ts). Brom, charmed by
+      // a goblin, grappled it and shoved it prone.
+      const ref = args.targetEnemyId?.trim() ?? "";
+      const aimed = ref && encounter ? resolveEnemyRef(encounter.id, ref) : null;
+      if (ref && charmedBy(sheet.conditions, sheet.conditionMeta, aimed?.id ?? ref)) {
+        return { error: `${sheet.name} is charmed by ${aimed?.displayName ?? "that creature"} and cannot attack it: a ${args.action} is a melee attack. Nothing was spent; pick another target.`, refused: "rules" };
+      }
       if (price.feature !== "Grappling Strike") {
         return contest(campaign, turn, sheet, encounter, args, spend, costs);
       }
