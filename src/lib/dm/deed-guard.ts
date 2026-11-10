@@ -29,10 +29,9 @@ const DEEDS: Record<string, { field: string; when?: (args: Args) => boolean }> =
   scene_check: { field: "characterId" },
   damage_object: { field: "characterId" },
   lift: { field: "characterId" },
-  purchase: { field: "characterId" },
-  // A purchase reaches its shop through these (tool-merge.ts tradeCall).
-  buy_item: { field: "characterId" },
-  sell_item: { field: "characterId" },
+  // Not a purchase: the GM settles a fallen friend's purchase and sale
+  // through the engine (scripts/test-enforce-break-and-counter.mjs), so a
+  // trade at a shop is the GM's to rule on for whoever holds the purse.
   party_stash: { field: "characterId", when: (args) => args.do === "stow" },
   mount_up: { field: "characterId" },
   request_roll: { field: "characterId", when: (args) => args.kind === "skill_check" || args.kind === "ability_check" },

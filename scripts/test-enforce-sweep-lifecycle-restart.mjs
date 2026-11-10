@@ -98,6 +98,9 @@ const REGISTRY = {
   "turn-warmup.ts:__odmTurnHeads": { kind: PLUMBING, what: "prompt warm-ups" },
   "turn-warmup.ts:__odmTurnWarmups": { kind: PLUMBING, what: "prompt warm-ups" },
   "turn.ts:CARDS_OUT": { kind: PLUMBING, what: "one call's scratch" },
+  "held-call.ts:PARKED": { kind: PLUMBING, what: "one call's scratch: which answers are a held call's park" },
+  "held-call.ts:WATCHED": { kind: PLUMBING, what: "one call's scratch: the watch stop a held call's answer opened" },
+  "held-call.ts:__odmWatchAnswered": { kind: PLUMBING, what: "the next held call is a stop's own, already answered; a restart's taken flag answers the calls a stop held (turn.ts resumeDmTurn)" },
   "turn.ts:toolsSentByTurn": { kind: PLUMBING, what: "the tools a running turn was sent" },
 };
 

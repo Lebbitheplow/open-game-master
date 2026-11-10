@@ -26,6 +26,7 @@
 // holds (15 by default: a hit on the dummies' AC 13 that is no critical, a
 // failed save for a creature with +0 or +1); the other dice are seeded.
 import crypto from "node:crypto";
+import { keepThrownCards } from "./kept-rolls.mjs";
 import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { openWorld, seedDice } from "./enforce-world.mjs";
@@ -464,7 +465,8 @@ export async function handRig() {
       d20s.length = 0;
       const results = [];
       for (const call of calls) {
-        const answer = await invokeEngine(world.campaign(), { kind: "human", userId: world.owner.id }, call);
+        // A check that waits on what the hero holds is kept as it lies.
+        const answer = await keepThrownCards(world, await invokeEngine(world.campaign(), { kind: "human", userId: world.owner.id }, call));
         results.push({ name: call.name, args: call.args, ok: answer.ok, ...(answer.ok ? { result: answer.result } : { error: answer.error, retry: answer.retry === true, refused: answer.refused ?? null }) });
         if (!answer.ok || intentLogic.drawStopsCast(call.name, answer.result)) break;
       }

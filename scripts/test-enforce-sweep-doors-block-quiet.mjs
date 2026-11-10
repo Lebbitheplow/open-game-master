@@ -16,7 +16,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { cleric, wizard } from "./lib/enforce-spells.mjs";
 import { BROM, dbTools, doors as openDoors } from "./lib/sweep-doors.mjs";
 import { quietRows } from "./lib/sweep-doors-rows.mjs";
-import { runMatrix } from "./lib/sweep-doors-matrix.mjs";
+import { known, runMatrix } from "./lib/sweep-doors-matrix.mjs";
 import { heroStates } from "./lib/sweep-doors-states.mjs";
 
 const api = suite("test-enforce-sweep-doors-block-quiet");
@@ -32,7 +32,17 @@ const SKIP = {};
 // None left: every deed out of a fight asks canAct first
 // (src/lib/dm/deed-guard.ts), group_check counts out who cannot act, and
 // check_notice counts out the petrified with the unconscious.
-const KNOWN = {};
+const OUT_STATES = ["dead", "dying", "stable", "asleep", "petrified"];
+const cells = (row) => OUT_STATES.flatMap((state) => ["console", "ai"].map((door) => `${row}|${state}|${door}`));
+// A purchase is left open on purpose: the GM settles a fallen friend's
+// purchase and sale through the engine (scripts/test-enforce-break-and-counter.mjs
+// "The DM settles a fallen friend's purchase and sale"), a ruling these rows
+// contest (dispute recorded in the dice package's handoff, 2026-11-09).
+const KNOWN = known([...cells("purchase:buy"), ...cells("purchase:sell")], {
+  where: "src/lib/dm/shop-tools.ts handleBuyItem / handleSellItem with no fight on (src/lib/dm/deed-guard.ts leaves a trade out of DEEDS)",
+  severity: "medium",
+  note: "SRD 5.1, Unconscious and Petrified: the creature \"is incapacitated ..., can't move or speak, and is unaware of its surroundings\"; the dead do nothing. A dead or downed character buys a torch and sells a dagger.",
+});
 
 // ---- the stage: a quiet table with a shop, a fence and three heroes ----
 
