@@ -4687,6 +4687,11 @@
               "d": "As an action, an undead you can see within 60 feet makes a Charisma save against your spell save DC (with advantage if its Intelligence is 8 or higher) or becomes friendly and obeys your commands until you use this again. An undead with an Intelligence of 12 or higher that failed repeats the save at the end of every hour, breaking free on a success."
             }
           ]
+        },
+        "spells": {
+          "6": [
+            "Animate Dead"
+          ]
         }
       },
       {
@@ -4725,6 +4730,11 @@
               "n": "Master Transmuter",
               "d": "Destroy your Transmuter's Stone to transform an object, remove all curses and disease from a creature, restore a creature's youth, or raise the dead."
             }
+          ]
+        },
+        "spells": {
+          "10": [
+            "Polymorph"
           ]
         }
       },

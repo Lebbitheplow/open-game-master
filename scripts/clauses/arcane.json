@@ -598,8 +598,9 @@
   "clauses": [
    {
     "c": "You learn animate dead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-learn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-learn",
+    "by": "src/lib/srd/subclasses.json School of Necromancy spells 6 (Animate Dead), read by subclassSpellsFor"
    },
    {
     "c": "raise one extra corpse per casting",
@@ -746,8 +747,9 @@
   "clauses": [
    {
     "c": "You add polymorph to your spellbook if it isn't there",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-book"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-book",
+    "by": "src/lib/srd/subclasses.json School of Transmutation spells 10 (Polymorph), read by subclassSpellsFor"
    },
    {
     "c": "and you can cast it without a spell slot",
@@ -757,9 +759,9 @@
    },
    {
     "c": "targeting only yourself and becoming a beast of challenge rating 1 or lower",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the free casting (src/lib/srd/counter-casts.ts sub_shapechanger) carries this limit only as its note; no probe casts it free on another creature or into a beast above challenge rating 1"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_shapechanger freeLimit, read by src/lib/dm/cast-guard.ts (freeFits from cast-buff.ts withinFreeLimit): outside it a slot pays or the cast is refused",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-limit"
    },
    {
     "c": "once per short or long rest",

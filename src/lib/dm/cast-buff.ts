@@ -49,6 +49,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
+import type { FreeLimit } from "@/lib/srd/counter-casts";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
 import { itemCastOpen } from "@/lib/dm/item-casts";
 import type { CastingSheet } from "@/lib/srd";
@@ -304,7 +305,8 @@ export function handleCastBuff(
   }
   // SRD 5.1, Armor of Shadows: "You can cast mage armor on yourself at
   // will": an invocation's self-only spell lands on the warlock alone.
-  const selfOnly = grantedCastOf(sheet, args.spell, spellFactsFor(args.spell, authors))?.selfOnly;
+  const granted = grantedCastOf(sheet, args.spell, spellFactsFor(args.spell, authors));
+  const selfOnly = granted?.selfOnly;
   if (selfOnly && (targetRows.length || targetSheets.some((target) => target.id !== sheet.id))) {
     return {
       error: `${sheet.name} casts ${resolvedMech.name} through an invocation on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
@@ -382,6 +384,7 @@ export function handleCastBuff(
       spell: args.spell,
       ...(args.level ? { level: args.level } : {}),
       via: "buff",
+      ...(granted?.freeLimit && !withinFreeLimit(granted.freeLimit, sheet.id, targetSheets, targetRows.length, polymorphForm) ? { freeFits: false } : {}),
       reason: (args.reason ?? "").slice(0, 200),
       ...placementArgs(args),
     }),
@@ -547,4 +550,14 @@ export function handleCastBuff(
     ...(resolvedMech.concentration ? { concentration: `${sheet.name} is concentrating on ${resolvedMech.name}.` } : {}),
     note: "The server applied the effect; narrate exactly this.",
   };
+}
+
+// Whether a casting stays inside a free grant's limits (Shapechanger: only
+// the wizard, into a beast of challenge rating 1 or lower); outside them the
+// cast guard has a slot pay (src/lib/dm/cast-guard.ts freeFits).
+function withinFreeLimit(limit: FreeLimit, casterId: string, targets: ReadonlyArray<{ id: string }>, rows: number, form: { cr: number } | null): boolean {
+  if (limit.selfOnly && (rows > 0 || targets.some((target) => target.id !== casterId))) {
+    return false;
+  }
+  return limit.maxCr === undefined || !form || form.cr <= limit.maxCr;
 }

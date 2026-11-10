@@ -462,6 +462,10 @@ const argsSchema = z.object({
   // writes nothing (src/lib/dm/cast-guard.ts). Not in the tool schema.
   via: z.enum(["slot", "enemy", "buff", "aoe", "attack", "heal", "reaction"]).optional(),
   dryRun: z.boolean().optional(),
+  // use_spell_slot, internal: false when the cast tool found the casting
+  // outside a free grant's limits (Shapechanger's "only yourself, challenge
+  // rating 1 or lower"), so a slot pays instead (src/lib/dm/cast-guard.ts).
+  freeFits: z.boolean().optional(),
   // use_spell_slot, internal: how many of the casting's shares this call
   // resolves (Magic Missile's darts at one target).
   uses: z.coerce.number().int().min(1).max(700).optional(),
@@ -1751,6 +1755,7 @@ function dmMutation(
             ...(args.concentration !== undefined ? { concentration: args.concentration } : {}),
             ...(args.via ? { via: args.via } : {}),
             ...(args.dryRun ? { dryRun: true } : {}),
+            ...(args.freeFits === false ? { freeFits: false } : {}),
             ...(args.uses ? { uses: args.uses } : {}),
             ...(args.units ? { units: args.units } : {}),
             ...zonePlacement(args),

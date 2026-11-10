@@ -117,6 +117,10 @@ export type CastInput = {
   concentration?: boolean;
   via?: CastVia;
   dryRun?: boolean;
+  // False when the casting falls outside a free grant's limits (the cast
+  // tool that knows the target and the form says so): the grant does not
+  // pay, a slot does, and a grant no slot can stand in for refuses.
+  freeFits?: boolean;
   // How many of the casting's shares this call resolves (Magic Missile's
   // darts at one target); one when absent.
   uses?: number;
@@ -496,7 +500,16 @@ export function castSpell(
   // A free grant casts without a slot while a use is left; one the
   // character's own slots can cast too (issue #833) is paid with a slot once
   // its uses are spent, or when a higher level is named.
-  const grantFree = grantCastsFree(sheet, grant, facts, input.level);
+  // A free grant with limits of its own (Shapechanger: "targeting only
+  // yourself and becoming a beast of challenge rating 1 or lower") pays only
+  // for a casting inside them; outside them a slot pays, as the text's "you
+  // can still cast it normally with a slot" says. Before this the free use
+  // paid for a polymorph of an ally or into a giant ape.
+  const outsideLimit = Boolean(grant?.freeLimit) && (input.freeFits === false || (Boolean(grant?.freeLimit?.selfOnly) && via === "enemy"));
+  if (grant?.freeLimit && outsideLimit && !grant.slotsToo) {
+    return { error: `${sheet.name} casts ${name} through ${grant.source} only ${grant.freeLimit.words}; this casting is not, and no spell slot of theirs casts it. Nothing was spent.`, refused: "rules" };
+  }
+  const grantFree = !outsideLimit && grantCastsFree(sheet, grant, facts, input.level);
   const grantNoSlot = grant?.slot === "free" && (grantFree || !grant.slotsToo);
   // The components as this caster makes them: none of the material for an
   // invocation that says so, an Archdruid's druid spells without the voice,

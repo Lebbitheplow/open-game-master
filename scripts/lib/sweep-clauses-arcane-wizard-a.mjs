@@ -481,6 +481,31 @@ export function probes(rig, shared) {
       await plain();
     },
     "shapechanger-rest": rests(["wizard", "School of Transmutation"], "sub_shapechanger", "short"),
+    // The free use is held to its limits; outside them a slot pays, and with
+    // no slot left the casting is refused with the use unspent.
+    "shapechanger-limit": async () => {
+      const spent = () => [sheet(tra()).spellcasting.slots[4].used, counter(tra(), "sub_shapechanger").used];
+      await plain();
+      const ally = await call("cast_buff", { characterId: tra().id, spell: "Polymorph", targetCharacterIds: [friend().id], variant: "wolf" });
+      assert.equal(ally.ok, true, ally.error);
+      assert.deepEqual(spent(), [1, 0], "[4th-level slots spent, Shapechanger uses spent] after polymorphing an ally into a wolf");
+      world.patch(friend().id, { wildShape: null });
+      await plain();
+      const big = await call("cast_buff", { characterId: tra().id, spell: "Polymorph", targetCharacterIds: [tra().id], variant: "Giant Ape" });
+      assert.equal(big.ok, true, big.error);
+      assert.deepEqual(spent(), [1, 0], "[4th-level slots spent, Shapechanger uses spent] after becoming a giant ape (challenge rating 7)");
+      await plain();
+      const bear = await call("cast_buff", { characterId: tra().id, spell: "Polymorph", targetCharacterIds: [tra().id], variant: "Brown Bear" });
+      assert.equal(bear.ok, true, bear.error);
+      assert.deepEqual(spent(), [0, 1], "a brown bear (challenge rating 1) is inside the free use");
+      await plain();
+      spendSlots(tra(), Object.fromEntries([4, 5, 6, 7, 8, 9].map((level) => [level, sheet(tra()).spellcasting.slots[level].max])));
+      const none = await call("cast_buff", { characterId: tra().id, spell: "Polymorph", targetCharacterIds: [friend().id], variant: "wolf" });
+      assert.equal(none.ok, false, "with no slot of 4th level or higher, an ally's polymorph is refused, not paid by the free use");
+      assert.equal(counter(tra(), "sub_shapechanger").used, 0, "the refused casting spent the free use");
+      world.patch(friend().id, { wildShape: null });
+      await plain();
+    },
   };
   const PROBES_SEEN = {};
   const thirdEyeRest = rests(["wizard", "School of Divination"], "sub_third_eye", "short");
@@ -501,12 +526,10 @@ export function probes(rig, shared) {
     "alter-memories-door": { severity: "low", kind: "rule-missing", where: `${DATA} wizard::Alter Memories (narrated: "the GM rolls its save and narrates what it loses")`, note: "The save is an Intelligence save against the wizard's DC, and nothing rolls it or holds the hours.", fix: "A spend that rolls the creature's save, or a ruling that the save is the GM's." },
     "harvest-upcast": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-hooks.ts authoredOnKill (reads the spell's own level, not the slot it was cast with)", note: "A spell cast with a higher slot is of that level (SRD 5.1, Casting a Spell at a Higher Level).", fix: "Pass the slot level to the harvest." },
     "harvest-paths": { severity: "medium", kind: "path-parity", where: "src/lib/dm/aoe-damage.ts and src/lib/dm/pc-attack*.ts (a spell's kill there never reaches authoredOnKill; only cast_at_enemy does)", note: "Fireball, the necromancer's commonest kill, and every attack-roll spell restore nothing.", fix: "Call the kill hook with the spell from aoe_damage and from pc_attack's spell attacks." },
-    "thralls-learn": { severity: "low", kind: "data", where: "src/lib/srd/subclasses.json School of Necromancy (no spells table for level 6)", note: "School of Illusion's Minor Illusion is granted this way.", fix: "Add spells: { 6: [\"Animate Dead\"] }." },
     "thralls-extra": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (Animate Dead raises one creature whoever casts it)", note: `The row is narrated ("the GM writes those onto their stat blocks"), yet the server makes the skeleton itself.`, fix: "Raise one more for a holder of Undead Thralls." },
     "thralls-sturdier": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (authoredSummonHitPoints has no row for Undead Thralls)", note: "The stored text gives no number for the hit points (\"extra hit points\"); the feature it condenses gives the wizard's level. The proficiency bonus on the undead's weapon damage is unread as well.", fix: "A summon_hp row and a damage bonus for the necromancer's undead; state the number in the text." },
     "inured-maximum": { severity: "low", kind: "rule-missing", where: "src/lib/dm/effect-tools.ts set_effect field maxHp (and any creature ability that lowers a maximum)", note: "Reached by the GM's own hand here; the feature-effects row for Inured to Undeath holds the resistance only.", fix: "Refuse a lowering of the hit point maximum for a holder." },
     "stone-change": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Transmuter's Stone (the choose spend is fight: "out" and asks for no spell)`, note: "Looser and stricter than the text at once: out of a fight the benefit changes at will, in one it cannot change even on a transmutation spell.", fix: "A ruling, or tie the change to a transmutation spell of 1st level or higher." },
-    "shapechanger-book": { severity: "low", kind: "data", where: "src/lib/srd/subclasses.json School of Transmutation (no spells table for level 10)", note: "", fix: "Add spells: { 10: [\"Polymorph\"] }." },
   };
   return { PROBES, KNOWN };
 }

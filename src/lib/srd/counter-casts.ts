@@ -28,7 +28,13 @@ export type CounterCast = {
   selfOnly?: boolean;
   noMaterial?: boolean;
   note?: string;
+  // What the free use is held to (the cast guard reads it, the cast tools
+  // judge it): only on the holder, into a form of this challenge rating or
+  // lower. `words` finish "casts it free only ...". A slot casts it freely.
+  freeLimit?: FreeLimit;
 };
+
+export type FreeLimit = { selfOnly?: boolean; maxCr?: number; words: string };
 
 const LUNAR = { "full moon": "Shield", "new moon": "Ray of Sickness", "crescent moon": "Color Spray" };
 
@@ -39,8 +45,10 @@ export const COUNTER_CASTS: CounterCast[] = [
   { counter: "sub_fey_reinforcements", features: ["Fey Reinforcements"], spells: ["Summon Fey"], rest: "long", noMaterial: true },
   { counter: "sub_grasping_tentacles", features: ["Grasping Tentacles"], spells: ["Black Tentacles", "Evard's Black Tentacles"], rest: "long", note: "Casting it gives the warlock temporary hit points equal to their warlock level, and damage cannot break their concentration on it." },
   // Not selfOnly: the wizard knows polymorph too, and a grant's selfOnly holds
-  // the slot casts to the wizard as well (cast-buff.ts reads it).
-  { counter: "sub_shapechanger", features: ["Shapechanger"], spells: ["Polymorph"], rest: "short", noMaterial: true, note: "The free casting is on the wizard themselves, into a beast of challenge rating 1 or lower." },
+  // the slot casts to the wizard as well (cast-buff.ts reads it). The free use
+  // alone is held to the text's "targeting only yourself and becoming a beast
+  // of challenge rating 1 or lower" (freeLimit).
+  { counter: "sub_shapechanger", features: ["Shapechanger"], spells: ["Polymorph"], rest: "short", noMaterial: true, freeLimit: { selfOnly: true, maxCr: 1, words: "on themselves, into a beast of challenge rating 1 or lower" }, note: "The free casting is on the wizard themselves, into a beast of challenge rating 1 or lower." },
   { counter: "sub_telekinetic_master", features: ["Telekinetic Master"], spells: ["Telekinesis"], rest: "long" },
   { counter: "sub_walker_in_dreams", features: ["Walker in Dreams"], spells: ["Dream", "Scrying", "Teleportation Circle"], rest: "long", noMaterial: true },
   { counter: "sub_lunar_free_cast", features: ["Lunar Embodiment"], spells: Object.values(LUNAR), byChoice: LUNAR, rest: "long" },
