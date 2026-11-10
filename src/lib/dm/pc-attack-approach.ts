@@ -15,6 +15,7 @@ import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 
 // The move and the end of the turn a player declares around their attack,
 // carried on the attack itself, so the turn the table plays most ("I close
@@ -58,8 +59,7 @@ export function approachForAttack(
     return null;
   }
   // Their own turn only: off it the plan refuses the attack, walk or not.
-  const current = encounter.order[encounter.turnIndex];
-  if (current?.kind !== "pc" || current.characterId !== sheet.id) {
+  if (!ownTurnOf(encounter, sheet.id)) {
     return null;
   }
   const found = resolveTargetFoe(campaign.id, encounter, args.targetEnemyId);

@@ -11,7 +11,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
 import { firedEventsBlock, firedEventsNote } from "@/lib/dm/fight-events";
 import type { ToolDef } from "@/lib/dm/encounter-tool-defs";
-import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
+import { BUILDING_SIDES, MAX_OPENINGS } from "@/lib/battlemap/building";
+import { openingOptionsFrom, preparedOpening } from "@/lib/dm/fight-opening";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed } from "@/lib/language/text-logic";
 import { recordTurnChange } from "@/lib/db/turn-changes";
@@ -88,6 +89,14 @@ export const runPreparedEncounterTool: ToolDef = {
           items: { type: "string" },
           description: "Those not at it, as for start_encounter.",
         },
+        // The ground, lair and edge when the fight has none of its own (WAVE1
+        // ruling R9). Measured: the three cost 46 tokens of the compact set
+        // (331 to 377 for this tool, scripts/test-prompt-window.mjs and
+        // test-tool-profiles.mjs pass); scene's id list would cost 100 more,
+        // and start_encounter checks the id.
+        scene: { type: "string", description: "start_encounter's scene, if the fight has no ground of its own." },
+        lair: { type: "boolean" },
+        from: { type: "string", enum: ["ahead", "behind"] },
         building: {
           type: "object",
           description: "Party inside a building, as for start_encounter. A fight with its own saved map or positions keeps them.",
@@ -191,36 +200,14 @@ export function runPreparedEncounter(
     };
   }
   const roster = fit.kind === "scaled" ? fit.rows : template.enemies;
-  // The party inside a building (issue 743), drawn as start_encounter draws
-  // it on the board it generates. A prepared fight that lays its own map, its
-  // own opening positions or a saved test's moment keeps them: the building
-  // would be drawn and then replaced, or have enemies set down inside its
-  // walls, so it is left out and the result says why. Its ground is the
-  // fight's scene when that is outdoors, else open ground, as for a place that
-  // is itself indoors.
-  const askedBuilding = args.building !== undefined && args.building !== null ? args.building : undefined;
-  const map = template.map;
-  const ownLayout =
-    Boolean(map.mapId) ||
-    [map.seed, map.theme, map.ambient, map.width, map.height].some((value) => value !== null) ||
-    template.extras.placements.length > 0 ||
-    Boolean(getTemplateSetup(template.id));
-  const building = askedBuilding !== undefined && !ownLayout ? askedBuilding : undefined;
-  const scene = template.map.scene && !(building && !holdsBuilding(template.map.scene)) ? template.map.scene : undefined;
-  const started = start(
-    JSON.stringify({
-      enemies: roster,
-      summary: template.notes.split("\n")[0]?.slice(0, 200) || template.name,
-      ...(scene ? { scene } : {}),
-      ...(building ? { building } : {}),
-      ...(args.ambush ? { ambush: args.ambush } : {}),
-      ...(args.surprised ? { surprised: args.surprised } : {}),
-      ...(typeof args.distanceFeet === "number" ? { distanceFeet: args.distanceFeet } : {}),
-      // Who it goes on without (issue 740), checked there: without it a
-      // prepared fight staged someone the story has far away.
-      ...(args.absent !== undefined && args.absent !== null ? { absent: args.absent } : {}),
-    }),
-  );
+  // The opening options start_encounter takes, read as every door that
+  // opens a fight reads them (fight-opening.ts): who is away (issue 740),
+  // who lay in wait or is surprised, how far off, the ground, the lair, the
+  // edge, and a building around the party (issue 743), left out when this
+  // fight lays its own board.
+  const asked = openingOptionsFrom(args);
+  const opening = preparedOpening(template, roster, asked);
+  const started = start(JSON.stringify(opening.args));
   if (typeof started.error === "string") {
     // A fight already on keeps the cue for when it ends; anything else
     // would refuse again next turn.
@@ -260,7 +247,7 @@ export function runPreparedEncounter(
     ...(plan.length ? { plan } : {}),
     ...(opened.length ? { fightEvents: firedEventsNote(opened) } : {}),
     ...(mapError ? { mapNote: savedMapNote(mapError) } : {}),
-    ...(askedBuilding !== undefined && !building
+    ...(opening.buildingLeftOut
       ? { building: "No building was drawn: this prepared fight lays out its own saved map and positions. Narrate the board as it stands." }
       : {}),
   };

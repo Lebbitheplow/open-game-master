@@ -34,14 +34,17 @@ import { removeConditions, sightBlockedBy, type ConditionMetaMap } from "@/lib/d
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 
-// The character whose turn it is, when the pointer rests on one.
+// The character whose turn it is, when the pointer rests on one and their
+// turn has begun (held-turn.ts ownTurnOf): in the goblins' pass before Brom
+// nobody of the party is acting, and Brom's features read as his.
 export function actingSheetId(encounter: Encounter | null): string | null {
   if (!encounter?.orderReady) {
     return null;
   }
   const entry = encounter.order[encounter.turnIndex];
-  return entry?.kind === "pc" ? entry.characterId : null;
+  return entry?.kind === "pc" && ownTurnOf(encounter, entry.characterId) ? entry.characterId : null;
 }
 
 // Whether two combatants stand within `feet` of each other on the live

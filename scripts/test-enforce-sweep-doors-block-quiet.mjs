@@ -38,7 +38,7 @@ const KNOWN = {
   ...known(
     [
       ...cellsOf("social_check", ALL), ...cellsOf("scene_check", ALL), ...cellsOf("damage_object", ALL), ...cellsOf("lift", ALL),
-      ...cellsOf("purchase:buy", ALL), ...cellsOf("purchase:sell", ALL), ...cellsOf("party_stash:stow", ALL), ...cellsOf("mount_up", ALL),
+      ...cellsOf("purchase:buy", ALL), ...cellsOf("purchase:sell", ALL), ...cellsOf("party_stash:stow", ALL),
     ],
     {
       where: "src/lib/dm/social-tools.ts handleSocialCheck, scene-tools.ts handleSceneCheck, world-tools.ts handleDamageObject, explore-tools.ts (lift), shop-tools.ts handleBuyItem / handleSellItem with no fight on, party-tools.ts handlePartyStash, mount-tools.ts handleMountUp: none asks the character's state",

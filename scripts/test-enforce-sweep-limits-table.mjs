@@ -13,16 +13,6 @@ import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { limitsTable } from "./lib/sweep-limits-world.mjs";
 
 const KNOWN = {
-  "851-outlives-the-fight:grappled": {
-    where: "src/lib/dm/encounter-tools.ts end_encounter / src/lib/dm/grapple.ts releaseGrapplesHeldBy (called when a grappler drops, not when the fight that held it ends); src/lib/dm/condition-tick.ts has no clock for a condition with a source and no rounds",
-    severity: "medium",
-    note: "A hero grappled by a creature of a fight that has ended keeps \"grappled\" (source: that creature's id) through pass_time: speed 0 with nobody holding them, until a GM clears it by hand.",
-  },
-  "849-use_item-spends-and-does-nothing:Ball Bearings (bag of 1,000)": {
-    where: "src/lib/dm/gear-zones.ts / gear-ground.ts (caltrops spread a zone through use_item; ball bearings have no row) and src/lib/dm/item-use.ts",
-    severity: "low",
-    note: "Caltrops, the same shape, answer with \"spread: Caltrops covers 1 square ... DC 15 DEX save\". Ball bearings are taken from the pack and the action spent, and the board is unchanged.",
-  },
 };
 const RULING = {};
 const SKIP = {

@@ -52,7 +52,9 @@ export const SRD_GEAR: SrdGear[] = [
   { name: "Staff (arcane focus)", costCp: gp(5), weightLb: 4, aliases: ["staff", "arcane focus (staff)"] },
   { name: "Wand (arcane focus)", costCp: gp(10), weightLb: 1, aliases: ["wand", "arcane focus (wand)"] },
   { name: "Backpack", costCp: gp(2), weightLb: 5 },
-  { name: "Ball Bearings (bag of 1000)", costCp: gp(1), weightLb: 2, aliases: ["ball bearings", "bag of 1000 ball bearings", "bag of 1,000 ball bearings"] },
+  // "Ball bearings (bag of 1,000)" is the SRD 5.1 equipment table's own
+  // spelling: a bag listed so was spent by use_item and laid no area.
+  { name: "Ball Bearings (bag of 1000)", costCp: gp(1), weightLb: 2, aliases: ["ball bearings", "bag of 1000 ball bearings", "bag of 1,000 ball bearings", "ball bearings (bag of 1,000)"] },
   { name: "Barrel", costCp: gp(2), weightLb: 70 },
   { name: "Basket", costCp: sp(4), weightLb: 2 },
   { name: "Bedroll", costCp: gp(1), weightLb: 7 },

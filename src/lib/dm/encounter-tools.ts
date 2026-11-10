@@ -55,6 +55,8 @@ import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/bui
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
 import { askShares, conductGate } from "@/lib/dm/party-conduct";
 import { registerFightStarter } from "@/lib/dm/turncoat";
+import { askThoseTheOpeningLeft } from "@/lib/dm/fight-opening-ask";
+import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { hasHumanDm } from "@/lib/dm/viewer";
 import { decideAmbush, rollOpeningInitiative } from "@/lib/dm/encounter-open";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
@@ -585,9 +587,18 @@ function handleStartEncounter(
 // src/lib/dm/turncoat.ts): the same start_encounter, its roster that
 // companion alone, the initiative rolled as the storyteller's own fight rolls
 // it where the AI runs the table.
+// At a table a person runs nobody reads the answer's "Now call request_roll
+// with kind=initiative for EACH character": the heroes are asked here, as the
+// console's start_encounter asks them (fight-opening-ask.ts). At an AI-run table
+// the next GM turn asks whoever the opening left (turn.ts prepareTurn).
 export function startFightAgainst(campaign: Campaign, name: string, summary: string): ToolResult {
   const actor = hasHumanDm(campaignSeats(campaign)) ? "human_dm" : "ai";
-  return handleStartEncounter(campaign, JSON.stringify({ enemies: [{ monster: name }], summary }), listSheets(campaign.id), actor);
+  const started = handleStartEncounter(campaign, JSON.stringify({ enemies: [{ monster: name }], summary }), listSheets(campaign.id), actor);
+  if (actor !== "human_dm" || typeof started.error === "string") {
+    return started;
+  }
+  const asked = askThoseTheOpeningLeft(campaign);
+  return asked ? { ...started, ...asked } : started;
 }
 registerFightStarter(startFightAgainst);
 
@@ -1083,16 +1094,29 @@ function handleEndEncounter(
     }
     return { error: "No active encounter: there is no fight to end.", retry: true };
   }
+  // A refused parse keeps the outcome it can read: one unreadable optional
+  // field (reason null, or a list) discarded the readable "victory" beside
+  // it, and the fight was recorded as a truce at half the XP.
   let args: z.infer<typeof endArgsSchema>;
   try {
     args = endArgsSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    args = { outcome: undefined };
+    let raw: unknown = null;
+    try {
+      raw = JSON.parse(rawArguments || "{}");
+    } catch {
+      raw = null;
+    }
+    const outcome = raw && typeof raw === "object" ? endArgsSchema.shape.outcome.safeParse((raw as Record<string, unknown>).outcome) : null;
+    args = { outcome: outcome?.success ? outcome.data : undefined };
   }
   // A foe lying knocked out is beaten, not standing (issue #667: the fight
   // read as a truce, paid half and marked the beaten foe fled).
   const statuses = listEnemies(encounter.id).map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
   const { outcome, inferred } = resolveEncounterOutcome(args.outcome, statuses);
+  // Its creatures let go of whoever they held: none of them is in reach
+  // once the fight is over (grapple.ts releaseGrapplesHeldByAny).
+  releaseGrapplesHeldByAny(campaign, listEnemies(encounter.id).map((enemy) => enemy.id));
   return {
     ok: true,
     ...(inferred

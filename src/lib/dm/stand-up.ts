@@ -5,6 +5,7 @@ import { speedToTiles } from "@/lib/battlemap/movement";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 
 // The AI's clear_condition prone (mutations.ts) is the character standing
 // up, so it costs what a move from the board charges for it (SRD 5.1, Being
@@ -19,9 +20,15 @@ export function payToStand(campaignId: string, sheet: CharacterSheet): ToolError
   if (!encounter || !map || !token) {
     return null;
   }
-  const current = encounter.order[encounter.turnIndex];
-  if (current.kind !== "pc" || current.characterId !== sheet.id) {
-    return { error: `${sheet.name} stands up on their own turn only; it is ${current.name}'s turn. What they declared waits for their turn.`, refused: "rules" };
+  // Their own turn, not one held for the enemies before them (held-turn.ts
+  // ownTurnOf): standing in the goblins' pass began the turn early.
+  if (!ownTurnOf(encounter, sheet.id)) {
+    const held = heldTurnRefusal(encounter, sheet);
+    if (held) {
+      return held;
+    }
+    const current = encounter.order[encounter.turnIndex];
+    return { error: `${sheet.name} stands up on their own turn only; it is ${current?.name ?? "another combatant"}'s turn. What they declared waits for their turn.`, refused: "rules" };
   }
   const { speed, fullTiles } = pcMoveBudget(campaignId, encounter, map, sheet, token);
   if (speed <= 0) {

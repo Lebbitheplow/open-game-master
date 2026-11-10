@@ -120,6 +120,21 @@ export function turnHeldForEnemies(encounter: Encounter | null, id: string): boo
   return Boolean(encounter && entry && orderEntryId(entry) === id && enemiesAhead(encounter, id).length);
 }
 
+// Whether it is `id`'s own turn: the pointer rests on them AND their turn is
+// not held for the enemies grouped before them. Every reader that asks "is
+// this X's turn" goes through here, never through order[turnIndex] or
+// actingCombatantId alone: a reader of the bare pointer answered "it is
+// Brom's own turn" in the middle of the goblins' before him, so a shove by
+// the first goblin was refused as a walk of Brom's (map-tools.ts move_token)
+// and a reaction to the goblin's move was refused as one taken on his own
+// turn. scripts/test-turn-pointer-readers.mjs holds every remaining raw read
+// to its ledger (scripts/turn-pointer-readers.json), each with its reason
+// (the pointer's own mechanics, a display of whose place it is).
+export function ownTurnOf(encounter: Encounter | null, id: string): boolean {
+  const entry = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return Boolean(encounter && entry && orderEntryId(entry) === id && !enemiesAhead(encounter, id).length);
+}
+
 // What they readied on their turn before, released while the enemies of the
 // pass before their turn are taking theirs (their turn begins once the turn
 // is handed on or the reply is narrated): off their own turn, with their
@@ -158,12 +173,14 @@ function heldActionLine(name: string, ahead: string[]): string {
   return `${who} ${one ? "acts" : "act"} before ${name}: play ${one ? "its turn" : "their turns"} (enemy_attack / take_action with ${one ? "its" : "each one's"} enemyId) first, then resolve ${name}'s action. Nothing was spent.`;
 }
 
-// The refusal of a walk on a turn that has not begun.
-export function heldTurnLine(name: string, ahead: string[]): string {
+// The refusal of a walk on a turn that has not begun, in a player's words
+// (the board's walk; `does` the act, "acts" for the sheet's gear toggle, whose
+// route relayed heldActionLine's sentence for the model, tool names and all).
+export function heldTurnLine(name: string, ahead: string[], does = "moves"): string {
   const who = ahead.length > 1 ? `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}` : ahead[0];
   return who
-    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} moves once their turn begins.`
-    : `The enemies before ${name} are taking their turns; ${name} moves once the GM hands the turn on.`;
+    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} ${does} once their turn begins.`
+    : `The enemies before ${name} are taking their turns; ${name} ${does} once the GM hands the turn on.`;
 }
 
 // The enemies before the held character have acted: their turn begins.

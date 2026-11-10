@@ -7,7 +7,6 @@ export const ROWS = {
     ["P1|Battle Smith@20|fresh,action-spent,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,silenced,no-free-hand,concentrating,foe-30ft,foe-100ft,foe-invisible|feature:authored:steel-defender", "hand-feature-precondition-open"],
     ["P2|*|action-spent|feature:art_right_tool", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:art_spell_storing_item", "hand-counter-cost-not-charged"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|Alchemist@20|action-spent|feature:art_experimental_elixir", "hand-counter-cost-not-charged"],
     ["P2|Alchemist@20|action-spent|feature:art_restorative_reagents", "hand-counter-cost-not-charged"],
     ["P2|Battle Smith@20|out-of-fight|feature:art_arcane_jolt:heal", "hand-arcane-jolt-out-of-fight"],
@@ -15,8 +14,6 @@ export const ROWS = {
     ["P4|*|*|feature:art_restorative_reagents", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:art_right_tool", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:art_spell_storing_item", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
-    ["P5|Alchemist@20|foe-100ft|spell:flaming sphere", "hand-aoe-range-unchecked"],
     ["P7|*|*|resource:art_flash_of_genius", "hand-no-card-after-roll-counters"],
   ],
 };

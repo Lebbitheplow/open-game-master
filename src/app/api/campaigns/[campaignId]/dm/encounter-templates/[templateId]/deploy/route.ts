@@ -2,6 +2,7 @@ import { capsFor, isErrorResponse, requirePrepAuthority } from "@/lib/campaign-a
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { getEncounterTemplate, setTemplateCued } from "@/lib/db/encounter-templates";
 import { deployTemplate } from "@/lib/dm/encounter-templates";
+import { openingOptionsSchema } from "@/lib/dm/fight-opening";
 import { readyTemplates } from "@/lib/dm/prepared-encounter-tool";
 import { preparedFit } from "@/lib/dm/prepared-fit";
 import { fightingParty } from "@/lib/dm/party-budget";
@@ -86,7 +87,16 @@ export async function POST(
   if (paused) {
     return paused;
   }
-  const outcome = await deployTemplate(context.campaign, context.user.id, template);
+  // What the console's Start a fight form says as a fight opens (who is
+  // away, who is surprised, the ground, ...), in the same shapes
+  // (fight-opening.ts). An empty body deploys the fight as it was prepared.
+  const raw: unknown = await request.json().catch(() => ({}));
+  const body = openingOptionsSchema.safeParse(raw ?? {});
+  if (!body.success) {
+    const issue = body.error.issues[0];
+    return Response.json({ error: `The fight's opening could not be read: ${issue?.path.join(".") || "the request"} ${issue?.message ?? "is not valid"}.` }, { status: 400 });
+  }
+  const outcome = await deployTemplate(context.campaign, context.user.id, template, body.data);
   if (!outcome.ok) {
     return Response.json({ error: outcome.error }, { status: 409 });
   }

@@ -3,21 +3,16 @@
 export const ROWS = {
   "test-enforce-sweep-hand-druid-a": [
     ["P1|*|*|feature:wild_shape", "hand-wild-shape-no-form"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|Circle of Dreams@20|action-spent|feature:sub_walker_in_dreams", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_walker_in_dreams", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
   ],
   "test-enforce-sweep-hand-druid-b": [
     ["P1|*|*|feature:wild_shape", "hand-wild-shape-no-form"],
     ["P1|Circle of Spores@20|out-of-fight|feature:sub_fungal_infestation", "hand-reaction-no-trigger"],
     ["P1|Circle of Stars@20|out-of-fight|feature:sub_cosmic_omen", "hand-reaction-no-trigger"],
     ["P1|Circle of Wildfire@20|out-of-fight|feature:sub_cauterizing_flames:heal", "hand-reaction-no-trigger"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|Circle of Stars@20|action-spent|feature:sub_star_map", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_star_map", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
     ["P5|*|*|feature:sub_cosmic_omen:self", "hand-self-chip-other-than-you"],
-    ["P5|Circle of Wildfire@20|foe-100ft|spell:flaming sphere", "hand-aoe-range-unchecked"],
   ],
 };

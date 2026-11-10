@@ -9,7 +9,6 @@ export const ROWS = {
     ["P1|Psi Warrior@20|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,silenced,no-free-hand,foe-30ft,foe-100ft,foe-invisible|feature:authored:telekinetic-adept", "hand-feature-needs-target"],
     ["P1|Psi Warrior@20|out-of-fight|feature:authored:telekinetic-adept", "hand-fight-only-open-out-of-fight"],
     ["P1|Psi Warrior@20|out-of-fight|option:sub_psionic_energy:psionic-strike", "hand-fight-only-open-out-of-fight"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|Arcane Archer@20|action-spent|feature:sub_arcane_shot", "hand-counter-cost-not-charged"],
     ["P2|Echo Knight@20|action-spent|feature:sub_reclaim_potential", "hand-counter-cost-not-charged"],
     ["P2|Echo Knight@20|action-spent|feature:sub_unleash_incarnation", "hand-counter-cost-not-charged"],
@@ -18,6 +17,5 @@ export const ROWS = {
     ["P4|*|*|feature:sub_reclaim_potential", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_telekinetic_master", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_unleash_incarnation", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
   ],
 };

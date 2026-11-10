@@ -17,6 +17,7 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { enemyTurnEntry, spentOnSentence, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
 
@@ -278,20 +279,70 @@ export function oweEnemiesAnAction(encounter: LedgerHolder, enemyIds: string[]) 
   writeLedger(encounter, ids, [...owed, ...enemyIds]);
 }
 
+// The conditions that say "can't move" (SRD 5.1, Conditions), and those
+// whose creature is "unaware of its surroundings".
+const CANNOT_MOVE = ["paralyzed", "stunned", "unconscious", "petrified"];
+const UNAWARE = ["unconscious", "petrified"];
+
+function enemyMoveOrIntent(enemy: ActingEnemy, encounter: ActingEncounter | null, kind: "move" | "intent"): CanActResult {
+  const stoppedBy = (kind === "move" ? CANNOT_MOVE : UNAWARE).find((name) => enemy.conditions.some((entry) => isConditionNamed(entry, name)));
+  if (stoppedBy) {
+    return refuse(
+      "incapacitated",
+      {
+        error: kind === "move"
+          ? `${enemy.displayName} is ${stoppedBy} and cannot move until the condition ends.`
+          : `${enemy.displayName} is ${stoppedBy}, unaware of its surroundings: it plans nothing until the condition ends.`,
+        refused: "rules",
+      },
+    );
+  }
+  if (kind === "intent") {
+    return { ok: true };
+  }
+  const held = spellTurnHold(enemy.conditions, "move");
+  if (held) {
+    return refuse("incapacitated", { error: `${enemy.displayName} is ${held} and cannot move while it lasts.`, refused: "rules" });
+  }
+  if (encounter && isSurprised(encounter, enemy.id)) {
+    return refuse(
+      "surprised",
+      { error: `${enemy.displayName} is surprised and cannot move in the first round. It acts from round 2.`, refused: "rules" },
+    );
+  }
+  return { ok: true };
+}
+
 // An enemy's action, bonus action, reaction or legendary action. Dead and
 // incapacitated enemies do nothing; a surprised one loses round 1; an action
 // is one a round, and so is a bonus action. A legendary action is spent on
 // somebody else's turn, so the action already taken does not refuse it (the
 // pool does, in legendary-tools.ts).
+//
+// Its walk ("move") and the intent the board shows over it ("intent") are
+// asked here too, by every door that moves it or speaks for it (move_token,
+// enemy_flees, declare_intent): a Hold Person'd bandit captain escaped the
+// fight on the AI's word, a surprised goblin walked its full speed in round 1,
+// and the board showed a sleeping one raising its club. A walk is stopped by
+// what says "can't move" (SRD 5.1: stunned, paralyzed, unconscious,
+// petrified; bare incapacitation does not), by a spell's hold on movement,
+// and by surprise ("you can't move or take an action on your first turn of
+// the combat"); speed 0 (grappled, restrained) is the walk's own count, which
+// enemySpeedTiles gives. An intent is refused only for a creature that is
+// "unaware of its surroundings" (unconscious, petrified). Neither spends its
+// action, so neither asks whether it has acted.
 export function canEnemyAct(input: {
   enemy: ActingEnemy;
   encounter: ActingEncounter | null;
-  kind: "action" | "bonus" | "reaction" | "legendary";
+  kind: "action" | "bonus" | "reaction" | "legendary" | "move" | "intent";
 }): CanActResult {
   const { enemy, kind } = input;
   const encounter = isRunningFight(input.encounter) ? input.encounter : null;
   if (enemy.status !== "alive") {
     return refuse("dead", { error: `${enemy.displayName} is ${enemy.status} and cannot act.`, retry: true });
+  }
+  if (kind === "move" || kind === "intent") {
+    return enemyMoveOrIntent(enemy, encounter, kind);
   }
   const stoppedBy = incapacitatedBy(enemy.conditions);
   if (stoppedBy) {

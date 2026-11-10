@@ -11,7 +11,6 @@ export const ROWS = {
     ["P2|*|action-spent|feature:mystic_arcanum_7", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:mystic_arcanum_8", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:mystic_arcanum_9", "hand-counter-cost-not-charged"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|The Fiend@20|action-spent|feature:dark_ones_own_luck", "hand-counter-cost-not-charged"],
     ["P2|The Fiend@20|action-spent|feature:hurl_through_hell", "hand-counter-cost-not-charged"],
     ["P2|The Hexblade@20|action-spent|feature:sub_accursed_specter", "hand-counter-cost-not-charged"],
@@ -23,7 +22,6 @@ export const ROWS = {
     ["P4|*|*|feature:mystic_arcanum_8", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:mystic_arcanum_9", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_accursed_specter", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
     ["P5|*|foe-30ft,foe-invisible|spell:hellish rebuke", "hand-reaction-no-trigger-aim"],
   ],
   "test-enforce-sweep-hand-warlock-b": [
@@ -35,7 +33,6 @@ export const ROWS = {
     ["P2|*|action-spent|feature:mystic_arcanum_7", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:mystic_arcanum_8", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:mystic_arcanum_9", "hand-counter-cost-not-charged"],
-    ["P2|*|grappled|basic:dash", "hand-dash-speed-0"],
     ["P2|The Fathomless@20|action-spent|feature:sub_grasping_tentacles", "hand-counter-cost-not-charged"],
     ["P2|The Undying@20|action-spent|feature:sub_defy_death", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:eldritch_master", "hand-counter-cost-not-charged"],
@@ -45,8 +42,6 @@ export const ROWS = {
     ["P4|*|*|feature:mystic_arcanum_9", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_defy_death", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_grasping_tentacles", "hand-counter-cost-not-charged"],
-    ["P5|*|*|basic:help", "hand-help-range"],
     ["P5|*|foe-30ft,foe-invisible|spell:hellish rebuke", "hand-reaction-no-trigger-aim"],
-    ["P5|The Fathomless@20|foe-100ft|spell:evard s black tentacles", "hand-aoe-range-unchecked"],
   ],
 };
