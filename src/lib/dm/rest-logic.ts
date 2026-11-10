@@ -31,7 +31,7 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
   return next;
 }
 
-// Long rest: full HP, temp HP gone, dying/concentration cleared, all spell
+// Long rest: full HP, temp HP gone, dying cleared, all spell
 // slots back to the class table, spells chosen for preparation now prepared,
 // half the total hit dice (minimum 1) recovered, and one level of exhaustion
 // removed. Who may take one (alive, at least 1 hit point, none in the last
@@ -58,7 +58,10 @@ export function longRestPatch(
     currentHp: effectiveMaxHp({ ...sheet, exhaustion: exhaustionAfter }),
     tempHp: 0,
     deathSaves: null,
-    concentratingOn: null,
+    // Concentration is not cleared here: sleep ends it, and the spell with
+    // it, through concentration.ts breakConcentration before this patch
+    // (rest-tools.ts). Set to null here alone, the spell's effects ran on
+    // with nobody holding them (LC-CONC-02).
     // Nobody sleeps through a night still shaped or still raging.
     wildShape: null,
     // Every limited-use class resource refills on a long rest.

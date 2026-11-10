@@ -38,12 +38,8 @@ const SKIP = {
 };
 
 // Known today, by "Spell/check".
-const KNOWN = {
-  "Animal Shapes/long rest": {
-    severity: "medium",
-    where: "the long rest in take_rest (src/lib/dm/rest-logic.ts and its caller): it clears the caster's concentration and leaves what the spell laid: the ally stays polymorphed for the 16 hours left, with nobody concentrating",
-  },
-};
+// None today: every row the sweep walks is enforced.
+const KNOWN = {};
 
 const check = runner({ name: "sweep-lifecycle-clock", harness, known: KNOWN, rules: RULES, report: REPORT ? report : null });
 const all = spellRows().filter((row) => row.kind === "buff");

@@ -1,3 +1,4 @@
+import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
@@ -277,6 +278,13 @@ export function handleTakeRest(
   if (args.kind === "long") {
     const rested: string[] = [];
     for (const id of resting) {
+      // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
+      // incapacitated, and incapacitation ends concentration): the spell
+      // ends whole, through the one function that ends one, before the rest
+      // is read from the sheet it leaves.
+      if (getSheetById(id)?.concentratingOn) {
+        breakConcentration(campaign, turnId, id, "fell asleep for the long rest");
+      }
       const sheet = getSheetById(id);
       if (!sheet || sheet.deathSaves?.dead) {
         continue;

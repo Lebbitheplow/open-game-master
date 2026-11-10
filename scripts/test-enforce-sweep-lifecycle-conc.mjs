@@ -67,12 +67,8 @@ const SKIP = {
 const CASTER_TRANSFORMED = { Shapechange: true };
 
 // Known today, by "Spell/check". Each is in /tmp/odm-gapstudy/findings/lifecycle.jsonl.
-const KNOWN = {
-  "Evard's Black Tentacles/own area": {
-    severity: "medium",
-    where: "src/lib/dm/zone-triggers.ts (the turn-start trigger: the 3d6 breaks the caster's concentration, the spell's conditions are cleared, and THEN the trigger writes \"restrained\" on her: it stays for its ten rounds, dealing 3d6 a turn, with no spell behind it)",
-  },
-};
+// None today: every row the sweep walks is enforced.
+const KNOWN = {};
 
 // One check of one row not made, and why.
 const SUBSKIP = {

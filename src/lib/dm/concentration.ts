@@ -31,6 +31,16 @@ import { textKey } from "@/lib/language/text-logic";
 // and dropping to 0 HP always ends it. This module must not import
 // mutations.ts (which imports it). Enemy concentration is out of scope;
 // enemies have no tracked spells.
+//
+// One function ends a held spell: endHeldSpell below, reached through
+// breakConcentration (damage, a condition, a rage, the clock, a long rest's
+// sleep, a beam that missed) or setConcentration (a new spell). Every path
+// that drops a character's concentration goes through them, so the spell's
+// conditions, areas and creatures end with it: a sheet patch that only set
+// concentratingOn to null left an ally polymorphed by Animal Shapes for the
+// sixteen hours left of it after the night's rest (LC-CONC-02).
+// scripts/test-concentration-ends-once.mjs fails on a source file that
+// clears it any other way.
 
 function writeConcentration(
   campaign: Campaign,
@@ -99,12 +109,20 @@ export function setConcentration(
   const casting = castingHeldBy(sheet, displaced);
   writeConcentration(campaign, turnId, sheet, spell, `casting ${spell}`, slotLevel);
   if (displaced) {
-    clearSpellConditionsByName(campaign, displaced, sheet.userId, sheet.id);
-  }
-  if (casting) {
-    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, `${spell} was cast, and it takes concentration`));
+    endHeldSpell(campaign, sheet, displaced, casting, `${spell} was cast, and it takes concentration`);
   }
   return { displaced, failedCasting: casting?.spell ?? null };
+}
+
+// What ends with a held spell, however its concentration ended: Bless's
+// dice, Haste's action, Hold Person's paralysis, its areas and the creatures
+// it called stop here instead of waiting for their duration to expire, and a
+// spell of a minute or more still being cast fails (long-casting-logic.ts).
+function endHeldSpell(campaign: Campaign, sheet: CharacterSheet, spell: string, casting: ReturnType<typeof castingHeldBy>, cause: string) {
+  clearSpellConditionsByName(campaign, spell, sheet.userId, sheet.id);
+  if (casting) {
+    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, cause));
+  }
 }
 
 // The line a cast's result carries for the concentration it ended.
@@ -130,13 +148,7 @@ export function breakConcentration(
   // its "casting" condition already, so its completion is no failure.
   const casting = castingHeldBy(sheet, spell);
   writeConcentration(campaign, turnId, sheet, null, cause);
-  // The spell's lingering effect conditions end with the concentration:
-  // Bless's dice, Haste's action, Hold Person's paralysis all stop here
-  // instead of waiting for their duration to expire.
-  clearSpellConditionsByName(campaign, spell, sheet.userId, sheet.id);
-  if (casting) {
-    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, cause));
-  }
+  endHeldSpell(campaign, sheet, spell, casting, cause);
   return spell;
 }
 
