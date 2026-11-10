@@ -1471,6 +1471,7 @@ function dmMutation(
         },
         args.variant,
         { beforeDrop: charge.beforeDrop },
+        { turnId, targetEnemyId: args.targetEnemyId, targetEnemyIds: args.targetEnemyIds },
       );
       if ("error" in outcome) {
         return { result: outcome };

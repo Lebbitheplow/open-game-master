@@ -32,7 +32,6 @@ import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { holdsFeature } from "@/lib/srd/feature-names";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -129,8 +128,11 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     if (live) {
       claimHitRiders(live.encounter, live.budget, record.hitClaims);
     }
-    // A weapon's hit opens Arcane Jolt this turn, at the creature it hit.
-    if ((record.weaponAttack ?? !record.spell) && holdsFeature(scene.sheet, "arcane jolt")) {
+    // A weapon's hit opens what rides one this turn, at the creature it hit:
+    // Arcane Jolt, Blade Flourish, Psionic Strike, Gathered Swarm's push
+    // (authored-spends.ts afterWeaponHit). Written for Arcane Jolt's holders
+    // alone, every other rider was refused after every hit.
+    if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
     }
   }

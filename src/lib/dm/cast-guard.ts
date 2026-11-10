@@ -39,6 +39,7 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares } from "@/lib/srd/spell-mechanics";
@@ -552,6 +553,8 @@ export function castSpell(
   // spends its once-a-day counter instead of a slot while one is left
   // (src/lib/srd/feat-spells.ts); with the counter spent, a slot pays.
   const freeCast = input.ritual || signature ? null : freeCastCounter(sheet, spell, facts, input.level);
+  // A warlock's Mystic Arcanum pays for its own spell (counter-cast-arcanum.ts).
+  const arcanum = input.ritual || signature || freeCast || slowHeld ? null : arcanumCounter(sheet, facts, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
@@ -570,6 +573,8 @@ export function castSpell(
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
+        : arcanum
+          ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
         : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
@@ -636,6 +641,9 @@ export function castSpell(
   }
   if (freeCast) {
     patch.resources = spendSignature(sheet.resources, freeCast);
+  }
+  if (arcanum) {
+    patch.resources = spendSignature(patch.resources ?? sheet.resources, arcanum);
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.

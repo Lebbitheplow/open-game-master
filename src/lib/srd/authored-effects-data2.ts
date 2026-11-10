@@ -460,9 +460,10 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       { kind: "rider", dice: [[3, "1d6"], [11, "1d8"]], type: "piercing", when: "weapon", oncePerTurn: true },
     ],
     // In place of the damage, once a turn: the swarm moves the creature hit
-    // (use_resource "Gathered Swarm", variant "push").
+    // (use_resource "Gathered Swarm", variant "push"), after the hit, its die
+    // taken back off (src/lib/dm/authored-spend-more.ts swarmPush).
     spends: [
-      { name: "Gathered Swarm", aliases: ["Swarm Push"], oncePerTurn: true, onceKey: "rider:gathered swarm", does: { kind: "swarm_push", feet: 15 } },
+      { name: "Gathered Swarm", aliases: ["Swarm Push"], oncePerTurn: true, onceKey: "gathered swarm:moved", afterWeaponHit: true, does: { kind: "swarm_push", feet: 15 } },
     ],
   },
   "ranger::Mighty Swarm": {

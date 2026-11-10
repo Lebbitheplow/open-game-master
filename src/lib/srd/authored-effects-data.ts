@@ -272,7 +272,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   "bard::Blade Flourish": {
     subclass: "College of Swords",
     spends: [
-      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, does: { kind: "flourish" } },
+      // "when you hit a creature with a weapon attack" (XGtE): after the hit.
+      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
     ],
   },
   "bard::Psychic Blades": {

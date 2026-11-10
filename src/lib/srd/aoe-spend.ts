@@ -34,13 +34,12 @@ function heldAncestry(sheet: AoeHolder) {
 }
 
 // `level` is the level the counter scales by (resourceLevel: the character
-// level for a race feature); the DC is 8 + proficiency + Constitution for
-// every area feature ODM counts today.
+// level for a race feature).
 export function aoeSpendFor(
   def: ResourceDef,
   sheet: AoeHolder,
   level: number,
-  derived: { proficiencyBonus: number; abilityMods: Record<string, number> },
+  derived: { proficiencyBonus: number; abilityMods: Record<string, number>; spellSaveDc?: number | null },
 ): AoeSpend | null {
   if (def.effect.kind !== "aoe") {
     return null;
@@ -57,9 +56,19 @@ export function aoeSpendFor(
       area: breath.area,
     };
   }
+  // A subclass's area keeps the DC its text names (Drake's Breath and Event
+  // Horizon the spell save DC, Breath of the Dragon the ki DC): read as 8 +
+  // proficiency + Constitution, every one of them was a dragonborn's.
+  const { dcAbility, type } = def.effect;
+  const mods = derived.abilityMods;
+  const dc =
+    dcAbility === "spell"
+      ? (derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(mods.int ?? 0, mods.wis ?? 0, mods.cha ?? 0))
+      : 8 + derived.proficiencyBonus + (dcAbility ? (mods[dcAbility] ?? 0) : conMod);
   return {
     dice: def.effect.dice(level),
     saveAbility: def.effect.save,
-    dc: 8 + derived.proficiencyBonus + conMod,
+    dc,
+    ...(type ? { damageType: type } : {}),
   };
 }

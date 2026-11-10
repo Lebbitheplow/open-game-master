@@ -44,6 +44,9 @@ import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
+import { resolveCounterSave } from "@/lib/dm/counter-saves";
+
+const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
 // A spend's damage on one enemy, as the holder's dice card.
 const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
@@ -392,19 +395,17 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "note":
       return { result: { applied: does.text } };
     case "aoe_report": {
+      // Rolled in the spend on the creatures the call names, half on a save
+      // (src/lib/dm/counter-saves.ts): it handed these numbers back for an
+      // aoe_damage call a person's table never made.
       const extra = Math.max(0, ctx.units - (does.baseUnits ?? 0));
       const dice = addUnits(formula(ctx, does.dice), does.perUnit, extra);
-      return {
-        result: {
-          resolveWith: "aoe_damage",
-          damage: dice,
-          saveAbility: does.save,
-          dc: saveDc(ctx, does.dcAbility),
-          type: does.type,
-          area: does.area,
-          note: `Resolve it with aoe_damage using these numbers; ${ctx.spend.name} is paid for.`,
-        },
-      };
+      // A type the holder picks ("acid, cold, fire, lightning or poison") is
+      // the one the variant names, else the first.
+      const choices = ((does.type ?? "").match(/[a-z]+/gi) ?? []).filter((word) => DAMAGE_WORDS.has(word.toLowerCase()));
+      const type = choices.find((word) => textKey(word) === textKey(ctx.args.variant ?? "")) ?? choices[0] ?? "";
+      const saved = resolveCounterSave(campaign, sheet, { name: ctx.spend.name, save: does.save, dc: saveDc(ctx, does.dcAbility), dice, type, half: true, magical: true }, { turnId: ctx.turnId, targetEnemyId: ctx.args.targetEnemyId, targetEnemyIds: ctx.args.targetEnemyIds });
+      return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };
     }
     case "teleport": {
       creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);

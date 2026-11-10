@@ -140,22 +140,9 @@ export function wildShapeForms(caps: { maxCr: number; fly: boolean; swim: boolea
   return BEAST_FORMS.filter((form) => form.cr <= caps.maxCr && (caps.fly || !form.fly) && (caps.swim || !form.swim));
 }
 
-// SRD Wild Shape ceilings by druid level (the class table's
-// Wild Shape Improvement at 4th and 8th); Circle of the Moon raises the CR
-// (1 from 2nd, level/3 from 6th) but not the movement gates.
-export function wildShapeCapsFor(
-  level: number,
-  moonDruid: boolean,
-): { maxCr: number; fly: boolean; swim: boolean } {
-  const clamped = Math.max(1, Math.min(20, Math.floor(level)));
-  const baseCr = clamped >= 8 ? 1 : clamped >= 4 ? 0.5 : 0.25;
-  const moonCr = clamped >= 6 ? Math.max(1, Math.floor(clamped / 3)) : 1;
-  return {
-    maxCr: moonDruid ? Math.max(baseCr, moonCr) : baseCr,
-    fly: clamped >= 8,
-    swim: clamped >= 4,
-  };
-}
+// The Wild Shape ceilings live with the Hand's beast list, which reads them
+// without the bestiary (src/lib/srd/wild-shape-caps.ts).
+export { wildShapeCapsFor } from "@/lib/srd/wild-shape-caps";
 
 // The most hit points a creature of a challenge rating has (DMG, Monster
 // Statistics by Challenge Rating), for a form the table above does not list:

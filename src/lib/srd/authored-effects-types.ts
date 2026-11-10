@@ -425,7 +425,9 @@ export type SpendDoes =
   // heals (Hand of Healing).
   | { kind: "flames"; formula: Formula; type: string; healOnly?: boolean }
   // A variant word picks one of several spends.
-  | { kind: "variants"; options: Record<string, { does: SpendDoes; action?: SpendAction }> }
+  // An option that rides a weapon hit this turn (Telekinetic Thrust after
+  // Psionic Strike's) says so; the others of the same spend do not.
+  | { kind: "variants"; options: Record<string, { does: SpendDoes; action?: SpendAction; afterWeaponHit?: boolean }> }
   // Insightful Fighting: an Insight check against the creature's Deception.
   | { kind: "insight_contest"; condition: string; rounds: number }
   // Gathered Swarm's push: after the holder's hit this turn, the creature hit

@@ -22,6 +22,7 @@ import { chosenOptions } from "@/lib/srd/options";
 import { innateSpellsFor, racialCantripAbility } from "@/lib/srd/racial-grants";
 import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 import { asciiSlugOf, textKey } from "@/lib/language/text-logic";
+import { counterCastsHeld } from "@/lib/srd/counter-casts";
 
 export type GrantedCast = {
   // The invocation or trait that grants the cast.
@@ -127,6 +128,21 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       ...(innate.castAt > 0 ? { castAt: innate.castAt } : {}),
       ...(innate.ability ? { ability: innate.ability } : {}),
       ...(innate.slotsToo ? { slotsToo: true } : {}),
+    });
+  }
+  // A subclass counter whose use is the spell (Star Map's guiding bolt,
+  // src/lib/srd/counter-casts.ts): no slot, the counter spent.
+  for (const { row, spell } of counterCastsHeld(sheet.features ?? [])) {
+    out.push({
+      source: row.features[0],
+      spell,
+      slot: "free",
+      counter: row.counter,
+      rest: row.rest,
+      ...(row.castAt ? { castAt: row.castAt } : {}),
+      ...(row.selfOnly ? { selfOnly: true } : {}),
+      ...(row.noMaterial ? { noMaterial: true } : {}),
+      ...(row.note ? { note: row.note } : {}),
     });
   }
   const cantripAbility = racialCantripAbility(sheet.race);
