@@ -88,6 +88,10 @@ export type LegendaryState = {
   // next, waits for the end of a turn the creature takes under it (SRD 5.1:
   // "at the end of each of its turns"). Absent on a row written before it.
   walkedHolds?: string[];
+  // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): whose
+  // turn is ending, the watcher whose choice it waits on, and the stop. The
+  // pointer stays and that character acts no more until the stop closes.
+  heldMove?: { pendingId: string; characterId: string; watcher: string };
   // The last save a legendary creature failed, for legendary_resist: what
   // it laid and what a success would have spared (src/lib/dm/forced-save.ts).
   failedSave?: FailedSave;
@@ -157,6 +161,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const acted = (record.acted && typeof record.acted === "object" ? record.acted : null) as Record<string, unknown> | null;
   const abilities = normalizeAbilityLedgers(record.abilities);
   const handoff = (record.handoff && typeof record.handoff === "object" ? record.handoff : null) as Record<string, unknown> | null;
+  const heldMove = (record.heldMove && typeof record.heldMove === "object" ? record.heldMove : null) as Record<string, unknown> | null;
   const bonus = (record.bonus && typeof record.bonus === "object" ? record.bonus : null) as Record<string, unknown> | null;
   const idle = (record.idle && typeof record.idle === "object" ? record.idle : null) as Record<string, unknown> | null;
   const rest = (record.rest && typeof record.rest === "object" ? record.rest : null) as Record<string, unknown> | null;
@@ -202,6 +207,9 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(idle ? { idle: { since: Number(idle.since) || 0, ...(idle.told === true ? { told: true } : {}) } } : {}),
     ...(stringList(record.walked).length ? { walked: stringList(record.walked) } : {}),
     ...(Array.isArray(record.walkedHolds) ? { walkedHolds: stringList(record.walkedHolds) } : {}),
+    ...(heldMove && typeof heldMove.pendingId === "string" && typeof heldMove.characterId === "string"
+      ? { heldMove: { pendingId: heldMove.pendingId, characterId: heldMove.characterId, watcher: typeof heldMove.watcher === "string" ? heldMove.watcher : "" } }
+      : {}),
     ...(failed && typeof failed.enemyId === "string"
       ? {
           failedSave: {

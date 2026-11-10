@@ -2676,6 +2676,50 @@ const watchTables = {};
   }
 }
 
+// A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the lead's
+// fighter is up and frightened by a hold she saves against as her turn ends,
+// and the player's Divination wizard watches the fight. The lead's End Turn
+// waits on the wizard's stop; the scenario answers it as the player.
+const HELD_TURN_TITLE = "Held Breath";
+const heldTurnTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${HELD_TURN_TITLE} (${viewport})`,
+      description: "A goblin, a frightened fighter, and a wizard who has seen this before.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the held turn: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Wren Hale", class: "fighter", level: 5 }));
+    const seer = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
+    sheets.patchSheet(seer.id, { resources: { ...seer.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the held turn's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const entry = (id) => encounter.order.find((each) => (each.kind === "pc" ? each.characterId : each.enemyId) === id);
+    const goblin = encounter.order.find((each) => each.kind === "enemy");
+    encounterRows.saveEncounter({ ...encounter, order: [entry(hero.id), entry(seer.id), goblin], turnIndex: 0, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    sheets.patchSheet(hero.id, { conditions: ["frightened"], conditionMeta: { frightened: { spell: "Fear", source: "a shadow", saveEnds: { ability: "wis", dc: 30 } } } });
+    sheets.setSheetWatching(seer.id, encounter.id);
+    heldTurnTables[viewport] = { id: table.id, hero: hero.id, seer: seer.id };
+  }
+}
+
 // Chronal Shift on another creature's roll (src/lib/dm/chronal-shift.ts). The
 // lead's Chronurgy wizard beside the player's own fighter at a table the
 // player runs: a check of the fighter's that fails waits on the wizard's
@@ -3764,6 +3808,7 @@ const ids = {
   touchTables,
   portentTables,
   watchTables,
+  heldTurnTables,
   shiftTables,
   chronalWatchTables,
   twoHandsTables,
@@ -3889,6 +3934,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),

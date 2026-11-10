@@ -239,7 +239,7 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
   }
-  return savesAbout(campaign, encounter, call.name, args, sheets) ?? moreAbout(encounter, call.name, args, sheets);
+  return savesAbout(campaign, encounter, call.name, args, sheets) ?? moreAbout(campaign, encounter, call.name, args, sheets);
 }
 
 // "Within 30 feet" and "a creature you can see", for Chronal Shift: the
@@ -260,7 +260,8 @@ function savesHelped(campaignId: string, encounter: Encounter, sheet: CharacterS
   return [...(about.rollerWaits ? [] : about.rolls), ...(about.riderSaves ?? [])].filter((roll) => {
     // Flash of Genius answers an ability check as well as a save ("makes an
     // ability check or a saving throw"); Favored by the Gods a save only.
-    const answers = roll.tag.kind === "save" || (power === "flash_of_genius" && roll.tag.kind === "check");
+    // A death save is a saving throw.
+    const answers = roll.tag.kind === "save" || roll.tag.kind === "death_save" || (power === "flash_of_genius" && roll.tag.kind === "check");
     const saver = roll.tag.roller === "hero" && answers ? sheets.find((entry) => entry.id === roll.ref) : null;
     if (!saver) {
       return false;
@@ -305,6 +306,11 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
   return null;
 }
 
+// Whether a watcher could answer what `about` says is about to roll.
+export function watchFor(campaignId: string, encounter: Encounter, about: About, ownCard: boolean, sheets: readonly CharacterSheet[]): boolean {
+  return watcherFor(campaignId, encounter, about, ownCard, sheets) !== null;
+}
+
 // Holds the calls and parks the turn on the watcher's choice, when someone
 // watching could answer the first of them. True when it did.
 export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly HeldCall[]): boolean {
@@ -315,18 +321,33 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
   }
   const sheets = listSheets(campaign.id);
   const about = rollAbout(campaign, first, sheets, encounter);
-  if (!about) {
-    return false;
-  }
-  // A wizard's own check waits on its own card already (invoke-roll.ts).
-  const found = watcherFor(campaign.id, encounter, about, first.name === "request_roll", sheets);
+  // A wizard's own check waits on its own card already (invoke-roll.ts); a
+  // turn's own end is never held by its own watcher (turn-hold.ts).
+  return about ? openWatchStop(campaign, turn.id, calls, about, first.name === "request_roll" || first.name === "end_turn", encounter, sheets) !== null : false;
+}
+
+// Opens a stop on what `about` says is about to roll, for the first watcher
+// who could answer it, with `calls` held behind it; the stop's id, or null
+// when nobody could. Also the pointer move's stop (src/lib/dm/turn-hold.ts),
+// whose one held call is the move. `ownCard`: the roller is not stopped for
+// by their own watch.
+export function openWatchStop(
+  campaign: Campaign,
+  turnId: string,
+  calls: readonly HeldCall[],
+  about: About,
+  ownCard: boolean,
+  encounter: Encounter,
+  sheets: readonly CharacterSheet[],
+): { id: string; watcher: CharacterSheet } | null {
+  const found = watcherFor(campaign.id, encounter, about, ownCard, sheets);
   if (!found) {
-    return false;
+    return null;
   }
   const { watcher, power, choices } = found;
   const pending = createPendingRoll({
     campaignId: campaign.id,
-    turnId: turn.id,
+    turnId,
     toolCallId: null,
     userId: watcher.userId,
     characterId: watcher.id,
@@ -347,7 +368,7 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
     void import("@/lib/dm/foresight-release").then(({ releaseWatchWhenDue }) => releaseWatchWhenDue(pending.id));
   }, WATCH_SECONDS * 1000);
   timer.unref?.();
-  return true;
+  return { id: pending.id, watcher };
 }
 
 // Runs one held call with the chosen number armed on its first matching d20,

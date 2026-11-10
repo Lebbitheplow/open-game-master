@@ -1,4 +1,5 @@
 import { getCampaignById } from "@/lib/db/campaigns";
+import { isHeldMove, runHeldMove } from "@/lib/dm/turn-hold";
 import {
   getDmTurn,
   getLatestAiTurnId,
@@ -73,6 +74,11 @@ export function recoverDmAfterRestart(): RestartRecovery | null {
   // survive: the roll goes ahead when its turn resumes just below.
   for (const stop of listOpenWatchStops()) {
     resolvePendingWatch(stop.id, null);
+    // A held pointer move is no GM turn's to resume: it runs now, with
+    // nothing chosen (turn-hold.ts).
+    if (isHeldMove(stop)) {
+      enqueueDmJob(stop.campaignId, () => runHeldMove(stop.id), { kind: "turn" });
+    }
   }
   const { resumed, closed } = resumeOrphanedParkedTurns();
   // A roll waiting on its player's choice keeps waiting, on a timer again; its

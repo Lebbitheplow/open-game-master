@@ -139,6 +139,10 @@ export type PublicEncounter = {
   acting?: { id: string; name: string } | null;
   // While the enemies hold the turn: the player whose turn follows theirs.
   upNext?: { id: string; name: string };
+  // Every view: the character whose End Turn is in while the move waits on a
+  // watcher's stop (src/lib/dm/turn-hold.ts), and the watcher it waits on.
+  // The End Turn controls show it; absent on an older server.
+  turnHeld?: { characterId: string; watcher: string };
   // While the enemies hold the turn: the ones it is held for, by id, as this
   // viewer may know them (a hidden one is left out of a player's), so the
   // trackers light their rows.
@@ -290,6 +294,7 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
     ...(enemiesFirst ? { enemyTurns: true } : {}),
     ...(enemiesFirst && pointer ? { upNext: pointer } : {}),
     ...(enemiesFirst ? { enemiesUp: owner.enemies.filter((id) => showNumbers || !hidden.has(id)) } : {}),
+    ...(encounter.legendary.heldMove ? { turnHeld: { characterId: encounter.legendary.heldMove.characterId, watcher: encounter.legendary.heldMove.watcher } } : {}),
     surprised: {
       acting: pcIds.filter((id) => isSurprised(encounter, id)),
       reacting: pcIds.filter((id) => isSurprised(encounter, id, true)),

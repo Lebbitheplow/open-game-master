@@ -7,6 +7,7 @@ import { getPendingRoll, listPendingForTurn, publicPendingRoll, resolvePendingWa
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { tableBreakOn } from "@/lib/dm/table-break";
 import { resumeDmTurn } from "@/lib/dm/turn";
+import { isHeldMove, runHeldMove } from "@/lib/dm/turn-hold";
 import { publishPersisted } from "@/lib/events";
 
 export function answerWatch(pendingId: string, face: number | null, answer: { chosen?: number | null; shift?: boolean } = {}): boolean {
@@ -15,6 +16,11 @@ export function answerWatch(pendingId: string, face: number | null, answer: { ch
     return false;
   }
   publishPersisted(answered.campaignId, "roll_pending", { pendingRoll: publicPendingRoll(answered) });
+  // A held pointer move runs itself; no GM turn waits on it (turn-hold.ts).
+  if (isHeldMove(answered)) {
+    enqueueDmJob(answered.campaignId, () => runHeldMove(answered.id), { kind: "turn" });
+    return true;
+  }
   if (!listPendingForTurn(answered.turnId).some((entry) => entry.status === "pending")) {
     const { campaignId, turnId } = answered;
     enqueueDmJob(campaignId, () => resumeDmTurn(campaignId, turnId), { kind: "turn" });

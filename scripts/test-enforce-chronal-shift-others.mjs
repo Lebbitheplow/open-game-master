@@ -323,6 +323,24 @@ await test("A grapple's contest: the creature's side that won is rolled again, a
   world.patch(ally.id, { conditions: [], conditionMeta: {} });
 });
 
+// A death save the pointer move rolls (turn-hold.ts) takes what its stop
+// armed: a death save is a saving throw.
+await test("A death save takes an armed Chronal Shift: an ally's failure is rolled again, and the new roll stands.", async () => {
+  reset();
+  saveEncounter({ ...world.encounter(), reactionsUsed: [] });
+  world.patch(ally.id, { currentHp: 0, conditions: ["unconscious"], conditionMeta: {}, deathSaves: { successes: 0, failures: 0 } });
+  armShift(world.campaignId, { wizardId: wizard.id, rolls: [{ tag: { roller: "hero", kind: "death_save", who: ally.name }, reverse: "failure" }] });
+  world.dice(4, 15);
+  const { rollDeathSave } = await import("../src/lib/dm/death.ts");
+  rollDeathSave(world.campaign(), ally.id);
+  world.clearDice();
+  const line = disarmShift(world.campaignId);
+  assert.match(line ?? "", /rolled the death save again, 15/);
+  assert.equal(world.sheet(ally.id).deathSaves?.successes, 1, "the 15 stands: a success");
+  assert.equal(used(), 1);
+  world.patch(ally.id, { currentHp: 44, conditions: [], conditionMeta: {}, deathSaves: null });
+});
+
 await test("At the save itself: a foe's success is rolled again and the second roll stands; a failure is left alone.", () => {
   reset();
   saveEncounter({ ...world.encounter(), reactionsUsed: [] });

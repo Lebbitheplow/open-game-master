@@ -242,6 +242,11 @@ export const SERVER_FEATURES = {
   // divine soul, and a stop's `power` may name either. An older host refuses
   // the first, so the button is drawn only here.
   saveWatch: true,
+  // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the
+  // public encounter's `turnHeld`, which the End Turn controls show while the
+  // move waits on a watcher. An older host never holds a move, so nothing is
+  // drawn there.
+  turnHold: true,
   // The owed picks on a character sheet (issue #833): POST
   // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
   // earned and no level-up offered (a dragon ancestor, a favored enemy, a

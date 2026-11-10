@@ -1,3 +1,4 @@
+import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -346,9 +347,22 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     return null;
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
+  const purpose = { roller: "hero" as const, kind: "death_save" as const, who: sheet.name };
   // A held die is added only to a death save it turns into a success.
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown;
+  const throwSave = () => {
+    const thrown = rollExpression(resolved.expression, undefined, { purpose });
+    return waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown;
+  };
+  let outcome = throwSave();
+  // What a watch stop armed before the pointer move that rolls it
+  // (turn-hold.ts): a death save is a saving throw, which a Chronal Shift
+  // rolls again and Flash of Genius or Favored by the Gods adds to.
+  const shiftedBy = takeShift(campaign.id, purpose, outcome.total >= 10);
+  if (shiftedBy) {
+    outcome = throwSave();
+    noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the death save again, ${outcome.total}, and the new roll stands.`);
+  }
+  outcome = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, 10)?.outcome ?? outcome;
   // What the save spent (an inspiration die, a luck point) is gone from the
   // stored sheet. The writes below start from it: from the copy read before
   // the spend, a natural 20 or a third success wrote the spent carrier back

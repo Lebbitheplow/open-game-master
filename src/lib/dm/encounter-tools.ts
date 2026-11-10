@@ -148,6 +148,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
+import { heldMoveLine, holdMoveForWatch } from "@/lib/dm/turn-hold";
 import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
@@ -1195,6 +1196,12 @@ function handleEndTurn(
       error: `${waiting.join(" and ")} act${waiting.length === 1 ? "s" : ""} before ${sheet.name}: take ${waiting.length === 1 ? "its turn" : "their turns"} first, then end the turn.`,
       retry: true,
     };
+  }
+  // A player's End Turn already ended it, and the move waits on a watch stop
+  // (turn-hold.ts).
+  const ending = heldMoveLine(encounter, sheet.id);
+  if (ending) {
+    return { error: `${ending} Nothing was changed.`, refused: "rules" };
   }
   markTurnResolved(turn, sheet.id);
   finishPassBeforeMove(campaign);
@@ -2685,11 +2692,20 @@ function nearestTo(sheetId: string, encounterId: string, enemies: EncounterEnemy
 // The player's own End Turn. In a fight whose plan still holds an event it
 // runs as a turn of its own (fight-events.ts asEventTurn), so an event it
 // brings on goes back with the round it began.
-export function endOwnTurn(campaignId: string, userId: string): boolean {
+// "held": the move waits on a watcher's stop (src/lib/dm/turn-hold.ts).
+export function endOwnTurn(campaignId: string, userId: string): boolean | "held" {
   return asEventTurn(campaignId, () => endOwnTurnNow(campaignId, userId));
 }
 
-function endOwnTurnNow(campaignId: string, userId: string): boolean {
+// The held move, once its stop has closed (turn-hold.ts runHeldMove).
+export function endHeldOwnTurn(campaignId: string, characterId: string): boolean {
+  return asEventTurn(campaignId, () => {
+    const campaign = getCampaignById(campaignId);
+    return campaign ? passOwnTurn(campaign, characterId) : false;
+  });
+}
+
+function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   const campaign = getCampaignById(campaignId);
   const encounter = getActiveEncounter(campaignId);
   if (!campaign || !encounter || !encounter.orderReady) {
@@ -2705,11 +2721,26 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean {
   }
   // The enemies before this turn have not had theirs yet: a second pass
   // would leave them behind.
-  if (enemiesOwedTurn(encounter).length) {
+  if (enemiesOwedTurn(encounter).length || encounter.legendary.heldMove) {
+    return false;
+  }
+  // A watcher who could answer a save this move rolls: the move waits on
+  // their choice (src/lib/dm/turn-hold.ts).
+  if (holdMoveForWatch(campaign, encounter, current.characterId)) {
+    return "held";
+  }
+  return passOwnTurn(campaign, current.characterId);
+}
+
+// The move off a character's turn as their End Turn makes it.
+function passOwnTurn(campaign: Campaign, characterId: string): boolean {
+  const encounter = getActiveEncounter(campaign.id);
+  const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  if (!encounter || current?.kind !== "pc" || current.characterId !== characterId) {
     return false;
   }
   finishPassBeforeMove(campaign);
-  Object.assign(encounter, getActiveEncounter(campaignId) ?? encounter);
+  Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   const couldRise = partyCanRise(encounter);
   // A person moved the fight on: the rounds it may go round alone start
   // again (idledOut). The pass below saves it.
@@ -2740,6 +2771,10 @@ function owedNamesForTable(encounter: Encounter): string[] {
 export function endTurnRefusal(campaignId: string, userId: string): string {
   const encounter = getActiveEncounter(campaignId);
   const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  const waiting = current?.kind === "pc" ? heldMoveLine(encounter, current.characterId) : null;
+  if (waiting) {
+    return waiting;
+  }
   const campaign = getCampaignById(campaignId);
   // A dominated character's turn is the DM's (companion-command.ts).
   const held = current?.kind === "pc" && current.userId === userId ? getSheetById(current.characterId) : null;
