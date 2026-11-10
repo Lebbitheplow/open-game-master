@@ -1,5 +1,7 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
-import { openSaves, type LastSave } from "@/lib/dm/last-save";
+import { type LastSave } from "@/lib/dm/last-save";
+import { triggerRecords } from "@/lib/dm/reaction-triggers";
+import type { TriggerRecordView } from "@/lib/srd/trigger-table";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -160,13 +162,16 @@ export type PublicEncounter = {
   // hit still open on each character, oldest first, while the engine would
   // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
-  // The Intelligence, Wisdom and Charisma saves characters made this turn
-  // against a creature, for Vigilant Rebuke (src/lib/dm/last-save.ts). A
-  // forcer hidden from this viewer is left out.
+  // The triggers open now that no hit record holds (src/lib/dm/last-save.ts,
+  // reaction-triggers.ts triggerRecords): saves made or failed and who forced
+  // them, deaths, a turn's end and the next one's start, casts, a pet's damage,
+  // the running turn's weapon hits and Action Surge. Named for the first of
+  // them it carried (a save, for Vigilant Rebuke); an entry with no kind is a
+  // save made. A creature hidden from this viewer is left out.
   lastSaves?: PublicSave[];
 };
 
-export type PublicSave = { id: string; characterId: string; ability: string; forcerId: string; forcer: string };
+export type PublicSave = TriggerRecordView;
 
 export type PublicTurn = {
   ownerId: string;
@@ -471,7 +476,25 @@ export function publicEncounter(
 function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbers: boolean): { lastSaves?: PublicSave[] } {
   const shown = (saves ?? []).filter((save) => showNumbers || !hidden.has(save.forcer.id));
   return shown.length
-    ? { lastSaves: shown.map((save) => ({ id: save.id, characterId: save.characterId, ability: save.ability, forcerId: save.forcer.id, forcer: save.forcer.name })) }
+    ? {
+        lastSaves: shown.map((save) => ({
+          id: save.id,
+          characterId: save.characterId,
+          ability: save.ability,
+          forcerId: save.forcer.id,
+          forcer: save.forcer.name,
+          ...(save.kind ? { kind: save.kind } : {}),
+          ...(save.success !== undefined ? { success: save.success } : {}),
+          ...(save.against ? { against: save.against } : {}),
+          ...(save.damage ? { damage: save.damage } : {}),
+          ...(save.petName ? { petName: save.petName } : {}),
+          ...(save.creatureType !== undefined ? { creatureType: save.creatureType } : {}),
+          ...(save.killerId !== undefined ? { killerId: save.killerId } : {}),
+          ...(save.spell ? { spell: save.spell } : {}),
+          ...(save.enemy !== undefined ? { enemy: save.enemy } : {}),
+          ...(save.answered?.length ? { answered: save.answered } : {}),
+        })),
+      }
     : {};
 }
 
@@ -566,7 +589,7 @@ export function activePublicEncounter(
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
-    lastSaves: openSaves(campaignId),
+    lastSaves: triggerRecords(campaignId),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

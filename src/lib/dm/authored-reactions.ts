@@ -37,10 +37,12 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, MENTAL, openSaves, savedIt, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { actingCombatantId } from "@/lib/dm/can-act";
+import { turnHeldForEnemies } from "@/lib/dm/held-turn";
+import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
@@ -251,26 +253,26 @@ function markEntropicEdge(ctx: Ctx, record: LastHit): string | null {
 // The save a reaction to a save answers: "you or a creature you can see
 // within 30 feet of you succeeds on an Intelligence, a Wisdom, or a Charisma
 // saving throw" (Vigilant Rebuke), from the saves the engine kept this turn
-// (last-save.ts). The creature named picks among them. A save rolled outside
-// the engine (a player's roll the GM asked for) keeps no record, so with none
-// open this turn the creature named is taken on the GM's word; with saves
-// open, one it did not force is refused.
-function savedAgainst(ctx: Ctx, name: string, rangeFt: number | undefined): { save: LastSave | null } | ToolError {
+// (last-save.ts). The creature named picks among them. A save is answered only
+// from the record: with none open the reaction is refused, as every other
+// trigger-shaped one is (reaction-triggers.ts); it was once taken on the GM's
+// word with any creature named, in a fight where nobody had saved.
+function savedAgainst(ctx: Ctx, name: string, rangeFt: number | undefined): { save: LastSave } | ToolError {
   const named = ctx.args.targetEnemyId?.trim();
-  const open = openSaves(ctx.campaign.id);
+  const open = openSaves(ctx.campaign.id).filter((save) => savedIt(save) && MENTAL.has(save.ability));
   const near = open.filter(
     (save) => save.characterId === ctx.sheet.id || !ctx.encounter || !rangeFt || withinFeet(ctx.encounter.id, ctx.sheet.id, save.characterId, rangeFt),
   );
   const forcedBy = (save: LastSave) => {
-    if (!named || !ctx.encounter) return !named;
+    if (!named || !ctx.encounter) return true;
     return save.forcer.id === named || resolveTargetFoe(ctx.encounter.campaignId, ctx.encounter, named)?.id === save.forcer.id;
   };
   const save = near.filter(forcedBy).at(-1) ?? null;
-  if (save || (named && !open.length)) {
+  if (save) {
     return { save };
   }
-  if (!named && !open.length) {
-    return { error: `${name} answers a successful INT, WIS or CHA save someone made against a creature, and the server kept none this turn. If the save was rolled at the table, name the creature that forced it in targetEnemyId. Nothing was spent.`, retry: true };
+  if (!open.length) {
+    return { error: `${name} answers a successful INT, WIS or CHA save someone made against a creature, and the server has none on record this turn. Nothing was spent.`, refused: "rules" };
   }
   return { error: `${name} answers a successful INT, WIS or CHA save by ${ctx.sheet.name} or someone within ${rangeFt ?? 30} feet, and none open this turn was forced by ${named ? "that creature" : "a creature still in reach"}. Nothing was spent.`, refused: "rules" };
 }
@@ -281,7 +283,8 @@ function psionicDie(level: number): string {
 
 // The authored reaction this call names, resolved; null when the call names
 // none of them and use_reaction's own branches decide.
-export function authoredReaction(ctx: Ctx): ToolResult | null {
+export function authoredReaction(given: Ctx): ToolResult | null {
+  let ctx = given;
   const found = findReaction(ctx);
   if (!found) {
     return null;
@@ -293,6 +296,16 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
   if (!gateHolds(reaction.gate, holder, held)) {
     return { error: `${reaction.name} is not open to ${holder.name} right now (${reaction.gate?.raging ? "only while raging" : reaction.gate?.condition ? `only while ${reaction.gate.condition} holds` : "its condition is not met"}). Nothing was spent.`, refused: "rules" };
   }
+  // A reaction whose trigger is not a hit answers the record of it
+  // (reaction-triggers.ts): with nothing open it is refused before anything is
+  // paid, and one that acts on the trigger's creature aims at it unless the
+  // call names another open one.
+  const ask: TriggerAsk = { campaignId: ctx.campaign.id, reactor: ctx.sheet, holder, name: reaction.name, gateCondition: reaction.gate?.condition, targetEnemyId: ctx.args.targetEnemyId, label: answerKey(textKey(reaction.name), ctx.sheet.id) };
+  const unanswered = triggerRefusal(ask);
+  if (unanswered) {
+    return unanswered;
+  }
+  ctx = aimAtTrigger(ctx, ask);
   // The pool: a counter, or a spell slot of the level asked for.
   let paid: (() => void) | null = null;
   if (reaction.pool && "slot" in reaction.pool) {
@@ -334,9 +347,20 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
   if ("error" in outcome) {
     return outcome;
   }
+  answerTriggers({ ...ask, targetEnemyId: ctx.args.targetEnemyId });
   paid?.();
   spendReaction(ctx);
   return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome };
+}
+
+// The creature a trigger-shaped reaction acts on, when the call names none:
+// the one the latest open trigger puts before it, if it is a living enemy.
+function aimAtTrigger(ctx: Ctx, ask: TriggerAsk): Ctx {
+  const spec = triggerSpecOf(ask);
+  if (!spec?.aimsAt || ctx.args.targetEnemyId) return ctx;
+  const creature = openTriggersFor(ask, spec).at(-1)?.creatureId;
+  const enemy = creature ? getEnemy(creature) : null;
+  return enemy && enemy.status === "alive" ? { ...ctx, args: { ...ctx.args, targetEnemyId: enemy.id } } : ctx;
 }
 
 function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
@@ -656,7 +680,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const record = does.afterSave
         ? null
         : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
-      const enemy = enemyTarget(ctx, saved?.save ? saved.save.forcer.id : attackerFoeId(record));
+      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }
@@ -709,7 +733,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.melee && record) {
         settle(ctx, record, record.swings, label);
       }
-      if (saved?.save) {
+      if (saved) {
         answerSave(ctx.campaign.id, saved.save.id);
       }
       return out;
@@ -734,7 +758,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // forces a save, is commanded) on that creature's turn or its holder's,
       // never on the reacting character's own: there it is refused, unless
       // the engine has seen the trigger itself (the vowed creature's attack).
-      if (actingCombatantId(encounter) === ctx.sheet.id && !does.vowed) {
+      // A turn held while the enemies before it act is not yet the holder's own
+      // (src/lib/dm/held-turn.ts): Hold the Line answers the goblins moving then.
+      if (actingCombatantId(encounter) === ctx.sheet.id && !does.vowed && !turnHeldForEnemies(encounter, ctx.sheet.id)) {
         return { error: `${reaction.name} answers what another creature does on its turn, and it is ${ctx.sheet.name}'s own turn. Nothing was spent.`, refused: "rules" };
       }
       // The attack is the reaction alone (pc-attack.ts reactionAttack). It

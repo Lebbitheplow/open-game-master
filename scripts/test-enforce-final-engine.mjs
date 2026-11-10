@@ -447,7 +447,15 @@ await test("Skirmisher: when an enemy stands within 5 feet of the Scout, a react
   kit.place(enemy.id, 9, 9);
   const alone = await react(scout, "Skirmisher", { x: 5, y: 3 });
   assert.equal(alone.ok, false, "no enemy within 5 feet");
+  // "When an enemy ends its turn within 5 feet of you": the enemy's turn ends
+  // beside the Scout, as the engine ends it when the pointer leaves it
+  // (src/lib/dm/last-hit.ts closeHitsAtTurnEnd keeps the trigger).
   kit.place(enemy.id, 5, 6);
+  const nothing = await react(scout, "Skirmisher", { x: 5, y: 2 });
+  assert.equal(nothing.ok, false, "an enemy standing there whose turn has not ended is not the trigger");
+  const { closeHitsAtTurnEnd } = await import("../src/lib/dm/last-hit.ts");
+  const encounter = world.encounter();
+  closeHitsAtTurnEnd(world.campaignId, encounter, encounter.order.find((entry) => entry.enemyId === enemy.id));
   const tooFar = await react(scout, "Skirmisher", { x: 5, y: 1 });
   assert.equal(tooFar.ok, false, "more than half their speed");
   const before = kit.lastRolls(60).length;

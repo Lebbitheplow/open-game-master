@@ -1,7 +1,9 @@
 // Vigilant Rebuke (Oath of the Watchers 15) answers a successful Intelligence,
 // Wisdom or Charisma save, and its card came up whenever an attack hit the
-// paladin, a trigger it does not have. No record says who forced a save, so it
-// has no card for now: the GM's call names the creature.
+// paladin, a trigger it does not have. The engine's saves keep who forced them
+// (src/lib/dm/last-save.ts), and the reaction answers only a save on record:
+// SRD 5.1, Reactions, "an instant response to a trigger of some kind". It was
+// once taken on the call's word with any creature named and no save at all.
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
@@ -31,10 +33,11 @@ await test("A hit on the paladin offers no card.", () => {
   assert.equal(cards.some((card) => card.name === "Vigilant Rebuke"), false);
 });
 
-await test("The call has to name the creature, and spends nothing until it does.", async () => {
+await test("With no save on record it is refused, and spends nothing.", async () => {
   const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke" });
   assert.equal(out.ok, false);
-  assert.match(out.error, /targetEnemyId/);
+  assert.equal(out.refused, "rules");
+  assert.match(out.error, /none on record/);
   assert.equal(world.encounter().reactionsUsed.includes(paladin.id), false);
 });
 
@@ -46,19 +49,19 @@ await test("An open hit on the paladin does not stand in for the creature named.
   const before = world.enemies()[0].currentHp;
   const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke" });
   assert.equal(out.ok, false);
-  assert.match(out.error, /targetEnemyId/);
+  assert.match(out.error, /none on record/);
   assert.equal(world.enemies()[0].currentHp, before);
   assert.equal(world.encounter().reactionsUsed.includes(paladin.id), false);
 });
 
-await test("Naming the creature deals 2d8 + Charisma force and spends the reaction.", async () => {
+await test("Naming a creature does not stand in for a save it forced.", async () => {
   const before = world.enemies()[0].currentHp;
   world.dice(4, 4);
   const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke", targetEnemyId: enemy.id });
   world.clearDice();
-  assert.equal(out.ok, true, out.error);
-  assert.equal(before - world.enemies()[0].currentHp, 11);
-  assert.equal(world.encounter().reactionsUsed.includes(paladin.id), true);
+  assert.equal(out.ok, false, "with no save on record the creature named was struck");
+  assert.equal(world.enemies()[0].currentHp, before);
+  assert.equal(world.encounter().reactionsUsed.includes(paladin.id), false);
 });
 
 // Nothing kept who forced a save, so Vigilant Rebuke had no card at all and
@@ -73,7 +76,8 @@ const forceSave = async (target, ability, face) => {
   assert.equal(out.ok, true, out.error);
 };
 const reactionBack = () => kit.saveEncounter({ ...world.encounter(), reactionsUsed: [] });
-const savesNow = () => activePublicEncounter(world.campaignId)?.lastSaves ?? [];
+// The view sends every open trigger (failed saves too); these are the saves made.
+const savesNow = () => (activePublicEncounter(world.campaignId)?.lastSaves ?? []).filter((save) => (save.kind ?? "save") === "save" && save.success !== false && ["int", "wis", "cha"].includes(save.ability));
 const rebukeCards = (feet) => reactionCards(world.sheet(paladin.id), { ...FRESH_TURN, myTurn: false }, [], party, "you", feet, savesNow()).filter((card) => card.name === "Vigilant Rebuke");
 
 await test("A failed save, or a Dexterity one, offers nothing.", async () => {

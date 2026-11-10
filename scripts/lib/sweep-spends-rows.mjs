@@ -63,6 +63,10 @@ export async function tableRows(rig) {
   // The text of a feature, from the catalogue its row belongs to.
   const textOf = (prefer, ...names) => names.map((name) => texts.get(name, prefer)).find(Boolean) ?? names.map((name) => texts.any(name)).find(Boolean) ?? null;
   const { HIT_ANSWER_COUNTERS } = await import(new URL("lib/dm/reaction-kinds.ts", SRC).href);
+  // A reaction held to its trigger's record that needs a mark laid first
+  // (Slayer's Counter answers the creature under Slayer's Prey).
+  const { triggerSpecFor } = await import(new URL("lib/srd/trigger-table.ts", SRC).href);
+  const preyOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "save_on_self" && on.prey ? [on.prey] : [])) : []);
   const authoredRows = rig.authored.authoredRows();
   const rows = [];
 
@@ -74,6 +78,8 @@ export async function tableRows(rig) {
       ...(gate.condition ? [`condition: ${gate.condition}`] : []),
       ...(does?.vsMark ? [`mark: ${does.vsMark}`] : []),
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
+      ...preyOf(item).map((mark) => `mark: ${mark}`),
+      ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),

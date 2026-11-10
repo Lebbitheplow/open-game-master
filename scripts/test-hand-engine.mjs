@@ -92,10 +92,14 @@ const mine = (extra = {}) => ({
 
 // ---- U:UA3 standing: the engine's canAct ----
 
-test("a card off the character's turn is refused with canAct's own sentence, and a reaction stays open", () => {
+// A reaction spell's card waits for what it answers: the reaction strip deals
+// it then (hand-react.ts), in this card's place. Open here it was refused by
+// use_reaction in every state, a fight's turn or none (SRD 5.1 Shield: "which
+// you take when you are hit by an attack").
+test("a card off the character's turn is refused with canAct's own sentence, and a reaction waits for its trigger", () => {
   const cards = deriveHand(caster({ id: "s1" }), talias(), { spells: FACTS });
   assert.match(byId(cards, "spell:fire bolt").disabled, /^It is Talia's turn, not Lys's\. Off their own turn a character can only use their reaction\. What they declared waits for their turn\.$/);
-  assert.equal(byId(cards, "spell:shield").disabled, null);
+  assert.equal(byId(cards, "spell:shield").disabled, "Shield is cast as a reaction: its card comes up when an attack hits you.");
   assert.equal(byId(cards, "spell:shield").intent.card, "reaction");
 });
 

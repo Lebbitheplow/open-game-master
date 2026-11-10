@@ -253,7 +253,10 @@ await test("An attack reaction whose trigger the engine has not seen is refused 
   kit.giveTurn(shadow.id);
   const out = await world.invoke("use_reaction", { characterId: shadow.id, feature: "Opportunist", targetEnemyId: near.id });
   assert.equal(out.ok, false);
-  assert.match(out.error, /own turn/);
+  // Refused first for want of the trigger, which the engine now keeps
+  // (src/lib/srd/trigger-table.ts: "a creature within 5 feet that another
+  // creature just hit"), the own turn second.
+  assert.match(out.error, /own turn|another creature has just hit/);
   assert.equal(world.encounter().reactionsUsed.includes(shadow.id), false);
 });
 

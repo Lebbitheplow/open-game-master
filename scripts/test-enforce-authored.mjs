@@ -555,6 +555,15 @@ await test("Opportunist: a reaction melee attack against a creature within 5 fee
   const friend = hero({ class: "fighter", level: 17 });
   const [enemy] = await stage(friend);
   kit.place(shade.id, 5, 7);
+  // "A creature within 5 feet of you that another creature just hit": the
+  // friend's hit, on record (src/lib/srd/trigger-table.ts). With none it is
+  // refused, as every reaction with nothing to answer is.
+  const unprompted = await react(shade, "Opportunist", { targetEnemyId: enemy.id });
+  assert.equal(unprompted.ok, false, "no creature has hit the foe");
+  world.clearDice();
+  world.dice(19, 5);
+  const struck = await world.invoke("pc_attack", { characterId: friend.id, targetEnemyId: enemy.id });
+  assert.equal(struck.ok, true, struck.error);
   world.clearDice();
   world.dice(18, 5);
   const out = await react(shade, "Opportunist", { targetEnemyId: enemy.id });

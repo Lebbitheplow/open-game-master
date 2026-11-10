@@ -385,10 +385,11 @@ export function rollCharacterSave(
     source: "digital",
   });
   const moteLine = moteAfterRoll(campaign, sheet, mote, "saving_throw", outcome);
-  // A save made against a creature is kept for what answers it (Vigilant
-  // Rebuke, src/lib/dm/last-save.ts).
-  if (outcome.total >= dc && from) {
-    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName });
+  // A save forced by a creature is kept, made or failed, for what answers it
+  // (Vigilant Rebuke a success, Slayer's Counter the forcing, Hellish Rebuke
+  // the damage through it: src/lib/dm/last-save.ts).
+  if (from) {
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against);
   }
   return {
     success: outcome.total >= dc,

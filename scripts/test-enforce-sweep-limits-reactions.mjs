@@ -26,11 +26,6 @@ const KNOWN = {
     severity: "medium",
     note: "The drake's half of Reflexive Resistance (\"when you or your drake takes damage\") has no card and no refund: the reaction is refused for want of a hit on the ranger.",
   },
-  "787-reflexive-card-on-own-turn": {
-    where: "src/lib/dm/resource-tools.ts use_resource (the counter's generic spend) and src/lib/battlemap/hand-subclass.ts (the counter's card)",
-    severity: "medium",
-    note: "DEAD spend: use_resource \"Reflexive Resistance\" answers ok, takes a use, and changes nothing but the counter. Kept on purpose in #787 as the only way to pay for the drake's half; it stays a use spent for nothing.",
-  },
   "787-thirty-feet-to-the-drake": {
     where: "src/lib/dm/pet-tools.ts summon_pet (a pet is a row on the owner's sheet, with no token) and src/lib/dm/authored-reactions.ts resist_instance rangeFt",
     severity: "low",

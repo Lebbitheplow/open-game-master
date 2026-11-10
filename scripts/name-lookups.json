@@ -9,6 +9,15 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/reaction-triggers.ts#keyed": [["key",1,"enemy names by id"]],
+    "lib/dm/reaction-triggers.ts#whole": [["key",1,"an enemy by id, and the mark's source by sheet id"]],
+    "lib/dm/reaction-triggers.ts#partial": [["key",2,"the derived records' own id prefix and suffix (mark:, :start)"],["identity",1,"a mark by its whole name, with its rider after it, textKey on both sides"]],
+    "lib/battlemap/hand-react-triggers.ts#partial": [["identity",1,"the reaction spells a card waits for, by whole name (findNamed)"]],
+    "lib/srd/trigger-table.ts#whole-single": [["key",1,"the reactor and the feature's holder by sheet id"]],
+    "lib/srd/trigger-table.ts#keyed": [["key",3,"the trigger table by textKey name or counter id, written through keyed()"]],
+    "lib/srd/trigger-table.ts#partial": [["identity",2,"a mark by its whole name, with the rider its condition carries after it (\"slayer's prey (marked)\"), textKey on both sides"],["search",1,"a creature type inside a recorded type line (\"humanoid (goblinoid)\")"],["key",1,"a counter id by its underscore (ids, not names)"]],
+    "lib/srd/trigger-table.ts#whole": [["key",1,"a trigger's creature by its id (engine records)"],["identity",1,"what a save resisted, by textKey on both sides"]],
+    "lib/dm/last-save.ts#whole-single": [["key",1,"a trigger record by its id (engine records)"]],
     "lib/dm/destructive-wrath-logic.ts#number": [["key",11,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/destructive-wrath-logic.ts#partial": [["pattern",5,"dice expressions read by the dice grammar: no record's name"]],
     "lib/dm/destructive-wrath-logic.ts#whole": [["key",1,"damage types"]],
