@@ -169,7 +169,7 @@ export function canAct(input: {
   }
   // Feral Instinct's first turn: nothing before the rage (mt-srd-barbarian.ts
   // RAGE_FIRST; the rage's own charge reads the sheet without it).
-  if (sheet.conditions.some((entry) => entry.trim().toLowerCase() === "feral instinct (rage first)")) {
+  if (sheet.conditions.some((entry) => isConditionNamed(entry, "feral instinct (rage first)"))) {
     return refuse(
       "surprised",
       { error: kind === "reaction"

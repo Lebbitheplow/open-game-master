@@ -2,7 +2,7 @@ import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layou
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { endedByFallingUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { endedByFallingUnconscious, endedByLosingWeapon, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -939,8 +939,8 @@ export function patchSheet(
     noteDominationShift(existing.campaignId, existing, next);
   }
   // A fall unconscious ends a rage and a sacred weapon, whichever route laid
-  // it (mt-srd-unconscious.ts).
-  const asleep = endedByFallingUnconscious(existing.conditions, next.conditions);
+  // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
   if (asleep.length) {
     const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
     next.conditions = awake.conditions;

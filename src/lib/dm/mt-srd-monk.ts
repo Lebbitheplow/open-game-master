@@ -20,14 +20,15 @@
 import { isMonkWeapon } from "@/lib/dm/attack-logic";
 import { gearKindOf, handsFor, heldRows, weaponRowOf } from "@/lib/dm/gear-hands";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { classLevelOf } from "@/lib/srd/trait-rules";
 
 // A Way of the Kensei monk's chosen weapons are monk weapons for them, and
 // which ones they chose is not on the sheet: their hands are not judged here.
-const OWN_MONK_WEAPONS = /\bkensei\b/i;
+const OWN_MONK_WEAPONS = "Path of the Kensei";
 
 export function wieldsOnlyMonkWeapons(sheet: Pick<CharacterSheet, "equipment" | "features">): boolean {
-  if (sheet.features.some((feature) => OWN_MONK_WEAPONS.test(feature.name))) {
+  if (holdsFeature(sheet, OWN_MONK_WEAPONS)) {
     return true;
   }
   return heldRows(sheet.equipment).every((row) => gearKindOf(row) !== "weapon" || isMonkWeapon(weaponRowOf(row)));

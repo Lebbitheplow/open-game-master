@@ -289,4 +289,44 @@ P["ranger.superior-hunters-defense.stand-against-the-tide"] = async () => {
   }
 };
 
+// ---- Hide in Plain Sight ----
+
+P["ranger.hide-in-plain-sight.lost"] = async () => {
+  const camouflage = async (t, who) => {
+    const out = await t.use(who, "Hide in Plain Sight");
+    assert.equal(out.ok, true, out.error);
+    assert.ok(t.has(who, "camouflaged"), "the staging: the ranger is camouflaged");
+  };
+  // An action.
+  const t = await rig.table();
+  const who = ranger(t, 10);
+  await camouflage(t, who);
+  const searched = await t.act(who, "search", {}, [10]);
+  assert.equal(searched.ok, true, searched.error);
+  assert.equal(t.has(who, "camouflaged"), false, "the ranger took an action and is still camouflaged");
+  // An attack, when the fight finds them: the camouflage was set before it.
+  const t2 = await rig.table();
+  const archer = ranger(t2, 10);
+  await camouflage(t2, archer);
+  const [foe] = await t2.fight([archer]);
+  t2.kit.place(foe.id, 12, 5);
+  const shot = await t2.swing(archer, foe, [15, 4], { weapon: "Longbow" });
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(t2.has(archer, "camouflaged"), false, "the ranger attacked and is still camouflaged");
+  // A move.
+  const t3 = await rig.table();
+  const walker = ranger(t3, 10);
+  await camouflage(t3, walker);
+  await t3.fight([walker]);
+  // The player's own walk: the board's move route.
+  const route = await t3.world.route("campaigns/[campaignId]/battle-map/move");
+  t3.world.signIn(t3.world.owner);
+  const moved = await route.POST(
+    new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 4, y: 5 }) }),
+    { params: Promise.resolve({ campaignId: t3.world.campaignId }) },
+  );
+  assert.equal(moved.status, 200, "the staging: the ranger walks a square");
+  assert.equal(t3.has(walker, "camouflaged"), false, "the ranger moved and is still camouflaged");
+};
+
 await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-ranger.mjs", P);

@@ -1,8 +1,9 @@
 // What ends as its holder falls unconscious (SRD 5.1):
 //
 //   Rage: "It ends early if you are knocked unconscious".
-//   Sacred Weapon (Oath of Devotion): "if you fall unconscious, this effect
-//   ends."
+//   Sacred Weapon (Oath of Devotion): "If you are no longer holding or
+//   carrying this weapon, or if you fall unconscious, this effect ends."
+//   endedByLosingWeapon reads the weapon the effect names in its meta.
 //
 // A character is knocked out by many routes (damage to 0 hit points, a Sleep
 // spell, a drow's poison through set_condition, an attack's rider), so the
@@ -21,11 +22,15 @@
 //
 // Pure.
 
+import { textKey } from "@/lib/language/text-logic";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
+
 const UNCONSCIOUS = "unconscious";
 
-const ENDS = [/^raging$/i, /^sacred weapon\b/i];
+// Conditions by their engine names ("sacred weapon (+3)" is a sacred weapon).
+const ENDS = ["raging", "sacred weapon"];
 
-const holds = (conditions: readonly string[], name: string) => conditions.some((entry) => entry.trim().toLowerCase() === name);
+const holds = (conditions: readonly string[], name: string) => conditions.some((entry) => isConditionNamed(entry, name));
 
 // The conditions that go as the sheet falls unconscious: empty unless this
 // write is the one that knocks them out.
@@ -33,7 +38,7 @@ export function endedByFallingUnconscious(before: readonly string[], after: read
   if (!holds(after, UNCONSCIOUS) || holds(before, UNCONSCIOUS)) {
     return [];
   }
-  return after.filter((entry) => ENDS.some((pattern) => pattern.test(entry.trim())));
+  return after.filter((entry) => isConditionNamed(entry, ...ENDS));
 }
 
 const SET_ASIDE: Array<[string, string]> = [
@@ -46,13 +51,13 @@ type Settled = { conditions: string[]; conditionMeta: Record<string, unknown> };
 // The sheet's conditions with a Mindless Rage's suspension applied or lifted,
 // or null when nothing moves.
 export function rageSuspension(sheet: { conditions: string[]; conditionMeta?: unknown; features: Array<{ name: string }> }): Settled | null {
-  const raging = holds(sheet.conditions, "raging") && sheet.features.some((feature) => /^mindless rage\b/i.test(feature.name.trim()));
+  const raging = holds(sheet.conditions, "raging") && holdsFeature(sheet, "mindless rage");
   let conditions = sheet.conditions;
   let meta = (sheet.conditionMeta ?? {}) as Record<string, unknown>;
   let moved = false;
   for (const [plain, aside] of SET_ASIDE) {
     const [from, to] = raging ? [plain, aside] : [aside, plain];
-    const held = conditions.find((entry) => entry.trim().toLowerCase() === from);
+    const held = conditions.find((entry) => isConditionNamed(entry, from));
     if (!held) {
       continue;
     }
@@ -71,4 +76,14 @@ export function rageSuspension(sheet: { conditions: string[]; conditionMeta?: un
     meta = carried === undefined ? rest : { ...rest, [to]: carried };
   }
   return moved ? { conditions, conditionMeta: meta } : null;
+}
+
+// The conditions that rode a weapon the sheet no longer carries.
+// A row with no count written is one of it, as everywhere a sheet is read.
+export function endedByLosingWeapon(sheet: { conditions: string[]; conditionMeta?: unknown; equipment: Array<{ name: string; qty?: number }> }): string[] {
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { weapon?: string } | undefined>;
+  return sheet.conditions.filter((entry) => {
+    const weapon = meta[entry]?.weapon;
+    return Boolean(weapon) && !sheet.equipment.some((item) => textKey(item.name) === textKey(weapon ?? "") && (item.qty ?? 1) > 0);
+  });
 }

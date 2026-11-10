@@ -1056,18 +1056,15 @@
       },
       {
         "c": "within 60 feet of you",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.within-60-feet",
-        "where": "src/lib/dm/mutations.ts use_resource (Bardic Inspiration: the target's distance is not read)",
-        "severity": "medium",
-        "kind": "rule-wrong",
-        "note": "An ally 70 feet away is given the die."
+        "is": "held",
+        "by": "refused beyond 60 feet on the board, nothing spent (mt-srd-reach.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.within-60-feet"
       },
       {
         "c": "who can hear you",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a deafened ally or a silenced bard"
+        "is": "held",
+        "by": "a deafened creature is refused, nothing spent (mt-srd-reach.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.hears"
       },
       {
         "c": "That creature gains one Bardic Inspiration die, a d6.",
@@ -1872,8 +1869,8 @@
       },
       {
         "c": "that can see or hear you",
-        "is": "gap",
-        "by": "dm/feature-spends.ts turnUndead (no sight or hearing check: a blinded and deafened undead is turned)",
+        "is": "held",
+        "by": "an undead blind to the cleric and deafened is not turned (mt-srd-reach.ts seesOrHears, every turning)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-turn-undead.sees-or-hears"
       },
       {
@@ -2261,12 +2258,9 @@
       },
       {
         "c": "You can't use this feature on an undead or a construct.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "a sheet whose record says undead or construct is passed over (mt-srd-reach.ts undeadOrConstruct)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-preserve-life.undead"
       }
     ]
   },
@@ -4856,12 +4850,9 @@
       },
       {
         "c": "As an action, you can touch a creature",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.touch",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool with targetCharacterId)",
-        "severity": "medium",
-        "kind": "rule-wrong",
-        "note": "the action is charged; the reach is not checked"
+        "is": "held",
+        "by": "a touch: refused beyond 5 feet on the board, nothing spent (src/lib/dm/mt-srd-reach.ts); the action",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.touch"
       },
       {
         "c": "and draw power from the pool to restore a number of hit points to that creature, up to the maximum amount remaining in your pool",
@@ -4871,29 +4862,21 @@
       },
       {
         "c": "Alternatively, you can expend 5 hit points from your pool of healing to cure the target of one disease or neutralize one poison affecting it.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool), src/lib/srd/class-resources.ts lay_on_hands",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "written as guidance only: lay_on_hands guidance \"Spend 5 instead to cure one disease or neutralize one poison.\""
+        "is": "held",
+        "by": "use_resource Lay on Hands with a cure named: 5 points for each poison neutralized or disease cured, several in one action (src/lib/dm/mt-srd-paladin.ts layOnHandsCure)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure"
       },
       {
         "c": "You can cure multiple diseases and neutralize multiple poisons with a single use of Lay on Hands, expending hit points separately for each one.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool)",
-        "severity": "medium",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "use_resource Lay on Hands with a cure named: 5 points for each poison neutralized or disease cured, several in one action (src/lib/dm/mt-srd-paladin.ts layOnHandsCure)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure"
       },
       {
         "c": "This feature has no effect on undead and constructs.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read; an undead summon healed through targetCharacterId was not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "refused for a sheet whose record says undead or construct, nothing spent (mt-srd-reach.ts undeadOrConstruct)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.undead"
       }
     ]
   },
@@ -5434,12 +5417,9 @@
       },
       {
         "c": "you can use your action to end one spell on yourself or on one willing creature that you touch",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.cleansing-touch.ends-spell",
-        "where": "src/lib/srd/class-resources.ts cleansing_touch (effect: narrative)",
-        "severity": "low",
-        "kind": "rule-missing",
-        "note": "written reason: the counter's guidance, \"An action that ends one spell on the paladin or on a willing creature they touch. Clear what the spell left with clear_condition.\""
+        "is": "held",
+        "by": "the action and a use end one spell on the paladin or a creature within 5 feet, named in variant when several lie on them (mt-srd-paladin.ts cleansingTouch)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.cleansing-touch.ends-spell"
       },
       {
         "c": "You can use this feature a number of times equal to your Charisma modifier (a minimum of once).",
@@ -5506,12 +5486,9 @@
       },
       {
         "c": "The weapon also emits bright light in a 20-foot radius and dim light 20 feet beyond that.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: staging the board's light around a condition needs a dark map; no hook for 'sacred weapon' was found under src/lib/battlemap (grep)",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the paladin's token carries bright light 20 feet and dim 20 more for the minute (mt-srd-paladin.ts shedLight)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.light"
       },
       {
         "c": "If the weapon is not already magical, it becomes magical for the duration.",
@@ -5526,11 +5503,9 @@
       },
       {
         "c": "If you are no longer holding or carrying this weapon, or if you fall unconscious, this effect ends.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.ends-unconscious",
-        "where": "src/lib/dm/pc-damage.ts (what a drop to 0 hit points clears)",
-        "severity": "low",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "ends at the sheet's write as the paladin falls unconscious or the weapon it names leaves the sheet (src/lib/dm/mt-srd-unconscious.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.ends-unconscious"
       }
     ]
   },
@@ -5647,12 +5622,9 @@
       },
       {
         "c": "you are always under the effects of a *protection from evil and good* spell",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.purity-of-spirit.protection",
-        "where": "src/lib/dm/attack-logic.ts (who attacks at disadvantage), src/lib/srd/trait-rules.ts sourcedConditionImmunity",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the charm and fear half is held (test-enforce-feature-uses F:L21: Purity of Spirit keeps a fiend's fear off)"
+        "is": "held",
+        "by": "an attack against the paladin reads 'protected from evil and good' always (mt-srd-paladin.ts withStandingProtection); the charm and fear refused are trait-rules.ts sourcedConditionImmunity",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.purity-of-spirit.protection"
       }
     ]
   },
@@ -5682,12 +5654,9 @@
       },
       {
         "c": "For 1 minute, bright light shines from you in a 30-foot radius, and dim light shines 30 feet beyond that.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: the minute is held by the condition's rounds; the light itself needs a dark map to stage and no reader of 'holy nimbus' was found under src/lib/battlemap (grep)",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the paladin's token carries bright light 30 feet and dim 30 more for the minute (mt-srd-paladin.ts shedLight)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.holy-nimbus.light"
       },
       {
         "c": "Whenever an enemy creature starts its turn in the bright light, the creature takes 10 radiant damage.",
@@ -6196,9 +6165,9 @@
       },
       {
         "c": "Once you move or take an action or a reaction, you must camouflage yourself again to gain this benefit.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the camouflage lost on a move, an action or a reaction"
+        "is": "held",
+        "by": "the camouflage ends at the doors a character moves and acts through (src/lib/dm/mt-srd-camouflage.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hide-in-plain-sight.lost"
       }
     ]
   },

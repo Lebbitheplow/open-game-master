@@ -50,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "a spell lies on the holder"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -152,6 +152,12 @@ async function step(rig, scene, name, notes) {
     case "the holder below half hit points":
       world.patch(holder, { currentHp: 30 });
       return { ok: true };
+    // A spell's effect on the holder, for a use that ends one (Cleansing Touch).
+    case "a spell lies on the holder": {
+      const sheet = world.sheet(holder);
+      world.patch(holder, { conditions: [...sheet.conditions, "blessed"], conditionMeta: { ...sheet.conditionMeta, blessed: { spell: "Bless", rounds: 10 } } });
+      return { ok: true };
+    }
     case "the holder raging": {
       if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
       const out = await world.invoke("use_resource", { characterId: holder, resource: "rage" });

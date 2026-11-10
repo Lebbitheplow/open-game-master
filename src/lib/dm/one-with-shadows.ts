@@ -12,6 +12,7 @@
 // any invisibility but Greater Invisibility's already, attack-marks.ts) or
 // takes a reaction (markReactionUsed).
 import { getClock } from "@/lib/db/clock";
+import { endCamouflage } from "@/lib/dm/mt-srd-camouflage";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -89,6 +90,8 @@ export function shadowInvisibility(sheet: Pick<CharacterSheet, "conditions" | "c
 // an action or a reaction. Returns a line for the result, or null when they
 // held none.
 export function endShadowInvisibility(campaignId: string, sheetId: string, why: string): string | null {
+  // A ranger's camouflage is lost at the same doors (mt-srd-camouflage.ts).
+  endCamouflage(campaignId, sheetId);
   const sheet = getSheetById(sheetId);
   if (!sheet || !sheet.conditions.some((name) => isNamed(name, "invisible"))) {
     return null;

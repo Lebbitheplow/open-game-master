@@ -28,9 +28,10 @@ import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { RAGING } from "@/lib/srd/class-resources";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 
-const holds = (conditions: readonly string[], name: string) => conditions.some((entry) => entry.trim().toLowerCase() === name);
+const holds = (conditions: readonly string[], name: string) => conditions.some((entry) => isConditionNamed(entry, name));
 
 // ---- ending a rage ----
 
@@ -42,7 +43,7 @@ export function asksToEndRage(variant: string | undefined): boolean {
 
 export function endRage(campaign: Campaign, stale: CharacterSheet): ToolResult {
   const sheet = getSheetById(stale.id) ?? stale;
-  const ragingAs = sheet.conditions.find((entry) => entry.trim().toLowerCase() === RAGING);
+  const ragingAs = sheet.conditions.find((entry) => isConditionNamed(entry, RAGING));
   if (!ragingAs) {
     return { error: `${sheet.name} is not raging, so there is no rage to end. Nothing was spent.`, refused: "rules" };
   }
@@ -70,7 +71,7 @@ export const holdsRageFirst = (sheet: Pick<CharacterSheet, "conditions">) => hol
 // The sheet as the rage's own charge reads it: the hold is on everything but
 // the rage.
 export function withoutRageFirst<T extends Pick<CharacterSheet, "conditions">>(sheet: T): T {
-  return holdsRageFirst(sheet) ? { ...sheet, conditions: sheet.conditions.filter((entry) => entry.trim().toLowerCase() !== RAGE_FIRST) } : sheet;
+  return holdsRageFirst(sheet) ? { ...sheet, conditions: sheet.conditions.filter((entry) => !isConditionNamed(entry, RAGE_FIRST)) } : sheet;
 }
 
 function canStillRage(sheet: CharacterSheet): boolean {
@@ -94,7 +95,7 @@ export function feralInstinctOpening(surprisedIds: string[], sheets: CharacterSh
     }
     keep.delete(sheet.id);
     patchSheet(sheet.id, {
-      conditions: [...sheet.conditions.filter((entry) => entry.trim().toLowerCase() !== RAGE_FIRST), RAGE_FIRST],
+      conditions: [...sheet.conditions.filter((entry) => !isConditionNamed(entry, RAGE_FIRST)), RAGE_FIRST],
       conditionMeta: { ...(sheet.conditionMeta as ConditionMetaMap), [RAGE_FIRST]: untilTurnEnd(sheet.id) },
     });
     lines.push(`${sheet.name} is surprised, and Feral Instinct gives them their first turn if they enter their rage before anything else (use_resource rage).`);

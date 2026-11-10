@@ -45,6 +45,20 @@ P["bard.bardic-inspiration.within-60-feet"] = async () => {
   assert.equal(out.ok, false, "an ally 70 feet away was inspired");
 };
 
+P["bard.bardic-inspiration.hears"] = async () => {
+  const t = await rig.table();
+  const who = bard(t, 1);
+  const friend = ally(t);
+  await t.fight([who, friend]);
+  t.patch(friend, { conditions: ["deafened"], conditionMeta: {} });
+  const deaf = await inspire(t, who, friend);
+  assert.equal(deaf.ok, false, "an ally who cannot hear the bard was inspired");
+  assert.equal(t.used(who, "bardic_inspiration"), 0, "the refused inspiration spent a use");
+  t.patch(friend, { conditions: [], conditionMeta: {} });
+  const heard = await inspire(t, who, friend);
+  assert.equal(heard.ok, true, heard.error);
+};
+
 P["bard.bardic-inspiration.uses"] = async () => {
   const t = await rig.table();
   const ids = (who) => Object.keys(t.sheet(who).resources ?? {}).find((id) => /inspiration/i.test(id));

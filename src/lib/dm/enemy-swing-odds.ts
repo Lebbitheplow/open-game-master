@@ -5,6 +5,7 @@
 // that explain it. Split from enemy-attack.ts, which rolls each swing of the
 // routine with what this returns. Nothing is spent or stored here.
 
+import { withStandingProtection } from "@/lib/dm/mt-srd-paladin";
 import type { Campaign } from "@/lib/db/campaigns";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -88,7 +89,8 @@ export function enemySwingOdds(input: {
     attackerType: standing.stats.type,
     // Dodge is lost with the dodger's speed, and a character at 0 hit
     // points is unconscious and prone whatever wrote the 0.
-    targetConditions: withLiveDodge(upright ?? conditionsOf(live)),
+    // Purity of Spirit stands as the spell would (mt-srd-paladin.ts).
+    targetConditions: withStandingProtection(live, withLiveDodge(upright ?? conditionsOf(live))),
     melee: !ranged,
     adjacent: distance === null ? !ranged : distance <= 1,
     // The AI names a circumstance the engine does not decide (pc-attack-options.ts).

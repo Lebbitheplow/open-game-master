@@ -14,7 +14,6 @@ import { computeSheetDerived } from "@/lib/srd";
 import { initiativeRefills } from "@/lib/srd/resource-refills";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { priceTheAction } from "@/lib/dm/combat-features";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";

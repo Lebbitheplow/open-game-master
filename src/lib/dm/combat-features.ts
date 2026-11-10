@@ -24,6 +24,8 @@ import { getDatabase, parseJson } from "@/lib/db/core";
 import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { unseenBecause } from "@/lib/dm/authored-saves";
 import { presenceHold } from "@/lib/dm/mt-srd-barbarian";
+import { shedLight } from "@/lib/dm/mt-srd-paladin";
+import { seesOrHears } from "@/lib/dm/mt-srd-reach";
 import { insertRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -40,7 +42,6 @@ import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
-import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { computeSheetDerived } from "@/lib/srd";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
@@ -185,9 +186,8 @@ function intimidatingPresence(campaign: Campaign, stale: CharacterSheet, targetE
   }
   // "If the creature can see or hear you": one that can do neither is not
   // menaced at all.
-  const blind = unseenBecause(encounter.id, enemy, sheet, { hidden: false });
-  if (blind && enemy.conditions.some((entry) => entry.trim().toLowerCase() === "deafened")) {
-    return { error: `${enemy.displayName} can neither see ${sheet.name} (${blind}) nor hear them (deafened), so Intimidating Presence does nothing to it. Nothing was spent.`, refused: "rules" };
+  if (!seesOrHears(encounter.id, enemy, sheet)) {
+    return { error: `${enemy.displayName} can neither see nor hear ${sheet.name}, so Intimidating Presence does nothing to it. Nothing was spent.`, refused: "rules" };
   }
   const price = priceTheAction(sheet, encounter, "Intimidating Presence");
   if ("error" in price) {
@@ -265,6 +265,9 @@ function holyNimbus(campaign: Campaign, turnId: string, stale: CharacterSheet): 
   // Audited, so the turn's revert puts the light out again (issue #622).
   patchSheetAudited(campaign.id, sheet.id, { conditions, conditionMeta: meta }, { kind: "set_condition", reason: "Holy Nimbus", delta: { condition: HOLY_NIMBUS } });
   price.commit();
+  // "bright light shines from you in a 30-foot radius, and dim light shines
+  // 30 feet beyond that."
+  shedLight(campaign.id, sheet.id, 30, 30, 1);
   return {
     ok: true,
     resource: "Holy Nimbus",

@@ -9,6 +9,7 @@ import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
+import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
@@ -462,6 +463,11 @@ export function computeUseResource(
   const gate = counterGate(def, sheet, Boolean(live && (live.kind ?? "fight") === "fight"));
   if (gate) {
     return { error: `${gate} Nothing was spent.`, refused: "rules" };
+  }
+  // The reach the counter's text gives its target (mt-srd-reach.ts).
+  const beyond = targetReachProblem(campaign.id, def, sheet, target);
+  if (beyond) {
+    return { error: `${beyond} Nothing was spent.`, refused: "rules" };
   }
   // A pool a single use may only dip into (Balm of the Summer Court: half the
   // druid level of dice; Healing Light: the Charisma modifier).

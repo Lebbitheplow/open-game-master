@@ -854,7 +854,7 @@
     "lib/battlemap/stamp.ts#partial": [["key",2,"cell keys"]],
     "lib/battlemap/stamp.ts#whole": [["key",1,"stamp kinds"]],
     "lib/battlemap/types.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/battlemap/types.ts#partial": [["authoring",4,"movement read from feature names and speed text"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["authoring",3,"movement read from feature names and conditions"],["authoring",1,"movement read from feature names and conditions"]],
+    "lib/battlemap/types.ts#partial": [["authoring",4,"movement read from feature names and speed text"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["authoring",3,"movement read from feature names and conditions"],["authoring",1,"movement read from feature names and conditions"],["authoring",1,"reference: an SRD feature name (Unarmored Movement Improvement) matched at the start of a sheet feature's name"]],
     "lib/battlemap/types.ts#whole": [["key",1,"the manifested-wings conditions (engine vocabulary)"]],
     "lib/battlemap/uvtt.ts#first": [["key",1,"a segment's span by position"]],
     "lib/battlemap/uvtt.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
@@ -1858,6 +1858,7 @@
     "lib/dm/srd-defenses.ts#partial": [["key",1,"SRD creature types"]],
     "lib/dm/srd-feature-spends.ts#fallback": [["key",1,"an enemy by id; SRD immunity lines; conditions by whole name"]],
     "lib/dm/srd-feature-spends.ts#whole": [["key",1,"an enemy by id; SRD immunity lines; conditions by whole name"]],
+    "lib/dm/srd-feature-spends.ts#keyed": [["key",1,"the words a call ends Quivering Palm harmlessly with, and the feature a use_resource call names (engine vocabulary)"]],
     "lib/dm/draconic-spends.ts#partial": [["key",2,"an enemy's conditions by whole name; SRD immunity lines"]],
     "lib/dm/draconic-spends.ts#whole-single": [["key",1,"the aura's condition by whole name (engine vocabulary)"]],
     "lib/dm/draconic-spends.ts#whole": [["key",2,"a sorcerer's own \"withstood draconic presence (name)\" mark by whole name (engine vocabulary)"]],
@@ -2777,6 +2778,17 @@
     "lib/dm/turn-marks.ts#whole-single": [["key",1,"a feature's own mark key, built by its caller (engine vocabulary)"]],
     "lib/dm/turn-marks.ts#keyed": [["key",3,"a feature's own mark key, built by its caller (engine vocabulary)"]],
     "lib/dm/condition-cap-logic.ts#keyed": [["key",1,"a creature's own condition names, kept or dropped as written (never matched to a record)"]],
-    "lib/dm/condition-cap-logic.ts#partial": [["key",3,"a creature's own condition names, kept or dropped as written (never matched to a record)"]]
+    "lib/dm/condition-cap-logic.ts#partial": [["key",3,"a creature's own condition names, kept or dropped as written (never matched to a record)"]],
+    "lib/dm/mt-srd-unconscious.ts#whole": [["identity",1,"the weapon a Sacred Weapon's meta names, found among the sheet's rows by its whole name through textKey"]],
+    "lib/dm/mt-srd-unconscious.ts#bypass": [["identity",1,"the weapon a Sacred Weapon's meta names, found among the sheet's rows by its whole name through textKey"]],
+    "lib/dm/mt-srd-monk.ts#partial": [["parse",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text), and the rows a monk's hands hold asked what they are"]],
+    "lib/dm/mt-srd-ranger.ts#whole": [["key",1,"the turn budget's own marks, built from an enemy id and a weapon's textKey"],["key",1,"the turn budget's own marks, built from an enemy id and a weapon's textKey"]],
+    "lib/dm/mt-srd-reach.ts#partial": [["pattern",1,"undead or construct read in the creature type a sheet's own record carries (engine vocabulary)"]],
+    "lib/dm/mt-srd-paladin.ts#fallback": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
+    "lib/dm/mt-srd-paladin.ts#partial": [["pattern",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): ODM's own vocabulary for the variant, read from the call"],["pattern",4,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): ODM's own vocabulary for the variant, read from the call"]],
+    "lib/dm/mt-srd-paladin.ts#keyed": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"],["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
+    "lib/dm/mt-srd-paladin.ts#whole": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"],["identity",2,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
+    "lib/dm/mt-srd-paladin.ts#whole-single": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
+    "lib/dm/mt-srd-barbarian.ts#keyed": [["key",1,"the words a call ends a rage with and the turn-end meta of a condition by its key (engine vocabulary)"],["key",1,"the words a call ends a rage with and the turn-end meta of a condition by its key (engine vocabulary)"]]
   }
 }

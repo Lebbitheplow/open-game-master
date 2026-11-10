@@ -81,6 +81,8 @@ const conditionInstanceSchema = z.object({
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // The weapon the effect rides (Sacred Weapon): src/lib/dm/mt-srd-unconscious.ts.
+    weapon: z.string().trim().min(1).max(80).optional(),
     // Ends when its holder ends a turn farther than this from the source, or
     // out of its sight (Intimidating Presence): src/lib/dm/mt-srd-barbarian.ts.
     turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
