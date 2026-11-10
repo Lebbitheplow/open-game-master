@@ -23,6 +23,7 @@
     "lib/battlemap/hand-react.ts#str-list": [["key",1,"the ability codes a mental save is (int, wis, cha)"]],
     "lib/dm/reaction-triggers.ts#re-word": [["key",1,"the derived records' own id suffix (:start)"]],
     "lib/battlemap/hand-react-triggers.ts#str-eq": [["key",3,"costs and the counter's action (engine vocabulary)"]],
+    "lib/srd/borrowed-proficiency.ts#str-list": [["key",1,"the SRD tool kits a choice offers (Equipment, Tools)"]],
     "lib/srd/trigger-table.ts#str-eq": [["key",1,"trigger kinds and ids (engine vocabulary)"]],
     "lib/srd/trigger-table.ts#str-list": [["key",1,"trigger kinds (engine vocabulary)"]],
     "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],

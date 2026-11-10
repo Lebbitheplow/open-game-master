@@ -39,17 +39,15 @@
   "clauses": [
    {
     "c": "Gain proficiency with one skill or tool of your choice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Knowledge of the Ages#proficiency",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/class-resources.ts Channel Divinity options / src/lib/dm/feature-spends.ts: no 'knowledge of the ages' option grants the proficiency"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine.ts row (a buff whose variant is the skill or tool), read by src/lib/srd/borrowed-proficiency.ts in computeSheetDerived and toolProficiencyBonus",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Knowledge of the Ages#proficiency"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "read_only": true,
-    "why": "the proficiency is never granted (its check is a gap), so its 10-minute end cannot be run"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine.ts row: the condition is laid for 100 rounds",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Knowledge of the Ages#ten-minutes"
    }
   ]
  },

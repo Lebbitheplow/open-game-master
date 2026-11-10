@@ -17,7 +17,7 @@ import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
-import { nameChoice } from "@/lib/srd/feature-names";
+import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -143,12 +143,19 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
 
 // An option of a shared pool, named in the variant or after the pool's name
 // ("Channel Divinity: Nature's Wrath"). It must spend the pool the call names.
+// The option is looked for in the variant first, then after the colon, so
+// an option with a choice of its own (Knowledge of the Ages' skill) can name
+// the option in the resource and the choice in the variant.
 function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: string | undefined) {
-  const option = variant ?? nameChoice(resourceName);
   const pool = matchResource(resourceName);
-  const found = option && pool ? authoredSpendFor(sheet, option) : null;
-  return found?.spend.pool?.id === pool?.id ? found : null;
+  for (const option of [variant, nameChoice(resourceName)]) {
+    const found = option && pool ? authoredSpendFor(sheet, option) : null;
+    if (found && found.spend.pool?.id === pool?.id) return found;
+  }
+  return null;
 }
+
+const hasOwnChoice = (does: SpendDoes) => does.kind === "variants" || (does.kind === "buff" && Boolean(does.variants));
 
 // A use_resource call this module resolves, or null for the other paths.
 export function authoredFeatureSpend(
@@ -163,11 +170,17 @@ export function authoredFeatureSpend(
   // A counter's id names the same spend as the feature's name. Without this a
   // call by id (sub_elder_champion) fell to the generic path, which spends the
   // use and applies nothing.
-  const found = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName) ?? poolOptionSpend(sheet, resourceName, args.variant);
+  const direct = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  const found = direct ?? poolOptionSpend(sheet, resourceName, args.variant);
   if (!found) {
     return null;
   }
   const { spend, held } = found;
+  // A variant that names the option itself picks nothing of the option's
+  // own choices: "Channel Divinity" with variant "Knowledge of the Ages".
+  if (!direct && args.variant && hasOwnChoice(spend.does) && isNamed(args.variant, spend.name)) {
+    return { error: `${spend.name} has a choice of its own: call use_resource with resource "${spend.name}" and the choice in variant. Nothing was spent.`, retry: true };
+  }
   if (sheet.deathSaves?.dead || sheet.currentHp <= 0) {
     return { error: `${sheet.name} is down and cannot use ${spend.name}.`, refused: "rules" };
   }

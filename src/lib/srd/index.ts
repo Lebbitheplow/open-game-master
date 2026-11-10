@@ -12,6 +12,7 @@ import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
+import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
 import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -503,7 +504,8 @@ export function computeSheetDerived(
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
   const expertise = sheet.proficiencies.expertise ?? [];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
-  const featureSkills = featureSkillProficiencies({ features: riderFeatures });
+  // and a skill lent for a while (Knowledge of the Ages, borrowed-proficiency.ts).
+  const featureSkills = [...featureSkillProficiencies({ features: riderFeatures }), ...borrowedProficiencies(sheet.conditions).skills];
   const skillParts = Object.fromEntries(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)

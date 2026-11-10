@@ -116,10 +116,13 @@ export const CLERIC_A = {
     const who = rig.hero("cleric", "Knowledge Domain", 2, { proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: [] } });
     const before = await rig.check(who, "stealth", {}, [10]);
     const sheetBefore = JSON.stringify([rig.world.sheet(who.id).proficiencies, rig.conditions(who)]);
-    const out = await rig.channel(who, "knowledge of the ages", { skill: "stealth" });
+    // The option in the resource, the skill chosen in the variant.
+    const out = await rig.spend(who, "Channel Divinity: Knowledge of the Ages", { variant: "stealth" });
     const after = await rig.check(who, "stealth", {}, [10]);
+    const lasts = rig.meta(who, "knowledge of the ages")?.rounds ?? null;
     rig.note("spend", [out.ok, out.error, out.result]);
     return {
+      "ten-minutes": () => assert.equal(lasts, 100, `the lent proficiency lasts ${lasts} rounds: 10 minutes is 100`),
       proficiency: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(after.result.total - before.result.total, profOf(2), `a Stealth check rolled ${before.result.total} before the Channel Divinity and ${after.result.total} after it: the proficiency bonus is not added, and the sheet reads ${sheetBefore === JSON.stringify([rig.world.sheet(who.id).proficiencies, rig.conditions(who)]) ? "the same" : "changed"}; the result is ${JSON.stringify(out.result).slice(0, 160)}`);

@@ -119,6 +119,7 @@ export const KNOWN = {
 };
 
 export const RULINGS = {
+  "spend:ranger::Hunter's Sense::Hunter's Sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:sub_hunters_sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:cyberpunk_jury_rig": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:cyberpunk_the_net_remembers": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
