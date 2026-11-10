@@ -117,5 +117,63 @@ await run("Picket Stance: a creature that Disengages and walks out of the enforc
   assert.equal(off.lost, 0, `without Picket Stance the Disengage was answered for ${off.lost}`);
 });
 
+await run("Immovable: a creature the enforcer grapples rolls its escape at disadvantage, and the enforcer escapes a grapple with advantage", async () => {
+  const row = feature("enforcer", "Immovable", 13);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  const foeEscapes = async () => {
+    rig.myTurn(hero);
+    kit.setEnemy(near.id, { conditions: [], conditionMeta: {} });
+    rig.must(await world.invoke("set_condition", { enemyId: near.id, condition: "grappled", sourceCharacterId: hero.id, reason: "test" }), "set_condition grappled");
+    kit.handOnEnemies();
+    kit.freshRound();
+    clearDice();
+    diceLog();
+    dice(2, 2, 19, 19);
+    const out = await world.invoke("take_action", { action: "escape", escapingEnemyId: near.id, reason: "test" });
+    const log = diceLog();
+    clearDice();
+    if (!out.ok) throw new Error(`escape: ${out.error}`);
+    return log.filter((die) => die.sides === 20).length;
+  };
+  const grip = await rig.both(hero, row, foeEscapes);
+  // The creature's d20(s) and the enforcer's one Athletics d20 to hold it.
+  assert.equal(grip.on, grip.off + 1, `the held creature threw ${grip.on - 1} d20 with Immovable and ${grip.off - 1} without`);
+  const iEscape = async () => {
+    rig.myTurn(hero);
+    world.patch(hero.id, { conditions: [], conditionMeta: {} });
+    rig.must(await world.invoke("set_condition", { characterId: hero.id, condition: "grappled", sourceEnemyId: near.id, reason: "test" }), "set_condition grappled");
+    clearDice();
+    diceLog();
+    const out = await world.invoke("take_action", { characterId: hero.id, action: "escape", reason: "test" });
+    if (!out.ok) throw new Error(`escape: ${out.error}`);
+    return diceLog().filter((die) => die.sides === 20).length;
+  };
+  const free = await rig.both(hero, row, iEscape);
+  assert.equal(free.on, free.off + 1, `the enforcer's escape threw ${free.on} d20 with Immovable and ${free.off} without`);
+});
+
+await run("Wall of Muscle: a creature fighting the enforcer pays double for every square within 10 feet of them, and walks at full speed once the feature is gone", async () => {
+  const row = feature("enforcer", "Wall of Muscle", 18);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  kit.place(ally.id, 1, 9);
+  const walk = async () => {
+    kit.handOnEnemies();
+    kit.freshRound();
+    kit.place(near.id, 10, 4);
+    const out = await world.invoke("move_token", { token: near.id, x: 5, y: 3 });
+    if (!out.ok) throw new Error(`move_token: ${out.error}`);
+    return at(near.id);
+  };
+  const { on, off } = await rig.both(hero, row, walk);
+  // Five squares to the enforcer's side: 25 of the creature's 30 feet.
+  assert.deepEqual(off, [5, 3], `without the wall the creature's 30 feet carried it to ${off}`);
+  // Any way in crosses two walled squares before the last one: 10 feet in
+  // the open, 20 for the two, and the third is past its speed.
+  assert.notDeepEqual(on, [5, 3], "the creature crossed the wall to the enforcer's side at full speed");
+  assert.ok(Math.max(Math.abs(on[0] - 5), Math.abs(on[1] - 2)) >= 1 && kit.token(near.id).movedThisRound <= 6, `the creature stands at ${on} having spent ${kit.token(near.id).movedThisRound} squares`);
+});
+
 rig.world.close();
 finish();

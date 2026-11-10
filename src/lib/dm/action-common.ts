@@ -74,6 +74,9 @@ export function rollEnemyContest(
   enemy: EncounterEnemy,
   which: "either" | "athletics",
   detail: string,
+  // A feature of the creature it contests that hinders the roll (Immovable:
+  // "your grapples escape at disadvantage").
+  hindered = false,
 ): number {
   // A character fighting on the other side, seen as a foe (sheet-foe.ts),
   // makes the check as the character it is: its better skill, its riders.
@@ -81,14 +84,14 @@ export function rollEnemyContest(
   if (asSheet) {
     const skills = computeSheetDerived(asSheet).skills;
     const skill = which === "either" && (skills.acrobatics ?? 0) > (skills.athletics ?? 0) ? "acrobatics" : "athletics";
-    const checked = rollCharacterCheck(campaign, asSheet, { skill }, detail);
+    const checked = rollCharacterCheck(campaign, asSheet, { skill, ...(hindered ? { advantage: "disadvantage" as const } : {}) }, detail);
     if (checked.rollId) {
       turn.rollIds.push(checked.rollId);
     }
     return checked.autoFailed ? 0 : checked.total;
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;
-  const advantage = mergeAdvantage([...rollDerivation(enemy.conditions, "skill_check", "str").sources, ...(worn ? ["disadvantage" as const] : [])]);
+  const advantage = mergeAdvantage([...rollDerivation(enemy.conditions, "skill_check", "str").sources, ...(worn || hindered ? ["disadvantage" as const] : [])]);
   // Tagged as the creature's check, so a watcher's Portent may answer it.
   const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage), undefined, { purpose: { roller: "enemy", kind: "check", who: enemy.displayName } });
   const roll = insertRoll({

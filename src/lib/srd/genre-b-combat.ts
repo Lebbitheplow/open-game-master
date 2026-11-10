@@ -175,5 +175,14 @@ export function genreFall(sheet: Holder, feet: number): { feet: number; halved: 
 export function genreEscapeAdvantage(sheet: Holder): string | null {
   if (holds(sheet, "grifter", "Slippery")) return "Slippery";
   if (holds(sheet, "scavenger", "Escape Artist")) return "Escape Artist";
+  // "Advantage against being moved, knocked prone, or grappled" (enforcer).
+  if (holds(sheet, "enforcer", "Immovable")) return "Immovable";
   return null;
+}
+
+// Immovable (enforcer): "your grapples escape at disadvantage". A creature
+// this character holds rolls its escape at disadvantage (src/lib/dm/grapple.ts
+// enemyEscape).
+export function genreGripDisadvantage(sheet: Holder): string | null {
+  return holds(sheet, "enforcer", "Immovable") ? "Immovable" : null;
 }

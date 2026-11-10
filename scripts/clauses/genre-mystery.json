@@ -1905,16 +1905,23 @@
   "clauses": [
    {
     "c": "Advantage against being moved, knocked prone, or grappled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Immovable: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "prone",
+      "grappled"
+     ],
+     "ability": "str"
+    },
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Immovable (save_adv against prone and grappled) and src/lib/srd/genre-b-combat.ts genreEscapeAdvantage (the escape from a grapple); no enemy rider or area the engine rolls pushes a character on a save of its own, so being moved has no roll to give advantage on",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Immovable#0:save_adv; scripts/test-genre-b-mystery-features.mjs Immovable: a creature the enforcer grapples rolls its escape at disadvantage, and the enforcer escapes a grapple with advantage"
    },
    {
     "c": "your grapples escape at disadvantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked"
+    "is": "held",
+    "by": "src/lib/srd/genre-b-combat.ts genreGripDisadvantage, read by src/lib/dm/grapple.ts enemyEscape through src/lib/dm/action-common.ts rollEnemyContest (hindered)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Immovable: a creature the enforcer grapples rolls its escape at disadvantage, and the enforcer escapes a grapple with advantage"
    }
   ]
  },
@@ -1993,16 +2000,15 @@
   "clauses": [
    {
     "c": "Enemies treat all squares within 10 ft of you as difficult terrain",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Wall of Muscle: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-wall.ts withWallOfMuscle, asked by src/lib/dm/zone-rules.ts withZoneSteps for every walk (two squares, the cost of difficult terrain, only for a creature on the other side)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Wall of Muscle: a creature fighting the enforcer pays double for every square within 10 feet of them, and walks at full speed once the feature is gone"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-wall.ts withWallOfMuscle, asked by src/lib/dm/zone-rules.ts withZoneSteps for every walk (two squares, the cost of difficult terrain, only for a creature on the other side)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Wall of Muscle: a creature fighting the enforcer pays double for every square within 10 feet of them, and walks at full speed once the feature is gone"
    }
   ]
  },

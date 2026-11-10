@@ -1964,6 +1964,7 @@
     "lib/dm/zone-quake.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-quake.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/zone-rules.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/genre-b-mystery-wall.ts#str-eq": [["key",1,"token and combatant kinds (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#RegExp i": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#str-eq": [["key",7,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

@@ -12,6 +12,7 @@
 // dealt nothing.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_B_AUTHORED } from "@/lib/srd/authored-effects-genre-b";
+import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mystery";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -94,4 +95,5 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
   // The mystery, post-apocalyptic and steampunk classes' own (wave 2).
   ...GENRE_B_AUTHORED,
+  ...GENRE_B_MYSTERY_AUTHORED,
 ];

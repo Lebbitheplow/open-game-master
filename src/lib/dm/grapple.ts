@@ -19,7 +19,7 @@
 //     contest (SRD 5.1, Monsters: Grapple Rules for Monsters). A restraint
 //     that lasts "until this grapple ends" ends with it.
 
-import { genreEscapeAdvantage } from "@/lib/srd/genre-b-combat";
+import { genreEscapeAdvantage, genreGripDisadvantage } from "@/lib/srd/genre-b-combat";
 import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
@@ -218,7 +218,7 @@ export function enemyEscape(
   }
   spendEnemyAction(encounter, enemy.id);
   saveEncounter(encounter);
-  const theirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: escape the grapple`);
+  const theirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: escape the grapple`, Boolean(genreGripDisadvantage(holder)));
   // A natural grapple prints its escape DC (a beast-shaped druid's
   // crocodile bite, a summoned constrictor's coils): the escape is a check
   // against it, not a contest.
