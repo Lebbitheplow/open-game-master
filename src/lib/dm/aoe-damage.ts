@@ -58,6 +58,7 @@ import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -672,6 +673,11 @@ export function handleAoeDamage(
     };
     const landing = taken.filter((entry) => entry.amount > 0);
     const [firstPart, secondPart] = landing;
+    // A character's spell that hurt the creature: Power Surge reads it
+    // (spell-damage-mark.ts).
+    if (plan && landing.length) {
+      markSpellDamage(campaign.id, plan.caster.id, enemy.id, plan.spell);
+    }
     const now = getEnemy(enemy.id) ?? enemy;
     if (firstPart && secondPart && now.status === "alive") {
       // Two types are one wound, each meeting its own resistance. Landed one

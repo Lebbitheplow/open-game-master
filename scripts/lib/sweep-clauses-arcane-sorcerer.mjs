@@ -275,6 +275,16 @@ export function probes(rig, shared) {
       assert.deepEqual(spellsAt("Clockwork Soul", 1), ["Alarm", "Protection from Evil and Good"]);
       assert.ok(spellsAt("Clockwork Soul", 9).includes("Wall of Force"));
     },
+    "balance-cancel": async () => {
+      const [enemy] = await stage(clock(), { others: [friend()], first: friend() });
+      const before = hp(clock());
+      const out = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: clock().id, advantage: "advantage", advantageReason: "the sorcerer is flanked" }, [2, 19, 4]);
+      assert.equal(out.ok, true, out.error);
+      assert.ok(hp(clock()) < before, "the 19 kept by advantage hits");
+      const cancel = await spend(clock(), "Restore Balance");
+      assert.equal(cancel.ok, true, cancel.error);
+      assert.equal(hp(clock()), before, `on its first die alone, a 2, the attack misses: ${show(cancel).slice(0, 160)}`);
+    },
     "balance-uses": async () => {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();
       await balanceRest();

@@ -862,23 +862,27 @@
    },
    {
     "c": "After a long rest you have one",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-long-rest"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-long-rest",
+    "by": "src/lib/srd/authored-resources.json sub_power_surge restHolds.long (src/lib/srd/resource-refills.ts)"
    },
    {
     "c": "you gain one whenever you end a spell with dispel magic or counterspell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-counterspell"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-counterspell",
+    "by": "src/lib/dm/spell-damage-mark.ts gainPowerSurge (reaction-spells.ts finishCounterspell, dispel.ts handleDispelMagic)"
    },
    {
     "c": "and you gain one at the end of a short rest if you have none",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-short-rest"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-short-rest",
+    "by": "src/lib/srd/authored-resources.json sub_power_surge restHolds.shortIfNone (src/lib/srd/resource-refills.ts)"
    },
    {
     "c": "Once per turn when you deal damage to a creature or object with a wizard spell, you can spend one to deal extra force damage equal to half your wizard level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_power_surge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-spend",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Power Surge (afterSpellDamage: src/lib/dm/spell-damage-mark.ts)"
    }
   ]
  },
@@ -1199,8 +1203,9 @@
   "clauses": [
    {
     "c": "When a creature you can see within 60 feet hits with a weapon attack, a reaction adds 1d10 to its damage; or when a creature within 60 feet takes falling damage, a reaction adds 2d10.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_violent_attraction#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: attraction-hit",
+    "by": "src/lib/dm/arcane-triggered.ts violentAttraction (the hit record and the turn's weapon hit)"
    },
    {
     "c": "A number of times equal to your Intelligence modifier (minimum once) per long rest",
@@ -1993,8 +1998,9 @@
   "clauses": [
    {
     "c": "A reaction cancels advantage or disadvantage on a roll within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_restore_balance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: balance-cancel",
+    "by": "src/lib/dm/arcane-triggered.ts restoreBalance (the hit record's first die)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2636,8 +2642,9 @@
   "clauses": [
    {
     "c": "When you slay a humanoid, its spirit rises as a specter under your command in an unoccupied space near the corpse: it has temporary hit points equal to half your warlock level, adds your Charisma modifier (minimum +0) to its attack rolls, and leaves at the end of your next long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_accursed_specter#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: specter-rises",
+    "by": "src/lib/dm/arcane-triggered.ts accursedSpecter (the death record; src/lib/dm/summon-arcane.ts)"
    },
    {
     "c": "Once per long rest",
@@ -2675,8 +2682,9 @@
   "clauses": [
    {
     "c": "When the creature cursed by your Hexblade's Curse dies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:warlock::Master of Hexes::Master of Hexes#TRIGGER_AS_CARD"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-move",
+    "by": "src/lib/dm/authored-spends.ts triggerRefusal on the death record (trigger-table.ts \"master of hexes\"); the card dealt by hand-react-triggers.ts"
    },
    {
     "c": "you can move the curse to another creature you can see",
@@ -2698,9 +2706,10 @@
    },
    {
     "c": "you don't regain hit points from the first creature's death when you do",
-    "is": "gap",
+    "is": "held",
     "read_only": true,
-    "why": "not run: the spend is a card played after the death (the spends sweep's TRIGGER_AS_CARD), so the healing has already been paid when it is played"
+    "by": "src/lib/dm/master-of-hexes.ts (noteCurseHeal, curseHealTakenBack)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-move"
    }
   ]
  },
@@ -2831,9 +2840,10 @@
    },
    {
     "c": "and can cast it once per long rest without a spell slot",
-    "is": "gap",
+    "is": "held",
     "read_only": true,
-    "why": "not run: the counter sub_grasping_tentacles is spent by hand for nothing (the spends sweep's ruling counter:sub_grasping_tentacles#SPENT_FOR_NOTHING); whether the cast itself goes without a slot was not cast"
+    "by": "src/lib/srd/counter-casts.ts sub_grasping_tentacles (the cast guard pays it; authored-spells.ts castTempHp)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grasping-free"
    },
    {
     "c": "Casting it gives you temporary hit points equal to your warlock level, and damage can't break your concentration on it",
@@ -3736,8 +3746,9 @@
   "clauses": [
    {
     "c": "Create a nonmagical item worth no more than 20 times your bard level as an action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_performance_of_creation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-item",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts bard::Performance of Creation (create_item: src/lib/dm/authored-spend-arcane.ts)"
    },
    {
     "c": "once per long rest",
@@ -3761,8 +3772,9 @@
   "clauses": [
    {
     "c": "As an action, animate a Large or smaller nonmagical item within 30 feet as a Dancing Item for an hour. It acts on your initiative right after you, takes the Dodge action unless you command it with a bonus action, has AC 16 and 10 + five times your bard level hit points, attacks with Force-Empowered Slam (your spell attack modifier, reach 5 feet, 1d10 + your proficiency bonus force damage), and its Irrepressible Dance raises or lowers by 10 feet the speed of a creature that starts its turn within 10 feet of it.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_animating_performance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-item",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts bard::Animating Performance (summon: src/lib/dm/summon-arcane.ts summonDancingItem)"
    },
    {
     "c": "Once per long rest",

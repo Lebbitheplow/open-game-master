@@ -6,6 +6,7 @@
 
 import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
@@ -137,6 +138,8 @@ export function landSpellDamage(input: {
     base.potentCantrip = "Potent Cantrip: the save still takes half.";
   }
   if (damageDealt > 0) {
+    // Power Surge reads it (spell-damage-mark.ts).
+    markSpellDamage(campaign.id, sheet.id, enemy.id, spell, facts?.classes);
     const applied = typedParts && harmFloor === null
       ? landTypedParts({
           campaign,

@@ -90,6 +90,8 @@ export async function tableRows(rig) {
       : does.kind === "choose" ? does.options
         : does.kind === "storm_aura" ? ["desert", "sea", "tundra"]
           : does.kind === "flames" && !does.healOnly ? ["burn", "heal"]
+          // Performance of Creation makes the item named: one the pack prices low.
+          : does.kind === "create_item" ? ["Hourglass"]
           : does.variants ? [undefined, ...Object.keys(does.variants)]
             : does.typeFromVariant ? does.typeFromVariant
               : [undefined];

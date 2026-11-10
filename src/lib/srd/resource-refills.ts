@@ -30,6 +30,13 @@ export function refillResources(
       out[id] = state;
       continue;
     }
+    // A counter a rest sets to a number held, not refills (Power Surge).
+    const holds = def?.restHolds;
+    if (holds) {
+      const held = rest === "long" ? holds.long : state.max - state.used <= 0 ? holds.shortIfNone : undefined;
+      out[id] = held === undefined ? state : { max: state.max, used: Math.max(0, state.max - held) };
+      continue;
+    }
     const recharge =
       def?.rechargeFor && sheet ? def.rechargeFor(resourceLevel(def, sheet)) : def?.recharge;
     const refill = rest === "long" || recharge === "short";

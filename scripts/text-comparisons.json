@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/spell-damage-mark.ts#str-includes": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],
     "lib/dm/pc-damage.ts#str-list": [["key", 1, "weapon properties (engine vocabulary)"]],
     "lib/srd/feat-ac.ts#str-includes": [["key", 1, "weapon properties (engine vocabulary)"]],
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],

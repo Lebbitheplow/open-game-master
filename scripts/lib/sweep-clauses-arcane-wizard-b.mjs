@@ -88,6 +88,20 @@ export function probes(rig, shared) {
       const now = counter(war(), "sub_power_surge");
       assert.equal(now.max - now.used, 1, "surges held after ending a spell with Counterspell");
     },
+    "surge-spend": async () => {
+      const [enemy] = await stage(war());
+      kit.saveEncounter({ ...world.encounter(), turnBudget: null });
+      kit.freshTurn();
+      const bare = await spend(war(), "Power Surge", { targetEnemyId: enemy.id });
+      assert.equal(bare.ok, false, "a surge with no wizard spell's damage this turn");
+      const cast = await call("cast_at_enemy", { characterId: war().id, targetEnemyId: enemy.id, spell: "Magic Missile" }, [1, 1, 1]);
+      assert.equal(cast.ok, true, cast.error);
+      const before = foe(enemy).currentHp;
+      const out = await spend(war(), "Power Surge", { targetEnemyId: enemy.id });
+      assert.equal(out.ok, true, out.error);
+      assert.equal(before - foe(enemy).currentHp, 10, "force damage equal to half a 20th-level wizard's level");
+      assert.equal((await spend(war(), "Power Surge", { targetEnemyId: enemy.id })).ok, false, "once per turn");
+    },
     "deflecting-shroud": async () => {
       const [enemy] = await hit(war());
       const before = foe(enemy).currentHp;
@@ -240,6 +254,16 @@ export function probes(rig, shared) {
       if (!out.ok) throw new Error(out.error);
       assert.ok(foe(enemy).conditions.some((name) => name.startsWith("adjusted density")), `aimed at a creature of the other side, it lands elsewhere: ${show(out).slice(0, 150)}`);
     },
+    "attraction-hit": async () => {
+      const [enemy] = await stage(gra(), { others: [friend()], first: friend() });
+      kit.place(friend().id, 6, 6);
+      const swung = await kit.swing(friend().id, enemy.id, [15, 3]);
+      assert.equal(swung.ok, true, swung.error);
+      const before = foe(enemy).currentHp;
+      const out = await spend(gra(), "Violent Attraction", {}, [7]);
+      assert.equal(out.ok, true, out.error);
+      assert.equal(before - foe(enemy).currentHp, 7, `the 1d10 rides the ally's weapon hit: ${show(out).slice(0, 160)}`);
+    },
     "attraction-uses": async () => {
       await uses(["wizard", "Graviturgy Magic"], "sub_violent_attraction", { 10: Math.max(1, MOD.int) })();
       await attractionRest();
@@ -308,9 +332,6 @@ export function probes(rig, shared) {
   const KNOWN = {
     "deflection-save": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Arcane Deflection (one reaction, ac_vs_hit; no half for a failed save)`, note: "Half of the feature has no door: a failed save cannot be answered.", fix: "A second reaction on the row that adds 4 to the save just failed (the after-roll card's shape)." },
     "deflection-cost": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (nothing marks the war mage after Arcane Deflection)", note: "The reaction is free of its price: a full spell the turn after.", fix: "Lay a mark until the end of the wizard's next turn that refuses any spell but a cantrip." },
-    "surge-long-rest": { severity: "medium", kind: "rule-wrong", where: `${RES} sub_power_surge (a plain counter refilled whole by a long rest)`, note: "A long rest hands a war mage their Intelligence modifier in surges where the text gives one.", fix: "After a long rest set the counter to one surge held." },
-    "surge-short-rest": { severity: "low", kind: "rule-missing", where: "src/lib/dm/rest-tools.ts (a short rest gives no surge to a war mage holding none)", note: "", fix: "Give one surge at the end of a short rest begun with none." },
-    "surge-counterspell": { severity: "low", kind: "rule-missing", where: "src/lib/dm/reaction-tools.ts Counterspell and the Dispel Magic path (no surge gained)", note: "", fix: "Give a surge, up to the maximum, when the holder's Counterspell or Dispel Magic ends a spell." },
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
     "bladesong-concentration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/concentration.ts (the bladesong's bonus to the save is not read)", note: "The stored text gives no number (\"a concentration-save bonus\"); the feature it condenses adds the Intelligence modifier.", fix: "Add the Intelligence modifier to a bladesinger's concentration saves, and state it in the text." },
     "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },

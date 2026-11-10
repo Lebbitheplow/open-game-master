@@ -462,6 +462,10 @@ export type SpendDoes =
   // A creature the feature makes, as an ally with its stat block (the steel
   // defender, src/lib/dm/summon-defender.ts).
   | { kind: "summon"; form: string }
+  // A nonmagical item the player names (in the variant) put in the holder's
+  // pack, worth no more than `gpPerLevel` times the class level (Performance
+  // of Creation: src/lib/dm/authored-spend-arcane.ts).
+  | { kind: "create_item"; gpPerLevel: number }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
@@ -494,6 +498,13 @@ export type AuthoredSpend = {
   // weapon counts: an infused or attuned weapon reads as a plain one here, so
   // asking for a magic one would shut the feature for the artificers it is for.
   afterWeaponHit?: boolean;
+  // Rides a wizard spell's damage of the holder's own turn (Power Surge): one
+  // must have hurt a creature this turn, and the spend lands on a creature it
+  // hurt (src/lib/dm/spell-damage-mark.ts).
+  afterSpellDamage?: boolean;
+  // Master of Hexes: moving the curse takes back the hit points its first
+  // creature's death gave (src/lib/dm/master-of-hexes.ts).
+  takesBackCurseHeal?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,

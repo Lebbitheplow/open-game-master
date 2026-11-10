@@ -8,6 +8,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -31,6 +32,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
+import { dealtByTrigger } from "@/lib/battlemap/hand-react-triggers";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -213,7 +215,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   // variants price themselves, stays a bonus action.
   const counter = ownCounter(spend);
   const action = spendAction(spend);
-  if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  // A spend that answers a record (Master of Hexes after the cursed creature's
+  // death) is dealt by the trigger cards when it is open (hand-react-triggers.ts).
+  if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held) || dealtByTrigger(spend.name)) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;
@@ -267,7 +271,8 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       spent: false,
       // A spend by amount (Sharpen the Blade, Touch of the Long Death): the
       // player says how much in the box.
-      compose: perUnit,
+      // Performance of Creation: the player names the item in the box.
+      compose: perUnit || does.kind === "create_item",
       ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
       ...(pool ? { pool: pool.id } : {}),
       intent:
@@ -301,9 +306,13 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
         : null,
+      // Power Surge: after a wizard spell of this turn hurt a creature.
+      spend.afterSpellDamage && turn.myTurn && !spellHurt(turn.marks).length
+        ? { reason: `${spend.name} rides a wizard spell's damage: hurt a creature with one this turn first.`, spent: false }
+        : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.
-      inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
+      inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || spend.afterSpellDamage || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
         ? { reason: `${spend.name} is used in a fight, on a creature in it.`, spent: false }
         : null,
       // "A creature you can see": none while the holder is blinded.

@@ -247,7 +247,9 @@ export async function walkRow(rig, scene, row) {
     const state = scene.holder.resources[row.def.id];
     const level = scene.holder.level;
     const recharge = row.def.rechargeFor ? row.def.rechargeFor(level) : row.def.recharge;
-    if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers) {
+    // A row that names its own rest (restHolds: Power Surge's one after a long
+    // rest) is held to it by its feature's clause probes.
+    if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers && !row.def.restHolds) {
       if (rests.long.ok && rests.long.used[row.def.id] > 0) add("NO_REFILL", `spent to ${state.max}/${state.max}, a long rest leaves ${rests.long.used[row.def.id]} used`);
       if (rests.short.ok && (rests.short.used[row.def.id] === 0) !== (recharge === "short")) {
         add("SHORT_REST_MISMATCH", `its row says it comes back on a ${recharge} rest, and a short rest leaves ${rests.short.used[row.def.id]}/${state.max} used`);

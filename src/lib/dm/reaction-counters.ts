@@ -43,6 +43,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
+import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
 
 export const MANIFEST_MIND = "manifest mind";
 // The marker a use that recharges over several long rests leaves, with the
@@ -119,7 +120,9 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
   if (ask && triggerSpecOf(ask)) {
     const unanswered = triggerRefusal(ask);
     if (unanswered) return unanswered;
-    return null;
+    // Restore Balance, Violent Attraction and Accursed Specter act on the
+    // record they answer (arcane-triggered.ts).
+    return planArcaneTrigger(input, ask);
   }
   const turn = getDmTurn(input.turnId);
   if ((input.defId === "sub_necrotic_husk" || input.defId === "sub_strength_before_death") && !droppedByFreshHit(campaign.id, sheet)) {

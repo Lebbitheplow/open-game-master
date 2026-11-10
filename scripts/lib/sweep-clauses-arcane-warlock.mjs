@@ -220,6 +220,40 @@ export function probes(rig, shared) {
       assert.equal(out.ok, true, out.error);
       assert.equal(300 - foe(enemy).currentHp, 4 + MOD.cha, "a 4 on the d8 and the Charisma modifier (Strength is +0)");
     },
+    "hexes-move": async () => {
+      const [first, second] = await stage(hex(), { count: 2 });
+      kit.setEnemy(first.id, { currentHp: 1 });
+      const early = await spend(hex(), "Master of Hexes", { targetEnemyId: second.id });
+      assert.equal(early.ok, false, "the cursed creature has not died");
+      const cursed = await spend(hex(), "Hexblade's Curse", { targetEnemyId: first.id });
+      assert.equal(cursed.ok, true, cursed.error);
+      world.patch(hex().id, { currentHp: sheet(hex()).maxHp - 40 });
+      const before = hp(hex());
+      const kill = await kit.swing(hex().id, first.id, [15, 4]);
+      assert.equal(kill.ok, true, kill.error);
+      assert.ok(hp(hex()) > before, "the cursed creature's death heals the warlock");
+      // "another creature you can see": an invisible one is refused, and the death stays open.
+      kit.setEnemy(second.id, { conditions: ["invisible"] });
+      assert.equal((await spend(hex(), "Master of Hexes", { targetEnemyId: second.id })).ok, false, "an unseen creature takes no curse");
+      kit.setEnemy(second.id, { conditions: [] });
+      const out = await spend(hex(), "Master of Hexes", { targetEnemyId: second.id });
+      assert.equal(out.ok, true, out.error);
+      assert.equal(hp(hex()), before, `moving the curse gives back the healing: ${show(out).slice(0, 160)}`);
+    },
+    "specter-rises": async () => {
+      // A second foe keeps the fight on once the first falls.
+      const [enemy] = await stage(hex(), { count: 2 });
+      kit.setEnemy(enemy.id, { currentHp: 1, stats: { ...foe(enemy).stats, type: "humanoid" } });
+      const early = await spend(hex(), "Accursed Specter");
+      assert.equal(early.ok, false, "no humanoid has been slain");
+      const kill = await kit.swing(hex().id, enemy.id, [15, 4]);
+      assert.equal(kill.ok, true, kill.error);
+      const out = await spend(hex(), "Accursed Specter");
+      assert.equal(out.ok, true, out.error);
+      const specter = world.sheets().find((entry) => entry.name.startsWith("Accursed Specter"));
+      assert.ok(specter, `a specter stands at the table: ${show(out).slice(0, 160)}`);
+      assert.equal(specter.tempHp, 10, "temporary hit points equal to half a 20th-level warlock's level");
+    },
     "specter-rest": rests(["warlock", "The Hexblade"], "sub_accursed_specter", "long"),
     "armor-cursed-only": async () => {
       await hit(hex());
@@ -285,6 +319,17 @@ export function probes(rig, shared) {
     "grasping-learn": async () => {
       assert.ok(spellsAt("The Fathomless", 10).some((spell) => /black tentacles/i.test(spell)));
       assert.ok(!spellsAt("The Fathomless", 9).some((spell) => /black tentacles/i.test(spell)));
+    },
+    "grasping-free": async () => {
+      const who = deep();
+      await stage(who);
+      const now = sheet(who);
+      const spells = [...new Set([...(now.spellcasting.prepared ?? []), "Black Tentacles"])];
+      world.patch(who.id, { spellcasting: { ...now.spellcasting, prepared: spells, known: spells, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      const out = await call("use_spell_slot", { characterId: who.id, spell: "Black Tentacles" });
+      assert.equal(out.ok, true, `cast with no slot left: ${String(out.error).slice(0, 170)}`);
+      assert.equal(counter(who, "sub_grasping_tentacles").used, 1, "the once-a-day use pays");
+      assert.equal(sheet(who).tempHp, 20, "temporary hit points equal to the warlock level");
     },
     plunge: movesSomething(["warlock", "The Fathomless"], "Fathomless Plunge"),
     "plunge-rest": rests(["warlock", "The Fathomless"], "sub_fathomless_plunge", "short"),

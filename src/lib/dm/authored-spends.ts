@@ -23,6 +23,10 @@ import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
+import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { answerTriggers, triggerRefusal } from "@/lib/dm/reaction-triggers";
+import { answerKey } from "@/lib/dm/last-hit";
+import { curseHealTakenBack } from "@/lib/dm/master-of-hexes";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -71,6 +75,7 @@ function prepareCost(
   label: string,
   onceKey: string | null,
   afterWeaponHit = false,
+  afterSpellDamage = false,
 ): ToolError | { commit: () => ToolResult; marks?: string[] } {
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
@@ -78,6 +83,9 @@ function prepareCost(
   // Jolt's healing was taken there with no hit, its card shut).
   if (afterWeaponHit && !inFight) {
     return { error: `${label} rides a weapon hit in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
+  }
+  if (afterSpellDamage && !inFight) {
+    return { error: `${label} rides a wizard spell's damage in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
   }
   if (!inFight || !encounter) {
     return { commit: () => ({}) };
@@ -90,6 +98,9 @@ function prepareCost(
   // the holder's turn (no budget of theirs) with no hit of this turn.
   if (afterWeaponHit && (!budget || !budget.oncePerTurn.some((mark) => mark.startsWith(WEAPON_HIT)))) {
     return { error: `${label} rides a weapon hit, and ${sheet.name} has landed none this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
+  }
+  if (afterSpellDamage && (!budget || !spellHurt(budget.oncePerTurn).length)) {
+    return { error: `${label} rides a wizard spell that deals damage, and no spell of ${sheet.name}'s has hurt a creature this turn: cast it first. Nothing was spent.`, refused: "rules" };
   }
   if (cost === "reaction") {
     return prepareReaction(encounter, sheet, label);
@@ -176,6 +187,15 @@ export function authoredFeatureSpend(
     const refusal = gateSentence(spend);
     return { ...refusal, error: `${refusal.error} Nothing was spent.` };
   }
+  // A spend whose text opens with a trigger (Master of Hexes: "When the
+  // creature cursed by your Hexblade's Curse dies") answers its record, never
+  // the call's word: refused with nothing spent when none is open
+  // (reaction-triggers.ts).
+  const triggerAsk = { campaignId: campaign.id, reactor: sheet, name: spend.name, label: answerKey(textKey(spend.name), sheet.id) };
+  const unanswered = triggerRefusal(triggerAsk);
+  if (unanswered) {
+    return unanswered;
+  }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
   if (spend.fight === "out" && inFight) {
@@ -232,7 +252,7 @@ export function authoredFeatureSpend(
     }
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
+  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);
   if ("error" in charge) {
     return charge;
   }
@@ -280,6 +300,11 @@ export function authoredFeatureSpend(
     patch.conditions = [...conditions, spend.oncePer.marker];
     patch.conditionMeta = { ...meta, [spend.oncePer.marker]: { rounds: spend.oncePer.rounds } };
   }
+  // Master of Hexes: the moved curse gives back the first death's healing.
+  const takenBack = spend.takesBackCurseHeal ? curseHealTakenBack(sheet, { ...now, ...patch } as CharacterSheet) : null;
+  if (takenBack) {
+    Object.assign(patch, takenBack.patch);
+  }
   if (Object.keys(patch).length) {
     patchSheet(sheet.id, patch);
     audit(campaign, turnId, now, { resource: spend.name, spent: units || undefined, variant: args.variant }, reason, patch);
@@ -288,6 +313,8 @@ export function authoredFeatureSpend(
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
     }
   }
+  // The record it answered is answered (no second use of one death).
+  answerTriggers(triggerAsk);
   const left = poolId ? getSheetById(sheet.id)?.resources?.[poolId] : null;
   return {
     ok: true,
@@ -295,6 +322,7 @@ export function authoredFeatureSpend(
     ...(poolId && units > 0 ? { spent: paidUnits !== null ? `${paidUnits} ${counterName(poolId)} (no use was left)` : units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
     ...(slotPaid !== null ? { spent: `a level ${slotPaid} spell slot (no use was left)` } : {}),
     ...outcome.result,
+    ...(takenBack ? { curseHealing: takenBack.line } : {}),
     ...charge.commit(),
   };
 }

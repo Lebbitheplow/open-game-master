@@ -9,12 +9,16 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/spell-damage-mark.ts#whole": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],
+    "lib/dm/arcane-triggered.ts#first": [["key", 1, "record ids and the engine's advantage words"]],
+    "lib/dm/master-of-hexes.ts#partial": [["key", 3, "the engine's own marker condition, whose name carries the hit points it gave (\"hexblade's curse healed (N)\"), and that number read back"]],
+    "lib/dm/spell-damage-logic.ts#partial": [["key", 1, "the turn's own mark keys (wizard-spell-damage:<id>), never a name"]],
     "lib/dm/pc-damage.ts#keyed": [["identity", 1, "a feat by its whole name, a damage type of the engine's words (textKey on both sides)"]],
     "lib/dm/authored-save-effect-extras.ts#keyed": [["identity", 1, "a condition or a feature's held instance, by whole name (textKey on both sides)"], ["identity", 3, "a condition or a feature's held instance, by whole name (textKey on both sides)"]],
     "lib/dm/authored-save-effect-extras.ts#whole": [["identity", 1, "a condition or a feature's held instance, by whole name (textKey on both sides)"], ["identity", 2, "a condition or a feature's held instance, by whole name (textKey on both sides)"]],
     "lib/battlemap/hand-subclass.ts#whole": [["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"], ["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"]],
     "lib/dm/authored-spends.ts#whole-single": [["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"]],
-    "lib/dm/authored-spend-effects.ts#whole-single": [["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"]],
+    "lib/dm/authored-spend-effects.ts#whole-single": [["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"], ["identity", 1, "the summon form a spend names, by whole name (textKey on both sides)"]],
     "lib/dm/arg-coerce.ts#first": [["identity", 1, "the one sheet a whole name names; a name two sheets share names neither"]],
     "lib/dm/arg-coerce.ts#whole": [["identity", 1, "a character ref by its sheet id; a name by textKey on both sides; a miss is refused with the party listed"]],
     "lib/dm/arg-coerce.ts#keyed": [["key", 3, "tool-argument field names and the tool's published field kinds"]],

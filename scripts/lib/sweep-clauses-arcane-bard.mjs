@@ -265,6 +265,23 @@ export function probes(rig, shared) {
       await infectiousRest();
     },
     // ---- College of Creation
+    "creation-item": async () => {
+      await stage(creation());
+      const dear = await spend(creation(), "Performance of Creation", { variant: "Spyglass" });
+      assert.equal(dear.ok, false, "a 1,000 gp spyglass is more than 20 times bard level 20 (400 gp)");
+      const out = await spend(creation(), "Performance of Creation", { variant: "Hourglass" });
+      assert.equal(out.ok, true, out.error);
+      assert.ok(sheet(creation()).equipment.some((item) => item.name === "Hourglass"), "the hourglass is in the bard's pack");
+    },
+    "animating-item": async () => {
+      await stage(creation());
+      const out = await spend(creation(), "Animating Performance");
+      assert.equal(out.ok, true, out.error);
+      const item = world.sheets().find((entry) => entry.name.startsWith("Dancing Item"));
+      assert.ok(item, `a Dancing Item stands at the table: ${show(out).slice(0, 160)}`);
+      assert.equal(item.maxHp, 10 + 5 * 20, "10 + five times the bard level");
+      assert.equal(item.ac, 16);
+    },
     "creation-rest": rests(["bard", "College of Creation"], "sub_performance_of_creation", "long"),
     "creation-slot": async () => {
       await stage(creation());

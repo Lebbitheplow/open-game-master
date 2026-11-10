@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { extendsHeld, layWithExtras, markMet, saveEffectRefusal } from "@/lib/dm/authored-save-effect-extras";
@@ -35,6 +36,8 @@ import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
+import { DANCING_ITEM, summonDancingItem } from "@/lib/dm/summon-arcane";
+import { createItem } from "@/lib/dm/authored-spend-arcane";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -476,9 +479,15 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       };
     }
     case "die_damage": {
-      const enemy = targetEnemy(ctx);
+      // Power Surge lands on a creature the wizard's spell hurt this turn:
+      // the one named, else the first one hurt (spell-damage-mark.ts).
+      const hurt = ctx.spend.afterSpellDamage ? spellHurt(ctx.marks) : null;
+      const enemy = hurt && !ctx.args.targetEnemyId && hurt[0] ? targetEnemy({ ...ctx, args: { ...ctx.args, targetEnemyId: hurt[0] } }) : targetEnemy(ctx);
       if ("error" in enemy) {
         return enemy;
+      }
+      if (hurt && !hurt.includes(enemy.id)) {
+        return { error: `${ctx.spend.name} lands on a creature ${sheet.name}'s wizard spell hurt this turn, and ${enemy.displayName} is not one. Nothing was spent.`, refused: "rules" };
       }
       const dice = formula(ctx, does.dice);
       const rolled = damageDice(ctx, enemy, dice);
@@ -579,7 +588,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "swarm_push":
       return swarmPush(ctx, does);
     case "summon":
-      return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+      // The Dancing Item (summon-arcane.ts), else the steel defender.
+      return textKey(does.form) === textKey(DANCING_ITEM) ? summonDancingItem(ctx.campaign, sheet, ctx.held.level) : summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+    case "create_item":
+      return createItem(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

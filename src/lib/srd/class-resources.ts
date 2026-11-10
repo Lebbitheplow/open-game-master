@@ -313,6 +313,10 @@ export type ResourceDef = {
   rechargeFor?: (level: number) => Recharge;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
+  // What a rest leaves held, in place of a refill (Power Surge: "After a long
+  // rest you have one ... and you gain one at the end of a short rest if you
+  // have none"): src/lib/srd/resource-refills.ts.
+  restHolds?: { long?: number; shortIfNone?: number };
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
@@ -770,6 +774,7 @@ type SubclassResourceRow = {
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
+  restHolds?: { long?: number; shortIfNone?: number };
 };
 
 function proficiencyBonus(level: number): number {
@@ -813,6 +818,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),
+  ...(row.restHolds ? { restHolds: row.restHolds } : {}),
 }));
 
 // One with Shadows (SRD 5.1, a warlock invocation): an action, as often as

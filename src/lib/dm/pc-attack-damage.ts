@@ -34,6 +34,7 @@ import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isNamed } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 
 export type { FeatureRider } from "@/lib/dm/attack-damage-riders";
 
@@ -339,6 +340,11 @@ export function applyHitDamage(input: {
   critExtraDice: number;
 }): Record<string, unknown> {
   const { plan } = input;
+  // A spell attack that hurt the creature: Power Surge reads it
+  // (spell-damage-mark.ts).
+  if (plan.kind === "spell" && input.dealt > 0) {
+    markSpellDamage(plan.campaign.id, plan.sheet.id, plan.enemy.id, plan.args.spell);
+  }
   return landBlow({
     ...input,
     campaign: plan.campaign,

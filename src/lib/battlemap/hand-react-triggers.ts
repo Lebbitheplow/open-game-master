@@ -33,9 +33,10 @@ function eventOfHit(hit: PublicLastHit): TriggerEvent {
 
 const costOf = (action: string | undefined): HandCost => (action === "reaction" ? "reaction" : action === "bonus" ? "bonus" : action === "none" ? "free" : "action");
 
-function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean }): HandCard {
+function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean }): HandCard {
   const { event, spec } = input;
-  const target: HandTarget = input.onAlly ? "ally" : spec.aimsAt && event.creatureId ? "enemy" : "none";
+  // `aimEnemy`: the player picks the creature (Master of Hexes' new quarry).
+  const target: HandTarget = input.onAlly ? "ally" : input.aimEnemy || (spec.aimsAt && event.creatureId) ? "enemy" : "none";
   const base: HandCard = {
     id: `reaction:${textKey(input.name).replace(/\s+/g, "-")}:${event.id}`,
     type: "ward",
@@ -107,6 +108,15 @@ export function triggerCards(
     }
   }
   for (const held of heldAuthored(sheet)) {
+    // A spend that opens with its trigger (Master of Hexes): dealt while the
+    // record it answers is open, never on the holder's own turn without one.
+    for (const spend of held.entry.spends ?? []) {
+      const spec = triggerSpecFor(spend.name);
+      if (!spec || !gateHolds(spend.gate, sheet, held)) continue;
+      for (const event of openFor(spec, events, context(triggerKey(textKey(spend.name), sheet.id))).slice(-1)) {
+        cards.push(card(sheet, turn, { id: spend.name, name: spend.name, cost: costOf(spend.action), spec, event, intent: { card: "feature", resourceId: spend.name }, rules: `${spend.name} answers ${spec.what}.`, resource: "", aimEnemy: spend.does.kind === "buff" && Boolean(spend.does.quarry) }));
+      }
+    }
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
       // A bond's reaction for the pet's own damage (Reflexive Resistance for the

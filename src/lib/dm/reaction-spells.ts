@@ -39,6 +39,7 @@ import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import { openSaves } from "@/lib/dm/last-save";
+import { gainPowerSurge } from "@/lib/dm/spell-damage-mark";
 
 // ---- reaction spells ----
 
@@ -526,12 +527,14 @@ function finishCounterspell(
       saveEncounter(live);
     }
   }
+  const surge = countered ? gainPowerSurge(ctx.campaign.id, ctx.sheet.id) : null;
   const paid = counter.timing === "bonus" ? "its bonus action" : counter.timing === "reaction" ? "its reaction" : counter.timing === "legendary" ? "the legendary action that bought it" : "its action for the round";
   return {
     ok: true,
     reaction: "Counterspell",
     spent,
     ...(check ? { check } : {}),
+    ...(surge ? { powerSurge: surge } : {}),
     countered,
     applied: countered
       ? `${counter.enemy.displayName}'s ${counter.spell} fails: the ${counter.level ? `level-${counter.level} slot` : "casting"} and ${paid} are spent, and the server will refuse the cast. Do not resolve the spell.`

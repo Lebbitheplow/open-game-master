@@ -105,10 +105,7 @@ export const KNOWN = {
   "counter:sub_hunters_sense": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_infectious_inspiration": { TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:sub_manifest_mind_casts": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
-  "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:sub_power_surge": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_reclaim_potential": { TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "counter:sub_restore_balance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_spell_thief": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_unleash_incarnation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "reaction:cleric::Voice of Authority::Voice of Authority": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
@@ -116,7 +113,6 @@ export const KNOWN = {
   "spend:druid::Cauterizing Flames::Cauterizing Flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "spend:druid::Spirit Totem::Move Spirit Totem": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "spend:monk::Ascendant Aspect::Explosive Fury": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "spend:warlock::Master of Hexes::Master of Hexes": { TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
 };
 
 export const RULINGS = {
@@ -142,18 +138,16 @@ export const RULINGS = {
   "counter:steampunk_tempest_shell": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:steampunk_the_great_work_walks": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:steampunk_vitriol_ampoule": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
-  "counter:sub_accursed_specter": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
-  "counter:sub_animating_performance": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_call_the_hunt": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_magic_users_nemesis": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_psionic_energy": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_psionic_energy guidance: \"Psionic Strike and Psi-Bolstered Knack ride a hit or a check already made\"" },
   "counter:sub_superiority_dice": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_superiority_dice guidance: \"A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is a plain spend with that variant.\"" },
-  "counter:sub_violent_attraction": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
 };
 
 const INTO = "pours into another counter (ResourceDef.into): no sheet holds a counter under this id, and its uses are walked as that counter's";
 const BY_REST = "spent by take_rest as a short rest ends (use_resource refuses it, with nothing spent: seen)";
 const BY_ATTACK = "spent by the bonus-action attack it buys (pc_attack with its feature; use_resource refuses it, with nothing spent: seen), which the dice package walks";
+const BY_DEATH = "answers the death of the creature under the holder's mark (a death record); refused with nothing spent without one (seen), and no staging here kills a marked creature";
 const BY_CAST = "needs a spell cast earlier in the same turn (the cast's own mark); refused with nothing spent without one (seen), and no staging here casts";
 export const SKIP = {
   "counter:ki_inner_resilience": INTO,
@@ -165,6 +159,13 @@ export const SKIP = {
   "counter:race_hungry_jaws": BY_ATTACK,
   "counter:sub_unwavering_mark": BY_ATTACK,
   "counter:elemental_affinity": BY_CAST,
+  // Power Surge rides a wizard spell's damage of the turn (spell-damage-mark.ts);
+  // its spend is run by scripts/test-enforce-sweep-clauses-arcane-wizard.mjs surge-spend.
+  "counter:sub_power_surge": BY_CAST,
+  "spend:wizard::Power Surge::Power Surges": BY_CAST,
+  // Master of Hexes answers the cursed creature's death (trigger-table.ts); its
+  // spend is run by scripts/test-enforce-sweep-clauses-arcane-warlock.mjs hexes-move.
+  "spend:warlock::Master of Hexes::Master of Hexes": BY_DEATH,
   "counter:cyberpunk_surge_momentum": BY_CAST,
   "counter:horror_the_rite_remembers": BY_CAST,
   "counter:post_apocalyptic_surge_of_change": BY_CAST,

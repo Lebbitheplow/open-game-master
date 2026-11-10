@@ -20,6 +20,7 @@ const RULING = {
 const SKIP = {
   "831-you-can-see:barbarian::Mighty Impel/Mighty Impel": "its \"you can see\" is the space the creature is moved to, not the creature (\"move it to an unoccupied space you can see within 30 feet of you\"); the generator's pattern caught the wrong noun.",
   "831-within-feet:barbarian::Mighty Impel/Mighty Impel": "its first \"within\" is \"within your reach\"; the 30 feet is where the creature lands.",
+  "831-you-can-see:warlock::Master of Hexes/Master of Hexes": "it answers the death of the cursed creature (a death record), which this row's staging never makes; its sight limit is run by scripts/test-enforce-sweep-clauses-arcane-warlock.mjs hexes-move.",
   "831-within-feet:warlock::Master of Hexes/Master of Hexes": "its 30 feet is measured from the creature that died (\"another creature you can see within 30 feet of it\"), which is gone from the board when the curse moves.",
   "832-gm-form-lists-enemies-only": "a property of the console's form (a field of kind \"enemies\" lists the encounter's enemies); the tool takes a character fighting for the foes by id, and only the browser harness can open the form.",
   "809-foretold-number-on-the-sheet": "who may read another seat's sheet is the sheet route's business as another member; left to the modelio package's leak rows, which walk every payload a seat receives.",

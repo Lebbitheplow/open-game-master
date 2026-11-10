@@ -1273,7 +1273,11 @@
    "uses": 1,
    "ability": "int",
    "recharge": "long",
-   "guidance": "Once per turn when a wizard spell damages a creature or object: extra force damage equal to half the wizard level. The wizard starts each day with one surge, gains one by ending a spell with dispel magic or counterspell, and one after a short rest with none; they hold up to their Intelligence modifier."
+   "guidance": "Once per turn when a wizard spell damages a creature or object: extra force damage equal to half the wizard level. The wizard starts each day with one surge, gains one by ending a spell with dispel magic or counterspell, and one after a short rest with none; they hold up to their Intelligence modifier.",
+   "restHolds": {
+    "long": 1,
+    "shortIfNone": 1
+   }
   },
   {
    "id": "sub_bladesong",

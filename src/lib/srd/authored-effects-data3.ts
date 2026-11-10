@@ -418,6 +418,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Master of Hexes",
         action: "none",
+        takesBackCurseHeal: true,
         // "to another creature you can see within 30 feet of it".
         does: {
           kind: "buff",

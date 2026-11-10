@@ -53,6 +53,7 @@ import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
+import { noteCurseHeal } from "@/lib/dm/master-of-hexes";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -488,6 +489,8 @@ export function authoredOnKill(
       const cleared = removeConditions(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, [condition]);
       patchSheet(holder.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
       publishSheet(campaign, holder.id);
+      // Master of Hexes may move the curse and give these back (master-of-hexes.ts).
+      noteCurseHeal(campaign, holder.id, given, enemy.id);
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }

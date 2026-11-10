@@ -10,6 +10,39 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 const LUNAR_PHASES = ["Full Moon", "New Moon", "Crescent Moon"];
 
 export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
+  // "Once per turn when you deal damage to a creature or object with a wizard
+  // spell, you can spend one to deal extra force damage equal to half your
+  // wizard level": after a wizard spell of this turn hurt the creature
+  // (src/lib/dm/spell-damage-mark.ts), on that creature. What a rest gives
+  // back is the counter's row (restHolds in authored-resources.json).
+  "wizard::Power Surge": {
+    subclass: "War Magic",
+    spends: [
+      {
+        // The counter's own name, so its card and painting stay the surge's.
+        name: "Power Surges",
+        aliases: ["Power Surge"],
+        pool: { id: "sub_power_surge" },
+        oncePerTurn: true,
+        afterSpellDamage: true,
+        does: { kind: "die_damage", dice: (level) => Math.max(1, Math.floor(level / 2)), type: "force" },
+      },
+    ],
+  },
+  // "As an action, animate a Large or smaller nonmagical item within 30 feet
+  // as a Dancing Item for an hour": an ally with its stat block
+  // (src/lib/dm/summon-arcane.ts). The slot that buys another use is the
+  // counter's fallbackSlot.
+  "bard::Animating Performance": {
+    subclass: "College of Creation",
+    spends: [{ name: "Animating Performance", pool: { id: "sub_animating_performance" }, action: "action", does: { kind: "summon", form: "Dancing Item" } }],
+  },
+  // "Create a nonmagical item worth no more than 20 times your bard level as
+  // an action": the item named goes into the pack (authored-spend-arcane.ts).
+  "bard::Performance of Creation": {
+    subclass: "College of Creation",
+    spends: [{ name: "Performance of Creation", pool: { id: "sub_performance_of_creation" }, action: "action", does: { kind: "create_item", gpPerLevel: 20 } }],
+  },
   // The Bladesong's "advantage on Acrobatics" while it runs (the counter
   // sub_bladesong lays the condition; its AC and speed are condition-effects.ts's).
   "wizard::Bladesong": {
