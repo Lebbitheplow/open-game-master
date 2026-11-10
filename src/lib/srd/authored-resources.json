@@ -775,7 +775,8 @@
    "fx": {
     "kind": "buff",
     "condition": "invisible",
-    "rounds": 1
+    "rounds": 1,
+    "teleportFeet": 60
    }
   },
   {

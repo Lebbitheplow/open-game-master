@@ -59,6 +59,10 @@ export type ResourceEffect =
       // Spirit Projection): the spend takes it, and a broken concentration
       // ends the buff (src/lib/dm/resource-tools.ts holdConcentration).
       concentration?: boolean;
+      // The holder also teleports up to this far (Misty Escape: "turn
+      // invisible and teleport up to 60 feet"): a teleport credit for
+      // move_token (src/lib/dm/feature-teleport.ts).
+      teleportFeet?: number;
     }
   // Hands a target a bonus die their next d20 roll consumes (Bardic
   // Inspiration). `othersOnly`: never the holder ("one creature other than
@@ -134,6 +138,7 @@ export type ResourceFx =
       variants?: string[];
       tempHp?: DiceFormula;
       concentration?: boolean;
+      teleportFeet?: number;
     }
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
@@ -216,6 +221,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
         target: fx.target ?? "self",
         ...(fx.variants ? { variants: fx.variants } : {}),
         ...(fx.concentration ? { concentration: true } : {}),
+        ...(fx.teleportFeet ? { teleportFeet: fx.teleportFeet } : {}),
         ...(fx.tempHp
           ? {
               tempHp: (level: number, mods: Record<string, number>) =>

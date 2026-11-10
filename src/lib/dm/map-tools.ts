@@ -292,6 +292,28 @@ function unknownCombatant(map: BattleMap, name: string): ToolError {
   return { error: `No combatant on the battle map is called "${name}"; it holds ${listTokens(map.id).map((token) => token.name).join(", ")}.`, retry: true };
 }
 
+// Whether `token` may teleport to (x, y): on the map, open floor, nobody
+// there, and within `rangeFeet` when one is given. Every teleport reads it
+// (handleTeleportToken, a counter's teleport taken with its reaction:
+// src/lib/dm/reaction-tools.ts counterTeleport), so a square refused here is
+// refused before anything is spent.
+export function teleportSquareRefusal(map: BattleMap, token: BattleToken, x: number, y: number, rangeFeet: number | null): ToolError | null {
+  if (x < 0 || y < 0 || x >= map.width || y >= map.height) {
+    return { error: `(${x},${y}) is outside the ${map.width}x${map.height} map.`, retry: true };
+  }
+  if (blocksMove(tileAt(map.terrain, map.width, x, y))) {
+    return { error: `(${x},${y}) is a wall; a teleport needs open floor.`, retry: true };
+  }
+  if (occupiedTiles(map, listTokens(map.id), token).has(tileIndex(map.width, x, y))) {
+    return { error: `(${x},${y}) is occupied by another combatant.`, retry: true };
+  }
+  const distanceFeet = Math.max(Math.abs(x - token.x), Math.abs(y - token.y)) * TILE_FEET;
+  if (rangeFeet !== null && distanceFeet > rangeFeet) {
+    return { error: `(${x},${y}) is ${distanceFeet} ft away, past the ${rangeFeet} ft range. Pick a tile within range.`, retry: true };
+  }
+  return null;
+}
+
 export function handleTeleportToken(
   campaign: Campaign,
   rawArguments: string,
@@ -319,16 +341,9 @@ export function handleTeleportToken(
   if (!token) {
     return unknownCombatant(map, args.token);
   }
-  if (args.x < 0 || args.y < 0 || args.x >= map.width || args.y >= map.height) {
-    return { error: `(${args.x},${args.y}) is outside the ${map.width}x${map.height} map.`, retry: true };
-  }
-  if (blocksMove(tileAt(map.terrain, map.width, args.x, args.y))) {
-    return { error: `(${args.x},${args.y}) is a wall; a teleport needs open floor.`, retry: true };
-  }
-  const tokens = listTokens(map.id);
-  const occupied = occupiedTiles(map, tokens, token);
-  if (occupied.has(tileIndex(map.width, args.x, args.y))) {
-    return { error: `(${args.x},${args.y}) is occupied by another combatant.`, retry: true };
+  const square = teleportSquareRefusal(map, token, args.x, args.y, null);
+  if (square) {
+    return square;
   }
   const distanceFeet = Math.max(Math.abs(args.x - token.x), Math.abs(args.y - token.y)) * TILE_FEET;
   const spender = args.spell && args.casterCharacterId ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById) : null;

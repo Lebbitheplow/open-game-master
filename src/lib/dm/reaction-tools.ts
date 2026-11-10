@@ -53,6 +53,8 @@ import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { handleTeleportToken, teleportSquareRefusal } from "@/lib/dm/map-tools";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { matchResource } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -611,6 +613,32 @@ export function handleUseReaction(
   return result;
 }
 
+// A counter reaction that teleports its holder, with the square named
+// (Misty Escape: "turn invisible and teleport up to 60 feet to an unoccupied
+// space you can see"). The square is checked before the use is spent; the
+// spend writes the teleport credit and the board's teleport takes it, so the
+// move is the one door's and goes no farther than the feature allows.
+function counterTeleport(ctx: Ctx, feature: string, at: { x: number; y: number }, feet: number): ToolResult {
+  const { campaign, turn, sheet, args, sheets, sheetsById, encounter } = ctx;
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, sheet.id) : null;
+  if (!map || !token) {
+    return { error: `${feature} moves ${sheet.name} on the battle map, and they have no token on one: spend it without x and y. Nothing was spent.`, retry: true };
+  }
+  const square = teleportSquareRefusal(map, token, at.x, at.y, feet);
+  if (square) {
+    return { ...square, error: `${square.error} Nothing was spent.` };
+  }
+  const spent = applyDmMutation(campaign, turn.id, "use_resource", JSON.stringify({ characterId: sheet.id, resource: feature, ...(args.variant ? { variant: args.variant } : {}), reason: args.reason ?? feature }), sheets, sheetsById).result;
+  if (typeof spent.error === "string") {
+    return spent;
+  }
+  const moved = handleTeleportToken(campaign, JSON.stringify({ token: sheet.id, x: at.x, y: at.y, spell: feature, casterCharacterId: sheet.id, reason: feature }), sheets, sheetsById, turn);
+  const { teleport: _credit, ...rest } = spent;
+  void _credit;
+  return { ...rest, moved: typeof moved.error === "string" ? `The teleport did not land: ${moved.error}` : `${sheet.name} teleports to (${at.x},${at.y}).` };
+}
+
 function useReaction(
   campaign: Campaign,
   turn: DmTurn,
@@ -688,6 +716,12 @@ function useReaction(
   // branch let use_reaction spend the reaction and leave the counter full.
   const counter = matchResource(feature);
   if (counter?.action === "reaction" && sheet.resources?.[counter.id]) {
+    // A reaction that teleports its holder (Misty Escape) moves them now when
+    // the square is named, through move_token's teleport, which takes the
+    // credit the spend wrote and holds the move to its range.
+    if (counter.effect.kind === "buff" && counter.effect.teleportFeet && args.x !== undefined && args.y !== undefined) {
+      return counterTeleport({ campaign, turn, sheet, args, sheets, sheetsById, encounter }, counter.displayName, { x: args.x, y: args.y }, counter.effect.teleportFeet);
+    }
     return applyDmMutation(
       campaign,
       turn.id,

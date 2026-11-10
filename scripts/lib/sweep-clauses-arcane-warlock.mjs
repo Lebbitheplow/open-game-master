@@ -69,10 +69,16 @@ export function probes(rig, shared) {
     },
     "misty-teleport": async () => {
       await hit(fey());
-      const out = await react(fey(), "Misty Escape", { x: 5, y: 15 });
+      const from = kit.token(fey().id);
+      // 65 feet off is past the 60: refused, with the use kept.
+      const far = await react(fey(), "Misty Escape", { x: from.x + 13, y: from.y });
+      assert.equal(far.ok, false, "a square 65 feet away");
+      assert.equal(counter(fey(), "sub_misty_escape").used, 0, "the refusal spent the use");
+      const out = await react(fey(), "Misty Escape", { x: from.x + 10, y: from.y });
       assert.equal(out.ok, true, out.error);
       const at = kit.token(fey().id);
-      assert.deepEqual([at.x, at.y], [5, 15], `the warlock stands where they took the hit: ${show(out).slice(0, 160)}`);
+      assert.deepEqual([at.x, at.y], [from.x + 10, from.y], `the warlock stands where they took the hit: ${show(out).slice(0, 160)}`);
+      assert.ok(has(fey(), "invisible"));
     },
     "misty-rest": rests(["warlock", "The Archfey"], "sub_misty_escape", "short"),
     "beguiling-immune": async () => {
@@ -534,7 +540,6 @@ export function probes(rig, shared) {
   const projectionRest = rests(["warlock", "The Undead"], "sub_spirit_projection", "long");
 
   const KNOWN = {
-    "misty-teleport": { severity: "medium", kind: "rule-missing", where: `${RES} sub_misty_escape (fx buff invisible; no move)`, note: "The reaction lays invisible and leaves the 60 feet to a second call.", fix: "Move the warlock up to 60 feet to a point they name when Misty Escape is spent." },
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
     "soul-one-target": { severity: "medium", kind: "rule-wrong", where: "src/lib/srd/spell-damage-riders.ts authoredSpellDice (spell_rider rides every target's roll)", note: "", fix: "Add the Charisma modifier to one target's roll of an area spell." },
     "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },

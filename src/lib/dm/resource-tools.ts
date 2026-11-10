@@ -713,6 +713,10 @@ export function computeUseResource(
           patch: { ...conditionPatch, ...(tempHpPatch ?? {}) },
         };
       }
+      if (effect.teleportFeet) {
+        creditFeatureTeleport(sheet.id, def.displayName, effect.teleportFeet);
+        outcome.result.teleport = `${sheet.name} teleports up to ${effect.teleportFeet} feet: if a battle map is live, move their token with move_token, teleport true, spell "${def.displayName}" and casterCharacterId ${sheet.id}.`;
+      }
       const summary = conditionEffectsFor(condition)?.summary;
       outcome.result.applied = `${condition} on ${recipient.name} for ${effect.rounds} rounds`;
       if (summary) {

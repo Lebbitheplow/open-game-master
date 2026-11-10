@@ -2279,8 +2279,9 @@
    },
    {
     "c": "and teleports you 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: misty-teleport"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: misty-teleport",
+    "by": "src/lib/srd/authored-resources.json sub_misty_escape fx teleportFeet 60 (src/lib/dm/reaction-tools.ts counterTeleport, src/lib/dm/map-tools.ts teleportSquareRefusal)"
    },
    {
     "c": "recharges on a short or long rest",
