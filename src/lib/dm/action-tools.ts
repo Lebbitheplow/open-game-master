@@ -18,6 +18,7 @@ import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
+import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -468,6 +469,12 @@ export function handleTakeAction(
       };
     }
     case "dash": {
+      // "The increase equals your speed, after applying any modifiers" (SRD
+      // 5.1, Dash): at speed 0 it buys nothing, as the Hand's card says, and
+      // a grappled hero's action was spent on it.
+      if (inFight && effectiveSpeed(sheet.conditions, sheet.speed) === 0) {
+        return { error: `${sheet.name}'s speed is 0, so a Dash goes nowhere. Nothing was spent.`, refused: "rules" };
+      }
       // Each Dash adds the speed again, so a second one (Cunning Action,
       // Action Surge) is never a spend that buys nothing.
       spend(price.budget ? { dashed: true, dashes: dashCount(price.budget) + 1 } : { dashed: true });

@@ -149,6 +149,20 @@ export function help(
       };
     }
   }
+  // Help in a fight is lent beside the ally (the Hand's card says 5 ft): an
+  // ally 30 or 100 feet off was helped with no creature named. On an attack
+  // the foe is the one within 5 feet of the helper (above), and the ally may
+  // stand anywhere.
+  if (!foe && encounter && (encounter.kind ?? "fight") === "fight") {
+    const apart = tilesBetween(encounter.id, sheet.id, target.id);
+    const reach = helpReachTiles(sheet);
+    if (apart !== null && apart > reach) {
+      return {
+        error: `${target.name} is ${apart * 5} ft from ${sheet.name}: Help in a fight is lent within ${reach * 5} ft. They move next to ${target.name} first, or name the foe within ${reach * 5} ft of ${sheet.name} that ${target.name} attacks. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+  }
   spend();
   const fresh = getSheetById(target.id) ?? target;
   addSheetCondition(campaign, fresh, HELPED, { untilTurnOf: sheet.id }, foe ? foe.id : HELP_FOR_A_CHECK);
