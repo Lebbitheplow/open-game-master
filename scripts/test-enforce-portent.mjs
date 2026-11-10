@@ -453,6 +453,28 @@ await test("A hero's spell at one creature stops before it is cast, and the numb
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17], "the 3 is paid for");
 });
 
+// The tool sends its creatures in `targets` (src/lib/dm/cast-tools.ts), and a
+// stop that read only the flat targetEnemyId never came for it (play-test
+// 2026-11-09: Hold Person at one creature, twice, with no Portent stop).
+await test("A hero's spell sent as the tool sends it, its creature in targets, stops too.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightWorld.patch(target.id, { spellcasting: { ability: "wis", cantrips: ["Sacred Flame"], known: [], prepared: [], slots: {} } });
+  fightModel.script([reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targets: [{ targetEnemyId: goblin.id }], spell: "Sacred Flame" })] }), reply({ text: "Radiance falls." })]);
+  const before = saveRolls().length;
+  await fightModel.turn(fightWorld, "I call down Sacred Flame on the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the spell stops before its roll");
+  assert.match(stop.reason, /Kara is about to cast Sacred Flame at Goblin/);
+  assert.equal(stop.watch.choices.length, 1, "one creature: nothing to pick");
+  assert.equal((await answer(stop.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = saveRolls().slice(before);
+  assert.equal(landed[0]?.breakdown.natural, 3, `the goblin's save shows the 3 (${JSON.stringify(landed.map((roll) => roll.detail))})`);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17], "the 3 is paid for");
+});
+
 await test("An area with one creature in it stops for that one's save; with two the player picks whose save takes the number.", async () => {
   arm();
   await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall.");
@@ -490,6 +512,41 @@ await test("An area with one creature in it stops for that one's save; with two 
   // The second goblin's d20 is the 3; the first rolled its own 10.
   assert.equal(first.save - second.save, 7, JSON.stringify([first, second]));
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+});
+
+await test("A hero's spell at two creatures asks whose save takes the number, as an area does.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const kept = fightWorld.sheet(target.id).equipment;
+  fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Hold Person"], slots: { 3: { max: 1, used: 0 } } } });
+  // Hold Person from a 3rd-level slot reaches two creatures.
+  fightModel.script([
+    reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targets: [{ targetEnemyId: goblin.id }, { targetEnemyId: goblin2.id }], spell: "Hold Person", level: 3 })] }),
+    reply({ text: "Both goblins stiffen." }),
+  ]);
+  const before = saveRolls().length;
+  await fightModel.turn(fightWorld, "I cast Hold Person at both goblins.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the spell stops before its saves");
+  assert.match(stop.reason, /Kara is about to cast Hold Person at Goblin/);
+  const { publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices.map((choice) => choice.name), [goblin.displayName, goblin2.displayName], "the card names whose saves they are");
+  const unnamed = await answer(stop.id, { value: 3 });
+  assert.equal(unnamed.status, 400);
+  assert.match(unnamed.json.error, /whose roll/);
+  fightWorld.dice(10);
+  assert.equal((await answer(stop.id, { value: 3, choice: 1 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  fightWorld.clearDice();
+  const landed = saveRolls().slice(before);
+  const told = fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").at(-1)?.content;
+  // The second goblin's d20 is the 3; the first rolled its own 10.
+  assert.deepEqual(landed.map((roll) => roll.breakdown.natural), [10, 3], told);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  // The tests after this one need the goblins free and Kara's mind clear.
+  for (const enemy of [goblin, goblin2]) kit.setEnemy(enemy.id, { conditions: [] });
+  fightWorld.patch(target.id, { concentratingOn: null, concentrationRounds: null, equipment: kept });
 });
 
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {

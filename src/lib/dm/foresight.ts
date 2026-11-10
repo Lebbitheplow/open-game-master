@@ -184,11 +184,31 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
   if (call.name === "cast_at_enemy") {
     // A hero's spell at one creature: the caster's attack roll or the
     // creature's save, whichever the spell asks for. Only the ones in sight.
+    // The tool sends its creatures as `targets` (cast-tools.ts); the flat
+    // targetEnemyId is the older shape its handler still reads.
     const hero = sheetOf(args.characterId);
-    const enemy = typeof args.targetEnemyId === "string" ? getFoe(args.targetEnemyId) : null;
-    if (!hero || !enemy) {
+    const refs = Array.isArray(args.targets)
+      ? args.targets.map((entry: unknown) => (entry && typeof entry === "object" ? (entry as Record<string, unknown>).targetEnemyId : entry))
+      : [args.targetEnemyId];
+    const enemies: EncounterEnemy[] = [];
+    for (const ref of refs) {
+      const enemy = typeof ref === "string" ? getFoe(ref) : null;
+      if (enemy && !enemies.some((entry) => entry.id === enemy.id)) enemies.push(enemy);
+    }
+    if (!hero || !enemies.length) {
       return null;
     }
+    const spell = typeof args.spell === "string" && args.spell.trim() ? args.spell.trim().slice(0, 60) : "a spell";
+    if (enemies.length > 1) {
+      // Each creature it reaches saves on its own, as in an area: the
+      // watcher picks whose save the number answers.
+      const rolls = enemies.filter((enemy) => !unseen(enemy)).map((enemy) => foeRoll(enemy, "save"));
+      if (!rolls.length) {
+        return null;
+      }
+      return { line: `${hero.name} is about to cast ${spell} at ${enemies.map((enemy) => enemy.displayName).join(", ")}.`, rollerId: hero.id, rolls, perCreature: true, rollerWaits: false };
+    }
+    const [enemy] = enemies;
     const rolls: Seen[] = [
       ...(unseen(enemy) ? [] : [foeRoll(enemy, "save")]),
       ...(unseen(hero) ? [] : [{ tag: { roller: "hero" as const, kind: "attack" as const, who: hero.name }, ref: hero.id, name: hero.name }]),
@@ -196,7 +216,6 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     if (!rolls.length) {
       return null;
     }
-    const spell = typeof args.spell === "string" && args.spell.trim() ? args.spell.trim().slice(0, 60) : "a spell";
     // A spell attack a player throws waits on their card (throwForChoice);
     // the creature's save does not, so the stop still answers that one.
     return { line: `${hero.name} is about to cast ${spell} at ${enemy.displayName}.`, rollerId: hero.id, rolls, perCreature: false, rollerWaits: false };
