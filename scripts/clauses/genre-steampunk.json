@@ -2113,13 +2113,16 @@
   "clauses": [
    {
     "c": "Your tuned weapons count as +2 magical weapons and their critical range improves to 19-20",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Masterwork Arsenal#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Masterwork Arsenal: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Masterwork Arsenal: a gadgeteer's weapon is +2 and magical, and a 19 is a critical hit",
+    "by": "src/lib/srd/genre-b-combat.ts genreWornRiders (+2 to attack and damage, magical: every weapon a gadgeteer carries is a tuned one on this engine), crit_range 19 in src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "crit_range"
+   ]
+  }
  },
  "aether_channeler::Conduit Body": {
   "source": "src/lib/classes/steampunk-features.json",

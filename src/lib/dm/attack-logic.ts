@@ -350,7 +350,7 @@ export type AttackStance = {
   // A genre feature's own die for the unarmed strike or an improvised weapon
   // (src/lib/srd/genre-b-combat.ts genreStrike: Heavy Hands, Improvised Weapon
   // Mastery, which also counts the improvised weapon proficient).
-  strike?: { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean };
+  strike?: { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean; improvisedMagical?: boolean };
   // What worn items add to attacks with some weapons (Bracers of Archery) or
   // with the unarmed strike (UNARMED_STRIKE_KEY), from
   // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
@@ -484,7 +484,8 @@ export function weaponAttackProfile(
       heavy: false,
       ...(resolved.unarmed ? { unarmed: true } : {}),
       ...(martial ? { martialArts: true } : {}),
-      ...(fist.attack > 0 ? { magicWeapon: true } : {}),
+      // Junkyard Strikes: the improvised weapon "counts as magical".
+      ...(fist.attack > 0 || (!resolved.unarmed && strike.improvisedMagical) ? { magicWeapon: true } : {}),
       riderNotes: notes,
     };
   }
@@ -589,7 +590,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 || wornTotals.attack > 0 ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || wornTotals.attack > 0 || wornRiders.some((rider) => rider.magical) ? { magicWeapon: true } : {}),
   };
 }
 

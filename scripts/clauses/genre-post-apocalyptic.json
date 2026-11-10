@@ -243,11 +243,9 @@
   "clauses": [
    {
     "c": "Your improvised and simple weapons deal +1d6 damage and count as magical",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Junkyard Strikes#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Junkyard Strikes: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Junkyard Strikes: a simple weapon deals +1d6 and counts as magical against a resistance to nonmagical blows",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (+1d6) and genreWornRiders (simple weapons magical, read by src/lib/srd/magic-items.ts magicItemRiders at every door), genreStrike improvisedMagical for an improvised weapon (src/lib/dm/attack-logic.ts)"
    },
    {
     "c": "+1d6",

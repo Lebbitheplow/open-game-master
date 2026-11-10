@@ -178,5 +178,37 @@ await run("Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical aga
   assert.equal(lost(far), 11, `the limb dealt ${lost(far)} at 10 feet (two 3s and CHA +5, unresisted)`);
 });
 
+// ---- weapons that count as magic ----
+
+const NONMAGIC = "bludgeoning, piercing, and slashing from nonmagical attacks";
+const resistsMundane = (enemy) => kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, resist: NONMAGIC } });
+
+await run("Junkyard Strikes: a simple weapon deals +1d6 and counts as magical against a resistance to nonmagical blows", async () => {
+  const hero = rig.holder(feature("scavenger", "Junkyard Strikes", 11), { gear: "simple" });
+  const { near } = await rig.fight(hero);
+  resistsMundane(near);
+  await rig.swing(hero, near, { weapon: "Club" });
+  assert.equal(lost(near), 9, `the club dealt ${lost(near)} (a 3, STR +3 and the junkyard 3, unresisted)`);
+});
+
+await run("Masterwork Arsenal: a gadgeteer's weapon is +2 and magical, and a 19 is a critical hit", async () => {
+  const hero = rig.holder(feature("gadgeteer", "Masterwork Arsenal", 15));
+  const { near } = await rig.fight(hero);
+  resistsMundane(near);
+  const out = await kit.swing(hero.id, near.id, [19, 3, 3, 3, 3, 3, 3], { weapon: "Longsword" });
+  rig.must(out.out, "pc_attack");
+  const base = await rig.without(hero, { name: "Masterwork Arsenal" }, async () => {
+    kit.setEnemy(near.id, { currentHp: 300 });
+    rig.myTurn(hero);
+    await kit.swing(hero.id, near.id, [19, 3, 3, 3, 3, 3, 3], { weapon: "Longsword" });
+    return lost(near);
+  });
+  assert.ok(base < 10, `without the arsenal the 19 dealt ${base}`);
+  rig.myTurn(hero);
+  kit.setEnemy(near.id, { currentHp: 300 });
+  await kit.swing(hero.id, near.id, [19, 3, 3, 3, 3, 3, 3], { weapon: "Longsword" });
+  assert.equal(lost(near), 11, `the arsenal's 19 dealt ${lost(near)} (two 3s on the critical, STR +3, +2, unresisted)`);
+});
+
 world.close();
 finish();

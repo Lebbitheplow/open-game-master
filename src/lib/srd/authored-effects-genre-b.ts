@@ -312,6 +312,7 @@ type Def = {
     | { kind: "speed_bonus"; amount: (level: number) => number }
     | { kind: "ac_bonus"; amount: number; requiresArmor?: boolean }
     | { kind: "half_proficiency"; scope: "mental" }
+    | { kind: "crit_range"; low: number }
   >;
   guidance: string;
 };
@@ -325,6 +326,9 @@ export const GENRE_B_FEATURE_DEFS: Def[] = [
   { match: ["boiler plate"], classes: ["steam_knight"], effects: [{ kind: "ac_bonus", amount: 1, requiresArmor: true }], guidance: "Boiler Plate: +1 AC while armored, which the server adds." },
   // "Boiler Plate grants +2 AC": one more than Boiler Plate's own.
   { match: ["reinforced boiler"], classes: ["steam_knight"], effects: [{ kind: "ac_bonus", amount: 1, requiresArmor: true }], guidance: "Reinforced Boiler: Boiler Plate's bonus is +2 AC while armored, which the server adds." },
+  // Masterwork Arsenal: "their critical range improves to 19-20" (the +2 is
+  // src/lib/srd/genre-b-combat.ts genreWornRiders).
+  { match: ["masterwork arsenal"], classes: ["gadgeteer"], effects: [{ kind: "crit_range", low: 19 }], guidance: "Masterwork Arsenal: weapon attacks score a critical hit on a 19 or 20, which the server applies." },
   { match: ["reinforced chassis"], classes: ["machinist"], effects: [{ kind: "ac_bonus", amount: 1, requiresArmor: true }], guidance: "Reinforced Chassis: +1 AC while armored, which the server adds." },
 ];
 

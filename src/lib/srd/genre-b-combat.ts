@@ -15,7 +15,7 @@
 // Pure: no database, so the Hand imports it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import { weaponNamed } from "@/lib/srd/weapons";
+import { SRD_WEAPONS, weaponNamed } from "@/lib/srd/weapons";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -34,7 +34,7 @@ function holds(sheet: Holder, classId: string, feature: string): boolean {
 
 const belowHalf = (sheet: Holder) => sheet.maxHp > 0 && sheet.currentHp * 2 < sheet.maxHp;
 
-export type GenreStrike = { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean };
+export type GenreStrike = { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean; improvisedMagical?: boolean };
 
 // The die an unarmed strike or an improvised weapon rolls in place of the
 // SRD's 1 and 1d4.
@@ -48,6 +48,25 @@ export function genreStrike(sheet: Holder): GenreStrike {
     out.improvisedTwoHanded = "1d8";
     out.improvisedProficient = true;
   }
+  // Junkyard Strikes: "Your improvised and simple weapons ... count as magical."
+  if (holds(sheet, "scavenger", "Junkyard Strikes")) out.improvisedMagical = true;
+  return out;
+}
+
+const ALL_WEAPONS = SRD_WEAPONS.map((weapon) => textKey(weapon.name));
+const SIMPLE_WEAPONS = SRD_WEAPONS.filter((weapon) => weapon.category === "simple").map((weapon) => textKey(weapon.name));
+
+// What genre features add to a weapon's attack and damage rolls as a magic
+// weapon would (src/lib/srd/magic-items.ts magicItemRiders reads it):
+// Junkyard Strikes' simple weapons "count as magical"; Masterwork Arsenal's
+// "tuned weapons count as +2 magical weapons". A gadgeteer tunes the weapons
+// they carry (Prodigy's Precision: "tech blades and firearms you have
+// tuned"), so every weapon of theirs is a tuned one on this engine.
+export function genreWornRiders(wearer: { class: string; features: Array<{ name: string }>; classes?: Array<{ id: string }> }): Array<{ weapons: string[]; attack?: number; damage?: number; magical?: boolean; source: string }> {
+  const out: Array<{ weapons: string[]; attack?: number; damage?: number; magical?: boolean; source: string }> = [];
+  const sheet = wearer as unknown as Holder;
+  if (holdsGenreFeature(sheet, "scavenger", "Junkyard Strikes")) out.push({ weapons: SIMPLE_WEAPONS, magical: true, source: "Junkyard Strikes" });
+  if (holdsGenreFeature(sheet, "gadgeteer", "Masterwork Arsenal")) out.push({ weapons: ALL_WEAPONS, attack: 2, damage: 2, magical: true, source: "Masterwork Arsenal" });
   return out;
 }
 

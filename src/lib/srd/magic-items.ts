@@ -19,6 +19,7 @@
 //     its text lets attune (a Staff of Power: a sorcerer, warlock or wizard);
 //   - a second copy of the same item adds nothing.
 
+import { genreWornRiders } from "@/lib/srd/genre-b-combat";
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { ATTUNEMENT_SLOTS, attunementSlotsFor } from "@/lib/srd/armor";
 import { countsAsWorn } from "@/lib/srd/wear-slots";
@@ -84,7 +85,9 @@ export type MagicItemEffect =
 // damage die of 1d8" that deals "slashing damage").
 export type UnarmedForm = { die: string; damageType: string };
 
-export type WornWeaponRider = { weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm; source: string };
+// `magical`: the weapon's blows are magical with no bonus of their own
+// (Junkyard Strikes: "count as magical").
+export type WornWeaponRider = { weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm; magical?: boolean; source: string };
 
 // Who an item lets attune, read from the pack's "requires attunement by ..."
 // line. `text` is that line's own wording, for the refusal.
@@ -126,7 +129,8 @@ export type Wearer = {
   race?: string;
   alignment?: string;
   spellcasting?: unknown;
-  // Use Magic Device (Thief 13) ignores class, race and level requirements.
+  // Use Magic Device (Thief 13) ignores class, race and level requirements;
+  // the genre features that make a weapon magic (genre-b-combat.ts genreWornRiders).
   features?: Array<{ name: string }>;
 };
 
@@ -356,6 +360,11 @@ export function magicItemRiders(equipment: WornMagicItem[], wearer?: Wearer): Ma
   }
   riders.resistances = [...new Set(riders.resistances)];
   riders.immunities = [...new Set(riders.immunities)];
+  // Weapons a genre feature makes magic, read where every door reads worn
+  // riders (pc_attack, the Hand, an opportunity strike, a companion's block).
+  if (wearer?.features && wearer.class) {
+    riders.weaponRiders.push(...genreWornRiders({ ...wearer, class: wearer.class, features: wearer.features }));
+  }
   return riders;
 }
 
