@@ -450,7 +450,11 @@ export type SpendDoes =
   | { kind: "restore"; pool: string; amount: number; clears?: string }
   // Hunter's Sense: the named creature's damage immunities, resistances and
   // vulnerabilities, read from its stat block (src/lib/dm/authored-spend-divine.ts).
-  | { kind: "reveal_defenses"; sight: true };
+  | { kind: "reveal_defenses"; sight: true }
+  // Inspiring Smite: right after a Divine Smite this turn, temporary hit
+  // points rolled once and shared between the holder and the creature named
+  // within rangeFt (amount: the named creature's part, the rest the holder's).
+  | { kind: "smite_temp_hp"; formula: Formula; rangeFt: number };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

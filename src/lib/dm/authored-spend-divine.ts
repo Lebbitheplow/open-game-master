@@ -4,22 +4,73 @@
 // authored spend: a refusal returns before anything is paid.
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { unseenBecause } from "@/lib/dm/authored-saves";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
+import { resolveFormula } from "@/lib/srd/authored-effects";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { publishPersisted } from "@/lib/events";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
+import { rollCard } from "@/lib/dm/roll-card";
+import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { conditionTurnShape } from "@/lib/srd/condition-effects";
+import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
 // Every kind this module resolves comes through here, so the shared
 // resolver carries one case per kind and no rules of its own.
-export function divineSpend(ctx: SpendContext, does: Extract<SpendDoes, { kind: "reveal_defenses" }>): Resolution {
+export function divineSpend(ctx: SpendContext, does: Extract<SpendDoes, { kind: "reveal_defenses" | "smite_temp_hp" }>): Resolution {
   switch (does.kind) {
     case "reveal_defenses":
       return revealDefenses(ctx);
+    case "smite_temp_hp":
+      return smiteTempHp(ctx, does);
   }
+}
+
+// Inspiring Smite: "After a Divine Smite, hand out temporary hit points of
+// 2d8 + paladin level split among creatures within 30 feet." The turn's
+// record of a smite the hit paid for (attack-swing.ts) opens it; the total is
+// rolled once and shared between the creature named and the paladin, the
+// named one's part in amount (all of it when amount is not given). Before
+// this the use and the bonus action were spent and nobody gained anything.
+function smiteTempHp(ctx: SpendContext, does: Extract<SpendDoes, { kind: "smite_temp_hp" }>): Resolution {
+  const { campaign, sheet } = ctx;
+  const encounter = getActiveEncounter(campaign.id);
+  const budget = encounter ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
+  if (!encounter || !budget?.oncePerTurn.includes(DIVINE_SMITE_LANDED)) {
+    return { error: `${ctx.spend.name} comes right after a Divine Smite, and ${sheet.name} has landed none this turn: pc_attack with smite first. Nothing was spent.`, refused: "rules" };
+  }
+  const named = ctx.args.targetCharacterId && ctx.args.targetCharacterId !== sheet.id ? getSheetById(ctx.args.targetCharacterId) : null;
+  if (ctx.args.targetCharacterId && ctx.args.targetCharacterId !== sheet.id && (!named || named.campaignId !== campaign.id)) {
+    return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId from GAME STATE. Nothing was spent.`, retry: true };
+  }
+  if (named && !withinFeet(encounter.id, sheet.id, named.id, does.rangeFt)) {
+    return { error: `${named.name} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+  }
+  const dice = resolveFormula(does.formula, ctx.held.level, ctx.mods);
+  const total = Math.max(0, Number(rollCard(campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: temporary hit points`, dice, null).total));
+  const theirs = named ? Math.max(0, Math.min(total, Math.floor(ctx.args.amount ?? total))) : 0;
+  const mine = total - theirs;
+  const lines: string[] = [];
+  // Temporary hit points do not stack: each keeps the larger.
+  if (named && theirs > 0) {
+    if (theirs > named.tempHp) {
+      const updated = patchSheet(named.id, { tempHp: theirs });
+      if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    }
+    lines.push(`${named.name}: ${Math.max(theirs, named.tempHp)} temporary hit points.`);
+  }
+  if (mine > 0) {
+    lines.push(`${sheet.name}: ${Math.max(mine, sheet.tempHp)} temporary hit points.`);
+  }
+  return {
+    ...(mine > sheet.tempHp ? { patch: { tempHp: mine } } : {}),
+    result: { rolled: total, applied: lines.length ? lines : [`${total} temporary hit points rolled; none given.`] },
+  };
 }
 
 const line = (text: string | undefined) => (text ?? "").trim();

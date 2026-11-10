@@ -8,6 +8,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -56,6 +57,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "regain_slot") return "ally";
   // The creature Hunter's Sense reads (authored-spend-divine.ts).
   if (does.kind === "reveal_defenses") return "enemy";
+  // The ally Inspiring Smite shares its temporary hit points with.
+  if (does.kind === "smite_temp_hp") return "ally";
   return "none";
 }
 
@@ -297,6 +300,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       poolGate,
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        : null,
+      // Inspiring Smite comes right after a Divine Smite (authored-spend-divine.ts).
+      aimDoes(does, aim.variant).kind === "smite_temp_hp" && !(turn.marks ?? []).includes(DIVINE_SMITE_LANDED)
+        ? { reason: `${spend.name} comes right after a Divine Smite: land one this turn first.`, spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.

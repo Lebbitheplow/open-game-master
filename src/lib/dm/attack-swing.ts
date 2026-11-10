@@ -8,6 +8,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import { NET_HOLD } from "@/lib/dm/net-hold";
+import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -248,8 +249,10 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     }
     maneuverPaid = maneuverPaid || paid.maneuverPaid;
     if (record.onHit.smite && paid.suffix.includes(`+${record.onHit.smite.dice}d8`)) {
-      // A smite the hit paid for rides as radiant.
+      // A smite the hit paid for rides as radiant, and is on the turn's
+      // record for what comes right after one (Inspiring Smite).
       riders.push({ dice: `${record.onHit.smite.dice}d8`, type: "radiant" });
+      markAttackTurn(campaign.id, record, DIVINE_SMITE_LANDED);
     }
     expression = `${expression}${paid.suffix}`;
   }

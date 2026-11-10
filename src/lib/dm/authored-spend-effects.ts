@@ -548,6 +548,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return regainSlot(ctx, does);
     // The divine package's spends (src/lib/dm/authored-spend-divine.ts).
     case "reveal_defenses":
+    case "smite_temp_hp":
       return divineSpend(ctx, does);
   }
 }

@@ -2759,17 +2759,15 @@
    },
    {
     "c": "hand out temporary hit points of 2d8 + paladin level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Inspiring Smite#temp-hp",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts 'inspiring smite': spends the use and the bonus action and hands out no temporary hit points"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine.ts smiteTempHp (the row in src/lib/srd/authored-effects-w2-divine.ts), opened by the smite mark attack-swing.ts lays",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Inspiring Smite#temp-hp"
    },
    {
     "c": "split among creatures within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the scene for paladin::Channel Divinity: Inspiring Smite runs no check for this clause"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine.ts smiteTempHp: the creature named within 30 feet, after a Divine Smite this turn",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Inspiring Smite#within-30"
    }
   ]
  },

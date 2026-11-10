@@ -31,6 +31,12 @@ export const AUTHORED_DATA_W2_DIVINE: Record<string, AuthoredEntry> = {
     subclass: "Grave Domain",
     spends: [{ name: "Path to the Grave", pool: CHANNEL, action: "action", does: { kind: "buff", target: "enemy", condition: GRAVE_CURSE, rounds: 2, untilNextTurnEnds: true, rangeFt: 30 } }],
   },
+  // "After a Divine Smite, hand out temporary hit points of 2d8 + paladin
+  // level split among creatures within 30 feet": a bonus action.
+  "paladin::Channel Divinity: Inspiring Smite": {
+    subclass: "Oath of Glory",
+    spends: [{ name: "Inspiring Smite", pool: CHANNEL, action: "bonus", does: { kind: "smite_temp_hp", formula: (level) => `2d8+${level}`, rangeFt: 30 } }],
+  },
   // "An action reveals a creature's damage immunities, resistances and
   // vulnerabilities, a Wisdom-modifier number of times per long rest."
   "ranger::Hunter's Sense": {

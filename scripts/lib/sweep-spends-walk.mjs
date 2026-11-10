@@ -45,7 +45,9 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind"];
+// "The holder smote a foe" is for what comes right after a Divine Smite
+// (Inspiring Smite), after every staging an earlier spend was read at.
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder smote a foe"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -193,6 +195,11 @@ async function step(rig, scene, name, notes) {
       return swing([18, 5]);
     case "the holder missed a foe":
       return swing([2]);
+    case "the holder smote a foe":
+      // A Divine Smite of a 1st-level slot rides the hit (2d8 radiant).
+      if (!world.sheet(holder).spellcasting?.slots?.["1"]) return { ok: false, error: "no 1st-level slot to smite with" };
+      world.dice(18, 5, 4, 4);
+      return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Longsword", smite: 1 });
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);

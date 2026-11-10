@@ -55,9 +55,14 @@ export const PALADIN_B = {
   "paladin::Channel Divinity: Inspiring Smite": async (rig) => {
     const who = rig.hero("paladin", "Oath of Glory", 3);
     const friend = rig.hero("cleric", "Life Domain", 3);
+    const away = rig.hero("cleric", "Life Domain", 3);
     const [foe] = await rig.fight(who);
     rig.kit.place(friend.id, 4, 5);
+    rig.kit.place(away.id, 15, 15);
+    const before = await rig.channel(who, "inspiring smite", { targetCharacterId: friend.id }, [5, 5]);
     const smite = await rig.kit.swing(who.id, foe.id, [18, 4, 4, 4], { smite: 1 });
+    const far = await rig.channel(who, "inspiring smite", { targetCharacterId: away.id }, [5, 5]);
+    const usedFar = rig.res(who, "channel_divinity").used;
     const out = await rig.channel(who, "inspiring smite", { targetCharacterIds: [friend.id], targetCharacterId: friend.id }, [5, 5]);
     const state = { budget: rig.budget(), temp: [rig.world.sheet(who.id).tempHp, rig.world.sheet(friend.id).tempHp] };
     rig.note("smite", [smite.ok, smite.error, smite.damage?.expression, out.ok, out.error, brief(out.result, 160), state]);
@@ -65,6 +70,11 @@ export const PALADIN_B = {
       bonus: () => {
         assert.equal(out.ok, true, out.error);
         assert.ok(state.budget?.bonusUsed, "it is a bonus action");
+      },
+      "within-30": () => {
+        assert.equal(before.ok, false, "Inspiring Smite was taken with no Divine Smite this turn");
+        assert.equal(far.ok, false, "an ally 50 feet off was given temporary hit points");
+        assert.equal(usedFar, 0, "a refusal spent the use");
       },
       "temp-hp": () => assert.equal(state.temp[0] + state.temp[1], 5 + 5 + 3, `after a Divine Smite the use and the bonus action were spent, and the paladin and the ally beside them hold ${state.temp[0]} and ${state.temp[1]} temporary hit points: 2d8 (two 5s) + paladin level 3 were to be shared out; the result is ${brief(out.result, 140)}`),
     };
