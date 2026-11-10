@@ -7,16 +7,20 @@
    and Rider spend no pip and stay a dashed outline. */
 
 :root {
+  /* Three gems cut from the table's own palette: ivory, jade and rose. They
+     stay three hues apart and each keeps its shape, so the code reads the
+     same; a highlighter's lime and pink were the only colours on the table
+     that came from somewhere else. */
   --cost-action: #f4ead2;
   --cost-action-ink: #1c1407;
-  --cost-bonus: #b9e35a;
-  --cost-bonus-ink: #172200;
-  --cost-reaction: #ee86cf;
-  --cost-reaction-ink: #2a0420;
+  --cost-bonus: #8fdc9c;
+  --cost-bonus-ink: #0c2413;
+  --cost-reaction: #f29bbd;
+  --cost-reaction-ink: #2e0719;
   /* The board is night in both themes, so its pips keep these. */
   --cost-action-night: #f4ead2;
-  --cost-bonus-night: #b9e35a;
-  --cost-reaction-night: #ee86cf;
+  --cost-bonus-night: #8fdc9c;
+  --cost-reaction-night: #f29bbd;
 }
 /* Parchment day: the same three, deep enough to fill a gem on vellum. */
 html[data-theme="light"] {
@@ -39,7 +43,7 @@ html[data-theme="light"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -186,7 +190,7 @@ html[data-theme="light"] .hand-pip[data-cost][data-used="true"] { color: #8a7f6a
 }
 .hand-chip[aria-pressed="true"]::before { background: currentColor; }
 .hand-chip[aria-pressed="true"][data-cost="concentration"]::before { background: transparent; }
-.hand-chip-count { font-family: var(--font-geist-mono), monospace; font-size: 10px; opacity: 0.7; }
+.hand-chip-count { font-family: var(--font-mono); font-size: 10px; opacity: 0.7; }
 html[data-theme="light"] .hand-chip { background: rgba(255, 250, 235, 0.85); border-color: rgba(122, 96, 40, 0.4); color: #2a2014; }
 html[data-theme="light"] .hand-chip[aria-pressed="true"] { color: var(--cost-ink, #fbf5e4); background: var(--cost, #6b4f0e); border-color: var(--cost, #6b4f0e); }
 

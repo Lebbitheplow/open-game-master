@@ -178,7 +178,7 @@ export function AdminServerLogPanel() {
         <div
           ref={scroller}
           onWheel={() => setFollow(false)}
-          className="max-h-[60vh] overflow-auto rounded-lg border border-white/5 bg-black/40 p-2 font-mono text-[11.5px] leading-relaxed"
+          className="max-h-[60vh] overflow-auto rounded-lg border border-white/5 bg-black/40 p-2 font-code text-[11.5px] leading-relaxed"
         >
           {shown.map((entry) => (
             <div key={entry.seq} className={cn("live-in whitespace-pre-wrap break-words", LEVEL_TONE[entry.level])}>

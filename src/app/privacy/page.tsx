@@ -113,7 +113,7 @@ export default function PrivacyPage() {
           <li>
             <span className="text-stone-200">The tunnel broker</span> is a small service that
             hands your device a temporary address such as{" "}
-            <span className="font-mono text-xs">play-CODE.opengamemaster.com</span>. It sees
+            <span className="font-code text-xs">play-CODE.opengamemaster.com</span>. It sees
             the port your world listens on and the IP address the request comes from. The IP
             address is used only to limit how many addresses one network can request per day,
             and it is stored only as a salted hash that expires within 24 hours. No account,

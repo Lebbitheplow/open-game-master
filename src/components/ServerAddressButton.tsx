@@ -170,7 +170,7 @@ export function ServerAddressButton() {
                 Preparing the code...
               </div>
             )}
-            <p className="mt-3 break-all font-mono text-xs text-amber-100">{picked}</p>
+            <p className="mt-3 break-all font-code text-xs text-amber-100">{picked}</p>
             <div className="mt-2 flex gap-2">
               <button
                 type="button"

@@ -120,7 +120,7 @@ export function AddonFields({
                   onChange(field.key, field.type === "number" ? Number(event.target.value) : event.target.value)
                 }
                 aria-describedby={field.help ? `${id}-help` : undefined}
-                className={cn(ui.input, "text-xs", (field.type === "path" || field.type === "secret") && "font-mono")}
+                className={cn(ui.input, "text-xs", (field.type === "path" || field.type === "secret") && "font-code")}
               />
             )}
             {help}

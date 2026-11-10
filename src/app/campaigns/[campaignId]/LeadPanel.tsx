@@ -157,7 +157,7 @@ function InvitesCard({
         )}
         {midGameJoinOpen ? (
           <>
-            <KitButton onClick={copyInviteLink} title="Copy the invite link" className="font-mono">
+            <KitButton onClick={copyInviteLink} title="Copy the invite link" className="font-code">
               {inviteCopied ? <Check className="motion-pop size-3.5 text-emerald-400" /> : <LinkIcon className="size-3.5" />}
               {inviteCode}
             </KitButton>

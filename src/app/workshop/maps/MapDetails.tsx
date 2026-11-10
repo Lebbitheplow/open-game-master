@@ -86,7 +86,7 @@ export function MapDetailsPanel({ words, knownTags, children }: { words: MapWord
       <PanelHead>Details</PanelHead>
       {children}
       <div className="space-y-1">
-        <span className="font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">Tags</span>
+        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">Tags</span>
         <input
           value={words.tagText}
           aria-label="Tags"
@@ -102,7 +102,7 @@ export function MapDetailsPanel({ words, knownTags, children }: { words: MapWord
         />
       </div>
       <div className="space-y-1">
-        <span className="font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">Notes</span>
+        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">Notes</span>
         <DictateField label="Map notes" onTranscript={(text) => words.setNotes(appendDictation(words.words.notes, text, 4000))}>
           <textarea
             value={words.words.notes}

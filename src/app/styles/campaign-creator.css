@@ -76,7 +76,7 @@
   .cc-eyebrow {
     font-family: var(--font-display), Georgia, serif;
     text-transform: uppercase;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.14em;
     font-size: 9px;
     font-weight: 600;
     color: color-mix(in srgb, var(--color-amber-500) 80%, transparent);
@@ -560,7 +560,7 @@
   .cc-cover-genre {
     font-family: var(--font-display), Georgia, serif;
     text-transform: uppercase;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.14em;
     font-size: 8px;
     font-weight: 600;
     color: rgba(227, 193, 92, 0.85);

@@ -114,7 +114,7 @@ export function DiceSourcesPanel() {
         <p className="reveal rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
           Bluetooth dice need a Chromium browser (Chrome, Edge, or Opera). You
           can still choose typed or digital sources below. On Linux, enable
-          <span className="font-mono"> chrome://flags/#enable-web-bluetooth</span>.
+          <span className="font-code"> chrome://flags/#enable-web-bluetooth</span>.
         </p>
       ) : (
         <div>

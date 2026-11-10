@@ -172,7 +172,7 @@ function ColorField({
     <label className="flex items-center justify-between gap-3">
       <span className={LABEL}>{label}</span>
       <span className="flex items-center gap-2">
-        <span className="font-mono text-[11px] text-stone-500">{value.toUpperCase()}</span>
+        <span className="font-code text-[11px] text-stone-500">{value.toUpperCase()}</span>
         <input
           type="color"
           value={value}

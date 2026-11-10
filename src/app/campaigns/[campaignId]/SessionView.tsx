@@ -100,7 +100,7 @@ import { AudioWaitingBanner } from "@/app/campaigns/[campaignId]/AudioWaitingBan
 import { turnCharacterId, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
 import { TabPane } from "@/app/campaigns/[campaignId]/SidePanel";
-import { useDocked } from "@/app/campaigns/[campaignId]/useDocked";
+import { useDocked, useHandOnBoardRoom } from "@/app/campaigns/[campaignId]/useDocked";
 import type { SidePanelRouterProps } from "@/app/campaigns/[campaignId]/SidePanelRouter";
 import { TableRow } from "@/app/campaigns/[campaignId]/TableLayout";
 import { ChronicleSplitter } from "@/app/campaigns/[campaignId]/TableLayoutParts";
@@ -453,6 +453,22 @@ export function SessionView({
   // than a map in the side panel. The header switch shows the story there
   // instead; the choice is the reader's, kept per browser.
   const docked = useDocked();
+  const handRoom = useHandOnBoardRoom();
+  const [handSlot, setHandSlot] = useState<HTMLDivElement | null>(null);
+  // What the Hand covers of its frame, for the board's own corner controls
+  // to stand above (world.css reads --hand-foot).
+  useEffect(() => {
+    const frame = handSlot?.parentElement;
+    if (!handSlot || !frame) return;
+    const write = () => frame.style.setProperty("--hand-foot", `${handSlot.offsetHeight}px`);
+    const observer = new ResizeObserver(write);
+    observer.observe(handSlot);
+    write();
+    return () => {
+      observer.disconnect();
+      frame.style.removeProperty("--hand-foot");
+    };
+  }, [handSlot]);
   const { active: addonBoardView, views: addonViews, choose: chooseBoardView } = useBoardView(state.battleMap?.addonView?.addonId, state.encounter?.status === "active");
   const [addonOptions, setAddonOption] = useBoardViewOptions();
   const sessionLayout = docked && addonBoardView?.sessionLayout === "stage";
@@ -1199,6 +1215,10 @@ export function SessionView({
 
   const storyDue = storyCadence.level !== "quiet";
   const fightStaged = boardStaged || sessionLayout;
+  // The Hand lies on the staged board's lower edge (the slot below), and
+  // the desk under it is the message box alone. An addon's own stage lays
+  // its session out itself, and a short window keeps the Hand's rail.
+  const handOnBoard = boardStaged && !sessionLayout && handRoom;
 
   // Everything a side-panel tab's content needs, shared by the side panel
   // and by any tab with a pane of its own (TabPane).
@@ -1368,7 +1388,7 @@ export function SessionView({
                     <div className="cine-fight">
                       {chronicle}
                       {chronicle ? <ChronicleSplitter /> : null}
-                      <div className="cine-fight-board cine-board-frame" hidden={sessionLayout && (shownStageView === "story" || battlePane || boardInPanel)}>
+                      <div className="cine-fight-board cine-board-frame" data-fit-stage="" data-hand-on-board={handOnBoard ? "" : undefined} hidden={sessionLayout && (shownStageView === "story" || battlePane || boardInPanel)}>
                         {state.battleMap && !battlePane && !boardInPanel ? (
                         <Suspense fallback={<PanelLoading />}>
                         <BattleMapPanel
@@ -1410,6 +1430,7 @@ export function SessionView({
                             onFailure={restoreNativeView}
                           />
                         ) : null}
+                        {handOnBoard ? <div ref={setHandSlot} className="cine-fight-hand" data-fit-foot="" /> : null}
                       </div>
                     </div>
                   ) : undefined
@@ -1471,6 +1492,7 @@ export function SessionView({
                     <CoordinationPanel campaignId={campaign.id} phase={state.coordination} meUserId={me.id} steersStory={steersStory} />
                   ) : null}
                   <Composer
+                    handSlot={handOnBoard ? handSlot : null}
                     campaignId={campaign.id}
                     genre={campaign.gameSettings?.genre ?? null}
                     trackAmmo={campaign.gameSettings?.variantRules?.ammunition ?? false}

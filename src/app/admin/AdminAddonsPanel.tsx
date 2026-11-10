@@ -321,9 +321,9 @@ export function AdminAddonsPanel() {
           </button>
         </div>
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          Blank falls through to the <span className="font-mono">ADDON_REGISTRY_URL</span> environment variable, then to the
-          Open Game Master list. Point it at your own over https, or set it to <span className="font-mono">off</span>.
-          {state.catalog.url ? <span className="block break-all font-mono">Reading: {state.catalog.url}</span> : null}
+          Blank falls through to the <span className="font-code">ADDON_REGISTRY_URL</span> environment variable, then to the
+          Open Game Master list. Point it at your own over https, or set it to <span className="font-code">off</span>.
+          {state.catalog.url ? <span className="block break-all font-code">Reading: {state.catalog.url}</span> : null}
         </p>
 
         <div className="mt-4 flex items-start justify-between gap-3">

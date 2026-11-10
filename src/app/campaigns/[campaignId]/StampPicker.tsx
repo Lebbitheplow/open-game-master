@@ -36,7 +36,7 @@ export function StampPicker({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">
+      <div className="flex items-center justify-between font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
         Drawn as
         {picked ? (
           <button type="button" onClick={() => onPick(undefined)} className="flex items-center gap-1 text-stone-400 hover:text-amber-200">

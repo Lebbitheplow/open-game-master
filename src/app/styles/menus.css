@@ -98,7 +98,7 @@ html[data-theme="light"] .ctx-item-danger[data-highlighted] {
   border: 1px solid rgba(212, 171, 58, 0.4);
   border-bottom-width: 2px;
   padding: 0 0.25rem;
-  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-family: var(--font-code);
   font-size: 0.68rem;
   color: #f4e0a6;
   background: rgba(212, 171, 58, 0.08);

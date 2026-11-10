@@ -89,7 +89,7 @@ export function BrushPalette({
       </ul>
       {radius !== undefined && onRadius ? (
         <div className="space-y-1">
-          <div className="flex items-center justify-between font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">
+          <div className="flex items-center justify-between font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
             Nib
             <span className="font-mono normal-case tracking-normal text-amber-200">
               {radius * 2 + 1} × {radius * 2 + 1} tiles
@@ -270,7 +270,7 @@ export function BackdropControls({
 
   return (
     <div className="space-y-2">
-      <p className="flex items-center gap-1.5 font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">
+      <p className="flex items-center gap-1.5 font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
         <ImageIcon className="size-3.5" /> Picture under the grid
       </p>
       <div className="flex flex-wrap items-center gap-1.5">

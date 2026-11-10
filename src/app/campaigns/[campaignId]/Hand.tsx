@@ -835,11 +835,11 @@ function HandInner({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
           key={myTurn ? "mine" : (currentName ?? "other")}
-          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.22em] text-amber-200/90"
+          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90"
         >
           {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
-        <span className="hidden text-[11px] text-stone-500 sm:inline">
+        <span className="hand-hint hidden text-[11px] text-stone-500 sm:inline">
           {reactionsOnly ? `${sheet.isCompanion ? "A companion you play" : "A hero of yours"} was hit: answer it now or let it pass.` : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
         </span>
         <span className="ml-auto flex items-center gap-1">
@@ -892,8 +892,12 @@ function HandInner({
               }}
               aria-expanded={!collapsed}
               aria-label={collapsed ? "Show your hand" : "Hide your hand"}
-              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
+              // hand-fold: lying on the board the Hand covers part of the map,
+              // so there this is a lettered tab and not one glyph among three
+              // (world.css); in the desk it is the chevron it was.
+              className="hand-fold flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
             >
+              <span className="hand-fold-word" aria-hidden="true">{collapsed ? "Show hand" : "Hide"}</span>
               <ChevronDown className={cn("chevron-turn size-4", collapsed && "rotate-180")} />
             </button>
           </Tooltip>

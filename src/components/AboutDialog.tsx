@@ -179,7 +179,7 @@ export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boo
           <div>
             <p className="gold-title font-display text-xl tracking-wide">Open Game Master</p>
             <p className="mt-0.5 text-sm text-stone-300">
-              Version <span className="font-mono text-amber-100">{build.version}</span>
+              Version <span className="font-code text-amber-100">{build.version}</span>
               {about.serverName && about.serverName !== "Open Game Master" ? <span className="text-stone-500"> on {about.serverName}</span> : null}
             </p>
           </div>
@@ -188,7 +188,7 @@ export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boo
 
           <dl className="rounded-lg border border-stone-700/60 bg-stone-900/40 px-3">
             <Row label="Build">
-              <span className="font-mono text-[13px]">{build.label}</span>
+              <span className="font-code text-[13px]">{build.label}</span>
             </Row>
             {build.shortCommit ? (
               <Row label="Commit">
@@ -196,7 +196,7 @@ export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boo
                   href={`${about.repositoryUrl}/commit/${build.commit}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-mono text-[13px] text-amber-200 underline-offset-2 hover:underline"
+                  className="inline-flex items-center gap-1 font-code text-[13px] text-amber-200 underline-offset-2 hover:underline"
                 >
                   {build.shortCommit} <ExternalLink className="size-3" />
                 </a>

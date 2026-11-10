@@ -339,7 +339,7 @@ export default function AuthForm({
                 maxLength={40}
                 placeholder="XXXX-XXXX-XXXX-XXXX"
                 aria-describedby="setup-code-hint"
-                className={cn(FIELD, "font-mono uppercase tracking-wider", urlSetupCode && "text-amber-200")}
+                className={cn(FIELD, "font-code uppercase tracking-wider", urlSetupCode && "text-amber-200")}
               />
             </FieldLabel>
             <span id="setup-code-hint" className="mt-1.5 block text-xs text-stone-500">
@@ -348,7 +348,7 @@ export default function AuthForm({
               ) : setupInDocker ? (
                 <>
                   This server has no accounts yet. The first one becomes its admin and needs the one-time setup code
-                  from the server log: run <code className="font-mono text-stone-400">docker compose logs</code> in
+                  from the server log: run <code className="font-code text-stone-400">docker compose logs</code> in
                   the server&apos;s folder and open the link it prints.
                 </>
               ) : (
@@ -368,7 +368,7 @@ export default function AuthForm({
               maxLength={40}
               placeholder="ODM-XXXXXXXXXX"
               aria-describedby="invite-code-hint"
-              className={cn(FIELD, "font-mono uppercase tracking-wider", urlInvite && "text-amber-200")}
+              className={cn(FIELD, "font-code uppercase tracking-wider", urlInvite && "text-amber-200")}
             />
           </FieldLabel>
             <span id="invite-code-hint" className="mt-1.5 block text-xs text-stone-500">

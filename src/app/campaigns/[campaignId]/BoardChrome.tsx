@@ -262,7 +262,7 @@ export function TurnHud({
       {mine && budget ? (
         // On a narrow board the pips and the stats sit under the rail's
         // plates instead of beside them, where there is no room.
-        <div className="mt-[42px] flex flex-wrap justify-end gap-1 @md:mt-0 @md:gap-1.5">
+        <div className="turn-hud-pips mt-[42px] flex flex-wrap justify-end gap-1 @md:mt-0 @md:gap-1.5">
           {PIPS.map((pip) => {
             const left = budget[pip.key];
             return (

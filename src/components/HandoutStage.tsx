@@ -100,7 +100,7 @@ export function HandoutStage({
   const paper = (
     <>
       {style === "parchment" ? <span className="found-stamp">Found</span> : null}
-      <h2 className={cn("font-display", style === "notice" ? "text-center text-2xl uppercase tracking-[0.2em]" : "text-xl")}>
+      <h2 className={cn("font-display", style === "notice" ? "text-center text-2xl uppercase tracking-[0.14em]" : "text-xl")}>
         {handout.title}
       </h2>
       {image ? (
