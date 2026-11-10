@@ -1,8 +1,8 @@
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { hiddenNow } from "@/lib/dm/board-hidden";
 import {
   getBattleMapForEncounter,
   getTokenByRef,
-  listHiddenRefIds,
   listTokens,
   placeToken,
 } from "@/lib/db/battle-maps";
@@ -86,10 +86,6 @@ function tableName(enemy: EncounterEnemy, hidden: Set<string>): string {
   return hidden.has(enemy.id) ? UNSEEN : enemy.displayName;
 }
 
-function hiddenNow(encounterId: string): Set<string> {
-  const map = getBattleMapForEncounter(encounterId);
-  return new Set(map ? listHiddenRefIds(map.id) : []);
-}
 
 function momentOf(round: number, slots: Record<number, string>): FightMoment {
   const states: FightMoment["slots"] = new Map();

@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { hiddenNow } from "@/lib/dm/board-hidden";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
 import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
@@ -1996,12 +1997,6 @@ function advancePointer(
   return { enemiesPassed: handedOut, wrapped: wraps, dyingPassed };
 }
 
-// The creatures the GM keeps off the board now (the tracker's "someone
-// unseen"), read fresh: a line may not name one.
-function hiddenNow(encounterId: string): Set<string> {
-  const map = getBattleMapForEncounter(encounterId);
-  return new Set(map ? listHiddenRefIds(map.id) : []);
-}
 
 // The lines for the enemies a pass recorded as losing their turns (stunned,
 // paralyzed, held when it came: enemies-due.ts holdForEnemies), cleared as

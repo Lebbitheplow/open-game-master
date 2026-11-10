@@ -1,5 +1,6 @@
 import { evadesOpportunityAttacksAfterMelee, MOBILE_ATTACKED, polearmReachOpportunity } from "@/lib/srd/feat-combat";
 import { budgetFor } from "@/lib/dm/turn-budget";
+import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter } from "@/lib/db/encounters";
@@ -185,7 +186,7 @@ export function resolveOpportunityAttacks(
     // makes no opportunity attack against them (pc-attack-spend.ts marks it).
     const moverBudget = budgetFor(encounter, characterId, 1);
     if (moverBudget?.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemy.id}`)) {
-      notes.push(`${enemy.displayName} gets no opportunity attack on ${sheet.name}: ${evadesOpportunityAttacksAfterMelee(sheet) ?? "Mobile"} (attacked in melee this turn).`);
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} gets no opportunity attack on ${sheet.name}: ${evadesOpportunityAttacksAfterMelee(sheet) ?? "Mobile"} (attacked in melee this turn).`);
       continue;
     }
     // Only a creature it can see provokes it: in the dark, with no
@@ -250,7 +251,7 @@ export function resolveOpportunityAttacks(
     const adjudicated = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc);
     if (!adjudicated.hit) {
       notes.push(
-        `${enemy.displayName} takes an opportunity attack as ${sheet.name} pulls away and misses (${hitOutcome.total} vs AC ${targetAc}).`,
+        `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away and misses (${hitOutcome.total} vs AC ${targetAc}).`,
       );
       continue;
     }
@@ -338,7 +339,7 @@ export function resolveOpportunityAttacks(
     const byType = Array.isArray(landed.damageByType) ? ` (${(landed.damageByType as string[]).join(", ")})` : typeof landed.resistance === "string" ? ` (${landed.resistance})` : "";
     const riderNote = Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : "";
     notes.push(
-      `${enemy.displayName} takes an opportunity attack as ${sheet.name} pulls away: ${
+      `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
       }${rolled} damage${byType}.${riderNote}`,
     );
@@ -417,6 +418,12 @@ export function resolvePcOpportunityAttacks(
   }
   const map = getBattleMapForEncounter(encounter.id);
   if (!map) {
+    return [];
+  }
+  // SRD 5.1, Opportunity Attacks: "when a hostile creature that you can see
+  // moves out of your reach". A creature the GM keeps off the board is one
+  // no character sees, so it provokes nothing; the GM shows it to let it.
+  if (hiddenNow(encounter.id).has(enemyId)) {
     return [];
   }
   const steps = [from, ...(path?.length ? path : [to])];
