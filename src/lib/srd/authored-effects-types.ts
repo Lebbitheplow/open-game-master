@@ -69,6 +69,12 @@ export type AuthoredEffect = Base &
     // A spell attack that hits pushes the creature `feet` away (Kinetic
     // Buffer): src/lib/dm/genre-a-cyberpunk-hits.ts.
     | { kind: "spell_push"; feet: number; oncePerTurn?: boolean }
+    // A typed rider on the holder's spell attacks, and the critical range of
+    // their spells against these creature types or any spellcaster
+    // (Lethal Payload, Neural Spike, Flatline Protocol):
+    // src/lib/dm/genre-a-cyberpunk-programs.ts.
+    | { kind: "program_rider"; dice: Formula; type: string; oncePerTurn?: boolean }
+    | { kind: "program_crit"; low: number; vsTypes: string[]; casters?: boolean }
     | { kind: "concentration_adv" }
     | { kind: "save_prof"; abilities: Ability[] }
     // `ability`: saves of that ability only (Thought Shield: +2 on WIS saves).

@@ -39,3 +39,10 @@ GENRE_A_CYBERPUNK.push(
   row("esper", "Split Focus", [{ kind: "concentration_adv" }]),
   row("trauma_doc", "Shield the Fallen", [{ kind: "attacked_disadv", from: [], besideDowned: true }]),
 );
+
+// The programs and psionics, read by src/lib/dm/genre-a-cyberpunk-programs.ts.
+GENRE_A_CYBERPUNK.push(
+  row("netrunner", "Lethal Payload", [{ kind: "program_rider", dice: "1d8", type: "lightning", oncePerTurn: true }]),
+  row("esper", "Neural Spike", [{ kind: "program_rider", dice: "cha", type: "psychic", oncePerTurn: true }]),
+  row("netrunner", "Flatline Protocol", [{ kind: "program_crit", low: 19, vsTypes: ["construct"], casters: true }]),
+);

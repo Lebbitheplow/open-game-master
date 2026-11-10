@@ -356,21 +356,23 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "program_once",
+     "n": 3
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Lethal Payload#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Lethal Payload#0"
    },
    {
     "c": "a damaging program deals +1d8 lightning damage to one target",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "dice": 1
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider 1d8 lightning, read by src/lib/dm/genre-a-cyberpunk-programs.ts programRiders in src/lib/dm/attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Lethal Payload#1"
    }
   ]
  },
@@ -402,9 +404,14 @@
   "clauses": [
    {
     "c": "Your programs score a critical on 19-20 against constructs and spellcasters",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "crit": true,
+     "face": 19
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_crit 19 against constructs and spellcasters, read by src/lib/dm/genre-a-cyberpunk-programs.ts programCritRange in src/lib/dm/attack-record.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Flatline Protocol#0"
    }
   ]
  },
@@ -2276,21 +2283,24 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "program_once",
+     "n": 2,
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Neural Spike#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Neural Spike#0"
    },
    {
     "c": "add your CHA modifier as psychic damage to a damaging psionic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "ability": "cha"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider CHA psychic, read by src/lib/dm/genre-a-cyberpunk-programs.ts programRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Neural Spike#1"
    }
   ]
  },

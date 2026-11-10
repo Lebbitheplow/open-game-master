@@ -24,6 +24,7 @@ import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
 import { genreAttackBonus, genreStrikeRiders } from "@/lib/dm/genre-a-strikes";
+import { programRiders } from "@/lib/dm/genre-a-cyberpunk-programs";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -61,10 +62,14 @@ export function attackDamageRiders(input: {
   // Feature damage riders ride weapon attacks only; once-per-turn ones are
   // reconciled with the turn budget (pc-attack-damage.ts
   // claimOncePerTurnRiders), as Sneak Attack is.
+  // A spell attack carries the riders of the caster's programs alone
+  // (src/lib/dm/genre-a-cyberpunk-programs.ts: Lethal Payload, Neural Spike).
   const featureRiders: FeatureRider[] =
-    kind === "spell" || kind === "granted"
+    kind === "granted"
       ? []
-      : [
+      : kind === "spell"
+        ? programRiders(sheet)
+        : [
           ...riders.damageRiders,
           ...hunterRiders(sheet, input.enemy),
           ...pactRiders(sheet, kind, profile),

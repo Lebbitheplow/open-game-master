@@ -29,3 +29,20 @@ export const CYBER = {
     eq(at(), 9, "squares the foe moved after a Fire Bolt from a holder without the feature");
   },
 };
+
+// "1/turn": a second Fire Bolt on the same turn (the action handed back, the
+// turn's once-a-turn claims kept) carries no rider; the first did.
+CYBER.program_once = async function programOnce(t, run, feature) {
+  const ability = run.ability ?? "int";
+  const scene = await t.stage(feature, { lane: true, extra: { equipment: [], spellcasting: CASTING(ability) } });
+  const bolt = async () => {
+    const before = t.foeHp(scene.far.id);
+    must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 3, 3, 3, 3, 3], { spell: "Fire Bolt" }), "the Fire Bolt");
+    return before - t.foeHp(scene.far.id);
+  };
+  const first = await bolt();
+  const encounter = t.world.encounter();
+  t.encounters.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, attacksMade: 0 } });
+  const second = await bolt();
+  eq(first - second, run.n, `damage the rider added to the first Fire Bolt of the turn over the second (${first} then ${second})`);
+};

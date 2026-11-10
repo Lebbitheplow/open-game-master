@@ -127,6 +127,8 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   fall_resist: { file: "src/lib/dm/hazard-tools.ts", call: "fallResistances(" },
+  program_rider: { file: "src/lib/dm/attack-damage-riders.ts", call: "programRiders(" },
+  program_crit: { file: "src/lib/dm/attack-record.ts", call: "programCritRange(" },
   spell_push: { file: "src/lib/dm/attack-blow.ts", call: "kineticShove(" },
   concentration_adv: { file: "src/lib/dm/concentration.ts", call: "concentrationAdvantage(" },
   attack_adv: { file: "src/lib/dm/pc-attack-situation.ts", call: "authoredAttackSituation(" },
