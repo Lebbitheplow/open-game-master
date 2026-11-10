@@ -16,7 +16,7 @@ import { armForetold, disarmForetold } from "@/lib/db/dice-scripts";
 import type { Campaign } from "@/lib/db/campaigns";
 import { createPendingRoll, publicPendingRoll, setPendingWatch, type DmTurn, type HeldCall, type WatchChoice, type WatchPower, type WatchRoll } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { spellEngineName } from "@/lib/content";
+import { spellEngineName, spellMechanicsFor } from "@/lib/content";
 import { boardCatch } from "@/lib/dm/area-casting";
 import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
@@ -218,10 +218,14 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
       : [args.targetEnemyId];
     const enemies: EncounterEnemy[] = [];
     for (const ref of refs) {
+      // A creature already down is refused before any roll.
       const enemy = typeof ref === "string" ? getFoe(ref) : null;
-      if (enemy && !enemies.some((entry) => entry.id === enemy.id)) enemies.push(enemy);
+      if (enemy && enemy.status === "alive" && !enemies.some((entry) => entry.id === enemy.id)) enemies.push(enemy);
     }
-    if (!hero || !enemies.length) {
+    // A spell that hits without a roll (Magic Missile's darts) throws no d20
+    // for a number or a shift to answer, so it never holds the turn.
+    const auto = typeof args.spell === "string" ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech : null;
+    if (!hero || !enemies.length || (auto?.resolution === "auto" && !auto.save)) {
       return null;
     }
     const spell = typeof args.spell === "string" && args.spell.trim() ? args.spell.trim().slice(0, 60) : "a spell";
