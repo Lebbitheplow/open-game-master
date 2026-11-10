@@ -4,9 +4,9 @@
 // XML dialect ("<tool_call><function=enemy_attack><parameter=enemyId>..."),
 // which reaches us whenever llama-server's extraction misses it, an agent
 // program's call written out in the Anthropic style (invokeToolCallRegex
-// below), and bare JSON arguments (findBareJsonObjects below). A card's line
-// copied back from the conversation (withoutCardLines below) is no call, and
-// goes the same way. Kept
+// below), and bare JSON arguments (findBareJsonObjects below). A card's line,
+// or another line of the server's, copied back from the conversation
+// (withoutServerLines below) is no call, and goes the same way. Kept
 // dependency-free so client components can import it; the name list mirrors
 // the tools registered in src/lib/dm/prompt.ts, src/lib/dm/mutations.ts
 // (MUTATION_TOOL_NAMES), src/lib/dm/encounter-tools.ts, src/lib/dm/
@@ -99,6 +99,103 @@ export function withoutCardLines(text: string): string {
   return text.replace(CARD_LINE, "");
 }
 
+// The other lines the server writes into the model's conversation, which a
+// model copies back the same way, each by the tag it opens with: the
+// transcript's own (src/lib/dm/prompt.ts buildDmMessages: a player's "[Name |
+// attempt]" line, a table note, the lead's direction, a settled offer), the
+// state the turn adds ("[GAME STATE UPDATE]", pinned memories), and the
+// corrections it sends ("[System] Tools are closed...", a closing "[Variety]"
+// note). Each runs to the end of its line, as the server wrote it. A
+// "[System]" line goes only by the openings of the server's own, so a story's
+// "[System] You have gained a level" stays. The tags are the server's words,
+// the same at every table, whatever language the narration is in.
+const SYSTEM_OPENINGS = [
+  "Direct instruction from the party lead",
+  "Narrate this moment again",
+  "That reply ",
+  "The Game Master ran this stretch",
+  "The newest table talk asks you",
+  "The party lead has asked",
+  "Tools are closed",
+  "You have not yet privately answered",
+  "Your last attempt at this turn",
+  "Your narration ",
+  // intent-logic.ts intentCorrection, INTENT_CORRECTION_MARK.
+  "[^\\n]*?, and nothing resolved it",
+];
+const SERVER_TAGS = [
+  "Table note\\]",
+  "[^\\]\\n|]{1,80}\\|\\s*attempt\\]",
+  "Authoritative direction from the party lead;",
+  "An offer was settled by the player's own answer;",
+  "GAME STATE UPDATE\\]",
+  "PINNED MEMORIES\\]",
+  "SCENE CONTINUE - the party lead pressed Continue",
+  "Variety\\]",
+  // An agent program's transcript (src/lib/harness/render.ts renderTurn).
+  "engine\\] ",
+  `System\\] (?:${SYSTEM_OPENINGS.join("|")})`,
+].join("|");
+const SERVER_LINE = new RegExp(`\\[(?:${SERVER_TAGS})[^\\n]*(?:\\n|$)`, "g");
+// The label an agent program's transcript gives the GM's own lines: written
+// above its narration, it is a label, and the narration under it stays.
+const GM_LABEL = /\[Game Master\][ \t]*/g;
+
+// What a reply holds of the server's own lines, cut: the card line and every
+// tagged line above.
+export function withoutServerLines(text: string): string {
+  return text.replace(CARD_LINE, "").replace(SERVER_LINE, "").replace(GM_LABEL, "");
+}
+
+// The ids those lines carry ("characterId=2efa...", "(enemyId=2105..., 2)"),
+// cut wherever they sit: a model that copies a line in other words, or in the
+// table's language ("[Carta giocata per characterId=..."), keeps its ids, and
+// no story writes one. Cut only once a call written as a bracket has been
+// read (salvageTextualToolCalls), which needs them.
+const ID_KEYS = ["characterId", "characterIds", "enemyId", "enemyIds", "targetEnemyId", "targetEnemyIds", "targetCharacterIds", "toCharacterId", "casterCharacterId", "healerId"];
+const ID_KEY = `(?:${ID_KEYS.join("|")})`;
+const ID_ARGUMENT_SOURCE = `[ \\t]*\\((?:[^()\\n]*?[\\s,])?${ID_KEY}=[^()\\n]*\\)|[ \\t]*\\b(?:for )?${ID_KEY}=[^\\s,;:)\\]]+`;
+
+export function withoutIdArguments(text: string): string {
+  return text.replace(new RegExp(ID_ARGUMENT_SOURCE, "g"), "");
+}
+
+// The same cuts as the reply streams to the table's draft
+// (src/lib/story-prompt.ts createStreamingArtifactFilter), before the turn
+// tidies it: what a line cut so far matches, and where a line that may yet
+// be one starts, to be held until it is known. A card line waits for its
+// bracket to close or its line to end, a tagged line (and any "[System]"
+// line) for its end, an id for the character after it, and any other bracket
+// for 80 characters or its close: the server's tags are all opened within
+// them.
+export const SERVER_TEXT_STREAM_SOURCE = [
+  `\\[(?:Card played(?: for characterId=[^\\s:\\]]+)?:|A reaction(?: for characterId=[^\\s,\\]]+)?, in their player's words above:)[^\\]\\n]*(?:\\][ \\t]*|(?=\\n))`,
+  `\\[(?:${SERVER_TAGS})[^\\n]*(?=\\n)`,
+  GM_LABEL.source,
+  `[ \\t]*\\((?:[^()\\n]*?[\\s,])?${ID_KEY}=[^()\\n]*\\)`,
+  `[ \\t]*\\b(?:for )?${ID_KEY}=[^\\s,;:)\\]]+(?=[\\s,;:)\\]])`,
+].join("|");
+const PARTIAL_SERVER_TEXT = [
+  /\[[^\]\n]{0,80}$/,
+  /\[(?:Card played|A reaction)[^\]\n]*$/,
+  new RegExp(`\\[(?:${SERVER_TAGS})[^\\n]*$`),
+  // A "[System]" line is known by the words after its tag, and goes only at
+  // its end when those are the server's.
+  /\[(?:System|engine)\][^\n]*$/,
+  new RegExp(`[ \\t]*\\((?:[^()\\n]*?[\\s,])?${ID_KEY}=[^)\\n]*$`),
+  new RegExp(`[ \\t]*\\b(?:for )?${ID_KEY}=[^\\s,;:)\\]]*$`),
+];
+
+export function partialServerTextStart(text: string): number {
+  const starts = PARTIAL_SERVER_TEXT.map((pattern) => text.search(pattern)).filter((start) => start >= 0);
+  // A word still arriving that may be the head of an id's key: "enemyI".
+  const word = /\(?\b[A-Za-z]+$/.exec(text);
+  if (word && ID_KEYS.some((key) => `${key}=`.startsWith(word[0].replace(/^\(/, "")))) {
+    starts.push(word.index);
+  }
+  return starts.length ? Math.min(...starts) : -1;
+}
+
 // A third leak shape: a call's arguments written into the reply as a bare
 // JSON object, with no tool name ('{"characterIds":[...],"prompt":"..."}'),
 // alone or glued to the end of the prose (gpt-oss on vLLM, PR #53), or the
@@ -172,11 +269,9 @@ export function cutSpans(text: string, spans: Array<{ start: number; end: number
 }
 
 export function stripToolText(text: string): string {
-  const cleaned = withoutCardLines(text)
-    .replace(toolTextRegex(), "")
-    .replace(xmlToolCallRegex(), "")
-    .replace(fakeRollMarkerRegex(), "")
-    .replace(/[ \t]{2,}/g, " ");
+  const cleaned = withoutIdArguments(
+    withoutServerLines(text).replace(toolTextRegex(), "").replace(xmlToolCallRegex(), "").replace(fakeRollMarkerRegex(), ""),
+  ).replace(/[ \t]{2,}/g, " ");
   const objects = findBareJsonObjects(cleaned);
   return objects.length ? cutSpans(cleaned, objects) : cleaned;
 }

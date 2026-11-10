@@ -1,3 +1,5 @@
+import { partialServerTextStart, SERVER_TEXT_STREAM_SOURCE, withoutIdArguments, withoutServerLines } from "./dm/tool-text.ts";
+
 export type StoryModelResult = {
   storyText: string;
   image: {
@@ -122,9 +124,19 @@ const STREAM_CHANNEL_BOUNDARY = /<\|?channel\|?>|<\|?(?:start|im_start)\|?>/i;
 // handled by STREAM_SUPPRESS_OPEN so the match kinds stay unambiguous.
 // A "[roll:...]" marker is the model imitating the ones the server places in
 // finished narration (src/lib/dm/tool-text.ts withoutRollMarkers): it never
-// reaches the draft either (issue #531).
-const STREAM_STRIP =
-  /<\/(?:think|thinking|thought|reasoning)>|<\|?channel\|?>\s*final\s*(?:<\|?message\|?>)?|assistantfinal[:\s]*|<\|?(?:start|im_start)\|?>\s*assistant\b|<\|?(?:start|end|message|channel|return|constrain|call|im_start|im_end)\|?>|\[roll:[^\]\n]{0,80}\][ \t]*/i;
+// reaches the draft either (issue #531), nor does a card's line or another
+// line of the server's the model copied back, nor an id one carries (issue
+// 900, src/lib/dm/tool-text.ts SERVER_TEXT_STREAM_SOURCE).
+const STREAM_STRIP = new RegExp(
+  `${/<\/(?:think|thinking|thought|reasoning)>|<\|?channel\|?>\s*final\s*(?:<\|?message\|?>)?|assistantfinal[:\s]*|<\|?(?:start|im_start)\|?>\s*assistant\b|<\|?(?:start|end|message|channel|return|constrain|call|im_start|im_end)\|?>|\[roll:[^\]\n]{0,80}\][ \t]*/.source}|${SERVER_TEXT_STREAM_SOURCE}`,
+  "i",
+);
+
+// What the draft is sent of text the filter lets go at once: the markers cut,
+// and a server's line or id that never ended before the stream did.
+function cutStreamed(text: string): string {
+  return withoutIdArguments(withoutServerLines(text.replace(new RegExp(STREAM_STRIP.source, "gi"), "")));
+}
 const STREAM_HOLDBACK_CHARS = 48;
 // The longest "[roll:" marker body held back while its closing bracket is
 // still arriving, the same that STREAM_STRIP cuts; past this it is prose that
@@ -147,9 +159,8 @@ function partialRollMarkerStart(text: string): number {
 }
 
 function partialMarkerStart(text: string): number {
-  const roll = partialRollMarkerStart(text);
-  const other = partialTokenStart(text);
-  return roll < 0 ? other : other < 0 ? roll : Math.min(roll, other);
+  const starts = [partialRollMarkerStart(text), partialTokenStart(text), partialServerTextStart(text)].filter((start) => start >= 0);
+  return starts.length ? Math.min(...starts) : -1;
 }
 
 function partialTokenStart(text: string): number {
@@ -241,7 +252,7 @@ export function createStreamingArtifactFilter() {
         // with no "=" is prose, and holding it would stall the draft.
         const bareJsonAt = pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\s*=|function_calls\b)/i);
         if (bareJsonAt >= 0 && !STREAM_SUPPRESS_OPEN.test(pending.slice(0, bareJsonAt))) {
-          output += pending.slice(0, bareJsonAt).replace(new RegExp(STREAM_STRIP.source, "gi"), "");
+          output += cutStreamed(pending.slice(0, bareJsonAt));
           pending = "";
           jsonReply = true;
           break;
@@ -250,7 +261,11 @@ export function createStreamingArtifactFilter() {
         const open = pending.match(STREAM_SUPPRESS_OPEN);
         const strip = pending.match(STREAM_STRIP);
         const openAt = open?.index ?? -1;
-        const stripAt = strip?.index ?? -1;
+        // A match inside text still held is not one yet: an id inside a card
+        // line whose bracket has not closed would go, and the line's head
+        // stream ahead of it.
+        const heldAt = partialMarkerStart(pending);
+        const stripAt = heldAt >= 0 && (strip?.index ?? -1) >= heldAt ? -1 : strip?.index ?? -1;
 
         if (openAt >= 0 && (stripAt < 0 || openAt <= stripAt)) {
           output += pending.slice(0, openAt);
@@ -297,7 +312,7 @@ export function createStreamingArtifactFilter() {
     },
 
     flush(): string {
-      const rest = suppressing || jsonReply ? "" : pending.replace(new RegExp(STREAM_STRIP.source, "gi"), "");
+      const rest = suppressing || jsonReply ? "" : cutStreamed(pending);
       pending = "";
       suppressing = false;
       if (rest) {
