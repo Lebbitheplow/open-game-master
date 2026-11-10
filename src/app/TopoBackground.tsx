@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { backdropCovered, onBackdropCover } from "@/lib/backdrop-cover";
 
 // Living topographic backdrop: faint gold contour lines traced from a 3D
 // value-noise field whose time axis creeps forward, so the terrain slowly
 // breathes behind the app. Self-contained (no deps), throttled to ~20fps,
-// paused in hidden tabs, and static under prefers-reduced-motion.
+// paused in hidden tabs and behind a screen that covers the whole window
+// (src/lib/backdrop-cover.ts), and static under prefers-reduced-motion.
 
 const CELL = 26; // css px between field samples
 const LEVELS = [0.34, 0.42, 0.5, 0.58, 0.66, 0.74];
@@ -156,6 +158,14 @@ export default function TopoBackground() {
     }
 
     function tick(nowMs: number) {
+      // Nothing of it shows behind a table: the loop stops until the screen
+      // over it is gone. The field is a function of the time since the page
+      // opened, so it comes back where it would have been had it never
+      // stopped.
+      if (backdropCovered()) {
+        raf = 0;
+        return;
+      }
       raf = window.requestAnimationFrame(tick);
       if (nowMs - lastDraw < FRAME_MS) {
         return;
@@ -164,12 +174,18 @@ export default function TopoBackground() {
       draw(nowMs);
     }
 
+    function wake() {
+      if (!raf && !reducedMotion && !document.hidden && !backdropCovered()) {
+        raf = window.requestAnimationFrame(tick);
+      }
+    }
+
     function onVisibility() {
       if (document.hidden) {
         window.cancelAnimationFrame(raf);
         raf = 0;
-      } else if (!raf && !reducedMotion) {
-        raf = window.requestAnimationFrame(tick);
+      } else {
+        wake();
       }
     }
 
@@ -190,8 +206,10 @@ export default function TopoBackground() {
       document.addEventListener("visibilitychange", onVisibility);
     }
     window.addEventListener("resize", onResize);
+    const offCover = onBackdropCover(wake);
 
     return () => {
+      offCover();
       window.cancelAnimationFrame(raf);
       clearTimeout(resizeTimer);
       document.removeEventListener("visibilitychange", onVisibility);

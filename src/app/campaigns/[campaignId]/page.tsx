@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, lazy, use, useCallback, useEffect, type ComponentProps } from "react";
 import { useCampaignStream, type CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { ContentScopeProvider } from "@/lib/content-scope";
+import { useCoversBackdrop } from "@/lib/backdrop-cover";
 import { pushView, replaceView } from "@/lib/navigation";
 import { installPageErrorRecorder } from "@/lib/page-errors";
 import { noteTableLanguage } from "@/lib/dictation-language";
@@ -126,6 +127,9 @@ type TableHandlers = Omit<ComponentProps<typeof SessionView>, "state" | "prep">;
 // cannot carry it. The table stays mounted underneath: the call, the board
 // and the chat carry on, and Back to the table is instant.
 function CampaignScreen({ state, refresh, table }: { state: CampaignState; refresh: () => void; table: TableHandlers }) {
+  // The lobby and the table both paint over the whole window: the layout's
+  // backdrop rests while either is up (src/lib/backdrop-cover.ts).
+  useCoversBackdrop();
   // Under the page's Suspense: Next renders a reader of the address there.
   const query = useSearchParams();
   const campaignId = state.campaign?.id ?? "";
