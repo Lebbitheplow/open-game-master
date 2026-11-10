@@ -5,6 +5,7 @@
 // the attack's profile and options are known. The budget is a copy; nothing
 // is stored until pc-attack.ts stores it.
 
+import { markAttackedWith } from "@/lib/dm/mt-srd-ranger";
 import { MELEE_ATTACKED, SECOND_BONUS_ATTACK } from "@/lib/dm/feature-bonus-attacks";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { evadesOpportunityAttacksAfterMelee, isPolearm, MOBILE_ATTACKED, ONE_HANDED_ATTACKED, POLEARM_READY } from "@/lib/srd/feat-combat";
@@ -176,6 +177,9 @@ export function spendAttackEconomy(input: {
     // only for a ranger who can use it).
     if (hasHordeBreaker(sheet) && !budget.oncePerTurn.includes(`${ATTACKED}${enemyId}`)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, `${ATTACKED}${enemyId}`] };
+    }
+    if (hasHordeBreaker(sheet) && weaponAttack) {
+      budget = markAttackedWith(budget, enemyId, profile.weapon);
     }
     // Mobile and Skirmisher: the creature attacked in melee makes no
     // opportunity attack against them this turn (opportunity.ts).

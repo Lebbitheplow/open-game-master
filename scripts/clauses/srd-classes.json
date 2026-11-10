@@ -5946,21 +5946,21 @@
       },
       {
         "c": "You gain a +2 bonus to attack rolls you make with ranged weapons.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Archery's +2 on a ranger's ranged attack"
+        "is": "held",
+        "by": "Archery's +2 on a ranged weapon's attack roll, none on a melee weapon's",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.archery"
       },
       {
         "c": "While you are wearing armor, you gain a +1 bonus to AC.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Defense's +1 AC on a ranger in armor"
+        "is": "held",
+        "by": "Defense's +1 AC in armor, none without",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.defense"
       },
       {
         "c": "When you engage in two-weapon fighting, you can add your ability modifier to the damage of the second attack.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Two-Weapon Fighting's modifier on the off-hand damage"
+        "is": "held",
+        "by": "the ability modifier on the off-hand attack's damage",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.two-weapon"
       }
     ]
   },
@@ -6356,15 +6356,15 @@
       },
       {
         "c": "When you hit a creature with a weapon attack, the creature takes an extra 1d8 damage if it's below its hit point maximum.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "1d8 on a weapon hit against a creature below its hit point maximum, none at the maximum",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.colossus-slayer"
       },
       {
         "c": "You can deal this extra damage only once per turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "the second hit of the turn adds no d8, the next turn's first does",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.colossus-slayer-once"
       },
       {
         "c": "***Giant Killer***.",
@@ -6372,9 +6372,9 @@
       },
       {
         "c": "When a Large or larger creature within 5 feet of you hits or misses you with an attack, you can use your reaction to attack that creature immediately after its attack, provided that you can see the creature.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "the reaction attack after a Large creature's hit or miss within 5 feet; refused for a Medium creature and for one the ranger cannot see (src/lib/dm/reaction-attacks.ts giantKillerOpen)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.giant-killer"
       },
       {
         "c": "***Horde Breaker***.",
@@ -6382,9 +6382,9 @@
       },
       {
         "c": "Once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target and within range of your weapon.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "once a turn, a different creature within 5 feet of the first, with the weapon the first was attacked with (src/lib/dm/mt-srd-ranger.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.horde-breaker"
       }
     ]
   },
@@ -6407,9 +6407,9 @@
       },
       {
         "c": "When a creature hits you with an attack, you gain a +4 bonus to AC against all subsequent attacks made by that creature for the rest of the turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Multiattack Defense on a ranger (the monster trait of the same name has its own test)"
+        "is": "held",
+        "by": "+4 AC against the later swings of the creature that hit, gone the next turn",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.defensive-tactics.multiattack-defense"
       },
       {
         "c": "You have advantage on saving throws against being frightened.",
@@ -6448,27 +6448,27 @@
       },
       {
         "c": "You can use your action to make a ranged attack against any number of creatures within 10 feet of a point you can see within your weapon's range.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one ranged attack roll for each creature within 10 feet of the first target, a melee weapon refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.volley"
       },
       {
         "c": "You must have ammunition for each target, as normal, and you make a separate attack roll for each target.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "an arrow for each target where ammunition is counted, the shot refused with none left",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.volley-ammunition"
       },
       {
         "c": "***Whirlwind Attack***.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one melee attack roll for each creature within 5 feet, none twice",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.whirlwind"
       },
       {
         "c": "You can use your action to make a melee attack against any number of creatures within 5 feet of you, with a separate attack roll for each target.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one melee attack roll for each creature within 5 feet, none twice",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.whirlwind"
       }
     ]
   },
@@ -6491,9 +6491,9 @@
       },
       {
         "c": "When a hostile creature misses you with a melee attack, you can use your reaction to force that creature to repeat the same attack against another creature (other than itself) of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Stand Against the Tide's repeated attack against another creature"
+        "is": "held",
+        "by": "the reaction repeats a melee miss against another creature; refused against the attacker itself and after a hit",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.superior-hunters-defense.stand-against-the-tide"
       },
       {
         "c": "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you.",
