@@ -23,6 +23,40 @@ declare global {
   // loaded. Undefined on a server where voice has never been used, in which
   // case the calls below are no-ops.
   var __odmVoiceEventHook: ((campaignId: string, type: string) => void) | undefined;
+  // Deliveries waiting on a held call's first run (src/lib/dm/held-call.ts):
+  // sent if the run stands, dropped with it if it waits for a player's dice.
+  var __odmHeldDeliveries: Array<() => void> | null | undefined;
+}
+
+// Sends now, or once the held run that published it is known to stand.
+function send(delivery: () => void) {
+  const held = globalThis.__odmHeldDeliveries;
+  if (held) {
+    held.push(delivery);
+    return;
+  }
+  delivery();
+}
+
+// Holds every delivery until `release`: true sends them in order, false drops
+// them (what they told of was rolled back). A hold inside a hold is the
+// outer one's to release.
+export function holdDeliveries(): { release: (sendThem: boolean) => void } {
+  if (globalThis.__odmHeldDeliveries) {
+    return { release: () => {} };
+  }
+  const held: Array<() => void> = [];
+  globalThis.__odmHeldDeliveries = held;
+  return {
+    release: (sendThem) => {
+      globalThis.__odmHeldDeliveries = null;
+      if (sendThem) {
+        for (const delivery of held) {
+          delivery();
+        }
+      }
+    },
+  };
 }
 
 function bus() {
@@ -136,8 +170,10 @@ export function publishWithSeq(campaignId: string, seq: number, type: string, pa
       `INSERT INTO campaign_events (campaign_id, seq, type, payload_json, created_at) VALUES (?, ?, ?, ?, ?)`,
     )
     .run(campaignId, seq, type, JSON.stringify(stored), nowIso());
-  deliver(campaignId, seq, type, stored, payload);
-  globalThis.__odmVoiceEventHook?.(campaignId, type);
+  send(() => {
+    deliver(campaignId, seq, type, stored, payload);
+    globalThis.__odmVoiceEventHook?.(campaignId, type);
+  });
   return seq;
 }
 
@@ -214,8 +250,11 @@ export function publishPersisted(campaignId: string, type: string, payload: unkn
 export function publishEphemeral(campaignId: string, type: string, payload: unknown) {
   // The same door as a persisted event: an effect's damage figure, for one,
   // is ephemeral and still only for the seats allowed it.
-  deliver(campaignId, undefined, type, tablePayload(type, payload), payload);
-  globalThis.__odmVoiceEventHook?.(campaignId, type);
+  const stored = tablePayload(type, payload);
+  send(() => {
+    deliver(campaignId, undefined, type, stored, payload);
+    globalThis.__odmVoiceEventHook?.(campaignId, type);
+  });
 }
 
 // Voice reacts to things the rest of the app already announces: the floor

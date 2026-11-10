@@ -51,7 +51,7 @@ const { REAL_DICE_SCOPE } = await import("../src/lib/dice/held-rolls.ts");
 const DEBUG = Boolean(process.env.ODM_SWEEP_DEBUG);
 // The promise every row is held to is quoted from the sentence itself, so a
 // reworded scope stops this suite until its rows are read against it again.
-if (!REAL_DICE_SCOPE.startsWith("You roll your attacks and their damage, initiative, and the checks and saves the GM asks for.")) {
+if (!REAL_DICE_SCOPE.startsWith("You roll your attacks and their damage, initiative, and every check and save your character makes, the saves a spell, trap or monster forces on you included.")) {
   throw new Error(`REAL_DICE_SCOPE was reworded: read the rows of this suite against it again. It says: ${REAL_DICE_SCOPE}`);
 }
 
@@ -288,46 +288,17 @@ row("travel.forced_march", "travel", "out", () => ({ hours: 11, pace: "normal", 
 // ---- what each row is expected to do ----
 
 // Roll sites that throw a seat's d20 by the scope's own words. A row whose
-// only throws are from these is RULED: the written ruling, pinned, and listed
-// in the findings file for the maintainer to confirm or overturn.
-const RULED_SITES = {
-  "lib/dm/forced-save.ts#rollCharacterSave": "the saves a spell, trap or monster forces on you (and concentration, which rolls through the same site)",
-  "lib/dm/death.ts#rollDeathSave": "death saves",
-  "lib/dm/endurance.ts#hourlyConSaves": "by extension: the saves a forced march, cold or heat forces",
-  "lib/dm/between-io.ts#characterSave": "by extension: the saves a disease, a poison or a madness forces",
-};
+// only throws are from these is RULED. The scope once named the saves the
+// engine forces, death saves and concentration as the table's; the
+// maintainer's decision R5 (2026-11-09 gap sweep) overturned that: "A seat on
+// physical dice rolls its own saves, including saves the engine forces
+// (forced-save.ts and its callers)". Every one of them now parks, so none is
+// ruled thrown.
+const RULED_SITES = {};
 
-const PROMISE = '"You roll your attacks and their damage, initiative, and the checks and saves the GM asks for." (what a seat on physical dice is told: src/lib/dice/held-rolls.ts REAL_DICE_SCOPE)';
-const contest = (action) => ({
-  rule: PROMISE,
-  where: "src/lib/dm/contest-roll.ts rollCharacterCheck (every caller: grapple.ts, combat-actions.ts, improvise.ts, grappler-pin.ts, scene-tools.ts)",
-  severity: "medium",
-  note: `take_action ${action}: the character's own ability check, thrown on the server's dice with no card to the seat`,
-});
-// Thrown by the server against the scope.
+// Thrown by the server against the scope: none since every site throws a
+// character's d20 through src/lib/dm/character-roll.ts.
 const KNOWN = {
-  "damage_object.weapon": { rule: PROMISE, where: "src/lib/dm/object-damage.ts damageObject", severity: "low", note: "the character's attack roll and damage against an object" },
-  "opportunity.enemy_walks_off": { rule: PROMISE, where: "src/lib/dm/opportunity-strike.ts pcOpportunitySwing", severity: "medium", note: "the seat's opportunity attack and its damage are thrown the moment the creature leaves reach; the player neither chooses the reaction nor rolls it" },
-  "take_action.hide": contest("hide"),
-  "take_action.grapple": contest("grapple"),
-  "take_action.shove": contest("shove"),
-  "take_action.search": contest("search"),
-  "take_action.escape": contest("escape"),
-  "take_action.pin": contest("pin"),
-  "take_action.improvise": contest("improvise"),
-  "scene_check.skill": { rule: PROMISE, where: "src/lib/dm/scene-tools.ts (through contest-roll.ts rollCharacterCheck)", severity: "medium", note: "a chase or scene check the GM asks of one character" },
-  "group_check.one": { rule: PROMISE, where: "src/lib/dm/check-tools.ts handleGroupCheck", severity: "medium", note: "issue #896: a skill check the GM asked for, thrown by the server for a seat on physical dice" },
-  "group_check.party": { rule: PROMISE, where: "src/lib/dm/check-tools.ts handleGroupCheck", severity: "medium", note: "issue #896, with a second roller on the server's dice" },
-  "social_check.persuade": { rule: PROMISE, where: "src/lib/dm/social-tools.ts handleSocialCheck", severity: "medium", note: "issue #896: Persuasion thrown by the server" },
-  "social_check.deceive": { rule: PROMISE, where: "src/lib/dm/social-tools.ts handleSocialCheck", severity: "medium", note: "issue #896: Deception thrown by the server" },
-  "social_check.intimidate": { rule: PROMISE, where: "src/lib/dm/social-tools.ts handleSocialCheck", severity: "medium", note: "issue #896: Intimidation thrown by the server" },
-  "haggle.persuasion": { rule: PROMISE, where: "src/lib/dm/shop-tools.ts handleHaggle", severity: "medium", note: "the haggling check" },
-  "haggle.intimidation": { rule: PROMISE, where: "src/lib/dm/shop-tools.ts handleHaggle", severity: "medium", note: "the haggling check" },
-  "haggle.deception": { rule: PROMISE, where: "src/lib/dm/shop-tools.ts handleHaggle", severity: "medium", note: "the haggling check" },
-  "relationship_beat.flirt": { rule: PROMISE, where: "src/lib/dm/relationship-tools.ts handleRelationshipBeat", severity: "low", note: "the beat's Charisma check" },
-  "relationship_beat.gift": { rule: PROMISE, where: "src/lib/dm/relationship-tools.ts handleRelationshipBeat", severity: "low", note: "the beat's check" },
-  "stabilize.check": { rule: PROMISE, where: "src/lib/dm/stabilize.ts handleStabilize", severity: "medium", note: "the healer's Wisdom (Medicine) check" },
-  "start_encounter.party_ambush": { rule: PROMISE, where: "src/lib/dm/encounter-open.ts decideAmbush", severity: "medium", note: "the party's Stealth for an ambush, thrown as the fight opens; the same seat is then handed an initiative card" },
 };
 
 // Refused, and why that is the row working.
@@ -345,19 +316,9 @@ const REFUSED_OK = {
 
 // Roll sites that throw a character's d20 without saying whose it is: a d20
 // from one of these, in a row whose only roller is the seat, is the seat's.
-const UNTAGGED_HERO_SITES = new Set([
-  "lib/dm/between-io.ts#characterSave",
-  "lib/dm/consumables.ts#rollSave",
-  "lib/dm/consumables.ts#readScroll",
-  "lib/dm/contest-roll.ts#rollCharacterCheck",
-  "lib/dm/contest-roll.ts#rollFeatureSave",
-  "lib/dm/endurance.ts#hourlyConSaves",
-  "lib/dm/item-use.ts#rollCastCheck",
-  "lib/dm/object-damage.ts#damageObject",
-  "lib/dm/relationship-tools.ts#handleRelationshipBeat",
-  "lib/dm/shop-tools.ts#handleHaggle",
-  "lib/dm/social-tools.ts#handleSocialCheck",
-]);
+// None now: every one throws through src/lib/dm/character-roll.ts, which
+// tags the die as the character's.
+const UNTAGGED_HERO_SITES = new Set([]);
 // And those whose untagged d20 is a creature's or the world's.
 const UNTAGGED_OTHER_SITES = new Set([
   "lib/dm/roll-gates.ts#rollContest",
@@ -532,18 +493,15 @@ const SITES = {
   "lib/dm/aoe-damage.ts#handleAoeDamage": "D area damage",
   "lib/dm/attack-blow.ts#throwDamage": "D an attack's damage on the server's dice",
   "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
-  "lib/dm/between-io.ts#characterSave": "H", "lib/dm/between-io.ts#publicDie": "F a table die",
-  "lib/dm/check-tools.ts#handleGroupCheck": "H",
+  "lib/dm/between-io.ts#publicDie": "F a table die",
+  "lib/dm/character-roll.ts#initiativeWaits": "F no die: the lowest initiative, to read what the after-the-roll card would offer",
+  "lib/dm/character-roll.ts#rollCharacterD20": "H the one door a character's d20 is thrown through (src/lib/dm/character-roll.ts)",
   "lib/dm/chronal-shift.ts#takeSaveHelp": "D Flash of Genius and Favored by the Gods' dice",
   "lib/dm/combat-features.ts#divineIntervention": "D d100",
   "lib/dm/companion-agenda.ts#agendaRounds": "F a companion's own agenda",
-  "lib/dm/consumables.ts#readScroll": "H", "lib/dm/consumables.ts#rollSave": "H",
   "lib/dm/contest-roll.ts#checkCeiling": "F no die: the highest the check could reach",
-  "lib/dm/contest-roll.ts#rollCharacterCheck": "H", "lib/dm/contest-roll.ts#rollFeatureSave": "H",
-  "lib/dm/death.ts#rollDeathSave": "H", "lib/dm/death.ts#rollStableTimer": "F 1d4 hours",
-  "lib/dm/encounter-open.ts#decideAmbush": "H", "lib/dm/encounter-open.ts#rollOpeningInitiative": "H",
+  "lib/dm/death.ts#rollStableTimer": "F 1d4 hours",
   "lib/dm/encounter-tools.ts#ensureInitiativeProgress": "H",
-  "lib/dm/endurance.ts#hourlyConSaves": "H",
   "lib/dm/enemy-attack.ts#handleEnemyAttack": "F", "lib/dm/enemy-fall.ts#enemyFalls": "F", "lib/dm/enemy-hit-rows.ts#resolveRowOnHit": "F",
   "lib/dm/enemy-hit.ts#resolveOnHit": "F", "lib/dm/enemy-strike.ts#enemyStrikesEnemy": "F",
   "lib/dm/feat-reactions.ts#lucky": "H the Lucky feat's d20 against an attacker", "lib/dm/feat-reactions.ts#reservesRecovery": "D a hit die",
@@ -553,32 +511,28 @@ const SITES = {
   "lib/dm/heal-spell.ts#castHealingSpell": "D", "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",
   "lib/dm/item-charges.ts#rechargeAtDawn": "F", "lib/dm/item-charges.ts#spendChargesMath": "H the d20 on an item's last charge",
-  "lib/dm/item-use.ts#rollCastCheck": "H",
   "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
-  "lib/dm/object-damage.ts#damageObject": "H",
-  "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity-strike.ts#pcOpportunitySwing": "H", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
+  "lib/dm/object-damage.ts#damageObject": "F the damage the GM names for an object, which no character's roll dealt",
+  "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "H",
   "lib/dm/pet-tools.ts#handlePetAttack": "H a bound creature's attack, which its player rolls",
-  "lib/dm/prismatic.ts#rollRays": "D", "lib/dm/relationship-tools.ts#handleRelationshipBeat": "H", "lib/dm/resource-tools.ts#rollHealing": "D",
+  "lib/dm/prismatic.ts#rollRays": "D", "lib/dm/resource-tools.ts#rollHealing": "D",
   "lib/dm/roll-card.ts#dmRoll": "F the GM's dice", "lib/dm/roll-card.ts#rollCard": "D a helper for damage, healing and creature dice", "lib/dm/roll-card.ts#secretRoll": "F",
-  "lib/dm/roll-gates.ts#rollContest": "F", "lib/dm/shop-tools.ts#handleHaggle": "H",
+  "lib/dm/roll-gates.ts#rollContest": "F",
   "lib/dm/slow-cast.ts#slowHoldsCast": "H the d20 a slowed caster rolls",
-  "lib/dm/social-tools.ts#handleNpcReaction": "F", "lib/dm/social-tools.ts#handleSocialCheck": "H",
-  "lib/dm/stabilize.ts#handleStabilize": "H", "lib/dm/stabilize.ts#healerKitUse": "D",
+  "lib/dm/social-tools.ts#handleNpcReaction": "F",
+  "lib/dm/stabilize.ts#healerKitUse": "D",
   "lib/dm/zone-quake.ts#quakeFissures": "F",
 };
 // A character's d20 no row of this suite reaches, and what it would take.
 const UNREACHED = {
   "lib/dm/after-roll.ts#rerollD20s": "thrown from the after-the-roll card: test-enforce-sweep-dice-windows.mjs",
   "lib/dm/after-roll.ts#spendAfterRoll": "thrown from the after-the-roll card: test-enforce-sweep-dice-windows.mjs",
-  "lib/dm/consumables.ts#readScroll": "needs a scroll row of a spell above the reader's slots; a hand-made scroll row carries no spell",
-  "lib/dm/consumables.ts#rollSave": "needs a potion of poison",
-  "lib/dm/contest-roll.ts#rollFeatureSave": "needs a feature whose spend makes its holder save (Frenzy's end, Relentless Rage)",
   "lib/dm/encounter-tools.ts#ensureInitiativeProgress": "skips held seats by its own filter (encounter-tools.ts: !held.has(sheet.userId)); test-real-dice-initiative.mjs holds it",
   "lib/dm/feat-reactions.ts#lucky": "needs the Lucky feat and an open hit on the seat",
   "lib/dm/foretold-logic.ts#rollForetold": "needs a Divination wizard's long rest",
+  "lib/dm/forced-save.ts#rollCharacterSave": "the server's own throw of a forced save, which a seat on physical dice never reaches now (character-roll.ts parks it, as cast_at_player.hazard shows); test-enforce-sweep-dice-afterroll.mjs reaches it on the server's dice",
   "lib/dm/item-charges.ts#spendChargesMath": "needs a wand's last charge",
-  "lib/dm/item-use.ts#rollCastCheck": "needs an item whose casting asks a check",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "pc_attack parks for the seat, so the server's throw is never reached (pc_attack.weapon, pc_attack.spell)",
   "lib/dm/pet-tools.ts#handlePetAttack": "needs a bound creature",
   "lib/dm/slow-cast.ts#slowHoldsCast": "needs a slowed caster",

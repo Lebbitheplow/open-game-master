@@ -135,6 +135,7 @@ import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
+import { isHeldPark, runHeld } from "@/lib/dm/held-call";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
@@ -1170,6 +1171,17 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // parked with the parts that needed no roll, takes each roll in the
   // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
+    // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
+    // again when it landed, and this is what it answered. One that parked
+    // again answers through the roll it parked on.
+    const heldCall = pending.carry?.call;
+    if (heldCall) {
+      const answered = turn.conversation.some((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId);
+      if (pending.carry?.answer && pending.toolCallId && !answered) {
+        turn.conversation.push({ role: "tool", tool_call_id: pending.toolCallId, content: pending.carry.answer });
+      }
+      continue;
+    }
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     // A turn that parks more than once (a stop before a later roll) comes back
     // here with the rolls of its last resume, already answered.
@@ -2849,17 +2861,20 @@ async function resolveModelCall(
     // what it buys in one call, given back if the engine refuses the rest.
     // Fling and Swallow have no other call to make them (issue 685).
     const fightBefore = getActiveEncounter(campaign.id)?.id ?? null;
+    // Held so a roll inside it may wait on its player (src/lib/dm/held-call.ts).
     const result =
       name === "legendary_action" && playsWhole(gated.args)
-        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
-        : applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
-            realDiceUserIds,
-            toolCallId: toolCall.id ?? null,
-          }).result;
+        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null })
+        : runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
+            applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
+              realDiceUserIds,
+              toolCallId: toolCall.id ?? null,
+            }).result,
+          );
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    if (result[PC_ATTACK_PARKED]) {
+    if (result[PC_ATTACK_PARKED] || isHeldPark(result)) {
       return { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
     }
     // A fight this call opened asks the seats the server does not roll for
@@ -2914,11 +2929,11 @@ async function resolveModelCall(
     }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result;
+      runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);
     if (!("error" in result)) {
       turn.mutationCount += 1;
     }
-    return result;
+    return isHeldPark(result) ? { [PARKED]: true } : result;
   }
   // One request_roll for both callers (src/lib/dm/invoke-roll.ts); the
   // model's parks remember the call they answer. Held to the gate here, as
@@ -2938,7 +2953,8 @@ async function resolveModelCall(
       ? { ...result, note: ROLL_RESULT_NOTE }
       : result;
   }
-  return dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds });
+  const result = await dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null });
+  return isHeldPark(result) ? { [PARKED]: true } : result;
 }
 
 // Every tool the turn has called so far, from its conversation.

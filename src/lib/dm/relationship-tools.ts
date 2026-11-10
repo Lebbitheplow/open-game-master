@@ -52,10 +52,10 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { actNote, outwardApproval } from "@/lib/dm/scheme-logic";
 import { revealAct, runningAct, schemesPossible, schemeTool } from "@/lib/dm/scheme-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { resolveRollExpression, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -351,8 +351,15 @@ export function handleRelationshipBeat(
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
     dc = target;
-    const thrown = rollExpression(resolved.expression);
-    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, target) : thrown;
+    // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+    // they roll it, and a roll that falls short waits on what they hold.
+    const rolled = rollCharacterD20(campaign, sheet, {
+      kind: "skill_check",
+      expression: resolved.expression,
+      detail: `${sheet.name}: ${spec.skill} toward ${subject.name}`,
+      dc: target,
+      settleHeldDie: waits,
+    });
     rollTotal = rolled.total;
     const roll = insertRoll({
       campaignId: campaign.id,

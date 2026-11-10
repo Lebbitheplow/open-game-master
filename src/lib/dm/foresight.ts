@@ -217,7 +217,9 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
   if (call.name === "request_roll") {
     const hero = sheetOf(args.characterId);
     const kind = typeof args.kind === "string" ? args.kind : "";
-    const tag = hero && canWaitOnRoll(kind) && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
+    // Initiative waits on its roller's card now (after-roll-logic.ts), but no
+    // watch stops for it: that is a ruling still to make.
+    const tag = hero && canWaitOnRoll(kind) && kind !== "initiative" && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
     if (!hero || !tag) {
       return null;
     }

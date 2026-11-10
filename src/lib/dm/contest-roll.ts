@@ -13,7 +13,8 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -80,13 +81,22 @@ export function rollCharacterCheck(
     return { total: 1, expression: "", notes: resolved.notes, rollId: null, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits && check.dc ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
+  const kind = check.skill ? "skill_check" : "ability_check";
+  // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+  // they roll it, and a roll that falls short waits on what they hold.
+  const outcome = rollCharacterD20(campaign, sheet, {
+    kind,
+    expression: resolved.expression,
+    detail: `${detail}: ${resolved.detail}`.slice(0, 120),
+    dc: check.dc ?? null,
+    ...(check.advantage ? { advantage: check.advantage } : {}),
+    settleHeldDie: waits,
+  });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
-    kind: check.skill ? "skill_check" : "ability_check",
+    kind,
     detail: `${detail}: ${resolved.detail}`.slice(0, 120),
     ...(check.dc ? { dc: check.dc } : {}),
     result: outcome,
@@ -130,8 +140,13 @@ export function rollFeatureSave(
     return { success: false, total: null, notes: resolved.notes };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  const outcome = rollCharacterD20(campaign, sheet, {
+    kind: "saving_throw",
+    expression: resolved.expression,
+    detail: `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120),
+    dc,
+    settleHeldDie: waits,
+  });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
