@@ -22,6 +22,7 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "singularity", match: ["singularity"], summary: "Singularity: the esper's next psionic of 5th level or lower this turn costs no slot and may strike a second target." },
   { id: "author_of_the_unwritten", match: ["author of the unwritten"], summary: "Author of the Unwritten: the occultist's next warlock spell of 5th level or lower this turn costs no slot and may strike a second target." },
   { id: "the_grave_chorus", match: ["the grave chorus"], summary: "The Grave Chorus: for a minute each dirge the dirgesinger casts may strike one additional target." },
+  { id: "bleeding_power", match: ["bleeding power"], summary: "Bleeding Power: the apostate's next stigmata this turn (1st level; up to 3rd with Deeper Scars) costs no slot." },
   { id: "their_power_your_hands", match: ["their power, your hands"], summary: "Their Power, Your Hands: the apostate's next stigmata of 5th level or lower this turn costs no slot and deals its maximum damage." },
   { id: "beyond_the_veil", match: ["beyond the veil"], summary: "Beyond the Veil: for a minute they see invisible creatures and into the Ethereal Plane, and strike what stands there.", seesInvisible: true },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },

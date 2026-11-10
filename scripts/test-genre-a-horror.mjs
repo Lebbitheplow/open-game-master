@@ -101,5 +101,33 @@ await test("Their Power, Your Hands: the next stigmata of 5th level or lower cos
   assert.ok(!marked(scene.holder.id), "the cast clears the mark");
 });
 
+await test("Bleeding Power: a 1st-level stigmata with no slot for 1d4 that nothing reduces; Deeper Scars: up to 3rd for 2d4", async () => {
+  const slotsGone = (id) => t.world.patch(id, { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 4 }, 2: { max: 3, used: 3 }, 3: { max: 3, used: 3 } }, prepared: ["Inflict Wounds", "Vampiric Touch"], known: ["Inflict Wounds", "Vampiric Touch"], cantrips: [] } });
+  let scene = await t.stage({ classId: "apostate", level: 2 });
+  slotsGone(scene.holder.id);
+  t.world.dice(3);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power");
+  t.world.clearDice();
+  assert.equal(t.hp(scene.holder.id), 97, "the 1d4 backlash");
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" }), "Inflict Wounds with no slot");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["1"].used, 4, "no slot spent");
+  assert.equal(sheet(scene.holder.id).resources.horror_bleeding_power.used, 1);
+  // 11th level: a 3rd-level stigmata, and 2d4 past the apostate's necrotic resistance.
+  scene = await t.stage({ classId: "apostate", level: 11 });
+  slotsGone(scene.holder.id);
+  t.world.dice(3, 3);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power at 11th");
+  t.world.clearDice();
+  assert.equal(t.hp(scene.holder.id), 94, "the 2d4 backlash, unreduced");
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Vampiric Touch" }), "Vampiric Touch with no slot");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["3"].used, 3, "no slot spent");
+  // 2nd level: no 3rd-level stigmata.
+  scene = await t.stage({ classId: "apostate", level: 2 });
+  slotsGone(scene.holder.id);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power");
+  const refused = await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Vampiric Touch" });
+  assert.ok(refused.ok === false || refused.error, "a 3rd-level stigmata is not paid at 2nd level");
+});
+
 t.close();
 console.log(`test-genre-a-horror: ${passed} passed`);

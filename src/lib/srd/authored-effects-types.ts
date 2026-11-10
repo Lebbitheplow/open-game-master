@@ -507,6 +507,11 @@ export type SpendDoes =
   // A genre class's companion with the text's stats (src/lib/dm/genre-a-summons.ts):
   // the rigger's drones, the vermin lord's dire rat, King Below the Streets' rats.
   | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" }
+  // A mark on the holder that pays for their next spell it fits with no slot
+  // (src/lib/dm/genre-a-casts.ts), stepped with the class level, and the
+  // backlash the holder takes as it is laid, which nothing reduces
+  // (src/lib/dm/genre-a-horror-casts.ts): Bleeding Power.
+  | { kind: "cast_mark"; condition: Array<[number, string]>; rounds: number; backlash?: Array<[number, string]> }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }

@@ -2744,16 +2744,15 @@
    },
    {
     "c": "cast a 1st-level stigmata without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:horror_bleeding_power#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-bleeding-power",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "the spend lays its cast mark (src/lib/dm/genre-a-horror-casts.ts layCastMark), and the next 1st-level spell costs no slot (src/lib/dm/genre-a-casts.ts)"
    },
    {
     "c": "take 1d4 necrotic that cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:horror_bleeding_power#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "src/lib/dm/genre-a-horror-casts.ts layCastMark: the 1d4 backlash, typeless through applyPcDamage, past the apostate's necrotic resistance"
    }
   ]
  },
@@ -2868,22 +2867,18 @@
   "clauses": [
    {
     "c": "Bleeding Power can cast up to 3rd-level stigmata",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Deeper Scars#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "the 11th-level step of the Bleeding Power mark, \"bleeding power (deeper scars)\" (src/lib/dm/genre-a-casts.ts, maxLevel 3)"
    },
    {
     "c": "the backlash is 2d4 necrotic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "same_probe_as": 0
+    "is": "held",
+    "by": "the 11th-level step of the Bleeding Power backlash, 2d4 (src/lib/srd/authored-effects-genre-a-horror.ts, src/lib/dm/genre-a-horror-casts.ts)",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power"
    }
   ]
  },

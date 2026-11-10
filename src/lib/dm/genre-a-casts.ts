@@ -35,6 +35,11 @@ export const GENRE_A_CASTS: GenreCast[] = [
   // Their Power, Your Hands (apostate 20): "cast one stigmata of 5th level or
   // lower without a slot at its maximum effect".
   { counter: "horror_their_power_your_hands", feature: "Their Power, Your Hands", mark: "their power, your hands", maxLevel: 5, atMaximum: true },
+  // Bleeding Power (apostate 2): "1/rest, cast a 1st-level stigmata without a
+  // slot", and Deeper Scars (11): "can cast up to 3rd-level stigmata". The
+  // spend lays the mark of the holder's level (genre-a-horror-casts.ts).
+  { counter: "horror_bleeding_power", feature: "Deeper Scars", mark: "bleeding power (deeper scars)", maxLevel: 3 },
+  { counter: "horror_bleeding_power", feature: "Bleeding Power", mark: "bleeding power", maxLevel: 1 },
   { counter: "horror_apocrypha", feature: "Apocrypha", level: 6 },
   { counter: "horror_seventh_seal", feature: "Seventh Seal", level: 7 },
 ];

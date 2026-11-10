@@ -48,6 +48,7 @@ import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
+import { layCastMark } from "@/lib/dm/genre-a-horror-casts";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -547,6 +548,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
     case "genre_summon":
       return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
+    case "cast_mark":
+      return layCastMark(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

@@ -27,6 +27,18 @@ export const GENRE_A_HORROR: GenreRow[] = [
   // "1/long rest, cast one stigmata of 5th level or lower without a slot at
   // its maximum effect": the mark lasts the turn, and the cast it pays for
   // (src/lib/dm/genre-a-casts.ts) clears it at its maximum damage.
+  // "1/rest, cast a 1st-level stigmata without a slot; take 1d4 necrotic that
+  // cannot be reduced", and Deeper Scars: "up to 3rd-level stigmata; the
+  // backlash is 2d4 necrotic". The spend lays the mark and takes the backlash.
+  counted("apostate", "Bleeding Power", "horror_bleeding_power", {
+    spends: [{
+      name: "Bleeding Power",
+      pool: { id: "horror_bleeding_power" },
+      action: "none",
+      does: { kind: "cast_mark", condition: [[1, "bleeding power"], [11, "bleeding power (deeper scars)"]], rounds: 1, backlash: [[1, "1d4"], [11, "2d4"]] },
+    }],
+  }),
+  held("apostate", "Deeper Scars", "src/lib/dm/genre-a-casts.ts", "bleeding power (deeper scars)"),
   counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
     spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
   }),
