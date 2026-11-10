@@ -110,7 +110,7 @@ import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
-import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
@@ -1429,7 +1429,18 @@ function dmMutation(
         return { result: option.refused };
       }
       const pool = counter ? sheet.resources[counter.id] : undefined;
-      if (!option && counter?.id === "channel_divinity" && fighting && pool) {
+      // An option the sheet holds that the cost table does not list (a
+      // workshop subclass's own) is still an option named, at the cost its
+      // feature keeps.
+      const heldChannel = counter?.id === "channel_divinity" && !option
+        ? channelOptions(sheet).find((entry) => [args.variant ?? "", nameChoice(resourceName) ?? ""].some((name) => name && isNamed(name, entry.name)))
+        : undefined;
+      // A bare Channel Divinity spend does nothing in a fight or out of one,
+      // so it is refused with the options, spending nothing (gap study WAVE2
+      // D1: "A bare Channel Divinity spend (no option named) does nothing, in
+      // a fight or out: refuse it with a pointer to the options, spending
+      // nothing (R10 extended)").
+      if (!option && !heldChannel && counter?.id === "channel_divinity" && pool) {
         // The uses and the turn before the option: which one is moot when
         // none can be paid for. The turn is held to the cheapest option.
         const payment = payForUse(sheet, counter, pool, 1);
@@ -1443,14 +1454,16 @@ function dmMutation(
           return { result: turnGate };
         }
         const held = channelOptionsHeld(sheet);
+        const unknown = args.variant?.trim() ? `"${args.variant.trim()}" is not a Channel Divinity option ${sheet.name} holds. ` : "";
         return {
           result: {
-            error: `Channel Divinity in a fight is one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
+            error: `${unknown}Channel Divinity is always one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
             retry: true,
           },
         };
       }
-      const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
+      const heldCost = heldChannel && heldChannel.cost !== "ritual" ? heldChannel.cost : undefined;
+      const optionCharge = option?.cost ?? heldCost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
       // Embodiment of the Law and the genre surges move the next spell to
       // the bonus action (src/lib/dm/resource-turn.ts castMarkCharge).
       const castMark = castMarkCharge(campaign, sheet, counter?.id);

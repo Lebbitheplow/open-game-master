@@ -142,10 +142,13 @@ await test("Channel Divinity from two classes adds effects, not uses", async () 
     await levelInto("paladin", paladinLevel);
     assert.equal(now().resources.channel_divinity.max, uses, `cleric ${clericLevel} / paladin ${paladinLevel}`);
   }
-  const spend = await world.invoke("use_resource", { characterId: now().id, resource: "channel divinity" });
-  assert.equal(spend.ok, true, spend.error);
-  assert.equal((await world.invoke("use_resource", { characterId: now().id, resource: "channel divinity" })).ok, false);
-  assert.deepEqual(now().resources.channel_divinity, { max: 1, used: 1 });
+  // The one shared pool is spent through an option; a bare spend names none
+  // and is refused, spending nothing (gap study WAVE2 D1: "A bare Channel
+  // Divinity spend (no option named) does nothing, in a fight or out").
+  const bare = await world.invoke("use_resource", { characterId: now().id, resource: "channel divinity" });
+  assert.equal(bare.ok, false);
+  assert.match(String(bare.error), /name it in variant/);
+  assert.deepEqual(now().resources.channel_divinity, { max: 1, used: 0 });
 });
 
 await test("Sneak Attack, Martial Arts and Rage count the levels of their own class", async () => {

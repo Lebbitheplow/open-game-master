@@ -120,7 +120,6 @@ export const KNOWN = {
 };
 
 export const RULINGS = {
-  "counter:channel_divinity": { SPENT_FOR_NOTHING: "src/lib/dm/mutations.ts use_resource: \"A Channel Divinity in a fight names its option\" (a plain spend is taken only outside a fight)" },
   "counter:cyberpunk_jury_rig": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:cyberpunk_the_net_remembers": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:dark_fantasy_immolate_the_sin": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
