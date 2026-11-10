@@ -1764,12 +1764,9 @@
    },
    {
     "c": "shareable with a Wisdom-modifier number of creatures",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_eyes_of_night#SPENT_FOR_NOTHING [spends finding spends-spent-for-nothing-counter-sub-eyes-of-night]",
-    "severity": "low",
-    "where": "src/lib/dm/mutations.ts use_resource (a plain spend of a counter another path resolves is accepted)",
-    "kind": "path-parity",
-    "note": "held by the spends sweep (finding spends-spent-for-nothing-counter-sub-eyes-of-night)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_eyes_of_night#SPENT_FOR_NOTHING",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Eyes of Night spend (the spends sweep walks counter:sub_eyes_of_night and finds no plain spend for nothing)"
    },
    {
     "c": "once per long rest",
@@ -3012,12 +3009,9 @@
   "clauses": [
    {
     "c": "Whenever you or a creature you can see within 30 feet succeeds on an Intelligence, Wisdom or Charisma saving throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:paladin::Vigilant Rebuke::Vigilant Rebuke#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-reaction-paladin-vigilant-rebuke-vigilant-rebuke]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-reaction-paladin-vigilant-rebuke-vigilant-rebuke)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:paladin::Vigilant Rebuke::Vigilant Rebuke#TRIGGER_UNCHECKED",
+    "by": "src/lib/srd/trigger-table.ts and src/lib/dm/reaction-triggers.ts: the reaction answers an open save record (the spends sweep walks reaction:paladin::Vigilant Rebuke clean)"
    },
    {
     "c": "a reaction deals 2d8 + your Charisma modifier force damage to the creature that forced the save",
@@ -3109,12 +3103,9 @@
    },
    {
     "c": "cannot move more than 30 feet away from you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs gap 831-champion-challenge-walks-away [limits finding L831-champion-challenge-leash-not-enforced]",
-    "severity": "medium",
-    "where": "src/lib/dm/map-tools.ts move_token and src/lib/dm/enemy-speed.ts / zone-move.ts (an unforced move does not read a leash on the mover); src/lib/dm/condition-leash.ts",
-    "kind": "rule-missing",
-    "note": "held by the limits sweep (finding L831-champion-challenge-leash-not-enforced)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-champion-challenge-walks-away",
+    "by": "src/lib/dm/condition-leash.ts read at the move doors (scripts/test-enforce-sweep-limits-features.mjs row 831-champion-challenge-walks-away runs as a test)"
    }
   ]
  },
@@ -3657,12 +3648,9 @@
    },
    {
     "c": "you can cast dream (as the messenger), scrying or teleportation circle without a spell slot or material components",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_walker_in_dreams#GUIDANCE_ONLY [spends finding spends-guidance-only-counter-sub-walker-in-dreams]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-counter-sub-walker-in-dreams)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_walker_in_dreams#GUIDANCE_ONLY",
+    "by": "the counter casts through src/lib/srd/counter-casts.ts (the spends sweep walks counter:sub_walker_in_dreams clean)"
    },
    {
     "c": "the circle opens to the last place you finished a long rest on this plane, and fails without being spent if there is none",
@@ -3882,12 +3870,8 @@
    },
    {
     "c": "four beasts of your choice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs row 859-faithful-summons-choice [limits finding L859-faithful-summons-wolves]",
-    "severity": "low",
-    "where": "src/lib/dm/faithful-summons.ts",
-    "kind": "gm-decision",
-    "note": "held by the limits sweep (finding L859-faithful-summons-wolves)"
+    "is": "left",
+    "why": "WAVE1 R8 confirms finding L859-faithful-summons-wolves as written: the four beasts are wolves, chosen for the player (scripts/test-enforce-sweep-limits-features.mjs holds the ruling)"
    },
    {
     "c": "each challenge rating 2 or lower, appear within 20 feet, protect you and attack your foes for an hour without concentration, or until you dismiss them",
@@ -3992,12 +3976,9 @@
   "clauses": [
    {
     "c": "A reaction reanimates a beast or humanoid that dies within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_fungal_infestation#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-counter-sub-fungal-infestation]",
-    "severity": "medium",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-counter-sub-fungal-infestation)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fungal_infestation#TRIGGER_UNCHECKED",
+    "by": "src/lib/srd/trigger-table.ts sub_fungal_infestation (a beast or humanoid dying within 10 feet), read by reaction-triggers.ts (the spends sweep walks it clean)"
    },
    {
     "c": "as a zombie under your command for an hour",
@@ -4096,12 +4077,9 @@
    },
    {
     "c": "can cast guiding bolt",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_star_map#GUIDANCE_ONLY [spends finding spends-guidance-only-counter-sub-star-map]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-counter-sub-star-map)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_star_map#GUIDANCE_ONLY",
+    "by": "the counter casts through src/lib/srd/counter-casts.ts (the spends sweep walks counter:sub_star_map clean)"
    },
    {
     "c": "a proficiency-bonus number of times",
@@ -4183,12 +4161,9 @@
    },
    {
     "c": "a reaction then adds or subtracts a d6 on a roll near you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_cosmic_omen#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-counter-sub-cosmic-omen]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-counter-sub-cosmic-omen)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_cosmic_omen#TRIGGER_UNCHECKED",
+    "by": "src/lib/srd/trigger-table.ts sub_cosmic_omen (a roll within 30 feet), read by reaction-triggers.ts (the spends sweep walks it clean)"
    },
    {
     "c": "a proficiency-bonus number of times",
@@ -4871,12 +4846,9 @@
   "clauses": [
    {
     "c": "A reaction attacks your prey when it forces a save on you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:ranger::Slayer's Counter::Slayer's Counter#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-reaction-ranger-slayer-s-counter-slayer-s-counter]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-reaction-ranger-slayer-s-counter-slayer-s-counter)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:ranger::Slayer's Counter::Slayer's Counter#TRIGGER_UNCHECKED",
+    "by": "src/lib/srd/trigger-table.ts slayer's counter (a save forced by the prey), read by reaction-triggers.ts (the spends sweep walks it clean)"
    },
    {
     "c": "and a hit means the save automatically succeeds",
@@ -5005,12 +4977,9 @@
    },
    {
     "c": "you can cast it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_fey_reinforcements#GUIDANCE_ONLY [spends finding spends-guidance-only-counter-sub-fey-reinforcements]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-counter-sub-fey-reinforcements)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fey_reinforcements#GUIDANCE_ONLY",
+    "by": "the counter casts through src/lib/srd/counter-casts.ts (the spends sweep walks counter:sub_fey_reinforcements clean)"
    },
    {
     "c": "once without a spell slot per long rest",
@@ -5090,12 +5059,9 @@
    },
    {
     "c": "move the target 15 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:ranger::Gathered Swarm::Gathered Swarm#WRONG_TRIGGER [spends finding spends-wrong-trigger-spend-ranger-gathered-swarm-gathered-swarm]",
-    "severity": "high",
-    "where": "src/lib/dm/authored-spend-more.ts swarmPush (the once-a-turn key the damage rider already holds after a hit) and src/lib/dm/pc-attack rider",
-    "kind": "rule-wrong",
-    "note": "held by the spends sweep (finding spends-wrong-trigger-spend-ranger-gathered-swarm-gathered-swarm)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:ranger::Gathered Swarm::Gathered Swarm#WRONG_TRIGGER",
+    "by": "src/lib/dm/authored-spend-more.ts swarmPush (the spends sweep walks spend:ranger::Gathered Swarm clean)"
    },
    {
     "c": "or move you 5 feet without provoking",
@@ -5377,12 +5343,9 @@
    },
    {
     "c": "each creature in it makes a Dexterity save against your spell save DC or takes 8d6 damage (10d6 from 15th level), half on a success",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_drakes_breath#HANDS_BACK [spends finding spends-hands-back-counter-sub-drakes-breath]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the enemy_save and aoe arms) and src/lib/dm/authored-spend-effects.ts (aoe_report); src/lib/dm/intent-logic.ts directCardCall for the card",
-    "kind": "path-parity",
-    "note": "held by the spends sweep (finding spends-hands-back-counter-sub-drakes-breath)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_drakes_breath#HANDS_BACK",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave rolls the saves and lands the damage (the spends sweep walks counter:sub_drakes_breath clean)"
    },
    {
     "c": "Once per long rest",
@@ -5427,12 +5390,9 @@
    },
    {
     "c": "when you or your drake takes damage while you are within 30 feet of each other, a reaction gives the one hurt resistance to that damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-pet-hit-keeps-no-record [limits finding L787-drake-damage-no-reaction]",
-    "severity": "medium",
-    "where": "src/lib/dm/pc-damage.ts (apply_damage's petName branch writes no last-hit record); src/lib/dm/authored-reactions.ts case \"resist_instance\" (bond); src/lib/battlemap/hand-react.ts",
-    "kind": "rule-missing",
-    "note": "held by the limits sweep (finding L787-drake-damage-no-reaction)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs :: 787-pet-hit-keeps-no-record",
+    "by": "the pet hit record (scripts/test-enforce-sweep-limits-reactions.mjs row 787-pet-hit-keeps-no-record runs as a test)"
    },
    {
     "c": "a proficiency-bonus number of times",
@@ -5560,12 +5520,9 @@
    },
    {
     "c": "you can cast lesser restoration without a spell slot or preparing it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:art_restorative_reagents#GUIDANCE_ONLY [spends finding spends-guidance-only-counter-art-restorative-reagents]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-counter-art-restorative-reagents)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:art_restorative_reagents#GUIDANCE_ONLY",
+    "by": "the counter casts through src/lib/srd/counter-casts.ts (the spends sweep walks counter:art_restorative_reagents clean)"
    },
    {
     "c": "a number of times equal to your Intelligence modifier (minimum once)",
@@ -5692,12 +5649,9 @@
    },
    {
     "c": "Defensive Field (a bonus action gives you temporary hit points equal to your artificer level, a proficiency-bonus number of times per long rest)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:artificer::Armor Model::Defensive Field#POOL_MISSING; scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_defensive_field#ORPHAN [spends finding spends-defensive-field-counter-never-granted]",
-    "severity": "high",
-    "where": "src/lib/srd/authored-resources.json sub_defensive_field (match: [\"defensive field\"]) against src/lib/srd/class-resources.ts populateResources/featureHolds; src/lib/srd/authored-effects-data3.ts artificer::Armor Model (pool sub_defensive_field).",
-    "kind": "builder",
-    "note": "held by the spends sweep (finding spends-defensive-field-counter-never-granted)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:artificer::Armor Model::Defensive Field#POOL_MISSING; scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_defensive_field#ORPHAN",
+    "by": "src/lib/srd/class-resources.ts populateResources grants sub_defensive_field (the spends sweep walks spend:artificer::Armor Model::Defensive Field clean)"
    },
    {
     "c": "a lightning launcher (a 1d6 lightning ranged weapon, 90/300 feet, that once on each of your turns deals an extra 1d6 lightning damage to a creature it strikes), Powered Steps (walking speed 5 feet higher) and Dampening Field (advantage on Stealth checks",
@@ -5750,12 +5704,9 @@
    },
    {
     "c": "when a Huge or smaller creature you can see ends its turn within 30 feet of you, a reaction makes it save on Strength against your spell save DC or be pulled up to 25 feet toward you into an unoccupied space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:artificer::Perfected Armor::Perfected Armor#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-reaction-artificer-perfected-armor-perfected-armor]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-reaction-artificer-perfected-armor-perfected-armor)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:artificer::Perfected Armor::Perfected Armor#TRIGGER_UNCHECKED",
+    "by": "src/lib/srd/trigger-table.ts perfected armor (a creature ending its turn within 30 feet), read by reaction-triggers.ts (the spends sweep walks it clean)"
    },
    {
     "c": "and if it ends within 5 feet of you, you can make a melee weapon attack against it as part of the reaction",
@@ -5839,12 +5790,9 @@
    },
    {
     "c": "Flamethrower (a 15-foot cone, 2d8 fire damage, half on a successful Dexterity save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:artificer::Eldritch Cannon::Activate Cannon#HANDS_BACK [spends finding spends-hands-back-spend-artificer-eldritch-cannon-activate-cannon]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the enemy_save and aoe arms) and src/lib/dm/authored-spend-effects.ts (aoe_report); src/lib/dm/intent-logic.ts directCardCall for the card",
-    "kind": "path-parity",
-    "note": "held by the spends sweep (finding spends-hands-back-spend-artificer-eldritch-cannon-activate-cannon)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:artificer::Eldritch Cannon::Activate Cannon#HANDS_BACK",
+    "by": "src/lib/dm/counter-saves.ts rolls the saves of the creatures named (the spends sweep walks spend:artificer::Eldritch Cannon::Activate Cannon clean)"
    },
    {
     "c": "Force Ballista (a ranged spell attack at a creature within 120 feet for 2d8 force damage that pushes it 5 feet) or Protector (it and each creature of your choice within 10 feet of it gain 1d8 + your Intelligence modifier temporary hit points",
@@ -5886,12 +5834,9 @@
    },
    {
     "c": "you can detonate it as an action for 3d8 force damage in a 20-foot radius, halved on a successful Dexterity save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:artificer::Explosive Cannon::Explosive Cannon#HANDS_BACK [spends finding spends-hands-back-spend-artificer-explosive-cannon-explosive-cannon]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the enemy_save and aoe arms) and src/lib/dm/authored-spend-effects.ts (aoe_report); src/lib/dm/intent-logic.ts directCardCall for the card",
-    "kind": "path-parity",
-    "note": "held by the spends sweep (finding spends-hands-back-spend-artificer-explosive-cannon-explosive-cannon)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:artificer::Explosive Cannon::Explosive Cannon#HANDS_BACK",
+    "by": "src/lib/dm/counter-saves.ts rolls the saves of the creatures named (the spends sweep walks spend:artificer::Explosive Cannon clean)"
    }
   ]
  },
