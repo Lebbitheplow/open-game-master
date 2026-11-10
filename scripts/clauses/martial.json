@@ -695,8 +695,10 @@
   "clauses": [
    {
     "c": "Make one extra melee attack from your echo's space when you take the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_unleash_incarnation#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/turn-budget.ts grantActionAttack (authored-effects-w2-martial.ts fighter::Unleash Incarnation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unleash-incarnation-extra-attack",
+    "note": "The attack is one more of the Attack action, held while the echo is out; that it is melee and from the echo's space is the GM's to keep, as the echo has no square of its own (Manifest Echo#2)."
    },
    {
     "c": "a Constitution-modifier number of times per long rest",
@@ -768,11 +770,12 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Echo Knight",
   "level": 18,
-  "sha": "5356ec9231ec",
+  "sha": "50d879efe7b4",
   "clauses": [
    {
-    "c": "Regain a use of Unleash Incarnation on initiative",
-    "is": "gap",
+    "c": "When you roll initiative with no Unleash Incarnation uses left, you regain one",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Legion of One init_refill",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: legion-of-one-regains-on-initiative"
    },
    {
@@ -2856,8 +2859,10 @@
   "clauses": [
    {
     "c": "When you take the Attack action you can replace one attack with a 20-foot cone or a 30-foot line 5 feet wide of acid, cold, fire, lightning or poison: each creature in it makes a Dexterity save against your ki save DC or takes two rolls of your martial arts die (three from 11th level), half on a success.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_breath_of_the_dragon#HANDS_BACK",
+    "is": "held",
+    "by": "src/lib/dm/resource-turn.ts (replacesAttack: spendAttack), src/lib/dm/aoe-spend.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: breath-of-the-dragon-replaces-an-attack",
+    "note": "The sweep's TRIGGER_AS_CARD row for this counter reads \"When you take the Attack action\" as a trigger; the breath may be the action's first attack (DISPUTED in the handoff).",
     "recorded_by": "spends-hands-back-counter-sub-breath-of-the-dragon"
    },
    {

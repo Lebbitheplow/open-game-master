@@ -306,6 +306,22 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     r.endTurn();
     assert.ok(foeHas(enemy, "frightened"), `a creature 5 feet off, its turn begun in the aura, is not frightened: ${show(out)}`);
   });
+
+  // "When you take the Attack action you can replace one attack": the breath
+  // spends one swing of the Attack action (resource-turn.ts replacesAttack),
+  // so a monk with Extra Attack still has the other, and none is left after.
+  await probe("breath-of-the-dragon-replaces-an-attack", async () => {
+    const [enemy] = await stage(dragon);
+    const out = await spend(dragon, "Breath of the Dragon", { variant: "fire", targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(out.ok, true, out.error);
+    const turn = world.encounter().turnBudget;
+    assert.equal(turn.attacksMade, 1, `the breath took ${turn.attacksMade} of the Attack action's ${turn.attacksAllowed} attacks`);
+    assert.equal(turn.attacksAllowed, 2, "Extra Attack at 11th level");
+    const swing = await kit.swing(dragon.id, enemy.id, [15, 4, 4, 4], UNARMED);
+    assert.ok(swing && !swing.error, `the other attack: ${swing?.error}`);
+    const again = await spend(dragon, "Breath of the Dragon", { variant: "fire", targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(again.ok, false, `a breath with both attacks spent: ${show(again)}`);
+  });
 }
 
 finish();

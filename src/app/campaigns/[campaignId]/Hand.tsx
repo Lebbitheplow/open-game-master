@@ -19,7 +19,7 @@ import { HAND_TUTORIAL_ID, HandTutorial } from "@/app/campaigns/[campaignId]/Han
 import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandReactPrompt } from "@/app/campaigns/[campaignId]/HandReactPrompt";
 import { HandPips } from "@/app/campaigns/[campaignId]/HandPips";
-import { handTargets } from "@/app/campaigns/[campaignId]/handTargets";
+import { deadAllyTargets, handTargets } from "@/app/campaigns/[campaignId]/handTargets";
 import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaigns/[campaignId]/useHandChoices";
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
@@ -386,6 +386,9 @@ function HandInner({
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
+  // A card that takes the dead (Revivify, Hand of Ultimate Mercy) is aimed at
+  // them alone (src/lib/srd/dead-targets.ts).
+  const deadTargets = useMemo(() => deadAllyTargets(sheets, sheet?.id, encounter.sides), [sheets, sheet?.id, encounter.sides]);
   // A redirect's creature may be friend or foe, the acting hero too when the
   // card is another hero's (reactionPicks leaves out the holder and the attacker).
   const redirects = picked?.pickWithin !== undefined;
@@ -406,8 +409,8 @@ function HandInner({
       // the board says they cannot (hand-play.ts aimUnseen, the engine's gate).
       ? seenChips(picked, reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet))
       : picked?.target === "ally"
-        ? picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
-        : [], [fixedChip, picked, pickable, partyTargets, ownFeet]);
+        ? picked.takesTheDead ? deadTargets : picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
+        : [], [fixedChip, picked, pickable, partyTargets, deadTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =
     picked?.target === "self"

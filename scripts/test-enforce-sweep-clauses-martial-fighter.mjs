@@ -393,11 +393,37 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(sheet(echo).tempHp, 2 + 2 + MOD, "2d6 (two 2s) + Constitution");
   });
 
+  // "Make one extra melee attack from your echo's space when you take the
+  // Attack action": the Attack action, once begun, holds one more attack, once
+  // an action, and only while the echo is out (turn-budget.ts grantActionAttack).
+  await probe("unleash-incarnation-extra-attack", async () => {
+    const [enemy] = await stage(echo);
+    const unmanifested = await spend(echo, "Unleash Incarnation");
+    assert.equal(unmanifested.ok, false, `with no echo out: ${show(unmanifested)}`);
+    assert.equal((await spend(echo, "Manifest Echo")).ok, true);
+    const early = await spend(echo, "Unleash Incarnation");
+    assert.equal(early.ok, false, `before the Attack action: ${show(early)}`);
+    await kit.swing(echo.id, enemy.id, [15, 4, 4, 4]);
+    const allowed = budget().attacksAllowed;
+    const out = await spend(echo, "Unleash Incarnation");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(budget().attacksAllowed, allowed + 1, "one more attack in the action");
+    const twice = await spend(echo, "Unleash Incarnation");
+    assert.equal(twice.ok, false, `a second in the same action: ${show(twice)}`);
+  });
+
+  // "When you roll initiative with no Unleash Incarnation uses left, you
+  // regain one": nothing with a use left, one with none.
   await probe("legion-of-one-regains-on-initiative", async () => {
     await kit.endFight();
+    const top = r.max(echo, "sub_unleash_incarnation");
     r.setUsed(echo, "sub_unleash_incarnation", 1);
     await r.roll(echo, { kind: "initiative" });
-    assert.equal(r.used(echo, "sub_unleash_incarnation"), 0, "with one of three uses spent, rolling initiative gave none back");
+    assert.equal(r.used(echo, "sub_unleash_incarnation"), 1, "with a use left, initiative gave one back");
+    await kit.endFight();
+    r.setUsed(echo, "sub_unleash_incarnation", top);
+    await r.roll(echo, { kind: "initiative" });
+    assert.equal(r.used(echo, "sub_unleash_incarnation"), top - 1, "with none left, initiative gave none back");
   });
 }
 

@@ -148,6 +148,10 @@ export type HandCard = {
   // An ally card the holder cannot aim at themselves (Blessing of the
   // Trickster's "other than yourself"): the aim bar leaves out their chip.
   othersOnly?: boolean;
+  // An ally card whose engine takes the dead, never the living (Revivify,
+  // Hand of Ultimate Mercy: src/lib/srd/dead-targets.ts): the aim bar offers
+  // the dead allies' chips and no others.
+  takesTheDead?: boolean;
   // A card that takes "a creature you can see" (its spend's sight flag, the
   // one use_resource gates on): the aim bar leaves out the chip of a creature
   // the board says the holder cannot see, or, for "seesHolder", one that

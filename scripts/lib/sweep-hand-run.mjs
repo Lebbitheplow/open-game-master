@@ -277,7 +277,7 @@ export async function walkBuilds(group, builds, { states = STATES, baseline = nu
     // A reaction card's id ends in the id of the character it answers for.
     const stable = (id) => id.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "hero");
     const push = (state, card, variant, verdict) =>
-      rows.push({ id: `${verdict.prop}|${build.key}|${state}|${stable(card.id)}${variant}`, classId, build: build.key, state, card: stable(card.id), name: card.name, variant, ...verdict });
+      rows.push({ id: `${verdict.prop}|${build.key}|${state}|${stable(card.id)}${variant}`, classId, build: build.key, state, card: stable(card.id), name: card.name, variant, ...(card.takesTheDead ? { dead: true } : {}), ...verdict });
     for (const state of states) {
       await rig.inState(table, state, async (reason) => {
         if (reason) {
@@ -327,8 +327,9 @@ export async function walkBuilds(group, builds, { states = STATES, baseline = nu
               ? { prop: "P7", ok: false, msg: `take_action takes Ready with a trigger and nothing named (an attack), and the card's first pick, "An attack", is left to the GM: ${short(JSON.stringify(taken.result))}` }
               : { prop: "P7", ok: true });
           }
-          // The holder's own chip on an ally card that does not leave it out.
-          if (card.target === "ally" && !card.othersOnly && !(card.intent.card === "basic" && (card.intent.action === "stabilize" || card.intent.action === "help")) && card.intent.card !== "gear") {
+          // The holder's own chip on an ally card that does not leave it out
+          // (a card that takes the dead offers only the dead).
+          if (card.target === "ally" && !card.othersOnly && !card.takesTheDead && !(card.intent.card === "basic" && (card.intent.action === "stabilize" || card.intent.action === "help")) && card.intent.card !== "gear") {
             const self = await rig.play(table, dealt, card, { aimAt: "self" });
             for (const verdict of judge({ state, card, played: self, variant: ":self", heroId: table.hero.id })) push(state, card, ":self", verdict);
           }
@@ -459,6 +460,17 @@ export async function sweepSuite(name, classId, known, options = {}) {
     await test(row.id, () => assert.fail(`${row.name}: ${row.msg}`));
   }
   await test(`${classId}: ${loose.filter((row) => row.ok).length} rows hold`, () => {});
+  // A card that takes the dead (Revivify, Hand of Ultimate Mercy:
+  // src/lib/srd/dead-targets.ts) is played at a dead ally and taken: the
+  // "ally-dead" state gives it one, and no other state offers it a chip.
+  const deadCards = [...new Set(rows.filter((row) => row.dead).map((row) => `${row.build}|${row.card}`))];
+  for (const key of deadCards) {
+    await test(`${key}: played at the dead ally, the engine takes it`, () => {
+      const atDead = judged.filter((row) => row.dead && `${row.build}|${row.card}` === key && row.state === "ally-dead");
+      assert.ok(atDead.length, `no judged row in the ally-dead state: ${rows.filter((row) => row.dead && `${row.build}|${row.card}` === key).map((row) => `${row.state} ${row.skip ?? ""}`).slice(0, 4).join("; ")}`);
+      assert.ok(atDead.every((row) => row.ok), atDead.find((row) => !row.ok)?.msg);
+    });
+  }
   const reasons = {};
   for (const row of skipped) reasons[row.skip] = (reasons[row.skip] ?? 0) + 1;
   console.log(`${name}: ${builds} characters, ${rows.length} rows in ${seconds}s; ${judged.length} judged, ${skipped.length} skipped`);

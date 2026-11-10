@@ -13,6 +13,7 @@ import { publishPersisted } from "@/lib/events";
 import { reactingSheet, reactionRefusal } from "@/lib/dm/reaction-gate";
 import { reactionTimingOf, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import {
+  actionsSpent,
   budgetApplies,
   freshBudget,
   grantAction,
@@ -94,6 +95,25 @@ export function budgetFor(
   }
   return freshBudget({ ownerId, round: encounter.round, attacksAllowed: allowed, extraActions, slowed, actionHeld });
 }
+
+// One more attack in the Attack action the owner is now taking (Unleash
+// Incarnation: "make one extra melee attack ... when you take the Attack
+// action"). Refused before that action has begun (no attack of it made), once
+// a spell took the action, or with one already added to this same action; a
+// second Attack action (Action Surge) may take one again. Every feature that
+// adds an attack to the Attack action goes through here, so the turn's count
+// and the refusal stay one rule.
+export function grantActionAttack(budget: TurnBudget | null, who: string, label: string): { error: string; refused: "rules" } | { budget: TurnBudget } {
+  if (!budget || budget.attacksMade <= 0 || budget.castThisAction) {
+    return { error: `${label} adds an attack to the Attack action, and ${who} has not taken it this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
+  }
+  const key = `${ACTION_ATTACK_ADDED}${actionsSpent(budget)}`;
+  if (budget.oncePerTurn.includes(key)) {
+    return { error: `${label} has added its attack to this Attack action already. Nothing was spent.`, refused: "rules" };
+  }
+  return { budget: { ...budget, attacksAllowed: budget.attacksAllowed + 1, oncePerTurn: [...budget.oncePerTurn, key] } };
+}
+const ACTION_ATTACK_ADDED = "action attack added:";
 
 export function storeBudget(encounter: Encounter, budget: TurnBudget) {
   encounter.turnBudget = budget;

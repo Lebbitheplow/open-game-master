@@ -556,6 +556,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return regainSlot(ctx, does);
     // The martial subclasses' own (src/lib/dm/authored-spend-martial.ts).
     case "allies_join":
+    case "action_attack":
       return martialSpend(ctx, does);
   }
 }

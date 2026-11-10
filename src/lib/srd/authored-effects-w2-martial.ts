@@ -3,6 +3,7 @@
 // so no other package appends to this array.
 
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 
 // The condition an ally who answered Call the Hunt carries until the
 // barbarian's rage ends: its d6 rides one hit on each of the ally's turns
@@ -10,6 +11,22 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 export const CALL_THE_HUNT = "call the hunt";
 
 export const AUTHORED_DATA_W2_MARTIAL: Record<string, AuthoredEntry> = {
+  // "Make one extra melee attack from your echo's space when you take the
+  // Attack action": one more attack in the action being taken, while the echo
+  // is out. Before this the use was spent and the guidance returned.
+  "fighter::Unleash Incarnation": {
+    subclass: "Echo Knight",
+    counter: "sub_unleash_incarnation",
+    spends: [
+      {
+        name: "Unleash Incarnation",
+        pool: { id: "sub_unleash_incarnation" },
+        action: "none",
+        gate: { condition: ECHO_OUT, because: "needs the echo out: use_resource Manifest Echo first" },
+        does: { kind: "action_attack", note: "a melee attack made from the echo's space (its square is the GM's to read)." },
+      },
+    ],
+  },
   // "When you enter your rage" is the turn's RAGE_ENTERED mark
   // (trigger-table.ts sub_call_the_hunt), checked before the use is spent.
   "barbarian::Call the Hunt": {

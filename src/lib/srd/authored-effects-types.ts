@@ -456,6 +456,10 @@ export type SpendDoes =
   // condition ends with the holder's rage (src/lib/dm/rage-bound.ts).
   // Resolved by src/lib/dm/allies-join.ts.
   | { kind: "allies_join"; condition: string; rangeFt: number; count: Formula; rounds: number; tempHpEach?: number; whileRaging?: boolean }
+  // One more attack in the Attack action being taken (Unleash Incarnation):
+  // src/lib/dm/turn-budget.ts grantActionAttack. `note`: what the attack is
+  // held to that the engine leaves to the GM (melee, from the echo's space).
+  | { kind: "action_attack"; note: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string };

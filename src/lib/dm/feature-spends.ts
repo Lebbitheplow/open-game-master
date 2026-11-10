@@ -48,6 +48,7 @@ import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/featu
 import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath";
 import { TURNED } from "@/lib/dm/flee-logic";
 import { ultimateMercy } from "@/lib/dm/ultimate-mercy";
+import { DEAD_TARGET_COUNTERS } from "@/lib/srd/dead-targets";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
@@ -228,7 +229,7 @@ export function featureVariantSpend(
   }
   // Hand of Ultimate Mercy brings back the dead its heal path refused
   // (src/lib/dm/ultimate-mercy.ts): the use, 5 ki and the action.
-  if (def?.id === "sub_wholeness_of_body_mercy") {
+  if (def && DEAD_TARGET_COUNTERS.includes(def.id)) {
     return spend(campaign, turnId, sheet, def.id, "action", reason, () => ultimateMercy(campaign, turnId, getSheetById(sheet.id) ?? sheet, targetId));
   }
   if (def?.id === "eldritch_master") {

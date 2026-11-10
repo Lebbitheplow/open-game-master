@@ -101,13 +101,6 @@ export const KNOWN = {
     files: ["src/lib/dm/pc-attack-plan.ts"],
   },
 
-  "legion-of-one-regains-on-initiative": {
-    severity: "low", kind: "data",
-    where: "src/lib/srd/subclasses.json fighter::Legion of One (the text) against src/lib/srd/resource-refills.ts authoredInitiativeRefills (one back only with none left)",
-    note: "The engine follows the published rule (\"if you have no uses left\"); the stored text drops the condition that Relentless, Ever-Ready Shot and Tireless Spirit keep.",
-    fix: "Reword the text: \"When you roll initiative with no Unleash Incarnation uses left, you regain one\".",
-    files: ["src/lib/srd/subclasses.json"],
-  },
   "telekinetic-movement-free-use": {
     severity: "low", kind: "rule-wrong",
     where: "src/lib/dm/option-costs.ts (Telekinetic Movement always spends a Psionic Energy die)",

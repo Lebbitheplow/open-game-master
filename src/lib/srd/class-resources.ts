@@ -302,6 +302,11 @@ export type ResourceDef = {
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
+  // A use takes the place of one attack of the Attack action, not the whole
+  // action (Breath of the Dragon: "replace one of the attacks"): the turn
+  // spends a swing (resource-turn.ts spendAttack), and the Hand gates the
+  // card as an attack.
+  replacesAttack?: boolean;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
   requires?: "below_half";
@@ -743,6 +748,7 @@ type SubclassResourceRow = {
   // What a use costs of the turn, when the guidance names it.
   action?: ResourceAction;
   fallbackPool?: { id: string; amount: number };
+  replacesAttack?: boolean;
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
@@ -784,6 +790,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.outOfFight ? { outOfFight: true } : {}),
   ...(row.action ? { action: row.action } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
+  ...(row.replacesAttack ? { replacesAttack: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),

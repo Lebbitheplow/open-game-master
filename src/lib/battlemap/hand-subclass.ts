@@ -315,6 +315,11 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       })()
         ? { reason: `${spend.name} answers a Sneak Attack: land one this turn first.`, spent: false }
         : null,
+      // An attack added to the Attack action waits for that action to begin,
+      // as the engine does (turn-budget.ts grantActionAttack).
+      aimDoes(does, aim.variant).kind === "action_attack" && (!turn.myTurn || turn.attacksMade <= 0 || turn.castThisAction === true)
+        ? { reason: `${spend.name} adds an attack to the Attack action: make its first attack first.`, spent: false }
+        : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.
       inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))

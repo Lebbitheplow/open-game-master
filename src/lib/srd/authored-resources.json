@@ -1691,6 +1691,7 @@
    "uses": 2,
    "ability": null,
    "recharge": "long",
+   "action": "action",
    "guidance": "Replace one Attack-action attack with a 20-foot cone or 30-foot line of the monk's chosen damage type: two rolls of the martial arts die (three from 11th level), halved on a Dexterity save. With no use left, 2 ki buys another (the server spends them).",
    "fx": {
     "kind": "aoe",
@@ -1729,7 +1730,8 @@
    "fallbackPool": {
     "id": "ki",
     "amount": 2
-   }
+   },
+   "replacesAttack": true
   },
   {
    "id": "sub_wings_unfurled",
