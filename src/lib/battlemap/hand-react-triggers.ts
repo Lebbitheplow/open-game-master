@@ -105,6 +105,17 @@ export function triggerCards(
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      // A bond's reaction for the pet's own damage (Reflexive Resistance for the
+      // drake): its card names the pet, which the engine answers.
+      const does = reaction.does;
+      if (does.kind === "resist_instance" && does.bond) {
+        const pool = reaction.pool;
+        const left = !pool || !("id" in pool) || (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) >= (pool.amount ?? 1);
+        const petSpec: TriggerSpec = { on: [{ kind: "pet_damage" }], what: `damage your ${does.bond} has just taken` };
+        for (const event of left ? openFor(petSpec, events, context(triggerKey(textKey(reaction.name), sheet.id))).slice(-1) : []) {
+          cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec: petSpec, event: { ...event, creatureId: null, creatureName: event.petName ?? does.bond }, intent: { card: "reaction", feature: reaction.name, variant: event.petName ?? does.bond }, rules: `Resistance to the damage your ${does.bond} just took: half of it comes back.`, resource: "" }));
+        }
+      }
       const spec = triggerSpecFor(reaction.name, { gateCondition: reaction.gate?.condition });
       const pool = reaction.pool;
       if (!spec || (pool && "id" in pool && (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) < (pool.amount ?? 1))) continue;

@@ -41,7 +41,7 @@ const KNOWN = {
 };
 // rowId -> why the generator cannot stage this row.
 const SKIP = {
-  "reach:fighter/Echo Knight/Shadow Martyr": "the reach is to the fighter's echo, which the engine does not put on the board (src/lib/srd/authored-effects-types.ts echo_takes_hit: \"The echo is no creature the engine tracks\"); the row names no reach to measure. Recorded as finding L787-echo.",
+  "reach:fighter/Echo Knight/Shadow Martyr[echo manifested]": "the reach is to the fighter's echo, which is kept as a mark on the fighter (Manifest Echo) and has no square on the board; the row names no reach to measure. Recorded as finding L787-echo (its board place is handed off).",
 };
 
 const { row, finish } = limitsSuite("test-enforce-sweep-limits-reach", { KNOWN, SKIP });

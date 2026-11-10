@@ -37,7 +37,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, MENTAL, openSaves, savedIt, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, kindOf, MENTAL, openSaves, openTriggers, savedIt, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { actingCombatantId } from "@/lib/dm/can-act";
@@ -58,6 +58,7 @@ import { raiseToCritical } from "@/lib/dm/critical-raise";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
+import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 import { blowLandsOn, redirectTaker } from "@/lib/dm/redirect-target";
 import type { Combatant } from "@/lib/dm/combatant";
 
@@ -278,6 +279,39 @@ function savedAgainst(ctx: Ctx, name: string, rangeFt: number | undefined): { sa
     return { error: `${name} answers a successful INT, WIS or CHA save someone made against a creature, and the server has none on record this turn. Nothing was spent.`, refused: "rules" };
   }
   return { error: `${name} answers a successful INT, WIS or CHA save by ${ctx.sheet.name} or someone within ${rangeFt ?? 30} feet, and none open this turn was forced by ${named ? "that creature" : "a creature still in reach"}. Nothing was spent.`, refused: "rules" };
+}
+
+// The bond's other half (Reflexive Resistance for the drake): resistance to the
+// damage the pet just took, so half of it comes back to the pet. Null when the
+// reaction answers the holder's own hit instead. The thirty feet between the
+// two are not measured: a pet has no place on the board (handed off).
+function resistPetDamage(ctx: Ctx, name: string, types: string[], label: string): ToolResult | ToolError | null {
+  // The pet named by petName, or by the variant its card sends.
+  const named = (ctx.args.petName ?? ctx.args.variant ?? "").trim();
+  const own = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => hit.source === "attack" && !answeredBy(hit, label));
+  if (!named && own) return null;
+  const record = openTriggers(ctx.campaign.id)
+    .filter((entry) => kindOf(entry) === "pet_damage" && entry.characterId === ctx.sheet.id && !(entry.answered ?? []).includes(label) && (!named || textKey(entry.petName ?? "") === textKey(named)))
+    .at(-1);
+  if (!record) {
+    return named ? { error: `${name} answers damage ${ctx.sheet.name}'s ${named} has just taken, and the server has none on record. Nothing was spent.`, refused: "rules" } : null;
+  }
+  const type = textKey(record.damage?.type ?? "");
+  if (type && !types.includes(type)) {
+    return { error: `${name} answers ${types.join(", ")} damage; the hit on ${record.petName} was ${type}. Nothing was spent.`, refused: "rules" };
+  }
+  const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+  const pet = (now.pets ?? []).find((entry) => textKey(entry.name) === textKey(record.petName ?? ""));
+  if (!pet) {
+    return { error: `${ctx.sheet.name}'s ${record.petName} is no longer with them. Nothing was spent.`, refused: "rules" };
+  }
+  // Resistance halves the damage, rounded down: what it took less that half comes back.
+  const dealt = record.damage?.amount ?? 0;
+  const back = dealt - Math.floor(dealt / 2);
+  const hp = Math.min(pet.maxHp, pet.hp + back);
+  reactionPatch(ctx.campaign, ctx.turn.id, now.id, { pets: now.pets.map((entry) => (entry === pet ? { ...entry, hp } : entry)) }, `${name}: ${pet.name} resists the damage`);
+  answerSave(ctx.campaign.id, record.id, label);
+  return { applied: `${pet.name} resists this ${type || "damage"}: ${hp - pet.hp} hit points come back. HP ${hp}/${pet.maxHp}.` };
 }
 
 function psionicDie(level: number): string {
@@ -577,6 +611,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      // "When you or your drake takes damage": the drake's, kept as its own
+      // trigger (last-save.ts, pet-tools.ts), when the call names the pet or the
+      // holder has no hit of their own open.
+      if (does.bond) {
+        const pet = resistPetDamage(ctx, reaction.name, does.types, label);
+        if (pet) return pet;
       }
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;
@@ -945,12 +986,19 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // proficiency bonus, 1 hit point). The echo is no creature the server
       // keeps, so what becomes of it is said for the GM to show on the board.
       const echoAc = 14 + computeSheetDerived(ctx.sheet).proficiencyBonus;
+      const destroyed = swing.natural !== null && (swing.natural === 20 || (swing.natural !== 1 && swing.total >= echoAc));
       const echo =
         swing.natural === null
           ? `The echo has AC ${echoAc} and 1 hit point; the attack had no roll on record, so the GM judges whether it hits the echo.`
-          : swing.natural === 20 || (swing.natural !== 1 && swing.total >= echoAc)
-            ? `The attack's ${swing.total} hits the echo (AC ${echoAc}, 1 hit point) and destroys it: the server does not track the echo, so take it off the board.`
+          : destroyed
+            ? `The attack's ${swing.total} hits the echo (AC ${echoAc}, 1 hit point) and destroys it: take it off the board.`
             : `The attack's ${swing.total} misses the echo (AC ${echoAc}), which stays where it is.`;
+      // Destroyed, it is no longer out: Shadow Martyr waits for the next one.
+      if (destroyed) {
+        const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+        const cleared = removeConditions(now.conditions, now.conditionMeta, now.conditions.filter((entry) => textKey(entry) === textKey(ECHO_OUT)));
+        reactionPatch(ctx.campaign, ctx.turn.id, now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: the echo is destroyed`);
+      }
       return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. ${echo}` };
     }
     case "chance_miss": {

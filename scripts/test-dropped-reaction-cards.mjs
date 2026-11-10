@@ -185,7 +185,10 @@ await test("Armor of Hexes turns the cursed creature's hit aside: a card for a w
 await test("A fallen Rune Knight or Echo Knight is refused for an ally's hit for being down, not for following damage.", async () => {
   const enemy = await stage(friend, 50);
   for (const who of [runeKnight, echoKnight]) {
-    world.patch(who.id, { currentHp: 0, conditions: ["unconscious", "prone"], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false } });
+    // The Echo Knight's echo is still marked out as they fall, so the card is
+    // dealt and the bar that holds is their being down.
+    const echo = who === echoKnight ? ["echo manifested"] : [];
+    world.patch(who.id, { currentHp: 0, conditions: ["unconscious", "prone", ...echo], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false } });
   }
   await strike(enemy, friend, [16, 4]);
   for (const [who, name] of [[runeKnight, "Runic Shield"], [echoKnight, "Shadow Martyr"]]) {

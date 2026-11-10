@@ -63,7 +63,10 @@ for (const [name, range, extra] of [
     const who = hero(extra);
     // The style is a choice made at level 1, written straight to the sheet.
     if (extra.features) world.patch(who.id, { features: extra.features });
-    await strike(await stage(who), friend);
+    const enemy = await stage(who);
+    // Shadow Martyr needs the echo out (Manifest Echo's mark).
+    if (name === "Shadow Martyr") world.patch(who.id, { conditions: [...world.sheet(who.id).conditions, "echo manifested"] });
+    await strike(enemy, friend);
     const held = card(who, name);
     assert.equal(held.target, "ally");
     assert.equal(held.range, range);

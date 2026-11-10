@@ -16,16 +16,6 @@ const KNOWN = {
     severity: "low",
     note: "The words a player reads say \"someone near you\" (the one wounded); the engine measures 30 feet to the ATTACKER and answers an ally at any distance. Neither the number nor whose distance it is can be read off the card's text.",
   },
-  "787-echo-not-modelled": {
-    where: "src/lib/dm/authored-reactions.ts case \"echo_takes_hit\" (no echo on the sheet or the board is asked for), src/lib/srd/authored-effects-types.ts (\"The echo is no creature the engine tracks\")",
-    severity: "medium",
-    note: "Manifest Echo is narrated: nothing records that the bonus action was spent, so Shadow Martyr turns a hit on any ally the knight can see into a miss with no echo out and at any distance.",
-  },
-  "787-pet-hit-keeps-no-record": {
-    where: "src/lib/dm/pc-damage.ts (the petName branch of apply_damage writes no last-hit record) and src/lib/battlemap/hand-react.ts (resist_instance with bond reads only the holder's own hits)",
-    severity: "medium",
-    note: "The drake's half of Reflexive Resistance (\"when you or your drake takes damage\") has no card and no refund: the reaction is refused for want of a hit on the ranger.",
-  },
   "787-thirty-feet-to-the-drake": {
     where: "src/lib/dm/pet-tools.ts summon_pet (a pet is a row on the owner's sheet, with no token) and src/lib/dm/authored-reactions.ts resist_instance rangeFt",
     severity: "low",
@@ -519,6 +509,8 @@ await row("787-martyr-not-rolled-against-the-echo", {
   // A 20th-level knight's echo: AC 14 + 6. A 16 that hit the ally's AC 12 misses it.
   const [enemy] = await table.stage([knight, friend]);
   beside(knight, enemy);
+  // The echo is out (Manifest Echo's mark): Shadow Martyr needs it.
+  world.patch(knight.id, { conditions: [...world.sheet(knight.id).conditions, "echo manifested"] });
   await table.strike(enemy, friend, [12, 4]);
   const out = await react(knight, { feature: "Shadow Martyr", targetCharacterId: friend.id });
   assert.equal(out.ok, true, out.error);

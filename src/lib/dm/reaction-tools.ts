@@ -87,6 +87,10 @@ const useReactionSchema = z.object({
   // hit's id from GAME STATE or the Hand's card, or the enemyId of the
   // creature that made it.
   hit: z.string().trim().max(120).optional(),
+  // The pet whose damage a bond reaction answers (Reflexive Resistance for the
+  // drake). Read from the console and the Hand's card; the tool's description
+  // does not name it, so it costs the model's window nothing.
+  petName: z.string().trim().max(60).optional(),
   reason: z.string().optional(),
 });
 
