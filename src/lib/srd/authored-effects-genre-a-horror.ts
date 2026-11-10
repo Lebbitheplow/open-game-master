@@ -20,6 +20,10 @@ const held = (classId: string, feature: string, file: string, call: string, more
 export const GENRE_A_HORROR: GenreRow[] = [
   // "Advantage on death saves; stabilizing you takes no check"
   held("survivor", "Death's Old Acquaintance", "src/lib/dm/death.ts", "horrorDeathSaveAdvantage"),
+  // "While you are the last conscious party member, resist all damage and
+  // your speed doubles"
+  held("survivor", "Sole Survivor", "src/lib/dm/pc-damage.ts", "soleSurvivorResistances"),
+  held("exorcist", "Consecrated Tools", "src/lib/dm/pc-attack-damage.ts", "horrorMagicalAgainst"),
   // "Double proficiency bonus on Arcana and Religion checks"
   held("occultist", "Forbidden Lore", "src/lib/dm/rolls.ts", "horrorCheckRider"),
   // "Advantage on checks to identify or recall lore about undead and

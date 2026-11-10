@@ -29,6 +29,7 @@ import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { attackDamageRiders, type FeatureRider } from "@/lib/dm/attack-damage-riders";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { horrorMagicalAgainst } from "@/lib/srd/genre-a-horror-holds";
 import { cursedAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
@@ -286,7 +287,7 @@ export function strikeDamage(plan: AttackPlan) {
 
 // A spell, a magic weapon and strikes that count as magical pass
 // resistance to nonmagical attacks.
-export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet">): boolean {
+export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet"> & { enemy?: { stats?: { type?: string } } }): boolean {
   return (
     plan.kind === "spell" ||
     plan.kind === "granted" ||
@@ -296,7 +297,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     (plan.kind === "weapon" && conditionStrikesMagical(plan.sheet.conditions)) ||
     // A pact weapon "counts as magical" (SRD 5.1, Pact of the Blade).
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
-    magicalStrikeApplies(plan)
+    magicalStrikeApplies(plan) ||
+    // Consecrated Tools: magical against fiends and undead (genre-a-horror-holds.ts).
+    (plan.kind === "weapon" && horrorMagicalAgainst(plan.sheet, plan.enemy?.stats?.type))
   );
 }
 

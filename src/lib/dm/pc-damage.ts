@@ -50,6 +50,7 @@ import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
+import { soleSurvivorResistances } from "@/lib/dm/genre-a-horror-party";
 
 export type PcDamageInput = {
   // What was rolled or sent, before resistance.
@@ -127,7 +128,7 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   const shape = sheet.wildShape;
   const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), soleSurvivorResistances(campaignId, sheet), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
   const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);

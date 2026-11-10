@@ -48,11 +48,9 @@
     "run": {
      "k": "magical"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Consecrated Tools#0",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 4, the text 8",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Consecrated Tools#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorMagicalAgainst, read by src/lib/dm/pc-attack-damage.ts strikesAsMagic for a weapon attack on a fiend or undead"
    }
   ]
  },
@@ -1661,11 +1659,9 @@
      "type": "slashing",
      "sole": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Sole Survivor#0",
-    "observed": "hit points lost to 10 slashing: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS and src/lib/srd/authored-effects-genre.ts: no conditional resistance for the feature; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Sole Survivor#0",
+    "by": "src/lib/dm/genre-a-horror-party.ts: soleSurvivorResistances in src/lib/dm/pc-damage.ts blowDefenses (every type) and soleSurvivorSpeed in src/lib/battlemap/view.ts (double speed), read live from the party"
    }
   ]
  },

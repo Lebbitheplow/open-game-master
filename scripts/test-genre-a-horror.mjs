@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { openClauseRig, must } from "./lib/sweep-clauses-genre-a.mjs";
 
 const t = await openClauseRig();
-const { horrorCheckRider } = await import("../src/lib/srd/genre-a-horror-holds.ts");
+const { horrorCheckRider, horrorMagicalAgainst } = await import("../src/lib/srd/genre-a-horror-holds.ts");
+const { soleSurvivorResistances, soleSurvivorSpeed } = await import("../src/lib/dm/genre-a-horror-party.ts");
 let passed = 0;
 async function test(name, fn) {
   await fn();
@@ -49,6 +50,27 @@ await test("Quarry without Extinction moves its one mark; with it the second cre
   const one = sheet(level7.holder.id);
   assert.deepEqual(one.conditions.filter((entry) => entry.toLowerCase().startsWith("quarry")), ["quarry"]);
   assert.equal(one.conditionMeta.quarry.quarry, level7.far.id, "the mark moved");
+});
+
+await test("Consecrated Tools: magical against fiends and undead, not against a construct", () => {
+  t.fresh();
+  const hero = sheet(t.hero("exorcist", 1).id);
+  assert.equal(horrorMagicalAgainst(hero, "undead"), true);
+  assert.equal(horrorMagicalAgainst(hero, "fiend (demon)"), true);
+  assert.equal(horrorMagicalAgainst(hero, "construct"), false);
+});
+
+await test("Sole Survivor: no resistance while an ally stands; every type and double speed once the last one drops", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 15 });
+  const holder = () => sheet(scene.holder.id);
+  assert.equal(soleSurvivorResistances(t.world.campaignId, holder()), "", "the hurt ally is still up");
+  assert.equal(soleSurvivorSpeed(t.world.campaignId, holder(), 30), 30);
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 10, type: "fire" }), "the control damage");
+  assert.equal(t.hp(scene.holder.id), 90, "full damage while an ally stands");
+  t.world.patch(scene.ally.id, { currentHp: 0, conditions: ["unconscious", "prone"] });
+  assert.equal(soleSurvivorSpeed(t.world.campaignId, holder(), 30), 60);
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 10, type: "fire" }), "the damage");
+  assert.equal(t.hp(scene.holder.id), 85, "half once the holder is the last one conscious");
 });
 
 t.close();

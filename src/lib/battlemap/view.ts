@@ -63,6 +63,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
 import { enemiesAhead } from "@/lib/dm/held-turn";
+import { soleSurvivorSpeed } from "@/lib/dm/genre-a-horror-party";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -147,7 +148,8 @@ export function pcMoveBudget(
       });
   // An active effect on their speed (set_effect) moves the base first.
   const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")));
-  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved));
+  // Sole Survivor: the last conscious party member's speed doubles.
+  const speed = soleSurvivorSpeed(campaignId, sheet, exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved)));
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
   if (encounter.kind === "scene") {

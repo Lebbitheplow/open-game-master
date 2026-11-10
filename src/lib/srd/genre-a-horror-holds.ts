@@ -6,6 +6,7 @@
 // Pure: the sheet alone.
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { isNamed } from "@/lib/srd/feature-names";
+import { normalizeCreatureType } from "@/lib/bestiary/creature-type";
 
 export function horrorHolds(sheet: AuthoredSheet, feature: string): boolean {
   return heldAuthored(sheet).some((entry) => isNamed(entry.feature, feature));
@@ -35,6 +36,14 @@ export function horrorCheckRider(
     out.notes.push("Desperate Strength: +2 below half hit points");
   }
   return out;
+}
+
+// Consecrated Tools (exorcist 1): "Your weapon attacks count as magical
+// against fiends, undead, and spirits" (a spirit is an undead in the SRD's
+// types), read by src/lib/dm/pc-attack-damage.ts strikesAsMagic.
+export function horrorMagicalAgainst(sheet: AuthoredSheet, type: string | undefined): boolean {
+  const kind = type ? normalizeCreatureType(type) : null;
+  return (kind === "fiend" || kind === "undead") && horrorHolds(sheet, "Consecrated Tools");
 }
 
 // Death's Old Acquaintance (survivor 17): "Advantage on death saves", read by
