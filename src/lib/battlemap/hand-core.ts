@@ -371,7 +371,10 @@ export type HandOptions = {
 // the Silence it stands in, by who cast it ("" for nobody named;
 // zone-rules.ts silenceAround). Absent off the map and from an older host,
 // whose cards are dealt as before.
-export type HandBoardFacts = { hide?: string; silence?: { by: string } };
+// `attackAura`: what an ally's aura adds to this character's attack rolls
+// where they stand (src/lib/dm/genre-b-auras.ts genreBAuraAttack: Warlord of
+// the Wastes), which pc_attack adds and the attack cards print.
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; attackAura?: { bonus: number; features: string[] } };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,

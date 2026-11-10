@@ -349,7 +349,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   }
   // A spell attack carries what pc_attack adds to any attack its caster
   // makes (hand-attack-lines.ts): Bless's die on the roll, Hex's on the hit.
-  const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind)) : null;
+  const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind), options.board?.attackAura) : null;
   if (struck?.onHit && damage) damage = `${damage}${struck.onHit}`;
   const dice = heals
     ? damage ? `heals ${damage}` : "heals"

@@ -181,6 +181,8 @@ export function bonusStrikeCards(
   turn: HandTurn,
   riders: CombatRiders,
   carried: Carried[],
+  // What an ally's aura adds to the roll here (HandBoardFacts.attackAura).
+  aura?: { bonus: number; features: string[] } | null,
 ): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
@@ -217,7 +219,7 @@ export function bonusStrikeCards(
     // action's cards read them (hand-attack-lines.ts): a raging Frenzy card
     // left the Rage bonus out.
     const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
-    const rolled = attackRollLine(sheet, profile.toHit);
+    const rolled = attackRollLine(sheet, profile.toHit, aura);
     const notes = [...line.notes, ...rolled.notes];
     const card: HandCard = {
       id: `attack:${textKey(weapon)}:${bonusAttack.replace(/\s+/g, "-")}${key ? `:${key}` : ""}`,

@@ -37,6 +37,23 @@ export function attackRollExtras(sheet: Pick<CharacterSheet, "conditions" | "con
   return riders;
 }
 
+// An aura another character sheds on this one's attack rolls (Warlord of the
+// Wastes: "Allies within 30 ft gain +1 to attack rolls while they can see
+// you"). Who stands where is the server's to say (src/lib/dm/genre-b-auras.ts
+// genreBAuraAttack); what it adds to the roll and how it reads is said here
+// once, for pc_attack (src/lib/dm/pc-attack-damage.ts foldDamageRiders) and for
+// the Hand's cards (src/lib/battlemap/hand-attack-lines.ts attackRollLine, fed
+// by the board view's verdict on the viewer's own square), so a card cannot
+// say +7 where the roll adds +8.
+export type AttackAura = { bonus: number; features: string[] };
+
+export function attackAuraExtras(aura: AttackAura | null | undefined): { flat: number; note: string } | null {
+  if (!aura?.bonus) {
+    return null;
+  }
+  return { flat: aura.bonus, note: `${aura.features.join(", ")}: ${aura.bonus > 0 ? "+" : ""}${aura.bonus} to hit` };
+}
+
 // The suffix split as a card shows it: the flat part joins the bonus, the
 // dice ride beside it ("+1d4", "-1d4").
 export function splitRollSuffix(suffix: string): { flat: number; dice: string } {

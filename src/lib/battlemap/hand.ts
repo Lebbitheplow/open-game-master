@@ -155,7 +155,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     );
     // The damage and the roll as pc_attack makes them (hand-attack-lines.ts).
     const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
-    const rolled = attackRollLine(sheet, profile.toHit);
+    const rolled = attackRollLine(sheet, profile.toHit, options.board?.attackAura);
     const damage = line.damage;
     const notes: string[] = [];
     if (!offHand && allowed > 1) notes.push(`Extra Attack: ${allowed} swings on this action.`);
@@ -241,7 +241,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   }
   cards.push(build("Unarmed strike", null, false));
   // The bonus-action strikes a feature grants (Martial Arts, Frenzy).
-  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd }))));
+  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd })), options.board?.attackAura));
   // The attacks a held condition grants (Spiritual Weapon's weapon).
   cards.push(...grantedAttackCards(sheet, turn, allowed));
 
