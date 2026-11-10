@@ -75,7 +75,10 @@ function sightBound(does: SpendDoes): boolean {
 
 // The reach a spend holds its creatures to, printed on the card.
 function reachOf(does: SpendDoes): string {
-  const feet = "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : null;
+  // Options aimed alike share one card, which says the widest reach.
+  const feet = does.kind === "variants"
+    ? Math.max(0, ...Object.values(does.options).map((option) => ("rangeFt" in option.does && typeof option.does.rangeFt === "number" ? option.does.rangeFt : 0))) || null
+    : "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : null;
   return feet ? `${feet} ft` : "";
 }
 

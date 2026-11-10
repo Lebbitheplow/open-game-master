@@ -136,7 +136,9 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
     return { does, action: spend.action, afterWeaponHit: spend.afterWeaponHit };
   }
   const key = namedOption(spend.name, variant, Object.keys(does.options));
-  return typeof key === "string" ? does.options[key] : key;
+  // An option that names no cost of its own costs the spend's (Bolstering
+  // Magic's touch, Lunar Phenomenon's bonus action), as its card says.
+  return typeof key === "string" ? { ...does.options[key], action: does.options[key].action ?? spend.action } : key;
 }
 
 // An option of a shared pool, named in the variant or after the pool's name
