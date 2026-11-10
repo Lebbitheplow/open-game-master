@@ -227,11 +227,9 @@
      "against": "frightened",
      "want": "d4"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Iron Will#1",
-    "observed": "d4s added to the save of an ally 5 feet away against frightened: the engine gives 0, the text 1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/dm/roll-riders.ts: no aura row reaches an ally's save",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_roll row (+1d4 against fear, 10 ft), src/lib/dm/genre-a-auras.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Iron Will#1"
    }
   ]
  },
@@ -634,11 +632,9 @@
      "k": "ally_resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#2",
-    "observed": "hit points an ally 5 feet away lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED: no aura row lends allies the resistance; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_resist row (poison, 5 ft) read by src/lib/dm/authored-saves.ts authoredAuraResistances, and the aura_roll row against disease",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#2"
    }
   ]
  },
@@ -2915,13 +2911,12 @@
     "c": "Allies within 30 ft gain resistance to necrotic damage while you sing",
     "run": {
      "k": "ally_resist",
-     "type": "necrotic"
+     "type": "necrotic",
+     "sing": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Pallbearer's Procession#0",
-    "observed": "hit points an ally 5 feet away lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED: no aura row lends allies the resistance; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_resist row (necrotic, 30 ft) gated on a dirge held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Pallbearer's Procession#0"
    }
   ]
  },

@@ -259,6 +259,10 @@ export function authoredAuraResistances(campaignId: string, sheet: CharacterShee
       if (!inRange) {
         continue;
       }
+      if (effect.types) {
+        out.push(...effect.types);
+        continue;
+      }
       if (effect.spells) {
         if (options.spell) {
           out.push(

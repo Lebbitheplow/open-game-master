@@ -35,8 +35,15 @@ const PASSIVES: GenreRow[] = [
   row("esper", "Ascendant Mind", [{ kind: "immune_damage", types: ["psychic"] }]),
   // dark fantasy
   row("witch_hunter", "Grim Resolve", [FEAR]),
-  row("witch_hunter", "Iron Will", [{ kind: "save_adv", against: ["charmed"] }]),
-  row("plague_doctor", "Miasma Ward", [{ kind: "resist", types: ["poison"] }, { kind: "save_adv", against: ["disease"] }]),
+  // "allies within 10 ft add +1d4 against fear" (src/lib/dm/genre-a-auras.ts)
+  row("witch_hunter", "Iron Will", [{ kind: "save_adv", against: ["charmed"] }, { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened"], die: "1d4" }]),
+  // "You and allies within 5 ft": the holder's own, then the aura's.
+  row("plague_doctor", "Miasma Ward", [
+    { kind: "resist", types: ["poison"] },
+    { kind: "save_adv", against: ["disease"] },
+    { kind: "aura_resist", rangeFt: 5, types: ["poison"] },
+    { kind: "aura_roll", rangeFt: 5, roll: "save", against: ["disease"] },
+  ]),
   row("plague_doctor", "Beaked Mask", [FEAR]),
   row("plague_doctor", "Iron Constitution", [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned", "diseased"] }]),
   row("plague_doctor", "Miasma Mantle", [{ kind: "resist", types: ["necrotic"] }]),
@@ -49,7 +56,7 @@ const PASSIVES: GenreRow[] = [
   row("dirgesinger", "Songs of the Barrow", [{ kind: "save_adv", against: ["frightened", "necrotic"] }]),
   row("vermin_lord", "Plaguebearer's Immunity", [{ kind: "immune_condition", conditions: ["diseased"] }, { kind: "resist", types: ["poison"] }]),
   // horror
-  row("exorcist", "Litany of Defense", [FEAR]),
+  row("exorcist", "Litany of Defense", [FEAR, { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened"] }]),
   row("exorcist", "Unshakeable Faith", [{ kind: "immune_condition", conditions: ["frightened"] }, { kind: "save_adv", against: ["charmed"] }]),
   row("exorcist", "Sacred Bulwark", [{ kind: "resist", types: ["necrotic", "psychic"] }]),
   row("occultist", "Palimpsest Soul", [{ kind: "resist", types: ["psychic"] }]),
@@ -57,7 +64,7 @@ const PASSIVES: GenreRow[] = [
   row("survivor", "Read the Room", [{ kind: "init_adv" }]),
   row("survivor", "Hypervigilant", [{ kind: "no_surprise" }]),
   row("slayer", "Iron Stomach", [{ kind: "save_adv", against: ["poisoned", "disease"] }]),
-  row("slayer", "Flinchless", [FEAR]),
+  row("slayer", "Flinchless", [FEAR, { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened"], die: "1d4" }]),
   row("slayer", "Veteran's Guard", [{ kind: "ac", amount: 1 }, { kind: "oa_disadv" }]),
   row("parapsychologist", "Rational Mind", [{ kind: "save_adv", against: ["charmed", "frightened"] }]),
   row("parapsychologist", "Controlled Exposure", [{ kind: "resist", types: ["psychic"] }]),
@@ -178,4 +185,20 @@ const STRIKES: GenreRow[] = [
   row("street_samurai", "Twin Chrome", [{ kind: "ac", amount: 1, gate: { dualWield: true } }]),
 ];
 
-export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES];
+// ---- auras on the party ----
+// aura_roll is read by src/lib/dm/genre-a-auras.ts on every save and check;
+// aura_resist by src/lib/dm/authored-saves.ts authoredAuraResistances.
+const VIGIL = { condition: "candlelight vigil", because: "the Candlelight Vigil burning" } as const;
+// "while you sing": while a dirge (a spell of the dirgesinger's) is held.
+const SINGING = { concentrating: true, because: "a dirge held" } as const;
+
+const AURAS: GenreRow[] = [
+  row("trauma_doc", "Combat Calm", [{ kind: "aura_roll", rangeFt: 10, self: true, roll: "save", against: ["frightened"] }]),
+  row("trauma_doc", "Immuno-Shield", [{ kind: "aura_roll", rangeFt: 5, self: true, roll: "save", against: ["poisoned", "poison", "disease"] }]),
+  row("fixer", "Master of the Board", [{ kind: "aura_roll", rangeFt: 30, self: true, roll: "check", abilities: ["cha"], die: "1d4" }]),
+  row("dirgesinger", "Pallbearer's Procession", [{ kind: "aura_resist", rangeFt: 30, types: ["necrotic"], gate: SINGING }]),
+  // "you and allies in it ... resist necrotic damage"
+  row("exorcist", "Unguttering Flame", [{ kind: "aura_resist", rangeFt: 10, types: ["necrotic"], gate: VIGIL }]),
+];
+
+export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES, ...AURAS];

@@ -1883,11 +1883,9 @@
      "skill": "persuasion",
      "want": "d4"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Master of the Board#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d4s added to the persuasion check"
+    "is": "held",
+    "by": "the aura_roll row (CHA checks, +1d4, 30 ft, the holder too), read by src/lib/dm/genre-a-auras.ts in forced-save.ts rollExtrasFor and roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Master of the Board#0"
    }
   ]
  },
@@ -2650,11 +2648,9 @@
       "disease"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Immuno-Shield#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the con save against poisoned"
+    "is": "held",
+    "by": "the aura_roll row (advantage against poison and disease, 5 ft, the holder too), src/lib/dm/genre-a-auras.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Immuno-Shield#0"
    }
   ]
  },
@@ -2820,11 +2816,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Combat Calm#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the wis save against frightened"
+    "is": "held",
+    "by": "the aura_roll row (advantage against fear, 10 ft, the holder too), src/lib/dm/genre-a-auras.ts; scripts/test-genre-a-auras.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Combat Calm#0"
    }
   ]
  },

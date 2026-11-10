@@ -50,7 +50,16 @@ export const GENRE_AUTHORED: GenreRow[] = [
   },
   {
     feature: "Candlelight Vigil",
-    entry: { subclass: "genre", spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }] },
+    // "allies in 10 ft add +1d4 to saves against the supernatural": a fear
+    // or a charm, or any save against magic (src/lib/dm/genre-a-auras.ts).
+    entry: {
+      subclass: "genre",
+      spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }],
+      effects: [
+        { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened", "charmed"], die: "1d4", gate: { condition: "candlelight vigil" } },
+        { kind: "aura_roll", rangeFt: 10, roll: "save", magical: true, die: "1d4", gate: { condition: "candlelight vigil" } },
+      ],
+    },
   },
   {
     feature: "Head of Steam",

@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { lentRolls } from "@/lib/dm/genre-a-auras";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
@@ -60,6 +61,8 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
   return {
     ...(aura ? { saveBonus: aura.bonus, saveNote: aura.note } : {}),
+    // The genre classes' auras on saves and checks (src/lib/dm/genre-a-auras.ts).
+    ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { lent: lentRolls(campaign.id, sheet) } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).

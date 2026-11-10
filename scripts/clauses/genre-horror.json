@@ -174,11 +174,9 @@
      "against": "frightened",
      "want": "adv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Litany of Defense#1",
-    "observed": "d20s an ally 5 feet away threw against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/dm/roll-riders.ts: no aura row reaches an ally's save",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_roll row (advantage against fear, 10 ft), src/lib/dm/genre-a-auras.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Litany of Defense#1"
    }
   ]
  },
@@ -460,11 +458,9 @@
      "want": "d4",
      "after": "Candlelight Vigil"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Candlelight Vigil#2",
-    "observed": "d4s added to the save of an ally 5 feet away against frightened: the engine gives 0, the text 1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/dm/roll-riders.ts: no aura row reaches an ally's save",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_roll rows on the Candlelight Vigil row (src/lib/srd/authored-effects-genre.ts), gated on the vigil burning; scripts/test-genre-a-auras.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Candlelight Vigil#2"
    }
   ]
  },
@@ -521,11 +517,9 @@
      "type": "necrotic",
      "after": "Candlelight Vigil"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Unguttering Flame#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS and src/lib/srd/authored-effects-genre.ts: no conditional resistance for the feature; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_resist row (necrotic, 10 ft) gated on the vigil; possession is no condition the engine lays, so nothing lays it on them",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Unguttering Flame#0"
    }
   ]
  },
@@ -1901,11 +1895,9 @@
      "against": "frightened",
      "want": "d4"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Flinchless#1",
-    "observed": "d4s added to the save of an ally 5 feet away against frightened: the engine gives 0, the text 1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/dm/roll-riders.ts: no aura row reaches an ally's save",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_roll row (+1d4 against fear, 10 ft), src/lib/dm/genre-a-auras.ts; scripts/test-genre-a-auras.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Flinchless#1"
    }
   ]
  },

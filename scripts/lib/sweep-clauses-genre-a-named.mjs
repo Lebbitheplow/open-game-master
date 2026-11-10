@@ -434,6 +434,14 @@ export const NAMED = {
   },
   async ally_resist(t, run, feature) {
     const scene = await t.stage(feature);
+    // "while you sing": a dirge held. The control first: with none held, the
+    // ally takes all 10.
+    if (run.sing) {
+      must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 10, type: run.type }), "the control damage");
+      eq(20 - t.hp(scene.ally.id), 10, `hit points an ally lost to 10 ${run.type} while the holder holds no dirge`);
+      t.world.patch(scene.ally.id, { currentHp: 20 });
+      t.world.patch(scene.holder.id, { concentratingOn: "Bane" });
+    }
     must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 10, type: run.type }), "the damage");
     eq(20 - t.hp(scene.ally.id), 5, `hit points an ally 5 feet away lost to 10 ${run.type}`);
   },

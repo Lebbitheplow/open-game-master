@@ -179,6 +179,8 @@ export type AuthoredEffect = Base &
         rangeFt: number | Array<[number, number]>;
         spells?: boolean;
         typeFrom?: { condition: string; map: Record<string, string> };
+        // Fixed damage types (Miasma Ward's poison, Pallbearer's Procession's necrotic).
+        types?: string[];
       }
     // A creature that hits the holder takes damage back.
     | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean }
@@ -293,6 +295,20 @@ export type AuthoredEffect = Base &
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.
     | { kind: "attack_bonus"; amount: number; when?: "melee" | "ranged" }
+    // An aura on other characters' saves or checks within `rangeFt` (and the
+    // holder's own when `self`): advantage, or `die` added, on the rolls the
+    // key fits (src/lib/dm/genre-a-auras.ts).
+    | {
+        kind: "aura_roll";
+        rangeFt: number;
+        self?: boolean;
+        die?: string;
+        roll: "save" | "check";
+        against?: SaveAgainstValue[];
+        magical?: true;
+        abilities?: Ability[];
+        skills?: string[];
+      }
   );
 
 export type NaturalWeapon = {

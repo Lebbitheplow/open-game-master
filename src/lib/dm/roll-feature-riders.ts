@@ -6,6 +6,7 @@
 // One's Own Luck die, Peerless Skill, and Inspiration spent for advantage.
 // Split from rolls.ts, which folds these into the expression. Pure.
 
+import { lentFor, type LentRoll } from "@/lib/srd/genre-a-lent";
 import type { Advantage } from "@/lib/dice";
 import { named } from "@/lib/dm/roll-about";
 import { heldInspiration } from "@/lib/dm/roll-riders";
@@ -124,6 +125,9 @@ export function rollFeatureRiders(
     // The roll can wait on its player: a held die is theirs to spend after
     // they see the d20 (src/lib/dm/after-roll.ts), not on every next roll.
     keepHeldDie?: boolean;
+    // What allies' auras lend (src/lib/dm/genre-a-auras.ts), read here so
+    // every save and check carries them.
+    lent?: readonly LentRoll[];
   },
 ): RollFeatureRiders | ToolError {
   const { kind: derivationKind, ability: derivationAbility } = context;
@@ -202,6 +206,19 @@ export function rollFeatureRiders(
   // the higher kept (src/lib/dm/authored-mote.ts).
   const moteCheck = Boolean(inspiration?.mote) && checkKind;
   const peerlessDie = peerless ? `+1${/\((d\d{1,2})\)/i.exec(peerless)?.[1] ?? "d6"}` : "";
+  const lent =
+    sheet && context.lent?.length && (derivationKind === "saving_throw" || checkKind)
+      ? lentFor(context.lent, {
+          roll: derivationKind === "saving_throw" ? "save" : "check",
+          ability: derivationAbility,
+          skill: skillId,
+          against: named(args.against),
+          magical: args.magical,
+          casterType: args.casterType,
+          about: named(args.about),
+          creature: named(args.creature),
+        })
+      : { advantage: [], dice: "", notes: [] };
   return {
     advantageSources: [
       ...(traitSaves.length ? ["advantage" as const] : []),
@@ -211,8 +228,9 @@ export function rollFeatureRiders(
       ...(authoredRolls.advantage.length ? ["advantage" as const] : []),
       ...(traitChecks.advantage.length ? ["advantage" as const] : []),
       ...(inspired ? ["advantage" as const] : []),
+      ...(lent.advantage.length ? ["advantage" as const] : []),
     ],
-    dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}`,
+    dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}${lent.dice}`,
     checkBonus: itemChecks.bonus + traitChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,
@@ -231,6 +249,8 @@ export function rollFeatureRiders(
       ...traitChecks.notes,
       ...(peerless ? [`Peerless Skill: ${peerlessDie.slice(1)} on the check`] : []),
       ...(inspired ? ["spends their Inspiration: advantage"] : []),
+      ...lent.advantage,
+      ...lent.notes,
     ],
   };
 }
