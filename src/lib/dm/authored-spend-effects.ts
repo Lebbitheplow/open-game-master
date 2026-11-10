@@ -3,7 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { regainSlotLevels } from "@/lib/srd/slot-levels";
-import { genreCure } from "@/lib/dm/genre-b-cure";
+import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
 import { layGenreZone } from "@/lib/dm/genre-b-zones";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -567,6 +567,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const cured = genreCure(ctx, does);
       return "error" in cured ? cured : { result: { ...(healed?.result ?? {}), ...cured.result } };
     }
+    case "draught":
+      return genreDraught(ctx, does);
+    case "hit_die":
+      return genreHitDie(ctx);
     case "zone": {
       const laid = layGenreZone({ campaign, sheet, name: ctx.spend.name, targetEnemyId: ctx.args.targetEnemyId }, does);
       return Array.isArray(laid) ? { result: { applied: laid } } : laid;

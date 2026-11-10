@@ -3384,6 +3384,26 @@
       "guidance": "1/long rest, brew a greater elixir: drinker gains advantage on everything for 1 minute."
     },
     {
+      "id": "steampunk_emergency_draught",
+      "displayName": "Emergency Draught",
+      "match": [
+        "emergency draught"
+      ],
+      "classes": [
+        "alchemist"
+      ],
+      "uses": 2,
+      "ability": null,
+      "recharge": "long",
+      "upgrades": [],
+      "guidance": "2/long rest, brew a draught: the drinker regains 2d4 + INT HP as a bonus action.",
+      "fx": {
+        "kind": "heal_target",
+        "dice": "2d4+int"
+      },
+      "action": "bonus"
+    },
+    {
       "id": "steampunk_emergency_release",
       "displayName": "Emergency Release",
       "match": [

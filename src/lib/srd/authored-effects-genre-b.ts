@@ -173,6 +173,18 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "whack a machine or construct: restore 1d8 + INT HP to it".
   spend("Percussive Maintenance", ["salvage_tech"], "post_apocalyptic_percussive_maintenance", "action", { kind: "flames", healOnly: true, type: "", formula: "1d8+int" }),
 
+  // "2/long rest, brew a draught: the drinker regains 2d4 + INT HP as a bonus
+  // action"; Philosopher's Draught cures one poison and grants an hour of
+  // poison immunity (src/lib/dm/genre-b-cure.ts genreDraught).
+  spend("Emergency Draught", ["alchemist"], "steampunk_emergency_draught", "bonus", {
+    kind: "draught", formula: "2d4+int", upgrade: { feature: "Philosopher's Draught", ends: ["poisoned"], condition: "philosopher's draught", rounds: 600 },
+  }),
+  // "Spend a hit die as a bonus action to heal, CHA-mod uses per long rest."
+  spend("Regenerative Strain", ["aberrant"], "post_apocalyptic_regenerative_strain", "bonus", { kind: "hit_die" }),
+  // "1/rest, turn to crackling energy and move 30 ft through creatures and
+  // objects as a bonus action": the nearest SRD move is a teleport of 30 feet.
+  spend("Storm Step", ["aether_channeler"], "steampunk_storm_step", "bonus", { kind: "teleport", feet: 30, note: "through creatures and objects as crackling energy" }),
+
   // Slotless casts (src/lib/dm/genre-b-free-cast.ts MARKS, read by the cast
   // guard): one cast of the level or lower, the mark spent by it.
   // "cast a 1st-level schematic without expending a slot"; Perpetual Motion:

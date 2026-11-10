@@ -80,7 +80,7 @@
         ],
         "2": [{ "n": "School of Practice", "d": "Chooses an alchemical school (subclass)." }],
         "3": [{ "n": "Reagent Pouch", "d": "You can identify any potion, poison, or chemical by smell and taste safely." }],
-        "5": [{ "n": "Emergency Draught", "d": "Brew 2 draughts per long rest: drinker regains 2d4 + INT HP as a bonus action." }],
+        "5": [{ "n": "Emergency Draught", "d": "2/long rest, brew a draught: the drinker regains 2d4 + INT HP as a bonus action." }],
         "6": [{ "n": "Acid Resistant Apron", "d": "Resistance to acid and poison damage." }],
         "7": [{ "n": "Fumes and Vapors", "d": "1/rest, a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save (CON) or retch, losing their action." }],
         "9": [{ "n": "Improved Catalyst", "d": "Catalyst Stone adds +1d8 and has 3 uses per rest." }],

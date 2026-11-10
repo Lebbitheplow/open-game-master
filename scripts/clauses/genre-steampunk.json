@@ -1163,32 +1163,31 @@
   "source": "src/lib/classes/steampunk-features.json",
   "group": "alchemist",
   "level": 5,
-  "sha": "af0c29d26ad0",
+  "sha": "9af05ec0e3cc",
   "clauses": [
    {
-    "c": "Brew 2 draughts per long rest: drinker regains 2d4 + INT HP as a bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Emergency Draught: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "c": "brew a draught: the drinker regains 2d4 + INT HP as a bonus action",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Emergency Draught: the drinker regains 2d4 + INT as a bonus action, two a long rest",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Emergency Draught (kind draught, action bonus), src/lib/dm/genre-b-cure.ts genreDraught"
    },
    {
     "c": "2d4 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Emergency Draught: the drinker regains 2d4 + INT as a bonus action, two a long rest",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Emergency Draught (formula 2d4+int)"
    },
    {
-    "c": "Brew 2 draughts per long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#2:uses",
+    "c": "2/long rest",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Emergency Draught#2:uses",
     "k": "uses",
     "p": {
      "id": "steampunk_emergency_draught",
      "n": 2,
      "rest": "long"
     },
-    "observed": "a level 5 alchemist holds no counter steampunk_emergency_draught (counters: steampunk_catalyst_stone)"
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS: the text now says 2/long rest (WAVE2 D5), which the generator reads"
    }
   ]
  },
@@ -1342,11 +1341,9 @@
   "clauses": [
    {
     "c": "Emergency Draughts also cure one poison or disease and grant 1 hour of poison immunity",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Philosopher's Draught#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Philosopher's Draught: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Philosopher's Draught: the draught also ends poisoned and gives an hour of poison immunity",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Emergency Draught (upgrade: Philosopher's Draught ends poisoned, lays philosopher's draught for 600 rounds), src/lib/dm/genre-b-cure.ts genreDraught, the condition's immunities in src/lib/srd/genre-b-conditions.ts; a disease is no board condition, the GM's"
    }
   ]
  },
@@ -2321,13 +2318,9 @@
    },
    {
     "c": "turn to crackling energy and move 30 ft through creatures and objects as a bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Storm Step#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_storm_step"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Storm Step\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, turn to crackling energy and move 30 ft through creatures and objects as a bonus"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Storm Step: a bonus action that moves the channeler 30 ft as a teleport",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Storm Step (kind teleport, 30 feet, action bonus): the nearest SRD move to passing through creatures and objects"
    },
    {
     "c": "as a bonus action",

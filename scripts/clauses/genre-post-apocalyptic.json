@@ -1206,8 +1206,9 @@
   "clauses": [
    {
     "c": "Spend a hit die as a bonus action to heal",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_regenerative_strain#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Regenerative Strain: a hit die spent as a bonus action heals; with none left it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Regenerative Strain (kind hit_die), src/lib/dm/genre-b-cure.ts genreHitDie through src/lib/dm/hit-dice.ts spendHitDice"
    },
    {
     "c": "CHA-mod uses per long rest",

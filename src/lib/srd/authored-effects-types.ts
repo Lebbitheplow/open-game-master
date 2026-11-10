@@ -473,7 +473,12 @@ export type SpendDoes =
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
   // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
-  | ({ kind: "zone" } & GenreZoneSpec);
+  | ({ kind: "zone" } & GenreZoneSpec)
+  // A draught the drinker heals by, curing poison once `upgrade.feature` is
+  // held (src/lib/dm/genre-b-cure.ts genreDraught: Emergency Draught).
+  | { kind: "draught"; formula: Formula; upgrade?: { feature: string; ends: string[]; condition: string; rounds: number } }
+  // One of the holder's hit dice spent to heal (Regenerative Strain).
+  | { kind: "hit_die" };
 
 // An area a genre spend lays, by its row of src/lib/battlemap/zones-genre-b.ts.
 // `rangeFt`: thrown onto the creature named (or the nearest foe) within this

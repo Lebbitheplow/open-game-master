@@ -17,6 +17,14 @@ export const COWERING = "cowering";
 
 export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
+    // Philosopher's Draught: "grant 1 hour of poison immunity".
+    id: "philosophers_draught",
+    match: ["philosopher's draught"],
+    summary: "Philosopher's Draught: immune to poison damage and the poisoned condition for an hour.",
+    conditionImmunities: ["poisoned"],
+    damageImmunities: ["poison"],
+  },
+  {
     // Spirit Ward: "a shielding spirit grants you or an ally +2 AC until your next turn".
     id: "spirit_ward",
     match: ["spirit ward"],

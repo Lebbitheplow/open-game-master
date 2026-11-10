@@ -109,5 +109,51 @@ await run("The Last Dawn Rises: a hostile undead starting its turn in the Dawnli
   assert.equal(lost(far), 0, `the humanoid lost ${lost(far)}`);
 });
 
+// ---- draughts, hit dice, a step through the storm ----
+
+await run("Emergency Draught: the drinker regains 2d4 + INT as a bonus action, two a long rest", async () => {
+  const hero = rig.holder(feature("alchemist", "Emergency Draught", 5));
+  await rig.fight(hero);
+  world.patch(ally.id, { currentHp: 50 });
+  rig.must(await spendAt(hero, "Emergency Draught", [2, 2], { targetCharacterId: ally.id }), "use_resource Emergency Draught");
+  assert.equal(world.sheet(ally.id).currentHp, 57, `the ally drank to ${world.sheet(ally.id).currentHp}`);
+  assert.equal(world.sheet(hero.id).resources.steampunk_emergency_draught?.max, 2, "the alchemist brews other than two");
+  assert.equal(rig.budget().bonusUsed, true, "the draught cost no bonus action");
+});
+
+await run("Philosopher's Draught: the draught also ends poisoned and gives an hour of poison immunity", async () => {
+  const hero = rig.holder(feature("alchemist", "Philosopher's Draught", 13));
+  await rig.fight(hero);
+  world.patch(ally.id, { currentHp: 50, conditions: ["poisoned"] });
+  rig.must(await spendAt(hero, "Emergency Draught", [2, 2], { targetCharacterId: ally.id }), "use_resource Emergency Draught");
+  const after = world.sheet(ally.id);
+  assert.ok(!after.conditions.includes("poisoned"), `the ally still holds ${JSON.stringify(after.conditions)}`);
+  assert.equal(await rig.damageLost(ally, "poison"), 0, "poison still hurt the ally after the draught");
+});
+
+await run("Regenerative Strain: a hit die spent as a bonus action heals; with none left it is refused, nothing spent", async () => {
+  const hero = rig.holder(feature("aberrant", "Regenerative Strain", 7));
+  await rig.fight(hero);
+  world.patch(hero.id, { currentHp: 40 });
+  const before = world.sheet(hero.id).hitDice.spent;
+  rig.must(await spendAt(hero, "Regenerative Strain", [5]), "use_resource Regenerative Strain");
+  const sheet = world.sheet(hero.id);
+  assert.equal(sheet.hitDice.spent, before + 1, "no hit die was spent");
+  assert.equal(sheet.currentHp, 48, `the aberrant healed to ${sheet.currentHp} (a 5 and CON +3)`);
+  world.patch(hero.id, { hitDice: { ...sheet.hitDice, spent: sheet.hitDice.total }, resources: { ...sheet.resources, post_apocalyptic_regenerative_strain: { ...sheet.resources.post_apocalyptic_regenerative_strain, used: 0 } } });
+  rig.myTurn(hero);
+  const refused = await spendAt(hero, "Regenerative Strain", [5]);
+  assert.ok(!refused.ok, "a spend with no hit die left went through");
+  assert.equal(world.sheet(hero.id).resources.post_apocalyptic_regenerative_strain.used, 0, "the refused spend spent its use");
+});
+
+await run("Storm Step: a bonus action that moves the channeler 30 ft as a teleport", async () => {
+  const hero = rig.holder(feature("aether_channeler", "Storm Step", 11));
+  await rig.fight(hero);
+  const out = rig.must(await spendAt(hero, "Storm Step"), "use_resource Storm Step");
+  assert.match(String(out.teleport ?? ""), /30 feet/, `the step said ${JSON.stringify(out)}`);
+  assert.equal(rig.budget().bonusUsed, true, "the step cost no bonus action");
+});
+
 world.close();
 finish();
