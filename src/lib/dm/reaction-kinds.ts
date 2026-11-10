@@ -104,8 +104,9 @@ export function timingOfDoes(does: ReactionDoes): ReactionTiming {
 }
 
 // The limited-use reactions a hit calls for, which the engine resolves when it is
-// named. Each is a card when the hit comes (hand-react.ts) and none on the holder's
-// own turn: they sat in the Hand there, with no trigger to answer, and never came
+// named. A reaction to any damage a creature deals is dealt by its trigger
+// (src/lib/srd/trigger-table.ts) instead. Each is a card when the hit comes
+// (hand-react.ts) and none on the holder's own turn: they sat in the Hand there, with no trigger to answer, and never came
 // up at the moment they are for.
 export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   id: string;
@@ -129,7 +130,6 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
 }> = [
   { id: "race_stones_endurance", answersDrop: true },
   { id: "sub_swarming_dispersal", answersDrop: true },
-  { id: "sub_misty_escape", anyDamage: true },
   { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5, armed: true, answersDrop: true },
   { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
   { id: "sub_necrotic_husk", atZero: true },

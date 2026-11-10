@@ -2,7 +2,6 @@
 // WRITTEN by scripts/lib/sweep-hand-triage.mjs --known; do not edit by hand.
 export const ROWS = {
   "test-enforce-sweep-hand-paladin-a": [
-    ["P1|*|*|spell:counterspell", "hand-reaction-no-trigger"],
     ["P1|Oath of Conquest@20|blinded|option:channel_divinity:conquering-presence", "hand-sight-required-open"],
     ["P1|Oath of Devotion@20|foe-100ft|option:channel_divinity:turn-the-unholy", "hand-feature-nobody-in-reach"],
     ["P1|Oath of Devotion@20|out-of-fight|option:channel_divinity:turn-the-unholy", "hand-fight-only-open-out-of-fight"],
@@ -17,16 +16,12 @@ export const ROWS = {
     ["P5|*|*|option:channel_divinity:vow-of-enmity", "hand-sight-required-open"],
   ],
   "test-enforce-sweep-hand-paladin-b": [
-    ["P1|*|*|spell:counterspell", "hand-reaction-no-trigger"],
     ["P1|Oath of the Crown@20|blinded|feature:authored:champion-challenge", "hand-sight-required-open"],
     ["P1|Oath of the Crown@20|foe-100ft|feature:authored:turn-the-tide", "hand-feature-nobody-in-reach"],
     ["P1|Oath of the Watchers@20|foe-100ft|option:channel_divinity:abjure-the-extraplanar", "hand-feature-nobody-in-reach"],
     ["P1|Oath of the Watchers@20|out-of-fight|option:channel_divinity:abjure-the-extraplanar", "hand-fight-only-open-out-of-fight"],
     ["P1|Oathbreaker@20|blinded|option:channel_divinity:control-undead", "hand-sight-required-open"],
-    ["P1|Oathbreaker@20|failed-save|spell:hellish rebuke", "hand-hellish-rebuke-save-damage"],
-    ["P1|Oathbreaker@20|fresh,action-spent,bonus-spent,prone,grappled,blinded,darkness,concentrating|spell:hellish rebuke", "hand-reaction-no-trigger"],
     ["P5|*|*|feature:authored:champion-challenge", "hand-sight-required-open"],
     ["P5|*|*|option:channel_divinity:control-undead", "hand-sight-required-open"],
-    ["P5|Oathbreaker@20|foe-30ft,foe-invisible|spell:hellish rebuke", "hand-reaction-no-trigger-aim"],
   ],
 };

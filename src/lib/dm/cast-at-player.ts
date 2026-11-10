@@ -22,6 +22,7 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
+import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
 import { rollCard } from "@/lib/dm/action-common";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -254,6 +255,9 @@ function autoSpellAtPlayer(
     return { error: `${spell} hits without a save: send its damage dice, or cast it from a creature whose block lists it. Nothing was spent.`, retry: true };
   }
   use?.commit();
+  // A creature's spell at a character is a trigger (Counterspell and the
+  // features that answer a casting: src/lib/dm/last-save.ts).
+  if (use?.spell) recordTrigger(campaign.id, { kind: "cast", characterId: sheet.id, forcer: { id: use.enemy.id, name: use.enemy.displayName }, spell: use.spell });
   const source = (cast.source ?? (use ? `${use.enemy.displayName}'s ${spell}` : spell)).trim() || spell;
   if (cast.ward) {
     return { ok: true, target: sheet.name, source, ...castToNoEffect(cast.ward) };
@@ -418,6 +422,9 @@ export function handleCastAtPlayer(
     return { error: `Invalid damage expression "${damage}".`, retry: true };
   }
   use?.commit();
+  // A creature's spell at a character is a trigger (Counterspell and the
+  // features that answer a casting: src/lib/dm/last-save.ts).
+  if (use && (use.spell ?? args.spell)) recordTrigger(campaign.id, { kind: "cast", characterId: sheet.id, forcer: { id: use.enemy.id, name: use.enemy.displayName }, spell: use.spell ?? args.spell });
   if (ward) {
     return { ok: true, target: sheet.name, source: use ? `${use.enemy.displayName}'s ${use.name}` : args.spell, ...castToNoEffect(ward) };
   }
@@ -535,6 +542,9 @@ export function handleCastAtPlayer(
     // Disintegrate: a character it drops to 0 is dust, not dying.
     const disintegrates = Boolean((use?.spell ?? args.spell) && spellMechanicsFor({ spell: use?.spell ?? args.spell ?? "", userIds: spellAuthorsFor(campaign) })?.mech.riders?.disintegrates);
     if (dealt > 0) {
+      // Damage the caster dealt through the save, for what answers being damaged
+      // by a creature (Hellish Rebuke: src/lib/dm/last-save.ts).
+      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell));
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })

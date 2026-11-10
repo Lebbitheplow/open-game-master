@@ -70,16 +70,18 @@ const offered = (feet) =>
   reactionCards(world.sheet(wizard.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets(), "you", feet).filter((card) => card.name === "Chronal Shift");
 const reactionKept = () => !world.encounter().reactionsUsed.includes(wizard.id);
 
-await test("With no hit open there is no reaction card, and use_resource still spends a use for a check or a save.", async () => {
+await test("With no hit open there is no reaction card, and a plain use_resource is sent to use_reaction, spending nothing.", async () => {
   await stage();
   assert.equal(world.sheet(wizard.id).resources[COUNTER].max, 2);
   assert.equal(offered().length, 0, "no hit, no card");
-  // A check or a save is thrown and settled in one call, so nothing waits for
-  // the reaction there: the GM spends it and narrates the reroll, as before.
+  // The use and the reaction go with the reroll they buy: use_reaction for an
+  // attack roll, the roll's own card or the watch stop for a check or a save
+  // (src/lib/dm/chronal-shift.ts). A plain spend took the use and rolled
+  // nothing again ("forces a reroll ... and the second roll stands").
   const out = await world.invoke("use_resource", { characterId: wizard.id, resource: "Chronal Shift" });
-  assert.equal(out.ok, true, out.error);
-  assert.match(out.result.effect, /use_reaction 'Chronal Shift'/);
-  assert.equal(used(), 1);
+  assert.equal(out.ok, false);
+  assert.match(out.error, /use_reaction/);
+  assert.equal(used(), 0);
 });
 
 await test("A hit on an ally deals a card aimed at that ally, and a reroll that misses gives the hit points back.", async () => {

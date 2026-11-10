@@ -21,6 +21,7 @@ import { isSpellStorer, ringBarrier, storedSpellsOf, type StoredSpell } from "@/
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { costGate, standingGate, type Gate, type HandCard, type HandCost, type HandOptions, type HandTurn, type SpellFact } from "@/lib/battlemap/hand-core";
 import { castingCost, factFor, ringCardName, spellCard } from "@/lib/battlemap/hand-spells";
+import { waitsForTrigger } from "@/lib/battlemap/hand-react-triggers";
 
 export { ringCardName };
 
@@ -44,24 +45,6 @@ export const ringBarrierGate = (sheet: CharacterSheet, ring: EquipmentItem): Gat
   const reason = ringBarrier(sheet, ring);
   return reason ? { reason, spent: false } : null;
 };
-
-// The moments a card comes up for (hand-react.ts). Counterspell names the spell it
-// answers, which no card can yet, so it is asked for in words as it always was.
-const COMES_UP_WHEN = [
-  { spell: "Shield", when: "an attack hits you" },
-  { spell: "Hellish Rebuke", when: "a creature damages you" },
-  { spell: "Feather Fall", when: "you fall" },
-];
-
-function waitsForTrigger(spell: string): Gate {
-  const moment = findNamed(COMES_UP_WHEN, spell, (row) => [row.spell]);
-  return {
-    reason: moment
-      ? `${spell} is cast as a reaction: its card comes up when ${moment.when}.`
-      : `${spell} is cast as a reaction: say so in your own words when its trigger comes, and it is cast from the ring.`,
-    spent: false,
-  };
-}
 
 function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: RingSpell, cost: HandCost, paid: boolean): Gate[] {
   const { ring, entry } = row;

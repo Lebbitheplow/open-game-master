@@ -1401,7 +1401,7 @@ function dmMutation(
       // checked before anything is spent, its effect applied after.
       const counter = matchResource(resourceName);
       const reacting = counter
-        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, sheets, sheetsById })
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, sheets, sheetsById })
         : null;
       if (reacting && "error" in reacting) {
         return { result: reacting };

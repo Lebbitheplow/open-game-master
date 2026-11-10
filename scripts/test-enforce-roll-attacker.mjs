@@ -257,6 +257,12 @@ await test("An authored reaction's second roll of the attack (Shadowy Dodge) is 
 await test("An authored reaction that strikes back (Vigilant Rebuke) is the holder's, against the creature it strikes.", async () => {
   const [enemy] = await stage(aria);
   kit.place(watcher.id, 5, 4);
+  // What it answers, on record: a Wisdom save the creature forced and the
+  // paladin made (a reaction answers its trigger, src/lib/dm/last-save.ts).
+  world.dice(19);
+  const forced = await world.invoke("cast_at_player", { characterId: watcher.id, casterEnemyId: enemy.id, saveAbility: "wis", dc: 5, condition: "frightened" });
+  world.clearDice();
+  assert.equal(forced.ok, true, forced.error);
   const before = snapshot();
   world.dice(4, 4);
   const out = await react(watcher, "Vigilant Rebuke", { targetEnemyId: enemy.id });

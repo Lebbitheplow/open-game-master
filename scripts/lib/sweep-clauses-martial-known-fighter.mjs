@@ -100,13 +100,7 @@ export const KNOWN = {
     fix: "Keep the creature in the turn budget and refuse the last attack of the turn at another.",
     files: ["src/lib/dm/pc-attack-plan.ts"],
   },
-  "manifest-echo-no-door": {
-    severity: "medium", kind: "rule-missing",
-    where: `${ROWS_B} fighter::Manifest Echo (narrated: "The echo is a position on the board, not a creature the engine tracks; attacks from its space are ordinary pc_attack calls.")`,
-    note: "There is nothing to play: no bonus action is spent, no token stands for the echo, and an attack \"from its space\" is refused for reach like any other. Shadow Martyr then answers for an echo that was never manifested (limits sweep, 787-echo-not-modelled).",
-    fix: "A spend that puts an echo token on the board (AC 14 + proficiency, 1 hit point) and lets pc_attack measure reach from it.",
-    files: [ROWS_B, "src/lib/dm/authored-spends.ts", "src/lib/dm/pc-attack-profile.ts"],
-  },
+
   "legion-of-one-regains-on-initiative": {
     severity: "low", kind: "data",
     where: "src/lib/srd/subclasses.json fighter::Legion of One (the text) against src/lib/srd/resource-refills.ts authoredInitiativeRefills (one back only with none left)",
@@ -191,13 +185,7 @@ export const KNOWN = {
     fix: "A skill pick from the four when Persuasion is already held, as a held language becomes a pick of another.",
     files: ["src/lib/srd/subclass-training.ts"],
   },
-  "inspiring-surge-60-feet": {
-    severity: "medium", kind: "rule-wrong",
-    where: `${ROWS_B} fighter::Inspiring Surge ({ kind: "attack", rangeFt: 5 }, usedBy "party"); src/lib/dm/authored-reactions.ts`,
-    note: "The row's 5 feet is the ally's reach to its target; the Banneret's own 60 feet is not measured, so an ally 70 feet away answers.",
-    fix: "Measure the ally from the holder (rangeFt 60) and the attack by the weapon's own reach or range.",
-    files: [ROWS_B, "src/lib/dm/authored-reactions.ts"],
-  },
+
   "inspiring-surge-one-ally": {
     severity: "medium", kind: "rule-wrong",
     where: "src/lib/dm/authored-reactions.ts (a party reaction is taken by whoever names it; no count per Action Surge)",

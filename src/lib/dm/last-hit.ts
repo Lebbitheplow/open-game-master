@@ -33,7 +33,6 @@ import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { latestSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
@@ -41,6 +40,7 @@ import { listRecentRolls, type RollAttacker } from "@/lib/db/rolls";
 import { spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
+import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
 
 export type SwingRecord = {
@@ -454,29 +454,6 @@ function attackedSince(campaignId: string, record: LastHit): boolean {
   );
 }
 
-// Whether the creature whose turn it is has done anything with it yet: an
-// attack, a cast, an action card (anything its action economy records), or
-// a step on the board.
-function actedThisTurn(encounter: Encounter): boolean {
-  const current = encounter.order[encounter.turnIndex];
-  if (!current) {
-    return false;
-  }
-  const id = orderEntryId(current);
-  const budget = encounter.turnBudget;
-  if (
-    budget &&
-    budget.ownerId === id &&
-    budget.round === encounter.round &&
-    (budget.actionUsed || budget.bonusUsed || budget.attacksMade > 0 || budget.dashed || budget.disengaged)
-  ) {
-    return true;
-  }
-  const map = getBattleMapForEncounter(encounter.id);
-  const token = map ? getTokenByRef(map.id, id) : null;
-  return Boolean(token && token.movedThisRound > 0);
-}
-
 // The record a reaction may still answer, or null: the same encounter, and
 // in a fight the moment after it. SRD 5.1: a reaction is taken right after
 // its trigger, and a creature's reaction comes back at the start of its
@@ -638,8 +615,14 @@ export function heaviestRaw(record: LastHit, which: (swing: SwingRecord) => bool
 // every hit still open in the fight closes, except one that landed in that
 // creature's own turn, which the creature after it may still let pass.
 // Ending the turn is the last thing the next turn's creature can do first.
+// It is also the trigger the reactions to a turn's end, and to the next
+// turn's start, answer: kept with the others a hit record does not hold
+// (last-save.ts).
 export function closeHitsAtTurnEnd(campaignId: string, encounter: Pick<Encounter, "id" | "round">, ending: OrderEntry) {
   const endingKey = turnKey({ round: encounter.round, order: [ending], turnIndex: 0 });
+  const endingId = orderEntryId(ending);
+  const name = ending.kind === "pc" ? (getSheetById(endingId)?.name ?? "a character") : (listEnemies(encounter.id).find((enemy) => enemy.id === endingId)?.displayName ?? "a creature");
+  recordTurnEnd(campaignId, encounter, ending, name);
   const rows = db()
     .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
     .all(campaignId) as Array<{ character_id: string; payload_json: string }>;

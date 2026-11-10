@@ -23,14 +23,29 @@ export const TRIGGERS = [
   "the holder hit a foe",
   "the holder missed a foe",
   "the holder killed a foe",
+  // The triggers the engine records besides a hit (src/lib/dm/last-save.ts,
+  // read through src/lib/srd/trigger-table.ts): once a reaction is held to
+  // its record, these are what it answers.
+  "the foe forced a save the holder failed",
+  "the foe forced a save the holder made",
+  "the foe tried to charm the holder",
+  "the foe cast a spell at the holder",
+  "the foe's spell hurt the holder through a save",
+  "a hit with advantage on the holder",
+  "the ally hit a foe",
+  "a foe ended its turn beside the holder",
+  "a foe's turn began beside the holder",
+  "the holder used Action Surge",
 ];
 // Not staged: a foe leaving the holder's reach (move_token resolves the
 // opportunity attack itself and spends the reaction, so nothing is left open
-// for a reaction to answer), an enemy's spell, a creature dying of something
-// other than the holder's blow, and a save an enemy made.
+// for a reaction to answer), a creature dying of something other than the
+// holder's blow, and a save an enemy made.
 
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight"];
+// The last two come after "no fight", so a spend accepted earlier is still
+// read where it was: they are for the uses that answer a kill or a step.
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -61,6 +76,20 @@ async function step(rig, scene, name, notes) {
     if (encounter) rig.encounters.saveEncounter({ ...encounter, turnBudget: null, reactionsUsed: [] });
   };
   const fire = () => kit.setEnemy(scene.near.id, { stats: { attacks: [{ name: "Flame", toHit: 4, damage: "1d6+2", type: "fire" }] } });
+  // A save the near foe forces on the holder (cast_at_player, the foe its caster).
+  const forced = async (faces, args) => {
+    rig.foesTurn(scene);
+    world.dice(...faces);
+    return world.invoke("cast_at_player", { characterId: holder, saveAbility: "wis", casterEnemyId: scene.near.id, ...args });
+  };
+  // A creature's turn ending, as the engine ends it when the pointer leaves it
+  // (src/lib/dm/encounter-tools.ts advancePointer calls closeHitsAtTurnEnd).
+  const endTurnOf = async (id) => {
+    const { closeHitsAtTurnEnd } = await import(new URL("../../src/lib/dm/last-hit.ts", import.meta.url).href);
+    const encounter = world.encounter();
+    const entry = encounter.order.find((one) => (one.enemyId ?? one.characterId) === id);
+    closeHitsAtTurnEnd(world.campaignId, encounter, entry);
+  };
   if (name.startsWith("condition: ")) {
     // The condition a gate asks for, by the holder's own spend that lays it
     // when they have one, else laid by hand (said in the row's notes).
@@ -167,6 +196,51 @@ async function step(rig, scene, name, notes) {
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);
+    case "the foe forced a save the holder failed":
+      return forced([1, 3, 3], { dc: 25, damage: "2d6", damageType: "psychic" });
+    case "the foe forced a save the holder made":
+      return forced([19], { dc: 5, condition: "frightened" });
+    case "the foe tried to charm the holder":
+      return forced([1], { dc: 25, condition: "charmed" });
+    case "the foe cast a spell at the holder":
+    case "the foe's spell hurt the holder through a save":
+      // A spell on its stat block, so the cast is its own.
+      kit.setEnemy(scene.near.id, { stats: { spells: ["Sacred Flame"] } });
+      {
+        const out = await forced([1, 3, 3], { saveAbility: "dex", dc: 25, damage: "1d8", damageType: "radiant", spell: "Sacred Flame" });
+        // The cast's ledger written once more as any later save writes it, so
+        // the call under test is not read as changing it.
+        refresh();
+        return out;
+      }
+    case "a hit with advantage on the holder": {
+      // Prone beside the foe: its melee attack has advantage.
+      const now = world.sheet(holder);
+      world.patch(holder, { conditions: [...now.conditions.filter((entry) => entry !== "prone"), "prone"] });
+      return strike(holder, [9, 2, 4]);
+    }
+    case "the ally hit a foe":
+      kit.giveTurn(scene.ally.id);
+      world.dice(18, 5);
+      return world.invoke("pc_attack", { characterId: scene.ally.id, targetEnemyId: scene.near.id });
+    case "a foe ended its turn beside the holder":
+      rig.foesTurn(scene);
+      await endTurnOf(scene.near.id);
+      kit.giveTurn(scene.ally.id);
+      return { ok: true };
+    case "a foe's turn began beside the holder":
+      kit.giveTurn(scene.ally.id);
+      await endTurnOf(scene.ally.id);
+      rig.foesTurn(scene);
+      return { ok: true };
+    case "the holder used Action Surge":
+      if (!world.sheet(holder).resources.action_surge) return { ok: false, error: "no Action Surge to use" };
+      return world.invoke("use_resource", { characterId: holder, resource: "action_surge" });
+    case "the holder used Step of the Wind":
+      if (!world.sheet(holder).resources.ki) return { ok: false, error: "no ki for Step of the Wind" };
+      return world.invoke("take_action", { characterId: holder, action: "dash", bonus: true });
+    case "the holder's drake summoned":
+      return world.invoke("summon_pet", { characterId: holder, kind: "drake", form: "drake", essence: "fire" });
     default:
       throw new Error(`no staging step called "${name}"`);
   }

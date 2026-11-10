@@ -2,8 +2,6 @@
 // WRITTEN by scripts/lib/sweep-hand-triage.mjs --known; do not edit by hand.
 export const ROWS = {
   "test-enforce-sweep-hand-artificer": [
-    ["P1|*|*|feature:sub_perfected_armor", "hand-reaction-no-trigger"],
-    ["P1|*|fresh,action-spent,bonus-spent,prone,grappled,blinded,darkness,concentrating,foe-30ft,foe-100ft,foe-invisible,out-of-fight,failed-save|spell:shield", "hand-reaction-no-trigger"],
     ["P1|Battle Smith@20|fresh,action-spent,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,silenced,no-free-hand,concentrating,foe-30ft,foe-100ft,foe-invisible|feature:authored:steel-defender", "hand-feature-precondition-open"],
     ["P2|*|action-spent|feature:art_right_tool", "hand-counter-cost-not-charged"],
     ["P2|*|action-spent|feature:art_spell_storing_item", "hand-counter-cost-not-charged"],

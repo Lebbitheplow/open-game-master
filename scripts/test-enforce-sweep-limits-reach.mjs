@@ -30,11 +30,6 @@ import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, limitsTable } from "./lib/sweep-limits-world.mjs";
 
 // rowId -> { where, severity, note }: what fails today.
-const STRIKE_REACH = {
-  where: "src/lib/battlemap/hand-react.ts authoredHitAnswers (the reach is checked only for an ally's hit, a roller's or Instinctive Charm's: a strike_back row with rangeFt on the holder's own hit is dealt whatever feet[hit.attackerId] says)",
-  severity: "low",
-  note: "The engine refuses and spends nothing (reaction-tools: \"is beyond 10 feet\"), so the player loses a press, not a use. Same shape as #773/#780's ally cards.",
-};
 const TRIGGER_ON_TRUST = {
   where: "src/lib/dm/authored-reactions.ts case \"attack\" (refuses only the holder's own turn; on any other turn nothing asks whether the move, hit, save or spell the text names happened)",
   severity: "medium",
@@ -43,15 +38,10 @@ const TRIGGER_ON_TRUST = {
 const KNOWN = {
   "trigger:cleric/Order Domain/Voice of Authority": TRIGGER_ON_TRUST,
   "trigger:fighter/Cavalier/Hold the Line": TRIGGER_ON_TRUST,
-  "trigger:fighter/Banneret/Inspiring Surge": TRIGGER_ON_TRUST,
-  "trigger:monk/Way of Shadow/Opportunist": TRIGGER_ON_TRUST,
-  "trigger:ranger/Monster Slayer/Slayer's Counter": TRIGGER_ON_TRUST,
-  "strike:barbarian/Path of the Storm Herald/Raging Storm[storm aura (desert)]": STRIKE_REACH,
-  "strike:druid/Circle of Spores/Halo of Spores": STRIKE_REACH,
 };
 // rowId -> why the generator cannot stage this row.
 const SKIP = {
-  "reach:fighter/Echo Knight/Shadow Martyr": "the reach is to the fighter's echo, which the engine does not put on the board (src/lib/srd/authored-effects-types.ts echo_takes_hit: \"The echo is no creature the engine tracks\"); the row names no reach to measure. Recorded as finding L787-echo.",
+  "reach:fighter/Echo Knight/Shadow Martyr[echo manifested]": "the reach is to the fighter's echo, which is kept as a mark on the fighter (Manifest Echo) and has no square on the board; the row names no reach to measure. Recorded as finding L787-echo (its board place is handed off).",
 };
 
 const { row, finish } = limitsSuite("test-enforce-sweep-limits-reach", { KNOWN, SKIP });
@@ -165,6 +155,46 @@ for (const item of reactions.filter((entry) => coversAlly(entry.reaction.does) &
 // ---- STRIKE: the attacker in the reach, and beyond it ----
 
 const strikesBack = (does) => ["strike_back", "echo_hit", "attack"].includes(does.kind) && typeof does.rangeFt === "number" && !does.afterSave;
+// The thing a reaction held to its trigger's record answers (src/lib/srd/
+// trigger-table.ts), staged in place of the creature's hit on the holder:
+// Opportunist answers another creature's hit on the foe, Halo of Spores the
+// foe starting its turn near. Either way the foe is the creature reached.
+const { triggerSpecFor } = await import("../src/lib/srd/trigger-table.ts");
+const { closeHitsAtTurnEnd } = await import("../src/lib/dm/last-hit.ts");
+const { saveEncounter } = await import("../src/lib/db/encounters.ts");
+const triggerOf = (item) => (triggerSpecFor(item.reaction.name, { gateCondition: item.reaction.gate?.condition })?.on ?? []).map((on) => on.kind);
+async function stageTrigger(item, enemy, struck, who) {
+  const kinds = triggerOf(item);
+  if (kinds.includes("struck_by_other")) {
+    kit.giveTurn(friend.id);
+    world.dice(18, 5);
+    const hit = await world.invoke("pc_attack", { characterId: friend.id, targetEnemyId: enemy.id });
+    world.clearDice();
+    assert.equal(hit.ok, true, hit.error);
+    return;
+  }
+  if (kinds.includes("save_on_self")) {
+    // The holder's Slayer's Prey on the foe, then a save it forces on them.
+    kit.giveTurn(who.id);
+    const prey = await world.invoke("use_resource", { characterId: who.id, resource: "Slayer's Prey", targetEnemyId: enemy.id });
+    assert.equal(prey.ok, true, prey.error);
+    kit.giveTurn(friend.id);
+    world.dice(1);
+    const save = await world.invoke("cast_at_player", { characterId: who.id, casterEnemyId: enemy.id, saveAbility: "wis", dc: 25, condition: "frightened" });
+    world.clearDice();
+    assert.equal(save.ok, true, save.error);
+    return;
+  }
+  if (kinds.includes("turn_start")) {
+    kit.giveTurn(friend.id);
+    const encounter = world.encounter();
+    closeHitsAtTurnEnd(world.campaignId, encounter, encounter.order.find((entry) => entry.characterId === friend.id));
+    const place = world.encounter().order.findIndex((entry) => entry.enemyId === enemy.id);
+    saveEncounter({ ...world.encounter(), turnIndex: place, turnBudget: null });
+    return;
+  }
+  await table.strike(enemy, struck);
+}
 for (const item of reactions.filter((entry) => strikesBack(entry.reaction.does) && entry.reaction.usedBy !== "party")) {
   const feet = item.reaction.does.rangeFt;
   const onAlly = item.reaction.does.kind === "echo_hit";
@@ -175,7 +205,9 @@ for (const item of reactions.filter((entry) => strikesBack(entry.reaction.does) 
   }, async () => {
     const who = holderOf(item);
     const struck = onAlly ? friend : who;
-    const setUp = async () => {
+    // `away`: squares beyond the holder's side the foe stands once the trigger
+    // has happened beside them (a hit is made in reach, then it steps off).
+    const setUp = async (away = 0) => {
       const [enemy] = await table.stage([who, friend]);
       openGate(who, item.reaction.gate);
       kit.place(who.id, 5, 2);
@@ -187,7 +219,8 @@ for (const item of reactions.filter((entry) => strikesBack(entry.reaction.does) 
         assert.equal(vow.ok, true, vow.error);
         kit.giveTurn(friend.id);
       }
-      await table.strike(enemy, struck);
+      await stageTrigger(item, enemy, struck, who);
+      if (away) kit.place(enemy.id, 5, 3 + away);
       return enemy;
     };
     const args = (enemy) => ({ feature: item.reaction.name, targetEnemyId: enemy.id, ...(onAlly ? { targetCharacterId: friend.id } : {}) });
@@ -197,8 +230,7 @@ for (const item of reactions.filter((entry) => strikesBack(entry.reaction.does) 
     }
     const near = await react(who, args(close));
     assert.equal(near.ok, true, `beside the attacker the engine refused it, so this row proves nothing: ${near.error}`);
-    const enemy = await setUp();
-    kit.place(enemy.id, 5, 3 + feet / 5 + 2);
+    const enemy = await setUp(feet / 5 + 2);
     const before = table.ledger(who);
     const cards = table.offered(who, item.reaction.name).filter((card) => !card.disabled);
     const far = await react(who, args(enemy));

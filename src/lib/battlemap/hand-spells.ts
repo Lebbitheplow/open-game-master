@@ -19,6 +19,8 @@ import { ACTION_SURGED } from "@/lib/dm/action-budget";
 import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
+import { reactionSpending, TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
+import { waitsForTrigger } from "@/lib/battlemap/hand-react-triggers";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, bundledSpellSchool, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
@@ -487,6 +489,11 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // An item with no numbers of its own casts with its user's, and a fighter has
   // none: the spell's tool would refuse it after the item had paid.
   const noNumbers = stored?.item && ((save === null && mech.resolution === "save" && mech.save) || (toHit === null && mech.resolution === "attack"));
+  // A reaction spell is cast when its trigger comes, and the reaction strip
+  // deals it then (hand-react.ts), in this card's place (withReactions): open
+  // here it was refused in every state, out of a fight too. A ring's own gates
+  // already say so (hand-ring.ts waitsForTrigger).
+  const waits: Gate = cost === "reaction" ? waitsForTrigger(name, false) : null;
   if (stored) return gated(card, ...stored.gates, noNumbers ? { reason: `${stored.ring} casts ${name} with its user's own spell numbers, and ${sheet.name} has none.`, spent: false } : null);
   return gated(
     card,
@@ -501,6 +508,8 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     "error" in material ? { reason: material.error, spent: false } : null,
     slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
     chargeGate,
+    // Last: what else would shut it says more (slowed, no slot).
+    waits,
   );
 }
 
@@ -604,8 +613,11 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       cards.push(...counterSpendCards(sheet, turn, def.displayName));
       continue;
     }
-    // Dealt when the hit that calls for it comes (hand-react.ts).
+    // Dealt when the hit that calls for it comes (hand-react.ts), when its
+    // trigger does (hand-react-triggers.ts), or as the authored reaction that
+    // spends it: never on the holder's turn with nothing to answer.
     if (HIT_ANSWER_COUNTERS.some((counter) => counter.id === id && !counter.anyDamage)) continue;
+    if (TRIGGERED_COUNTERS.includes(id) || reactionSpending(id)) continue;
     const level = resourceLevel(def, sheet);
     const effect = def.effect;
     const left = state.max - state.used;

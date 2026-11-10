@@ -14,7 +14,6 @@ export const ROWS = {
   "test-enforce-sweep-hand-bard-b": [
     ["P1|*|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,concentrating,foe-invisible,out-of-fight|spell:polymorph", "hand-polymorph-no-form"],
     ["P1|College of Eloquence@20|out-of-fight|feature:sub_infectious_inspiration", "hand-reaction-no-trigger"],
-    ["P1|College of Whispers@20|out-of-fight|feature:sub_mantle_of_whispers", "hand-reaction-no-trigger"],
     ["P2|College of Spirits@20|action-spent|feature:sub_spirit_session", "hand-counter-cost-not-charged"],
     ["P2|College of Whispers@20|action-spent|feature:sub_words_of_terror", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_spirit_session", "hand-counter-cost-not-charged"],
