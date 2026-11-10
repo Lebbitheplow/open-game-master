@@ -148,7 +148,9 @@ export function doorArgs(
       const id = sheetIdFor(ref, sheets) ?? (alsoNames?.(key, ref.trim(), out) ? ref.trim() : null);
       if (id === null) {
         const listed = [...new Set(sheets.map((sheet) => `${sheet.name} (${sheet.id})`))];
-        return { refusal: { error: `Unknown ${key} "${ref}". Use one of: ${listed.join(", ")}. Nothing was done for anyone in the list.`, retry: true } };
+        // Said as the handlers it stands in front of said it (travel's "names
+        // nobody at this table ... Nothing moved"), for every list.
+        return { refusal: { error: `Unknown ${key} "${ref}": it names nobody at this table. Use one of: ${listed.join(", ")}. Nothing moved and nothing was spent: nothing was done for anyone in the list.`, retry: true } };
       }
       ids.push(id);
     }
