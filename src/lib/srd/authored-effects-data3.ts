@@ -337,10 +337,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       kind: "rider" as const,
       dice: "prof",
       type,
-      when: "weapon" as const,
+      // "a hit with an attack roll": a weapon's or a spell's.
+      when: "attack" as const,
       oncePerTurn: true,
       gate: { choice: kind },
-      note: "Genie's Wrath rides any attack roll that hits, a spell attack too; the GM adds it to a spell's.",
     })),
   },
   "warlock::Elemental Gift": {

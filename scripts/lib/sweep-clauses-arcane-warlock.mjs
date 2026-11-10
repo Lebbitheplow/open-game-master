@@ -305,6 +305,8 @@ export function probes(rig, shared) {
       const who = W("The Genie", 3);
       await kind(who, "Efreeti");
       const [enemy] = await stage(who);
+      // 20 feet off: a ranged spell attack with no foe at the warlock's elbow.
+      kit.place(enemy.id, 9, 5);
       const out = await call("pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Eldritch Blast" }, [15, 5]);
       assert.equal(out.ok, true, out.error);
       assert.equal(300 - foe(enemy).currentHp, 5 + prof(3), `an Eldritch Blast hit of 5: ${show(out).slice(0, 160)}`);
@@ -494,7 +496,6 @@ export function probes(rig, shared) {
     "curse-incapacitated": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Hexblade's Curse (the buff ends at a minute or a death only)`, note: "", fix: "End the curse when its warlock is incapacitated." },
     "coil-near": { severity: "medium", kind: "rule-wrong", where: `${DATA} warlock::Guardian Coil (rangeFt 30 from the warlock, not 10 feet from the tentacle)`, note: "", fix: "Measure the coil's reach from the tentacle's zone." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
-    "wrath-spell-attack": { severity: "medium", kind: "path-parity", where: `${DATA} warlock::Genie's Vessel (rider when "weapon"; note: "the GM adds it to a spell's")`, note: "", fix: "Ride a spell attack's hit as well." },
     "dread-fright": { severity: "medium", kind: "rule-missing", where: `${RES} sub_form_of_dread (fx buff and temporary hit points only)`, note: "", fix: "Once a turn, on a hit in Form of Dread, roll the creature's Wisdom save against frightened." },
     "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
   };

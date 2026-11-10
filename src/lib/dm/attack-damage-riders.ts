@@ -53,12 +53,13 @@ export function attackDamageRiders(input: {
       ? authoredDamageAbility(sheet, { melee: !profile.ranged }, Object.fromEntries(Object.entries(sheet.abilities).map(([key, score]) => [key, Math.floor((score - 10) / 2)])))
       : [];
   const onHit = attackOnHitDice(sheet, kind, !profile.ranged, marked);
-  // Feature damage riders ride weapon attacks only; once-per-turn ones are
-  // reconciled with the turn budget (pc-attack-damage.ts
-  // claimOncePerTurnRiders), as Sneak Attack is.
+  // Feature damage riders ride weapon attacks, and a rider "when: attack"
+  // any attack roll that hits, a spell's too (Genie's Wrath: "a hit with an
+  // attack roll"); once-per-turn ones are reconciled with the turn budget
+  // (pc-attack-damage.ts claimOncePerTurnRiders), as Sneak Attack is.
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
-      ? []
+      ? riders.damageRiders.filter((rider) => rider.when === "attack").map((rider) => ({ ...rider, type: riderType(sheet, rider) }))
       : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile)]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {

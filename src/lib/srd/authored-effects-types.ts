@@ -126,7 +126,7 @@ export type AuthoredEffect = Base &
         kind: "rider";
         dice: Formula;
         type: string;
-        when: "weapon" | "melee" | "ranged";
+        when: "weapon" | "melee" | "ranged" | "attack";
         oncePerTurn?: boolean;
         requiresCondition?: string;
       }

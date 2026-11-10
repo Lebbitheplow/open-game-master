@@ -2893,8 +2893,9 @@
    },
    {
     "c": "a hit with an attack roll deals extra damage of your patron's type equal to your proficiency bonus",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wrath-spell-attack"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wrath-spell-attack",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Genie's Vessel rider when attack (src/lib/dm/attack-damage-riders.ts: a spell attack's hit carries it)"
    },
    {
     "c": "(bludgeoning for a dao, thunder for a djinni, fire for an efreeti, cold for a marid)",

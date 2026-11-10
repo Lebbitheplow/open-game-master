@@ -89,7 +89,7 @@ export type FeatureEffect =
       kind: "weapon_damage_rider";
       dice: (level: number) => string;
       type: string;
-      when: "weapon" | "melee" | "ranged";
+      when: "weapon" | "melee" | "ranged" | "attack";
       oncePerTurn?: boolean;
       requiresCondition?: string;
     }
@@ -770,7 +770,7 @@ export type CombatRiders = {
     feature: string;
     dice: string;
     type: string;
-    when: "weapon" | "melee" | "ranged";
+    when: "weapon" | "melee" | "ranged" | "attack";
     oncePerTurn: boolean;
     requiresCondition?: string;
   }>;
