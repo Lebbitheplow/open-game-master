@@ -476,6 +476,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (hidden) return hidden;
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
+      if (does.rangedOnly && !hit.record.ranged) {
+        return { error: `${reaction.name} answers a ranged attack, and ${hit.record.attack} was made in melee. Nothing was spent.`, refused: "rules" };
+      }
       const swing = hit.record.swings[hit.index];
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
@@ -630,7 +633,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? cutBlow(entry, "half") : entry));
       const settled = settle(ctx, hit.record, corrected, label);
-      return { applied: `${target.name} resists this ${type} damage: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      if (does.lingers) {
+        const now = getSheetById(target.id) ?? target;
+        const name = `${does.lingers} (${type})`;
+        reactionPatch(ctx.campaign, ctx.turn.id, target.id, { conditions: [...now.conditions, name], conditionMeta: { ...(now.conditionMeta ?? {}), [name]: { rounds: 1 } } }, `${reaction.name}: resistance to ${type} until the next turn`);
+      }
+      return { applied: `${target.name} resists this ${type} damage${does.lingers ? " until the start of their next turn" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "take_for_ally": {
       const ally = allyOf(ctx);

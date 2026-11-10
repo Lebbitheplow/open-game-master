@@ -1629,9 +1629,9 @@
    },
    {
     "c": "for 1 minute you cannot drop below 1 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_champion#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-deathless-champion"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: buff deathless champion, held by src/lib/dm/genre-drop-holds.ts",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },

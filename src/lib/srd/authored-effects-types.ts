@@ -507,7 +507,8 @@ export type ReactionDoes =
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
+  // `rangedOnly`: only against a ranged attack (Bullet Time).
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; rangedOnly?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within
@@ -524,7 +525,9 @@ export type ReactionDoes =
   // Resistance to the last hit's damage when it is one of these types.
   // `bond`: only for the holder, and only while that creature is on their sheet and up
   // (a Drakewarden's drake); no other ally.
-  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number; bond?: "drake" }
+  // `lingers`: the resistance to that type stays on the holder until the start
+  // of their next turn, as the condition "<lingers> (<type>)" (Blood Ward).
+  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number; bond?: "drake"; lingers?: string }
   // The holder takes the hit an ally in range took.
   // `share`: "halved", the holder takes half of it and the ally none
   // (Penance Shared); "split", each takes half (Blood Bond).

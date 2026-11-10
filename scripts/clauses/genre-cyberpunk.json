@@ -152,19 +152,19 @@
    {
     "c": "Reaction",
     "run": {
-     "k": "spend_cost",
-     "cost": "reaction",
-     "id": "cyberpunk_overwatch"
+     "k": "reaction_cost",
+     "id": "cyberpunk_overwatch",
+     "ally": true
     },
     "is": "held",
-    "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
+    "by": "the reaction row of src/lib/srd/authored-effects-genre-a.ts, spending the reaction through use_reaction (src/lib/dm/authored-reactions.ts); the counter is passive to use_resource (src/lib/srd/genre-a-counter-terms.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Overwatch#0"
    },
    {
     "c": "impose disadvantage on an attack against an ally you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_overwatch#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-overwatch"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: disadv_vs_hit on a hit on the holder or an ally they see",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "2/rest",
@@ -280,14 +280,15 @@
    },
    {
     "c": "control a construct or networked system for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_root_access#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-root-access"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect commands a construct for a minute (a network is no creature the app models: the construct is the nearest SRD mechanic, WAVE2 D5)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "INT save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_root_access#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect INT against the spell save DC",
+    "probe": "scripts/test-genre-a-spends.mjs",
     "same_probe_as": 1
    }
   ]
@@ -553,9 +554,9 @@
    },
    {
     "c": "take one additional action on your turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_adrenal_override#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-adrenal-override"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: Action Surge's grant (ResourceDef.extraAction, src/lib/dm/resource-turn.ts)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -685,9 +686,9 @@
    },
    {
     "c": "reroll a failed saving throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_indomitable_firmware#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-indomitable-firmware"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: reroll_save",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -736,19 +737,19 @@
    {
     "c": "Reaction",
     "run": {
-     "k": "spend_cost",
-     "cost": "reaction",
-     "id": "cyberpunk_bullet_time"
+     "k": "reaction_cost",
+     "id": "cyberpunk_bullet_time",
+     "ranged": true
     },
     "is": "held",
-    "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
+    "by": "the reaction row of src/lib/srd/authored-effects-genre-a.ts, spending the reaction through use_reaction (src/lib/dm/authored-reactions.ts); the counter is passive to use_resource (src/lib/srd/genre-a-counter-terms.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Bullet Time#0"
    },
    {
     "c": "+3 AC against one ranged attack you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_bullet_time#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-bullet-time"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: ac_vs_hit +3, rangedOnly, sees the attacker",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "3/long rest",
@@ -2085,9 +2086,9 @@
    },
    {
     "c": "+2 AC until the start of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_static_shield#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-static-shield"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: buff static shield, +2 AC (src/lib/srd/genre-a-conditions.ts)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },

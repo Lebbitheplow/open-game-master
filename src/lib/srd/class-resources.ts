@@ -298,6 +298,9 @@ export type ResourceDef = {
   // Inspiration comes back on a short rest from bard 5, Font of
   // Inspiration). Overrides `recharge` for rests that know the sheet.
   rechargeFor?: (level: number) => Recharge;
+  // The use is one additional action on the holder's turn, as Action Surge's
+  // (src/lib/dm/resource-turn.ts grantActionSurge): Adrenal Override.
+  extraAction?: boolean;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
   // With no use left, this pool pays for one instead (Breath of the

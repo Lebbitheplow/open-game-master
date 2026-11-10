@@ -90,13 +90,13 @@ export function prepareResourceCharge(
   if (heldOff) {
     return heldOff;
   }
-  if (def.id === "action_surge") {
+  if (def.id === "action_surge" || def.extraAction) {
     // SRD 5.1 fighter, Action Surge: "only once on the same turn", whatever
     // uses are left. Refused before the use is spent.
     const turn = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
     if (turn?.oncePerTurn.includes(ACTION_SURGED)) {
       return {
-        error: `${sheet.name} has already used Action Surge this turn, and it can be used only once on the same turn. The use is not spent; it is there on a later turn.`,
+        error: `${sheet.name} has already used ${def.displayName} this turn, and it can be used only once on the same turn. The use is not spent; it is there on a later turn.`,
         refused: "rules",
       };
     }

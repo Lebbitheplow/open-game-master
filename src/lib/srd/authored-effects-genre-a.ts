@@ -66,4 +66,68 @@ const PASSIVES: GenreRow[] = [
   row("apostate", "Hunted Instincts", [{ kind: "no_surprise", slugs: ["cultist", "cult_fanatic"] }]),
 ];
 
-export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES];
+// ---- spends and reactions on the feature's own counter ----
+// Each spend pays its own counter (src/lib/classes/resources.json), checked
+// and written by src/lib/dm/authored-spends.ts; each reaction answers the
+// open hit record (src/lib/dm/authored-reactions.ts), its counter passive to
+// use_resource (src/lib/srd/genre-a-counter-terms.ts).
+const counted = (classId: string, feature: string, counter: string, more: Omit<AuthoredEntry, "subclass" | "counter">): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", counter, ...more },
+});
+
+const SPENDS: GenreRow[] = [
+  counted("esper", "Static Shield", "cyberpunk_static_shield", {
+    spends: [{ name: "Static Shield", pool: { id: "cyberpunk_static_shield" }, action: "bonus", does: { kind: "buff", condition: "static shield", rounds: 1 } }],
+  }),
+  counted("street_samurai", "Indomitable Firmware", "cyberpunk_indomitable_firmware", {
+    spends: [{ name: "Indomitable Firmware", pool: { id: "cyberpunk_indomitable_firmware" }, action: "none", does: { kind: "reroll_save" } }],
+  }),
+  // "control a construct or networked system for 1 minute (INT save
+  // negates)": a networked system is no creature the app models, so the
+  // construct is the nearest SRD mechanic (WAVE2 D5), commanded as Command
+  // Undead commands its undead.
+  counted("netrunner", "Root Access", "cyberpunk_root_access", {
+    spends: [{
+      name: "Root Access",
+      pool: { id: "cyberpunk_root_access" },
+      action: "action",
+      does: { kind: "save_effect", save: "int", dcAbility: "spell", condition: "charmed", rounds: 10, types: ["construct"], commands: true, onFail: "obeys the netrunner for a minute" },
+    }],
+  }),
+  counted("slayer", "One Against the Night", "horror_one_against_the_night", {
+    spends: [{ name: "One Against the Night", pool: { id: "horror_one_against_the_night" }, action: "none", does: { kind: "buff", condition: "one against the night", rounds: 10 } }],
+  }),
+  counted("grave_knight", "Deathless Champion", "dark_fantasy_deathless_champion", {
+    spends: [{ name: "Deathless Champion", pool: { id: "dark_fantasy_deathless_champion" }, action: "none", does: { kind: "buff", condition: "deathless champion", rounds: 10 } }],
+  }),
+  // "banish a fiend, undead, or spirit of CR 15 or lower to its home plane
+  // (CHA save negates)": a spirit is an undead in the SRD's types.
+  counted("exorcist", "The Unhosted Word", "horror_the_unhosted_word", {
+    spends: [{
+      name: "The Unhosted Word",
+      pool: { id: "horror_the_unhosted_word" },
+      action: "action",
+      does: { kind: "save_effect", save: "cha", dcAbility: "spell", condition: "banished", types: ["fiend", "undead"], onFail: "is banished to its home plane (the GM refuses a creature above challenge rating 15)" },
+    }],
+  }),
+  counted("street_samurai", "Bullet Time", "cyberpunk_bullet_time", {
+    reactions: [{ name: "Bullet Time", pool: { id: "cyberpunk_bullet_time" }, sees: "attacker", does: { kind: "ac_vs_hit", amount: 3, rangedOnly: true } }],
+  }),
+  counted("netrunner", "Overwatch", "cyberpunk_overwatch", {
+    reactions: [{ name: "Overwatch", pool: { id: "cyberpunk_overwatch" }, sees: "target", does: { kind: "disadv_vs_hit", allyWith: "Overwatch", rangeFt: 120 } }],
+  }),
+  counted("apostate", "Blood Ward", "horror_blood_ward", {
+    reactions: [{
+      name: "Blood Ward",
+      pool: { id: "horror_blood_ward" },
+      does: { kind: "resist_instance", types: ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"], who: "either", rangeFt: 0, lingers: "blood ward" },
+    }],
+  }),
+  counted("survivor", "Pain Tolerance", "horror_pain_tolerance", {
+    reactions: [{ name: "Pain Tolerance", pool: { id: "horror_pain_tolerance" }, does: { kind: "reduce", amount: "half", who: "self" } }],
+  }),
+];
+
+export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS];

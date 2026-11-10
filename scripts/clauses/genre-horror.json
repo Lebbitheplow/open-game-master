@@ -415,14 +415,15 @@
    },
    {
     "c": "banish a fiend, undead, or spirit of CR 15 or lower to its home plane",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_unhosted_word#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-unhosted-word"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect banished, fiends and undead only (challenge rating left to the GM in onFail)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "CHA save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_unhosted_word#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect CHA",
+    "probe": "scripts/test-genre-a-spends.mjs",
     "same_probe_as": 1
    }
   ]
@@ -1340,9 +1341,9 @@
    },
    {
     "c": "halve the damage of one hit against you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_pain_tolerance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-pain-tolerance"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: reduce half, a reaction to the hit",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -2071,9 +2072,9 @@
    },
    {
     "c": "for 1 minute your attacks ignore resistance and immunity to nonmagical damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_one_against_the_night#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-one-against-the-night"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: buff one against the night, magical strikes for a minute",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -2926,15 +2927,15 @@
    },
    {
     "c": "reaction when hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_blood_ward#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-blood-ward"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: a reaction to the open hit record",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "gain resistance to that damage type until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_blood_ward#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-blood-ward"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: resist_instance with the type lingering as blood ward (<type>)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },

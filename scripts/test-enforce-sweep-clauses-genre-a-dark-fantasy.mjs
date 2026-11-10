@@ -5,6 +5,7 @@
 import { runLedger } from "./lib/sweep-clauses-genre-a.mjs";
 import { PROBES } from "./lib/sweep-clauses-genre-a-probes.mjs";
 import { NAMED } from "./lib/sweep-clauses-genre-a-named.mjs";
+import { MORE } from "./lib/sweep-clauses-genre-a-more.mjs";
 import { borrowedHooks } from "./lib/sweep-clauses-genre-a-borrowed.mjs";
 
-await runLedger("dark-fantasy", { ...PROBES, ...NAMED }, [borrowedHooks]);
+await runLedger("dark-fantasy", { ...PROBES, ...NAMED, ...MORE }, [borrowedHooks]);

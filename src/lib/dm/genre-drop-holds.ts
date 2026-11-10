@@ -42,6 +42,8 @@ type AllyHold = { id: string; feature: string; rangeFt: number; hp: (mods: Mods)
 
 const holds = (sheet: CharacterSheet, id: string) => Boolean(sheet.resources?.[id]);
 
+export const DEATHLESS_CHAMPION = "deathless champion";
+
 const SELF_HOLDS: SelfHold[] = [
   {
     id: "horror_won_t_die_here",
@@ -90,6 +92,12 @@ export function genreDropHold(
     return null;
   }
   const max = effectiveMaxHp(sheet);
+  // Deathless Champion: "for 1 minute you cannot drop below 1 HP", held while
+  // the spend's condition lasts (src/lib/srd/genre-a-conditions.ts), no use spent.
+  if (sheet.conditions.some((entry) => isConditionNamed(entry, DEATHLESS_CHAMPION))) {
+    write(sheet, { currentHp: 1 }, { "Deathless Champion": true });
+    return { ok: true, hp: `1/${max}`, held: "Deathless Champion", note: `${sheet.name} cannot drop below 1 hit point while Deathless Champion lasts.` };
+  }
   for (const hold of SELF_HOLDS) {
     const pool = hold.pool?.(sheet) ?? hold.id;
     const resources = spent(sheet, pool);
