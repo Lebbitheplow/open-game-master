@@ -81,8 +81,9 @@ export type LegendaryState = {
   // the DM turn since, end as the pointer moves again, with the saves their
   // conditions grant at the end of a turn (src/lib/dm/condition-tick.ts).
   walked?: string[];
-  // What held those enemies as their turns began (condition-tick.ts
-  // turnHoldKeys): only these are saved against as those turns end. A hold
+  // What held those enemies as their turns began, read again once those
+  // turns are over (condition-tick.ts turnHoldKeys, held-turn.ts): only
+  // these are saved against as those turns end. A hold
   // laid after an enemy's turn, Hold Person cast by the character who goes
   // next, waits for the end of a turn the creature takes under it (SRD 5.1:
   // "at the end of each of its turns"). Absent on a row written before it.

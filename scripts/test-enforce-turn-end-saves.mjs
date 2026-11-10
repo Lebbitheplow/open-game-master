@@ -64,7 +64,8 @@ function endTurnOf(hero) {
 await test("A creature held after its turn this round does not save as the holder's turn ends: it saves at the end of its own next turn.", async () => {
   const enemy = await stage();
   endTurnOf(fighter);
-  // The creature's turn is over; the wizard's has come.
+  // The GM hands the turn on: the creature's turn is over; the wizard's has come.
+  kit.handOnEnemies();
   hold(enemy);
   endTurnOf(wizard);
   assert.ok(held(enemy), "saved before it had a turn under the hold");
@@ -86,6 +87,7 @@ await test("A creature held before its turn saves as that turn ends.", async () 
 await test("An effect with a save laid on a creature after its turn waits for the end of its next turn too.", async () => {
   const enemy = await stage();
   endTurnOf(fighter);
+  kit.handOnEnemies();
   const out = await world.invoke("set_effect", {
     enemyId: enemy.id, name: "Witch's Curse", modifiers: [{ field: "attack", mode: "add", value: -2 }],
     saveAbility: "wis", saveDc: 1, visible: true,
@@ -97,6 +99,43 @@ await test("An effect with a save laid on a creature after its turn waits for th
   endTurnOf(fighter);
   endTurnOf(wizard);
   assert.ok(!cursed(), "the end of its own turn brings the save");
+});
+
+// The creature's turn runs from the move that walks past it until the turn
+// after it begins: while it is still the creature's to play, a hold laid on
+// it (a readied Hold Person released as it moves, a reaction) holds it
+// through that turn's end, and the save comes then (SRD 5.1, Hold Person).
+await test("A creature held while its own turn is still being played saves as that turn ends.", async () => {
+  const enemy = await stage();
+  endTurnOf(fighter);
+  assert.deepEqual(world.encounter().legendary.due, [enemy.id], "the creature's turn is still to play");
+  hold(enemy);
+  endTurnOf(wizard);
+  assert.ok(!held(enemy), "the end of the turn it was held in brings the save");
+  // The same when the character after it begins their turn by acting: the
+  // creature, paralyzed, has nothing left of its turn to wait for.
+  const again = await stage();
+  endTurnOf(fighter);
+  hold(again);
+  const dodged = await world.invoke("take_action", { characterId: wizard.id, action: "dodge" });
+  assert.ok(!dodged.error, dodged.error);
+  endTurnOf(wizard);
+  assert.ok(!held(again), "the turn the wizard's act began ends the creature's, held");
+});
+
+await test("Once the character after it acts, the creature's turn is over: a hold that character lays waits for the creature's next turn.", async () => {
+  const enemy = await stage();
+  endTurnOf(fighter);
+  const struck = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: fighter.id });
+  assert.ok(!struck.error, struck.error);
+  const dodged = await world.invoke("take_action", { characterId: wizard.id, action: "dodge" });
+  assert.ok(!dodged.error, dodged.error);
+  hold(enemy);
+  endTurnOf(wizard);
+  assert.ok(held(enemy), "saved before it had a turn under the hold");
+  endTurnOf(fighter);
+  endTurnOf(wizard);
+  assert.ok(!held(enemy), "the end of its own turn brings the save");
 });
 
 // A paralyzed character's turn is walked past, starting and ending in the
