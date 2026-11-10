@@ -66,6 +66,19 @@ const scenario = {
       const described = await keep.evaluate((node) => document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent ?? "");
       check(/^The roll stands in \d+s$/.test(described), `Keep this roll is described by the clock (${described})`);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the card does not push the page sideways");
+      if (viewport === "phone") {
+        // The harness's phone is 412px wide; a small phone is 375px.
+        const size = page.viewportSize();
+        await page.setViewportSize({ width: 375, height: size.height });
+        await untilStill(page);
+        check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "nor on a 375px phone");
+        for (const button of [shift, keep]) {
+          const box = await button.boundingBox();
+          check((box?.height ?? 0) >= 40 && (box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 0) <= 375, `a whole finger-sized button at 375px (${JSON.stringify(box)})`);
+        }
+        await page.setViewportSize(size);
+        await untilStill(page);
+      }
       const night = await axeViolations(page, group);
       check(!night.length, `axe on the card at night: ${night.map((entry) => entry.id).join(", ")}`);
       await t.shot("card");
