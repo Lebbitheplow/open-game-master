@@ -151,10 +151,19 @@ function useOpenedOnce(open: boolean): boolean {
 
 // Once the table is drawn and the browser has a moment, fetch what it may
 // reach for next.
-function usePreloadTable() {
+// `tabs` is the seat's rail: the panels of a tab this seat does not have are
+// left alone (side-panel-loaders.tsx), and a tab that appears later (the
+// seat was handed the lead) brings its panel then. The list is a new array
+// on most renders, so the effect follows what it names, not which array.
+function usePreloadTable(tabs: ReadonlyArray<PanelTab>) {
+  const tabKey = tabs.join(",");
+  const tabsRef = useRef(tabs);
+  useEffect(() => {
+    tabsRef.current = tabs;
+  });
   useEffect(() => {
     const preload = () => {
-      preloadSidePanels();
+      preloadSidePanels(tabsRef.current);
       for (const piece of Object.values(tablePieces)) {
         void piece.preload().catch(() => undefined);
       }
@@ -166,7 +175,7 @@ function usePreloadTable() {
       if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle as number);
       window.clearTimeout(idle as number);
     };
-  }, []);
+  }, [tabKey]);
 }
 
 // The localStorage-backed preferences below are read as external stores.
@@ -329,7 +338,6 @@ export function SessionView({
   const openReport = useCallback(() => setReportOpen(true), []);
   const isAdmin = Boolean(me?.isAdmin);
   const helpReport = useMemo(() => ({ onSave: isAdmin ? openReport : undefined }), [isAdmin, openReport]);
-  usePreloadTable();
   const helpMounted = useOpenedOnce(helpOpen);
   const reportMounted = useOpenedOnce(reportOpen);
   const diceLookMounted = useOpenedOnce(diceLookOpen);
@@ -689,6 +697,8 @@ export function SessionView({
       }),
     [state.battleMap, campaign, caps.secretStory, caps.adjudicates, isLead],
   );
+  const panelTabIds = useMemo(() => panelTabs.map(([id]) => id), [panelTabs]);
+  usePreloadTable(panelTabIds);
   // The table's arrangement for this seat (client issue 46,
   // src/lib/table-layout.ts): which side-panel tabs have a pane of their
   // own, on a window wide enough for an arrangement at all. A tab with a

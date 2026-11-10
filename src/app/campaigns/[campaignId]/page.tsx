@@ -50,10 +50,21 @@ export default function CampaignPage({
     void loadSessionView();
   }, []);
   // A running campaign whose prep this viewer may open (issue 530) has the
-  // lobby's panels ready before they are asked for.
+  // lobby's panels ready before they are asked for: once the table is drawn
+  // and the browser has a moment, not beside the table's own download. The
+  // lobby brings the character builder with it, and fetched at once it made
+  // whoever steers the story wait on it before their table could be used.
   const mayPrep = state.campaign?.status === "active" && Boolean(state.caps?.steersStory);
   useEffect(() => {
-    if (mayPrep) void loadLobby();
+    if (!mayPrep) return;
+    const preload = () => void loadLobby();
+    const idle = typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback(preload, { timeout: 5000 })
+      : window.setTimeout(preload, 2500);
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle as number);
+      window.clearTimeout(idle as number);
+    };
   }, [mayPrep]);
 
   // The admin's browser keeps the game page's own errors for "Report a

@@ -1,4 +1,5 @@
 import { memo } from "react";
+import type { TableTabId } from "@/lib/dm/table-tabs";
 import { preloadable } from "@/lib/preloadable";
 
 // The side panels as separate downloads (SidePanelRouter.tsx), and the one
@@ -36,8 +37,30 @@ export const panels = {
   WorldForgePanel: preloadable(() => import("@/app/workshop/world/WorldForgePanel").then((module) => module.WorldForgePanel)),
 };
 
-export function preloadSidePanels(): void {
-  for (const panel of Object.values(panels)) {
+// The panels only one kind of seat can open, by the tab that opens them
+// (SidePanelRouter.tsx): the GM's console and inbox, the lead's desk, the
+// world and the context of whoever holds the story's secrets. A player's
+// phone used to fetch and compile all of them after every load, about a
+// megabyte of script for tabs that seat is never shown. Everything else is
+// fetched ahead for every seat, the board included: a fight can start at any
+// moment and its stage should already be here.
+const SEAT_TAB: Partial<Record<keyof typeof panels, TableTabId>> = {
+  DmConsolePanel: "dm",
+  DmInboxPanel: "dm",
+  LeadPanel: "lead",
+  WorldForgePanel: "world",
+  ContextPanel: "context",
+};
+
+// `tabs` is what this seat's rail holds (SessionTabs.tsx buildPanelTabs);
+// without it every panel is fetched.
+export function preloadSidePanels(tabs?: ReadonlyArray<TableTabId>): void {
+  const shown = tabs ? new Set(tabs) : null;
+  for (const [name, panel] of Object.entries(panels) as Array<[keyof typeof panels, (typeof panels)[keyof typeof panels]]>) {
+    const seatTab = SEAT_TAB[name];
+    if (shown && seatTab && !shown.has(seatTab)) {
+      continue;
+    }
     // A failed preload is retried by the panel's own render when it opens.
     void panel.preload().catch(() => undefined);
   }
