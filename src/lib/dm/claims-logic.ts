@@ -179,7 +179,14 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
 // readTurnEndInWords): gpt-oss-20b as the reader found "then I end my turn"
 // in one reading and missed it in the next. A miss here costs what a table in
 // any other language pays: the reader's reading alone.
-const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/gi;
+// The apostrophe is either kind: a phone keyboard writes "That’s my turn";
+// and "end turn" is the button's own words.
+// "I'm done" and "that's all" close a turn only as a sentence of their own
+// ("I'm done for", "that's all I've got" say something else): beside a
+// turned-down attack ("No more attacks, I'm done.") they were asked again
+// instead of ending it (issue 761).
+const ENGLISH_ENDS_TURN =
+  /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:(?:my|the|his|her|their) )?turn\b|\bthat['’]?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b|\b(?:i['’]?m|i am) (?:all )?(?:done|finished)(?: for (?:now|this turn|the turn))?(?=\s*(?:[.!;\n]|$))|\bthat['’]?s all(?: for (?:me|now|this turn))?(?=\s*(?:[.!;\n]|$))/gi;
 
 // Words before the phrase, in its own clause, that say the turn is not ending
 // now: "Don't end my turn yet" and "I'll tell you when I end my turn" ended it

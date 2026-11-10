@@ -24,7 +24,7 @@
 // utility model (src/lib/dm/player-word-read.ts) and handed in as `read`.
 
 import { englishEndsTurn } from "@/lib/dm/claims-logic";
-import { containsPhrase, textKey } from "@/lib/language/text-logic";
+import { containsPhrase, phraseOffsets, textKey } from "@/lib/language/text-logic";
 
 export type WordLine = {
   content: string;
@@ -35,7 +35,10 @@ export type WordLine = {
 };
 
 // The utility model's reading of the words at a table in another language.
-export type WordReading = { acts: boolean; holds: boolean };
+// `declines`: they turn an action down, and `ends`: they end the turn, read
+// as englishDeclines and englishEndsTurn read English (absent from a reply
+// that left them out: then neither is said).
+export type WordReading = { acts: boolean; holds: boolean; declines?: boolean; ends?: boolean };
 
 export type PlayerWord = {
   // Any own line since the DM last spoke.
@@ -75,11 +78,22 @@ const ACTS = new RegExp(`\\b(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`, "i");
 // else", "No more attacks from me". Read as acting, "won't attack" let the
 // model's end_turn through with the move and the bonus action unspent: 8 of
 // 16 such turns ended at the 0.34.1 play-test (issue 761). A few words may
-// stand between ("I won't make another attack").
+// stand between ("I won't make another attack"), but not a new subject or a
+// word that starts another thought: "I never miss when I attack" and "I
+// can't let them hit Corin" turn nothing down.
 const DECLINED = new RegExp(
-  `\\b(?:(?:don['’]?t|do not|doesn['’]?t|does not|didn['’]?t|won['’]?t|will not|can['’]?t|cannot|not|never|no longer)\\s+(?:\\w+\\s+){0,3}?|no\\s+(?:more\\s+|further\\s+|other\\s+)?)(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`,
+  `\\b(?:(?:don['’]?t|do not|doesn['’]?t|does not|didn['’]?t|won['’]?t|will not|can['’]?t|cannot|not|never|no longer)\\s+(?:(?!(?:i|you|he|she|it|we|they|when|whenever|if|unless|until|because|let|lets|that)\\b)\\w+\\s+){0,3}?|no\\s+(?:more\\s+|further\\s+|other\\s+)?)(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`,
   "i",
 );
+
+// Someone else's act, in a question: "Don't you attack?" and "Will they
+// flee?" ask nothing of the character's turn, where "Can I attack it?" does.
+const OTHERS_ACT = new RegExp(`\\b(?:you|he|she|they)\\s+(?:\\w+\\s+){0,2}?(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`, "gi");
+
+// A name said with an article or a possessive is a thing spoken of, not an
+// act asked for: "I keep my shield up" with Shield on the sheet, "the goblin
+// has had enough" beside a turned-down attack.
+const SPOKEN_OF = /\b(?:the|a|an|this|that|my|your|his|her|its|our|their)\s+$/;
 
 // "Ready" said of hands or a weapon kept ready is a stance, not the Ready
 // action: "I keep my hands ready but don't attack again" acted on "ready".
@@ -129,6 +143,24 @@ export function englishHold(text: string): string | null {
 export function englishActs(text: string, names: readonly string[]): boolean {
   const { rest } = withoutDeclined(text);
   return ACTS.test(rest.replace(STANCE, " ")) || names.some((name) => name.trim().length > 1 && containsPhrase(rest, name));
+}
+
+// Whether English words that also turn an action down ask for another one:
+// a fight verb, or a name said as the thing to do ("Fire Bolt on the
+// archer"), not one only spoken of beside it.
+function actsBesideDeclined(text: string, names: readonly string[]): boolean {
+  const { rest } = withoutDeclined(text);
+  const key = textKey(rest);
+  return (
+    ACTS.test(rest.replace(STANCE, " ")) ||
+    names.some((name) => name.trim().length > 1 && phraseOffsets(rest, name).some((at) => !SPOKEN_OF.test(key.slice(0, at))))
+  );
+}
+
+// Whether an English question asks for something the character does ("Can
+// I attack it?"), not about what someone else does.
+function asksToAct(text: string): boolean {
+  return englishActs(text.replace(OTHERS_ACT, " "), []);
 }
 
 // Whether English words turn an action down ("I won't attack again").
@@ -231,16 +263,17 @@ export function readPlayerWord(
     // A question counts only when it asks for the action by its verb ("Can
     // I attack it?"): naming the goblin in "Is the goblin still there?" asks
     // nothing of the turn.
-    const saidDuring = during.some((line) => !asking(line) || englishActs(line.content, []));
+    const saidDuring = during.some((line) => !asking(line) || asksToAct(line.content));
     const saidBefore = before.length > 0 && englishActs(before.map((line) => line.content).join("\n"), options.names);
     if (holds && !acts) {
       return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "held" : "before_fight" };
     }
     // Words in the fight that only turn an action down leave the rest of the
     // turn to the player: the move and the bonus action may still follow, so
-    // the turn ends only when they say so (issue 761).
-    const duringText = during.map((line) => line.content).join("\n");
-    if (!acts && englishDeclines(duringText) && !englishEndsTurn(duringText)) {
+    // the turn ends only when they say so (issue 761). A question with a "not"
+    // in it only asks, and is read as one below.
+    const told = during.filter((line) => !asking(line)).map((line) => line.content).join("\n");
+    if (englishDeclines(told) && !actsBesideDeclined(all, options.names) && !englishEndsTurn(told)) {
       return { spoke: true, declares: false, holds, holdQuote, why: "declined" };
     }
     if (saidDuring || saidBefore) {
@@ -260,10 +293,12 @@ export function readPlayerWord(
     if (holds && !read.acts) {
       return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "held" : "before_fight" };
     }
-    if (read.acts) {
+    // An end said in the fight is the player's word, as in English.
+    if (read.acts || (read.ends && during.length)) {
       return { spoke: true, declares: true, holds, holdQuote, why: null };
     }
-    return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "asked" : "before_fight" };
+    const why = !during.length ? "before_fight" : read.declines ? "declined" : "asked";
+    return { spoke: true, declares: false, holds, holdQuote, why };
   }
   if (during.some((line) => !asking(line))) {
     return { spoke: true, declares: true, holds: false, holdQuote: null, why: null };

@@ -288,6 +288,26 @@ await test("Nothing off the character's own turn is asked: on Kara's turn, a cal
 const model = await fakeModel();
 model.pointAt(world);
 
+await test("At a table in another language a turned-down attack reads the same: \"No vuelvo a atacar.\" read by the utility model holds the turn open with the same refusal.", async () => {
+  const { updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+  updateGameSettings(world.campaignId, { ...world.campaign().gameSettings, tableLanguage: "spanish" });
+  try {
+    await stage(kara);
+    world.say("player", "No vuelvo a atacar.", kara);
+    model.script([reply({ text: '{"acts":false,"holds":false,"declines":true}' })]);
+    const before = spendable();
+    const ended = await ai.invoke("end_turn", { characterId: kara.id });
+    assert.equal(ended.ok, false, "the turn ended on words that only turned an attack down");
+    assert.equal(ended.error, DECLINED("Kara"));
+    assert.equal(spendable(), before);
+    assert.equal(kit.current().characterId, kara.id);
+    // The reader is asked for the turned-down action by name.
+    assert.match(promptText(model.requests.at(-1)), /"declines":true\|false/);
+  } finally {
+    updateGameSettings(world.campaignId, { ...world.campaign().gameSettings, tableLanguage: "english" });
+  }
+});
+
 await test("Kara presses End Turn and the DM turn that opens Brom's turn attacks for him: the model is handed the refusal and Brom has spent nothing.", async () => {
   const enemy = await stage(kara);
   kit.endTurn(kara.userId);

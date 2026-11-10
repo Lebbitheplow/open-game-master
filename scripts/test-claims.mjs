@@ -79,6 +79,15 @@ await test("The plain English ways a player ends their turn are read beside the 
   for (const said of ["I close in on the nearest goblin and attack it, then I end my turn.", "That's my turn.", "Kara ends her turn.", "I'm ending my turn here", "My turn is over."]) {
     assert.equal(englishEndsTurn(said), true, said);
   }
+  // A phone keyboard's curly apostrophe, and the short ways a player closes a
+  // turn, said as a sentence of their own (issue 761: "No more attacks, I'm
+  // done." was asked again instead of ending).
+  for (const said of ["That’s my turn.", "No more attacks, I'm done.", "I won't attack again. That’s all for me.", "I’m done for this turn!", "I am finished.", "That's all", "Nothing else, end turn."]) {
+    assert.equal(englishEndsTurn(said), true, said);
+  }
+  for (const said of ["I'm done for!", "I'm done with this goblin, I attack it.", "That's all I've got left?", "Am I done?", "I'm done?", "When I'm done, I'll move.", "I'm not done."]) {
+    assert.equal(englishEndsTurn(said), false, said);
+  }
   for (const said of ["I attack the goblin.", "Whose turn is it?", "I wait for my turn.", "It's my turn now, right?"]) {
     assert.equal(englishEndsTurn(said), false, said);
   }
