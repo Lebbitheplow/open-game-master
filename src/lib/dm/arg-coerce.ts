@@ -71,8 +71,9 @@ export function strictBooleanArgs(rawArguments: string): string {
 //     it as 0: travel {hours: null} was a journey of 0 hours.
 //   "" for a number, a yes/no or a fixed choice is the field left out (an
 //     empty text stays a value: the console's "left empty to clear").
-//   one value where the schema asks a list is a list of one; a list of one
-//     text where it asks one text is that text.
+//   one value where the schema asks a list is a list of one, and a text in
+//     lines is its lines (listOf says which); a list of one text where it
+//     asks one text is that text.
 //   a character named by name where an id is asked reaches the id, so the
 //     AI's gate (ai-gate.ts) reads the same sheet the handler resolves:
 //     set_condition with characterId "Mira" laid prone with no save, where
@@ -86,7 +87,7 @@ export function strictBooleanArgs(rawArguments: string): string {
 //     handler takes (cast_buff's Bless on an ogre the party dominates) is
 //     asked of `alsoNames`, which the caller builds from the lookup that
 //     handler reads, so the door and the handler cannot disagree on it.
-export type DoorField = { type?: unknown; enum?: unknown };
+export type DoorField = { type?: unknown; enum?: unknown; items?: { type?: unknown } };
 export type DoorRecord = { id: string; name: string };
 export type DoorAlsoNames = (key: string, ref: string, args: Readonly<Record<string, unknown>>) => boolean;
 
@@ -117,7 +118,7 @@ export function doorArgs(
       continue;
     }
     if (field.type === "array" && !Array.isArray(value)) {
-      value = [value];
+      value = listOf(key, value, field);
     } else if (field.type === "string" && Array.isArray(value) && value.length === 1 && typeof value[0] === "string") {
       value = value[0];
     }
@@ -158,6 +159,25 @@ export function doorArgs(
   }
   const coerced = JSON.stringify(out);
   return { rawArguments: coerced === JSON.stringify(parsed) ? rawArguments : coerced };
+}
+
+// One value sent where a list is asked. A text is the list its handler read
+// it as before the door: lines where the list is of texts (the console's
+// "Objectives, one per line" for set_quest, whose handler split them; a list
+// of the one text left a quest with a single objective of two lines, and
+// tick_objective found neither), and lines or commas where it is of
+// characters (send_whisper's comma-joined ids). Anything else is a list of
+// one.
+function listOf(key: string, value: unknown, field: DoorField): unknown[] {
+  if (typeof value !== "string") {
+    return [value];
+  }
+  const ids = LIST_REF.test(key);
+  if (!ids && field.items?.type !== "string") {
+    return [value];
+  }
+  const parts = value.split(ids ? /\r?\n|,/ : /\r?\n/).map((part) => part.trim()).filter(Boolean);
+  return parts.length ? parts : [value];
 }
 
 // A sheet's id from its id or its whole name (case and spacing aside, as

@@ -32,6 +32,7 @@ const properties = {
   value: { type: "string" },
   reason: { type: "string" },
   items: { type: "array" },
+  objectives: { type: "array", items: { type: "string" } },
 };
 const door = (args) => {
   const out = doorArgs(JSON.stringify(args), { properties, sheets });
@@ -54,6 +55,17 @@ test("one value where a list is asked is a list of one, and a list of one text w
   assert.deepEqual(door({ reason: ["listening at the door"] }), { reason: "listening at the door" });
   // Two entries are not guessed between: the handler's parse refuses them by name.
   assert.deepEqual(door({ reason: ["one", "two"] }), { reason: ["one", "two"] });
+});
+
+// The console's "Objectives, one per line" (catalog-binder.ts) is one text:
+// a list of that one text made a quest of one two-line objective, and
+// tick_objective found neither line.
+test("a text where a list of texts is asked is its lines, and where a list of characters is asked its lines or commas", () => {
+  assert.deepEqual(door({ objectives: "Ask at the inn\r\n Search the mill \n" }), { objectives: ["Ask at the inn", "Search the mill"] });
+  assert.deepEqual(door({ objectives: "Ask at the inn, then the mill" }), { objectives: ["Ask at the inn, then the mill"] }, "a comma is no break in a text");
+  assert.deepEqual(door({ characterIds: "a1, Brann" }), { characterIds: ["a1", "b2"] });
+  assert.deepEqual(door({ characterIds: "Mira\nb2" }), { characterIds: ["a1", "b2"] });
+  assert.deepEqual(door({ items: "Rope\nTorch" }), { items: ["Rope\nTorch"] }, "a list of things not texts is a list of one");
 });
 
 test("a character named by name reaches their id, so the AI's gate and the handler read the same sheet", () => {
