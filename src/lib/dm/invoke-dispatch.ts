@@ -80,6 +80,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { registerHeldRunner, runHeld } from "@/lib/dm/held-call";
+import { deedRefusal } from "@/lib/dm/deed-guard";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { listMembers } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
@@ -151,6 +152,11 @@ async function dispatchCall(
     return gated.result;
   }
   const rawArguments = gated.args;
+  // A deed out of a fight by a character who cannot act (deed-guard.ts).
+  const unable = deedRefusal(campaign.id, name, rawArguments, context.sheets, sheetsById);
+  if (unable) {
+    return unable;
+  }
   // Held so a roll inside it may wait on its player (src/lib/dm/held-call.ts).
   return runHeld(campaign, turn, { name, rawArguments, toolCallId: context.toolCallId ?? null }, () => engineCall(name, rawArguments, context, casting));
 }

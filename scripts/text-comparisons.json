@@ -1363,6 +1363,8 @@
     "lib/dm/damage-parts.ts#toLowerCase": [["key",2,"damage types"]],
     "lib/dm/death.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/death.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
+    "lib/dm/deed-guard.ts#str-eq": [["key",3,"a roll kind, an item action and a stash verb, enums the tools' schemas fix"]],
+    "lib/dm/deed-guard.ts#str-key": [["key",1,"the deed tools by their tool names, the engine's own keys"]],
     "lib/dm/delegation.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/departure-logic.ts#str-eq": [["key",4,"class ids (the support handicap: cleric, druid, bard, paladin)"]],
     "lib/dm/departure-logic.ts#str-list": [["key",11,"SRD bestiary slugs a return's allies are drawn from, by value, and that table's own keys (engine vocabulary)"]],

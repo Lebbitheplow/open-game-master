@@ -15,6 +15,7 @@ import { resolveRollExpression, resolveSheetRef } from "@/lib/dm/rolls";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { canAct } from "@/lib/dm/can-act";
 import { rollEffectExtras } from "@/lib/dm/effect-tools";
 import { exhaustionRollState, mergeAdvantage, rollDerivation, type AdvantageState } from "@/lib/dm/condition-logic";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -267,8 +268,11 @@ export function handleGroupCheck(
       terrain: args.terrain,
       by: args.by,
     } as unknown as RollArgs;
-    // The dead take no part, and count as a failure for the group.
-    if (sheet.deathSaves?.dead) {
+    // The dead take no part, and count as a failure for the group; so do
+    // those who cannot act, at 0 hit points, asleep or turned to stone (SRD
+    // 5.1: "incapacitated ..., can't move or speak, and is unaware of its
+    // surroundings"; finding doors-14 of the 2026-11-09 gap sweep).
+    if (!canAct({ sheet, encounter: null, kind: "action" }).ok) {
       results.push({ name: sheet.name, total: 0, success: false });
       continue;
     }

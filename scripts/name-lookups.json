@@ -1348,6 +1348,7 @@
     "lib/dm/damage-parts.ts#whole": [["key",1,"damage types"]],
     "lib/dm/death.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/deed-claims.ts#partial": [["key",2,"a deed kind's underscores in the DM's note, and the turn's recorded deeds by characterId and kind"]],
+    "lib/dm/deed-guard.ts#keyed": [["key",1,"tool names and an argument's field name, the engine's own keys"]],
     "lib/dm/delegation.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/departure-logic.ts#whole": [["key",1,"a return's allies counted by bestiary slug"]],
     "lib/dm/departure-logic.ts#whole-single": [["key",1,"a row's own revenge goal, the exact text avengeGoal wrote there, never a person's words"]],

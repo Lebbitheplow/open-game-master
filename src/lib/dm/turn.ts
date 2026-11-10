@@ -136,6 +136,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
+import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
@@ -2959,6 +2960,12 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
+    // A deed out of a fight by a character who cannot act (deed-guard.ts),
+    // as dispatchAdjudication holds the console's path.
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
+    }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
       runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);
@@ -2974,6 +2981,10 @@ async function resolveModelCall(
     const gated = gate();
     if ("result" in gated) {
       return gated.result;
+    }
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
     }
     // Held, so a watcher's stop before its d20 holds it like any call.
     const result = runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
