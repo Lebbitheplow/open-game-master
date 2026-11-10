@@ -3669,6 +3669,9 @@ const bench2Titles = {};
       const knight = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
         name: "Vesna Greymark", class: "fighter", subclass: "Echo Knight", level: 15, maxHp: 120, abilities: { str: 16, con: 14 },
       }));
+      // Her echo is out, as Manifest Echo leaves it: Shadow Martyr sends the
+      // echo into a hit only while one is (authored-effects-data-b.ts ECHO_OUT).
+      sheets.patchSheet(knight.id, { conditions: ["echo manifested"] });
       const bot = createCompanionUser("Odo Fenn");
       const ally = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Odo Fenn", class: "fighter", level: 5, maxHp: 44 }));
       sheets.markSheetAsCompanion(ally.id, "party", "Steady, and slow to speak.");
