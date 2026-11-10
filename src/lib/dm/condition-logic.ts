@@ -9,6 +9,7 @@ import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/conditio
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
 
 export {
@@ -338,9 +339,12 @@ export const DODGING = "dodging";
 // Ability checks suffer disadvantage.
 const CHECK_DISADVANTAGE = ["poisoned", "frightened"];
 
+// A condition held under any spelling a sheet writes it, a bracket note
+// included ("invisible (potion)"): the one reading enemy-reactions.ts
+// attackerUnseen makes too, so the attack's advantage and a creature's Parry
+// agree on who is unseen (finding L822-invisible-in-brackets).
 function has(conditions: string[], names: string[]): string | null {
-  const lowered = conditions.map((entry) => entry.toLowerCase());
-  return names.find((name) => lowered.includes(name)) ?? null;
+  return names.find((name) => conditions.some((entry) => isConditionNamed(entry, name))) ?? null;
 }
 
 // What a viewer's senses reach of another creature past what eyes need

@@ -36,19 +36,17 @@ const SKIP = {
 const BOTH = ["console", "ai"];
 const cellsOf = (row, states, doorIds = BOTH) => states.flatMap((state) => doorIds.map((door) => `${row}|${state}|${door}`));
 
-const KNOWN = {
-  // The console's free hand off the rider's turn, confirmed by the
-  // maintainer (WAVE1 ruling R9: "the console may mount or dismount off turn
-  // (a person GM adjudicates), but never charges movement to a turn that is
-  // not running"). The mount is recorded, so this cell's "nothing written"
-  // cannot hold; that no movement is charged is held by
-  // scripts/test-enforce-turn-movement-2.mjs.
-  ...known(cellsOf("mount_up", ["not_turn"], ["console"]).concat(cellsOf("dismount", ["not_turn"], ["console"])), {
-    where: "src/lib/dm/mount-tools.ts spendMountingMovement: \"a person at the console keeps a free hand\" (ruling R9, confirmed: no movement charged off turn)",
-    severity: "low",
-    note: "ruling R9 (confirmed)",
-  }),
-};
+// No known gaps left in this matrix.
+const KNOWN = {};
+
+// The console's free hand off the rider's turn (WAVE1 ruling R9: "the
+// console may mount or dismount off turn (a person GM adjudicates), but never
+// charges movement to a turn that is not running"). The mount is recorded, so
+// these cells write; that no movement is charged is held by
+// scripts/test-enforce-turn-movement-2.mjs.
+const ALLOWED = known(cellsOf("mount_up", ["not_turn"], ["console"]).concat(cellsOf("dismount", ["not_turn"], ["console"])), {
+  ruling: "ruling R9 (src/lib/dm/mount-tools.ts spendMountingMovement: a person at the console keeps a free hand)",
+});
 
 await test("every catalog entry with a character, enemy or token picker is a row of a matrix or has a written reason", () => {
   assert.deepEqual(unclassified(ADJUDICATIONS, [...rows, ...enemyRows(ADJUDICATIONS)]), []);
@@ -115,7 +113,7 @@ const callers = [
 await runMatrix({
   api, db, rows, states: STATES, doors: callers, stageFor,
   actorOf: (row, t) => t[row.actor].id,
-  KNOWN, SKIP, label: "hero",
+  KNOWN, SKIP, ALLOWED, label: "hero",
 });
 
 for (const t of stages.values()) {

@@ -16,10 +16,10 @@ import { SRD_GEAR, SRD_GOODS } from "@/lib/srd/adventuring-gear";
 import { SRD_ARMOR } from "@/lib/srd/armor";
 import { bundledPriceCopper } from "@/lib/srd/starting-wealth";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
-import { rollExpression } from "@/lib/dice";
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import { resolveRollExpression, resolveSheetRef, type RollArgs, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { sheetsAgainstParty } from "@/lib/dm/combat-sides";
 import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
@@ -613,9 +613,11 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail: `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`, dc, result: rolled });
+  // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+  // they roll it, and the price moves once it lands.
+  const detail = `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`;
+  const rolled = rollCharacterD20(campaign, sheet, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: waits });
+  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: rolled });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   const steps = haggleSteps(skill, rolled.total, dc);
   // A companion who already haggled here keeps the price they got.

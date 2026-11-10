@@ -101,31 +101,17 @@ row("apply_hazard.trap", "saving throw", "apply_hazard", "out", (c) => ({ type: 
 row("death_save", "saving throw", "end_turn", "ally", (c) => ({ characterId: c.allyId }), () => world.patch(hero.id, { currentHp: 0, conditions: ["unconscious"], deathSaves: { successes: 0, failures: 0 } }));
 
 const LUCKY = '"Spend one to roll an extra d20 on your own attack roll, ability check or saving throw and choose which die to use" (Lucky, src/lib/srd/authored-feats.json)';
-const silent = (where, note, severity = "medium") => ({ rule: LUCKY, where, severity, note });
-const CANNOT_WAIT = 'forced-save.ts names these "a roll that cannot wait for its holder (a save the engine forces, a death save, a check rolled with its DC)" and adds a held Bardic die for the holder; a luck point has no such stand-in';
+// None left: every site throws a character's d20 through
+// src/lib/dm/character-roll.ts, which waits on the card.
 const KNOWN = {
-  group_check: silent("src/lib/dm/check-tools.ts handleGroupCheck", CANNOT_WAIT),
-  scene_check: silent("src/lib/dm/scene-tools.ts (contest-roll.ts rollCharacterCheck)", CANNOT_WAIT),
-  social_check: silent("src/lib/dm/social-tools.ts handleSocialCheck", CANNOT_WAIT),
-  haggle: silent("src/lib/dm/shop-tools.ts handleHaggle", CANNOT_WAIT),
-  "relationship_beat.flirt": silent("src/lib/dm/relationship-tools.ts handleRelationshipBeat", CANNOT_WAIT, "low"),
-  "stabilize.check": silent("src/lib/dm/stabilize.ts handleStabilize", CANNOT_WAIT),
-  "take_action.grapple": silent("src/lib/dm/contest-roll.ts rollCharacterCheck (grapple.ts)", "the character's side of a contest it lost"),
-  "take_action.shove": silent("src/lib/dm/contest-roll.ts rollCharacterCheck (grapple.ts)", "the character's side of a contest it lost"),
-  "take_action.search": silent("src/lib/dm/contest-roll.ts rollCharacterCheck (combat-actions.ts)", "a Search whose total the GM compares with a DC of their own: the engine cannot tell it fell short, and never asks"),
-  "take_action.escape": silent("src/lib/dm/contest-roll.ts rollCharacterCheck (grapple.ts)", "the check to break a grapple"),
-  opportunity_attack: silent("src/lib/dm/opportunity-strike.ts pcOpportunitySwing", "a reaction attack: pull request #848 put the choice on pc_attack's missed roll and left reaction, readied and companion attacks as they were"),
-  "damage_object.weapon": silent("src/lib/dm/object-damage.ts damageObject", "an attack roll at an object", "low"),
-  "cast_at_player.hazard": silent("src/lib/dm/forced-save.ts rollCharacterSave", CANNOT_WAIT),
-  "cast_at_player.enemy": silent("src/lib/dm/forced-save.ts rollCharacterSave", CANNOT_WAIT),
-  "aoe_damage.enemy": silent("src/lib/dm/forced-save.ts rollCharacterSave (aoe-characters.ts)", CANNOT_WAIT),
-  "apply_hazard.generic": silent("src/lib/dm/forced-save.ts rollCharacterSave (hazard-tools.ts)", CANNOT_WAIT),
-  "apply_hazard.trap": silent("src/lib/dm/forced-save.ts rollCharacterSave (trap-run.ts)", CANNOT_WAIT),
 };
-// Rolls the code says never wait, with its words.
+// Rolls the code says never wait, with its words. Initiative and the death
+// save were here, until the maintainer's decision R4 (2026-11-09 gap sweep):
+// "After-the-roll holders (Lucky, Bardic Inspiration, and the rest in
+// after-roll-logic.ts) are asked on initiative (a Dexterity check) and death
+// saves (a saving throw) too; the 20 second clock keeps a table from
+// waiting."
 const RULING = {
-  "request_roll.initiative": '"Initiative locks the order and a death save is thrown by its own engine." (src/lib/dm/after-roll-logic.ts canWaitOnRoll)',
-  death_save: '"Initiative locks the order and a death save is thrown by its own engine." (src/lib/dm/after-roll-logic.ts canWaitOnRoll)',
 };
 
 async function play(entry) {
@@ -168,7 +154,7 @@ for (const entry of rows) {
       assert.equal(got.verdict, "SILENT", `the ruling for ${entry.id} no longer describes the engine: move the row out of RULING`);
     });
   } else {
-    await test(`${entry.id}: a failed ${entry.kind} waits on its player's luck point`, async () => {
+    await test(`${entry.id}: a failed ${entry.kind} waits on its player's luck point (${LUCKY})`, async () => {
       const got = await run();
       assert.equal(got.verdict, "OFFERED", `${entry.id}: ${got.verdict}`);
     });

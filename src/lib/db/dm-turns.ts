@@ -1,6 +1,6 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import type { ChatMessage } from "@/lib/model-client";
-import type { Advantage } from "@/lib/dice";
+import type { Advantage, RollResult } from "@/lib/dice";
 import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
@@ -363,6 +363,29 @@ export type PendingAttack = {
 
 export type PendingCarry = {
   mote?: { bardId: string; die: string; sides: number };
+  // The call this roll stopped (src/lib/dm/held-call.ts), run again from the
+  // start when the roll lands, and what that run answered.
+  call?: HeldRollCall;
+  answer?: string;
+};
+
+// A roll a held call already has, for its next run: the player's, as it
+// landed. `raw`: faces entered at the table, before what the roll site adds
+// to the dice it throws itself (a floor under the d20).
+export type DecidedRoll = { characterId: string; kind: RollKind; outcome: RollResult; raw: boolean };
+
+// A tool call held for a player's roll. `tape`: the faces its first run drew
+// by chance, [sides, face], drawn again by the next run so a die nobody saw
+// comes out the same.
+export type HeldRollCall = {
+  name: string;
+  rawArguments: string;
+  toolCallId: string | null;
+  decided: DecidedRoll[];
+  tape: Array<[number, number]>;
+  // The roll site threw the dice itself and parked them for the player's
+  // choice: what lands is the site's own roll, already whole.
+  siteThrew?: boolean;
 };
 
 export type PendingRoll = {
@@ -466,6 +489,13 @@ function mapPending(row: PendingRow): PendingRoll {
 // first time a roll is parked, and every row written before reads as null.
 const parkColumnReady = new WeakSet<object>();
 
+// Exported for a run that may be rolled back (src/lib/dm/held-call.ts): the
+// columns are added before it opens, so a rollback never takes them away
+// while this module believes they are there.
+export function ensurePendingColumns() {
+  ensureParkColumn();
+}
+
 function ensureParkColumn() {
   const db = getDatabase();
   if (parkColumnReady.has(db)) {
@@ -513,7 +543,9 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
 
 // The calls a watch stop holds back, what the first is about to roll, and what
 // the watcher chose. Null face: let it roll.
-export type HeldCall = { id?: string; name: string; rawArguments: string };
+// `tape`: the faces the call drew by chance before a stop inside it
+// (src/lib/dm/held-call.ts), drawn again when it runs.
+export type HeldCall = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 // Which feature the stop is for: Portent's number before the roll, or a
 // Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
 // once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop

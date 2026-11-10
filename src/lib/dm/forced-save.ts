@@ -51,6 +51,7 @@ import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { authoredEnemySave } from "@/lib/dm/authored-saves";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -343,26 +344,26 @@ export function rollCharacterSave(
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const versus = authoredSaveDieVs(sheet, sheet.id, from ? { conditions: from.conditions, meta: from.conditionMeta as Record<string, { source?: string }> } : null);
   const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
-  const throwSave = () => {
-    const thrown = rollExpression(
-      `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
-      undefined,
-      { purpose },
-    );
-    // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
-    if (extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor) {
-      thrown.total = thrown.total - thrown.natural + extra.floor;
-    }
-    // A held die is spent only where it carries the roll, so it is still
-    // held for the second roll when it could not save the first.
-    return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
-  };
-  let outcome = throwSave();
+  const expression = `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`;
+  // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
+  const floored = (thrown: RollResult): RollResult =>
+    extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor ? { ...thrown, total: thrown.total - thrown.natural + extra.floor } : thrown;
+  // A held die is spent only where it carries the roll, so it is still
+  // held for the second roll when it could not save the first.
+  const settled = (thrown: RollResult) => (waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown);
+  const throwSave = () => floored(rollExpression(expression, undefined, { purpose }));
+  // The player's own save, though the engine forces it (WAVE1 R5: "A seat
+  // on physical dice rolls its own saves, including saves the engine
+  // forces"): on physical dice they roll it, a wizard holding a foretold
+  // number may use it, and a failure waits on what they hold (Lucky, Bardic
+  // Inspiration), all before the damage or the condition lands
+  // (src/lib/dm/character-roll.ts).
+  let outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", tag: purpose, expression, detail: detail.slice(0, 200), dc, throwIt: throwSave, adjust: floored, settle: settled });
   // A Chronal Shift a watching wizard set on this save (chronal-shift.ts).
   const shiftedBy = takeShift(campaign.id, purpose, outcome.total >= dc);
   const shiftLine = shiftedBy ? `${shiftedBy}'s Chronal Shift: rolled again (${outcome.total} became ` : null;
   if (shiftedBy) {
-    outcome = throwSave();
+    outcome = settled(throwSave());
     noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
   // Flash of Genius or Favored by the Gods set on this save at the stop.

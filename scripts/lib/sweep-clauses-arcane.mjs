@@ -9,6 +9,7 @@
 //
 // Import enforce-world.mjs first.
 import assert from "node:assert/strict";
+import { keepThrownCards } from "./kept-rolls.mjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { TRAINED } from "./enforce-combat.mjs";
@@ -167,7 +168,8 @@ export async function clauseRig(world) {
     world.clearDice();
     world.diceLog();
     world.dice(...faces);
-    const out = await world.invoke(name, args);
+    // A roll that waits on what the caster holds is kept as it lies.
+    const out = await keepThrownCards(world, await world.invoke(name, args));
     const unused = world.clearDice();
     out.rolled = world.diceLog();
     out.unused = unused;

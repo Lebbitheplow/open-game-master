@@ -29,6 +29,7 @@ import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
+import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
 import { publishWithSeq } from "@/lib/events";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 
@@ -39,7 +40,32 @@ export type RollLanding = {
   source: "digital" | "physical";
 };
 
+// A roll that held its whole call (src/lib/dm/held-call.ts): the call runs
+// again with the roll in hand, under the turn it was made on, and records the
+// roll itself as its first run would have.
+function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): StoredRoll | null {
+  if (!claimHeldPending(pending.id, landing.status)) {
+    return null;
+  }
+  const parkedOn = getDmTurn(pending.turnId);
+  const record = parkedOn?.actor === "human_dm" ? startPersonsRecord(campaign, parkedOn) : null;
+  const { roll } = runInTurnScope(pending.turnId, () => {
+    const holder = turnHolder(campaign.id);
+    const ran = runHeldAgain(campaign, pending, outcome, landing);
+    settleTurn(campaign, holder);
+    return ran;
+  });
+  const after = record ? getDmTurn(pending.turnId) : null;
+  if (record && after) {
+    postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
+  }
+  return roll;
+}
+
 function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): StoredRoll | null {
+  if (pending.carry?.call) {
+    return landHeld(campaign, pending, thrown, landing);
+  }
   const campaignId = campaign.id;
   // A parked to-hit roll takes a held Bardic Inspiration die the way the
   // digital one does: only on a miss it turns into a hit (forced-save.ts).

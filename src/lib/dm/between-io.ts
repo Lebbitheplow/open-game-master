@@ -11,7 +11,8 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { Affliction, DowntimeProgress, Lifestyle } from "@/lib/dm/between-state";
@@ -114,8 +115,9 @@ export function characterSave(
     return { success: false, total: 0, failBy: input.dc, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, input.dc) : thrown;
+  // The player's own save (src/lib/dm/character-roll.ts; WAVE1 R5): on
+  // physical dice they roll it.
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail, dc: input.dc, settleHeldDie: waits });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

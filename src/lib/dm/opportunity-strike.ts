@@ -24,7 +24,8 @@ import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
+import { d20Expression, type Advantage } from "@/lib/dice";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -168,8 +169,15 @@ export function pcOpportunitySwing(input: {
   const targetAc = enemyAcWithEffects(campaign.id, enemy);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
-  const hitOutcome = rollExpression(`${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`, undefined, {
-    purpose: { roller: "hero", kind: "attack", who: sheet.name },
+  // The character's own attack roll (src/lib/dm/character-roll.ts): on
+  // physical dice their player rolls it, and a miss waits on what they hold,
+  // as a pc_attack's does.
+  const hitOutcome = rollCharacterD20(campaign, sheet, {
+    kind: "attack",
+    expression: `${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`,
+    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    advantage,
+    attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
   });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
@@ -219,16 +227,17 @@ export function pcOpportunitySwing(input: {
   }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
-  const damageOutcome = rollExpression(
-    crit
+  const damageOutcome = rollCharacterD20(campaign, sheet, {
+    kind: "damage",
+    tag: { roller: "hero", kind: "damage", who: sheet.name },
+    expression: crit
       ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
           powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : profile.damageExpression,
-    undefined,
-    { purpose: { roller: "hero", kind: "damage", who: sheet.name } },
-  );
+    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+  });
   const dealt = Math.max(0, damageOutcome.total);
   return withOpportunityTurn(campaign.id, (turn) => {
     const damageRoll = insertRoll({

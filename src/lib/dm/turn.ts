@@ -78,7 +78,7 @@ import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardRe
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { parkForWatch, runWithForetold } from "@/lib/dm/foresight";
+import { holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
@@ -136,6 +136,8 @@ import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
+import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
+import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
@@ -1171,6 +1173,17 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // parked with the parts that needed no roll, takes each roll in the
   // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
+    // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
+    // again when it landed, and this is what it answered. One that parked
+    // again answers through the roll it parked on.
+    const heldCall = pending.carry?.call;
+    if (heldCall) {
+      const answered = turn.conversation.some((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId);
+      if (pending.carry?.answer && pending.toolCallId && !answered) {
+        turn.conversation.push({ role: "tool", tool_call_id: pending.toolCallId, content: pending.carry.answer });
+      }
+      continue;
+    }
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     // A turn that parks more than once (a stop before a later roll) comes back
     // here with the rolls of its last resume, already answered.
@@ -1318,6 +1331,10 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     let portent: string | null = null;
     let chronalShift: string | null = null;
     try {
+      // The stopped call does not stop again for the roll it stopped for.
+      if (at === 0) {
+        markWatchAnswered(campaignId, toolCall.tape ?? []);
+      }
       const ran = await runWithShift(campaignId, shift, () => runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
       outcome = ran.result.result;
       portent = ran.result.portent;
@@ -1325,8 +1342,19 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     } catch (error) {
       console.error(`[dm-turn] a held ${toolCall.name} threw:`, error);
       outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };
+    } finally {
+      // Taken by the call's own held run; a call refused before it ran
+      // leaves it to no other.
+      clearWatchAnswered(campaignId);
     }
     const happened = settleTurn(campaign, holder);
+    // A later call stopped for a watcher at its own first d20: the rest wait
+    // behind that stop.
+    if (typeof outcome[WATCH_HELD] === "string") {
+      holdBehindStop(outcome[WATCH_HELD] as string, stop.calls.slice(at + 1));
+      waiting = true;
+      break;
+    }
     // A fight this held call opened has initiative cards out: its answer is
     // written below, and the turn waits on the cards (resolveModelCall).
     if (CARDS_OUT.has(outcome)) {
@@ -2679,6 +2707,23 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       if (CARDS_OUT.has(outcome)) {
         parkedAny = true;
       }
+      // The call stopped for a watcher at its first d20 (held-call.ts): the
+      // calls after it wait behind the stop, as a stop made before the call
+      // holds them above.
+      if (typeof outcome[WATCH_HELD] === "string") {
+        const behind = later.slice(1);
+        const held = behind.filter((call) => offersTool(catalogue, call.name) && ranAbove(call, inputInFight, false) === null);
+        holdBehindStop(outcome[WATCH_HELD] as string, held);
+        for (const call of behind) {
+          if (!held.includes(call)) {
+            const answer = ranAbove(call, inputInFight, false) ?? { error: `The engine has no action called "${call.name}".`, retry: true };
+            turn.conversation.push({ role: "tool", ...(call.id ? { tool_call_id: call.id } : {}), content: JSON.stringify(answer) });
+          }
+        }
+        parkedAny = true;
+        ranCalls = at;
+        break;
+      }
       if (outcome[PARKED]) {
         parkedAny = true;
         // The parts of a pc_attack that needed no roll are answered now;
@@ -2920,18 +2965,21 @@ async function resolveModelCall(
     // what it buys in one call, given back if the engine refuses the rest.
     // Fling and Swallow have no other call to make them (issue 685).
     const fightBefore = getActiveEncounter(campaign.id)?.id ?? null;
+    // Held so a roll inside it may wait on its player (src/lib/dm/held-call.ts).
     const result =
       name === "legendary_action" && playsWhole(gated.args)
-        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
-        : applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
-            realDiceUserIds,
-            toolCallId: toolCall.id ?? null,
-          }).result;
+        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null })
+        : runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
+            applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
+              realDiceUserIds,
+              toolCallId: toolCall.id ?? null,
+            }).result,
+          );
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    if (result[PC_ATTACK_PARKED]) {
-      return { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
+    if (result[PC_ATTACK_PARKED] || isHeldPark(result)) {
+      return { [PARKED]: true, ...heldStop(result), ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
     }
     // A fight this call opened asks the seats the server does not roll for
     // with their initiative cards now, as a fight a person opens does
@@ -2983,13 +3031,19 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
+    // A deed out of a fight by a character who cannot act (deed-guard.ts),
+    // as dispatchAdjudication holds the console's path.
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
+    }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result;
+      runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);
     if (!("error" in result)) {
       turn.mutationCount += 1;
     }
-    return result;
+    return isHeldPark(result) ? { [PARKED]: true, ...heldStop(result) } : result;
   }
   // One request_roll for both callers (src/lib/dm/invoke-roll.ts); the
   // model's parks remember the call they answer. Held to the gate here, as
@@ -2999,9 +3053,19 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
-    const result = handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, {
-      toolCallId: toolCall.id ?? null,
-    });
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
+    }
+    // Held, so a watcher's stop before its d20 holds it like any call.
+    const result = runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
+      handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, {
+        toolCallId: toolCall.id ?? null,
+      }),
+    );
+    if (isHeldPark(result)) {
+      return { [PARKED]: true, ...heldStop(result) };
+    }
     if (result.parked) {
       return { [PARKED]: true };
     }
@@ -3009,7 +3073,16 @@ async function resolveModelCall(
       ? { ...result, note: ROLL_RESULT_NOTE }
       : result;
   }
-  return dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds });
+  const result = await dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null });
+  return isHeldPark(result) ? { [PARKED]: true, ...heldStop(result) } : result;
+}
+
+// A held call that stopped for a player watching for Portent (held-call.ts):
+// the stop's card, so the loop holds the calls after it behind it.
+const WATCH_HELD = "__watchHeld";
+function heldStop(result: ToolResult): Record<string, string> {
+  const stop = watchStopOf(result);
+  return stop ? { [WATCH_HELD]: stop } : {};
 }
 
 // Every tool the turn has called so far, from its conversation.

@@ -14,6 +14,7 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import {
   downConditions,
   stableTimer,
@@ -346,9 +347,18 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     return null;
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
-  // A held die is added only to a death save it turns into a success.
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown;
+  // The player's own death save (src/lib/dm/character-roll.ts): on physical
+  // dice they roll it, and one thrown for them waits on what they hold
+  // (Lucky, Bardic Inspiration: WAVE1 R4) before it counts.
+  const outcome = rollCharacterD20(campaign, sheet, {
+    kind: "saving_throw",
+    tag: { roller: "hero", kind: "death_save", who: sheet.name },
+    expression: resolved.expression,
+    detail: "death save",
+    dc: 10,
+    // A held die is added only to a death save it turns into a success.
+    settle: (thrown) => (waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown),
+  });
   // What the save spent (an inspiration die, a luck point) is gone from the
   // stored sheet. The writes below start from it: from the copy read before
   // the spend, a natural 20 or a third success wrote the spent carrier back

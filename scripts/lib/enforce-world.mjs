@@ -317,6 +317,10 @@ export async function openWorld(options = {}) {
     if (!started.ok) {
       throw new Error(`start_encounter refused: ${started.error}`);
     }
+    // A hero holding Lucky or a Bardic die has an initiative card waiting on
+    // what they do with the dice (WAVE1 R4, src/lib/dm/after-roll-logic.ts):
+    // the kit keeps them as they lie, as a player who lets the roll stand.
+    await keepThrownRolls();
     // Anyone the opening did not roll for (a held roll) is asked by hand.
     const placed = new Set(
       (encounters.getActiveEncounter(campaignId)?.order ?? []).map((entry) => entry.characterId),
@@ -332,9 +336,20 @@ export async function openWorld(options = {}) {
       if (!rolled.ok) {
         throw new Error(`initiative refused for ${sheet.name}: ${rolled.error}`);
       }
+      await keepThrownRolls();
     }
     diceLog();
     return encounters.getActiveEncounter(campaignId);
+  }
+
+  // Lands every roll whose dice are thrown and wait on their player's
+  // choice, the dice kept as they lie.
+  async function keepThrownRolls() {
+    const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
+    const { landPendingRoll } = await import("../../src/lib/dm/pending-roll-land.ts");
+    for (const pending of listOpenPendingRolls(campaignId).filter((entry) => entry.thrown)) {
+      landPendingRoll(campaign(), pending, pending.thrown.outcome, pending.thrown.landing);
+    }
   }
 
   return {
