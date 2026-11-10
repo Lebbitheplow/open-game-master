@@ -84,7 +84,11 @@ await test("a compact call offers the core for the moment, and more_tools names 
   assert.ok(closed.includes("world") && closed.includes("shop") && !closed.includes("outside"));
   const more = profiles.moreToolsTool(closed);
   assert.deepEqual(more.function.parameters.properties.group.enum, closed);
-  assert.match(more.function.description, /world \(treasure hoards/);
+  // What each group holds rides in the group argument, which no reader
+  // caps: the function's own description stays within OpenAI's 1,024
+  // characters (gap sweep 2026-11-09).
+  assert.match(more.function.parameters.properties.group.description, /world \(treasure hoards/);
+  assert.ok(profiles.moreToolsTool(Object.keys(profiles.TOOL_GROUPS)).function.description.length <= 1_024);
 });
 
 await test("the table's state and the players' words open groups without being asked", () => {
@@ -408,11 +412,19 @@ await test("the English words that open a group are read at an English table onl
 // With it, what the call's tool list took: an empty table at 16K carries
 // the compact set when it fits and the essentials when the rules have grown
 // past it, and a test that needs room the tools give back reads which.
+// Measured at the narration floor, where the first call carries the whole
+// compact set (src/lib/story-window.ts): at 16K it once had 7 tokens spare
+// for this lone level 1 fighter, and any argument added to a core tool
+// dropped the first call to the essentials (gap sweep 2026-11-09).
 async function firstCall(line) {
   const campaign = table(line);
   script = [{ content: "Quiet fields." }];
   requests.length = 0;
+  const before = process.env.OPENAI_COMPAT_CONTEXT;
+  const floors = await import("../src/lib/story-window.ts");
+  process.env.OPENAI_COMPAT_CONTEXT = String(floors.windowFlag(floors.MIN_NARRATION_WINDOW));
   await playTurn(campaign.id);
+  process.env.OPENAI_COMPAT_CONTEXT = before;
   const first = requests.find((body) => Array.isArray(body.tools));
   return { need: requestTokens(first.messages, first.tools), tools: requestTokens([], first.tools) };
 }

@@ -32,8 +32,21 @@ import { baseOpportunityId, GUARDED_TOOLS } from "@/lib/agents/webhook-guard-log
 import { isWebhookTool, WEBHOOK_GUARD_PROPS, webhookToolCall, webhookTools } from "@/lib/agents/webhook-tools";
 import { ASK_SCOPES, ASK_VISIBILITIES, QUESTION_MAX_CHARS } from "@/lib/dm/ask-logic";
 import { APPROACH_CHOICES, SECRET_KINDS, SECRET_SKILLS } from "@/lib/dm/pact-logic";
+import { DICE_KINDS, DICE_ROLLERS } from "@/lib/dice-script-logic";
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+// An object argument declares the fields its route's zod schema reads, so a
+// connecting agent is told them and a client that converts MCP tools for a
+// strict reader keeps the tool. A whole sheet (odm_create_character,
+// odm_update_character) and odm_dm_invoke's args stay open, with
+// additionalProperties: true said outright: the route's own schema is their
+// contract (maintainer decision R13, /tmp/odm-gapstudy/WAVE1.md:
+// "modelio-workbench-open-objects: declare the fields of the small ones
+// (speaker, queue entries, asiChoices, party); sheet and args stay open
+// objects with additionalProperties true").
+const ABILITY_IDS = ["str", "dex", "con", "int", "wis", "cha"];
+const OPEN_OBJECT = { type: "object", additionalProperties: true } as const;
 
 type Args = Record<string, unknown>;
 
@@ -390,10 +403,19 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
         type: "array",
         maxItems: 7,
         description: 'Up to choices.asiChoices.count: { mode: "plus2", ability }, { mode: "plus1x2", abilities: [a, b] } or { mode: "feat", feat, ability? }. Abilities are str, dex, con, int, wis, cha.',
-        items: { type: "object" },
+        items: {
+          type: "object",
+          properties: {
+            mode: { type: "string", enum: ["plus2", "plus1x2", "feat"] },
+            ability: { type: "string", enum: ABILITY_IDS },
+            abilities: { type: "array", items: { type: "string", enum: ABILITY_IDS }, minItems: 2, maxItems: 2 },
+            feat: { type: "string", maxLength: 80 },
+          },
+          required: ["mode"],
+        },
       },
       featChoices: {
-        type: "object",
+        ...OPEN_OBJECT,
         description: "The picks a feat taken now or a subclass's training leaves open, keyed by its name: { languages, skills, expertise, weapons, tools, armor, cantrips, spells, damageType } as the refusal or choices.training names them.",
       },
       subclass: { type: "string", description: "One of choices.subclass.options." },
@@ -426,7 +448,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     name: "odm_create_character",
     scope: "characters",
     description: "Add a character to your library. Pass level, role ('pc' or 'companion') and a full sheet in the same shape odm_get_character returns.",
-    properties: { level: { type: "integer", minimum: 1, maximum: 20 }, role: { type: "string" }, sheet: { type: "object" } },
+    properties: { level: { type: "integer", minimum: 1, maximum: 20 }, role: { type: "string" }, sheet: OPEN_OBJECT },
     required: ["level", "sheet"],
     open: true,
     method: "POST",
@@ -437,7 +459,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     name: "odm_update_character",
     scope: "characters",
     description: "Replace one of your library characters' sheet (level and sheet, same shape as odm_get_character).",
-    properties: { characterId: { type: "string" }, level: { type: "integer" }, sheet: { type: "object" } },
+    properties: { characterId: { type: "string" }, level: { type: "integer" }, sheet: OPEN_OBJECT },
     required: ["characterId", "level", "sheet"],
     method: "PATCH",
     path: (a) => `/api/characters/${seg(a.characterId)}`,
@@ -575,7 +597,15 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     properties: {
       workshopId: { type: "string" },
       templateId: { type: "string" },
-      party: { type: "object" },
+      party: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["stand-ins", "characters"] },
+          characterIds: { type: "array", items: { type: "string" } },
+          allyIds: { type: "array", items: { type: "string" } },
+        },
+        required: ["kind"],
+      },
       runner: { type: "string", enum: ["ai", "person"] },
     },
     required: ["workshopId", "templateId"],
@@ -613,12 +643,31 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
   {
     name: "odm_set_dice_script",
     scope: "campaigns",
-    description: "Script the server's dice at a test table you opened: seed (an integer, or null for random) makes every unforced die repeat run to run; queue is a list of forced faces, each {roller: 'enemy'|'hero'|'any', kind: 'attack'|'damage'|'save'|'death_save'|'initiative'|'check'|'any', face, who?}, spent by the first roll that fits ('the next enemy attack's d20 is 20'). Refused at any table that is not a test table.",
-    properties: { ...campaignIdProp, seed: { type: ["integer", "null"] }, queue: { type: "array", items: { type: "object" } } },
-    required: ["campaignId", "seed", "queue"],
+    description: "Script the server's dice at a test table you opened: seed (an integer; omit it for random) makes every unforced die repeat run to run; queue is a list of forced faces, each {roller: 'enemy'|'hero'|'any', kind: 'attack'|'damage'|'save'|'death_save'|'initiative'|'check'|'any', face, who?}, spent by the first roll that fits ('the next enemy attack's d20 is 20'). Refused at any table that is not a test table.",
+    // seed is one type: a list type (["integer", "null"]) is a union the
+    // Gemini-style readers and the chat templates do not take. Left out, it
+    // is sent as the null the route reads as random.
+    properties: {
+      ...campaignIdProp,
+      seed: { type: "integer", minimum: 0 },
+      queue: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            roller: { type: "string", enum: [...DICE_ROLLERS] },
+            kind: { type: "string", enum: [...DICE_KINDS] },
+            face: { type: "integer", minimum: 1, maximum: 100 },
+            who: { type: "string", maxLength: 80 },
+          },
+          required: ["roller", "kind", "face"],
+        },
+      },
+    },
+    required: ["campaignId", "queue"],
     method: "PUT",
     path: (a) => `/api/campaigns/${seg(a.campaignId)}/dice-script`,
-    body: (a) => pick(a, ["seed", "queue"]),
+    body: (a) => ({ seed: a.seed ?? null, queue: a.queue }),
   },
   {
     name: "odm_turn_trace",
@@ -662,7 +711,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     name: "odm_dm_invoke",
     scope: "dm",
     description: "Take one rules-engine action as the Game Master (damage, conditions, encounters, rolls...). It runs on the AI storyteller's rails, not the console's: the same refusals and per-turn limits, until odm_dm_narrate ends your turn.",
-    properties: { ...campaignIdProp, name: { type: "string" }, args: { type: "object" } },
+    properties: { ...campaignIdProp, name: { type: "string" }, args: OPEN_OBJECT },
     required: ["campaignId", "name"],
     method: "POST",
     path: (a) => `/api/campaigns/${seg(a.campaignId)}/dm/invoke`,
@@ -672,7 +721,15 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     name: "odm_dm_narrate",
     scope: "dm",
     description: "Post narration to the table as the Game Master. It ends your turn; prose that contradicts what the engine resolved is refused with what to fix.",
-    properties: { ...campaignIdProp, content: { type: "string", maxLength: 8000 }, speaker: { type: "object" } },
+    properties: {
+      ...campaignIdProp,
+      content: { type: "string", maxLength: 8000 },
+      speaker: {
+        type: "object",
+        properties: { kind: { type: "string", enum: ["npc", "monster"] }, id: { type: "string", maxLength: 64 }, name: { type: "string", maxLength: 80 } },
+        required: ["kind"],
+      },
+    },
     required: ["campaignId", "content"],
     method: "POST",
     path: (a) => `/api/campaigns/${seg(a.campaignId)}/dm/narrate`,

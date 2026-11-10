@@ -78,6 +78,19 @@ test("a compact description is a whole sentence", () => {
   assert.deepEqual(cut.map((entry) => `${entry.path}: ${entry.cut}`), [], "descriptions the compact profile cuts mid-sentence");
 });
 
+// OpenAI's Chat Completions refuses a function description past 1,024
+// characters ("string too long. Expected a string with maximum length
+// 1024"), and the hosts that copy its validation do too. more_tools joined
+// every closed group's summary into its own and ran to 1,609 with every
+// group closed (gap sweep 2026-11-09).
+test("every function description, full and compact, more_tools with every group closed, is within 1,024 characters", () => {
+  const over = [...byName.values()]
+    .flatMap((tool) => [tool, compactTool(tool)])
+    .filter((tool) => (tool.function.description ?? "").length > 1_024)
+    .map((tool) => `${tool.function.name}: ${tool.function.description.length}`);
+  assert.deepEqual(over, []);
+});
+
 test("a compact description is a sentence the cut did not break", () => {
   const broken = [];
   for (const entry of all) {

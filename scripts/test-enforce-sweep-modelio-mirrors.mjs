@@ -97,24 +97,9 @@ const WATCH_NOTES = {
 
 // ---- A. the essentials step -------------------------------------------------
 
-const UNREACHABLE = {
-  rule: "src/lib/dm/tool-profiles.ts: 'Nothing is taken off the table ... keeps every other action one call away: more_tools names the groups, and opening one offers its tools from the next reply on.' At the profile's last step down (the essentials and more_tools) every tool is offered or in a group more_tools names.",
-  where: "src/lib/dm/tool-profiles.ts TOOL_GROUPS (the always-on and fight cores sit in no group) and src/lib/dm/turn.ts compactToolsThatFit (the last variant offers ESSENTIAL_TOOLS, ESSENTIAL_COMBAT_TOOLS and the group opened last)",
-  severity: "medium",
-};
-// The tools neither offered at the essentials step nor in any group, today.
-const UNREACHABLE_TODAY = {
-  explore: ["recall_story", "complete_beat", "search_lore", "write_campaign_note", "group_check", "check_notice", "set_npc", "heal", "use_item", "use_resource", "set_condition", "clear_condition"],
-  fight: [
-    "recall_story", "complete_beat", "search_lore", "write_campaign_note", "group_check", "check_notice", "set_npc", "heal", "use_item", "use_resource", "set_condition", "clear_condition",
-    "cast_at_player", "move_token", "end_encounter", "add_enemies", "enemy_flees", "aoe_damage", "take_action",
-  ],
-};
-for (const [state, names] of Object.entries(UNREACHABLE_TODAY)) {
-  for (const name of names) {
-    known(`essentials:${state}:${name}`, { ...UNREACHABLE, note: `${name} is in the ${state === "fight" ? "fight's" : "exploring"} compact set, in neither essentials list and in no group: once a call steps down to the essentials (every 16K table but a lone level 1 fighter; every 24K fight measured: see test-enforce-sweep-modelio-schema budget rows) no list the model is shown holds it.` });
-  }
-}
+// Every tool is offered at the essentials step or in a group more_tools
+// names there: the cores are groups of their own since the 2026-11-09 repair
+// (src/lib/dm/tool-profiles.ts TOOL_GROUPS core, fight).
 for (const fight of [false, true]) {
   const state = fight ? "fight" : "explore";
   const names = turnModule.dmTurnTools(campaign, fight, true, false).map((tool) => tool.function.name);
