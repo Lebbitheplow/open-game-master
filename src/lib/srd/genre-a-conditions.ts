@@ -3,6 +3,7 @@
 // registry (src/lib/srd/condition-effects.ts spreads them): each is the record
 // the readers hold for as long as the feature lasts.
 import type { ConditionEffectRow } from "@/lib/srd/condition-effect-types";
+import { DARK_FANTASY_CONDITIONS } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 
 export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "static_shield", match: ["static shield"], summary: "Static Shield: +2 AC until the start of the esper's next turn.", acBonus: 2 },
@@ -24,4 +25,5 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "the_grave_chorus", match: ["the grave chorus"], summary: "The Grave Chorus: for a minute each dirge the dirgesinger casts may strike one additional target." },
   { id: "beyond_the_veil", match: ["beyond the veil"], summary: "Beyond the Veil: for a minute they see invisible creatures and into the Ethereal Plane, and strike what stands there.", seesInvisible: true },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },
+  ...DARK_FANTASY_CONDITIONS,
 ];

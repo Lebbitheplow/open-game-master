@@ -47,6 +47,7 @@ import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
+import { playDarkFantasy } from "@/lib/dm/genre-a-dark-fantasy-spends";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -547,6 +548,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    case "dark_fantasy":
+      return playDarkFantasy(ctx, does.play);
   }
 }
 

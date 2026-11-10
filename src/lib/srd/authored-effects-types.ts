@@ -4,6 +4,7 @@
 
 import type { CheckAbout, SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { ItemTag } from "@/lib/schemas/item-tags";
+import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -509,7 +510,10 @@ export type SpendDoes =
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A dark fantasy class's spend whose text no shape above holds
+  // (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+  | { kind: "dark_fantasy"; play: DarkFantasyPlay };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

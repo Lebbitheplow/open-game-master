@@ -1,0 +1,30 @@
+// The conditions the dark fantasy classes' spends lay, as rows of the condition
+// effects registry (src/lib/srd/genre-a-conditions.ts spreads them): each is the
+// record the readers hold for as long as the feature lasts.
+import type { ConditionEffectRow } from "@/lib/srd/condition-effect-types";
+
+// Twin Brand (11th): "Maintain two Hunter's Brands at once; brand damage rises
+// to +1d8". The first brand is written "hunter's brand (1d8)", the second
+// "second brand (1d8)", each naming its creature in its meta (quarry), so a hit
+// on either creature carries its own die (src/lib/dm/attack-marks.ts).
+export const BRAND = "hunter's brand";
+export const BRAND_TWIN = "hunter's brand (1d8)";
+export const SECOND_BRAND = "second brand (1d8)";
+export const BRAND_CONDITIONS = [BRAND, BRAND_TWIN, SECOND_BRAND];
+
+export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
+  {
+    id: "hunters_brand_twin",
+    match: [BRAND_TWIN],
+    summary: "Hunter's Brand (Twin Brand): +1d8 radiant on attacks against the branded creature, until it dies or the hunter rests.",
+    onHitDice: { dice: "1d8", type: "radiant" },
+    marksTarget: true,
+  },
+  {
+    id: "second_brand",
+    match: ["second brand"],
+    summary: "Second brand (Twin Brand): +1d8 radiant on attacks against the second branded creature, until it dies or the hunter rests.",
+    onHitDice: { dice: "1d8", type: "radiant" },
+    marksTarget: true,
+  },
+];

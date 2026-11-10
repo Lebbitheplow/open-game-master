@@ -1,5 +1,6 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { recordTrigger } from "@/lib/dm/last-save";
+import { darkFantasyOnDeath } from "@/lib/dm/genre-a-dark-fantasy-deaths";
 import { currentActor } from "@/lib/dm/acting-party";
 import { disarmFightEvents } from "@/lib/db/fight-events";
 import { endFightEffects } from "@/lib/db/active-effects";
@@ -595,6 +596,10 @@ export function applyEnemyDamage(
     // A death is a trigger for the reactions that answer one: kept with who
     // dealt the blow (src/lib/dm/last-save.ts, src/lib/srd/trigger-table.ts).
     recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null });
+    const darkFantasy = darkFantasyOnDeath(campaign, enemy.id);
+    if (darkFantasy.length) {
+      base.markEnded = darkFantasy;
+    }
     const corpse = freeFromCorpse(campaign, updated);
     if (corpse) {
       base.swallowedFreed = corpse;

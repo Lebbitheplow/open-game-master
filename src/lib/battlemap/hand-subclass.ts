@@ -30,6 +30,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
+import { DARK_FANTASY_AIM } from "@/lib/srd/genre-a-dark-fantasy-plays";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -54,6 +55,7 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  if (does.kind === "dark_fantasy") return DARK_FANTASY_AIM[does.play];
   return "none";
 }
 

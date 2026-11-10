@@ -45,11 +45,9 @@
      "k": "mark_ends",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Hunter's Brand#3",
-    "observed": "the mark is still held after the marked creature died",
-    "where": "src/lib/srd/authored-conditions.ts quarry buff on the holder: not cleared when the marked creature dies",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-deaths.ts darkFantasyOnDeath (called by enemy-damage.ts as the creature is written dead)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Hunter's Brand#3"
    },
    {
     "c": "you can see",
@@ -57,11 +55,9 @@
      "k": "mark_sight",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Hunter's Brand#4",
-    "observed": "Hunter's Brand on an invisible creature the holder cannot see was accepted: the engine gives true, the text false",
-    "where": "the quarry spend in src/lib/dm/resource-tools.ts computeUseResource: the target's visibility is not checked",
-    "sev": "medium"
+    "is": "held",
+    "by": "the brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the quarry buff with sight)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Hunter's Brand#4"
    }
   ]
  },
@@ -270,11 +266,9 @@
      "k": "two_marks",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Twin Brand#0",
-    "observed": "both marked creatures take the rider (damage rolls 1d8+4 and 1d8+4+1d6)",
-    "where": "src/lib/dm/resource-tools.ts (the quarry buff keeps one creature): a second mark replaces the first",
-    "sev": "medium"
+    "is": "held",
+    "by": "the brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a second brand while the first holds another living creature)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Twin Brand#0"
    },
    {
     "c": "brand damage rises to +1d8",
@@ -284,11 +278,9 @@
      "dice": 1,
      "sides": 8
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Twin Brand#1",
-    "observed": "d8s in the damage roll 1d8+4+1d6: the engine gives 1, the text 2",
-    "where": "src/lib/srd/authored-effects-genre.ts (the quarry buff) and its rider in src/lib/srd/authored-conditions.ts: no upgrade for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Twin Brand rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts (1d8 radiant on each brand)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Twin Brand#1"
    }
   ]
  },
