@@ -17,6 +17,7 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { enemyTurnEntry, spentOnSentence, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
 
@@ -284,8 +285,7 @@ const CANNOT_MOVE = ["paralyzed", "stunned", "unconscious", "petrified"];
 const UNAWARE = ["unconscious", "petrified"];
 
 function enemyMoveOrIntent(enemy: ActingEnemy, encounter: ActingEncounter | null, kind: "move" | "intent"): CanActResult {
-  const lowered = enemy.conditions.map((entry) => entry.toLowerCase());
-  const stoppedBy = (kind === "move" ? CANNOT_MOVE : UNAWARE).find((name) => lowered.includes(name));
+  const stoppedBy = (kind === "move" ? CANNOT_MOVE : UNAWARE).find((name) => enemy.conditions.some((entry) => isConditionNamed(entry, name)));
   if (stoppedBy) {
     return refuse(
       "incapacitated",

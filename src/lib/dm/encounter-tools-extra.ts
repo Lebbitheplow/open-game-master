@@ -139,7 +139,7 @@ function handleEnemyFlees(
     return { error: `${walks.error} It cannot flee.`, refused: "rules" };
   }
   if (enemySpeedTiles(enemy) === 0) {
-    const held = enemy.conditions.find((entry) => ["grappled", "restrained"].includes(entry.toLowerCase()));
+    const held = enemy.conditions.find((entry) => isConditionNamed(entry, "grappled", "restrained"));
     return {
       error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts.`,
       refused: "rules",
