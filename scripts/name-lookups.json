@@ -11,7 +11,7 @@
   "sites": {
     "lib/dm/arg-coerce.ts#first": [["identity", 1, "the one sheet a whole name names; a name two sheets share names neither"]],
     "lib/dm/arg-coerce.ts#whole": [["identity", 1, "a character ref by its sheet id; a name by textKey on both sides; a miss is refused with the party listed"]],
-    "lib/dm/arg-coerce.ts#keyed": [["key", 2, "tool-argument field names and the tool's published field kinds"]],
+    "lib/dm/arg-coerce.ts#keyed": [["key", 3, "tool-argument field names and the tool's published field kinds"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],
     "lib/battlemap/hand-attack-lines.ts#partial": [["key", 1, "the once-per-turn rider keys the engine marks (pc-attack-damage.ts claimOncePerTurnRiders)"]],
@@ -1184,7 +1184,7 @@
     "lib/dm/area-casting.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/area-casting.ts#whole": [["identity",2,"a zone by caster and whole spell name; struck turns by key"],["key",1,"zone strike keys"]],
     "lib/dm/area-casting.ts#whole-single": [["identity",1,"concentration, spells, downtime subjects, relationships, trade lines and zones by textKey (zoneKey is textKey plus ODM's English spell aliases) or normalizeName; turn and order keys"]],
-    "lib/dm/arg-coerce.ts#partial": [["key", 2, "an ability id or its English name's first letters (the tool's enum)"], ["key", 2, "tool-argument field names (the character refs the door reads)"]],
+    "lib/dm/arg-coerce.ts#partial": [["key", 2, "an ability id or its English name's first letters (the tool's enum)"], ["key", 3, "tool-argument field names (the character refs the door reads)"], ["parse", 1, "a text sent for a list cut at its line breaks (or commas, for a list of characters) into the list its handler read before the door"]],
     "lib/dm/ask-logic.ts#partial": [["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",2,"transcript passages holding the asked words"]],
     "lib/dm/ask.ts#helper": [["search",1,"lexical scoring of retrieved passages"]],
     "lib/dm/assist-logic.ts#partial": [["search",4,"the assist's passages and vectors by section and row name"],["pattern",6,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
