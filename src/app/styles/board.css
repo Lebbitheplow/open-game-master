@@ -203,16 +203,14 @@ html[data-effects="low"] .board-view:focus > .board-keys-strip { animation-name:
    down along the bottom edge, and End turn steps up out of its way. */
 .board-corner { position: absolute; inset: 0; z-index: 10; pointer-events: none; container: board-corner / size; }
 .board-corner > * { pointer-events: auto; }
-/* The column of five stands 150px and the turn HUD takes the corner above
-   it down to 90px, so the column needs a board of 16rem to clear it. */
-@container board-corner (max-height: 16rem) {
+@container board-corner (max-height: 11.5rem) {
   .board-cam { flex-direction: row-reverse; }
   .board-cam .board-keys-card { right: 0; bottom: calc(100% + 0.4rem); max-width: 27rem; padding: 0.4rem 0.6rem; }
   .board-cam .board-keys-card dl { grid-template-columns: auto auto; column-gap: 0.9rem; }
   .board-cam .board-keys-card > p:first-child { display: none; }
   .board-endturn { right: 0.5rem; bottom: 2.6rem; }
 }
-@container board-corner (max-height: 21rem) {
+@container board-corner (max-height: 17rem) {
   .board-cam.board-cam-long { flex-direction: row-reverse; }
   .board-cam.board-cam-long .board-keys-card { right: 0; bottom: calc(100% + 0.4rem); max-width: 27rem; padding: 0.4rem 0.6rem; }
   .board-cam.board-cam-long .board-keys-card dl { grid-template-columns: auto auto; column-gap: 0.9rem; }

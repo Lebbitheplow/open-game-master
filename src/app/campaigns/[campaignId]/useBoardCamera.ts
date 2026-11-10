@@ -39,11 +39,15 @@ const CLEAR_GAP = 6;
 // cards counts as off screen. The cards lie over the board's lower edge by
 // design, so the foot is what they cover less FOOT_LAP of overlap, and never
 // more than FOOT_SHARE of the frame (past that the board would be a strip
-// along the top; the Hand folds away when asked).
+// along the top; the Hand folds away when asked). The resting view gives up
+// less still, REST_SHARE of the frame: a whole board shrunk to fit above the
+// cards was a small picture in a wide dark frame, so its last rows lie under
+// the cards' top edge instead, and the turn that walks there is followed.
 const STAGE_SELECTOR = "[data-fit-stage]";
 const FOOT_SELECTOR = "[data-fit-foot]";
 const FOOT_LAP = 24;
 const FOOT_SHARE = 0.55;
+const REST_SHARE = 0.3;
 
 function footOf(frame: HTMLElement | null): HTMLElement | null {
   return frame?.closest(STAGE_SELECTOR)?.querySelector<HTMLElement>(FOOT_SELECTOR) ?? null;
@@ -176,13 +180,15 @@ export function useBoardCamera(
     }
     const width = frame.clientWidth;
     const whole = frame.clientHeight || (width * boardHeight) / boardWidth;
-    const height = Math.max(whole * (1 - FOOT_SHARE), whole - footToClear(frame));
-    return { width, height, unit: width / (boardWidth * TILE) };
+    const foot = footToClear(frame);
+    const height = Math.max(whole * (1 - FOOT_SHARE), whole - foot);
+    const rest = Math.max(whole * (1 - REST_SHARE), whole - foot);
+    return { width, height, rest, unit: width / (boardWidth * TILE) };
   }, [boardWidth, boardHeight]);
 
   const fit = useCallback((): Camera => {
     const m = metrics();
-    return m ? fitCamera(m, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
+    return m ? fitCamera({ width: m.width, height: m.rest }, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
   }, [metrics, boardWidth, boardHeight]);
   const clampZoom = useCallback((zoom: number) => clampZoomTo(zoom, minZoomFor(fit())), [fit]);
 
