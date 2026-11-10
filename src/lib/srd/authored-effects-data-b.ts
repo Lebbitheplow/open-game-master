@@ -244,9 +244,12 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         does: {
           kind: "variants",
           options: {
+            // "When you deal damage to a target with your Psionic Strike"
+            // (TCoE): it follows the hit, on the creature hit.
             thrust: {
               does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5, onFail: "may instead be pushed 10 feet (move_token forced)" },
               action: "none",
+              afterWeaponHit: true,
             },
             leap: { does: { kind: "buff", condition: "flying", rounds: 1 }, action: "bonus" },
           },

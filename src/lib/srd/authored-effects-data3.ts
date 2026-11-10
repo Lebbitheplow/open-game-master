@@ -326,7 +326,13 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   // (subclasses.json choiceSpells).
   "warlock::Genie's Vessel": {
     subclass: "The Genie",
-    spends: [{ name: "Genie Kind", aliases: ["Patron Kind", "Genie's Kind"], fight: "out", does: { kind: "choose", options: ["Dao", "Djinni", "Efreeti", "Marid"] } }],
+    counter: "sub_genies_vessel",
+    spends: [
+      { name: "Genie Kind", aliases: ["Patron Kind", "Genie's Kind"], fight: "out", does: { kind: "choose", options: ["Dao", "Djinni", "Efreeti", "Marid"] } },
+      // Bottled Respite: "As an action, you can magically vanish and enter
+      // your vessel", for up to twice the proficiency bonus in hours.
+      { name: "Bottled Respite", pool: { id: "sub_genies_vessel" }, action: "action", does: { kind: "buff", condition: "in the genie's vessel", rounds: 2400 } },
+    ],
     effects: GENIE_KINDS.map(([kind, type]) => ({
       kind: "rider" as const,
       dice: "prof",
@@ -343,7 +349,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Elemental Flight",
-        aliases: ["Elemental Gift flight"],
+        // The counter's own name: by id or by name it spent the use and gave
+        // no flight.
+        aliases: ["Elemental Gift flight", "Elemental Gift"],
         pool: { id: "sub_elemental_gift" },
         action: "bonus",
         does: { kind: "buff", condition: "flying", rounds: 100 },
@@ -381,9 +389,12 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Hexblade's Curse",
         pool: { id: "sub_hexblades_curse" },
         action: "bonus",
+        // "curse a creature you can see within 30 feet of you".
         does: {
           kind: "buff",
           quarry: true,
+          sight: true,
+          rangeFt: 30,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -405,9 +416,11 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Master of Hexes",
         action: "none",
+        // "to another creature you can see within 30 feet of it".
         does: {
           kind: "buff",
           quarry: true,
+          sight: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -463,6 +476,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           condition: "charmed",
           rounds: 1,
           rangeFt: 5,
+          // "choose a creature that you can see within 5 feet of you".
+          sight: true,
           onFail: "is also incapacitated with speed 0 until the end of the wizard's next turn; the wizard's action extends it",
         },
       },

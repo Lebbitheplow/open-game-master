@@ -53,7 +53,12 @@ async function stage(first) {
   }
   await kit.fight(1);
   kit.giveTurn(first.id);
-  return world.enemies()[0];
+  // Beside the hero: Hexblade's Curse takes "a creature you can see within
+  // 30 feet of you", and the scattered goblin could stand further off.
+  const [enemy] = world.enemies();
+  kit.place(first.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  return enemy;
 }
 
 // Restore Balance answers "a roll within 60 feet" made with advantage or

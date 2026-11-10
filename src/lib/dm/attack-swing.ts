@@ -137,9 +137,12 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     if (live) {
       claimHitRiders(live.encounter, live.budget, record.hitClaims);
     }
-    // A weapon's hit is kept on the turn, at the creature it hit: it opens
-    // Arcane Jolt, and it is the trigger the features that answer a hit this
-    // turn read (src/lib/dm/reaction-triggers.ts).
+    // A weapon's hit is kept on the turn, at the creature it hit, for every
+    // weapon hit: it opens what rides one this turn (Arcane Jolt, Blade
+    // Flourish, Psionic Strike, Gathered Swarm's push: authored-spends.ts
+    // afterWeaponHit), and it is the trigger the features that answer a hit
+    // this turn read (src/lib/dm/reaction-triggers.ts), so it is not limited
+    // to the holders of a rider.
     if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
     }

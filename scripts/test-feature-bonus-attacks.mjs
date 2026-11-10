@@ -206,7 +206,8 @@ await test("Eldritch Cannon: creating it is an action, activating it a bonus act
   const made = await world.invoke("use_resource", { characterId: artillerist.id, resource: "Eldritch Cannon" });
   assert.equal(made.ok, true, JSON.stringify(made));
   assert.equal(budget().actionUsed, true, JSON.stringify({ made, budget: budget() }));
-  const fired = await world.invoke("use_resource", { characterId: artillerist.id, resource: "Activate Cannon", variant: "flamethrower" });
+  // The flamethrower rolls the creatures it catches in the spend (counter-saves.ts).
+  const fired = await world.invoke("use_resource", { characterId: artillerist.id, resource: "Activate Cannon", variant: "flamethrower", targetEnemyId: world.enemies()[0].id });
   assert.equal(fired.ok, true, fired.error);
   assert.equal(budget().bonusUsed, true);
 });

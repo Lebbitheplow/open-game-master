@@ -127,7 +127,9 @@ await test("A card played as the Hand sends it does what the spend says: a capst
   const played = [];
   for (const build of builds) {
     for (const spend of build.spends) {
-      if (spend.name === "Arcane Jolt") continue;
+      // A spend that rides a weapon hit waits for one (Arcane Jolt, Wails
+      // from the Grave: "after a sneak attack"); its own suite lands the hit.
+      if (spend.name === "Arcane Jolt" || spend.afterWeaponHit) continue;
       const enemy = await stage(build.hero);
       // Psionic Recovery brings energy back, and is refused at a full pool.
       if (spend.name === "Psionic Recovery") {
@@ -148,6 +150,12 @@ await test("A card played as the Hand sends it does what the spend says: a capst
       assert.equal(out.ok, true, `${label(build, spend)}: ${out.error}`);
       const pool = world.sheet(build.hero.id).resources[spend.pool.id];
       assert.ok(pool.used > 0, `${label(build, spend)}: nothing spent`);
+      // "as a bonus action you can regain one spent die": the die is back,
+      // not only the recovery's own use spent (it answered "1 die back" and
+      // returned none).
+      if (spend.name === "Psionic Recovery") {
+        assert.equal(world.sheet(build.hero.id).resources.sub_psionic_energy.used, 0, `${label(build, spend)}: no Psionic Energy die came back`);
+      }
       if (capstones.includes(spend.name)) {
         assert.ok(out.state.conditions.includes(spend.does.condition), `${label(build, spend)}: ${JSON.stringify(out.state.conditions)}`);
         played.push(spend.name);

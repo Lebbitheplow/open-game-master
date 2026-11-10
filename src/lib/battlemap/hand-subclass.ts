@@ -27,7 +27,9 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
+import { inFightOf } from "@/lib/battlemap/hand-counters";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -44,7 +46,40 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
   // The creatures of the player's choice: aimed at one, the others added.
   if (does.kind === "save_area" && does.chosen) return "enemy";
+  // The creature the hit landed on (Blade Flourish, Gathered Swarm's push),
+  // and the creatures an area report rolls for (counter-saves.ts): the
+  // engine asks for targetEnemyId, which a card aimed at nothing never sent.
+  if (does.kind === "flourish" || does.kind === "swarm_push" || does.kind === "aoe_report") return "enemy";
+  // A heal only (an Experimental Elixir's healing) goes to the creature fed it.
+  if (does.kind === "flames" && does.healOnly) return "ally";
+  // A slot given back to the creature touched (Bolstering Magic).
+  if (does.kind === "regain_slot") return "ally";
   return "none";
+}
+
+// The kinds the engine resolves only on a creature in a fight.
+const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest"]);
+
+// The option an aim plays, or the spend's own.
+function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
+  return does.kind === "variants" && variant ? (does.options[variant]?.does ?? does) : does;
+}
+
+// A spend aimed at a creature the holder must see (its row's sight flag), which
+// the engine refuses while they are blinded. One that takes the allies it sees
+// (Watcher's Will) leaves the unseen out instead, so it stays open.
+function sightBound(does: SpendDoes): boolean {
+  if (!("sight" in does) || !does.sight) return false;
+  return does.kind === "save_effect" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
+}
+
+// The reach a spend holds its creatures to, printed on the card.
+function reachOf(does: SpendDoes): string {
+  // Options aimed alike share one card, which says the widest reach.
+  const feet = does.kind === "variants"
+    ? Math.max(0, ...Object.values(does.options).map((option) => ("rangeFt" in option.does && typeof option.does.rangeFt === "number" ? option.does.rangeFt : 0))) || null
+    : "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : null;
+  return feet ? `${feet} ft` : "";
 }
 
 function linesOf(does: SpendDoes): { dice: string; condition: string } {
@@ -55,7 +90,8 @@ function linesOf(does: SpendDoes): { dice: string; condition: string } {
       return { dice: typeof does.condition === "string" ? does.condition : does.condition[0]?.[1] ?? "", condition: typeof does.condition === "string" ? does.condition : "" };
     case "save_effect":
     case "save_area":
-      return { dice: `${does.save.toUpperCase()} save`, condition: does.condition ?? "" };
+    case "aoe_report":
+      return { dice: `${does.save.toUpperCase()} save`, condition: "condition" in does ? (does.condition ?? "") : "" };
     case "temp_hp":
       return { dice: "temp hp", condition: "" };
     case "teleport":
@@ -129,7 +165,9 @@ export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: s
 // burns a creature or heals one (Arcane Jolt: "either deal an extra 2d6 force
 // damage to the target, or ... restores a number of hit points equal to 2d6"),
 // one at an enemy and one at an ally, so each posts the target it needs.
-function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Array<{ variant?: string; label?: string; target: HandTarget; dice: string; heals: boolean }> {
+type Aim = { variant?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
+
+function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Aim[] {
   if (does.kind === "flames") {
     const dice = resolveFormula(does.formula, level, mods);
     const heal = { variant: "heal", label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true };
@@ -138,6 +176,15 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
   // Turn the Tide, Balm of Peace: every hurt ally in reach, with no aim.
   if (does.kind === "heal_area") {
     return [{ target: "none", dice: `heals ${resolveFormula(does.formula, level, mods)}`, heals: true }];
+  }
+  // Options aimed differently (Telekinetic Adept's thrust at the creature
+  // hit, its leap at the psi warrior): one card each, so each sends its aim.
+  if (does.kind === "variants") {
+    const options = Object.entries(does.options);
+    const targets = new Set(options.map(([, option]) => targetOf(option.does)));
+    if (targets.size > 1) {
+      return options.map(([variant, option]) => ({ variant, label: pickLabel(variant), target: targetOf(option.does), dice: linesOf(option.does).dice, heals: false, afterWeaponHit: option.afterWeaponHit, action: option.action, reach: reachOf(option.does) }));
+    }
   }
   const lines = linesOf(does);
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
@@ -170,13 +217,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       : null;
   const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods);
   return aims.map((aim) => {
+    const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
     const card: HandCard = {
       id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
       type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),
-      cost,
-      range: aim.target === "self" || aim.target === "none" ? "Self" : "",
+      cost: aimCost,
+      range: aim.reach || reachOf(does) || (aim.target === "self" || aim.target === "none" ? "Self" : ""),
       // A reaction's fire is the whole of it, not a rider's extra damage.
       dice: action === "reaction" ? aim.dice.replace(/^\+/, "") : aim.dice,
       roll: does.kind === "save_effect" || does.kind === "save_area" ? "no attack" : "no roll",
@@ -218,7 +266,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         options: options.map(([value]) => ({ value, label: pickLabel(value) })),
       };
     }
-    if (does.kind === "variants") {
+    if (does.kind === "variants" && aims.length === 1) {
       card.choice = {
         arg: "variant",
         label: "Choose",
@@ -229,10 +277,19 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       card,
       standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
       poolGate,
-      spend.afterWeaponHit && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
+      (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
         : null,
-      cost === "free" ? null : costGate(cost, turn, sheet, spend.name),
+      // Aimed at a creature of the fight (the engine answers "there is no
+      // fight" out of one): shut until a fight is on.
+      inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
+        ? { reason: `${spend.name} is used in a fight, on a creature in it.`, spent: false }
+        : null,
+      // "A creature you can see": none while the holder is blinded.
+      sightBound(aimDoes(does, aim.variant)) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
+        ? { reason: `${spend.name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
+        : null,
+      aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name),
     );
   });
 }

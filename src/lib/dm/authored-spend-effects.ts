@@ -38,12 +38,16 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
+import { resolveCounterSave } from "@/lib/dm/counter-saves";
+import { regainSlot } from "@/lib/dm/authored-spend-counters";
+
+const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
 // A spend's damage on one enemy, as the holder's dice card.
 const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
@@ -217,6 +221,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if ("error" in enemy) {
           return enemy;
         }
+        const live = getActiveEncounter(campaign.id);
+        if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
+          return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
         const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
       } else if (does.target === "allies") {
@@ -262,6 +270,19 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const quarry = does.quarry ? targetEnemy(ctx) : null;
       if (quarry && "error" in quarry) {
         return quarry;
+      }
+      // "A creature you can see within 30 feet" (Hexblade's Curse): read only
+      // for allies before, so an invisible creature or one across the field
+      // was cursed and the use spent.
+      if (quarry) {
+        const live = getActiveEncounter(campaign.id)!;
+        if (does.rangeFt && !withinFeet(live.id, sheet.id, quarry.id, does.rangeFt)) {
+          return { error: `${quarry.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
+        const unseen = does.sight ? unseenBecause(live.id, sheet, quarry) : null;
+        if (unseen) {
+          return { error: `${sheet.name} cannot see ${quarry.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+        }
       }
       let patch: FullPatchSheetInput | undefined;
       // An ally other than the holder has returned above, so "ally" here is the
@@ -392,19 +413,17 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "note":
       return { result: { applied: does.text } };
     case "aoe_report": {
+      // Rolled in the spend on the creatures the call names, half on a save
+      // (src/lib/dm/counter-saves.ts): it handed these numbers back for an
+      // aoe_damage call a person's table never made.
       const extra = Math.max(0, ctx.units - (does.baseUnits ?? 0));
       const dice = addUnits(formula(ctx, does.dice), does.perUnit, extra);
-      return {
-        result: {
-          resolveWith: "aoe_damage",
-          damage: dice,
-          saveAbility: does.save,
-          dc: saveDc(ctx, does.dcAbility),
-          type: does.type,
-          area: does.area,
-          note: `Resolve it with aoe_damage using these numbers; ${ctx.spend.name} is paid for.`,
-        },
-      };
+      // A type the holder picks ("acid, cold, fire, lightning or poison") is
+      // the one the variant names, else the first.
+      const choices = words(does.type ?? "").filter((word) => DAMAGE_WORDS.has(textKey(word)));
+      const type = choices.find((word) => textKey(word) === textKey(ctx.args.variant ?? "")) ?? choices[0] ?? "";
+      const saved = resolveCounterSave(campaign, sheet, { name: ctx.spend.name, save: does.save, dc: saveDc(ctx, does.dcAbility), dice, type, half: true, magical: true }, { turnId: ctx.turnId, targetEnemyId: ctx.args.targetEnemyId, targetEnemyIds: ctx.args.targetEnemyIds });
+      return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };
     }
     case "teleport": {
       creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);
@@ -522,6 +541,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return swarmPush(ctx, does);
     case "summon":
       return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+    // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
+    case "regain_slot":
+      return regainSlot(ctx, does);
   }
 }
 

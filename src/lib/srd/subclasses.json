@@ -2539,7 +2539,7 @@
             },
             {
               "n": "Channel Divinity: Rebuke the Violent",
-              "d": "A reaction deals the same damage back to an attacker who wounded someone near you, halved on a Wisdom save."
+              "d": "A reaction deals the same damage back to an attacker within 30 feet of you who damaged another creature with an attack, halved on a Wisdom save."
             }
           ],
           "7": [

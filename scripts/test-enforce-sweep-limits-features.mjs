@@ -10,21 +10,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, limitsTable } from "./lib/sweep-limits-world.mjs";
 
-const NO_SIGHT = {
-  where: "src/lib/srd/authored-effects-data*.ts (the spend's row carries no `sight`), read by src/lib/dm/authored-spend-effects.ts",
-  severity: "medium",
-  note: "The same qualifier Nature's Wrath and Command Undead already carry (sight: true). An invisible or hidden creature is cursed or charmed by a holder who cannot see it.",
-};
 const KNOWN = {
-  "831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse": {
-    where: "src/lib/srd/authored-effects-data*.ts Hexblade's Curse (buff, quarry: true, no rangeFt), read by src/lib/dm/authored-spend-effects.ts",
-    severity: "medium",
-    note: "Vow of Enmity's row, the same shape, carries its 10 feet and refuses beyond it; this one curses a creature anywhere on the board.",
-  },
-  "831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse": NO_SIGHT,
-  "831-you-can-see:warlock::Master of Hexes/Master of Hexes": NO_SIGHT,
-  "831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze": NO_SIGHT,
-
 };
 const RULING = {
   "831-out-of-a-fight": "pull request #831, Known limits: \"Out of a fight, an area option is paid for and left to the story, as a buff aimed at a creature already is. Nature's Wrath is refused without a fight, like other single-target save_effect rows.\" (pinned by scripts/test-channel-table.mjs \"Out of a fight, an area option is paid for and left to the GM's story.\")",
