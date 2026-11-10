@@ -143,7 +143,7 @@ export function AddonViewSwitch({
   // amber scale turns dark brown and would vanish here.
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="How the board is drawn" data-pill-group="">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-[#8a86a6]">View</span>
+      <span className="text-[10px] uppercase tracking-[0.14em] text-[#8a86a6]">View</span>
       {options.map((option, index) => {
         const on = value === option.key;
         return (

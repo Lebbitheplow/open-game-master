@@ -41,7 +41,7 @@ export type LineageSlide = LineageEntry & {
   info: { text?: string | null; reference?: ContentRef };
 };
 
-const sectionLabel = "mb-1.5 block font-display text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-amber-500/80";
+const sectionLabel = "mb-1.5 block font-display text-[0.875rem] font-semibold uppercase tracking-[0.14em] text-amber-500/80";
 
 function Traits({ slide }: { slide: LineageSlide }) {
   const baseId = useId();

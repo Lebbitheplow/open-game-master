@@ -370,7 +370,7 @@ export default function AbilityEditor({
         {method === "roll" ? (
           <>
             <span className="inline-flex items-center gap-2">
-              <span className="eyebrow text-[0.875rem] tracking-[0.18em] text-amber-500/80">4d6 drop lowest</span>
+              <span className="eyebrow text-[0.875rem] tracking-[0.14em] text-amber-500/80">4d6 drop lowest</span>
               {pool ? (
                 <span className="font-mono text-[0.875rem] text-stone-500" aria-live="polite">
                   {placedCount} / 6 placed

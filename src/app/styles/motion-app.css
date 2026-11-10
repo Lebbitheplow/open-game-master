@@ -210,7 +210,7 @@
   --announce-sub: rgba(255, 248, 230, 0.85);
 }
 .announce[data-tone="act"] .announce-rule { width: 120px; }
-.announce[data-tone="act"] .announce-sub { font-size: 1.05em; letter-spacing: 0.22em; }
+.announce[data-tone="act"] .announce-sub { font-size: 1.05em; letter-spacing: 0.14em; }
 
 .announce-title {
   position: relative;
@@ -264,7 +264,7 @@
 .announce-sub {
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   color: var(--announce-sub);
   animation: sub-in 900ms var(--ease-snap) 300ms both;
 }

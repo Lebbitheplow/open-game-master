@@ -66,7 +66,7 @@ export function AbilitySummary({
                 key={label}
                 scope="col"
                 className={cn(
-                  "px-1 pb-1.5 font-display text-[0.875rem] font-semibold uppercase tracking-[0.12em] text-stone-500 sm:tracking-[0.2em]",
+                  "px-1 pb-1.5 font-display text-[0.875rem] font-semibold uppercase tracking-[0.12em] text-stone-500 sm:tracking-[0.14em]",
                   index === 0 ? "pl-0 text-left" : "text-center",
                 )}
               >

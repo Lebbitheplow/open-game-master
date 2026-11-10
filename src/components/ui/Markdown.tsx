@@ -184,7 +184,7 @@ function inline(
 const STYLE_CLASS: Record<LoreStyle, { root: string; heading: string; body: string }> = {
   plain: { root: "space-y-1.5 text-[12px] leading-5 text-stone-300", heading: "font-display tracking-wide text-amber-50", body: "" },
   parchment: { root: "parchment space-y-2 font-serif text-[13px] leading-6", heading: "font-display tracking-wide", body: "" },
-  notice: { root: "notice space-y-2 text-[13px] leading-6", heading: "font-display uppercase tracking-[0.2em] text-center", body: "text-center" },
+  notice: { root: "notice space-y-2 text-[13px] leading-6", heading: "font-display uppercase tracking-[0.14em] text-center", body: "text-center" },
 };
 
 export function Markdown({

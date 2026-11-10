@@ -1547,7 +1547,7 @@ export function BattleMapPanel({
       <BoardMoveNotes notes={moveNotes.notes} />
       {targeting ? (
         <div className="board-foot-note absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-[rgba(224,112,58,0.5)] bg-[rgba(13,11,28,0.94)] px-3 py-1.5 shadow-elev-2">
-          <span className="whitespace-nowrap font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ffbe8f]">
+          <span className="whitespace-nowrap font-display text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffbe8f]">
             {targeting === "attack" ? "Attack" : "Cast"} · pick a target
           </span>
           <button

@@ -333,7 +333,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   box-shadow: 0 0 14px rgba(212, 171, 58, 0.35), 0 0 40px rgba(212, 171, 58, 0.12), 0 8px 20px rgba(4, 2, 12, 0.6);
   transition: box-shadow var(--dur-move) var(--ease-snap), transform 220ms var(--ease-spring), filter var(--dur-quick) var(--ease-snap);
@@ -422,7 +422,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ts-gold);
 }
@@ -574,7 +574,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ts-ink-dim);
 }
@@ -662,7 +662,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 8.5px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #ecd287;
 }
@@ -762,7 +762,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-amber-400);
 }
@@ -1348,7 +1348,7 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
 .cine-stage .cine-chat .session-dm .section-head-title {
   font-family: var(--font-display);
   font-size: 11px;
-  letter-spacing: 0.32em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--cine-gold);
 }
@@ -1470,7 +1470,7 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 10px;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--cine-gold);
   white-space: nowrap;
@@ -1521,7 +1521,7 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--cine-gold-pale);
 }
@@ -1563,7 +1563,9 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 55% at 52% 42%, rgba(76, 60, 130, 0.4), transparent 70%), radial-gradient(ellipse 90% 90% at 50% 50%, transparent 45%, rgba(5, 3, 12, 0.9) 100%);
+  /* The sky is the table's cloth, not its subject: a wash over the painted
+     stars leaves them a faint field, so the board is the brightest thing. */
+  background: radial-gradient(ellipse 60% 55% at 52% 42%, rgba(76, 60, 130, 0.28), transparent 70%), radial-gradient(ellipse 90% 90% at 50% 50%, transparent 45%, rgba(5, 3, 12, 0.9) 100%), linear-gradient(rgba(8, 6, 18, 0.62), rgba(8, 6, 18, 0.62));
 }
 .cine-tabletop {
   padding: calc(1rem + env(safe-area-inset-top)) 1.25rem calc(1rem + env(safe-area-inset-bottom));
@@ -1710,7 +1712,7 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #e3c15c;
   margin-bottom: 4px;
@@ -2513,7 +2515,7 @@ html[data-effects="low"] .ts-title.ts-reveal { animation-name: ts-rise; }
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 10px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #e3c15c;
 }
@@ -2574,7 +2576,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #f4e0a6;
   cursor: pointer;
@@ -2635,7 +2637,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
 }
 .cine-chronicle-roll[data-crit="nat1"] { border-color: rgba(224, 112, 58, 0.5); background: rgba(224, 112, 58, 0.08); }
 .cine-chronicle-roll[data-crit="nat20"] { border-color: rgba(244, 224, 166, 0.8); background: rgba(212, 171, 58, 0.16); box-shadow: 0 0 14px rgba(212, 171, 58, 0.25); }
-.cine-chronicle-roll-head { font-family: var(--font-display); font-weight: 600; font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #f4e0a6; }
+.cine-chronicle-roll-head { font-family: var(--font-display); font-weight: 600; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #f4e0a6; }
 .cine-chronicle-roll[data-crit="nat1"] .cine-chronicle-roll-head { color: #ff9d5c; }
 .cine-chronicle-roll-math { font-family: var(--font-mono); font-size: 12px; color: #c9c6db; }
 .cine-chronicle-desk { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(212, 171, 58, 0.25); }
@@ -2687,7 +2689,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #e3c15c;
   cursor: pointer;

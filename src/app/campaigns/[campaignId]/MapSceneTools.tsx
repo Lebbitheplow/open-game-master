@@ -259,7 +259,7 @@ export function AmbienceControls({
 }) {
   return (
     <div className="space-y-1.5">
-      <p className="font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">What it sounds like</p>
+      <p className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">What it sounds like</p>
       <Select
         value={value.bed}
         label="Ambient bed"
@@ -321,7 +321,7 @@ export function OverlayControls({
 
   return (
     <div className="space-y-1.5">
-      <p className="flex items-center gap-1.5 font-display text-[9px] uppercase tracking-[0.18em] text-stone-500">
+      <p className="flex items-center gap-1.5 font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
         <ImageIcon className="size-3.5" /> Your own overlay
       </p>
       <div className="flex flex-wrap items-center gap-1.5">

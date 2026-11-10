@@ -835,7 +835,7 @@ function HandInner({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
           key={myTurn ? "mine" : (currentName ?? "other")}
-          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.22em] text-amber-200/90"
+          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90"
         >
           {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
