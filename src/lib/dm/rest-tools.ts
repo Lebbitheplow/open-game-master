@@ -541,9 +541,12 @@ function applySlotRecovery(
       if (!back.regained.length) {
         continue;
       }
+      // A counter that comes back on a short rest (Psi Font's "on a short
+      // rest", every one) is given back by the very rest that spends it.
+      const everyRest = (def.rechargeFor?.(resourceLevel(def, live)) ?? def.recharge) === "short";
       const patch = {
         spellcasting: { ...live.spellcasting, slots: back.slots },
-        resources: { ...live.resources, [id]: { max: state.max, used: state.used + 1 } },
+        resources: { ...live.resources, [id]: { max: state.max, used: everyRest ? state.used : state.used + 1 } },
       };
       auditRest(campaign, turnId, live, "rest_short", patch, reason);
       live = getSheetById(live.id) ?? live;

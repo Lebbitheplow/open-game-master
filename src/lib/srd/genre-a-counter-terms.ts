@@ -68,6 +68,9 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   // spend itself, or the moment the text names.
   cyberpunk_the_net_remembers: { ...BY_REST("The Net Remembers", "once a day, a short rest gives the netrunner back 4 expended spell slot levels."), effect: { kind: "recover_slots", levels: () => 4 } },
   cyberpunk_nanite_reserve: { ...BY_REST("Nanite Reserve", "once a day, a short rest gives the trauma doc back one expended spell slot of 3rd level or lower."), effect: { kind: "recover_slots", levels: () => 3, most: 1, maxLevel: 3 } },
+  // "Regain one 1st-level slot on a short rest": every short rest, so its
+  // one use comes back with the rest that spends it.
+  cyberpunk_psi_font: { ...BY_REST("Psi Font", "each short rest gives the esper back one expended 1st-level spell slot."), effect: { kind: "recover_slots", levels: () => 1, most: 1, maxLevel: 1 } },
   cyberpunk_overmind: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
   dark_fantasy_the_tomb_provides: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
   horror_unfinished_ritual: {
@@ -106,6 +109,7 @@ export const GENRE_A_EXTRA_COUNTERS: CustomResourceRow[] = [
   row("cyberpunk_the_big_favor", "The Big Favor", "fixer", 1, "long", "1/week, a contact performs a genuinely dangerous service for the fixer (the GM says what it costs them)."),
   row("cyberpunk_lazarus_protocol", "Lazarus Protocol", "trauma_doc", 1, "long", "1/week, a creature dead less than 1 minute is restored to life at half its hit points."),
   row("cyberpunk_daemon_cache", "Daemon Cache", "netrunner", 1, "long", "The cached program (level 1-3, or 1-5 with two programs) is cast once without a slot; back after a long rest."),
+  row("cyberpunk_psi_font", "Psi Font", "esper", 1, "short", "One expended 1st-level spell slot back on each short rest."),
   row("cyberpunk_autodoc_implant", "Autodoc Implant", "trauma_doc", 5, "long", "While below half HP, the trauma doc regains WIS-mod HP at the start of their turn, for 5 rounds per long rest."),
   row("dark_fantasy_gutter_king_s_word", "Gutter King's Word", "vermin_lord", 1, "long", "One favor per day from beggars, urchins and rat-folk, within their power."),
   row("horror_the_long_hunt", "The Long Hunt", "slayer", 1, "long", "1/week, a short rest gives the slayer the benefits of a long rest."),

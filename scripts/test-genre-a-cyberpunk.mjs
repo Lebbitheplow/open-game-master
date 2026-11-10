@@ -36,5 +36,15 @@ await test("Combat Wetware: the pick is made out of a fight, kept on the sheet, 
   assert.ok(rows.length <= 1, `Daemon Cache's row is held ${rows.length} times`);
 });
 
+await test("Psi Font: each short rest gives one 1st-level slot back, the second as the first", async () => {
+  t.fresh();
+  const hero = t.hero("esper", 2, { spellcasting: { ability: "cha", slots: { 1: { max: 3, used: 3 } }, known: [], prepared: [], cantrips: [] } });
+  for (const want of [2, 1]) {
+    must(await t.world.invoke("take_rest", { kind: "short", characterIds: [hero.id] }), "a short rest");
+    assert.equal(t.world.sheet(hero.id).spellcasting.slots["1"].used, want);
+  }
+  assert.equal((await t.world.invoke("use_resource", { characterId: hero.id, resource: "cyberpunk_psi_font" })).ok, false, "a bare spend of a counter the rest spends");
+});
+
 t.close();
 console.log(`test-genre-a-cyberpunk: ${passed} passed`);

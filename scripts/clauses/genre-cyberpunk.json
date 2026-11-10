@@ -2028,11 +2028,9 @@
     "run": {
      "k": "psi_font"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Psi Font#0",
-    "where": "src/lib/dm/rest-tools.ts take_rest (short): no slot comes back for the feature",
-    "sev": "medium",
-    "observed": "1st-level slots used after the short rest (two were)"
+    "is": "held",
+    "by": "the cyberpunk_psi_font counter (src/lib/srd/genre-a-counter-terms.ts GENRE_A_EXTRA_COUNTERS, recover_slots of one 1st-level slot), given back by take_rest (src/lib/dm/rest-tools.ts applySlotRecovery)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Psi Font#0"
    }
   ]
  },
