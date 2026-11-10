@@ -1,3 +1,4 @@
+import { keptConditions } from "@/lib/dm/condition-cap-logic";
 import { normalizeLegendaryState, type LegendaryState } from "@/lib/dm/legendary-logic";
 import type { EncounterSummary } from "@/lib/dm/encounter-summary";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
@@ -537,7 +538,7 @@ export function insertEnemy(input: {
       input.stats.cr,
       arrives ? Math.max(0, Math.round(arrives.xp)) : input.stats.xp,
       JSON.stringify(input.stats),
-      JSON.stringify(arrives ? arrives.conditions.slice(0, 10) : []),
+      JSON.stringify(arrives ? keptConditions(arrives.conditions, arrives.conditionMeta) : []),
       JSON.stringify(arrives ? arrives.conditionMeta : {}),
       input.npcId ?? "",
       arrives?.carriedFrom ?? "",
@@ -703,16 +704,19 @@ export function patchEnemyConditions(
     return null;
   }
   const before = getEnemy(enemyId);
+  // The cap drops the oldest free mark, never the condition just laid
+  // (condition-cap-logic.ts).
+  const kept = keptConditions(conditions, conditionMeta ?? before?.conditionMeta);
   if (conditionMeta !== undefined) {
     getDatabase()
       .prepare(
         `UPDATE encounter_enemies SET conditions_json = ?, condition_meta_json = ?, updated_at = ? WHERE id = ?`,
       )
-      .run(JSON.stringify(conditions.slice(0, 10)), JSON.stringify(conditionMeta), nowIso(), enemyId);
+      .run(JSON.stringify(kept), JSON.stringify(conditionMeta), nowIso(), enemyId);
   } else {
     getDatabase()
       .prepare(`UPDATE encounter_enemies SET conditions_json = ?, updated_at = ? WHERE id = ?`)
-      .run(JSON.stringify(conditions.slice(0, 10)), nowIso(), enemyId);
+      .run(JSON.stringify(kept), nowIso(), enemyId);
   }
   // A Polymorph ends with its condition whichever way that goes (the
   // caster's concentration, its hour, Dispel Magic): the own block returns.

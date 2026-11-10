@@ -16,14 +16,7 @@ const { entryDice } = await import("../src/lib/dice.ts");
 // One face for every d20 the roll asks for (two with advantage).
 const fill = (roll, faces) => (Array.isArray(faces) ? faces : entryDice(roll.expression).map(() => faces));
 
-const TEN = {
-  where: "src/lib/dm/enemy-reactions.ts (Shield's reaction is spent and \"shielded\" is written through the creature's capped list: src/lib/db/encounters.ts keeps 10 conditions)",
-  severity: "low",
-  note: "The same on both dice. Needs a creature already carrying ten conditions; the cap drops the newest, which is the one the reaction just paid for.",
-};
 const KNOWN = {
-  "822-ten-conditions-shield:server's dice": TEN,
-  "822-ten-conditions-shield:entered dice": TEN,
   "822-skulker-second-part-unseen": {
     where: "src/lib/dm/pc-attack-parked.ts (each part's sight of the attacker is fixed when the parts park together; the first part's reveal does not reach the second)",
     severity: "low",
