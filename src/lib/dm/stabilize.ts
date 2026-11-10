@@ -41,6 +41,7 @@ import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { horrorStabilizesWithoutCheck } from "@/lib/srd/genre-a-horror-holds";
 
 // A healer's kit holds ten uses (SRD 5.1, Adventuring Gear). The count lives
 // on the row's `charges`; a row with none recorded is a full kit, so every
@@ -208,7 +209,12 @@ export function handleStabilize(
   }
 
   let check: Record<string, unknown> = {};
-  if (method === "check") {
+  // Death's Old Acquaintance (survivor): "stabilizing you takes no check".
+  const noCheck = method === "check" ? horrorStabilizesWithoutCheck(sheet) : null;
+  if (noCheck) {
+    how = `${healer.name} tends to ${sheet.name}, and ${noCheck} needs no Medicine check`;
+  }
+  if (method === "check" && !noCheck) {
     const resolved = resolveRollExpression(
       {
         kind: "skill_check",

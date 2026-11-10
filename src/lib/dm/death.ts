@@ -12,6 +12,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet, DeathSaves, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
+import { horrorDeathSaveAdvantage } from "@/lib/srd/genre-a-horror-holds";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -333,7 +334,8 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // Diehard: advantage on death saves; Survivor: on the first of a fall
   // (src/lib/srd/feat-combat.ts).
   const feat = deathSaveFeat(sheet, track);
-  const claim = hope ?? feat;
+  // Death's Old Acquaintance (survivor): advantage on death saves.
+  const claim = hope ?? feat ?? horrorDeathSaveAdvantage(sheet);
   const waits = heldDieWaits(sheet, 10);
   const resolved = resolveRollExpression(
     {

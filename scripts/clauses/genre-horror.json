@@ -1477,11 +1477,9 @@
     "run": {
      "k": "death_adv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Death's Old Acquaintance#0",
-    "observed": "d20s thrown for the death save: the engine gives 1, the text 2",
-    "where": "src/lib/dm/death.ts rollDeathSave: no advantage for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Death's Old Acquaintance#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorDeathSaveAdvantage, read by src/lib/dm/death.ts rollDeathSave"
    },
    {
     "c": "stabilizing you takes no check",
@@ -1491,11 +1489,9 @@
      "face": 1,
      "want": "auto"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Death's Old Acquaintance#1",
-    "observed": "a 1 on the Medicine check still stabilizes: {\"ok\":true,\"stabilized\":false,\"rolled\":4,\"dc\":10,\"note\":\"Ally Near's Medicine check (4) misses DC 10. Holder is still dying; their action is spent.\"}: the engine gives false, the text true",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Death's Old Acquaintance#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorStabilizesWithoutCheck, read by src/lib/dm/stabilize.ts handleStabilize (the action is spent, no Medicine check)"
    }
   ]
  },
