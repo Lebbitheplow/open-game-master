@@ -5,7 +5,7 @@ import { useState } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { contentSlug } from "@/lib/help";
 import { formatPrice } from "@/lib/srd/currency";
-import { formatCoin, MAX_QTY, stepDown, type Receipt, type ReceiptRow } from "./receiptMath";
+import { MAX_QTY, stepDown, type Receipt, type ReceiptRow } from "./receiptMath";
 
 export type ReceiptView = Receipt & { setQty: (name: string, qty: number) => void };
 
@@ -157,13 +157,16 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
             );
           })}
         </tbody>
+        {/* Coin is written as prices are, in gold, silver and copper, the
+            same as the purse line without a receipt. A gold-and-copper
+            formatter of its own wrote 3 gp 9 sp as "3 gp 90 cp". */}
         <tfoot className="border-t border-stone-800 font-mono text-stone-300">
           <tr>
             <th scope="row" colSpan={2} className="px-2 pt-1.5 text-left font-sans font-normal text-stone-500">
               Starting coin
             </th>
             <td className="hidden sm:table-cell" />
-            <td className="px-2 pt-1.5 text-right">{formatCoin(receipt.coinCopper)}</td>
+            <td className="px-2 pt-1.5 text-right">{formatPrice(receipt.coinCopper)}</td>
           </tr>
           <tr>
             <th scope="row" colSpan={2} className="px-2 text-left font-sans font-normal text-stone-500">
@@ -178,7 +181,7 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
             </th>
             <td className="hidden sm:table-cell" />
             <td key={receipt.leftCopper} className="reveal px-2 pb-1.5 text-right text-sm text-amber-200">
-              {formatCoin(receipt.leftCopper)}
+              {formatPrice(receipt.leftCopper)}
             </td>
           </tr>
         </tfoot>
