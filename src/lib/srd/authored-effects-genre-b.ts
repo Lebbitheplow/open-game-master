@@ -93,6 +93,11 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Your Chimeric Limb deals 2d8, counts as magical, and grants 10-ft reach."
   row("Perfect Chimera", ["aberrant"], { effects: [{ kind: "natural_weapon", weapon: { ...CHIMERIC_LIMB, dice: "2d8", reach: true, magical: true, remakes: true } }] }),
 
+  // "1/turn, your improvised weapons deal +1d4 poison and the target cannot
+  // regain HP until your next turn": the 1d4 is src/lib/srd/genre-b-combat.ts
+  // genreBRiders; the hit marks the creature until the scavenger's next turn.
+  row("Tetanus Edge", ["scavenger"], { effects: [{ kind: "mark", condition: "tetanus", effect: "no_regain", oncePerTurn: true, improvised: true }] }),
+
   // ---- passives on the engine's own readers (wave 2, second pass) ----
   // "Darkvision 60 ft" (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet).
   row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }] }),

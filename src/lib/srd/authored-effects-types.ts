@@ -143,8 +143,12 @@ export type AuthoredEffect = Base &
     | {
         kind: "mark";
         condition: string;
-        effect: "disadv_others" | "attacked_adv" | "save_disadv" | "ally_bonus_dice";
+        // `no_regain`: the creature regains no hit points while it lasts
+        // (src/lib/dm/vitals-logic.ts regainBlockedBy).
+        effect: "disadv_others" | "attacked_adv" | "save_disadv" | "ally_bonus_dice" | "no_regain";
         melee?: boolean;
+        // Only a hit with an improvised weapon (no SRD weapon by that name).
+        improvised?: boolean;
         oncePerTurn?: boolean;
         firstRoundOnly?: boolean;
         halve?: boolean;

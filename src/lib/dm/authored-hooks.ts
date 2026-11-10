@@ -51,6 +51,8 @@ import { genreBOnKill } from "@/lib/dm/genre-b-kills";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
+import { weaponNamed } from "@/lib/srd/weapons";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -366,7 +368,7 @@ export function authoredOnHit(
     }
     if (input.weapon !== false) {
       const melee = input.melee ?? withinFeet(encounter.id, sheet.id, enemy.id, 5);
-      lines.push(...markEnemy(encounter, sheet, enemy, melee));
+      lines.push(...markEnemy(encounter, sheet, enemy, melee, input.weaponName));
     }
   }
   if (input.dead) {
@@ -377,10 +379,14 @@ export function authoredOnHit(
 
 // The marks this character's hit lays on the creature it hit, once a turn
 // where the feature says so.
-function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean): string[] {
+function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean, weaponName?: string): string[] {
   const lines: string[] = [];
   for (const { effect, held } of activeAuthored(sheet, "mark")) {
     if (effect.melee && !melee) {
+      continue;
+    }
+    // An improvised weapon is a thing no SRD weapon row names (a chair leg).
+    if (effect.improvised && (!weaponName || weaponNamed(weaponName) || authoredNaturalWeapon(sheet, weaponName))) {
       continue;
     }
     if (effect.firstRoundOnly && encounter.round > 1) {

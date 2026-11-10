@@ -440,13 +440,15 @@
    },
    {
     "c": "your improvised weapons deal +1d4 poison and the target cannot regain HP until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Tetanus Edge: an improvised weapon's hit leaves the creature unable to regain hit points until the scavenger's next turn; a longsword's does not",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (+1d4 poison, once a turn) and src/lib/srd/authored-effects-genre-b.ts Tetanus Edge (mark tetanus, no_regain, improvised), laid by src/lib/dm/authored-hooks.ts markEnemy; src/lib/dm/vitals-logic.ts regainBlockedBy"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Tetanus Edge: an improvised weapon's hit leaves the creature unable to regain hit points until the scavenger's next turn; a longsword's does not",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (untilTurnOf the scavenger)"
    },
    {
     "c": "+1d4 poison",

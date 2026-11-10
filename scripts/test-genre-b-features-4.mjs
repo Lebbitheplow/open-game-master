@@ -15,6 +15,7 @@ import { dice, clearDice, diceLog } from "./lib/enforce-world.mjs";
 const SRC = new URL("../src/", import.meta.url);
 const { zonesAfterMove, zoneTurnStart } = await import(new URL("lib/dm/zone-triggers.ts", SRC).href);
 const { getCampaignById } = await import(new URL("lib/db/campaigns.ts", SRC).href);
+const { regainBlockedBy } = await import(new URL("lib/dm/vitals-logic.ts", SRC).href);
 
 const { test, finish } = suite("test-genre-b-features-4");
 const rig = await clausesRig();
@@ -245,6 +246,18 @@ await run("Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 
   };
   assert.equal(await struck({ name: "Bite", toHit: 4, damage: "1d6+2", type: "piercing" }), 6, "the bite sent back other than 2d6 poison");
   assert.equal(await struck({ name: "Club", toHit: 4, damage: "1d6+2", type: "bludgeoning" }), 0, "a club was answered as a bite");
+});
+
+await run("Tetanus Edge: an improvised weapon's hit leaves the creature unable to regain hit points until the scavenger's next turn; a longsword's does not", async () => {
+  const hero = rig.holder(feature("scavenger", "Tetanus Edge", 7));
+  const { near } = await rig.fight(hero);
+  await rig.swing(hero, near, { weapon: "Longsword" });
+  assert.equal(regainBlockedBy(kit.enemy(near.id)), null, "a longsword's hit blocked healing");
+  rig.myTurn(hero);
+  await rig.swing(hero, near, { weapon: "chair leg", improvised: true });
+  const struck = kit.enemy(near.id);
+  assert.equal(regainBlockedBy(struck), "tetanus", `the creature holds ${JSON.stringify(struck.conditions)}`);
+  assert.equal(struck.conditionMeta.tetanus?.untilTurnOf, hero.id, "the wound does not end at the scavenger's next turn");
 });
 
 world.close();

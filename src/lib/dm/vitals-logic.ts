@@ -108,10 +108,17 @@ export const NEGATIVE_ENERGY = "negative energy";
 // What keeps a creature from regaining hit points now, or null: Chill
 // Touch's grip until its caster's next turn, negative energy, or no air at
 // 0 hit points.
+export const TETANUS = "tetanus";
+
 export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number }): string | null {
   const held = sheet.conditions.map((entry) => entry.trim().toLowerCase());
   if (held.includes("chill touch")) {
     return "chill touch";
+  }
+  // Tetanus Edge (scavenger): "the target cannot regain HP until your next
+  // turn", the mark its hit lays (src/lib/dm/authored-hooks.ts markEnemy).
+  if (held.includes(TETANUS)) {
+    return TETANUS;
   }
   if (held.includes(NEGATIVE_ENERGY)) {
     return NEGATIVE_ENERGY;
