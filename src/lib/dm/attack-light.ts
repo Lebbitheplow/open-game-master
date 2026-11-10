@@ -116,7 +116,12 @@ export function attackSight(input: {
   );
   // A spell area on the sight line (a fog cloud, magical darkness, an opaque
   // wall) blinds as darkness does, and Daylight lights: zone-rules.ts.
-  const veiled = { attacker: zoneHidesFrom(map, from, to, input.attacker.senses), target: zoneHidesFrom(map, to, from, input.target.senses) };
+  // `self`: an area its own caster sees through (a Darkness paid for through
+  // Eyes of the Dark, zones.ts seenThroughBy) is not there for that creature.
+  const veiled = {
+    attacker: zoneHidesFrom(map, from, to, { ...input.attacker.senses, self: input.attacker.refId }),
+    target: zoneHidesFrom(map, to, from, { ...input.target.senses, self: input.target.refId }),
+  };
   const patches = lightsWithZones(map);
   if (ambient !== "dark" && !patches.length) {
     // Bright or dim everywhere (weather only dims a bright tile): everyone
@@ -132,7 +137,7 @@ export function attackSight(input: {
     obscureBeyond: map.outdoors ? weatherObscurementTiles(clock.weather) : Infinity,
   };
   const lit = cachedLitTiles({ ...vision, id: map.id }, listTokens(map.id), lightSourcesWithZones(map));
-  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken): boolean => {
+  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken, self: string): boolean => {
     const distance = chebyshev(viewer.x, viewer.y, subject.x, subject.y);
     if (distance <= senses.blindsight) {
       return true;
@@ -140,7 +145,8 @@ export function attackSight(input: {
     if (distance <= senses.tremorsense && subject.movement !== "fly") {
       return true;
     }
-    const zones = vision.zones ?? [];
+    // A darkness this viewer sees through is not there for them (zones.ts zoneLights).
+    const zones = lightsWithZones(map, self);
     if (zones.length && magicalDarknessAt(zones, subject.x, subject.y)) {
       return distance <= senses.truesight || distance <= senses.devilsSight;
     }
@@ -156,8 +162,8 @@ export function attackSight(input: {
     );
   };
   return {
-    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to),
-    targetSees: !veiled.target && sees(to, input.target.senses, from),
+    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to, input.attacker.refId),
+    targetSees: !veiled.target && sees(to, input.target.senses, from, input.target.refId),
   };
 }
 

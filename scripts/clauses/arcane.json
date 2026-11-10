@@ -1582,14 +1582,15 @@
    },
    {
     "c": "you can cast it with 2 sorcery points as well as a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-points",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsOfferFor (Darkness, 2 points, from sorcerer level 3), paid at the one cast door (src/lib/dm/cast-guard.ts castSpell): the points pay when no slot level is named and 2 are held, or when no slot can pay; a slot level named spends that slot"
    },
    {
     "c": "and when you do you can see through that darkness",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no casting for points exists to see through (eyes-points)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-see-through",
+    "by": "the Darkness the points paid for is laid with seenThroughBy its caster (cast-guard.ts castSpell, zone-cast.ts placeSpellZone), and every sight reader skips it for that viewer: src/lib/battlemap/zones.ts zoneBlocksSight, zoneSightTerrain and zoneLights, read by attack-light.ts attackSight and view.ts buildPlayerMapView"
    }
   ]
  },
@@ -1865,18 +1866,19 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Aberrant Mind",
   "level": 6,
-  "sha": "bfc993979760",
+  "sha": "f9a75020af62",
   "clauses": [
    {
-    "c": "Cast your psionic spells by spending sorcery points instead of a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-sorcery"
+    "c": "Cast your psionic spells by spending sorcery points equal to the spell's level instead of a slot",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-sorcery",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsOfferFor (a spell of the Psionic Spells table, its own level in points), paid at the one cast door (src/lib/dm/cast-guard.ts castSpell) when no slot can pay or the components cannot be made; a slot pays while one can. Ruling: the cast tools carry no word for the payment, so a sorcerer cannot choose the points while a slot and the components are at hand"
    },
    {
     "c": "with no verbal, somatic or costly components",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no casting for points exists to cast silenced or bound (psionic-sorcery)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-bare",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsPayFirst and bareFacts: a psionic spell whose words, gestures or material the caster cannot make is paid with the points and read with no component (cast-guard.ts castSpell)"
    }
   ]
  },

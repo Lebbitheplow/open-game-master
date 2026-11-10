@@ -94,9 +94,9 @@ export function zoneHidesFrom(
 
 // The patches of light the board's vision reads, with the spells' own:
 // Daylight's bright light, Darkness's magical dark.
-export function lightsWithZones(map: BattleMap): LightZone[] {
+export function lightsWithZones(map: BattleMap, viewer?: string): LightZone[] {
   const zones = zonesOf(map);
-  return zones.length ? [...(map.zones ?? []), ...zoneLights(zones, map.width)] : (map.zones ?? []);
+  return zones.length ? [...(map.zones ?? []), ...zoneLights(zones, map.width, viewer)] : (map.zones ?? []);
 }
 
 // The lights the lit set is cast from: the board's own, and a spell area's

@@ -40,6 +40,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
 import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
+import { bareFacts, pointsOfferFor, pointsPayFirst, pointsPlan, pointsSpent, pointsWhenNoSlot } from "@/lib/dm/ar-ws-points-cast";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares } from "@/lib/srd/spell-mechanics";
@@ -515,7 +516,13 @@ export function castSpell(
   // invocation that says so, an Archdruid's druid spells without the voice,
   // the gestures or a free material (cast-rules.ts componentsAsCast).
   // The Hand's spell cards ask castComponents too (hand-spells.ts).
-  const components = castComponents(sheet, facts, grant, extras);
+  const made = castComponents(sheet, facts, grant, extras);
+  // Sorcery points in place of the slot (Eyes of the Dark's Darkness, Psionic
+  // Sorcery's spells: ar-ws-points-cast.ts says when they pay). A psionic
+  // spell they pay for is cast with no component, so none is asked of it.
+  const pointsOffer = input.ritual || input.storing ? null : pointsOfferFor(sheet, engine, facts, input.level);
+  const byPoints = pointsPayFirst(campaign.id, sheet, pointsOffer, made, { inFight, units: input.units });
+  const components = byPoints && pointsOffer?.bare ? { facts: bareFacts(facts), problem: null } : made;
   const castFacts = components.facts;
   const state = casterStateProblem(sheet);
   if (state) {
@@ -561,27 +568,29 @@ export function castSpell(
   const slowHeld = input.ritual ? null : heldBySlow(sheet, name);
   // Signature Spells (wizard 20): the chosen 3rd level spells, once each per
   // short rest at 3rd level, spend their counter instead of a slot.
-  const signature = input.ritual || slowHeld ? null : signatureCounter(sheet, facts, input.level);
+  const signature = input.ritual || slowHeld || byPoints ? null : signatureCounter(sheet, facts, input.level);
   // A feat's free cast (Fey Touched's misty step, Magic Initiate's spell)
   // spends its once-a-day counter instead of a slot while one is left
   // (src/lib/srd/feat-spells.ts); with the counter spent, a slot pays.
-  const freeCast = input.ritual || signature ? null : freeCastCounter(sheet, spell, facts, input.level);
+  const freeCast = input.ritual || signature || byPoints ? null : freeCastCounter(sheet, spell, facts, input.level);
   // A warlock's Mystic Arcanum pays for its own spell (counter-cast-arcanum.ts).
-  const arcanum = input.ritual || signature || freeCast || slowHeld ? null : arcanumCounter(sheet, facts, input.level);
+  const arcanum = input.ritual || signature || freeCast || slowHeld || byPoints ? null : arcanumCounter(sheet, facts, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
-    !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
+    !input.ritual && !signature && !freeCast && !byPoints && /^command$/i.test(engine.trim()) &&
     sheet.conditions.some((entry) => isConditionNamed(entry, MANTLE_OF_MAJESTY));
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
-  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast;
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !byPoints;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
-  const slot: SlotPlan | ToolError = input.ritual
+  const planned: SlotPlan | ToolError = input.ritual
     ? { kind: "none", note: `${name} cast as a ritual: no slot spent.` }
     : slowHeld
       ? { kind: "none", note: `${name} completes the casting Slow held back: no slot spent.` }
+    : byPoints && pointsOffer
+      ? pointsPlan(sheet, name, pointsOffer)
     : signature
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
@@ -595,6 +604,10 @@ export function castSpell(
         : // A slot the player marked spent by hand for this cast pays for it;
           // a casting begun now leaves the mark for its completion.
           paidByManualTick(sheet, slotPlan(sheet, spell, facts, input.level), input.level ?? facts?.level, facts?.level, Boolean(input.dryRun) || holdRounds !== null);
+  // With no slot that can pay, the sorcery points do (ar-ws-points-cast.ts).
+  const lastResort = pointsWhenNoSlot(sheet, name, slowHeld ? null : pointsOffer, planned);
+  const slot = lastResort.slot;
+  const pointsPaid = !slowHeld && pointsOffer && (byPoints || lastResort.paid) ? pointsOffer : null;
   if ("error" in slot) {
     // A cast the turn cannot pay for is refused for that first: which slot
     // to spend is moot when the action is gone. A completing casting paid
@@ -603,7 +616,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantPaid ? grant?.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (pointsPaid ? pointsPaid.level : grantPaid ? grant?.castAt ?? null : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -658,6 +671,9 @@ export function castSpell(
   if (arcanum) {
     patch.resources = spendSignature(patch.resources ?? sheet.resources, arcanum);
   }
+  if (pointsPaid) {
+    patch.resources = pointsSpent(sheet, patch, pointsPaid);
+  }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.
   if (grant?.counter && ((grant.slot === "slot" && slot.kind !== "none") || (grantPaid && grantFree))) {
@@ -704,6 +720,7 @@ export function castSpell(
         ...(input.ritual ? { ritual: true } : {}),
         ...(signature ? { signature, level: 3 } : {}),
         ...(freeCast ? { freeCast } : {}),
+        ...(pointsPaid ? { sorceryPoints: pointsPaid.points, through: pointsPaid.feature } : {}),
         ...(grant ? { granted: grant.source } : {}),
       },
       patch,
@@ -827,7 +844,7 @@ export function castSpell(
     endSanctuaryOnHarm(campaign.id, sheet.id);
   }
   // Its area on the board; aoe_damage and cast_at_enemy lay theirs after the saves.
-  const zone = !input.storing && (via === "slot" || via === "buff") ? placeSpellZone(campaign, { spell: name, runsAs: facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel, dc: spellSaveDcFor(sheet, name), at: input.at, toward: input.toward, named: Boolean(input.at) }) : null;
+  const zone = !input.storing && (via === "slot" || via === "buff") ? placeSpellZone(campaign, { spell: name, runsAs: facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel, dc: spellSaveDcFor(sheet, name), at: input.at, toward: input.toward, named: Boolean(input.at), ...(pointsPaid?.seesThrough ? { seenThroughBy: sheet.id } : {}) }) : null;
   return zone ? { ...result, area: zone } : result;
 }
 

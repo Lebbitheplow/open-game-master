@@ -110,10 +110,29 @@ export function probes(rig, shared) {
     },
     "eyes-points": async () => {
       await stage(shadow());
-      const now = sheet(shadow());
-      world.patch(shadow().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      const spendSlots = () => {
+        const now = sheet(shadow());
+        world.patch(shadow().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      };
+      spendSlots();
+      const points = left(shadow(), "sorcery_points");
       const out = await call("use_spell_slot", { characterId: shadow().id, level: 2, spell: "Darkness" });
-      assert.equal(out.ok, true, `with every slot spent and ${left(shadow(), "sorcery_points")} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(out.ok, true, `with every slot spent and ${points} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(points - left(shadow(), "sorcery_points"), 2, "sorcery points Darkness costs through Eyes of the Dark");
+      assert.equal(sheet(shadow()).concentratingOn, "Darkness");
+      // One point is not two: refused, the point kept.
+      await stage(shadow());
+      spendSlots();
+      drain(shadow(), "sorcery_points");
+      world.patch(shadow().id, { resources: { ...sheet(shadow()).resources, sorcery_points: { ...counter(shadow(), "sorcery_points"), used: counter(shadow(), "sorcery_points").max - 1 } } });
+      const short = await call("use_spell_slot", { characterId: shadow().id, level: 2, spell: "Darkness" });
+      assert.equal(short.ok, false, "with one sorcery point and no slot");
+      assert.equal(left(shadow(), "sorcery_points"), 1, "nothing spent");
+      // Below 3rd level the sorcerer does not know the spell this way.
+      const young = S("Shadow Magic", 2);
+      await stage(young);
+      const early = await call("use_spell_slot", { characterId: young.id, spell: "Darkness" });
+      assert.equal(early.ok, false, "a 2nd-level shadow sorcerer casts Darkness");
     },
     "grave-save": async () => {
       await kit.endFight();
@@ -230,11 +249,29 @@ export function probes(rig, shared) {
       assert.ok(spellsAt("Aberrant Mind", 9).includes("Telekinesis"));
     },
     "psionic-sorcery": async () => {
+      const spendSlots = () => {
+        const now = sheet(mind());
+        world.patch(mind().id, { spellcasting: { ...now.spellcasting, prepared: [...new Set([...now.spellcasting.prepared, "Magic Missile"])], known: [...new Set([...now.spellcasting.known, "Magic Missile"])], slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      };
       const [enemy] = await stage(mind());
-      const now = sheet(mind());
-      world.patch(mind().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      // With a slot at hand, the slot pays.
+      const points = left(mind(), "sorcery_points");
+      const slotted = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
+      assert.equal(slotted.ok, true, slotted.error);
+      assert.deepEqual([points - left(mind(), "sorcery_points"), sheet(mind()).spellcasting.slots[1].used], [0, 1], "[sorcery points, 1st-level slots] spent with slots at hand");
+      kit.freshTurn();
+      spendSlots();
       const out = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
       assert.equal(out.ok, true, `Dissonant Whispers with every slot spent and ${left(mind(), "sorcery_points")} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(points - left(mind(), "sorcery_points"), 1, "sorcery points a 1st-level psionic spell costs: its level");
+      // A spell that is not one of the psionic spells finds no points to pay it.
+      kit.freshTurn();
+      const other = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Magic Missile" }, [1, 1, 1]);
+      assert.equal(other.ok, false, "Magic Missile with every slot spent");
+      // With no point left the psionic spell is refused too.
+      drain(mind(), "sorcery_points");
+      const broke = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
+      assert.equal(broke.ok, false, "with no slot and no sorcery point");
     },
     "psychic-resist": async () => {
       await kit.endFight();
@@ -414,12 +451,10 @@ export function probes(rig, shared) {
     "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "eyes-points": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Eyes of the Dark (note: "Darkness for 2 sorcery points ... is the cast tools' with the points spent"); src/lib/dm/cast-guard.ts has no such price`, note: "The note names a door the cast tools do not have.", fix: "Let Darkness be paid with 2 sorcery points by a holder." },
     "hound-wolf": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Hound of Ill Omen (buff on the enemy; no summon)`, note: "The hound is a dire wolf that attacks its quarry every round; three sorcery points buy the disadvantage on saves only.", fix: "A summon of the hound (dire wolf, half the sorcerer level in temporary hit points) bound to its quarry." },
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
-    "psionic-sorcery": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Psionic Sorcery (narrated: "the cast tools with the points spent by use_resource"); the cast tools refuse a caster with no slot`, note: "The narrated door does not exist: with no slot left the cast is refused, so the points cannot stand in for one.", fix: "Let a psionic spell be paid with sorcery points equal to its level." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
     "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
     "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },

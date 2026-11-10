@@ -10,4 +10,22 @@
 // Pure.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
-export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {};
+// A spell paid for with sorcery points in place of a slot is the cast guard's
+// (src/lib/dm/ar-ws-points-cast.ts says when the points pay).
+const POINTS_CAST = { file: "src/lib/dm/cast-guard.ts", call: "pointsOfferFor(sheet, engine, facts, input.level)" };
+
+export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
+  // "You have darkvision out to 120 feet" (the effect, as authored-effects-data4.ts
+  // had it). "From 3rd level you know darkness ... you can cast it with 2
+  // sorcery points as well as a slot, and when you do you can see through
+  // that darkness": the cast guard takes the points and lays the darkness as
+  // seen through by its caster (src/lib/battlemap/zones.ts seenThroughBy).
+  "sorcerer::Eyes of the Dark": {
+    subclass: "Shadow Magic",
+    effects: [{ kind: "darkvision", feet: 120 }],
+    heldBy: POINTS_CAST,
+  },
+  // "Cast your psionic spells by spending sorcery points equal to the spell's
+  // level instead of a slot, with no verbal, somatic or costly components."
+  "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+};

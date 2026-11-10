@@ -59,6 +59,8 @@ export type ZoneCast = {
   // Lay it in the open square beside this creature nearest the caster (a
   // Flaming Sphere cast to roll at a foe), rather than on it.
   beside?: string;
+  // The creature that sees through the area (SpellZone.seenThroughBy).
+  seenThroughBy?: string;
 };
 
 function middleOf(points: XY[]): XY | null {
@@ -212,6 +214,7 @@ export function placeSpellZone(campaign: Campaign, cast: ZoneCast): string | nul
     slotLevel: cast.slotLevel ?? null,
     dc: cast.dc ?? null,
     ...(cast.named && named ? { named: true } : {}),
+    ...(cast.seenThroughBy ? { seenThroughBy: cast.seenThroughBy } : {}),
   };
   // A concentration spell the server cannot see held (a homebrew caster, a
   // row the checklist lacks) runs for its duration instead of vanishing.
