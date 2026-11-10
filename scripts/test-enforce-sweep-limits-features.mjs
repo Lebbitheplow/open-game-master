@@ -10,11 +10,6 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, limitsTable } from "./lib/sweep-limits-world.mjs";
 
-const NO_SIGHT = {
-  where: "src/lib/srd/authored-effects-data*.ts (the spend's row carries no `sight`), read by src/lib/dm/authored-spend-effects.ts",
-  severity: "medium",
-  note: "The same qualifier Nature's Wrath and Command Undead already carry (sight: true). An invisible or hidden creature is cursed or charmed by a holder who cannot see it.",
-};
 const NO_STOP = {
   where: "src/lib/dm/forced-save.ts (a save the engine forces is thrown at once; only an AI table with the fight watch on stops it, src/lib/dm/foresight.ts)",
   severity: "medium",
