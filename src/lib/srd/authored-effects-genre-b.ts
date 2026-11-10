@@ -153,6 +153,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   },
   // "double your speed and gain an extra action each turn for 1 minute".
   spend("Full Throttle", ["steam_knight"], "steampunk_full_throttle", undefined, { kind: "buff", condition: "full throttle", rounds: 10 }),
+  // "1/rest, reduce all damage you take this round by your CON modifier" (the cut: genre-b-combat.ts genreDamageCut).
+  spend("Hardened", ["road_warrior"], "post_apocalyptic_hardened", undefined, { kind: "buff", condition: "hardened", rounds: 1 }),
   // "1/rest, your tuned weapon deals +2d8 lightning on one hit".
   { feature: "Arc Coil", classes: ["gadgeteer"], entry: { subclass: "genre", counter: "steampunk_arc_coil", spends: [{ name: "Arc Coil", pool: { id: "steampunk_arc_coil" }, afterWeaponHit: true, does: { kind: "die_damage", dice: "2d8", type: "lightning" } }] } },
   // "1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally" (Field Repair (2d8): 2d8 + INT from 11th).

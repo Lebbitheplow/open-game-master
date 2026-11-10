@@ -91,6 +91,22 @@ function coveringAuras(campaignId: string, target: Pick<CharacterSheet, "id">): 
   return [...found.values()];
 }
 
+// The conscious characters on this one's side who hold a genre feature and
+// stand within `feet` of them (off the board, every one): Stand at the Dawn's
+// preacher (src/lib/dm/genre-b-drops.ts), as the auras above read them.
+export function nearbyHolders(campaignId: string, target: Pick<CharacterSheet, "id">, classId: string, feature: string, feet: number): CharacterSheet[] {
+  const row: AuraRow = { feature, classId, feet: () => feet };
+  const encounter = getActiveEncounter(campaignId);
+  const side = encounter ? sideOf(encounter, "sheet", target.id) : null;
+  return listSheets(campaignId)
+    .filter((stale) => stale.id !== target.id)
+    .map((stale) => getSheetById(stale.id) ?? stale)
+    .filter((holder) => !holder.deathSaves?.dead && holder.currentHp > 0 && !isIncapacitated(holder.conditions))
+    .filter((holder) => !encounter || sideOf(encounter, "sheet", holder.id, holder) === side)
+    .filter((holder) => holdsGenreFeature(holder, row.classId, row.feature))
+    .filter((holder) => !encounter || withinFeet(encounter.id, holder.id, target.id, feet));
+}
+
 // The save riders the auras give: rolls.ts adds a die or advantage to a save
 // against what each names (genre-b-aura-logic.ts saveAuraRiders).
 export function genreBSaveAuras(campaignId: string, target: Pick<CharacterSheet, "id">): GenreSaveAura[] {

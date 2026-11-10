@@ -25,6 +25,9 @@ const GENRE_B_COUNTER_TERMS: Record<string, Terms> = {
   // "1/long rest, when you drop to 0 HP, drop to 1 instead" (src/lib/dm/pc-damage.ts
   // spends it); Unbreakable (17th): "Hard to Kill recharges on a short rest."
   mystery_hard_to_kill: { passive: true, rechargeFor: (level) => (level >= 17 ? "short" : "long") },
+  // "when an ally within 30 ft drops to 0 HP, they instead drop to WIS-mod x 5
+  // HP": the damage path spends it (src/lib/dm/genre-b-drops.ts).
+  post_apocalyptic_stand_at_the_dawn: { passive: true },
   post_apocalyptic_rapid_adaptation: { upgrades: [{ match: "Second Adaptation", uses: 2 }] },
   steampunk_field_repair: { upgrades: [{ match: "Field Repair (2d8)", uses: 4 }] },
   steampunk_overpressure_valve: { upgrades: [{ match: "Perpetual Motion", uses: 2 }] },

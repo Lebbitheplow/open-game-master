@@ -102,3 +102,29 @@ export function genreBRiders(sheet: Holder, profile: Swing, target?: { condition
   }
   return out;
 }
+
+// Hardened (road warrior): "1/rest, reduce all damage you take this round by
+// your CON modifier"; Hardened (2 uses): "reduces damage by twice your CON
+// modifier". The spend lays "hardened" for the round
+// (src/lib/srd/authored-effects-genre-b.ts); src/lib/dm/pc-damage.ts takes
+// the cut off every blow while it lasts, before resistance.
+export function genreDamageCut(sheet: Holder & Pick<CharacterSheet, "abilities">): number {
+  if (!holds(sheet, "road_warrior", "Hardened") || !sheet.conditions.some((entry) => isConditionNamed(entry, "hardened"))) {
+    return 0;
+  }
+  const con = Math.floor(((sheet.abilities?.con ?? 10) - 10) / 2);
+  return Math.max(0, con * (holdsFeature(sheet, "Hardened (2 uses)") ? 2 : 1));
+}
+
+// A cut taken off a blow of several damage types: from the largest part first.
+export function cutParts<T extends { amount: number }>(parts: T[], cut: number): T[] {
+  let left = cut;
+  const order = parts.map((part, index) => ({ part, index })).sort((a, b) => b.part.amount - a.part.amount);
+  const out = [...parts];
+  for (const { part, index } of order) {
+    const taken = Math.min(part.amount, left);
+    out[index] = { ...part, amount: part.amount - taken };
+    left -= taken;
+  }
+  return out.filter((part) => part.amount > 0);
+}

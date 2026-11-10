@@ -83,4 +83,11 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
     speedMultiplier: 2,
     extraAction: true,
   },
+  {
+    // Hardened: "reduce all damage you take this round by your CON modifier"
+    // (the cut is src/lib/srd/genre-b-combat.ts genreDamageCut's, read by pc-damage.ts).
+    id: "hardened",
+    match: ["hardened"],
+    summary: "Hardened: every blow this round is cut by the road warrior's Constitution modifier (twice it from 10th level).",
+  },
 ];

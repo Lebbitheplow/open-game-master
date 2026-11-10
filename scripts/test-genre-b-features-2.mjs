@@ -6,6 +6,8 @@
 //   auras        src/lib/dm/genre-b-auras.ts (saves through forced-save.ts
 //                rollExtrasFor, AC through ac-effects.ts acWithEffects) and
 //                the aura_resist row's types (authored-saves.ts)
+//   drops        src/lib/dm/genre-b-drops.ts (Stand at the Dawn) and
+//                Hardened's cut, both in src/lib/dm/pc-damage.ts
 //   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
 //                engine's own readers: darkvision, a turn's heal, acid that
 //                ignores resistance, a concentration damage cannot break or
@@ -221,6 +223,37 @@ await run("Scent the Wind: a beast or a mutant (a monstrosity) cannot surprise t
   assert.equal(await ambushedBy("wolf"), false, "a wolf surprised the packmaster");
   assert.equal(await ambushedBy("goblin"), true, "the goblin's ambush caught nobody: the staging broke");
 });
+
+// ---- drops and cuts (src/lib/dm/pc-damage.ts) ----
+
+await run("Stand at the Dawn: an ally within 30 ft who drops to 0 drops to WIS mod x 5 instead, once; one 50 ft off falls", async () => {
+  const hero = rig.holder(feature("waste_preacher", "Stand at the Dawn", 10));
+  await rig.fight(hero);
+  const drop = async () => {
+    world.patch(ally.id, { currentHp: 100, conditions: [], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+    rig.must(await world.invoke("apply_damage", { characterId: ally.id, amount: 110, type: "slashing", reason: "test" }), "apply_damage");
+    return world.sheet(ally.id).currentHp;
+  };
+  assert.equal(await drop(), 15, "beside the preacher (WIS +3)");
+  assert.equal(world.sheet(hero.id).resources.post_apocalyptic_stand_at_the_dawn.used, 1, "the preacher's use was not spent");
+  assert.equal(await drop(), 0, "a second drop was held with the use spent");
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_stand_at_the_dawn: { max: 1, used: 0 } } });
+  kit.place(hero.id, 15, 12);
+  assert.equal(await drop(), 0, "50 ft off the ally was held");
+  const bare = await world.invoke("use_resource", { characterId: hero.id, resource: "post_apocalyptic_stand_at_the_dawn", reason: "test" });
+  assert.equal(bare.ok, false, "a bare spend was accepted");
+});
+
+for (const [level, cut] of [[1, 3], [10, 6]]) {
+  await run(`Hardened: at level ${level} every blow this round loses ${cut} (the CON modifier${level >= 10 ? ", twice" : ""})`, async () => {
+    const hero = rig.holder(feature("road_warrior", level >= 10 ? "Hardened (2 uses)" : "Hardened", level));
+    await rig.fight(hero);
+    assert.equal(await rig.damageLost(hero, "fire"), 20, "before the spend");
+    rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Hardened", reason: "test" }), "use_resource Hardened");
+    assert.equal(await rig.damageLost(hero, "fire"), 20 - cut, "a fire blow after it");
+    assert.equal(await rig.damageLost(hero, "slashing"), 20 - cut, "a second blow the same round");
+  });
+}
 
 rig.world.close();
 finish();

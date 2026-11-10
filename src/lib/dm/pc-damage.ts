@@ -21,7 +21,8 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
-import { spendGenreHold } from "@/lib/srd/genre-b-counter-terms";
+import { genreDropHold } from "@/lib/dm/genre-b-drops";
+import { cutParts, genreDamageCut } from "@/lib/srd/genre-b-combat";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -53,6 +54,9 @@ import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-w
 export type PcDamageInput = {
   // What was rolled or sent, before resistance.
   amount: number;
+  // Hardened's cut is taken (src/lib/srd/genre-b-combat.ts genreDamageCut):
+  // the blow re-enters with what is left, and is not cut twice.
+  cut?: boolean;
   type?: string;
   // A critical hit: two death save failures on a character already at 0.
   crit?: boolean;
@@ -219,6 +223,16 @@ export function applyPcDamage(
   }
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is already dead.`, retry: true };
+  }
+  // Hardened: "reduce all damage you take this round by your CON modifier",
+  // before resistance (SRD 5.1: resistance comes after every other modifier).
+  const cut = input.cut ? 0 : genreDamageCut(sheet);
+  if (cut > 0) {
+    if (amount <= cut) {
+      return { ok: true, hp: `${sheet.currentHp}/${effectiveMaxHp(sheet)}`, damageCut: cut, note: `Hardened takes all ${amount} damage off the blow; ${sheet.name} loses nothing.` };
+    }
+    const out = applyPcDamage(campaign, turnId, sheet, { ...input, amount: amount - cut, cut: true, ...(input.parts?.length ? { parts: cutParts(input.parts, cut) } : {}) });
+    return out.error ? out : { ...out, damageCut: `Hardened takes ${cut} off the blow.` };
   }
   // Oil (SRD 5.1 Adventuring Gear): "If the target takes any fire damage
   // before the oil dries (after 1 minute), the target takes an additional 5
@@ -404,14 +418,19 @@ export function applyPcDamage(
         note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
       });
     }
-    // Hard to Kill (enforcer 7): "when you drop to 0 HP, drop to 1 instead".
-    const genreHold = spendGenreHold(sheet.resources);
+    // Hard to Kill (enforcer 7), an ally's Stand at the Dawn (src/lib/dm/genre-b-drops.ts).
+    const genreHold = genreDropHold(campaign.id, sheet);
     if (genreHold) {
-      const patch: FullPatchSheetInput = { currentHp: 1, resources: genreHold.resources };
+      const patch: FullPatchSheetInput = { currentHp: genreHold.hp, ...(genreHold.resources ? { resources: genreHold.resources } : {}) };
       patchSheet(sheet.id, patch);
       audit(campaign, turnId, sheet, "apply_damage", { held: genreHold.name }, reason, patch);
       publishSheet(campaign, sheet.id);
-      return tookIt({ ok: true, hp: `1/${effectiveMaxHp(sheet)}`, held: genreHold.name, note: `${sheet.name} should have fallen, but ${genreHold.name} holds them at 1 HP. The use is spent.` });
+      if (genreHold.giver) {
+        patchSheet(genreHold.giver.id, { resources: genreHold.giver.resources });
+        publishSheet(campaign, genreHold.giver.id);
+      }
+      const whose = genreHold.giver ? `${genreHold.giver.name}'s ${genreHold.name}` : genreHold.name;
+      return tookIt({ ok: true, hp: `${genreHold.hp}/${effectiveMaxHp(sheet)}`, held: genreHold.name, note: `${sheet.name} should have fallen, but ${whose} holds them at ${genreHold.hp} HP. The use is spent.` });
     }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
