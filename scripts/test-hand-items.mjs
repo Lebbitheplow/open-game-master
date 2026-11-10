@@ -596,7 +596,7 @@ await test("A two-type spell from an item deals both of its types, at the item's
   const enemy = await stage(mage, [wand("Staff of Frost")]);
   assert.ok(cardNamed(mage, "Staff of Frost: Ice Storm"), "the staff deals Ice Storm");
   const before = world.enemies().find((entry) => entry.id === enemy.id).currentHp;
-  // Ice Storm's card goes to the GM (a lasting area that catches), from a slot as
+  // Ice Storm's card with no square picked goes to the GM, from a slot as
   // from an item; the GM resolves it with these calls.
   const drawn = await run("use_item", { characterId: mage.id, item: "Staff of Frost", spell: "Ice Storm" });
   assert.equal(drawn.ok, true, JSON.stringify(drawn));

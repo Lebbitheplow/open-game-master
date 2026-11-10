@@ -20,13 +20,14 @@ import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { SpellZone } from "@/lib/battlemap/zones";
 import { zoneRowFor, type ZoneNamed } from "@/lib/battlemap/zones-spells";
 import { budgetApplies } from "@/lib/dm/action-budget";
-import { areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
+import { areaProblem, creaturesInBlast, creaturesInLaidZone, spellAreaShape, type AreaShape } from "@/lib/dm/aoe-shape";
+import type { XY } from "@/lib/battlemap/types";
 import { openCastOf, withOpenCast, type OpenCast } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { currentCombatantId, storeBudget } from "@/lib/dm/turn-budget";
 import { liveZones, saveZones, publishZones } from "@/lib/dm/zone-store";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { spellMechanicsFor } from "@/lib/content";
+import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 
 type Target = { id: string; name: string };
@@ -122,25 +123,75 @@ export function repeatStrikeProblem(encounter: Encounter, input: { spell: string
 // The resolved name of a call that is its caster's held area coming again
 // for nothing (Moonbeam while they concentrate on it), or null.
 export function freeRepeatOf(campaign: Campaign, casterId: string | null | undefined, spell: string): string | null {
+  return freeRepeatFor(spellAuthorsFor(campaign), casterId, spell);
+}
+
+function freeRepeatFor(authors: string[], casterId: string | null | undefined, spell: string): string | null {
   const caster = casterId ? getSheetById(casterId) : null;
-  const resolved = caster?.concentratingOn ? spellMechanicsFor({ spell, userIds: spellAuthorsFor(campaign) }) : null;
+  const resolved = caster?.concentratingOn ? spellMechanicsFor({ spell, userIds: authors }) : null;
   return resolved?.mech.repeat === "free" && textKey(caster?.concentratingOn ?? "") === textKey(resolved.name) ? resolved.name : null;
 }
 
 // Whether a player's spell laid on a square of the battle map, naming
-// nobody, catches the creatures standing in it (aoe-shape.ts
-// creaturesInBlast). An instant blast does. A spell that also leaves a
-// lasting area does when its area catches them as it appears (Ice Storm's
-// hail, zones-spells.ts catchesWhenLaid): gating on any zone row let Ice
-// Storm roll its dice and spend its slot on nobody. A Web catches nobody
-// when cast, and a held area coming again (Insect Plague's swarm) strikes
-// only the creatures it names, entering or ending a turn there.
-export function boardCatchesCast(campaign: Campaign, casterId: string, spell: ZoneNamed): boolean {
+// nobody, catches the creatures standing in it. An instant blast does. A
+// spell that also leaves a lasting area does when its area catches them as
+// it appears (Ice Storm's hail, Entangle, a Wall of Fire: zones-spells.ts
+// catchesWhenLaid): gating on any zone row let Ice Storm roll its dice and
+// spend its slot on nobody. A Web catches nobody when cast, and a held area
+// coming again (Insect Plague's swarm) strikes only the creatures it names,
+// entering or ending a turn there. `authors`: the table's (spellAuthorsFor),
+// for a workshop copy.
+export function boardCatchesCast(authors: string[], casterId: string, spell: ZoneNamed): boolean {
   const row = zoneRowFor(spell);
   if (!row) {
     return true;
   }
-  return Boolean(row.catchesWhenLaid) && !freeRepeatOf(campaign, casterId, typeof spell === "string" ? spell : spell.spell);
+  return Boolean(row.catchesWhenLaid) && !freeRepeatFor(authors, casterId, typeof spell === "string" ? spell : spell.spell);
+}
+
+// Who a player's spell laid on the battle map, naming nobody, catches as it
+// is cast: one reader for aoe_damage and the Portent stop (foresight.ts
+// areaCatch), so the stop asks about the saves the casting then rolls. The
+// burst its text prints (aoe-shape.ts creaturesInBlast), else the squares
+// its lasting area is laid on (creaturesInLaidZone: Entangle, Grease, a
+// wall). Null when it catches nobody as it is cast, or has no area to read.
+// `blast` is the burst, for the refusal of one laid on nobody.
+export function boardCatch(input: {
+  authors: string[];
+  encounterId: string;
+  caster: { id: string; name: string };
+  spell: string;
+  runsAs?: string;
+  slotLevel?: number | null;
+  placement: { at?: XY; toward?: XY };
+}): { caught: { enemyIds: string[]; characterIds: string[] } | ToolError | null; blast: AreaShape | null } | null {
+  const named = { spell: input.spell, ...(input.runsAs ? { runsAs: input.runsAs } : {}) };
+  if (!boardCatchesCast(input.authors, input.caster.id, named)) {
+    return null;
+  }
+  const blast = spellAreaShape(input.spell, input.authors);
+  if (blast) {
+    const range = spellFactsFor(input.spell, input.authors)?.range;
+    return {
+      blast,
+      caught: creaturesInBlast({
+        encounterId: input.encounterId,
+        casterId: input.caster.id,
+        casterName: input.caster.name,
+        label: input.spell,
+        area: blast,
+        rangeFeet: range?.kind === "feet" ? range.feet : null,
+        ...input.placement,
+      }),
+    };
+  }
+  if (!zoneRowFor(named)) {
+    return null;
+  }
+  return {
+    blast: null,
+    caught: creaturesInLaidZone({ encounterId: input.encounterId, casterId: input.caster.id, label: input.spell, spell: named, slotLevel: input.slotLevel, ...input.placement }),
+  };
 }
 
 // The first creature of an aoe_damage call the held area may not strike now.

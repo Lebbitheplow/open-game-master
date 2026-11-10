@@ -16,9 +16,8 @@ import { armForetold, disarmForetold } from "@/lib/db/dice-scripts";
 import type { Campaign } from "@/lib/db/campaigns";
 import { createPendingRoll, publicPendingRoll, setPendingWatch, type DmTurn, type HeldCall, type WatchChoice, type WatchPower, type WatchRoll } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { spellEngineName, spellFactsFor } from "@/lib/content";
-import { boardCatchesCast } from "@/lib/dm/area-casting";
-import { creaturesInBlast, spellAreaShape } from "@/lib/dm/aoe-shape";
+import { spellEngineName, spellMechanicsFor } from "@/lib/content";
+import { boardCatch } from "@/lib/dm/area-casting";
 import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { kindOfId, sideOf } from "@/lib/dm/combatant";
@@ -116,24 +115,22 @@ function areaCatch(campaign: Campaign, args: Record<string, unknown>, sheets: re
     return { enemies, heroes };
   }
   const caster = sheets.find((sheet) => sheet.id === args.casterCharacterId);
-  const authors = spellAuthorsFor(campaign);
-  // The creatures aoe_damage will catch on the board (area-casting.ts
-  // boardCatchesCast): Ice Storm's as well as Fireball's, never a Web's.
-  const area = caster && boardCatchesCast(campaign, caster.id, { spell: args.spell, runsAs: spellEngineName(args.spell, authors) }) ? spellAreaShape(args.spell, authors) : null;
-  if (!caster || !area) {
+  if (!caster) {
     return { enemies, heroes };
   }
-  const range = spellFactsFor(args.spell, authors)?.range;
+  const authors = spellAuthorsFor(campaign);
   const num = (value: unknown) => (typeof value === "number" ? value : typeof value === "string" && value !== "" ? Number(value) : undefined);
-  const caught = creaturesInBlast({
+  // The creatures aoe_damage will catch on the board (area-casting.ts
+  // boardCatch): Ice Storm's and Entangle's as well as Fireball's, never a Web's.
+  const caught = boardCatch({
+    authors,
     encounterId,
-    casterId: caster.id,
-    casterName: caster.name,
-    label: args.spell,
-    area,
-    rangeFeet: range?.kind === "feet" ? range.feet : null,
-    ...zonePlacement({ atX: num(args.atX), atY: num(args.atY), towardX: num(args.towardX), towardY: num(args.towardY) }),
-  });
+    caster,
+    spell: args.spell,
+    runsAs: spellEngineName(args.spell, authors),
+    slotLevel: num(args.level) ?? null,
+    placement: zonePlacement({ atX: num(args.atX), atY: num(args.atY), towardX: num(args.towardX), towardY: num(args.towardY) }),
+  })?.caught;
   if (caught && !("error" in caught)) {
     for (const ref of [...caught.enemyIds, ...caught.characterIds]) add(ref);
   }
@@ -221,10 +218,14 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
       : [args.targetEnemyId];
     const enemies: EncounterEnemy[] = [];
     for (const ref of refs) {
+      // A creature already down is refused before any roll.
       const enemy = typeof ref === "string" ? getFoe(ref) : null;
-      if (enemy && !enemies.some((entry) => entry.id === enemy.id)) enemies.push(enemy);
+      if (enemy && enemy.status === "alive" && !enemies.some((entry) => entry.id === enemy.id)) enemies.push(enemy);
     }
-    if (!hero || !enemies.length) {
+    // A spell that hits without a roll (Magic Missile's darts) throws no d20
+    // for a number or a shift to answer, so it never holds the turn.
+    const auto = typeof args.spell === "string" ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech : null;
+    if (!hero || !enemies.length || (auto?.resolution === "auto" && !auto.save)) {
       return null;
     }
     const spell = typeof args.spell === "string" && args.spell.trim() ? args.spell.trim().slice(0, 60) : "a spell";

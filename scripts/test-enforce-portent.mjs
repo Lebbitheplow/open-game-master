@@ -549,6 +549,94 @@ await test("A hero's spell at two creatures asks whose save takes the number, as
   fightWorld.patch(target.id, { concentratingOn: null, concentrationRounds: null, equipment: kept });
 });
 
+// With the tool's `targets` read, every cast_at_enemy came to the stop: Magic
+// Missile's darts too, which throw no d20, and a spell at a creature already
+// down, which the tool refuses before any roll. Each held the turn for its
+// whole time with a number nothing could take.
+await test("Magic Missile's darts, and a spell at a creature already down, hold nothing: no d20 is thrown there.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const hp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).currentHp);
+  fightWorld.patch(target.id, { spellcasting: { ability: "wis", cantrips: ["Sacred Flame"], known: [], prepared: ["Magic Missile"], slots: { 1: { max: 1, used: 0 } } } });
+  fightModel.script([
+    reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targets: [{ targetEnemyId: goblin.id, darts: 2 }, { targetEnemyId: goblin2.id, darts: 1 }], spell: "Magic Missile", level: 1 })] }),
+    reply({ text: "Darts streak out." }),
+  ]);
+  await fightModel.turn(fightWorld, "I cast Magic Missile at both goblins.", target.id, targetUser.id);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(stops().length, 0, "darts that never roll are not stopped for");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+  const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
+  patchEnemyHp(goblin2.id, 0, "dead");
+  try {
+    saveEncounter({ ...fightWorld.encounter(), turnBudget: null });
+    fightModel.script([reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targets: [{ targetEnemyId: goblin2.id }], spell: "Sacred Flame" })] }), reply({ text: "The body lies still." })]);
+    await fightModel.turn(fightWorld, "I call down Sacred Flame on the fallen goblin.", target.id, targetUser.id);
+    await settleQueue(fightWorld.campaignId);
+    assert.equal(stops().length, 0, "a creature already down makes no save");
+  } finally {
+    patchEnemyHp(goblin.id, hp[0], "alive");
+    patchEnemyHp(goblin2.id, hp[1], "alive");
+  }
+});
+
+// A lasting area whose first saves come as it appears, laid on a square and
+// naming nobody (Grease, whose text prints no burst): the stop reads who
+// stands on its squares as aoe_damage then catches them (area-casting.ts
+// boardCatch). It read only a burst, so no stop came.
+await test("Grease laid on a square with nobody named stops for the save of the creature standing in it, and the number lands there.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const kept = fightWorld.sheet(target.id).equipment;
+  fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Grease"], slots: { 1: { max: 1, used: 0 } } } });
+  // Kara steps back, so only the goblin stands on the grease's 10-foot square.
+  kit.place(target.id, 1, 1);
+  fightModel.script([reply({ calls: [modelCall("aoe_damage", { casterCharacterId: target.id, spell: "Grease", level: 1, atX: 6, atY: 5 })] }), reply({ text: "The goblin slides." })]);
+  const before = saveRolls().length;
+  await fightModel.turn(fightWorld, "I cast Grease under the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the casting stops before the save");
+  assert.match(stop.reason, /Goblin.* is about to make a saving throw against Grease/);
+  assert.equal(stop.watch.choices.length, 1, "one creature on the grease");
+  assert.equal((await answer(stop.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = saveRolls().slice(before);
+  assert.equal(landed[0]?.breakdown.natural, 3, `the goblin's save shows the 3 (${JSON.stringify(landed.map((roll) => roll.detail))})`);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  kit.place(target.id, 5, 5);
+  kit.setEnemy(goblin.id, { conditions: [] });
+  fightWorld.patch(target.id, { equipment: kept });
+});
+
+// Ice Storm laid on a square names nobody either; its burst is read from its
+// text, and it leaves hail as well (issue 570, #889).
+await test("Ice Storm laid on a square with nobody named asks whose save, of the creatures standing in its storm.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const kept = fightWorld.sheet(target.id).equipment;
+  const hp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).currentHp);
+  fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Ice Storm"], slots: { 4: { max: 1, used: 0 } } } });
+  // Kara stands well clear of her own storm, as does the watcher.
+  kit.place(target.id, 0, 9);
+  fightModel.script([reply({ calls: [modelCall("aoe_damage", { casterCharacterId: target.id, spell: "Ice Storm", level: 4, atX: 5, atY: 3 })] }), reply({ text: "Hail hammers the goblins." })]);
+  await fightModel.turn(fightWorld, "I cast Ice Storm over the goblins.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the storm stops before its saves");
+  const { publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices.map((choice) => choice.name).sort(), [goblin.displayName, goblin2.displayName].sort(), "the creatures in the storm, and nobody outside it");
+  assert.equal((await answer(stop.id, { pass: true })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "let it roll spends nothing");
+  const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
+  patchEnemyHp(goblin.id, hp[0], "alive");
+  patchEnemyHp(goblin2.id, hp[1], "alive");
+  kit.place(target.id, 5, 5);
+  fightWorld.patch(target.id, { equipment: kept });
+});
+
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
   arm({ foretold: [17, 9] });
   const order = fightWorld.encounter();
