@@ -1,4 +1,5 @@
 import { named } from "@/lib/dm/roll-about";
+import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { featCheckRider, hasSkulker } from "@/lib/srd/feat-combat";
@@ -320,6 +321,8 @@ export function resolveRollExpression(
   extras?: {
     saveBonus?: number;
     saveNote?: string;
+    // An ally's genre aura on a save against one thing (src/lib/dm/genre-b-auras.ts).
+    saveAuras?: GenreSaveAura[];
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -505,8 +508,12 @@ export function resolveRollExpression(
     extras?.charmedTarget && (derivationKind === "skill_check" || derivationKind === "ability_check") && derivationAbility === "cha"
       ? extras.charmedTarget
       : null;
+  // Steadying Presence, Fear No Rust, Walk Through the Valley: a die or
+  // advantage on a save against what the ally's aura names.
+  const genreAura = derivationKind === "saving_throw" ? saveAuraRiders(extras?.saveAuras, named(args.against)) : saveAuraRiders(undefined, undefined);
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
+    ...(genreAura.advantage ? ["advantage" as const] : []),
     ...(charming ? ["advantage" as const] : []),
     ...(extras?.effectAdvantage ? ["advantage" as const] : []),
     ...(extras?.effectDisadvantage ? ["disadvantage" as const] : []),
@@ -518,7 +525,7 @@ export function resolveRollExpression(
     ...(armorUntrained ? ["disadvantage" as const] : []),
     ...(overloaded ? ["disadvantage" as const] : []),
   ]);
-  const bonusDie = `${riders.dice}${effects.diceSuffix}`;
+  const bonusDie = `${riders.dice}${effects.diceSuffix}${genreAura.dice}`;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
     riders.inspirationCondition,
@@ -540,6 +547,7 @@ export function resolveRollExpression(
     ...(helped ? ["spends the Help their ally gave them: advantage"] : []),
     ...(untrainedHelper ? [`${untrainedHelper}'s Help gives nothing here: they are not trained with ${args.tool}`] : []),
     ...riders.notes,
+    ...genreAura.notes,
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
       : []),

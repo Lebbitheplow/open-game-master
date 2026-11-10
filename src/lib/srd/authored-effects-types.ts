@@ -168,6 +168,8 @@ export type AuthoredEffect = Base &
         kind: "aura_resist";
         rangeFt: number | Array<[number, number]>;
         spells?: boolean;
+        // Damage of these types (Walk Through the Valley: necrotic).
+        types?: string[];
         typeFrom?: { condition: string; map: Record<string, string> };
       }
     // A creature that hits the holder takes damage back.

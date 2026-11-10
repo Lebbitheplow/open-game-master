@@ -15,10 +15,13 @@ import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getSheetById } from "@/lib/db/sheets";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
+import { genreBAuraAc } from "@/lib/dm/genre-b-auras";
 
 export function acWithEffects(campaignId: string, sheet: CharacterSheet): number {
   return applyField(
-    effectiveAcFor(sheet),
+    // An ally's genre aura (Guardian's Instinct, Shield Coupling) is measured
+    // on the board as the attack is made (src/lib/dm/genre-b-auras.ts).
+    effectiveAcFor(sheet) + genreBAuraAc(campaignId, sheet),
     effectOutcome(campaignId, { kind: "character", id: sheet.id }, "ac"),
   );
 }

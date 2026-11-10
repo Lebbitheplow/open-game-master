@@ -22,7 +22,11 @@ import { textKey } from "@/lib/language/text-logic";
 type Holder = Pick<CharacterSheet, "class" | "features" | "conditions" | "currentHp" | "maxHp"> & Partial<Pick<CharacterSheet, "classes">>;
 
 // The class a genre feature is held by, so a same-named feature of another
-// class never runs as this one.
+// class never runs as this one (src/lib/dm/genre-b-auras.ts asks it too).
+export function holdsGenreFeature(sheet: Pick<Holder, "class" | "features"> & Partial<Pick<CharacterSheet, "classes">>, classId: string, feature: string): boolean {
+  return holds(sheet as Holder, classId, feature);
+}
+
 function holds(sheet: Holder, classId: string, feature: string): boolean {
   const classes = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map(textKey);
   return classes.includes(textKey(classId)) && holdsFeature(sheet, feature);

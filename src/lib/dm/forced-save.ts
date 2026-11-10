@@ -26,6 +26,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allySaveAura } from "@/lib/dm/aura";
+import { genreBSaveAuras } from "@/lib/dm/genre-b-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
 import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -60,6 +61,9 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
   return {
     ...(aura ? { saveBonus: aura.bonus, saveNote: aura.note } : {}),
+    // The genre auras an ally holds (Steadying Presence, Fear No Rust):
+    // rolls.ts adds them to a save against what each names.
+    ...(kind === "saving_throw" ? { saveAuras: genreBSaveAuras(campaign.id, sheet) } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).

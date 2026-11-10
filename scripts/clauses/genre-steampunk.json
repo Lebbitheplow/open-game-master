@@ -3102,11 +3102,9 @@
   "clauses": [
    {
     "c": "Adjacent allies gain +1 AC while you hold a shield",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Shield Coupling#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Shield Coupling: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Shield Coupling: an adjacent ally gains +1 AC only while the steam knight holds a shield",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },

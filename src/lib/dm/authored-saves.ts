@@ -268,6 +268,11 @@ export function authoredAuraResistances(campaignId: string, sheet: CharacterShee
         }
         continue;
       }
+      // Named types (Walk Through the Valley: necrotic, for the preacher's allies within 10 ft).
+      if (effect.types) {
+        out.push(...effect.types);
+        continue;
+      }
       if (effect.typeFrom && holder.id !== sheet.id) {
         const aura = holder.conditions.find((entry) => isConditionNamed(entry, effect.typeFrom!.condition));
         const kind = aura ? /\(([^)]+)\)/.exec(aura)?.[1] : undefined;

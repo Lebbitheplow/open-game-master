@@ -68,7 +68,9 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   row("Scrap Armor Weave", ["salvage_tech"], { effects: [{ kind: "ac", amount: 1 }, { kind: "resist", types: ["lightning"] }] }),
   // The holder's own part of "You and allies within 10 ft have resistance to
   // necrotic damage and advantage against fear".
-  row("Walk Through the Valley", ["waste_preacher"], { effects: [{ kind: "resist", types: ["necrotic"] }, { kind: "save_adv", against: ["frightened"] }] }),
+  // The allies' part: the necrotic resistance here, the advantage against
+  // fear in src/lib/dm/genre-b-auras.ts.
+  row("Walk Through the Valley", ["waste_preacher"], { effects: [{ kind: "resist", types: ["necrotic"] }, { kind: "save_adv", against: ["frightened"] }, { kind: "aura_resist", rangeFt: 10, types: ["necrotic"] }] }),
   // ---- steampunk ----
   row("Acid Resistant Apron", ["alchemist"], { effects: [{ kind: "resist", types: ["acid", "poison"] }] }),
   row("Grounded Stance", ["aether_channeler"], { effects: [{ kind: "resist", types: ["lightning"] }] }),

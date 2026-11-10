@@ -694,21 +694,21 @@
    },
    {
     "c": "allies within 10 ft add +1d4 to fear saves while you fight on",
-    "is": "gap",
-    "probe": "not run: no aura adds a die to allies' saves by what they resist (the save die keys only to the holder).",
-    "observed": "nothing in the engine answers to Fear No Rust: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no aura adds a die to allies' saves by what they resist (the save die keys only to the holder)."
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
@@ -2414,16 +2414,15 @@
   "clauses": [
    {
     "c": "You and allies within 10 ft have resistance to necrotic damage and advantage against fear",
-    "is": "gap",
-    "probe": "not run: the holder's own resistance and advantage are built; the allies' share needs an aura of save advantage, which the engine has only for resistances (aura_resist reads spells or a condition's type).",
-    "observed": "nothing in the engine answers to Walk Through the Valley: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the holder's own resistance and advantage are built; the allies' share needs an aura of save advantage, which the engine has only for resistances (aura_resist reads spells or a condition's type)."
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Walk Through the Valley: allies within 10 ft resist necrotic and save against fear with advantage",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC); the allies' necrotic resistance is the aura_resist row (src/lib/srd/authored-effects-genre-b.ts, read by src/lib/dm/authored-saves.ts authoredAuraResistances)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Walk Through the Valley: allies within 10 ft resist necrotic and save against fear with advantage",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC); the allies' necrotic resistance is the aura_resist row (src/lib/srd/authored-effects-genre-b.ts, read by src/lib/dm/authored-saves.ts authoredAuraResistances)"
    },
    {
     "c": "resistance to necrotic damage",

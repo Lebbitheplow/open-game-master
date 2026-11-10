@@ -582,21 +582,21 @@
   "clauses": [
    {
     "c": "Allies within 10 ft add +1d4 to saves against fear and madness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Steadying Presence: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
@@ -802,16 +802,14 @@
   "clauses": [
    {
     "c": "Your Steadying Presence radius is 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Group Therapy: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Group Therapy: Steadying Presence reaches 30 ft",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "allies in it are immune to madness effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked"
+    "is": "left",
+    "why": "Madness is no condition or save the SRD 5.1 engine names (src/lib/dm/roll-about.ts SAVE_AGAINST): the catalog line is handed to the GM as the feature's rule (src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
    }
   ]
  },
@@ -1964,16 +1962,15 @@
   "clauses": [
    {
     "c": "Allies within 10 ft gain +1 AC while you are conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Guardian's Instinct: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Guardian's Instinct: allies within 10 ft gain +1 AC while the enforcer is conscious",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Guardian's Instinct: allies within 10 ft gain +1 AC while the enforcer is conscious",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
