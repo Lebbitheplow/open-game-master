@@ -34,20 +34,18 @@ const CLEAR_GAP = 6;
 
 // What stands over the frame's bottom: the Hand on the fight stage, a
 // sibling of the board in the stage's frame (SessionView.tsx), not a child of
-// this one. The camera works in what shows above it: the resting view fits
-// the board there, a followed turn is centred there, and a figure under the
-// cards counts as off screen. The cards lie over the board's lower edge by
-// design, so the foot is what they cover less FOOT_LAP of overlap, and never
-// more than FOOT_SHARE of the frame (past that the board would be a strip
-// along the top; the Hand folds away when asked). The resting view gives up
-// less still, REST_SHARE of the frame: a whole board shrunk to fit above the
-// cards was a small picture in a wide dark frame, so its last rows lie under
-// the cards' top edge instead, and the turn that walks there is followed.
+// this one. The cards lie on the map and the map keeps its size under them:
+// the resting view fits the whole frame, Hand or no Hand (fitted above the
+// cards instead, the board shrank to a small picture every time the Hand was
+// shown). What the Hand does change is where a turn is followed to: the
+// figure whose turn it is is centred in what the cards leave uncovered, and
+// one under them counts as off screen, so the player's own figure is never
+// dealt over. The cards overlap the board by design, so the foot is what
+// they cover less FOOT_LAP, and never more than FOOT_SHARE of the frame.
 const STAGE_SELECTOR = "[data-fit-stage]";
 const FOOT_SELECTOR = "[data-fit-foot]";
 const FOOT_LAP = 24;
 const FOOT_SHARE = 0.55;
-const REST_SHARE = 0.3;
 
 function footOf(frame: HTMLElement | null): HTMLElement | null {
   return frame?.closest(STAGE_SELECTOR)?.querySelector<HTMLElement>(FOOT_SELECTOR) ?? null;
@@ -180,15 +178,15 @@ export function useBoardCamera(
     }
     const width = frame.clientWidth;
     const whole = frame.clientHeight || (width * boardHeight) / boardWidth;
-    const foot = footToClear(frame);
-    const height = Math.max(whole * (1 - FOOT_SHARE), whole - foot);
-    const rest = Math.max(whole * (1 - REST_SHARE), whole - foot);
-    return { width, height, rest, unit: width / (boardWidth * TILE) };
+    // `height` is what shows above the Hand, where a figure is centred and
+    // looked for; `whole` is the frame, which the resting view fits.
+    const height = Math.max(whole * (1 - FOOT_SHARE), whole - footToClear(frame));
+    return { width, height, whole, unit: width / (boardWidth * TILE) };
   }, [boardWidth, boardHeight]);
 
   const fit = useCallback((): Camera => {
     const m = metrics();
-    return m ? fitCamera({ width: m.width, height: m.rest }, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
+    return m ? fitCamera({ width: m.width, height: m.whole }, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
   }, [metrics, boardWidth, boardHeight]);
   const clampZoom = useCallback((zoom: number) => clampZoomTo(zoom, minZoomFor(fit())), [fit]);
 
@@ -348,7 +346,7 @@ export function useBoardCamera(
         observer.observe(corner);
       }
     };
-    const observer = new ResizeObserver((entries) => {
+    const observer = new ResizeObserver(() => {
       if (!enabledRef.current) return;
       const width = frameEl.clientWidth;
       if (!width) {
@@ -358,9 +356,7 @@ export function useBoardCamera(
       frameWidth.current = width;
       if (fittedRef.current) {
         const next = fit();
-        // A window changing shape lands at once; the Hand folding away or
-        // dealing back in is a move on the table, and the board eases to it.
-        setEased(entries.length > 0 && entries.every((entry) => entry.target === foot) && !prefersReducedMotion());
+        setEased(false);
         setCamera((current) =>
           current.zoom === next.zoom && current.x === next.x && current.y === next.y ? current : next,
         );
@@ -380,31 +376,9 @@ export function useBoardCamera(
     // The order's strip mounts once the order is rolled, after the frame.
     const mounted = new MutationObserver(watchCorner);
     mounted.observe(frameEl, { childList: true });
-    // The Hand over the board's foot comes and goes with the fight and the
-    // layout, and grows and folds with its cards: a view resting on the fit
-    // follows it. Its going resizes nothing, so that is fitted by hand.
-    const stage = frameEl.closest(STAGE_SELECTOR);
-    let foot: HTMLElement | null = null;
-    const watchFoot = () => {
-      const next = footOf(frameEl);
-      if (next === foot) return;
-      if (foot) observer.unobserve(foot);
-      foot = next;
-      if (foot) {
-        observer.observe(foot);
-      } else if (enabledRef.current && fittedRef.current && frameEl.clientWidth) {
-        const view = fit();
-        setEased(true);
-        setCamera((current) => (current.zoom === view.zoom && current.x === view.x && current.y === view.y ? current : view));
-      }
-    };
-    watchFoot();
-    const staged = stage ? new MutationObserver(watchFoot) : null;
-    if (stage) staged?.observe(stage, { childList: true });
     return () => {
       observer.disconnect();
       mounted.disconnect();
-      staged?.disconnect();
     };
   }, [frameEl, fit, options.enabled]);
 
