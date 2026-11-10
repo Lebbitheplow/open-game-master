@@ -1,0 +1,4524 @@
+{
+ "barbarian::Rage": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 1,
+  "sha": "b32a2812920e",
+  "heading": "barbarian: Rage",
+  "clauses": [
+   {
+    "c": "On your turn, you can enter a rage",
+    "is": "held",
+    "by": "dm/can-act.ts (off their own turn a character has only a reaction)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.on-your-turn"
+   },
+   {
+    "c": "as a bonus action",
+    "is": "held",
+    "by": "srd/class-resources.ts rage action: bonus",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Second Wind and Rage each take the bonus action of the turn they are used on, and a turn has one."
+   },
+   {
+    "c": "if you aren't wearing heavy armor",
+    "is": "held",
+    "by": "srd/condition-effects raging riders, gated on worn heavy armor",
+    "probe": "scripts/test-enforce-resource-spend.mjs: A barbarian gains the benefits of Rage only while not wearing heavy armor."
+   },
+   {
+    "c": "You have advantage on Strength checks",
+    "is": "held",
+    "by": "dm/roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L3: A raging barbarian in heavy armor gets no advantage on Strength checks."
+   },
+   {
+    "c": "and Strength saving throws",
+    "is": "held",
+    "by": "dm/roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.str-save"
+   },
+   {
+    "c": "When you make a melee weapon attack using Strength, you gain a bonus to the damage roll",
+    "is": "held",
+    "by": "srd/class-resources.ts rageDamageBonus, dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Rage: its bonus on a Strength melee attack and on nothing else"
+   },
+   {
+    "c": "as shown in the Rage Damage column of the Barbarian table",
+    "is": "held",
+    "by": "srd/class-resources.ts rageDamageBonus",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   },
+   {
+    "c": "You have resistance to bludgeoning, piercing, and slashing damage.",
+    "is": "held",
+    "by": "dm/mutations.ts apply_damage, raging riders",
+    "probe": "scripts/test-enforce-damage-types.mjs: ${type}: rage halves bludgeoning, piercing and slashing, only while it lasts"
+   },
+   {
+    "c": "you can't cast them",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting-limits.mjs: a raging caster casts nothing"
+   },
+   {
+    "c": "or concentrate on them while raging",
+    "is": "held",
+    "by": "dm/resource-tools.ts breakConcentration on entering a rage",
+    "probe": "scripts/test-enforce-concentration.mjs: entering a rage ends any spell the barbarian was concentrating on"
+   },
+   {
+    "c": "Your rage lasts for 1 minute.",
+    "is": "held",
+    "by": "conditionMeta.raging rounds: 10",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Rage is a condition with real riders, and lasts one minute"
+   },
+   {
+    "c": "It ends early if you are knocked unconscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.unconscious",
+    "where": "src/lib/dm/set-condition.ts (the unconscious condition landing on a raging character)",
+    "severity": "medium",
+    "kind": "state-lifecycle",
+    "note": "held on the 0 hit point path only (test-enforce-damage-types: rage ends when the barbarian drops to 0 hit points)"
+   },
+   {
+    "c": "or if your turn ends and you haven't attacked a hostile creature since your last turn or taken damage since then",
+    "is": "held",
+    "by": "dm/condition-tick.ts endTurnRage",
+    "probe": "scripts/test-enforce-resource-spend.mjs: A rage ends early if the barbarian's turn ends and they have neither attacked a hostile creature nor taken damage since their last turn."
+   },
+   {
+    "c": "You can also end your rage on your turn as a bonus action.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.end-bonus",
+    "where": "src/lib/dm/resource-tools.ts use_resource (rage), src/lib/battlemap/hand-class.ts",
+    "severity": "low",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "Once you have raged the number of times shown for your barbarian level in the Rages column of the Barbarian table",
+    "is": "held",
+    "by": "srd/class-resources.ts rage max",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   },
+   {
+    "c": "you must finish a long rest before you can rage again",
+    "is": "held",
+    "by": "srd/class-resources.ts rage recharge: long",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.long-rest"
+   },
+   {
+    "c": "In battle, you fight with primal ferocity.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "barbarian::Unarmored Defense": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 1,
+  "sha": "d23eff388c7f",
+  "heading": "barbarian: Unarmored Defense",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "2e8d3af37cf4"
+  },
+  "clauses": [
+   {
+    "c": "While you are not wearing any armor",
+    "is": "held",
+    "by": "srd/armor.ts computeArmorClass",
+    "probe": "scripts/test-enforce-armor.mjs: Unarmored Defense does not add to armor: the suit's own number stands"
+   },
+   {
+    "c": "your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier",
+    "is": "held",
+    "by": "srd/armor.ts unarmoredFormulaFor",
+    "probe": "scripts/test-enforce-armor.mjs: a barbarian's Unarmored Defense is 10 + DEX + CON, and takes a shield"
+   },
+   {
+    "c": "You can use a shield and still gain this benefit.",
+    "is": "held",
+    "by": "srd/armor.ts unarmoredFormulaFor",
+    "probe": "scripts/test-enforce-armor.mjs: a barbarian's Unarmored Defense is 10 + DEX + CON, and takes a shield"
+   }
+  ]
+ },
+ "barbarian::Reckless Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 2,
+  "sha": "aa576c71d1c1",
+  "heading": "barbarian: Reckless Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "5ba5b3e5bc2f"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "class-features.json level 2",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   },
+   {
+    "c": "When you make your first attack on your turn, you can decide to attack recklessly.",
+    "is": "held",
+    "by": "dm/pc-attack-options.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.reckless-attack.first-attack"
+   },
+   {
+    "c": "Doing so gives you advantage on melee weapon attack rolls using Strength",
+    "is": "held",
+    "by": "dm/pc-attack-situation.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Reckless Attack gives the barbarian advantage on STR melee weapon attacks this turn; a fighter has no such option."
+   },
+   {
+    "c": "during this turn",
+    "is": "held",
+    "by": "encounter turnBudget reckless",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.reckless-attack.whole-turn"
+   },
+   {
+    "c": "but attack rolls against you have advantage until your next turn",
+    "is": "held",
+    "by": "condition reckless, untilTurnOf",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: After Reckless Attack, attack rolls against the barbarian have advantage until their next turn."
+   }
+  ]
+ },
+ "barbarian::Danger Sense": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 2,
+  "sha": "b3ecfb97fd8f",
+  "heading": "barbarian: Danger Sense",
+  "clauses": [
+   {
+    "c": "At 2nd level",
+    "is": "held",
+    "by": "class-features.json level 2",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   },
+   {
+    "c": "You have advantage on Dexterity saving throws",
+    "is": "held",
+    "by": "srd/trait-rules.ts traitSaveAdvantages",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L2: Danger Sense does not work while the barbarian is blinded, deafened or incapacitated."
+   },
+   {
+    "c": "against effects that you can see, such as traps and spells",
+    "is": "left",
+    "why": "src/lib/srd/trait-rules.ts dangerSenseWorks: \"the barbarian must be able to see and hear what is coming, so it does nothing while they are blinded, deafened or incapacitated\"; whether one trap or spell was seen is not state the table holds, so every other DEX save gets it (src/lib/srd/feature-effects.ts guidance: \"The server applies it.\")"
+   },
+   {
+    "c": "To gain this benefit, you can't be blinded, deafened, or incapacitated.",
+    "is": "held",
+    "by": "srd/trait-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.danger-sense.senses"
+   }
+  ]
+ },
+ "barbarian::Primal Path": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 3,
+  "sha": "d8f153f537af",
+  "heading": "barbarian: Primal Path",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "d7c95ad29837"
+  },
+  "clauses": [
+   {
+    "c": "At 3rd level, you choose a path",
+    "is": "held",
+    "by": "class-features.json subclassLevel 3",
+    "probe": "scripts/test-enforce-class-tables.mjs: every class has its SRD hit die and picks its subclass at the SRD level"
+   },
+   {
+    "c": "Choose the Path of the Berserker or the Path of the Totem Warrior",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.primal-path.paths"
+   },
+   {
+    "c": "Your choice grants you features at 3rd level and again at 6th, 10th, and 14th levels.",
+    "is": "held",
+    "by": "class-features.json subclass levels",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   }
+  ]
+ },
+ "barbarian::Extra Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 5,
+  "sha": "5806389ca012",
+  "heading": "barbarian: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can attack twice, instead of once, whenever you take the Attack action on your turn",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-action-economy.mjs: Extra Attack at level 5 is exactly two attacks inside one action"
+   }
+  ]
+ },
+ "barbarian::Fast Movement": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 5,
+  "sha": "641e6205f462",
+  "heading": "barbarian: Fast Movement",
+  "clauses": [
+   {
+    "c": "Starting at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your speed increases by 10 feet",
+    "is": "held",
+    "by": "srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.fast-movement.speed"
+   },
+   {
+    "c": "while you aren't wearing heavy armor",
+    "is": "held",
+    "by": "srd/index.ts speedFor gate heavy_armor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.fast-movement.speed"
+   }
+  ]
+ },
+ "barbarian::Feral Instinct": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 7,
+  "sha": "9f2f02722296",
+  "heading": "barbarian: Feral Instinct",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "ccac18ff2a0a"
+  },
+  "clauses": [
+   {
+    "c": "By 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you have advantage on initiative rolls",
+    "is": "held",
+    "by": "srd/trait-rules.ts initiativeAdvantage",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L1: Feral Instinct gives advantage on initiative."
+   },
+   {
+    "c": "if you are surprised at the beginning of combat and aren't incapacitated, you can act normally on your first turn, but only if you enter your rage before doing anything else on that turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.feral-instinct.surprised-rage",
+    "where": "src/lib/dm/encounter-tools.ts start_encounter (surprisedIds) and entryActs; src/lib/dm/can-act.ts isSurprised",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "the first sentence (advantage on initiative) is held; the second has no code: Feral Instinct is read only by initiativeAdvantage"
+   }
+  ]
+ },
+ "barbarian::Brutal Critical (1 die)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 9,
+  "sha": "383cb4e83016",
+  "heading": "barbarian: Brutal Critical",
+  "clauses": [
+   {
+    "c": "Beginning at 9th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 9)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can roll one additional weapon damage die when determining the extra damage for a critical hit",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-class-tables.mjs: Brutal Critical adds one extra weapon die to a critical hit at barbarian 9, two at 13 and three at 17."
+   },
+   {
+    "c": "with a melee attack",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.brutal-critical-1-die.melee-only"
+   },
+   {
+    "c": "This increases to two additional dice at 13th level and three additional dice at 17th level.",
+    "is": "held",
+    "by": "srd/feature-effects.ts tiers",
+    "probe": "scripts/test-enforce-class-tables.mjs: Brutal Critical adds one extra weapon die to a critical hit at barbarian 9, two at 13 and three at 17."
+   }
+  ]
+ },
+ "barbarian::Relentless Rage": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 11,
+  "sha": "d038da9fac0d",
+  "heading": "barbarian: Relentless Rage",
+  "clauses": [
+   {
+    "c": "Starting at 11th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 11)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "If you drop to 0 hit points while you're raging",
+    "is": "held",
+    "by": "dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.relentless-rage.only-raging"
+   },
+   {
+    "c": "and don't die outright",
+    "is": "held",
+    "by": "dm/pc-damage.ts massive damage",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.relentless-rage.not-outright"
+   },
+   {
+    "c": "you can make a DC 10 Constitution saving throw",
+    "is": "held",
+    "by": "dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M13: Relentless Rage: a raging barbarian dropped to 0 makes a CON save (DC 10, +5 per use) and stays at 1 hit point on a success."
+   },
+   {
+    "c": "If you succeed, you drop to 1 hit point instead.",
+    "is": "held",
+    "by": "dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M13: Relentless Rage: a raging barbarian dropped to 0 makes a CON save (DC 10, +5 per use) and stays at 1 hit point on a success."
+   },
+   {
+    "c": "Each time you use this feature after the first, the DC increases by 5.",
+    "is": "held",
+    "by": "resource relentless_rage used",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M13: Relentless Rage: a raging barbarian dropped to 0 makes a CON save (DC 10, +5 per use) and stays at 1 hit point on a success."
+   },
+   {
+    "c": "When you finish a short or long rest, the DC resets to 10.",
+    "is": "held",
+    "by": "srd/class-resources-late.ts relentless_rage recharge: short",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.relentless-rage.dc-resets"
+   }
+  ]
+ },
+ "barbarian::Brutal Critical (2 dice)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 13,
+  "sha": "383cb4e83016",
+  "heading": "barbarian: Brutal Critical",
+  "tierOf": "barbarian::Brutal Critical (1 die)",
+  "clauses": [
+   {
+    "c": "two additional dice at 13th level",
+    "is": "held",
+    "by": "srd/feature-effects.ts tiers",
+    "probe": "scripts/test-enforce-class-tables.mjs: Brutal Critical adds one extra weapon die to a critical hit at barbarian 9, two at 13 and three at 17."
+   }
+  ]
+ },
+ "barbarian::Persistent Rage": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 15,
+  "sha": "17837e734fee",
+  "heading": "barbarian: Persistent Rage",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "1333b32680f7"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 15th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 15)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "it ends early only if you fall unconscious or if you choose to end it",
+    "is": "held",
+    "by": "dm/condition-tick.ts endTurnRage",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.persistent-rage.no-early-end"
+   }
+  ]
+ },
+ "barbarian::Brutal Critical (3 dice)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 17,
+  "sha": "383cb4e83016",
+  "heading": "barbarian: Brutal Critical",
+  "tierOf": "barbarian::Brutal Critical (1 die)",
+  "clauses": [
+   {
+    "c": "three additional dice at 17th level",
+    "is": "held",
+    "by": "srd/feature-effects.ts tiers",
+    "probe": "scripts/test-enforce-class-tables.mjs: Brutal Critical adds one extra weapon die to a critical hit at barbarian 9, two at 13 and three at 17."
+   }
+  ]
+ },
+ "barbarian::Indomitable Might": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 18,
+  "sha": "c83619d88a9c",
+  "heading": "barbarian: Indomitable Might",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "16425c1df8ad"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 18th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 18)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "if your total for a Strength check is less than your Strength score, you can use that score in place of the total",
+    "is": "held",
+    "by": "srd/trait-rules.ts strengthCheckFloor",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L21: Indomitable Might: a Strength check total below the Strength score uses the score."
+   }
+  ]
+ },
+ "barbarian::Primal Champion": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "barbarian",
+  "level": 20,
+  "sha": "62e6668ecf2a",
+  "heading": "barbarian: Primal Champion",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "71007a3d2f64"
+  },
+  "clauses": [
+   {
+    "c": "At 20th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 20)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Your Strength and Constitution scores increase by 4.",
+    "is": "held",
+    "by": "srd/trait-rules.ts withPrimalChampion",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M21: Primal Champion: barbarian 20 raises STR and CON by 4, to a maximum of 24, and the sheet stays legal."
+   },
+   {
+    "c": "Your maximum for those scores is now 24.",
+    "is": "held",
+    "by": "srd/trait-rules.ts PRIMAL_CHAMPION_CAP",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M21: Primal Champion: barbarian 20 raises STR and CON by 4, to a maximum of 24, and the sheet stays legal."
+   }
+  ]
+ },
+ "barbarian::Frenzy": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Path of the Berserker",
+  "level": 3,
+  "sha": "8c6124f0ed42",
+  "heading": "barbarian: Frenzy",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "5138e048fe42"
+  },
+  "clauses": [
+   {
+    "c": "Starting when you choose this path at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can go into a frenzy when you rage",
+    "is": "held",
+    "by": "dm/frenzy.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.enter"
+   },
+   {
+    "c": "you can make a single melee weapon attack as a bonus action",
+    "is": "held",
+    "by": "dm/bonus-actions.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: A raging Berserker in a frenzy makes one melee weapon attack as a bonus action; without rage, or without Frenzy, it is refused."
+   },
+   {
+    "c": "on each of your turns after this one",
+    "is": "held",
+    "by": "the rage took this turn's bonus action",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.enter"
+   },
+   {
+    "c": "When your rage ends, you suffer one level of exhaustion",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.exhaustion",
+    "where": "src/lib/dm/frenzy.ts settleFrenzies and its callers (a fight's end, each round wrap)",
+    "severity": "medium",
+    "kind": "state-lifecycle",
+    "note": "held when the rage ends inside a fight (the level lands at the next round wrap)"
+   }
+  ]
+ },
+ "barbarian::Mindless Rage": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Path of the Berserker",
+  "level": 6,
+  "sha": "76b19323134a",
+  "heading": "barbarian: Mindless Rage",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "aba61f380df7"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 6th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 6)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can't be charmed or frightened while raging",
+    "is": "held",
+    "by": "srd/trait-rules.ts featureConditionImmunities",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M6: every condition immunity a feature grants is on the list set_condition reads, rage-gated ones only while raging"
+   },
+   {
+    "c": "If you are charmed or frightened when you enter your rage, the effect is suspended for the duration of the rage.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.mindless-rage.suspended",
+    "where": "src/lib/dm/resource-tools.ts (entering a rage); src/lib/srd/trait-rules.ts featureConditionImmunities",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "the first sentence is held: set_condition refuses charmed and frightened on a raging Berserker"
+   }
+  ]
+ },
+ "barbarian::Intimidating Presence": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Path of the Berserker",
+  "level": 10,
+  "sha": "48703a1593d3",
+  "heading": "barbarian: Intimidating Presence",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "dc66ab27ca68"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 10th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 10)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your action to frighten someone",
+    "is": "held",
+    "by": "dm/combat-features.ts priceTheAction",
+    "probe": "scripts/test-enforce-tail-features.mjs: Intimidating Presence: the barbarian's action; a creature that fails its WIS save is frightened of them until the end of the barbarian's next turn."
+   },
+   {
+    "c": "choose one creature that you can see",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sight",
+    "where": "src/lib/dm/combat-features.ts intimidatingPresence",
+    "severity": "low",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "within 30 feet of you",
+    "is": "held",
+    "by": "dm/combat-features.ts intimidatingPresence",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.range"
+   },
+   {
+    "c": "If the creature can see or hear you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sees-or-hears",
+    "where": "src/lib/dm/combat-features.ts intimidatingPresence",
+    "severity": "low",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "it must succeed on a Wisdom saving throw (DC equal to 8 + your proficiency bonus + your Charisma modifier)",
+    "is": "held",
+    "by": "dm/combat-features.ts intimidatingPresence",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.dc"
+   },
+   {
+    "c": "or be frightened of you until the end of your next turn",
+    "is": "held",
+    "by": "untilTurnEndOf",
+    "probe": "scripts/test-enforce-tail-features.mjs: Intimidating Presence: the barbarian's action; a creature that fails its WIS save is frightened of them until the end of the barbarian's next turn."
+   },
+   {
+    "c": "On subsequent turns, you can use your action to extend the duration of this effect on the frightened creature until the end of your next turn.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.extend",
+    "where": "src/lib/dm/combat-features.ts intimidatingPresence (the `held` branch) and the untilTurnEndOf reader in src/lib/dm/turn-end.ts",
+    "severity": "medium",
+    "kind": "state-lifecycle"
+   },
+   {
+    "c": "This effect ends if the creature ends its turn out of line of sight or more than 60 feet away from you.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.ends-far",
+    "where": "src/lib/dm/turn-end.ts (the frightened creature's own turn end)",
+    "severity": "low",
+    "kind": "state-lifecycle"
+   },
+   {
+    "c": "If the creature succeeds on its saving throw, you can't use this feature on that creature again for 24 hours.",
+    "is": "held",
+    "by": "dm/combat-features.ts UNMOVED",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.unmoved"
+   }
+  ]
+ },
+ "barbarian::Retaliation": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Path of the Berserker",
+  "level": 14,
+  "sha": "768c6229d981",
+  "heading": "barbarian: Retaliation",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "36e73907f436"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 14th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 14)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when you take damage from a creature that is within 5 feet of you",
+    "is": "held",
+    "by": "dm/srd-reactions.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Retaliation: when a creature within 5 feet damages the Berserker, their reaction makes one melee weapon attack against it; with no such damage there is nothing to answer."
+   },
+   {
+    "c": "you can use your reaction to make a melee weapon attack against that creature",
+    "is": "held",
+    "by": "dm/srd-reactions.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Retaliation: when a creature within 5 feet damages the Berserker, their reaction makes one melee weapon attack against it; with no such damage there is nothing to answer."
+   }
+  ]
+ },
+ "cleric::Spellcasting": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 1,
+  "sha": "6f233016b323",
+  "heading": "cleric: Spellcasting",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "109ab25c615e"
+  },
+  "clauses": [
+   {
+    "c": "As a conduit for divine power, you can cast cleric spells.",
+    "is": "flavor"
+   },
+   {
+    "c": "At 1st level, you know three cantrips of your choice from the cleric spell list.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: cantrips known are the class table's column at every level"
+   },
+   {
+    "c": "You learn additional cleric cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Cleric table.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: cantrips known are the class table's column at every level"
+   },
+   {
+    "c": "The Cleric table shows how many spell slots you have to cast your cleric spells of 1st level and higher.",
+    "is": "held",
+    "by": "srd/spell-slots",
+    "probe": "scripts/test-enforce-spell-slots.mjs: every full caster has the full table at every level"
+   },
+   {
+    "c": "To cast one of these spells, you must expend a slot of the spell's level or higher.",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting.mjs: a slot below the spell's level cannot pay for it"
+   },
+   {
+    "c": "You regain all expended spell slots when you finish a long rest.",
+    "is": "held",
+    "by": "dm/rest-tools.ts",
+    "probe": "scripts/test-enforce-spell-slots.mjs: a long rest brings every slot back"
+   },
+   {
+    "c": "You prepare the list of cleric spells that are available for you to cast, choosing from the cleric spell list.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-learning.mjs: A spell learned or prepared at a level-up is on the class's own spell list: a sorcerer does not learn Cure Wounds."
+   },
+   {
+    "c": "choose a number of cleric spells equal to your Wisdom modifier + your cleric level",
+    "is": "held",
+    "by": "srd/spell-prep.ts spellListProblems",
+    "probe": "scripts/test-enforce-spell-counts.mjs: spells known and spells prepared are the book's at every level and score"
+   },
+   {
+    "c": "(minimum of one spell)",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: a low casting score still prepares one spell, and a high one prepares more"
+   },
+   {
+    "c": "The spells must be of a level for which you have spell slots.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: a spell above what the slots reach is a problem at every level"
+   },
+   {
+    "c": "For example, if you are a 3rd-level cleric, you have four 1st-level and two 2nd-level spell slots.",
+    "is": "flavor"
+   },
+   {
+    "c": "With a Wisdom of 16, your list of prepared spells can include six spells of 1st or 2nd level, in any combination.",
+    "is": "flavor"
+   },
+   {
+    "c": "If you prepare the 1st-level spell *cure wounds*, you can cast it using a 1st-level or 2nd-level slot.",
+    "is": "flavor"
+   },
+   {
+    "c": "Casting the spell doesn't remove it from your list of prepared spells.",
+    "is": "held",
+    "by": "dm/cast-rules.ts (a cast never writes the prepared list)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.prepared-stays"
+   },
+   {
+    "c": "You can change your list of prepared spells when you finish a long rest.",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting.mjs: a spell chosen since the last long rest is not castable until the rest"
+   },
+   {
+    "c": "Preparing a new list of cleric spells requires time spent in prayer and meditation: at least 1 minute per spell level for each spell on your list.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, Narrated by design: \"An interrupted rest | take_rest is one atomic call: the model not calling it is the interruption.\" What a character does inside a rest is not state."
+   },
+   {
+    "c": "Wisdom is your spellcasting ability for your cleric spells.",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ability"
+   },
+   {
+    "c": "The power of your spells comes from your devotion to your deity.",
+    "is": "flavor"
+   },
+   {
+    "c": "You use your Wisdom whenever a cleric spell refers to your spellcasting ability.",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ability"
+   },
+   {
+    "c": "you use your Wisdom modifier when setting the saving throw DC for a cleric spell you cast and when making an attack roll with one",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ability"
+   },
+   {
+    "c": "**Spell save DC** = 8 + your proficiency bonus + your Wisdom modifier",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ability"
+   },
+   {
+    "c": "**Spell attack modifier** = your proficiency bonus + your Wisdom modifier",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ability"
+   },
+   {
+    "c": "You can cast a cleric spell as a ritual if that spell has the ritual tag",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting.mjs: only a spell with the ritual tag is cast as a ritual"
+   },
+   {
+    "c": "and you have the spell prepared",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.ritual-prepared"
+   },
+   {
+    "c": "You can use a holy symbol as a spellcasting focus for your cleric spells.",
+    "is": "held",
+    "by": "dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.cleric.focus"
+   }
+  ]
+ },
+ "cleric::Divine Domain": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 1,
+  "sha": "5d7243b8e19e",
+  "heading": "cleric: Divine Domain",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "e31daeab4911"
+  },
+  "clauses": [
+   {
+    "c": "Choose one domain related to your deity:",
+    "is": "held",
+    "by": "class-features.json subclassLevel 1",
+    "probe": "scripts/test-enforce-class-tables.mjs: every class has its SRD hit die and picks its subclass at the SRD level"
+   },
+   {
+    "c": "Knowledge, Life, Light, Nature, Tempest, Trickery, or War.",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-domain.domains"
+   },
+   {
+    "c": "Each domain is detailed at the end of the class description, and each one provides examples of gods associated with it.",
+    "is": "flavor"
+   },
+   {
+    "c": "Your choice grants you domain spells and other features when you choose it at 1st level.",
+    "is": "held",
+    "by": "class-features.json",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   },
+   {
+    "c": "It also grants you additional ways to use Channel Divinity when you gain that feature at 2nd level, and additional benefits at 6th, 8th, and 17th levels.",
+    "is": "held",
+    "by": "class-features.json",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   },
+   {
+    "c": "Each domain has a list of spells—its domain spells—that you gain at the cleric levels noted in the domain description.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-subclasses.mjs: domain and oath spells arrive when the SRD says, at a level the character casts"
+   },
+   {
+    "c": "Once you gain a domain spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-spell-learning.mjs: a domain's spells are always prepared and outside the number prepared"
+   },
+   {
+    "c": "If you have a domain spell that doesn't appear on the cleric spell list, the spell is nonetheless a cleric spell for you.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-subclasses.mjs: every spell a subclass hands out is real and castable on the day it arrives"
+   }
+  ]
+ },
+ "cleric::Channel Divinity (1/rest)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 2,
+  "sha": "714f6492a39c",
+  "heading": "cleric: Channel Divinity",
+  "clauses": [
+   {
+    "c": "At 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Turn Undead and an effect determined by your domain.",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Preserve Life heals up to 5 x cleric level, split among the wounded, none past half their maximum."
+   },
+   {
+    "c": "Some domains grant you additional effects as you advance in levels, as noted in the domain description.",
+    "is": "flavor"
+   },
+   {
+    "c": "When you use your Channel Divinity, you choose which effect to create.",
+    "is": "held",
+    "by": "dm/feature-spends.ts (the variant)",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M10: Turn Undead: each undead in range saves (WIS vs the spell DC); a failure turns it, and at cleric 5 a CR 1/2 or lower undead is destroyed."
+   },
+   {
+    "c": "You must then finish a short or long rest to use your Channel Divinity again.",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Channel Divinity at cleric 2 is once between rests"
+   },
+   {
+    "c": "Some Channel Divinity effects require saving throws.",
+    "is": "flavor"
+   },
+   {
+    "c": "When you use such an effect from this class, the DC equals your cleric spell save DC.",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M10: Turn Undead: each undead in range saves (WIS vs the spell DC); a failure turns it, and at cleric 5 a CR 1/2 or lower undead is destroyed."
+   },
+   {
+    "c": "Beginning at 6th level, you can use your Channel Divinity twice between rests, and beginning at 18th level, you can use it three times between rests.",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity max",
+    "probe": "scripts/test-enforce-class-tables.mjs: A paladin has one use of Channel Divinity per rest at every level; only the cleric's grows to two at 6 and three at 18."
+   },
+   {
+    "c": "When you finish a short or long rest, you regain your expended uses.",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity recharge short",
+    "probe": "scripts/test-enforce-short-rest.mjs: short-rest features come back and long-rest features do not"
+   },
+   {
+    "c": "You start with two such effects:",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "cleric::Channel Divinity: Turn Undead": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 2,
+  "sha": "44839d31149e",
+  "heading": "cleric: Channel Divinity: Turn Undead",
+  "clauses": [
+   {
+    "c": "As an action, you present your holy symbol and speak a prayer censuring the undead.",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M10: Turn Undead: each undead in range saves (WIS vs the spell DC); a failure turns it, and at cleric 5 a CR 1/2 or lower undead is destroyed."
+   },
+   {
+    "c": "Each undead",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M10: Turn Undead: each undead in range saves (WIS vs the spell DC); a failure turns it, and at cleric 5 a CR 1/2 or lower undead is destroyed."
+   },
+   {
+    "c": "that can see or hear you",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-turn-undead.sees-or-hears"
+   },
+   {
+    "c": "within 30 feet of you must make a Wisdom saving throw",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-turn-undead.range"
+   },
+   {
+    "c": "If the creature fails its saving throw, it is turned for 1 minute or until it takes any damage.",
+    "is": "held",
+    "by": "dm/flee-logic.ts TURNED",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-02"
+   },
+   {
+    "c": "A turned creature must spend its turns trying to move as far away from you as it can, and it can't willingly move to a space within 30 feet of you.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-enemy-dash.mjs: A turned undead attacks no one, takes no opportunity attack, runs from the cleric on its turn, and damage ends the turning."
+   },
+   {
+    "c": "It also can't take reactions.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-04"
+   },
+   {
+    "c": "For its action, it can use only the Dash action or try to escape from an effect that prevents it from moving.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-03"
+   },
+   {
+    "c": "If there's nowhere to move, the creature can use the Dodge action.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-enemy-dash.mjs: A turned undead with nowhere farther to run takes the Dodge."
+   }
+  ]
+ },
+ "cleric::Destroy Undead (CR 1/2)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 5,
+  "sha": "9f8518e5afa4",
+  "heading": "cleric: Destroy Undead",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "2f5403015aec"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M10: Turn Undead: each undead in range saves (WIS vs the spell DC); a failure turns it, and at cleric 5 a CR 1/2 or lower undead is destroyed."
+   },
+   {
+    "c": "| Cleric Level | Destroys Undead of CR ... |",
+    "is": "flavor"
+   },
+   {
+    "c": "| 5th          | 1/2 or lower              |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   },
+   {
+    "c": "| 8th          | 1 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   },
+   {
+    "c": "| 11th         | 2 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   },
+   {
+    "c": "| 14th         | 3 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   },
+   {
+    "c": "| 17th         | 4 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   },
+   {
+    "c": "**Table- Destroy Undead**",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "cleric::Channel Divinity (2/rest)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 6,
+  "sha": "714f6492a39c",
+  "heading": "cleric: Channel Divinity",
+  "tierOf": "cleric::Channel Divinity (1/rest)",
+  "clauses": [
+   {
+    "c": "Beginning at 6th level, you can use your Channel Divinity twice between rests",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity max",
+    "probe": "scripts/test-enforce-class-tables.mjs: A paladin has one use of Channel Divinity per rest at every level; only the cleric's grows to two at 6 and three at 18."
+   }
+  ]
+ },
+ "cleric::Destroy Undead (CR 1)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 8,
+  "sha": "9f8518e5afa4",
+  "heading": "cleric: Destroy Undead",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "fd5524e96c97"
+  },
+  "tierOf": "cleric::Destroy Undead (CR 1/2)",
+  "clauses": [
+   {
+    "c": "| 8th          | 1 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   }
+  ]
+ },
+ "cleric::Divine Intervention": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 10,
+  "sha": "e0716cc80e07",
+  "heading": "cleric: Divine Intervention",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "69f7083a61bf"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 10th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 10)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Imploring your deity's aid requires you to use your action.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-intervention.action"
+   },
+   {
+    "c": "Describe the assistance you seek, and roll percentile dice.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-tail-features.mjs: Divine Intervention: percentile dice at or under the cleric's level succeed, and a success cannot be called again for 7 days, a long rest notwithstanding."
+   },
+   {
+    "c": "If you roll a number equal to or lower than your cleric level, your deity intervenes.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-tail-features.mjs: Divine Intervention: percentile dice at or under the cleric's level succeed, and a success cannot be called again for 7 days, a long rest notwithstanding."
+   },
+   {
+    "c": "The GM chooses the nature of the intervention; the effect of any cleric spell or cleric domain spell would be appropriate.",
+    "is": "left",
+    "why": "the text itself gives it to the GM; src/lib/help/srd-features.json: \"Success is not guaranteed at first, and the GM decides what arrives.\""
+   },
+   {
+    "c": "If your deity intervenes, you can't use this feature again for 7 days.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-tail-features.mjs: Divine Intervention: percentile dice at or under the cleric's level succeed, and a success cannot be called again for 7 days, a long rest notwithstanding."
+   },
+   {
+    "c": "Otherwise, you can use it again after you finish a long rest.",
+    "is": "held",
+    "by": "srd/combat-rows.ts divine_intervention",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-intervention.long-rest"
+   },
+   {
+    "c": "At 20th level, your call for intervention succeeds automatically, no roll required.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-intervention.auto"
+   }
+  ]
+ },
+ "cleric::Destroy Undead (CR 2)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 11,
+  "sha": "9f8518e5afa4",
+  "heading": "cleric: Destroy Undead",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "1dc14b1a09aa"
+  },
+  "tierOf": "cleric::Destroy Undead (CR 1/2)",
+  "clauses": [
+   {
+    "c": "| 11th         | 2 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   }
+  ]
+ },
+ "cleric::Destroy Undead (CR 3)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 14,
+  "sha": "9f8518e5afa4",
+  "heading": "cleric: Destroy Undead",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "cf4f65e9f070"
+  },
+  "tierOf": "cleric::Destroy Undead (CR 1/2)",
+  "clauses": [
+   {
+    "c": "| 14th         | 3 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   }
+  ]
+ },
+ "cleric::Destroy Undead (CR 4)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 17,
+  "sha": "9f8518e5afa4",
+  "heading": "cleric: Destroy Undead",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "2cb2c670eada"
+  },
+  "tierOf": "cleric::Destroy Undead (CR 1/2)",
+  "clauses": [
+   {
+    "c": "| 17th         | 4 or lower                |",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead (destroy threshold)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.destroy-undead-cr-1-2.thresholds"
+   }
+  ]
+ },
+ "cleric::Channel Divinity (3/rest)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 18,
+  "sha": "714f6492a39c",
+  "heading": "cleric: Channel Divinity",
+  "tierOf": "cleric::Channel Divinity (1/rest)",
+  "clauses": [
+   {
+    "c": "beginning at 18th level, you can use it three times between rests",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity max",
+    "probe": "scripts/test-enforce-class-tables.mjs: A paladin has one use of Channel Divinity per rest at every level; only the cleric's grows to two at 6 and three at 18."
+   }
+  ]
+ },
+ "cleric::Divine Intervention Improvement": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "cleric",
+  "level": 20,
+  "sha": "e0716cc80e07",
+  "heading": "cleric: Divine Intervention",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8a32e5af9324"
+  },
+  "tierOf": "cleric::Divine Intervention",
+  "clauses": [
+   {
+    "c": "At 20th level, your call for intervention succeeds automatically, no roll required.",
+    "is": "held",
+    "by": "dm/combat-features.ts divineIntervention",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-intervention.auto"
+   }
+  ]
+ },
+ "cleric::Bonus Proficiency (heavy armor)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 1,
+  "sha": "e4e4a724fec4",
+  "heading": "cleric: Bonus Proficiency",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "a06733c58fe5"
+  },
+  "clauses": [
+   {
+    "c": "When you choose this domain at 1st level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 1)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you gain proficiency with heavy armor",
+    "is": "held",
+    "by": "srd/legality (class and subclass training)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.bonus-proficiency-heavy-armor.heavy"
+   }
+  ]
+ },
+ "cleric::Disciple of Life": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 1,
+  "sha": "c42034936965",
+  "heading": "cleric: Disciple of Life",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "375872f26755"
+  },
+  "clauses": [
+   {
+    "c": "Whenever you use a spell of 1st level or higher to restore hit points to a creature, the creature regains additional hit points equal to 2 + the spell's level.",
+    "is": "held",
+    "by": "dm/heal-spell.ts",
+    "probe": "scripts/test-enforce-spell-riders.mjs: Disciple of Life adds 2 + the slot level to a healing spell"
+   }
+  ]
+ },
+ "cleric::Channel Divinity: Preserve Life": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 2,
+  "sha": "2262f789b2f4",
+  "heading": "cleric: Channel Divinity: Preserve Life",
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "As an action, you present your holy symbol and evoke healing energy that can restore a number of hit points equal to five times your cleric level.",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Preserve Life heals up to 5 x cleric level, split among the wounded, none past half their maximum."
+   },
+   {
+    "c": "Choose any creatures within 30 feet of you",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-preserve-life.range"
+   },
+   {
+    "c": "and divide those hit points among them",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Preserve Life heals up to 5 x cleric level, split among the wounded, none past half their maximum."
+   },
+   {
+    "c": "This feature can restore a creature to no more than half of its hit point maximum.",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Preserve Life heals up to 5 x cleric level, split among the wounded, none past half their maximum."
+   },
+   {
+    "c": "You can't use this feature on an undead or a construct.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   }
+  ]
+ },
+ "cleric::Blessed Healer": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 6,
+  "sha": "0667c9f08fea",
+  "heading": "cleric: Blessed Healer",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "53502ac01788"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 6th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 6)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "When you cast a spell of 1st level or higher that restores hit points to a creature other than you, you regain hit points equal to 2 + the spell's level.",
+    "is": "held",
+    "by": "dm/heal-spell.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Blessed Healer: a Life cleric's spell of 1st level or higher that heals another creature heals the cleric 2 + the slot's level."
+   }
+  ]
+ },
+ "cleric::Divine Strike": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 8,
+  "sha": "539dfad70324",
+  "heading": "cleric: Divine Strike",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "f224b9f4812a"
+  },
+  "clauses": [
+   {
+    "c": "At 8th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 8)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Once on each of your turns",
+    "is": "held",
+    "by": "encounter turnBudget oncePerTurn",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-strike.once-per-turn"
+   },
+   {
+    "c": "when you hit a creature with a weapon attack, you can cause the attack to deal an extra 1d8 radiant damage to the target",
+    "is": "held",
+    "by": "srd/feature-effects.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: A Life cleric's Divine Strike deals radiant damage, so a creature resisting the mace's bludgeoning takes the 1d8 in full."
+   },
+   {
+    "c": "When you reach 14th level, the extra damage increases to 2d8.",
+    "is": "held",
+    "by": "srd/feature-effects.ts tiers",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.divine-strike.once-per-turn"
+   }
+  ]
+ },
+ "cleric::Supreme Healing": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Life Domain",
+  "level": 17,
+  "sha": "615ea0de4bf2",
+  "heading": "cleric: Supreme Healing",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "ac0c1792a18b"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 17th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 17)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when you would normally roll one or more dice to restore hit points with a spell, you instead use the highest number possible for each die",
+    "is": "held",
+    "by": "dm/heal-spell.ts",
+    "probe": "scripts/test-enforce-caster-features.mjs: a Life cleric's 17th level grant is the feature Supreme Healing, and it makes healing its maximum"
+   },
+   {
+    "c": "For example, instead of restoring 2d6 hit points to a creature, you restore 12.",
+    "is": "flavor"
+   }
+  ]
+ },
+ "fighter::Fighting Style": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 1,
+  "sha": "0c6e26fefc73",
+  "heading": "fighter: Fighting Style",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "a7cbc22a59e0"
+  },
+  "clauses": [
+   {
+    "c": "Choose one of the following options.",
+    "is": "held",
+    "by": "srd/options.ts, srd/feature-effects.ts fittingFightingStyles",
+    "probe": "scripts/test-enforce-owed-picks.mjs: A paladin's and a ranger's Fighting Style offer their four SRD styles; a fighter's all six. The sheet and the regrant hold to it."
+   },
+   {
+    "c": "You can't take a Fighting Style option more than once, even if you later get to choose again.",
+    "is": "held",
+    "by": "srd/features.ts pruneChoiceFeatures (stylesHeld)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.no-repeat"
+   },
+   {
+    "c": "You gain a +2 bonus to attack rolls you make with ranged weapons.",
+    "is": "held",
+    "by": "srd/feature-effects.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Archery: +2 to hit with a ranged weapon, nothing on a melee one"
+   },
+   {
+    "c": "While you are wearing armor, you gain a +1 bonus to AC.",
+    "is": "held",
+    "by": "srd/armor.ts computeArmorClass",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.defense"
+   },
+   {
+    "c": "When you are wielding a melee weapon in one hand and no other weapons, you gain a +2 bonus to damage rolls with that weapon.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Dueling applies while the character wields a melee weapon in one hand and no other weapon."
+   },
+   {
+    "c": "When you roll a 1 or 2 on a damage die for an attack you make with a melee weapon that you are wielding with two hands, you can reroll the die and must use the new roll, even if the new roll is a 1 or a 2.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Great Weapon Fighting: a 1 or a 2 is rerolled once and the new roll stands"
+   },
+   {
+    "c": "The weapon must have the two-handed or versatile property for you to gain this benefit.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Great Weapon Fighting: not in one hand, and not with a bow"
+   },
+   {
+    "c": "When a creature you can see attacks",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.protection-sight"
+   },
+   {
+    "c": "a target other than you",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.protection-not-self"
+   },
+   {
+    "c": "that is within 5 feet of you",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-reactions.mjs: Protection covers an ally within 5 feet of the protector."
+   },
+   {
+    "c": "you can use your reaction to impose disadvantage on the attack roll",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection, last_hits",
+    "probe": "scripts/test-enforce-reactions.mjs: Protection rolls the attack that just came again at disadvantage, and a miss gives the damage back"
+   },
+   {
+    "c": "You must be wielding a shield.",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-reactions.mjs: Only a character with the Protection fighting style and a shield imposes it."
+   },
+   {
+    "c": "When you engage in two-weapon fighting, you can add your ability modifier to the damage of the second attack.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-weapon-rules.mjs: the Two-Weapon Fighting style puts the modifier back"
+   },
+   {
+    "c": "You adopt a particular style of fighting as your specialty.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "fighter::Second Wind": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 1,
+  "sha": "400ab8527ee8",
+  "heading": "fighter: Second Wind",
+  "clauses": [
+   {
+    "c": "On your turn, you can use a bonus action",
+    "is": "held",
+    "by": "srd/class-resources.ts second_wind action: bonus",
+    "probe": "scripts/test-enforce-resource-spend.mjs: a turn has one bonus action: Second Wind takes it, and a second bonus feature is refused unspent"
+   },
+   {
+    "c": "to regain hit points equal to 1d10 + your fighter level",
+    "is": "held",
+    "by": "srd/class-resources.ts second_wind",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Second Wind heals 1d10 + fighter level, never past the maximum"
+   },
+   {
+    "c": "Once you use this feature, you must finish a short or long rest before you can use it again.",
+    "is": "held",
+    "by": "srd/class-resources.ts second_wind max 1, recharge short",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.second-wind.recharge"
+   },
+   {
+    "c": "You have a limited well of stamina that you can draw on to protect yourself from harm.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "fighter::Action Surge (1 use)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 2,
+  "sha": "f9b7f5c96d9e",
+  "heading": "fighter: Action Surge",
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "On your turn, you can take one additional action",
+    "is": "held",
+    "by": "dm/action-budget.ts",
+    "probe": "scripts/test-enforce-action-economy.mjs: Action Surge gives one additional action on the turn it is used."
+   },
+   {
+    "c": "on top of your regular action and a possible bonus action",
+    "is": "held",
+    "by": "dm/action-budget.ts",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Action Surge costs nothing and buys a second action on the turn it is used"
+   },
+   {
+    "c": "Once you use this feature, you must finish a short or long rest before you can use it again.",
+    "is": "held",
+    "by": "srd/class-resources.ts action_surge recharge short",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.action-surge-1-use.recharge"
+   },
+   {
+    "c": "Starting at 17th level, you can use it twice before a rest, but only once on the same turn.",
+    "is": "held",
+    "by": "srd/class-resources.ts action_surge",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-01"
+   }
+  ]
+ },
+ "fighter::Martial Archetype": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 3,
+  "sha": "ed66b0daaea1",
+  "heading": "fighter: Martial Archetype",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "30eaef89c6a0"
+  },
+  "clauses": [
+   {
+    "c": "At 3rd level, you choose an archetype",
+    "is": "held",
+    "by": "class-features.json subclassLevel 3",
+    "probe": "scripts/test-enforce-levelup.mjs: A fighter chooses a Martial Archetype at 3rd level, not before."
+   },
+   {
+    "c": "Choose Champion, Battle Master, or Eldritch Knight",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.martial-archetype.archetypes"
+   },
+   {
+    "c": "The archetype you choose grants you features at 3rd level and again at 7th, 10th, 15th, and 18th level.",
+    "is": "held",
+    "by": "class-features.json subclass levels",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   }
+  ]
+ },
+ "fighter::Extra Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 5,
+  "sha": "fe7a1661ef3b",
+  "heading": "fighter: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can attack twice, instead of once, whenever you take the Attack action on your turn",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-weapon-rules.mjs: Extra Attack gives a level 5 fighter two attacks a turn and refuses a third"
+   },
+   {
+    "c": "The number of attacks increases to three when you reach 11th level in this class and to four when you reach 20th level in this class.",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.extra-attack.attacks"
+   }
+  ]
+ },
+ "fighter::Indomitable (1 use)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 9,
+  "sha": "674b2640021a",
+  "heading": "fighter: Indomitable",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7fcc4b9a4733"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 9th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 9)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can reroll a saving throw that you fail",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-srd.mjs: counter:indomitable#OWN_TURN_ONLY",
+    "where": "src/lib/dm/feature-spends.ts (Indomitable priced as an own-turn spend)",
+    "severity": "high",
+    "kind": "timing-window",
+    "note": "held on the fighter's own turn (test-enforce-feature-uses F:L11); the spends sweep found it refused off their turn, which is when most saves are failed",
+    "recorded_by": "spends (spends-indomitable-own-turn-only)"
+   },
+   {
+    "c": "If you do so, you must use the new roll",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.indomitable-1-use.new-roll-stands"
+   },
+   {
+    "c": "you can't use this feature again until you finish a long rest",
+    "is": "held",
+    "by": "srd/class-resources.ts indomitable recharge long",
+    "probe": "scripts/test-enforce-class-tables.mjs: Indomitable rerolls a failed save once per long rest at fighter 9, twice at 13, three times at 17."
+   },
+   {
+    "c": "You can use this feature twice between long rests starting at 13th level and three times between long rests starting at 17th level.",
+    "is": "held",
+    "by": "srd/class-resources.ts indomitable max",
+    "probe": "scripts/test-enforce-class-tables.mjs: Indomitable rerolls a failed save once per long rest at fighter 9, twice at 13, three times at 17."
+   }
+  ]
+ },
+ "fighter::Extra Attack (2)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 11,
+  "sha": "fe7a1661ef3b",
+  "heading": "fighter: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "tierOf": "fighter::Extra Attack",
+  "clauses": [
+   {
+    "c": "three when you reach 11th level in this class",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.extra-attack.attacks"
+   }
+  ]
+ },
+ "fighter::Indomitable (2 uses)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 13,
+  "sha": "674b2640021a",
+  "heading": "fighter: Indomitable",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "9a4efd71354f"
+  },
+  "tierOf": "fighter::Indomitable (1 use)",
+  "clauses": [
+   {
+    "c": "twice between long rests starting at 13th level",
+    "is": "held",
+    "by": "srd/class-resources.ts indomitable max",
+    "probe": "scripts/test-enforce-class-tables.mjs: Indomitable rerolls a failed save once per long rest at fighter 9, twice at 13, three times at 17."
+   }
+  ]
+ },
+ "fighter::Action Surge (2 uses)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 17,
+  "sha": "f9b7f5c96d9e",
+  "heading": "fighter: Action Surge",
+  "tierOf": "fighter::Action Surge (1 use)",
+  "clauses": [
+   {
+    "c": "Starting at 17th level, you can use it twice before a rest, but only once on the same turn.",
+    "is": "held",
+    "by": "srd/class-resources.ts action_surge",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-01"
+   }
+  ]
+ },
+ "fighter::Indomitable (3 uses)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 17,
+  "sha": "674b2640021a",
+  "heading": "fighter: Indomitable",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "c91fe3bd4a4d"
+  },
+  "tierOf": "fighter::Indomitable (1 use)",
+  "clauses": [
+   {
+    "c": "three times between long rests starting at 17th level",
+    "is": "held",
+    "by": "srd/class-resources.ts indomitable max",
+    "probe": "scripts/test-enforce-class-tables.mjs: Indomitable rerolls a failed save once per long rest at fighter 9, twice at 13, three times at 17."
+   }
+  ]
+ },
+ "fighter::Extra Attack (3)": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "fighter",
+  "level": 20,
+  "sha": "fe7a1661ef3b",
+  "heading": "fighter: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "tierOf": "fighter::Extra Attack",
+  "clauses": [
+   {
+    "c": "four when you reach 20th level in this class",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.extra-attack.attacks"
+   }
+  ]
+ },
+ "fighter::Improved Critical": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Champion",
+  "level": 3,
+  "sha": "a5a9b9de407c",
+  "heading": "fighter: Improved Critical",
+  "clauses": [
+   {
+    "c": "Beginning when you choose this archetype at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your weapon attacks",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Improved Critical widens the critical range of weapon attacks only; a spell attack on a 19 is no critical hit."
+   },
+   {
+    "c": "score a critical hit on a roll of 19 or 20",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Improved Critical: a 19 is a critical hit, an 18 is not, and a 19 still has to hit"
+   }
+  ]
+ },
+ "fighter::Remarkable Athlete": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Champion",
+  "level": 7,
+  "sha": "1bf6c787cab6",
+  "heading": "fighter: Remarkable Athlete",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "818102b609b8"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can add half your proficiency bonus (round up) to any Strength, Dexterity, or Constitution check you make that doesn't already use your proficiency bonus",
+    "is": "held",
+    "by": "dm/rolls.ts",
+    "probe": "scripts/test-enforce-abilities.mjs: Remarkable Athlete adds half the proficiency bonus, ROUNDED UP, to Strength, Dexterity and Constitution checks that lack it (SRD 5.1, Champion, level 7)."
+   },
+   {
+    "c": "any Strength, Dexterity, or Constitution check",
+    "is": "held",
+    "by": "dm/rolls.ts (initiative is a Dexterity check)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.remarkable-athlete.initiative"
+   },
+   {
+    "c": "In addition, when you make a running long jump, the distance you can cover increases by a number of feet equal to your Strength modifier.",
+    "is": "held",
+    "by": "dm/jump-move.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-09"
+   }
+  ]
+ },
+ "fighter::Additional Fighting Style": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Champion",
+  "level": 10,
+  "sha": "4b9f96b06c9c",
+  "heading": "fighter: Additional Fighting Style",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "4844b6494394"
+  },
+  "clauses": [
+   {
+    "c": "At 10th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 10)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can choose a second option from the Fighting Style class feature",
+    "is": "held",
+    "by": "srd/options.ts optionSlotsFor",
+    "probe": "scripts/test-enforce-creator-doors.mjs: a second fighting style on a 1st-level fighter is not stored: one at 1st, a Champion's second at 10th"
+   }
+  ]
+ },
+ "fighter::Superior Critical": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Champion",
+  "level": 15,
+  "sha": "5d8e6720d671",
+  "heading": "fighter: Superior Critical",
+  "clauses": [
+   {
+    "c": "Starting at 15th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 15)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your weapon attacks score a critical hit on a roll of 18-20",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.superior-critical.crit-18"
+   }
+  ]
+ },
+ "fighter::Survivor": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Champion",
+  "level": 18,
+  "sha": "e33db16caa12",
+  "heading": "fighter: Survivor",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "e2d8df59f5f1"
+  },
+  "clauses": [
+   {
+    "c": "At 18th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 18)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "At the start of each of your turns, you regain hit points equal to 5 + your Constitution modifier if you have no more than half of your hit points left.",
+    "is": "held",
+    "by": "dm/condition-tick.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L10: Survivor: at the start of their turn a champion at or under half hit points (and above 0) regains 5 + CON."
+   },
+   {
+    "c": "You don't gain this benefit if you have 0 hit points.",
+    "is": "held",
+    "by": "dm/condition-tick.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L10: Survivor: at the start of their turn a champion at or under half hit points (and above 0) regains 5 + CON."
+   }
+  ]
+ },
+ "monk::Unarmored Defense": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 1,
+  "sha": "24fb4daddcd4",
+  "heading": "monk: Unarmored Defense",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "2e8d3af37cf4"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 1st level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 1)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "while you are wearing no armor and not wielding a shield",
+    "is": "held",
+    "by": "srd/armor.ts unarmoredFormulaFor",
+    "probe": "scripts/test-enforce-armor.mjs: a monk behind a shield stands at 10 + DEX + 2: the shield switches Unarmored Defense off"
+   },
+   {
+    "c": "your AC equals 10 + your Dexterity modifier + your Wisdom modifier",
+    "is": "held",
+    "by": "srd/armor.ts unarmoredFormulaFor",
+    "probe": "scripts/test-enforce-armor.mjs: a monk's Unarmored Defense is 10 + DEX + WIS"
+   }
+  ]
+ },
+ "monk::Martial Arts": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 1,
+  "sha": "d0049e56b416",
+  "heading": "monk: Martial Arts",
+  "clauses": [
+   {
+    "c": "At 1st level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 1)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "monk weapons, which are shortswords and any simple melee weapons that don't have the two-handed or heavy property",
+    "is": "held",
+    "by": "dm/attack-logic.ts (monk weapons)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.monk-weapons"
+   },
+   {
+    "c": "while you are unarmed or wielding only monk weapons",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.only-monk-weapons",
+    "where": "src/lib/dm/attack-logic.ts (where Martial Arts is switched on: armor and shield are read, the other hand's weapon is not)",
+    "severity": "low",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "and you aren't wearing armor or wielding a shield",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Martial Arts works only while the monk wears no armor and carries no shield."
+   },
+   {
+    "c": "You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes and monk weapons.",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: A monk's Martial Arts lets a monk weapon (a quarterstaff) use DEX and the Martial Arts die, not only an unarmed strike."
+   },
+   {
+    "c": "You can roll a d4 in place of the normal damage of your unarmed strike or monk weapon.",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: A monk's Martial Arts lets a monk weapon (a quarterstaff) use DEX and the Martial Arts die, not only an unarmed strike."
+   },
+   {
+    "c": "This die changes as you gain monk levels, as shown in the Martial Arts column of the Monk table.",
+    "is": "held",
+    "by": "srd/feature-effects.ts martial arts die",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   },
+   {
+    "c": "When you use the Attack action with an unarmed strike or a monk weapon on your turn, you can make one unarmed strike as a bonus action.",
+    "is": "held",
+    "by": "dm/pc-attack-options.ts bonus attack 'martial arts'",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: After taking the Attack action with an unarmed strike or a monk weapon, a monk makes one unarmed strike as a bonus action; nobody else can."
+   },
+   {
+    "c": "assuming you haven't already taken a bonus action this turn",
+    "is": "held",
+    "by": "dm/action-budget.ts bonusUsed",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: A Flurry of Blows strike sent as Martial Arts' or a feature's bonus attack is one of the flurry's strikes, not a second bonus action."
+   },
+   {
+    "c": "Certain monasteries use specialized forms of the monk weapons.",
+    "is": "flavor"
+   },
+   {
+    "c": "For example, you might use a club that is two lengths of wood connected by a short chain",
+    "is": "flavor"
+   },
+   {
+    "c": "Whatever name you use for a monk weapon, you can use the game statistics provided for the weapon.",
+    "is": "flavor"
+   }
+  ]
+ },
+ "monk::Ki": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 2,
+  "sha": "caac6b919f2a",
+  "heading": "monk: Ki",
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Your access to this energy is represented by a number of ki points.",
+    "is": "flavor"
+   },
+   {
+    "c": "Your monk level determines the number of points you have, as shown in the Ki Points column of the Monk table.",
+    "is": "held",
+    "by": "srd/class-resources.ts ki max",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   },
+   {
+    "c": "You can spend these points to fuel various ki features.",
+    "is": "held",
+    "by": "srd/class-resources.ts ki, dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Patient Defense spends 1 ki and the bonus action to Dodge."
+   },
+   {
+    "c": "You learn more ki features as you gain levels in this class.",
+    "is": "flavor"
+   },
+   {
+    "c": "When you spend a ki point, it is unavailable until you finish a short or long rest, at the end of which you draw all of your expended ki back into yourself.",
+    "is": "held",
+    "by": "srd/class-resources.ts ki recharge short",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.ki.recharge"
+   },
+   {
+    "c": "You must spend at least 30 minutes of the rest meditating to regain your ki points.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, Narrated by design: \"An interrupted rest | take_rest is one atomic call: the model not calling it is the interruption.\" What a character does inside the hour is not state."
+   },
+   {
+    "c": "Some of your ki features require your target to make a saving throw to resist the feature's effects.",
+    "is": "flavor"
+   },
+   {
+    "c": "The saving throw DC is calculated as follows:",
+    "is": "flavor"
+   },
+   {
+    "c": "**Ki save DC** = 8 + your proficiency bonus + your Wisdom modifier",
+    "is": "held",
+    "by": "dm/pc-attack-options.ts ki DC",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.ki.dc"
+   },
+   {
+    "c": "Immediately after you take the Attack action on your turn",
+    "is": "held",
+    "by": "dm/bonus-actions.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Flurry of Blows needs the Attack action taken first."
+   },
+   {
+    "c": "you can spend 1 ki point to make two unarmed strikes as a bonus action",
+    "is": "held",
+    "by": "dm/bonus-actions.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Flurry of Blows: two bonus-action unarmed strikes after the Attack action for 1 ki."
+   },
+   {
+    "c": "You can spend 1 ki point to take the Dodge action as a bonus action on your turn.",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Patient Defense spends 1 ki and the bonus action to Dodge."
+   },
+   {
+    "c": "You can spend 1 ki point to take the Disengage or Dash action as a bonus action on your turn",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Step of the Wind spends 1 ki and the bonus action to Disengage or Dash."
+   },
+   {
+    "c": "and your jump distance is doubled for the turn",
+    "is": "held",
+    "by": "dm/jump-move.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-08"
+   },
+   {
+    "c": "You start knowing three such features:",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": "Flurry of Blows, Patient Defense, and Step of the Wind.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "monk::Unarmored Movement": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 2,
+  "sha": "9335719656be",
+  "heading": "monk: Unarmored Movement",
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your speed increases by 10 feet while you are not wearing armor or wielding a shield",
+    "is": "held",
+    "by": "srd/index.ts speedFor gate armor_or_shield",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.unarmored-movement.speed"
+   },
+   {
+    "c": "This bonus increases when you reach certain monk levels, as shown in the Monk table.",
+    "is": "held",
+    "by": "srd/feature-effects.ts speed tiers",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   },
+   {
+    "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
+    "is": "gap",
+    "read_only": true,
+    "why": "no code reads the 9th level step (grep 'vertical', 'liquids' under src/lib finds nothing); the board has no heights to stage a wall, and crossing water at walking cost was not staged",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   }
+  ]
+ },
+ "monk::Monastic Tradition": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 3,
+  "sha": "b2c7dfaf20f5",
+  "heading": "monk: Monastic Tradition",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "99aadedadd3d"
+  },
+  "clauses": [
+   {
+    "c": "When you reach 3rd level, you commit yourself to a monastic tradition",
+    "is": "held",
+    "by": "class-features.json subclassLevel 3",
+    "probe": "scripts/test-enforce-class-tables.mjs: every class has its SRD hit die and picks its subclass at the SRD level"
+   },
+   {
+    "c": "the Way of the Open Hand, the Way of Shadow, or the Way of the Four Elements",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.monastic-tradition.traditions"
+   },
+   {
+    "c": "Your tradition grants you features at 3rd level and again at 6th, 11th, and 17th level.",
+    "is": "held",
+    "by": "class-features.json subclass levels",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   }
+  ]
+ },
+ "monk::Deflect Missiles": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 3,
+  "sha": "1234414cf729",
+  "heading": "monk: Deflect Missiles",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "4eb26d302d90"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your reaction to deflect or catch the missile when you are hit by a ranged weapon attack",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-reactions.mjs: Deflect Missiles answers a ranged weapon attack only."
+   },
+   {
+    "c": "the damage you take from the attack is reduced by 1d10 + your Dexterity modifier + your monk level",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-reactions.mjs: Deflect Missiles reduces a ranged weapon attack's damage by 1d10 + DEX + monk level."
+   },
+   {
+    "c": "If you reduce the damage to 0, you can catch the missile",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-reactions.mjs: Deflect Missiles with the missile caught throws it back for 1 ki"
+   },
+   {
+    "c": "if it is small enough for you to hold in one hand and you have at least one hand free",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.free-hand",
+    "where": "src/lib/dm/reaction-tools.ts (Deflect Missiles' throw back)",
+    "severity": "low",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "you can spend 1 ki point to make a ranged attack with the weapon or piece of ammunition you just caught, as part of the same reaction",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-reactions.mjs: Deflect Missiles with the missile caught throws it back for 1 ki"
+   },
+   {
+    "c": "You make this attack with proficiency, regardless of your weapon proficiencies, and the missile counts as a monk weapon for the attack",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-roll-attacker.mjs: Deflect Missiles' throw back is the monk's, against the archer."
+   },
+   {
+    "c": "which has a normal range of 20 feet and a long range of 60 feet",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.throw-range"
+   }
+  ]
+ },
+ "monk::Slow Fall": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 4,
+  "sha": "c9177dfa8066",
+  "heading": "monk: Slow Fall",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "499d0a59e209"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 4th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 4)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your reaction when you fall to reduce any falling damage you take by an amount equal to five times your monk level",
+    "is": "held",
+    "by": "dm/reaction-tools.ts, dm/hazard-tools.ts",
+    "probe": "scripts/test-enforce-reactions.mjs: Slow Fall reduces falling damage by five times the monk's level."
+   }
+  ]
+ },
+ "monk::Extra Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 5,
+  "sha": "5806389ca012",
+  "heading": "monk: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can attack twice, instead of once, whenever you take the Attack action on your turn",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-action-economy.mjs: Extra Attack at level 5 is exactly two attacks inside one action"
+   }
+  ]
+ },
+ "monk::Stunning Strike": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 5,
+  "sha": "48e8d9882b88",
+  "heading": "monk: Stunning Strike",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "a33f69d785dc"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "When you hit another creature with a melee weapon attack, you can spend 1 ki point to attempt a stunning strike.",
+    "is": "held",
+    "by": "dm/pc-attack-options.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Stunning Strike spends 1 ki on a melee weapon hit and stuns a creature that fails a CON save against the ki DC; a miss spends nothing."
+   },
+   {
+    "c": "The target must succeed on a Constitution saving throw or be stunned",
+    "is": "held",
+    "by": "dm/attack-onhit.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Stunning Strike spends 1 ki on a melee weapon hit and stuns a creature that fails a CON save against the ki DC; a miss spends nothing."
+   },
+   {
+    "c": "until the end of your next turn",
+    "is": "held",
+    "by": "untilTurnEndOf",
+    "probe": "scripts/test-enforce-turn-end.mjs: Stunning Strike stuns until the END of the monk's next turn: the creature is still stunned while the monk's next turn runs."
+   }
+  ]
+ },
+ "monk::Ki-Empowered Strikes": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 6,
+  "sha": "74e92831db6d",
+  "heading": "monk: Ki-Empowered Strikes",
+  "clauses": [
+   {
+    "c": "Starting at 6th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 6)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your unarmed strikes count as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Ki-Empowered Strikes make a monk's unarmed strikes magical, not a nonmagical longbow."
+   }
+  ]
+ },
+ "monk::Evasion": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 7,
+  "sha": "5a1ef3919e48",
+  "heading": "monk: Evasion",
+  "clauses": [
+   {
+    "c": "At 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.",
+    "is": "held",
+    "by": "srd/trait-rules.ts saveDamageTaken",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:H4: Evasion holds on every save-for-half path: a made DEX save takes nothing, a failed one half."
+   }
+  ]
+ },
+ "monk::Stillness of Mind": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 7,
+  "sha": "daffcf1579d8",
+  "heading": "monk: Stillness of Mind",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "4f24b43ef8f1"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.action",
+    "where": "src/lib/dm/feature-hooks.ts stillnessOfMind",
+    "severity": "medium",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "to end one effect on yourself that is causing you to be charmed",
+    "is": "held",
+    "by": "dm/feature-hooks.ts stillnessOfMind",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L21: Stillness of Mind ends a charm with the action; Eldritch Master brings the pact slots back once; Purity of Spirit keeps a fiend's fear off"
+   },
+   {
+    "c": "or frightened",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.frightened"
+   }
+  ]
+ },
+ "monk::Unarmored Movement Improvement": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 9,
+  "sha": "9335719656be",
+  "heading": "monk: Unarmored Movement",
+  "tierOf": "monk::Unarmored Movement",
+  "clauses": [
+   {
+    "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
+    "is": "gap",
+    "read_only": true,
+    "why": "see monk::Unarmored Movement: no code reads it, not staged",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   }
+  ]
+ },
+ "monk::Purity of Body": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 10,
+  "sha": "54d896bf07ec",
+  "heading": "monk: Purity of Body",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "9028b070c808"
+  },
+  "clauses": [
+   {
+    "c": "At 10th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 10)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "immune to disease and poison",
+    "is": "held",
+    "by": "srd/trait-rules.ts featureConditionImmunities, featureDamageImmunities",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M6: Conditions a feature makes a character immune to are refused: Aura of Courage (and allies within 10 feet), Purity of Body, and poison damage for Purity of Body."
+   }
+  ]
+ },
+ "monk::Tongue of the Sun and Moon": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 13,
+  "sha": "41e54fb33874",
+  "heading": "monk: Tongue of the Sun and Moon",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "49c50a9ed210"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 13th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 13)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you understand all spoken languages",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "any creature that can understand a language can understand what you say",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   }
+  ]
+ },
+ "monk::Diamond Soul": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 14,
+  "sha": "6b13ad8023a9",
+  "heading": "monk: Diamond Soul",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "3d2fb4b5da30"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 14th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 14)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "your mastery of ki grants you proficiency in all saving throws",
+    "is": "held",
+    "by": "srd/trait-rules.ts featureSaveProficiencies",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:M8: Diamond Soul gives proficiency in every save; Slippery Mind in WIS saves."
+   },
+   {
+    "c": "whenever you make a saving throw and fail, you can spend 1 ki point to reroll it and take the second result",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L9: Empty Body spends 4 ki for invisibility and resistance to all damage but force; Diamond Soul spends 1 ki to reroll a failed save"
+   }
+  ]
+ },
+ "monk::Timeless Body": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 15,
+  "sha": "bcd6dcec8613",
+  "heading": "monk: Timeless Body",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "dda94706ae1c"
+  },
+  "clauses": [
+   {
+    "c": "At 15th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 15)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you suffer none of the frailty of old age, and you can't be aged magically",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "You can still die of old age, however.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "In addition, you no longer need food or water.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.timeless-body.no-food",
+    "where": "src/lib/dm/supplies.ts (who the dawn's ration and water are asked of)",
+    "severity": "low",
+    "kind": "rule-missing",
+    "note": "reachable only at a table with the supplies variant on"
+   }
+  ]
+ },
+ "monk::Empty Body": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 18,
+  "sha": "dc74785fce1d",
+  "heading": "monk: Empty Body",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "5a16a7711e07"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 18th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 18)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your action to spend 4 ki points to become invisible for 1 minute",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L9: Empty Body spends 4 ki for invisibility and resistance to all damage but force; Diamond Soul spends 1 ki to reroll a failed save"
+   },
+   {
+    "c": "During that time, you also have resistance to all damage but force damage.",
+    "is": "held",
+    "by": "srd/condition-effects.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L9: Empty Body spends 4 ki for invisibility and resistance to all damage but force; Diamond Soul spends 1 ki to reroll a failed save"
+   },
+   {
+    "c": "Additionally, you can spend 8 ki points to cast the *astral projection* spell, without needing material components.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, Narrated by design: \"The 91 pure utility spells (Mending, Knock, Comprehend Languages, Teleport...) are narrated because narration is their resolution\"; the 8 points are spent through use_resource ki with amount (src/lib/dm/catalog-party.ts: \"Points from a pool: Lay on Hands, Ki\")"
+   },
+   {
+    "c": "When you do so, you can't take any other creatures with you.",
+    "is": "left",
+    "why": "the same: Astral Projection is narrated, so who travels is the GM's to say"
+   }
+  ]
+ },
+ "monk::Perfect Self": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "monk",
+  "level": 20,
+  "sha": "dbe5e312b625",
+  "heading": "monk: Perfect Self",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7915988840f8"
+  },
+  "clauses": [
+   {
+    "c": "At 20th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 20)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when you roll for initiative and have no ki points remaining, you regain 4 ki points",
+    "is": "held",
+    "by": "srd/resource-refills.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L12: Perfect Self gives 4 ki back on initiative when none is left"
+   }
+  ]
+ },
+ "monk::Open Hand Technique": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Way of the Open Hand",
+  "level": 3,
+  "sha": "b2f8d71ba686",
+  "heading": "monk: Open Hand Technique",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "1b88a4165840"
+  },
+  "clauses": [
+   {
+    "c": "Starting when you choose this tradition at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Whenever you hit a creature with one of the attacks granted by your Flurry of Blows",
+    "is": "held",
+    "by": "dm/pc-attack-gate.ts",
+    "probe": "scripts/test-enforce-tail-attacks.mjs: Open Hand Technique rides only a Flurry of Blows strike, and only for an Open Hand monk."
+   },
+   {
+    "c": "It must succeed on a Dexterity saving throw or be knocked prone.",
+    "is": "held",
+    "by": "dm/attack-onhit.ts",
+    "probe": "scripts/test-enforce-tail-attacks.mjs: Open Hand Technique: a Flurry of Blows hit knocks the target prone when it fails a DEX save against the ki DC."
+   },
+   {
+    "c": "It must make a Strength saving throw.",
+    "is": "held",
+    "by": "dm/attack-onhit.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.open-hand-technique.push"
+   },
+   {
+    "c": "If it fails, you can push it up to 15 feet away from you.",
+    "is": "held",
+    "by": "dm/attack-onhit.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.open-hand-technique.push"
+   },
+   {
+    "c": "It can't take reactions until the end of your next turn.",
+    "is": "held",
+    "by": "srd/combat-rows.ts open_hand_reeling",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.open-hand-technique.no-reactions"
+   }
+  ]
+ },
+ "monk::Wholeness of Body": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Way of the Open Hand",
+  "level": 6,
+  "sha": "59bd9d67a79b",
+  "heading": "monk: Wholeness of Body",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "92e09dcec138"
+  },
+  "clauses": [
+   {
+    "c": "At 6th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 6)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "As an action, you can regain hit points equal to three times your monk level.",
+    "is": "held",
+    "by": "srd/class-resources-late.ts wholeness_of_body",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L9: Wholeness of Body heals three times the monk level, once per long rest."
+   },
+   {
+    "c": "You must finish a long rest before you can use this feature again.",
+    "is": "held",
+    "by": "srd/class-resources-late.ts wholeness_of_body",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L9: Wholeness of Body heals three times the monk level, once per long rest."
+   }
+  ]
+ },
+ "monk::Tranquility": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Way of the Open Hand",
+  "level": 11,
+  "sha": "75ba6ab310bf",
+  "heading": "monk: Tranquility",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "44bef3a60857"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 11th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 11)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "At the end of a long rest, you gain the effect of a *sanctuary* spell that lasts until the start of your next long rest",
+    "is": "held",
+    "by": "dm/rest-tools.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Tranquility: after a long rest the Open Hand monk is under Sanctuary until the next (DC 8 + WIS + proficiency): an attacker failing the WIS save cannot attack them."
+   },
+   {
+    "c": "(the spell can end early as normal)",
+    "is": "held",
+    "by": "dm/spell-defenses.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.tranquility.ends-on-attack"
+   },
+   {
+    "c": "The saving throw DC for the spell equals 8 + your Wisdom modifier + your proficiency bonus.",
+    "is": "held",
+    "by": "dm/srd-defenses.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Tranquility: after a long rest the Open Hand monk is under Sanctuary until the next (DC 8 + WIS + proficiency): an attacker failing the WIS save cannot attack them."
+   }
+  ]
+ },
+ "monk::Quivering Palm": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Way of the Open Hand",
+  "level": 17,
+  "sha": "d2cadd0d72a9",
+  "heading": "monk: Quivering Palm",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "d6451227cac4"
+  },
+  "clauses": [
+   {
+    "c": "At 17th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 17)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "When you hit a creature with an unarmed strike, you can spend 3 ki points to start these imperceptible vibrations",
+    "is": "held",
+    "by": "dm/srd-feature-spends.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Quivering Palm: 3 ki after an unarmed hit set the vibrations; the monk's action ends them: a failed CON save drops the creature to 0 hit points."
+   },
+   {
+    "c": "which last for a number of days equal to your monk level",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.days",
+    "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm (rounds: 14400)",
+    "severity": "low",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "The vibrations are harmless unless you use your action to end them.",
+    "is": "held",
+    "by": "dm/srd-feature-spends.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Quivering Palm: 3 ki after an unarmed hit set the vibrations; the monk's action ends them: a failed CON save drops the creature to 0 hit points."
+   },
+   {
+    "c": "To do so, you and the target must be on the same plane of existence.",
+    "is": "left",
+    "why": "the table holds one scene on one plane; the planes are lore (src/lib/rulebook/crosswalk.ts: \"the-planes-of-existence\": \"Lore; plane-crossing spells are narrated\")"
+   },
+   {
+    "c": "When you use this action, the creature must make a Constitution saving throw.",
+    "is": "held",
+    "by": "dm/srd-feature-spends.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Quivering Palm: 3 ki after an unarmed hit set the vibrations; the monk's action ends them: a failed CON save drops the creature to 0 hit points."
+   },
+   {
+    "c": "If it fails, it is reduced to 0 hit points.",
+    "is": "held",
+    "by": "dm/srd-feature-spends.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Quivering Palm: 3 ki after an unarmed hit set the vibrations; the monk's action ends them: a failed CON save drops the creature to 0 hit points."
+   },
+   {
+    "c": "If it succeeds, it takes 10d10 necrotic damage.",
+    "is": "held",
+    "by": "dm/srd-feature-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.saved"
+   },
+   {
+    "c": "You can have only one creature under the effect of this feature at a time.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.one-at-a-time",
+    "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm",
+    "severity": "low",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "You can choose to end the vibrations harmlessly without using an action.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: use_resource Quivering Palm on a creature already carrying the vibrations always prices the action and rolls the save (src/lib/dm/srd-feature-spends.ts quiveringPalm); the only way to drop them unspent is the GM's clear_condition on the enemy",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   }
+  ]
+ },
+ "paladin::Divine Sense": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 1,
+  "sha": "59597d85fdd2",
+  "heading": "paladin: Divine Sense",
+  "clauses": [
+   {
+    "c": "As an action, you can open your awareness to detect such forces.",
+    "is": "held",
+    "by": "srd/class-resources.ts divine_sense action",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.divine-sense.uses"
+   },
+   {
+    "c": "Until the end of your next turn, you know the location of any celestial, fiend, or undead within 60 feet of you that is not behind total cover.",
+    "is": "left",
+    "why": "src/lib/srd/class-resources.ts divine_sense: effect { kind: \"narrative\" }, guidance \"Until the end of their next turn the paladin knows the location of any celestial, fiend, or undead within 60 feet that is not behind total cover, and of consecrated or desecrated ground.\": what is sensed is information the GM gives"
+   },
+   {
+    "c": "You know the type (celestial, fiend, or undead) of any being whose presence you sense, but not its identity",
+    "is": "left",
+    "why": "src/lib/srd/class-resources.ts divine_sense: effect { kind: \"narrative\" }, guidance \"Until the end of their next turn the paladin knows the location of any celestial, fiend, or undead within 60 feet that is not behind total cover, and of consecrated or desecrated ground.\": what is sensed is information the GM gives"
+   },
+   {
+    "c": "Within the same radius, you also detect the presence of any place or object that has been consecrated or desecrated",
+    "is": "left",
+    "why": "src/lib/srd/class-resources.ts divine_sense: effect { kind: \"narrative\" }, guidance \"Until the end of their next turn the paladin knows the location of any celestial, fiend, or undead within 60 feet that is not behind total cover, and of consecrated or desecrated ground.\": what is sensed is information the GM gives"
+   },
+   {
+    "c": "You can use this feature a number of times equal to 1 + your Charisma modifier.",
+    "is": "held",
+    "by": "srd/class-resources.ts divine_sense maxFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.divine-sense.uses"
+   },
+   {
+    "c": "When you finish a long rest, you regain all expended uses.",
+    "is": "held",
+    "by": "srd/class-resources.ts divine_sense recharge long",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.divine-sense.uses"
+   },
+   {
+    "c": "The presence of strong evil registers on your senses like a noxious odor, and powerful good rings like heavenly music in your ears.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "paladin::Lay on Hands": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 1,
+  "sha": "48878fafd779",
+  "heading": "paladin: Lay on Hands",
+  "clauses": [
+   {
+    "c": "Your blessed touch can heal wounds.",
+    "is": "flavor"
+   },
+   {
+    "c": "You have a pool of healing power that replenishes when you take a long rest.",
+    "is": "held",
+    "by": "srd/class-resources.ts lay_on_hands recharge long",
+    "probe": "scripts/test-enforce-long-rest.mjs: every limited feature comes back, the long ones and the short ones"
+   },
+   {
+    "c": "you can restore a total number of hit points equal to your paladin level × 5",
+    "is": "held",
+    "by": "srd/class-resources.ts lay_on_hands maxFor",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Lay on Hands heals exactly the points spent, from a pool of 5 x level"
+   },
+   {
+    "c": "As an action, you can touch a creature",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.touch",
+    "where": "src/lib/dm/resource-tools.ts (heal_pool with targetCharacterId)",
+    "severity": "medium",
+    "kind": "rule-wrong",
+    "note": "the action is charged; the reach is not checked"
+   },
+   {
+    "c": "and draw power from the pool to restore a number of hit points to that creature, up to the maximum amount remaining in your pool",
+    "is": "held",
+    "by": "dm/resource-tools.ts heal_pool",
+    "probe": "scripts/test-enforce-resource-spend.mjs: Lay on Hands heals exactly the points spent, from a pool of 5 x level"
+   },
+   {
+    "c": "Alternatively, you can expend 5 hit points from your pool of healing to cure the target of one disease or neutralize one poison affecting it.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
+    "where": "src/lib/dm/resource-tools.ts (heal_pool), src/lib/srd/class-resources.ts lay_on_hands",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "written as guidance only: lay_on_hands guidance \"Spend 5 instead to cure one disease or neutralize one poison.\""
+   },
+   {
+    "c": "You can cure multiple diseases and neutralize multiple poisons with a single use of Lay on Hands, expending hit points separately for each one.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
+    "where": "src/lib/dm/resource-tools.ts (heal_pool)",
+    "severity": "medium",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "This feature has no effect on undead and constructs.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read; an undead summon healed through targetCharacterId was not staged",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   }
+  ]
+ },
+ "paladin::Fighting Style": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 2,
+  "sha": "06606c105f3a",
+  "heading": "paladin: Fighting Style",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "a7cbc22a59e0"
+  },
+  "clauses": [
+   {
+    "c": "At 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Choose one of the following options.",
+    "is": "held",
+    "by": "srd/options.ts, srd/feature-effects.ts fittingFightingStyles",
+    "probe": "scripts/test-enforce-owed-picks.mjs: A paladin's and a ranger's Fighting Style offer their four SRD styles; a fighter's all six. The sheet and the regrant hold to it."
+   },
+   {
+    "c": "You can't take a Fighting Style option more than once, even if you later get to choose again.",
+    "is": "held",
+    "by": "srd/features.ts pruneChoiceFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.no-repeat"
+   },
+   {
+    "c": "While you are wearing armor, you gain a +1 bonus to AC.",
+    "is": "held",
+    "by": "srd/armor.ts computeArmorClass",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.defense"
+   },
+   {
+    "c": "When you are wielding a melee weapon in one hand and no other weapons, you gain a +2 bonus to damage rolls with that weapon.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Dueling applies while the character wields a melee weapon in one hand and no other weapon."
+   },
+   {
+    "c": "When you roll a 1 or 2 on a damage die for an attack you make with a melee weapon that you are wielding with two hands, you can reroll the die and must use the new roll.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Great Weapon Fighting: a 1 or a 2 is rerolled once and the new roll stands"
+   },
+   {
+    "c": "The weapon must have the two-handed or versatile property for you to gain this benefit.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Great Weapon Fighting: not in one hand, and not with a bow"
+   },
+   {
+    "c": "When a creature you can see attacks",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.fighting-style.protection-sight"
+   },
+   {
+    "c": "a target other than you that is within 5 feet of you",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-reactions.mjs: Protection covers an ally within 5 feet of the protector."
+   },
+   {
+    "c": "you can use your reaction to impose disadvantage on the attack roll",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-reactions.mjs: Protection rolls the attack that just came again at disadvantage, and a miss gives the damage back"
+   },
+   {
+    "c": "You must be wielding a shield.",
+    "is": "held",
+    "by": "dm/reaction-tools.ts Protection",
+    "probe": "scripts/test-enforce-reactions.mjs: Only a character with the Protection fighting style and a shield imposes it."
+   }
+  ]
+ },
+ "paladin::Spellcasting": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 2,
+  "sha": "ba6e68341dd8",
+  "heading": "paladin: Spellcasting",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "109ab25c615e"
+  },
+  "clauses": [
+   {
+    "c": "By 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "The Paladin table shows how many spell slots you have to cast your paladin spells.",
+    "is": "held",
+    "by": "srd/spell-slots",
+    "probe": "scripts/test-enforce-spell-slots.mjs: paladin and ranger have no slots at 1st level and the half table after"
+   },
+   {
+    "c": "To cast one of your paladin spells of 1st level or higher, you must expend a slot of the spell's level or higher.",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting.mjs: a slot below the spell's level cannot pay for it"
+   },
+   {
+    "c": "You regain all expended spell slots when you finish a long rest.",
+    "is": "held",
+    "by": "dm/rest-tools.ts",
+    "probe": "scripts/test-enforce-spell-slots.mjs: a long rest brings every slot back"
+   },
+   {
+    "c": "You prepare the list of paladin spells that are available for you to cast, choosing from the paladin spell list.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-data.mjs: the paladin list holds the SRD's paladin spells"
+   },
+   {
+    "c": "choose a number of paladin spells equal to your Charisma modifier + half your paladin level, rounded down",
+    "is": "held",
+    "by": "srd/spell-prep.ts spellListProblems",
+    "probe": "scripts/test-enforce-spell-counts.mjs: spells known and spells prepared are the book's at every level and score"
+   },
+   {
+    "c": "(minimum of one spell)",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: a low casting score still prepares one spell, and a high one prepares more"
+   },
+   {
+    "c": "The spells must be of a level for which you have spell slots.",
+    "is": "held",
+    "by": "srd/spell-prep.ts",
+    "probe": "scripts/test-enforce-spell-counts.mjs: a spell above what the slots reach is a problem at every level"
+   },
+   {
+    "c": "For example, if you are a 5th-level paladin, you have four 1st-level and two 2nd-level spell slots.",
+    "is": "flavor"
+   },
+   {
+    "c": "With a Charisma of 14, your list of prepared spells can include four spells of 1st or 2nd level, in any combination.",
+    "is": "flavor"
+   },
+   {
+    "c": "If you prepare the 1st-level spell *cure wounds*, you can cast it using a 1st-level or a 2nd-level slot.",
+    "is": "flavor"
+   },
+   {
+    "c": "Casting the spell doesn't remove it from your list of prepared spells.",
+    "is": "held",
+    "by": "dm/cast-rules.ts (a cast never writes the prepared list)",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.prepared-stays"
+   },
+   {
+    "c": "You can change your list of prepared spells when you finish a long rest.",
+    "is": "held",
+    "by": "dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-casting.mjs: a spell chosen since the last long rest is not castable until the rest"
+   },
+   {
+    "c": "Preparing a new list of paladin spells requires time spent in prayer and meditation: at least 1 minute per spell level for each spell on your list.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, Narrated by design: \"An interrupted rest | take_rest is one atomic call: the model not calling it is the interruption.\" What a character does inside a rest is not state."
+   },
+   {
+    "c": "Charisma is your spellcasting ability for your paladin spells",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.ability"
+   },
+   {
+    "c": "You use your Charisma whenever a spell refers to your spellcasting ability.",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.ability"
+   },
+   {
+    "c": "you use your Charisma modifier when setting the saving throw DC for a paladin spell you cast and when making an attack roll with one",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.ability"
+   },
+   {
+    "c": "**Spell save DC** = 8 + your proficiency bonus + your Charisma modifier",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.ability"
+   },
+   {
+    "c": "**Spell attack modifier** = your proficiency bonus + your Charisma modifier",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.ability"
+   },
+   {
+    "c": "You can use a holy symbol as a spellcasting focus for your paladin spells.",
+    "is": "held",
+    "by": "dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.paladin.focus"
+   }
+  ]
+ },
+ "paladin::Divine Smite": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 2,
+  "sha": "52cca70795c9",
+  "heading": "paladin: Divine Smite",
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target, in addition to the weapon's damage",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Divine Smite: refused with no slot, with no feature, and at range"
+   },
+   {
+    "c": "The extra damage is 2d8 for a 1st-level spell slot, plus 1d8 for each spell level higher than 1st",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Divine Smite: 2d8 and one more per slot level, the slot spent"
+   },
+   {
+    "c": "to a maximum of 5d8",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Divine Smite deals at most 5d8, before the extra die against undead and fiends."
+   },
+   {
+    "c": "The damage increases by 1d8 if the target is an undead or a fiend, to a maximum of 6d8.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Divine Smite deals 1d8 more when the target is an undead or a fiend."
+   }
+  ]
+ },
+ "paladin::Channel Divinity": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 3,
+  "sha": "dd6b23086799",
+  "heading": "paladin: Channel Divinity",
+  "clauses": [
+   {
+    "c": "Each Channel Divinity option provided by your oath explains how to use it.",
+    "is": "flavor"
+   },
+   {
+    "c": "When you use your Channel Divinity, you choose which option to use.",
+    "is": "held",
+    "by": "dm/feature-spends.ts (the variant)",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Sacred Weapon adds the paladin's Charisma modifier to their weapon attack rolls"
+   },
+   {
+    "c": "You must then finish a short or long rest to use your Channel Divinity again.",
+    "is": "held",
+    "by": "srd/class-resources.ts channel_divinity",
+    "probe": "scripts/test-enforce-class-tables.mjs: A paladin has one use of Channel Divinity per rest at every level; only the cleric's grows to two at 6 and three at 18."
+   },
+   {
+    "c": "Some Channel Divinity effects require saving throws.",
+    "is": "flavor"
+   },
+   {
+    "c": "When you use such an effect from this class, the DC equals your paladin spell save DC.",
+    "is": "held",
+    "by": "dm/command-undead.ts classSaveDc",
+    "probe": "scripts/test-enforce-control-undead.mjs: A paladin's DC is read with Charisma even when another class's spellcasting leads the sheet."
+   },
+   {
+    "c": "Your oath allows you to channel divine energy to fuel magical effects.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "paladin::Divine Health": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 3,
+  "sha": "7086e82ad678",
+  "heading": "paladin: Divine Health",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "fb0749ea0619"
+  },
+  "clauses": [
+   {
+    "c": "By 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "the divine magic flowing through you makes you immune to disease",
+    "is": "held",
+    "by": "srd/trait-rules.ts featureConditionImmunities",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M6: every condition immunity a feature grants is on the list set_condition reads, rage-gated ones only while raging"
+   }
+  ]
+ },
+ "paladin::Sacred Oath": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 3,
+  "sha": "13e249eaa5f6",
+  "heading": "paladin: Sacred Oath",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "f60562d67431"
+  },
+  "clauses": [
+   {
+    "c": "When you reach 3rd level, you swear the oath that binds you as a paladin forever.",
+    "is": "held",
+    "by": "class-features.json subclassLevel 3",
+    "probe": "scripts/test-enforce-class-tables.mjs: every class has its SRD hit die and picks its subclass at the SRD level"
+   },
+   {
+    "c": "Now you choose the Oath of Devotion, the Oath of the Ancients, or the Oath of Vengeance",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.sacred-oath.oaths"
+   },
+   {
+    "c": "Your choice grants you features at 3rd level and again at 7th, 15th, and 20th level.",
+    "is": "held",
+    "by": "class-features.json subclass levels",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   },
+   {
+    "c": "Those features include oath spells and the Channel Divinity feature.",
+    "is": "flavor"
+   },
+   {
+    "c": "Each oath has a list of associated spells.",
+    "is": "flavor"
+   },
+   {
+    "c": "You gain access to these spells at the levels specified in the oath description.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-subclasses.mjs: domain and oath spells arrive when the SRD says, at a level the character casts"
+   },
+   {
+    "c": "Once you gain access to an oath spell, you always have it prepared.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-spell-learning.mjs: a domain's spells are always prepared and outside the number prepared"
+   },
+   {
+    "c": "Oath spells don't count against the number of spells you can prepare each day.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-spell-learning.mjs: a domain's spells are always prepared and outside the number prepared"
+   },
+   {
+    "c": "If you gain an oath spell that doesn't appear on the paladin spell list, the spell is nonetheless a paladin spell for you.",
+    "is": "held",
+    "by": "srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-subclasses.mjs: every spell a subclass hands out is real and castable on the day it arrives"
+   },
+   {
+    "c": "Up to this time you have been in a preparatory stage, committed to the path but not yet sworn to it.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "paladin::Extra Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 5,
+  "sha": "5806389ca012",
+  "heading": "paladin: Extra Attack",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8b94cd18c769"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can attack twice, instead of once, whenever you take the Attack action on your turn",
+    "is": "held",
+    "by": "dm/action-budget.ts attacksAllowed",
+    "probe": "scripts/test-enforce-action-economy.mjs: Extra Attack at level 5 is exactly two attacks inside one action"
+   }
+  ]
+ },
+ "paladin::Aura of Protection": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 6,
+  "sha": "5ca989ea56f2",
+  "heading": "paladin: Aura of Protection",
+  "clauses": [
+   {
+    "c": "Starting at 6th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 6)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "whenever you or a friendly creature within 10 feet of you must make a saving throw",
+    "is": "held",
+    "by": "dm/forced-save.ts aura",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:M16: Outside a battle map the party stands together, and the paladin's aura covers every ally's saves."
+   },
+   {
+    "c": "the creature gains a bonus to the saving throw equal to your Charisma modifier (with a minimum bonus of +1)",
+    "is": "held",
+    "by": "dm/forced-save.ts aura",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-06"
+   },
+   {
+    "c": "You must be conscious to grant this bonus.",
+    "is": "held",
+    "by": "dm/forced-save.ts aura",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-06"
+   },
+   {
+    "c": "At 18th level, the range of this aura increases to 30 feet.",
+    "is": "held",
+    "by": "dm/forced-save.ts aura range",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L18: A paladin inside another paladin's aura adds only the larger bonus, and the aura's range follows paladin levels."
+   }
+  ]
+ },
+ "paladin::Aura of Courage": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 10,
+  "sha": "6fc6392034ff",
+  "heading": "paladin: Aura of Courage",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "8cfd5ecda7c4"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 10th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 10)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you and friendly creatures within 10 feet of you can't be frightened",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M6: Conditions a feature makes a character immune to are refused: Aura of Courage (and allies within 10 feet), Purity of Body, and poison damage for Purity of Body."
+   },
+   {
+    "c": "while you are conscious",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.aura-of-courage.conscious"
+   },
+   {
+    "c": "At 18th level, the range of this aura increases to 30 feet.",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.aura-of-courage.range-18"
+   }
+  ]
+ },
+ "paladin::Improved Divine Smite": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 11,
+  "sha": "44be570729d7",
+  "heading": "paladin: Improved Divine Smite",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "0a38451ec37f"
+  },
+  "clauses": [
+   {
+    "c": "By 11th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 11)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Whenever you hit a creature with a melee weapon, the creature takes an extra 1d8 radiant damage.",
+    "is": "held",
+    "by": "srd/feature-effects.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.improved-divine-smite.d8"
+   },
+   {
+    "c": "If you also use your Divine Smite with an attack, you add this damage to the extra damage of your Divine Smite.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.improved-divine-smite.d8"
+   }
+  ]
+ },
+ "paladin::Cleansing Touch": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 14,
+  "sha": "44de9c823ed4",
+  "heading": "paladin: Cleansing Touch",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "e5fa2176dbbe"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 14th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 14)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use your action to end one spell on yourself or on one willing creature that you touch",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.cleansing-touch.ends-spell",
+    "where": "src/lib/srd/class-resources.ts cleansing_touch (effect: narrative)",
+    "severity": "low",
+    "kind": "rule-missing",
+    "note": "written reason: the counter's guidance, \"An action that ends one spell on the paladin or on a willing creature they touch. Clear what the spell left with clear_condition.\""
+   },
+   {
+    "c": "You can use this feature a number of times equal to your Charisma modifier (a minimum of once).",
+    "is": "held",
+    "by": "srd/class-resources.ts cleansing_touch maxFor",
+    "probe": "scripts/test-enforce-resource-tables.mjs: Cleansing Touch has Charisma modifier uses per long rest, Stroke of Luck one use per short or long rest, and each Mystic Arcanum is cast once per long rest."
+   },
+   {
+    "c": "You regain expended uses when you finish a long rest.",
+    "is": "held",
+    "by": "srd/class-resources.ts cleansing_touch",
+    "probe": "scripts/test-enforce-resource-tables.mjs: Cleansing Touch has Charisma modifier uses per long rest, Stroke of Luck one use per short or long rest, and each Mystic Arcanum is cast once per long rest."
+   }
+  ]
+ },
+ "paladin::Aura Improvements": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "paladin",
+  "level": 18,
+  "sha": "5ca989ea56f2",
+  "heading": "paladin: Aura of Protection",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "4f7d562b5b54"
+  },
+  "tierOf": "paladin::Aura of Protection",
+  "clauses": [
+   {
+    "c": "At 18th level, the range of this aura increases to 30 feet.",
+    "is": "held",
+    "by": "dm/forced-save.ts aura range",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:L18: A paladin inside another paladin's aura adds only the larger bonus, and the aura's range follows paladin levels."
+   }
+  ]
+ },
+ "paladin::Channel Divinity: Sacred Weapon": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Oath of Devotion",
+  "level": 3,
+  "sha": "b6118d4bea8f",
+  "heading": "paladin: Channel Divinity",
+  "clauses": [
+   {
+    "c": "***Sacred Weapon***.",
+    "is": "flavor"
+   },
+   {
+    "c": "As an action, you can imbue one weapon that you are holding with positive energy, using your Channel Divinity.",
+    "is": "held",
+    "by": "dm/feature-spends.ts",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Sacred Weapon adds the paladin's Charisma modifier to their weapon attack rolls"
+   },
+   {
+    "c": "For 1 minute, you add your Charisma modifier to attack rolls made with that weapon",
+    "is": "held",
+    "by": "srd/condition-effects sacred weapon",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:M18: Sacred Weapon adds the paladin's Charisma modifier to their weapon attack rolls"
+   },
+   {
+    "c": "(with a minimum bonus of +1)",
+    "is": "held",
+    "by": "srd/condition-effects sacred weapon",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.min1"
+   },
+   {
+    "c": "The weapon also emits bright light in a 20-foot radius and dim light 20 feet beyond that.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: staging the board's light around a condition needs a dark map; no hook for 'sacred weapon' was found under src/lib/battlemap (grep)",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "If the weapon is not already magical, it becomes magical for the duration.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-07"
+   },
+   {
+    "c": "You can end this effect on your turn as part of any other action.",
+    "is": "left",
+    "why": "the GM's clear_condition ends it; ending early gains nothing a rule reads (docs/rules-coverage.md, Narrated by design: \"Free object interaction\" is likewise not tracked)"
+   },
+   {
+    "c": "If you are no longer holding or carrying this weapon, or if you fall unconscious, this effect ends.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.ends-unconscious",
+    "where": "src/lib/dm/pc-damage.ts (what a drop to 0 hit points clears)",
+    "severity": "low",
+    "kind": "state-lifecycle"
+   }
+  ]
+ },
+ "paladin::Channel Divinity: Turn the Unholy": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Oath of Devotion",
+  "level": 3,
+  "sha": "aec379901f07",
+  "heading": "paladin: Channel Divinity",
+  "clauses": [
+   {
+    "c": "***Turn the Unholy***.",
+    "is": "flavor"
+   },
+   {
+    "c": "As an action, you present your holy symbol and speak a prayer censuring fiends and undead, using your Channel Divinity.",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L21: Turn the Unholy turns fiends and undead with no destruction, and the Hunter's Evasion is Evasion"
+   },
+   {
+    "c": "Each fiend or undead that can see or hear you within 30 feet of you must make a Wisdom saving throw.",
+    "is": "held",
+    "by": "dm/feature-spends.ts turnUndead",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L21: Turn the Unholy turns fiends and undead with no destruction, and the Hunter's Evasion is Evasion"
+   },
+   {
+    "c": "If the creature fails its saving throw, it is turned for 1 minute or until it takes damage.",
+    "is": "held",
+    "by": "dm/flee-logic.ts TURNED",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-02"
+   },
+   {
+    "c": "A turned creature must spend its turns trying to move as far away from you as it can, and it can't willingly move to a space within 30 feet of you.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-enemy-dash.mjs: A turned undead attacks no one, takes no opportunity attack, runs from the cleric on its turn, and damage ends the turning."
+   },
+   {
+    "c": "It also can't take reactions.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-04"
+   },
+   {
+    "c": "For its action, it can use only the Dash action or try to escape from an effect that prevents it from moving.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-03"
+   },
+   {
+    "c": "If there's nowhere to move, the creature can use the Dodge action.",
+    "is": "held",
+    "by": "dm/flee-logic.ts",
+    "probe": "scripts/test-enforce-enemy-dash.mjs: A turned undead with nowhere farther to run takes the Dodge."
+   }
+  ]
+ },
+ "paladin::Aura of Devotion": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Oath of Devotion",
+  "level": 7,
+  "sha": "1623eafc077f",
+  "heading": "paladin: Aura of Devotion",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "1352e2fa7ba3"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you and friendly creatures within 10 feet of you can't be charmed",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.aura-of-devotion.charmed"
+   },
+   {
+    "c": "while you are conscious",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.aura-of-devotion.charmed"
+   },
+   {
+    "c": "At 18th level, the range of this aura increases to 30 feet.",
+    "is": "held",
+    "by": "srd/trait-rules.ts auraConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.aura-of-devotion.charmed"
+   }
+  ]
+ },
+ "paladin::Purity of Spirit": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Oath of Devotion",
+  "level": 15,
+  "sha": "b7889e99fb47",
+  "heading": "paladin: Purity of Spirit",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "856b4691364f"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 15th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 15)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you are always under the effects of a *protection from evil and good* spell",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.purity-of-spirit.protection",
+    "where": "src/lib/dm/attack-logic.ts (who attacks at disadvantage), src/lib/srd/trait-rules.ts sourcedConditionImmunity",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "the charm and fear half is held (test-enforce-feature-uses F:L21: Purity of Spirit keeps a fiend's fear off)"
+   }
+  ]
+ },
+ "paladin::Holy Nimbus": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Oath of Devotion",
+  "level": 20,
+  "sha": "c6867d3d8bb6",
+  "heading": "paladin: Holy Nimbus",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "492df83096e9"
+  },
+  "clauses": [
+   {
+    "c": "At 20th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 20)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "as an action, you can emanate an aura of sunlight",
+    "is": "held",
+    "by": "dm/combat-features.ts holyNimbus",
+    "probe": "scripts/test-enforce-tail-features.mjs: Holy Nimbus: an enemy that starts its turn within 30 feet of the paladin takes 10 radiant damage."
+   },
+   {
+    "c": "For 1 minute, bright light shines from you in a 30-foot radius, and dim light shines 30 feet beyond that.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: the minute is held by the condition's rounds; the light itself needs a dark map to stage and no reader of 'holy nimbus' was found under src/lib/battlemap (grep)",
+    "where": "",
+    "severity": "low",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "Whenever an enemy creature starts its turn in the bright light, the creature takes 10 radiant damage.",
+    "is": "held",
+    "by": "dm/combat-features.ts holyNimbus",
+    "probe": "scripts/test-enforce-tail-features.mjs: Holy Nimbus: an enemy that starts its turn within 30 feet of the paladin takes 10 radiant damage."
+   },
+   {
+    "c": "In addition, for the duration, you have advantage on saving throws against spells cast by fiends or undead.",
+    "is": "held",
+    "by": "dm/roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-final-engine.mjs: A paladin under Holy Nimbus has advantage on saving throws against spells cast by fiends or undead."
+   },
+   {
+    "c": "Once you use this feature, you can't use it again until you finish a long rest.",
+    "is": "held",
+    "by": "srd/combat-rows.ts holy_nimbus",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.holy-nimbus.once"
+   },
+   {
+    "c": ">**Breaking Your Oath**",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": ">A paladin tries to hold to the highest standards of conduct, but even the most virtuous paladin is fallible.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": "Sometimes the right path proves too demanding, sometimes a situation calls for the lesser of two evils, and sometimes the heat of emotion causes a paladin to transgress his or her oath.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": ">A paladin who has broken a vow typically seeks absolution from a cleric who shares his or her faith or from another paladin of the same order.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": "The paladin might spend an all-night vigil in prayer as a sign of penitence, or undertake a fast or similar act of self-denial.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": "After a rite of confession and forgiveness, the paladin starts fresh.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": ">If a paladin willfully violates his or her oath and shows no sign of repentance, the consequences can be more serious.",
+    "is": "flavor",
+    "auto": true
+   },
+   {
+    "c": "At the GM's discretion, an impenitent paladin might be forced to abandon this class and adopt another.",
+    "is": "flavor",
+    "auto": true
+   }
+  ]
+ },
+ "rogue::Expertise": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 1,
+  "sha": "0d4ac5d626e3",
+  "heading": "rogue: Expertise",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7758c4cfc871"
+  },
+  "clauses": [
+   {
+    "c": "At 1st level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 1)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "choose two of your skill proficiencies",
+    "is": "held",
+    "by": "srd/features.ts expertiseSlotsFor, expertiseAllowed",
+    "probe": "scripts/test-enforce-creation-grants.mjs: Expertise doubles a proficiency the character has; it cannot stand on a skill they are not proficient in."
+   },
+   {
+    "c": "or one of your skill proficiencies and your proficiency with thieves' tools",
+    "is": "held",
+    "by": "srd/features.ts isThievesTools",
+    "probe": "scripts/test-enforce-character-choices.mjs: A rogue's 6th-level expertise may take thieves' tools, and the tool check doubles."
+   },
+   {
+    "c": "Your proficiency bonus is doubled for any ability check you make that uses either of the chosen proficiencies.",
+    "is": "held",
+    "by": "srd/index.ts computeSheetDerived",
+    "probe": "scripts/test-enforce-checks.mjs: every skill: the sheet's ability, proficiency and expertise, nothing from the caller"
+   },
+   {
+    "c": "At 6th level, you can choose two more of your proficiencies (in skills or with thieves' tools) to gain this benefit.",
+    "is": "held",
+    "by": "srd/features.ts EXPERTISE_GRANTS",
+    "probe": "scripts/test-enforce-proficiencies.mjs: expertise: two skills for a rogue at 1 and 6, a bard at 3 and 10, nobody else"
+   }
+  ]
+ },
+ "rogue::Sneak Attack": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 1,
+  "sha": "2350a16f5026",
+  "heading": "rogue: Sneak Attack",
+  "clauses": [
+   {
+    "c": "Beginning at 1st level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 1)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Once per turn",
+    "is": "held",
+    "by": "encounter turnBudget oncePerTurn",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Sneak Attack: once per turn, and again on the next"
+   },
+   {
+    "c": "you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Sneak Attack: with advantage, and never with disadvantage"
+   },
+   {
+    "c": "The attack must use a finesse or a ranged weapon.",
+    "is": "held",
+    "by": "dm/pc-attack-damage.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Sneak Attack: finesse or ranged only"
+   },
+   {
+    "c": "You don't need advantage on the attack roll if another enemy of the target is within 5 feet of it",
+    "is": "held",
+    "by": "dm/pc-attack-situation.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Sneak Attack: 3d6 at level 5, with an ally next to the target"
+   },
+   {
+    "c": "that enemy isn't incapacitated",
+    "is": "held",
+    "by": "dm/pc-attack-situation.ts",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: Sneak Attack's ally next to the target must not be incapacitated; an ally at 0 hit points does not count."
+   },
+   {
+    "c": "and you don't have disadvantage on the attack roll",
+    "is": "held",
+    "by": "dm/pc-attack-situation.ts",
+    "probe": "scripts/test-enforce-attack-riders.mjs: Sneak Attack: with advantage, and never with disadvantage"
+   },
+   {
+    "c": "The amount of the extra damage increases as you gain levels in this class, as shown in the Sneak Attack column of the Rogue table.",
+    "is": "held",
+    "by": "srd/feature-effects.ts sneak attack dice",
+    "probe": "scripts/test-enforce-srd-classes.mjs: ${classId}: every column of the class table on the SRD page matches the engine at all 20 levels"
+   }
+  ]
+ },
+ "rogue::Thieves' Cant": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 1,
+  "sha": "a6ed12d351bc",
+  "heading": "rogue: Thieves' Cant",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "dee3ec72644d"
+  },
+  "clauses": [
+   {
+    "c": "a secret mix of dialect, jargon, and code that allows you to hide messages in seemingly normal conversation",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "Only another creature that knows thieves' cant understands such messages.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "It takes four times longer to convey such a message than it does to speak the same idea plainly.",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   },
+   {
+    "c": "In addition, you understand a set of secret signs and symbols",
+    "is": "left",
+    "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\\\"Druidic\\\", \\\"Timeless Body\\\", \\\"Thieves' Cant\\\", \\\"Tongue of the Sun and Moon\\\"): narrated from the sheet.\""
+   }
+  ]
+ },
+ "rogue::Cunning Action": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 2,
+  "sha": "25d9f28f2049",
+  "heading": "rogue: Cunning Action",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7fcc0c15afd5"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 2nd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 2)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "You can take a bonus action on each of your turns in combat.",
+    "is": "held",
+    "by": "dm/action-budget.ts",
+    "probe": "scripts/test-enforce-bonus-actions.mjs: Cunning Action is one bonus action a turn"
+   },
+   {
+    "c": "This action can be used only to take the Dash, Disengage, or Hide action.",
+    "is": "held",
+    "by": "dm/combat-actions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.cunning-action.only-three"
+   }
+  ]
+ },
+ "rogue::Roguish Archetype": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 3,
+  "sha": "f6d25d557ea6",
+  "heading": "rogue: Roguish Archetype",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "cfcde2ef076f"
+  },
+  "clauses": [
+   {
+    "c": "At 3rd level, you choose an archetype",
+    "is": "held",
+    "by": "class-features.json subclassLevel 3",
+    "probe": "scripts/test-enforce-class-tables.mjs: every class has its SRD hit die and picks its subclass at the SRD level"
+   },
+   {
+    "c": "Thief, Assassin, or Arcane Trickster",
+    "is": "held",
+    "by": "srd/features.ts subclassNamesFor",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.roguish-archetype.archetypes"
+   },
+   {
+    "c": "Your archetype choice grants you features at 3rd level and then again at 9th, 13th, and 17th level.",
+    "is": "held",
+    "by": "class-features.json subclass levels",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else"
+   }
+  ]
+ },
+ "rogue::Uncanny Dodge": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 5,
+  "sha": "198844bb6e59",
+  "heading": "rogue: Uncanny Dodge",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "021c2f932af8"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 5th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 5)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "when an attacker that you can see hits you with an attack",
+    "is": "held",
+    "by": "dm/reaction-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.uncanny-dodge.sight"
+   },
+   {
+    "c": "you can use your reaction to halve the attack's damage against you",
+    "is": "held",
+    "by": "dm/reaction-tools.ts, last_hits",
+    "probe": "scripts/test-enforce-reactions.mjs: Uncanny Dodge halves the damage of the attack that hit."
+   }
+  ]
+ },
+ "rogue::Expertise@6": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 6,
+  "sha": "0d4ac5d626e3",
+  "heading": "rogue: Expertise",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7758c4cfc871"
+  },
+  "tierOf": "rogue::Expertise",
+  "clauses": [
+   {
+    "c": "At 6th level, you can choose two more of your proficiencies (in skills or with thieves' tools) to gain this benefit.",
+    "is": "held",
+    "by": "srd/features.ts EXPERTISE_GRANTS",
+    "probe": "scripts/test-enforce-character-choices.mjs: A rogue's 6th-level expertise may take thieves' tools, and the tool check doubles."
+   }
+  ]
+ },
+ "rogue::Evasion": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 7,
+  "sha": "365aea763b2c",
+  "heading": "rogue: Evasion",
+  "clauses": [
+   {
+    "c": "Beginning at 7th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 7)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.",
+    "is": "held",
+    "by": "srd/trait-rules.ts saveDamageTaken",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:H4: Evasion holds on every save-for-half path: a made DEX save takes nothing, a failed one half."
+   }
+  ]
+ },
+ "rogue::Reliable Talent": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 11,
+  "sha": "35ba9ca33f35",
+  "heading": "rogue: Reliable Talent",
+  "clauses": [
+   {
+    "c": "By 11th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 11)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "Whenever you make an ability check that lets you add your proficiency bonus, you can treat a d20 roll of 9 or lower as a 10.",
+    "is": "held",
+    "by": "dm/rolls.ts",
+    "probe": "scripts/test-enforce-checks.mjs: Reliable Talent: a 9 or lower counts as 10 on a proficient check only"
+   }
+  ]
+ },
+ "rogue::Blindsense": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 14,
+  "sha": "4c2defaf5d4b",
+  "heading": "rogue: Blindsense",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "59199febb8ad"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 14th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 14)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you are aware of the location of any hidden or invisible creature within 10 feet of you",
+    "is": "held",
+    "by": "dm/attack-light.ts",
+    "probe": "scripts/test-enforce-tail-attacks.mjs: Blindsense: the rogue attacks a hidden or invisible creature within 10 feet at its square (ODM never makes anyone guess one), still at disadvantage, since knowing where is not seeing (SRD 5.1)."
+   },
+   {
+    "c": "if you are able to hear",
+    "is": "left",
+    "why": "scripts/test-enforce-tail-attacks.mjs, the Blindsense test's own title: \"ODM never makes anyone guess one\": every character already attacks an unseen creature at its square, so what Blindsense adds (knowing where) and what deafness would take away is narration"
+   }
+  ]
+ },
+ "rogue::Slippery Mind": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 15,
+  "sha": "372a7723593c",
+  "heading": "rogue: Slippery Mind",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "39dbfa44add3"
+  },
+  "clauses": [
+   {
+    "c": "By 15th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 15)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "You gain proficiency in Wisdom saving throws.",
+    "is": "held",
+    "by": "srd/trait-rules.ts featureSaveProficiencies",
+    "probe": "scripts/test-enforce-feature-saves.mjs: F:M8: Diamond Soul gives proficiency in every save; Slippery Mind in WIS saves."
+   }
+  ]
+ },
+ "rogue::Elusive": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 18,
+  "sha": "befdf9989cbc",
+  "heading": "rogue: Elusive",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "64170792d37d"
+  },
+  "clauses": [
+   {
+    "c": "Beginning at 18th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 18)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "No attack roll has advantage against you while you aren't incapacitated.",
+    "is": "held",
+    "by": "dm/attack-logic.ts",
+    "probe": "scripts/test-enforce-monster-traits.mjs: Elusive: no attack roll against the rogue has advantage while they are not incapacitated"
+   }
+  ]
+ },
+ "rogue::Stroke of Luck": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "rogue",
+  "level": 20,
+  "sha": "34f75794bc5e",
+  "heading": "rogue: Stroke of Luck",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "d265099ca106"
+  },
+  "clauses": [
+   {
+    "c": "At 20th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 20)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "If your attack misses a target within range, you can turn the miss into a hit.",
+    "is": "held",
+    "by": "dm/attack-features.ts rescueMiss",
+    "probe": "scripts/test-enforce-tail-attacks.mjs: Stroke of Luck turns a missed attack into a hit, once a short rest; a hit spends nothing."
+   },
+   {
+    "c": "Alternatively, if you fail an ability check, you can treat the d20 roll as a 20.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-srd.mjs: counter:stroke_of_luck#SPENT_FOR_NOTHING",
+    "where": "src/lib/dm/rolls.ts request_roll (no strokeOfLuck there), src/lib/srd/class-resources.ts stroke_of_luck",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "the attack half is an engine option on pc_attack; the check half has no door: request_roll takes no strokeOfLuck, and use_resource Stroke of Luck after a failed check spends the use and leaves the check failed (run here: total 5 against DC 25 stays a failure, 0/1 left)",
+    "recorded_by": "spends (spends-spent-for-nothing-counter-stroke-of-luck)"
+   },
+   {
+    "c": "Once you use this feature, you can't use it again until you finish a short or long rest.",
+    "is": "held",
+    "by": "srd/class-resources.ts stroke_of_luck",
+    "probe": "scripts/test-enforce-resource-tables.mjs: Cleansing Touch has Charisma modifier uses per long rest, Stroke of Luck one use per short or long rest, and each Mystic Arcanum is cast once per long rest."
+   }
+  ]
+ },
+ "rogue::Fast Hands": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Thief",
+  "level": 3,
+  "sha": "bea98721e167",
+  "heading": "rogue: Fast Hands",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "856cf10d52b1"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you can use the bonus action granted by your Cunning Action to make a Dexterity (Sleight of Hand) check",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.fast-hands.sleight",
+    "where": "src/lib/dm/combat-actions.ts take_action (which actions a bonus action may be)",
+    "severity": "low",
+    "kind": "rule-missing"
+   },
+   {
+    "c": "use your thieves' tools to disarm a trap or open a lock",
+    "is": "held",
+    "by": "dm/combat-actions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.fast-hands.tools"
+   },
+   {
+    "c": "or take the Use an Object action",
+    "is": "held",
+    "by": "dm/combat-actions.ts",
+    "probe": "scripts/test-enforce-tail-features.mjs: Fast Hands: a Thief uses an object with the Cunning Action bonus action; another rogue cannot."
+   }
+  ]
+ },
+ "rogue::Second-Story Work": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Thief",
+  "level": 3,
+  "sha": "ae64a2881e8d",
+  "heading": "rogue: Second-Story Work",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "6c5b0fcd0b16"
+  },
+  "clauses": [
+   {
+    "c": "When you choose this archetype at 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 3)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "climbing no longer costs you extra movement",
+    "is": "held",
+    "by": "dm/move-cost",
+    "probe": "scripts/test-enforce-tail-movement.mjs: Climbing costs double for a character with no climbing speed, and nothing extra for a Thief with Second-Story Work."
+   },
+   {
+    "c": "In addition, when you make a running jump, the distance you cover increases by a number of feet equal to your Dexterity modifier.",
+    "is": "held",
+    "by": "dm/jump-move.ts",
+    "probe": "scripts/test-enforce-srd-classes.mjs: CLS-10"
+   }
+  ]
+ },
+ "rogue::Supreme Sneak": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Thief",
+  "level": 9,
+  "sha": "535388a6b5f6",
+  "heading": "rogue: Supreme Sneak",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "a5b0d60e52e9"
+  },
+  "clauses": [
+   {
+    "c": "Starting at 9th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 9)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "you have advantage on a Dexterity (Stealth) check if you move no more than half your speed on the same turn",
+    "is": "held",
+    "by": "dm/roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-final-features.mjs: Supreme Sneak: the Thief's Stealth check has advantage when they moved no more than half their speed this turn."
+   }
+  ]
+ },
+ "rogue::Use Magic Device": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Thief",
+  "level": 13,
+  "sha": "6512c98e23b4",
+  "heading": "rogue: Use Magic Device",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "bec747d328a0"
+  },
+  "clauses": [
+   {
+    "c": "By 13th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 13)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "You ignore all class, race, and level requirements on the use of magic items.",
+    "is": "held",
+    "by": "srd/attunement",
+    "probe": "scripts/test-enforce-feature-uses.mjs: F:L14: Use Magic Device: a thief of 13th level ignores class, race and level requirements to attune."
+   }
+  ]
+ },
+ "rogue::Thief's Reflexes": {
+  "source": "src/lib/rulebook/srd-5.1.json",
+  "group": "Thief",
+  "level": 17,
+  "sha": "c5c91f6db298",
+  "heading": "rogue: Thief's Reflexes",
+  "help": {
+   "source": "src/lib/help/srd-features.json",
+   "sha": "7f37e2619d93"
+  },
+  "clauses": [
+   {
+    "c": "When you reach 17th level",
+    "is": "held",
+    "by": "src/lib/srd/class-features.json (granted at level 17)",
+    "probe": "scripts/test-enforce-class-tables.mjs: class-features.json prints every SRD feature at its SRD level, and nothing else",
+    "auto": true
+   },
+   {
+    "c": "You can take two turns during the first round of any combat.",
+    "is": "held",
+    "by": "dm/encounter-tools.ts withReflexTurns",
+    "probe": "scripts/test-enforce-tail-features.mjs: Thief's Reflexes: the thief takes a second turn in the first round at initiative minus 10, and only one turn in the rounds after."
+   },
+   {
+    "c": "You take your first turn at your normal initiative and your second turn at your initiative minus 10.",
+    "is": "held",
+    "by": "dm/encounter-tools.ts withReflexTurns",
+    "probe": "scripts/test-enforce-tail-features.mjs: Thief's Reflexes: the thief takes a second turn in the first round at initiative minus 10, and only one turn in the rounds after."
+   },
+   {
+    "c": "You can't use this feature when you are surprised.",
+    "is": "held",
+    "by": "dm/encounter-tools.ts withReflexTurns",
+    "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.thiefs-reflexes.surprised"
+   }
+  ]
+ }
+}
