@@ -418,7 +418,7 @@ export function applyEnemyDamage(
   if (isSheetFoe(enemy)) {
     const { magical, spell, silvered, adamantine, goodWielder, crit, nonlethal, death, holdVictory } = options ?? {};
     // Elemental Adept, Poisoner or Inescapable Destruction hold on a character too.
-    const ignores = damageType && (options?.ignoreResistance || authoredIgnoresResistance(campaign.id, damageType)) ? damageType : undefined;
+    const ignores = damageType && (options?.ignoreResistance || authoredIgnoresResistance(campaign.id, damageType, Boolean(options?.spell))) ? damageType : undefined;
     const blow = { amount, type: damageType ?? undefined, magical, spell, silvered, adamantine, goodWielder, ignoreResistanceTo: ignores, crit, nonlethal, death };
     return applySheetFoeBlow(campaign, turn, encounter, enemy, blow, sheets, sheetsById, holdVictory === true);
   }
@@ -440,7 +440,7 @@ export function applyEnemyDamage(
   // Inescapable Destruction (the acting Death cleric's necrotic), Elemental
   // Adept or Poisoner set the type's resistance aside; under water the block
   // resists fire, inside Silence it is immune to thunder (enemy-defenses.ts).
-  const lines = enemyDefenseLines(campaign.id, enemy, damageType, options?.ignoreResistance ? (options.ignoreResistanceBy ?? "Elemental Adept") : null);
+  const lines = enemyDefenseLines(campaign.id, enemy, damageType, options?.ignoreResistance ? (options.ignoreResistanceBy ?? "Elemental Adept") : null, Boolean(options?.spell));
   // Lightning, Fire or Acid Absorption (the golems): the damage heals it
   // instead (src/lib/dm/monster-traits.ts).
   if (!options?.death && absorbs(enemy.stats, damageType) && enemy.status === "alive") {

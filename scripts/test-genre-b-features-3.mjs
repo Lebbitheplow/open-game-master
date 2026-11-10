@@ -11,11 +11,12 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { clausesRig } from "./lib/sweep-clauses-genre-b-probes.mjs";
-import { dice, clearDice } from "./lib/enforce-world.mjs";
+import { dice, clearDice, diceLog } from "./lib/enforce-world.mjs";
 
 const SRC = new URL("../src/", import.meta.url);
 const { enemyAcWithEffects } = await import(new URL("lib/dm/ac-effects.ts", SRC).href);
 const encounters = await import(new URL("lib/db/encounters.ts", SRC).href);
+const { fearSourceAt } = await import(new URL("lib/dm/enemy-approach.ts", SRC).href);
 
 const { test, finish } = suite("test-genre-b-features-3");
 const rig = await clausesRig();
@@ -228,6 +229,107 @@ await run("Baptism of Ash: a creature healed from below half has +1 to attack ro
   dice(5);
   rig.must(await world.invoke("heal", { characterId: ally.id, casterId: hero.id, spell: "Cure Wounds", level: 1 }), "heal");
   assert.ok(!world.sheet(ally.id).conditions.includes("baptism of ash"), "an ally above half was blessed too");
+});
+
+// ---- foes in reach save (authored-spend-effects.ts saveArea) ----
+
+const spendAt = async (hero, resource, faces, extra = {}) => {
+  clearDice();
+  dice(...faces);
+  const out = await world.invoke("use_resource", { characterId: hero.id, resource, reason: "test", ...extra });
+  clearDice();
+  return out;
+};
+
+await run("Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer", async () => {
+  const hero = rig.holder(feature("packmaster", "Alpha's Roar", 10));
+  const { near, far } = await rig.fight(hero);
+  kit.setEnemy(near.id, { stats: { ...kit.enemy(near.id).stats, type: "beast" } });
+  kit.place(far.id, 9, 2);
+  const out = rig.must(await spendAt(hero, "Alpha's Roar", [1, 1, 1]), "use_resource Alpha's Roar");
+  const beast = kit.enemy(near.id);
+  assert.ok(beast.conditions.includes("cowering"), `the beast holds ${JSON.stringify(beast.conditions)} (${JSON.stringify(out).slice(0, 200)})`);
+  assert.equal(beast.conditionMeta.cowering?.rounds, 10, "it does not cower for a minute");
+  assert.deepEqual(kit.enemy(far.id).conditions, [], "a creature of another type cowered too");
+  const at = kit.token(hero.id);
+  assert.deepEqual(fearSourceAt(kit.map().id, beast.conditions, beast.conditionMeta), { x: at.x, y: at.y }, "its walk does not keep away from the packmaster");
+  kit.place(near.id, 14, 2);
+  kit.setEnemy(near.id, { conditions: [], conditionMeta: {} });
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_alpha_s_roar: { ...world.sheet(hero.id).resources.post_apocalyptic_alpha_s_roar, used: 0 } } });
+  const again = await spendAt(hero, "Alpha's Roar", [1, 1, 1]);
+  assert.equal(again.ok, false, "a beast 45 ft off was roared at");
+});
+
+await run("Fumes and Vapors: creatures within 10 ft save (CON) or retch, losing their action, for a minute", async () => {
+  const hero = rig.holder(feature("alchemist", "Fumes and Vapors", 7));
+  const { near, far } = await rig.fight(hero);
+  rig.must(await spendAt(hero, "Fumes and Vapors", [1, 1, 1]), "use_resource Fumes and Vapors");
+  const sick = kit.enemy(near.id);
+  assert.ok(sick.conditions.includes("retching"), `the creature beside the alchemist holds ${JSON.stringify(sick.conditions)}`);
+  assert.equal(sick.conditionMeta.retching?.rounds, 10, "it does not retch for a minute");
+  assert.deepEqual(kit.enemy(far.id).conditions, [], "a creature 65 ft off retched");
+  kit.handOnEnemies();
+  const swing = await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: hero.id });
+  assert.equal(swing.ok, false, "a retching creature still took its attack action");
+});
+
+await run("Second Sun: the burst reaches 30 ft and spares the salvage tech's allies", async () => {
+  const hero = rig.holder(feature("salvage_tech", "Second Sun", 15));
+  const { near } = await rig.fight(hero);
+  const hp = world.sheet(ally.id).currentHp;
+  const out = await spendAt(hero, "Second Sun", new Array(12).fill(1), { targetEnemyIds: [near.id, ally.id] });
+  assert.equal(world.sheet(ally.id).currentHp, hp, `the ally took the burst (${JSON.stringify(out).slice(0, 200)})`);
+  assert.equal(out.ok, false, "a burst naming an ally was not refused");
+  assert.equal(world.sheet(hero.id).resources.post_apocalyptic_second_sun.used, 0, "the refused burst spent its use");
+});
+
+// ---- saves against the holder's spells, resistance set aside ----
+
+// The enemy save's d20s for one Acid Splash at the near enemy.
+async function saveDice(hero, enemy) {
+  clearDice();
+  diceLog();
+  dice(1, 1, 3, 3, 3, 3, 3, 3);
+  rig.must(await world.invoke("cast_at_enemy", { characterId: hero.id, targetEnemyId: enemy.id, spell: "Acid Splash", saveAbility: "dex" }), "cast_at_enemy");
+  const d20s = diceLog().filter((die) => die.sides === 20).length;
+  clearDice();
+  return d20s;
+}
+
+for (const [classId, name, level, type, place] of [
+  ["spirit_medium", "Mistress of the Threshold", 14, "undead", [11, 2]],
+  ["aether_channeler", "The Grid Bows", 18, "construct", [15, 2]],
+]) {
+  await run(`${name}: a ${type} saves against the holder's spell at disadvantage, and a creature of another type does not`, async () => {
+    const hero = rig.holder(feature(classId, name, level));
+    caster(hero, "cha");
+    const { near } = await rig.fight(hero);
+    kit.place(near.id, ...place);
+    kit.setEnemy(near.id, { stats: { ...kit.enemy(near.id).stats, type } });
+    const { on, off } = await rig.both(hero, { name }, async () => {
+      rig.myTurn(hero);
+      return saveDice(hero, near);
+    });
+    assert.deepEqual({ on, off }, { on: 2, off: 1 }, `the ${type}'s save threw ${on} d20s with ${name} and ${off} without it`);
+    kit.setEnemy(near.id, { stats: { ...kit.enemy(near.id).stats, type: "humanoid" } });
+    rig.myTurn(hero);
+    assert.equal(await saveDice(hero, near), 1, "a humanoid saved at disadvantage too");
+  });
+}
+
+await run("Perfected Instability: the aberrant's spells ignore resistance to their type", async () => {
+  const hero = rig.holder(feature("aberrant", "Perfected Instability", 18));
+  caster(hero, "cha");
+  const { near } = await rig.fight(hero);
+  kit.setEnemy(near.id, { stats: { ...kit.enemy(near.id).stats, resist: "acid" } });
+  const { on, off } = await rig.both(hero, { name: "Perfected Instability" }, async () => {
+    kit.setEnemy(near.id, { currentHp: 300 });
+    rig.myTurn(hero);
+    await castAt(hero, near, "Acid Splash", [1, 3, 3, 3, 3]);
+    return lost(near);
+  });
+  // Acid Splash at 18: 4d6, four 3s.
+  assert.deepEqual({ on, off }, { on: 12, off: 6 }, `the splash took ${on} with the feature and ${off} without it`);
 });
 
 world.close();

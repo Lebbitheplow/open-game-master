@@ -12,6 +12,9 @@ const EVERY_TYPE = [
   "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
 ];
 
+// Alpha's Roar's mark: the creature never walks nearer its source.
+export const COWERING = "cowering";
+
 export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
     // Spirit Ward: "a shielding spirit grants you or an ally +2 AC until your next turn".
@@ -116,6 +119,10 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
   { id: "catalyst_stone", match: ["catalyst stone"], summary: "Catalyst Stone: the next spell's damage or healing gains +1d4 (+1d8 with Improved Catalyst)." },
   // Baptism of Ash: "it also gains +1 to attack rolls until your next turn".
   { id: "baptism_of_ash", match: ["baptism of ash"], summary: "Baptism of Ash: +1 to attack rolls until the preacher's next turn.", attackDie: "1" },
+  // Alpha's Roar: "cower (no move toward you)" (the walk: enemy-approach.ts).
+  { id: "cowering", match: ["cowering"], summary: "Cowering: it never moves toward the packmaster whose roar it failed against." },
+  // Fumes and Vapors: "save (CON) or retch, losing their action".
+  { id: "retching", match: ["retching"], summary: "Retching: it loses its action while the fumes last.", noAction: true },
   { id: "chain_arc", match: ["chain arc"], summary: "Chain Arc: the next lightning spell that strikes one creature jumps to a second within 15 ft for half." },
   {
     // The Next Step: "your mutations of 3rd level or lower cost no slots and

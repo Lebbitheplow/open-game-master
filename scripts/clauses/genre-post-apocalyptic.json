@@ -1364,11 +1364,9 @@
   "clauses": [
    {
     "c": "Your mutations ignore resistance to their damage type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfected Instability#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perfected Instability: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Perfected Instability: the aberrant's spells ignore resistance to their type",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfected Instability (ignore_resist, every type, spells only), read by src/lib/dm/authored-saves.ts authoredIgnoresResistance from enemy-damage.ts / enemy-defenses.ts with the blow's spell flag"
    }
   ]
  },
@@ -2142,13 +2140,15 @@
    },
    {
     "c": "unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    },
    {
     "c": "30-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    },
    {
     "c": "(CON save halves)",
@@ -2179,8 +2179,9 @@
    },
    {
     "c": "allies are spared",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    }
   ]
  },
@@ -2852,28 +2853,27 @@
    },
    {
     "c": "hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward you) for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "post_apocalyptic_alpha_s_roar"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Alpha's Roar\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward yo"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    }
   ]
  },

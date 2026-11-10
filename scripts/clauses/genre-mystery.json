@@ -3172,17 +3172,21 @@
   "sha": "4f1ce1fae4b7",
   "clauses": [
    {
-    "c": "Creatures you can see cannot become undead, and undead within 30 ft have disadvantage on saves against your workings",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Mistress of the Threshold: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "c": "Creatures you can see cannot become undead",
+    "is": "left",
+    "why": "No creature becomes undead on the engine: the SRD's Animate Dead and Create Undead raise a corpse the GM places as a new creature, so whether one rises within the spirit medium's sight is the GM's ruling (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\")."
+   },
+   {
+    "c": "undead within 30 ft have disadvantage on saves against your workings",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Mistress of the Threshold: a undead saves against the holder's spell at disadvantage, and a creature of another type does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Mistress of the Threshold (enemy_save near, 30 ft, undead), read by src/lib/dm/authored-saves.ts authoredEnemySave on the spirit medium's own spell"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Mistress of the Threshold: a undead saves against the holder's spell at disadvantage, and a creature of another type does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Mistress of the Threshold (enemy_save near, 30 ft, undead), read by src/lib/dm/authored-saves.ts authoredEnemySave on the spirit medium's own spell"
    }
   ]
  }

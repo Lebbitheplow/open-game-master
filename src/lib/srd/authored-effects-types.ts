@@ -75,7 +75,8 @@ export type AuthoredEffect = Base &
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.
-    | { kind: "ignore_resist"; types: string[] }
+    // `spells`: only the damage of the holder's spells (Perfected Instability's mutations).
+    | { kind: "ignore_resist"; types: string[]; spells?: boolean }
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     | { kind: "attacked_disadv"; from: string[] }
@@ -161,8 +162,10 @@ export type AuthoredEffect = Base &
     | { kind: "bonus_attack"; after: "spell" | "cantrip" | "attack" | "telekinesis" | "missed_arrow" }
     // Enemies save at disadvantage: when the holder casting is hidden from
     // them, when they carry the holder's mark, or when they stand within
-    // range of the holder (a spell's save, any caster when `anyCaster`).
-    | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean }
+    // range of the holder (a spell's save, any caster when `anyCaster`), or
+    // whenever the holder's own spell asks it (`any`). `types`: only creatures
+    // of these types (Mistress of the Threshold: undead; The Grid Bows: constructs).
+    | { kind: "enemy_save"; when: "hidden" | "marked" | "near" | "any"; mark?: string; rangeFt?: number; anyCaster?: boolean; types?: string[] }
     // Allies in range (and the holder) resist: spell damage, or the damage
     // type the holder's own condition names.
     | {

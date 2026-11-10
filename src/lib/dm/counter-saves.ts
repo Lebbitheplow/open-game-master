@@ -23,7 +23,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
@@ -96,7 +96,12 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
     if (!enemy || enemy.status !== "alive") {
       return { error: `${spec.name} needs living creatures in the fight: "${ref}" is none. Pass ids from GAME STATE. Nothing was spent.`, retry: true };
     }
-    // Asked of every creature before a die is rolled.
+    // Asked of every creature before a die is rolled. A counter's save takes
+    // the holder's foes, never their own side (Second Sun: "allies are
+    // spared"): an ally named among the creatures is refused, nothing spent.
+    if (!foesOfSheet(campaign.id, encounter, sheet.id).some((foe) => foe.id === enemy.id)) {
+      return { error: `${enemy.displayName} fights on ${sheet.name}'s side; ${spec.name} takes only their foes. Nothing was spent.`, refused: "rules" };
+    }
     if (swallowCoverBetween(sheet.id, enemy.id)) {
       return { error: `${enemy.displayName} is on the other side of a swallower's wall from ${sheet.name}; ${spec.name} does not reach it. Nothing was spent.`, refused: "rules" };
     }

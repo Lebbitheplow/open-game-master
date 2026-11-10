@@ -34,9 +34,11 @@ export function enemyDefenseLines(
   enemy: EncounterEnemy,
   damageType: string | undefined,
   ignoreResistanceBy?: string | null,
+  // The blow is a spell's (Perfected Instability sets aside resistance to a spell only).
+  spell = false,
 ): { resist: string; immune: string; vulnerable: string; ignoredBy: string | null } {
   const type = (damageType ?? "").trim();
-  const ignoredBy = (type && authoredIgnoresResistance(campaignId, type)) || (type && ignoreResistanceBy) || null;
+  const ignoredBy = (type && authoredIgnoresResistance(campaignId, type, spell)) || (type && ignoreResistanceBy) || null;
   const resist = resistLineFor(campaignId, enemy);
   return {
     resist: ignoredBy ? resist.replace(new RegExp(`\\b${type}\\b`, "gi"), "") : resist,

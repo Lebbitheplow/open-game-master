@@ -2347,7 +2347,7 @@
     "lib/srd/condition-effects.ts#str-list": [["key",31,"condition labels and spell names the directive pins to the game's own writing (engine vocabulary)"]],
     "lib/srd/condition-effects.ts#toLowerCase": [["key",4,"condition labels, skill ids, damage and creature types"]],
     "lib/srd/condition-effects.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
-    "lib/srd/authored-effects-genre-b.ts#str-list": [["key",5,"genre feature and condition names, damage, skill, ability and creature-type ids (engine vocabulary)"]],
+    "lib/srd/authored-effects-genre-b.ts#str-list": [["key",7,"genre feature and condition names, damage, skill, ability and creature-type ids (engine vocabulary)"]],
     "lib/srd/genre-b-combat.ts#str-eq": [["key",2,"genre feature and condition names, damage and skill ids (engine vocabulary)"]],
     "lib/srd/genre-b-conditions.ts#str-list": [["key",2,"damage types the registry rows resist (engine vocabulary)"]],
     "lib/srd/currency.ts#str-list": [["key",2,"coin denominations"]],

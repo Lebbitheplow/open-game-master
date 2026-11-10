@@ -111,6 +111,16 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "advantage on all WIS checks involving them": beasts and plants, the check's creature.
   row("Lord of the Green", ["packmaster"], { effects: [{ kind: "check_adv", abilities: ["wis"], creatures: ["beast", "plant"] }] }),
 
+  // Saves against the holder's spells (src/lib/dm/authored-saves.ts
+  // authoredEnemySave): "undead within 30 ft have disadvantage on saves
+  // against your workings"; "Machines and constructs have disadvantage on saves
+  // against your arts" (a machine is a construct on the SRD engine).
+  row("Mistress of the Threshold", ["spirit_medium"], { effects: [{ kind: "enemy_save", when: "near", rangeFt: 30, types: ["undead"] }] }),
+  row("The Grid Bows", ["aether_channeler"], { effects: [{ kind: "enemy_save", when: "any", types: ["construct"] }] }),
+  // "Your mutations ignore resistance to their damage type": every spell the
+  // aberrant casts is a mutation (authored-saves.ts authoredIgnoresResistance).
+  row("Perfected Instability", ["aberrant"], { effects: [{ kind: "ignore_resist", types: ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"], spells: true }] }),
+
   // ---- spends on the feature's own counter (src/lib/classes/resources.json) ----
   // Each spends its counter through use_resource (src/lib/dm/authored-spends.ts),
   // so a bare spend does what the text says rather than reading it back. The
@@ -227,6 +237,18 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Your healing sermons add your WIS modifier again to HP restored": every
   // spell the preacher heals with is a sermon.
   row("Lay On the Word", ["waste_preacher"], { effects: [{ kind: "spell_rider", dice: "wis", healing: true }] }),
+
+  // Foes in reach save or suffer (src/lib/dm/authored-spend-effects.ts saveArea,
+  // only the holder's foes: the procession and the cloud spare the party).
+  // "hostile beasts and mutants within 30 ft save (WIS) or cower (no move
+  // toward you) for 1 minute": a mutant is a monstrosity on the SRD engine, and
+  // the cowering creature's walk never comes nearer the packmaster
+  // (src/lib/dm/enemy-approach.ts fearSourceAt).
+  spend("Alpha's Roar", ["packmaster"], "post_apocalyptic_alpha_s_roar", undefined, { kind: "save_area", save: "wis", dcAbility: "wis", rangeFt: 30, types: ["beast", "monstrosity"], condition: "cowering", rounds: 10 }),
+  // "a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save
+  // (CON) or retch, losing their action": the cloud stands on the alchemist,
+  // and a creature that fails retches for its minute (no action).
+  spend("Fumes and Vapors", ["alchemist"], "steampunk_fumes_and_vapors", undefined, { kind: "save_area", save: "con", dcAbility: "int", rangeFt: 10, condition: "retching", rounds: 10 }),
 
   // ---- reactions on the feature's own counter ----
   // "Reaction when attacked: your read of the attacker imposes disadvantage": the attack that hit is rolled again at disadvantage.
