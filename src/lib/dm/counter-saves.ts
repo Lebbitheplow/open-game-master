@@ -153,3 +153,47 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
   publishEncounter(campaign.id);
   return { result: { ...(spec.dice ? { rolled: `${spec.dice}: ${rolled}` } : {}), saves, applied: lines } };
 }
+
+const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
+
+// Extra damage a counter adds to a weapon hit of this turn (Fury of the
+// Small), on the creature the hit landed on: refused with no such hit, or on a
+// creature no larger than the holder when the feature asks for one.
+export function resolveCounterHit(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  spec: { name: string; dice: string; type?: string; larger?: boolean; holderSize?: string },
+  aim: CounterSaveAim,
+): CounterSaveResult {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter || (encounter.kind ?? "fight") !== "fight") {
+    return { error: `${spec.name} rides a weapon hit in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
+  }
+  const ref = aim.targetEnemyId?.trim() ?? encounter.targets?.pairs[sheet.id]?.at(-1);
+  const enemy = ref ? resolveTargetFoe(campaign.id, encounter, ref) : null;
+  if (!enemy || enemy.status !== "alive") {
+    return { error: `${spec.name} lands on the creature ${sheet.name} hit: pass its targetEnemyId. Nothing was spent.`, retry: true };
+  }
+  const marks = encounter.turnBudget?.ownerId === sheet.id ? encounter.turnBudget.oncePerTurn : [];
+  if (!marks.includes(`weapon-hit:${enemy.id}`)) {
+    return { error: `${spec.name} follows ${sheet.name}'s weapon hit on ${enemy.displayName} this turn, and they have landed none on it. Nothing was spent.`, refused: "rules" };
+  }
+  if (spec.larger) {
+    const theirs = SIZES.indexOf(String(enemy.stats.size ?? "medium").toLowerCase());
+    const mine = SIZES.indexOf((spec.holderSize ?? "small").toLowerCase());
+    if (theirs <= mine) {
+      return { error: `${spec.name} works on a creature larger than ${sheet.name}, and ${enemy.displayName} is not. Nothing was spent.`, refused: "rules" };
+    }
+  }
+  const turn = aim.turnId ? getDmTurn(aim.turnId) : null;
+  const amount = rollCard(campaign, turn, sheet.id, "damage", spec.name, spec.dice, sheetAttacker(sheet)).total;
+  const live = getActiveEncounter(campaign.id) ?? encounter;
+  if (turn) {
+    const sheets = listSheets(campaign.id);
+    applyEnemyDamage(campaign, turn, live, enemy, amount, sheets, new Map(sheets.map((entry) => [entry.id, entry])), spec.type);
+  } else {
+    hurtEnemy(campaign, live, enemy, amount, spec.type ?? "", spec.name, true);
+  }
+  publishEncounter(campaign.id);
+  return { result: { target: enemy.displayName, damage: amount, applied: [`${enemy.displayName} takes ${amount} more damage from ${spec.name}.`] } };
+}

@@ -10,7 +10,8 @@ import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
-import { resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
+import { sheetSize } from "@/lib/dm/sheet-foe-stats";
+import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condition-logic";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
@@ -663,6 +664,11 @@ export function computeUseResource(
         condition: effect.condition,
       }, variant, aim);
       return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...saved.result } };
+    }
+    case "hit_damage": {
+      // Fury of the Small: rolled here onto the creature hit, after the hit.
+      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, derived.abilityMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
+      return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {
       creditFeatureTeleport(sheet.id, def.displayName, def.effect.feet);

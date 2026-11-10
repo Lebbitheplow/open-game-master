@@ -75,6 +75,10 @@ export type ResourceEffect =
   // Repositioning the server cannot fully own (maps are player-moved);
   // reported with the distance so move_token resolves it.
   | { kind: "teleport"; feet: number }
+  // Extra damage onto the creature a weapon hit landed on this turn
+  // (Fury of the Small: the level, against a creature larger than the
+  // holder), dealt by the spend (src/lib/dm/counter-saves.ts).
+  | { kind: "hit_damage"; dice: (level: number, abilityMods: Record<string, number>) => string; larger?: boolean }
   // Swaps in a beast form with its own hit point pool.
   | { kind: "wild_shape" }
   // Returns expended spell slots on a short rest (Arcane/Natural Recovery),
@@ -129,7 +133,8 @@ export type ResourceFx =
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
   | ({ kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula } & SaveTerms)
-  | { kind: "teleport"; feet: number };
+  | { kind: "teleport"; feet: number }
+  | { kind: "hit_damage"; dice: DiceFormula; larger?: boolean };
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
 // Negative modifiers fold into the sign so the dice grammar stays valid.
@@ -225,6 +230,8 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
       };
     case "teleport":
       return { kind: "teleport", feet: fx.feet };
+    case "hit_damage":
+      return { kind: "hit_damage", dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods), ...(fx.larger ? { larger: true } : {}) };
   }
 }
 

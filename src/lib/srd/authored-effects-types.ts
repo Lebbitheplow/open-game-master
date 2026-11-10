@@ -409,7 +409,12 @@ export type SpendDoes =
   // under half their maximum. `othersOnly`: not the holder. `each`: one roll
   // per creature, not one shared. `hears`: not a deafened creature. With
   // nobody to heal, nothing is spent (src/lib/dm/authored-heal-area.ts).
-  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string }
+  // `divided`: the formula is a total shared among those healed (Clockwork
+  // Cavalcade's 100 hit points), not each one's.
+  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string; divided?: boolean }
+  // A creature touched rolls the die and regains one spent spell slot of
+  // that level or lower (Bolstering Magic).
+  | { kind: "regain_slot"; die: string }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.

@@ -15,6 +15,7 @@ import type { RollResult } from "@/lib/dice";
 import { budgetApplies, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
+import { ridesWeaponHit } from "@/lib/srd/counter-rules";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
@@ -132,7 +133,7 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // Arcane Jolt, Blade Flourish, Psionic Strike, Gathered Swarm's push
     // (authored-spends.ts afterWeaponHit). Written for Arcane Jolt's holders
     // alone, every other rider was refused after every hit.
-    if (record.weaponAttack ?? !record.spell) {
+    if ((record.weaponAttack ?? !record.spell) && ridesWeaponHit(scene.sheet)) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
     }
   }

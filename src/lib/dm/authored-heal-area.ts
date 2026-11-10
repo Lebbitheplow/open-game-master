@@ -100,7 +100,10 @@ export function healArea(ctx: SpendContext, does: HealArea): ToolError | { resul
   const shared = does.each ? 0 : roll();
   const healed: string[] = [];
   for (const target of targets) {
-    const gained = regainHitPoints(campaign, ctx.turnId, target, does.each ? roll() : shared, `${ctx.spend.name} (${sheet.name})`);
+    // A total shared out (Clockwork Cavalcade's 100 hit points among the
+    // creatures in the cube), not each one's.
+    const share = does.divided ? Math.max(1, Math.floor(shared / targets.length)) : shared;
+    const gained = regainHitPoints(campaign, ctx.turnId, target, does.each ? roll() : share, `${ctx.spend.name} (${sheet.name})`);
     const now = getSheetById(target.id) ?? target;
     const hp = healableHp(now, effectiveMaxHp(now));
     healed.push(`${now.name} +${gained} (${hp.current}/${hp.max})`);

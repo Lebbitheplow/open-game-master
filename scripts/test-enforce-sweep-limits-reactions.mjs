@@ -11,11 +11,6 @@ import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, everySubclass, limitsTable } from "./lib/sweep-limits-world.mjs";
 
 const KNOWN = {
-  "774-text-says-near": {
-    where: "src/lib/srd/subclasses.json Oath of Redemption, Channel Divinity: Rebuke the Violent (the words), against src/lib/srd/authored-effects-more.ts echo_hit rangeFt 30 (the engine)",
-    severity: "low",
-    note: "The words a player reads say \"someone near you\" (the one wounded); the engine measures 30 feet to the ATTACKER and answers an ally at any distance. Neither the number nor whose distance it is can be read off the card's text.",
-  },
   "787-echo-not-modelled": {
     where: "src/lib/dm/authored-reactions.ts case \"echo_takes_hit\" (no echo on the sheet or the board is asked for), src/lib/srd/authored-effects-types.ts (\"The echo is no creature the engine tracks\")",
     severity: "medium",

@@ -13,7 +13,7 @@ import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
-import { ACTION_SURGED } from "@/lib/dm/action-budget";
+import { ACTION_SURGED, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
@@ -663,6 +663,11 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       target = "enemy";
     } else if (effect.kind === "teleport") {
       dice = `${effect.feet} ft`;
+    } else if (effect.kind === "hit_damage") {
+      // Fury of the Small: onto the creature the hit landed on.
+      damage = effect.dice(level, derived.abilityMods);
+      dice = `+${damage}`;
+      target = "enemy";
     }
     const card: HandCard = {
       id: `feature:${id}`,
@@ -728,6 +733,10 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         // What the counter's own row asks first (counter-rules.ts): Rage while
         // raging, Unearthly Recovery above half, a minute's work in a fight.
         gateOf(counterGate(def, sheet, inFightOf(turn))),
+        // A counter that rides a weapon hit waits for one this turn.
+        effect.kind === "hit_damage" && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
+          ? { reason: `${def.displayName} rides a weapon hit: land one this turn first.`, spent: false }
+          : null,
         // SRD 5.1: Elemental Affinity's resistance comes with a spell of the
         // dragon's damage type, as it is cast (src/lib/dm/affinity-cast.ts).
         id === "elemental_affinity" && !affinityCastType(sheet)

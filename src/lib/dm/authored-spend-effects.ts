@@ -45,6 +45,7 @@ import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
+import { regainSlot } from "@/lib/dm/authored-spend-counters";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -220,6 +221,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if ("error" in enemy) {
           return enemy;
         }
+        const live = getActiveEncounter(campaign.id);
+        if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
+          return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
         const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
       } else if (does.target === "allies") {
@@ -265,6 +270,19 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const quarry = does.quarry ? targetEnemy(ctx) : null;
       if (quarry && "error" in quarry) {
         return quarry;
+      }
+      // "A creature you can see within 30 feet" (Hexblade's Curse): read only
+      // for allies before, so an invisible creature or one across the field
+      // was cursed and the use spent.
+      if (quarry) {
+        const live = getActiveEncounter(campaign.id)!;
+        if (does.rangeFt && !withinFeet(live.id, sheet.id, quarry.id, does.rangeFt)) {
+          return { error: `${quarry.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
+        const unseen = does.sight ? unseenBecause(live.id, sheet, quarry) : null;
+        if (unseen) {
+          return { error: `${sheet.name} cannot see ${quarry.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+        }
       }
       let patch: FullPatchSheetInput | undefined;
       // An ally other than the holder has returned above, so "ally" here is the
@@ -523,6 +541,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return swarmPush(ctx, does);
     case "summon":
       return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+    // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
+    case "regain_slot":
+      return regainSlot(ctx, does);
   }
 }
 
