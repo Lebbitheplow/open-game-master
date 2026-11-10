@@ -81,6 +81,8 @@ export async function tableRows(rig) {
       ...preyOf(item).map((mark) => `mark: ${mark}`),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
+      // A cure ends a condition someone carries (src/lib/dm/genre-b-cure.ts): the holder carries the first it names.
+      ...(does?.kind === "cure" && !does.every ? [`condition: ${does.ends[0]}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];

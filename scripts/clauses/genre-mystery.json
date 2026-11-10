@@ -688,18 +688,15 @@
    },
    {
     "c": "end one charm, fear, or illusion effect on a creature within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_break_the_delusion"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Break the Delusion\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, end one charm, fear, or illusion effect on a creature within 30 ft.\"}"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Break the Delusion: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); an illusion is no condition the board holds"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Break the Delusion: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); an illusion is no condition the board holds"
    }
   ]
  },

@@ -8,6 +8,7 @@
 //                the aura_resist row's types (authored-saves.ts)
 //   drops        src/lib/dm/genre-b-drops.ts (Stand at the Dawn) and
 //                Hardened's cut, both in src/lib/dm/pc-damage.ts
+//   cures        src/lib/dm/genre-b-cure.ts (the "cure" spend kind)
 //   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
 //                engine's own readers: darkvision, a turn's heal, acid that
 //                ignores resistance, a concentration damage cannot break or
@@ -254,6 +255,53 @@ for (const [level, cut] of [[1, 3], [10, 6]]) {
     assert.equal(await rig.damageLost(hero, "slashing"), 20 - cut, "a second blow the same round");
   });
 }
+
+// ---- cures (src/lib/dm/genre-b-cure.ts) ----
+
+const frighten = async (id, condition = "frightened") => rig.must(await world.invoke("set_condition", { characterId: id, condition, reason: "test" }), "set_condition");
+
+for (const [classId, name, level, id] of [["alienist", "Break the Delusion", 9, "mystery_break_the_delusion"], ["waste_preacher", "Deliverance", 9, "post_apocalyptic_deliverance"]]) {
+  await run(`${name}: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent`, async () => {
+    const hero = rig.holder(feature(classId, name, level));
+    await rig.fight(hero);
+    const spend = () => world.invoke("use_resource", { characterId: hero.id, resource: name, targetCharacterId: ally.id, reason: "test" });
+    const bare = await spend();
+    assert.equal(bare.ok, false, "a spend on an ally carrying nothing went through");
+    await frighten(ally.id);
+    kit.place(hero.id, 15, 12);
+    const far = await spend();
+    assert.equal(far.ok, false, "a spend reached an ally 50 ft off");
+    assert.equal(world.sheet(hero.id).resources[id].used, 0, "a refusal spent the use");
+    kit.place(hero.id, 5, 2);
+    const out = await spend();
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.sheet(ally.id).conditions.includes("frightened"), false, `the ally still carries ${world.sheet(ally.id).conditions}`);
+  });
+}
+
+await run("Revelation: every ally within 60 ft regains 5d8, sheds fear and charm, and loses a level of exhaustion", async () => {
+  const hero = rig.holder(feature("waste_preacher", "Revelation", 20));
+  await rig.fight(hero);
+  world.patch(hero.id, { currentHp: 40 });
+  world.patch(ally.id, { currentHp: 40, exhaustion: 2 });
+  await frighten(ally.id);
+  await frighten(ally.id, "charmed");
+  clearDice();
+  dice(3, 3, 3, 3, 3, 3, 3, 3, 3, 3);
+  const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Revelation", reason: "test" });
+  clearDice();
+  assert.equal(out.ok, true, out.error);
+  const after = world.sheet(ally.id);
+  assert.ok(after.currentHp > 40 && world.sheet(hero.id).currentHp > 40, `the ally holds ${after.currentHp}, the preacher ${world.sheet(hero.id).currentHp}`);
+  assert.deepEqual([after.conditions.filter((entry) => ["frightened", "charmed"].includes(entry)), after.exhaustion], [[], 1], JSON.stringify(out.result).slice(0, 300));
+  // An ally 65 ft off is outside the sermon.
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_revelation: { max: 1, used: 0 } } });
+  world.patch(ally.id, { currentHp: 40 });
+  await frighten(ally.id);
+  kit.place(ally.id, 5, 15);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Revelation", reason: "test" }), "use_resource Revelation");
+  assert.deepEqual([world.sheet(ally.id).currentHp, world.sheet(ally.id).conditions.includes("frightened")], [40, true], "an ally 65 ft off was reached");
+});
 
 rig.world.close();
 finish();

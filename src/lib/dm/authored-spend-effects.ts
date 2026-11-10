@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { regainSlotLevels } from "@/lib/srd/slot-levels";
+import { genreCure } from "@/lib/dm/genre-b-cure";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -545,6 +546,16 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    // Break the Delusion, Deliverance, Revelation (src/lib/dm/genre-b-cure.ts):
+    // the hit points first, which refuse with nobody to heal.
+    case "cure": {
+      const healed = does.heal ? healArea(ctx, { kind: "heal_area", formula: does.heal, rangeFt: does.rangeFt }) : null;
+      if (healed && "error" in healed) {
+        return healed;
+      }
+      const cured = genreCure(ctx, does);
+      return "error" in cured ? cured : { result: { ...(healed?.result ?? {}), ...cured.result } };
+    }
     case "regain_slot_levels": {
       const slots = sheet.spellcasting?.slots;
       const levels = Math.max(1, Number(formula(ctx, does.levels)) || 0);

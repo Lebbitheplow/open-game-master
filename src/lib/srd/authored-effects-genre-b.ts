@@ -162,6 +162,13 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "whack a machine or construct: restore 1d8 + INT HP to it".
   spend("Percussive Maintenance", ["salvage_tech"], "post_apocalyptic_percussive_maintenance", "action", { kind: "flames", healOnly: true, type: "", formula: "1d8+int" }),
 
+  // Conditions ended (src/lib/dm/genre-b-cure.ts): an illusion or a curse is
+  // no condition the board holds, so charm and fear (and a curse the GM laid
+  // by that name) are the engine's.
+  spend("Break the Delusion", ["alienist"], "mystery_break_the_delusion", undefined, { kind: "cure", ends: ["charmed", "frightened"], rangeFt: 30 }),
+  spend("Deliverance", ["waste_preacher"], "post_apocalyptic_deliverance", undefined, { kind: "cure", ends: ["frightened", "charmed", "cursed"], rangeFt: 30 }),
+  // "allies within 60 ft regain 5d8 HP and are freed of fear, charm, and exhaustion by one level".
+  spend("Revelation", ["waste_preacher"], "post_apocalyptic_revelation", undefined, { kind: "cure", ends: ["frightened", "charmed"], rangeFt: 60, every: true, heal: "5d8", exhaustion: 1 }),
   // "1/long rest, regain expended slot levels equal to your INT modifier" (and CHA).
   spend("Aether Capacitor", ["machinist"], "steampunk_aether_capacitor", undefined, { kind: "regain_slot_levels", levels: "int" }),
   spend("Aetheric Battery", ["aether_channeler"], "steampunk_aetheric_battery", undefined, { kind: "regain_slot_levels", levels: "cha" }),

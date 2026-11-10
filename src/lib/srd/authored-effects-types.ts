@@ -421,6 +421,10 @@ export type SpendDoes =
   // `divided`: the formula is a total shared among those healed (Clockwork
   // Cavalcade's 100 hit points), not each one's.
   | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string; divided?: boolean }
+  // Conditions ended: one on a creature in reach, or `every` one on each
+  // ally in reach, with `heal` hit points and `exhaustion` levels off
+  // (src/lib/dm/genre-b-cure.ts: Break the Delusion, Revelation).
+  | { kind: "cure"; ends: string[]; rangeFt: number; every?: boolean; heal?: Formula; exhaustion?: number }
   // A creature touched rolls the die and regains one spent spell slot of
   // that level or lower (Bolstering Magic).
   | { kind: "regain_slot"; die: string }
