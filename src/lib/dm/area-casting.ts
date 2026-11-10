@@ -18,6 +18,7 @@ import { getActiveEncounter, getEnemy, saveEncounter, turnKey, type Encounter } 
 import { getSheetById } from "@/lib/db/sheets";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { SpellZone } from "@/lib/battlemap/zones";
+import { zoneRowFor, type ZoneNamed } from "@/lib/battlemap/zones-spells";
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { openCastOf, withOpenCast, type OpenCast } from "@/lib/dm/cast-rules";
@@ -124,6 +125,22 @@ export function freeRepeatOf(campaign: Campaign, casterId: string | null | undef
   const caster = casterId ? getSheetById(casterId) : null;
   const resolved = caster?.concentratingOn ? spellMechanicsFor({ spell, userIds: spellAuthorsFor(campaign) }) : null;
   return resolved?.mech.repeat === "free" && textKey(caster?.concentratingOn ?? "") === textKey(resolved.name) ? resolved.name : null;
+}
+
+// Whether a player's spell laid on a square of the battle map, naming
+// nobody, catches the creatures standing in it (aoe-shape.ts
+// creaturesInBlast). An instant blast does. A spell that also leaves a
+// lasting area does when its area catches them as it appears (Ice Storm's
+// hail, zones-spells.ts catchesWhenLaid): gating on any zone row let Ice
+// Storm roll its dice and spend its slot on nobody. A Web catches nobody
+// when cast, and a held area coming again (Insect Plague's swarm) strikes
+// only the creatures it names, entering or ending a turn there.
+export function boardCatchesCast(campaign: Campaign, casterId: string, spell: ZoneNamed): boolean {
+  const row = zoneRowFor(spell);
+  if (!row) {
+    return true;
+  }
+  return Boolean(row.catchesWhenLaid) && !freeRepeatOf(campaign, casterId, typeof spell === "string" ? spell : spell.spell);
 }
 
 // The first creature of an aoe_damage call the held area may not strike now.

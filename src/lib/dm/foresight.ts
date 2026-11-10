@@ -17,7 +17,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { createPendingRoll, publicPendingRoll, setPendingWatch, type DmTurn, type HeldCall, type WatchChoice, type WatchPower, type WatchRoll } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { spellEngineName, spellFactsFor } from "@/lib/content";
-import { zoneRowFor } from "@/lib/battlemap/zones-spells";
+import { boardCatchesCast } from "@/lib/dm/area-casting";
 import { creaturesInBlast, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
@@ -116,7 +116,9 @@ function areaCatch(campaign: Campaign, args: Record<string, unknown>, sheets: re
   }
   const caster = sheets.find((sheet) => sheet.id === args.casterCharacterId);
   const authors = spellAuthorsFor(campaign);
-  const area = caster && !zoneRowFor({ spell: args.spell, runsAs: spellEngineName(args.spell, authors) }) ? spellAreaShape(args.spell, authors) : null;
+  // The creatures aoe_damage will catch on the board (area-casting.ts
+  // boardCatchesCast): Ice Storm's as well as Fireball's, never a Web's.
+  const area = caster && boardCatchesCast(campaign, caster.id, { spell: args.spell, runsAs: spellEngineName(args.spell, authors) }) ? spellAreaShape(args.spell, authors) : null;
   if (!caster || !area) {
     return { enemies, heroes };
   }
