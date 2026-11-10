@@ -32,6 +32,14 @@ function strip(t, scene, name) {
   }
 }
 
+// The option a "Pick one" feature was given (`run.choice`): the record the
+// pick writes, "Combat Wetware (Smartlink)", in place of the bare name.
+function pick(t, id, feature, run) {
+  if (!run.choice) return;
+  const features = t.world.sheet(id).features.map((entry) => (key(entry.name) === key(feature.name) ? { ...entry, name: `${feature.name} (${run.choice})` } : entry));
+  t.world.patch(id, { features });
+}
+
 // A use spent by counter id, with the target shapes a row may ask for.
 async function spend(t, scene, resource, args = {}) {
   return t.world.invoke("use_resource", { characterId: scene.holder.id, resource, ...args });
@@ -198,6 +206,7 @@ export const PROBES = {
       bare: { equipment: [], base: 10 + mod("dex") },
     }[run.wear ?? "none"];
     const hero = t.hero(feature.classId, run.level ?? feature.level, { equipment: wear.equipment });
+    pick(t, hero.id, feature, run);
     const want = run.formula ? 10 + run.formula.reduce((sum, ability) => sum + mod(ability), 0) : wear.base + run.n;
     eq(t.srd.deriveAc(t.world.sheet(hero.id)), want, `armor class (${run.wear ?? "none"} worn)`);
   },
@@ -254,6 +263,7 @@ export const PROBES = {
     const extra = run.mode === "ranged" ? { equipment: [{ name: "Shortbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] } : run.mode === "unarmed" ? { equipment: [] } : {};
     const scene = await t.stage(feature, { level: run.level, hp: run.hp ?? 100, extra, lane: run.mode === "ranged" });
     const target = run.mode === "ranged" ? scene.far : scene.near;
+    pick(t, scene.holder.id, feature, run);
     if (run.type) t.kit.setEnemy(target.id, { stats: { type: run.type } });
     const args = run.mode === "unarmed" ? { weapon: "Unarmed Strike" } : {};
     // An unarmed strike rolls no weapon die: every die after the d20 is a rider's.
@@ -278,6 +288,7 @@ export const PROBES = {
     const extra = run.mode === "ranged" ? { equipment: [{ name: "Shortbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] } : {};
     const scene = await t.stage(feature, { level: run.level, hp: run.hp ?? 100, extra, lane: run.mode === "ranged" });
     const target = run.mode === "ranged" ? scene.far : scene.near;
+    pick(t, scene.holder.id, feature, run);
     const withIt = await swing(t, scene, target);
     strip(t, scene, feature.name);
     t.kit.giveTurn(scene.holder.id);

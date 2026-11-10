@@ -476,53 +476,47 @@
   "clauses": [
    {
     "c": "Pick one",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the builder's owed-pick list for the class; not staged here",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts: the Combat Wetware row and its choose spend (use_resource \"Combat Wetware\" with the option as the variant, out of a fight), the pick kept as \"Combat Wetware (Smartlink)\"",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#0"
    },
    {
     "c": "+2 to ranged attack rolls",
     "run": {
      "k": "atk",
      "n": 2,
-     "mode": "ranged"
+     "mode": "ranged",
+     "choice": "Smartlink"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (attack_bonus) and src/lib/dm/pc-attack-profile.ts",
-    "sev": "medium",
-    "observed": "what Combat Wetware adds to the attack roll (8 with it, 8 without)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts attack_bonus gated on the Smartlink pick, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#1"
    },
    {
     "c": "+1 AC in light or medium armor",
     "run": {
      "k": "ac",
      "n": 1,
-     "wear": "light"
+     "wear": "light",
+     "choice": "Dermal Weave"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#2",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (light worn)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts ac gated on the Dermal Weave pick and light or medium armor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#2"
    },
    {
     "c": "+2 melee damage",
     "run": {
      "k": "dmg",
-     "flat": 2
+     "flat": 2,
+     "choice": "Muscle Graft"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium",
-    "observed": "damage Combat Wetware adds to a hit (8 with it, 8 without)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts hit_rider of 2 on melee hits, gated on the Muscle Graft pick, read by src/lib/dm/attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#3"
    }
   ]
  },

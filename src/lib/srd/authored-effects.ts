@@ -164,9 +164,14 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
     }
     // A genre class's feature, found by its name (authored-effects-genre.ts).
     const genre = found ? undefined : genreRowFor(full, candidates);
-    if (genre) {
+    // Or its pick ("Combat Wetware (Smartlink)"), only for a row that is a
+    // pick: "Daemon Cache (2 programs)" is a feature of its own, not an option.
+    const picked = found || genre || !chosen ? undefined : genreRowFor(textKey(chosen[1]), candidates);
+    const genreChoice = picked?.entry.spends?.some((spend) => spend.does.kind === "choose") ? picked : undefined;
+    if (genre ?? genreChoice) {
       const classId = candidates[0] ?? "";
-      out.push({ key: `genre::${full}`, classId, feature: genre.feature, entry: genre.entry, name: feature.name, choice: null, level: classLevel(sheet, classId) });
+      const held = (genre ?? genreChoice)!;
+      out.push({ key: `genre::${textKey(held.feature)}`, classId, feature: held.feature, entry: held.entry, name: feature.name, choice: genre ? null : textKey(chosen![2]), level: classLevel(sheet, classId) });
     }
   }
   // A pick the builder, the level-up or the sheet's owed picks wrote beside
