@@ -563,11 +563,9 @@
      "skill": "arcana",
      "want": "double"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Forbidden Lore#0",
-    "observed": "the arcana check on a 10 with doubled proficiency: the engine gives 17, the text 19",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Forbidden Lore#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorCheckRider (expertise on Arcana and Religion), read by src/lib/dm/rolls.ts"
    }
   ]
  },
@@ -1386,11 +1384,9 @@
      "n": 2,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Desperate Strength#1",
-    "observed": "the athletics check on a 10: the engine gives 18, the text 20",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Desperate Strength#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorCheckRider (+2 on STR and DEX checks below half), read by src/lib/dm/rolls.ts for skill and ability checks"
    }
   ]
  },
@@ -2115,13 +2111,12 @@
     "run": {
      "k": "check",
      "skill": "history",
-     "want": "adv"
+     "want": "adv",
+     "creature": "undead"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Vampiric Scholar#0",
-    "observed": "d20s thrown for the history check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Vampiric Scholar#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts check_adv on the lore skills about undead and shapechangers (a humanoid is the control)"
    }
   ]
  },
@@ -2389,13 +2384,12 @@
     "run": {
      "k": "check",
      "skill": "arcana",
-     "want": "adv"
+     "want": "adv",
+     "creature": "fiend"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Documented Phenomena#0",
-    "observed": "d20s thrown for the arcana check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Documented Phenomena#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts check_adv on the identifying skills about the supernatural types (a humanoid is the control); whether it was measured before is the GM's"
    }
   ]
  },

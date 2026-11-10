@@ -35,6 +35,7 @@ import { sightRotPenalty } from "@/lib/srd/afflictions";
 import { unknownRef, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
+import { horrorCheckRider } from "@/lib/srd/genre-a-horror-holds";
 
 export { rollArgsSchema, rollDcFor, type RollArgs } from "@/lib/dm/roll-args";
 
@@ -605,9 +606,12 @@ export function resolveRollExpression(
         : 0;
     // Sight rot: its penalty rides the checks that rely on sight.
     const sightRot = skill.id === "perception" || skill.id === "investigation" ? sightRotPenalty(sheet.conditions) : 0;
+    // The horror classes' check riders (Forbidden Lore, Desperate Strength).
+    const horror = horrorCheckRider(sheet, skill.id, checkAbility);
+    const doubled = featRider?.expertise || horror.expertise;
     const featProficiency =
-      featRider?.expertise && !proficientSkill ? 2 * derived.proficiencyBonus : featRider?.expertise && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
-    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency;
+      doubled && !proficientSkill ? 2 * derived.proficiencyBonus : doubled && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
+    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency + horror.bonus;
     // Indomitable Might: a Strength check never totals below the score.
     const mightFloor =
       checkAbility === "str"
@@ -624,6 +628,7 @@ export function resolveRollExpression(
     );
     const skillNotes = [
       ...(conditionNotes ?? []),
+      ...horror.notes,
       ...(sightRot ? [`sight rot: -${sightRot} on a check that relies on sight`] : []),
       ...(checkAbility !== skill.ability ? [`a ${checkAbility.toUpperCase()} (${skill.name}) check: ${checkAbility.toUpperCase()} in place of ${skill.ability.toUpperCase()}, the skill's proficiency kept`] : []),
       ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
@@ -697,7 +702,7 @@ export function resolveRollExpression(
     const tool =
       args.kind === "ability_check" && args.tool ? toolProficiencyBonus(sheet, args.tool, derived.proficiencyBonus) : null;
     const checkBonus =
-      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus : 0;
+      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus + horrorCheckRider(sheet, null, args.ability).bonus : 0;
     const modifier =
       (args.kind === "saving_throw"
         ? derived.saves[args.ability]
