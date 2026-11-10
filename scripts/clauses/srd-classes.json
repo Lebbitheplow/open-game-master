@@ -2969,255 +2969,255 @@
       },
       {
         "c": "**Table- Arctic Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                     |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | hold person, spike growth         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | sleet storm, slow                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | freedom of movement, ice storm    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | commune with nature, cone of cold |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Coast Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                      |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | mirror image, misty step           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | water breathing, water walk        |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | control water, freedom of movement |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | conjure elemental, scrying         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Desert Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | blur, silence                                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | create food and water, protection from energy |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | blight, hallucinatory terrain                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | insect plague, wall of stone                  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Forest Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | barkskin, spider climb           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | call lightning, plant growth     |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | divination, freedom of movement  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | commune with nature, tree stride |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Grassland Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | invisibility, pass without trace |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | daylight, haste                  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | divination, freedom of movement  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | dream, insect plague             |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Mountain Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                   |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | spider climb, spike growth      |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | lightning bolt, meld into stone |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | stone shape, stoneskin          |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | passwall, wall of stone         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Swamp Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                        |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | acid arrow, darkness                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | water walk, stinking cloud           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | freedom of movement, locate creature |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | insect plague, scrying               |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       }
     ]
   },
