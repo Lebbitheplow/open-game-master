@@ -71,3 +71,20 @@ CYBER.drone_repair = async function droneRepair(t, run, feature) {
   start();
   eq(drones.map((id) => t.hp(id)).join(","), "1,1", "the drones' hit points as a second turn starts, each mended once since the rest");
 };
+
+// "1/turn": a second foe dropped on the same turn adds no second attack.
+CYBER.apex_once = async function apexOnce(t, run, feature) {
+  // Three foes, so two can drop and the fight runs on.
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level);
+  await t.kit.fight(3, { heroFaces: { [hero.id]: 19 } });
+  const foes = t.world.enemies();
+  t.kit.place(hero.id, 5, 5);
+  foes.forEach((foe, index) => t.kit.place(foe.id, 4 + index, 6));
+  t.kit.giveTurn(hero.id);
+  for (const foe of foes.slice(0, 2)) {
+    t.kit.setEnemy(foe.id, { currentHp: 1 });
+    must(await t.kit.swing(hero.id, foe.id, [15, 4, 3, 3]), "the staged attack");
+  }
+  eq(t.world.encounter().turnBudget.attacksAllowed, 4, "attacks allowed after dropping two foes in one turn (three and one more, once)");
+};

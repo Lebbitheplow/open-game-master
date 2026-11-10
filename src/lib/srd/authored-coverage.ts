@@ -128,6 +128,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   fall_resist: { file: "src/lib/dm/hazard-tools.ts", call: "fallResistances(" },
   program_rider: { file: "src/lib/dm/attack-damage-riders.ts", call: "programRiders(" },
+  kill_attack: { file: "src/lib/dm/attack-blow.ts", call: "apexAttack(" },
   heal_floor: { file: "src/lib/dm/heal-spell.ts", call: "healDiceFloor(" },
   program_crit: { file: "src/lib/dm/attack-record.ts", call: "programCritRange(" },
   spell_push: { file: "src/lib/dm/attack-blow.ts", call: "kineticShove(" },

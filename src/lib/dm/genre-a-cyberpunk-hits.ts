@@ -4,10 +4,14 @@
 //   spell_push (Kinetic Buffer, "1/turn, shove a target 10 ft with a psionic
 //     hit"): an esper's psionic is a spell, so a spell attack that hits
 //     pushes the creature 10 feet straight away, once on each of the
-//     holder's turns, as far as the ground behind it lets it go.
+//     holder's turns, as far as the ground behind it lets it go;
+//   kill_attack (Apex Predator, "1/turn, dropping a foe to 0 HP grants one
+//     extra weapon attack immediately"): a weapon hit that drops the creature
+//     adds one attack to the turn's Attack action, once a turn.
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import type { AttackRecord } from "@/lib/dm/attack-record";
-import type { SwingScene } from "@/lib/dm/attack-swing";
+import { attackTurn, type SwingScene } from "@/lib/dm/attack-swing";
+import { storeBudget } from "@/lib/dm/turn-budget";
 import { pushTokenAway } from "@/lib/dm/map-tools";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -41,4 +45,19 @@ export function kineticShove(scene: SwingScene, record: AttackRecord): string | 
   return feet
     ? `${row.held.feature}: ${enemy.displayName} is shoved ${feet} feet away${stopped ? ` (${stopped})` : ""}`
     : `${row.held.feature}: ${enemy.displayName} could not be shoved (${stopped})`;
+}
+
+const APEX = "kill_attack";
+
+export function apexAttack(scene: SwingScene, record: AttackRecord, dead: boolean): string | null {
+  const row = activeAuthored(scene.sheet, "kill_attack")[0];
+  if (!row || !dead || record.weaponAttack !== true) {
+    return null;
+  }
+  const turn = attackTurn(scene.campaign.id, record);
+  if (!turn || turn.budget.oncePerTurn.includes(APEX)) {
+    return null;
+  }
+  storeBudget(turn.encounter, { ...turn.budget, attacksAllowed: turn.budget.attacksAllowed + 1, oncePerTurn: [...turn.budget.oncePerTurn, APEX] });
+  return `${row.held.feature}: the kill grants one more weapon attack this turn`;
 }

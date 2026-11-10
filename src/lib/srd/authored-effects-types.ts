@@ -78,6 +78,9 @@ export type AuthoredEffect = Base &
     // Every healing die the holder rolls counts as at least half its faces
     // (Perfected Formula): genre-a-cyberpunk-programs.ts healDiceFloor.
     | { kind: "heal_floor" }
+    // A weapon hit that drops its target adds one attack to the turn, once a
+    // turn (Apex Predator): genre-a-cyberpunk-hits.ts apexAttack.
+    | { kind: "kill_attack" }
     | { kind: "concentration_adv" }
     | { kind: "save_prof"; abilities: Ability[] }
     // `ability`: saves of that ability only (Thought Shield: +2 on WIS saves).

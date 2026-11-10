@@ -49,3 +49,6 @@ GENRE_A_CYBERPUNK.push(
 
 // "Your healing dice each count as at least half their maximum."
 GENRE_A_CYBERPUNK.push(row("trauma_doc", "Perfected Formula", [{ kind: "heal_floor" }]));
+
+// "1/turn, dropping a foe to 0 HP grants one extra weapon attack immediately."
+GENRE_A_CYBERPUNK.push(row("street_samurai", "Apex Predator", [{ kind: "kill_attack" }]));

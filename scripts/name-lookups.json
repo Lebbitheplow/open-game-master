@@ -14,7 +14,7 @@
     "lib/dm/arg-coerce.ts#keyed": [["key", 3, "tool-argument field names and the tool's published field kinds"]],
     "lib/dm/genre-a-heals.ts#whole": [["identity",3,"a condition by its keyed name on both sides"]],
     "lib/dm/genre-a-cyberpunk-defenses.ts#first": [["key",1,"a downed ally beside the holder, by sheet id and the board"]],
-    "lib/dm/genre-a-cyberpunk-hits.ts#first": [["key",1,"the holder's one shove row, by effect kind"]],
+    "lib/dm/genre-a-cyberpunk-hits.ts#first": [["key",2,"the holder's one shove or kill row, by effect kind"]],
     "lib/dm/genre-a-cyberpunk-programs.ts#partial": [["key",1,"the SRD row's creature type"]],
     "lib/dm/genre-a-cyberpunk-programs.ts#number": [["parse",1,"a die's faces read from a dice expression"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],

@@ -27,7 +27,7 @@ export const GENRE_AUTHORED: GenreRow[] = [
   // ---- marks: the bonus action, then every attack on the creature ----
   {
     feature: "Target Lock",
-    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true } }] },
+    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true, sight: true } }] },
   },
   {
     feature: "Hunter's Brand",

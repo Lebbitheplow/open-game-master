@@ -651,11 +651,9 @@
      "k": "mark_sight",
      "res": "Target Lock"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Target Lock#3",
-    "observed": "Target Lock on an invisible creature the holder cannot see was accepted: the engine gives true, the text false",
-    "where": "the quarry spend in src/lib/dm/resource-tools.ts computeUseResource: the target's visibility is not checked",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts Target Lock buff with sight, refused by src/lib/dm/authored-spend-effects.ts unseenBecause",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Target Lock#3"
    }
   ]
  },
@@ -888,26 +886,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "apex_once"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Apex Predator#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-hits.ts apexAttack, once a turn on the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Apex Predator#0"
    },
    {
     "c": "dropping a foe to 0 HP grants one extra weapon attack immediately",
     "run": {
      "k": "apex"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Apex Predator#1",
-    "where": "src/lib/dm/pc-attack-spend.ts / turn-budget.ts: no extra attack on a kill",
-    "sev": "medium",
-    "observed": "attacks allowed after dropping a foe to 0 (three from Extra Attack and one more)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts kill_attack, read by src/lib/dm/genre-a-cyberpunk-hits.ts apexAttack at the hit (src/lib/dm/attack-blow.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Apex Predator#1"
    }
   ]
  },

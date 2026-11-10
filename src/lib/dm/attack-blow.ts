@@ -23,7 +23,7 @@ import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
-import { kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
+import { apexAttack, kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
@@ -181,6 +181,10 @@ export function landSwingBlow(
   const out: Record<string, unknown> = { ...applied, damage: dealt };
   if (!over) {
     notes.push(...bonusActionsOpened(scene, record, crit, dead));
+    const apex = apexAttack(scene, record, dead);
+    if (apex) {
+      notes.push(apex);
+    }
   }
   // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
   // hamstring and Crusher's shove once a turn, and their critical hits'
