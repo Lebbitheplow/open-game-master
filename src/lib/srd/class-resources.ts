@@ -1021,7 +1021,13 @@ const unquoted = (text: string) => text.replace(/['‘’ʼ´`]/g, "");
 // the use_resource tool with model-supplied names. A word of a name is none:
 // "channel" is no Channel Divinity, Persistent Rage no Rage, and the tool
 // lists the sheet's own.
-export function matchResource(term: string): ResourceDef | null {
+//
+// `catalog`: the classes whose features the caller means (a sheet's classes,
+// sheetCatalog). Two catalogs may name a feature alike (the dirgesinger's and
+// the apostate's The Rite Completed); a name alone cannot tell them apart, so
+// a row granted only by other classes is passed over for the catalog's own.
+// Every caller that holds a sheet passes it.
+export function matchResource(term: string, catalog?: readonly string[]): ResourceDef | null {
   const wanted = textKey(term);
   if (!wanted) {
     return null;
@@ -1031,10 +1037,17 @@ export function matchResource(term: string): ResourceDef | null {
   if (/^(?:racial_|free_cast_|invocation_)[a-z0-9_]+$/.test(term.trim())) {
     return resourceDef(term.trim());
   }
+  const mine = catalog?.length ? new Set(catalog.map(textKey)) : null;
+  const fits = (def: ResourceDef) => !mine || !def.grantedBy?.length || def.grantedBy.some((classId) => mine.has(textKey(classId)));
   const named = (written: string) =>
-    RESOURCE_DEFS.find((def) => isNamed(written, def.displayName)) ??
-    RESOURCE_DEFS.find((def) => def.match.some((name) => isNamed(unquoted(written), unquoted(name))));
+    RESOURCE_DEFS.find((def) => fits(def) && isNamed(written, def.displayName)) ??
+    RESOURCE_DEFS.find((def) => fits(def) && def.match.some((name) => isNamed(unquoted(written), unquoted(name))));
   return RESOURCE_DEFS.find((def) => textKey(def.id) === wanted) ?? named(term) ?? named(familyOf(term)) ?? null;
+}
+
+// The catalog a sheet's counters come from: its classes, for matchResource.
+export function sheetCatalog(sheet: { class?: string | null; classes?: Array<{ id: string }> | null }): string[] {
+  return sheet.classes?.length ? sheet.classes.map((entry) => entry.id) : sheet.class ? [sheet.class] : [];
 }
 
 // The level a resource counter scales by, and the class it came from.

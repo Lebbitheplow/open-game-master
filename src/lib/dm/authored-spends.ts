@@ -16,7 +16,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
 import { nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
@@ -145,7 +145,7 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
 // ("Channel Divinity: Nature's Wrath"). It must spend the pool the call names.
 function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: string | undefined) {
   const option = variant ?? nameChoice(resourceName);
-  const pool = matchResource(resourceName);
+  const pool = matchResource(resourceName, sheetCatalog(sheet));
   const found = option && pool ? authoredSpendFor(sheet, option) : null;
   return found?.spend.pool?.id === pool?.id ? found : null;
 }

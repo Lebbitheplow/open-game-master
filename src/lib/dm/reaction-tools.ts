@@ -53,7 +53,7 @@ import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { PRONE } from "@/lib/dm/vitals-logic";
@@ -686,7 +686,7 @@ function useReaction(
   // Warding Maneuver, Strength before Death...) is a use_resource spend: the
   // use, the reaction and the effect go together there, where before this
   // branch let use_reaction spend the reaction and leave the counter full.
-  const counter = matchResource(feature);
+  const counter = matchResource(feature, sheetCatalog(sheet));
   if (counter?.action === "reaction" && sheet.resources?.[counter.id]) {
     return applyDmMutation(
       campaign,

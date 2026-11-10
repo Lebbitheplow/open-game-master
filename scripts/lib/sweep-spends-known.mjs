@@ -40,7 +40,6 @@ export const KNOWN = {
   "counter:horror_rite_of_severance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:horror_the_debt_comes_due": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:horror_the_final_chapter": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:horror_the_rite_completed": { NAME_TAKEN: { severity: "medium", note: "two counters share the name, and the name resolves to the other" }, ID_NAME_DRIFT: { severity: "medium", note: "the id and the name do different things" } },
   "counter:horror_the_stake_remembers": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:horror_unfinished_ritual": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:mystery_archetype_made_flesh": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

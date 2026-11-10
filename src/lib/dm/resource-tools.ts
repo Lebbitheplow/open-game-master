@@ -8,7 +8,7 @@ import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
-import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
+import { heldUnlimitedState, isUnlimited, matchResource, RAGING, sheetCatalog, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
@@ -344,7 +344,7 @@ export function computeUseResource(
   // dice cards belong to (src/lib/dm/counter-saves.ts).
   aim?: CounterSaveAim,
 ): Outcome | ToolError {
-  const def = matchResource(resourceName);
+  const def = matchResource(resourceName, sheetCatalog(sheet));
   const state = def ? (sheet.resources[def.id] ?? heldUnlimitedState(def, sheet) ?? undefined) : undefined;
   if (!def || !state) {
     const available = Object.keys(sheet.resources);

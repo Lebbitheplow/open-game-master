@@ -15,7 +15,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { matchResource, type ResourceAction } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog, type ResourceAction } from "@/lib/srd/class-resources";
 import { ACTION_SURGED, spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -51,7 +51,7 @@ export function prepareResourceCharge(
   // different things (Channel Divinity's Turn Undead is an action).
   override?: ResourceAction,
 ): ResourceCharge {
-  const found = matchResource(resourceName);
+  const found = matchResource(resourceName, sheetCatalog(sheet));
   const def = found && override ? { ...found, action: override } : found;
   const encounter = getActiveEncounter(campaign.id);
   // Out of a fight there is no turn to charge, and a feature whose uses cost

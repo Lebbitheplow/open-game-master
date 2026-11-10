@@ -129,5 +129,16 @@ await test("Overwatch: the attack that hit an ally is rolled again at disadvanta
   t.world.clearDice();
   assert.equal(t.hp(scene.ally.id), 20, "the reroll at disadvantage misses, and the ally's hit points come back");
 });
+// Two catalogs name a feature The Rite Completed (the dirgesinger's and the
+// apostate's): the lookup is keyed by the class as well as the name
+// (class-resources.ts matchResource's catalog), so each sheet spends its own.
+await test("The Rite Completed by name spends the holder's own class's counter", async () => {
+  assert.equal(t.resources.matchResource("The Rite Completed", ["apostate"])?.id, "horror_the_rite_completed");
+  assert.equal(t.resources.matchResource("The Rite Completed", ["dirgesinger"])?.id, "dark_fantasy_the_rite_completed");
+  const scene = await t.stage({ classId: "apostate", level: 14 });
+  const out = await spend(scene, "The Rite Completed");
+  assert.ok(!/dirgesinger|sing a fallen ally/i.test(JSON.stringify(out)), `the apostate's call by name reached the dirgesinger's counter: ${JSON.stringify(out).slice(0, 200)}`);
+  if (out.ok) assert.equal(t.world.sheet(scene.holder.id).resources.horror_the_rite_completed.used, 1);
+});
 t.close();
 console.log(`test-genre-a-spends: ${passed} passed`);

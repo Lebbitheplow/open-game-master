@@ -136,7 +136,12 @@ export const PROBES = {
 
   // Resistance halves 10 of the type; immunity takes none. Played with the
   // feature and without it, so a resistance another feature lends by accident
-  // does not pass for this one.
+  // does not pass for this one. The control is measured against what the rest
+  // of the sheet gives that type: a sheet that also resists it through another
+  // feature (the esper's Mind Fortress beside Ascendant Mind, Miasma Ward
+  // beside Iron Constitution) loses 5 without the feature, and the feature
+  // must still change that; with every feature off the type costs the full 10,
+  // so nothing but the features answers.
   async resist(t, run, feature) {
     t.fresh();
     const hero = t.hero(feature.classId, run.level ?? feature.level);
@@ -159,8 +164,15 @@ export const PROBES = {
       const kept = t.world.sheet(hero.id).features;
       t.world.patch(hero.id, { features: kept.filter((entry) => key(entry.name) !== key(feature.name)) });
       const without = await lose(type);
+      t.world.patch(hero.id, { features: [] });
+      const bare = await lose(type);
       t.world.patch(hero.id, { features: kept });
-      eq(without, 10, `${what} is cut without ${feature.name} too: something else on the sheet answers, not this feature`);
+      eq(bare, 10, `${what} with no feature on the sheet: something outside the features answers`);
+      // What the other features give alone: full damage, or half when one of
+      // them resists the type too (then only an immunity can still differ).
+      const others = without === 5 ? 5 : 10;
+      eq(without, others, `${what} without ${feature.name}`);
+      assert.ok(withIt < without, `${what} is cut as much without ${feature.name}: something else on the sheet answers, not this feature`);
     }
   },
 

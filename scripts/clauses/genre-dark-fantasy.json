@@ -906,11 +906,9 @@
      "type": "poison",
      "immune": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Iron Constitution#0",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the immune_damage row of src/lib/srd/authored-effects-genre-a.ts, read by src/lib/dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Iron Constitution#0"
    },
    {
     "c": "Immune to poison and disease",

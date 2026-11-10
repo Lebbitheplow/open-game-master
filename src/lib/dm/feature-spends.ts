@@ -22,7 +22,7 @@ import { publishPersisted } from "@/lib/events";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import { computeSheetDerived } from "@/lib/srd";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -146,7 +146,7 @@ export function featureVariantSpend(
   if (isNamed(resourceName, "Stillness of Mind")) {
     return stillnessOfMind(campaign, turnId, sheet, reason);
   }
-  const def = matchResource(resourceName);
+  const def = matchResource(resourceName, sheetCatalog(sheet));
   // The option the variant names whole (src/lib/srd/feature-names.ts).
   // The sheet's own name carries the option too ("Channel Divinity: Vow of
   // Enmity"): without it the generic path spent the use and did nothing.

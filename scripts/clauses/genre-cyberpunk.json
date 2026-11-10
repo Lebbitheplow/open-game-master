@@ -2326,11 +2326,9 @@
      "type": "psychic",
      "immune": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Ascendant Mind#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to 10 psychic"
+    "is": "held",
+    "by": "the immune_damage row of src/lib/srd/authored-effects-genre-a.ts, read by src/lib/dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Ascendant Mind#0"
    },
    {
     "c": "mind reading",
