@@ -59,6 +59,9 @@ const conditionInstanceSchema = z.object({
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),
+    // Ends once the creature can neither see nor hear its source (Hypnotic
+    // Gaze: src/lib/dm/ar-ws-senses-logic.ts).
+    endsUnsensed: z.boolean().optional(),
     saveOnDamage: z
       .object({
         ability: z.enum(ABILITIES),

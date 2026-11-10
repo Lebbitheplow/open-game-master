@@ -82,6 +82,9 @@ export function layWithExtras(campaign: Campaign, enemy: EncounterEnemy, holderI
     ...(does.untilNextTurnEnds ? { untilTurnEndOf: holderId } : does.rounds ? { rounds: does.rounds } : {}),
     ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
     ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
+    // "if it can't see or hear you": the hold ends with the senses it asked
+    // for (ar-ws-senses-logic.ts, applied where enemy conditions are written).
+    ...(does.senses === "see_or_hear" ? { endsUnsensed: true } : {}),
   };
   const fresh = () => getEnemy(enemy.id) ?? enemy;
   if (immuneToCondition(fresh(), does.condition)) {

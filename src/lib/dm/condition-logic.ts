@@ -71,6 +71,9 @@ export type ConditionMeta = {
   // Held while its source stands within this many feet: ends when the source
   // is down, dead or incapacitated, or farther (src/lib/dm/condition-leash.ts).
   leashFeet?: number;
+  // Ends once the creature holding it is both blinded and deafened: it can
+  // no longer see or hear its source (src/lib/dm/ar-ws-senses-logic.ts).
+  endsUnsensed?: boolean;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.

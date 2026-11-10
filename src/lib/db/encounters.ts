@@ -9,6 +9,7 @@ import { normalizeIntents, type EncounterIntents } from "@/lib/db/encounter-inte
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { normalizeSides, type SideExceptions } from "@/lib/dm/combat-sides-logic";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { endUnsensed } from "@/lib/dm/ar-ws-senses-logic";
 import { endedByRegain } from "@/lib/dm/condition-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
@@ -695,10 +696,15 @@ function patchSheetAsFoe(id: string, patch: Parameters<typeof patchSheet>[1]) {
 
 export function patchEnemyConditions(
   enemyId: string,
-  conditions: string[],
-  conditionMeta?: ConditionMetaMap,
+  written: string[],
+  writtenMeta?: ConditionMetaMap,
 ): EncounterEnemy | null {
   keepRow("encounter_enemies", enemyId);
+  // A hold that lasts only while the creature can see or hear its source
+  // ends as it is blinded and deafened both (ar-ws-senses-logic.ts).
+  const unsensed = endUnsensed(written, writtenMeta ?? (sheetBehind(enemyId) ? undefined : getEnemy(enemyId)?.conditionMeta));
+  const conditions = unsensed?.conditions ?? written;
+  const conditionMeta = unsensed?.meta ?? writtenMeta;
   if (sheetBehind(enemyId)) {
     patchSheetAsFoe(enemyId, { conditions, ...(conditionMeta !== undefined ? { conditionMeta } : {}) });
     return null;

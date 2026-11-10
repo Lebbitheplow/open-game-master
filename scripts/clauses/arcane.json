@@ -397,9 +397,9 @@
    },
    {
     "c": "if it can't see or hear you",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the charm takes a creature that can neither see nor hear to begin with (gaze-senses), so its ending was not staged"
+    "is": "held",
+    "by": "the instance the gaze lays carries endsUnsensed (src/lib/dm/authored-save-effect-extras.ts layWithExtras, for a row whose senses is see_or_hear), ended by src/lib/dm/ar-ws-senses-logic.ts endUnsensed where every write of an enemy condition lands (src/lib/db/encounters.ts patchEnemyConditions) once the creature is blinded and deafened both",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-unsensed"
    },
    {
     "c": "or if it takes damage",
