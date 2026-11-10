@@ -1,6 +1,7 @@
 import { describeContentEntry } from "@/lib/help";
 import { DAMAGE_TYPE_BLURBS, WEAPON_PROPERTY_BLURBS } from "@/lib/help/terms";
 import { armorNamed, type SrdArmor } from "@/lib/srd/armor";
+import { packCostCopper, priceText } from "@/lib/srd/currency";
 import { magicItemBonus, withoutBonus } from "@/lib/srd/item-row";
 import { weaponNamed, type SrdWeapon } from "@/lib/srd/weapons";
 
@@ -91,24 +92,19 @@ function weightOf(row: Row): string | null {
 
 // v1 rows say "15 gp", v2 rows a bare gold figure ("0.01"), homebrew
 // whatever the author typed. Unarmored Defense sits in the armour table at
-// "0 gp"; a price on something nobody buys is noise.
+// "0 gp"; a price on something nobody buys is noise. Written as every price
+// is (priceText): a formatter of its own here wrote 0.15 gp as "15 cp" and
+// 1.5 gp as "1.5 gp", and passed "0.05 gp" through as the pack prints it.
 function costOf(row: Row): string | null {
   const text = str(row, "cost");
   if (!text) {
     return null;
   }
-  const gold = num(text);
-  if (gold === null) {
-    return /^0+\s*gp$/i.test(text) ? null : text;
+  const copper = packCostCopper(text);
+  if (copper === null) {
+    return text;
   }
-  if (gold <= 0) {
-    return null;
-  }
-  if (gold >= 1) {
-    return `${Number(gold.toFixed(2))} gp`;
-  }
-  const silver = gold * 10;
-  return Number.isInteger(Number(silver.toFixed(4))) ? `${Math.round(silver)} sp` : `${Math.round(gold * 100)} cp`;
+  return copper > 0 ? priceText(text) : null;
 }
 
 function propertyOf(raw: string): ItemProperty {

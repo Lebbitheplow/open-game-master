@@ -106,6 +106,19 @@ export function formatPrice(total: number): string {
   return written.length ? written.join(" ") : "0 gp";
 }
 
+// A price as the content pack or an author wrote it, put in the notation
+// every other price takes (formatPrice). The pack prints a part of a gold
+// piece as a decimal ("0.05 gp", "0.4 gp") and its newer rows a bare gold
+// figure ("0.01"), so the builder's gear list said "0.05 gp" beside a
+// receipt that said "5 cp" for the same candle. A whole amount already in
+// the codes keeps its own marks ("2,000 gp"), and text that is no amount
+// ("varies") is passed through.
+export function priceText(text: string): string {
+  const written = String(text ?? "").trim();
+  const copper = packCostCopper(written);
+  return copper !== null && /\.|^[\d,]+$/.test(written) ? formatPrice(copper) : written;
+}
+
 export function formatPurse(purse: Purse): string {
   return formatCopper(purseCopper(purse));
 }

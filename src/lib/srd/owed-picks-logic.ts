@@ -26,7 +26,7 @@ import {
   newStyleFits,
   FIGHTING_STYLES,
 } from "@/lib/srd/feature-effects";
-import { classFeaturesFor, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
+import { classFeaturesFor, expertiseAllowed, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
 import { classListFor } from "@/lib/srd/multiclass";
 import {
   findOptionByFeatureName,
@@ -346,18 +346,27 @@ export function expertiseOptionsAfter(input: {
   choices: FeatChoices;
 }): string[] {
   const held = input.sheet.proficiencies;
-  const skill = (input.newClass?.skill ?? "").trim().toLowerCase();
+  const skill = (input.newClass?.skill ?? "").trim();
+  const heldSkills = new Set(held.skills.map(textKey));
+  const heldTools = new Set(held.tools.map(textKey));
   let proficiencies = {
     ...held,
-    skills: skill && !held.skills.includes(skill) ? [...held.skills, skill] : held.skills,
-    tools: [...held.tools, ...(input.newClass?.tools ?? []).filter((tool) => !held.tools.some((entry) => textKey(entry) === textKey(tool)))],
+    skills: skill && !heldSkills.has(textKey(skill)) ? [...held.skills, skill] : held.skills,
+    tools: [...held.tools, ...(input.newClass?.tools ?? []).filter((tool) => !heldTools.has(textKey(tool)))],
   };
   proficiencies = applyFeatGrants({ proficiencies, feats: input.feats, choices: input.choices, strict: false }).proficiencies;
   proficiencies = applySubclassTraining({ proficiencies, grants: input.training, choices: input.choices, strict: false }).proficiencies;
   const expert = new Set((proficiencies.expertise ?? []).map(textKey));
   const tool =
-    input.classesAfter.some((entry) => textKey(entry.id) === "rogue") && proficiencies.tools.some(isThievesTools) && !(held.expertise ?? []).some(isThievesTools)
+    expertiseAllowed(THIEVES_TOOLS, [], input.classesAfter.map((entry) => entry.id)) && proficiencies.tools.some(isThievesTools) && !(held.expertise ?? []).some(isThievesTools)
       ? [THIEVES_TOOLS]
       : [];
-  return [...new Set(proficiencies.skills.map((entry) => entry.toLowerCase()))].filter((entry) => !expert.has(textKey(entry))).concat(tool);
+  const seen = new Set<string>();
+  const skills = proficiencies.skills.filter((entry) => {
+    const key = textKey(entry);
+    const fresh = !expert.has(key) && !seen.has(key);
+    seen.add(key);
+    return fresh;
+  });
+  return [...skills, ...tool];
 }
