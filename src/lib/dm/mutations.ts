@@ -87,6 +87,7 @@ import {
   computeUseItem,
   computeUseResource,
   fontOfMagicDirection,
+  holdConcentration,
   payForUse,
   rollHealing,
 } from "@/lib/dm/resource-tools";
@@ -1489,6 +1490,7 @@ function dmMutation(
         return { result: outcome };
       }
       patchSheet(sheet.id, outcome.patch);
+      Object.assign(outcome.result, holdConcentration(campaign, turnId, sheet.id, outcome));
       Object.assign(outcome.result, charge.commit());
       if (castMark) {
         Object.assign(outcome.result, castMark.apply());

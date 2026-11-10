@@ -285,6 +285,9 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         name: "Psychic Blades",
         pool: { id: "bardic_inspiration" },
         oncePerTurn: true,
+        // "Spend a Bardic Inspiration die on a weapon hit": only after the
+        // bard's weapon hit this turn, on the creature it struck.
+        afterWeaponHit: true,
         does: { kind: "die_damage", dice: [[3, "2d6"], [5, "3d6"], [10, "5d6"], [15, "8d6"]], type: "psychic" },
       },
     ],

@@ -503,7 +503,8 @@
    "fx": {
     "kind": "buff",
     "condition": "mantle of majesty",
-    "rounds": 10
+    "rounds": 10,
+    "concentration": true
    }
   },
   {
@@ -827,7 +828,9 @@
    "guidance": "A pool of d6s equal to 1 + the warlock's level. Spend up to their Charisma modifier of them as a bonus action to heal a creature within 60 feet.",
    "fx": {
     "kind": "heal_dice_pool",
-    "die": "d6"
+    "die": "d6",
+    "rangeFt": 60,
+    "sight": true
    },
    "perUse": "cha"
   },
@@ -942,7 +945,8 @@
    "fx": {
     "kind": "buff",
     "condition": "spirit projection",
-    "rounds": 600
+    "rounds": 600,
+    "concentration": true
    }
   },
   {

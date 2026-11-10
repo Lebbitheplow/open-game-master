@@ -2440,13 +2440,15 @@
    },
    {
     "c": "to heal a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-sight",
+    "by": "src/lib/srd/authored-resources.json sub_healing_light fx rangeFt 60, sight (src/lib/dm/resource-tools.ts reachRefusal)"
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-range",
+    "by": "src/lib/srd/authored-resources.json sub_healing_light fx rangeFt 60, sight (src/lib/dm/resource-tools.ts reachRefusal)"
    },
    {
     "c": "by the total rolled",
@@ -3073,8 +3075,9 @@
    },
    {
     "c": "You can use the reaction again only after 1d4 long rests.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: husk-rests"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: husk-rests",
+    "by": "src/lib/dm/reaction-counters.ts Necrotic Husk (the 1d4 marker) and src/lib/dm/rest-logic.ts (each long rest counts it down)"
    }
   ]
  },
@@ -3098,8 +3101,9 @@
    },
    {
     "c": "(concentration)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-concentration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-concentration",
+    "by": "src/lib/srd/authored-resources.json sub_spirit_projection fx concentration (src/lib/dm/resource-tools.ts holdConcentration)"
    },
    {
     "c": "while the body lies unconscious",
@@ -3388,8 +3392,9 @@
    },
    {
     "c": "(concentration)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-concentration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-concentration",
+    "by": "src/lib/srd/authored-resources.json sub_mantle_of_majesty fx concentration (src/lib/dm/resource-tools.ts holdConcentration)"
    },
    {
     "c": "On each of your turns while it lasts you can cast command again as a bonus action without a slot",
@@ -3531,8 +3536,9 @@
    },
    {
     "c": "on a weapon hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: blades-no-hit"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: blades-no-hit",
+    "by": "src/lib/srd/authored-effects-data.ts bard::Psychic Blades afterWeaponHit (src/lib/dm/authored-spend-effects.ts die_damage reads the weapon-hit mark)"
    },
    {
     "c": "for extra psychic damage, 2d6 at 3rd level and rising with bard level",

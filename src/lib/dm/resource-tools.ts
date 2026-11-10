@@ -2,7 +2,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { breakConcentration } from "@/lib/dm/concentration";
+import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -13,6 +13,7 @@ import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules"
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { unseenBecause, unseenByConditions, withinFeet } from "@/lib/dm/authored-saves";
 import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condition-logic";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { consumableEffect, findCarriedItem, notCarried } from "@/lib/dm/item-logic";
@@ -48,7 +49,23 @@ export type Outcome = {
   event?: string;
   // Wild Shape: how many in-world hours the form lasts, for the clock.
   shapeHours?: number;
+  // A buff held by concentration: the caller takes it once the patch has
+  // landed (holdConcentration), so the spell it displaces ends after.
+  concentrate?: string;
 };
+
+// A feature buff held by concentration (Mantle of Majesty, Spirit
+// Projection): the holder concentrates on the feature's name, which ends
+// whatever they held before, and a broken concentration ends the buff, since
+// its condition carries the feature as its spell (spell-effects.ts
+// heldBySpell). Called by use_resource after the spend's patch has landed.
+export function holdConcentration(campaign: Campaign, turnId: string | null, sheetId: string, outcome: Outcome): ToolResult {
+  if (!outcome.concentrate) {
+    return {};
+  }
+  const { displaced } = setConcentration(campaign, turnId, sheetId, outcome.concentrate);
+  return displaced ? { concentrationEnded: droppedLine(displaced, outcome.concentrate) } : {};
+}
 
 // Rolls healing server-side as a visible dice card, exactly as a player's
 // own roll would appear. Shared by the potion path and the class-feature
@@ -337,6 +354,33 @@ function rollCounterSave(
   }, aim ?? {});
 }
 
+// A counter that reaches another creature only so far, or only one its
+// holder can see (Healing Light: "a creature you can see within 60 feet"):
+// the board's distance and the sight every check reads, refused before
+// anything is spent. Out of a fight, or with no board, the GM keeps to it.
+function reachRefusal(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  target: CharacterSheet,
+  name: string,
+  reach: { rangeFt?: number; sight?: boolean },
+): ToolError | null {
+  if (target.id === sheet.id) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  if (reach.sight) {
+    const unseen = encounter ? unseenBecause(encounter.id, sheet, target, { hidden: false }) : unseenByConditions(null, sheet, target, { hidden: false });
+    if (unseen) {
+      return { error: `${sheet.name} cannot see ${target.name} (${unseen}), and ${name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+    }
+  }
+  if (encounter && reach.rangeFt && !withinFeet(encounter.id, sheet.id, target.id, reach.rangeFt)) {
+    return { error: `${target.name} is beyond ${reach.rangeFt} feet of ${sheet.name}; ${name} reaches no further. Nothing was spent.`, refused: "rules" };
+  }
+  return null;
+}
+
 export function computeUseResource(
   campaign: Campaign,
   sheet: CharacterSheet,
@@ -559,6 +603,10 @@ export function computeUseResource(
       if (target.deathSaves?.dead) {
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
+      const beyond = reachRefusal(campaign, sheet, target, def.displayName, def.effect);
+      if (beyond) {
+        return beyond;
+      }
       const total = rollHealing(campaign, target, def.displayName, `${amount}${def.effect.die}`);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
@@ -629,9 +677,12 @@ export function computeUseResource(
         conditions: [...recipient.conditions, condition],
         conditionMeta: {
           ...recipient.conditionMeta,
-          [condition]: { rounds: effect.rounds },
+          [condition]: { rounds: effect.rounds, ...(effect.concentration ? { spell: def.displayName, source: sheet.id } : {}) },
         },
       };
+      if (effect.concentration) {
+        outcome.concentrate = def.displayName;
+      }
       // Temporary hit points riding the buff (Fighting Spirit, Form of
       // Dread); 5e temp HP never stacks, the higher value stands.
       let tempHpPatch: { tempHp: number } | null = null;

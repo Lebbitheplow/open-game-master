@@ -395,9 +395,14 @@ export function probes(rig, shared) {
       const waiting = () => sheet(dead()).conditions.find((name) => /necrotic husk recovering/i.test(name)) ?? null;
       const nights = Number(/\((\d+)\)/.exec(waiting() ?? "")?.[1] ?? 0);
       assert.ok(nights >= 1 && nights <= 4, `the marker after the reaction: ${waiting()}`);
+      // The fight ends with the marker kept (the rig's endFight would wipe it).
+      if (world.encounter()) await world.invoke("end_encounter", { outcome: "truce" });
       for (let night = 1; night <= nights; night += 1) {
-        await rig.rest("long");
-        assert.equal(counter(dead(), "sub_necrotic_husk").used, night < nights ? 1 : 0, `after long rest ${night} of ${nights}`);
+        // One long rest in 24 hours: a day passes before each.
+        await call("pass_time", { amount: 24, unit: "hours", reason: "a day on the road" });
+        const rested = await call("take_rest", { kind: "long" });
+        assert.equal(rested.ok, true, rested.error);
+        assert.equal(counter(dead(), "sub_necrotic_husk").used, night < nights ? 1 : 0, `after long rest ${night} of ${nights}: ${JSON.stringify(sheet(dead()).conditions)}`);
       }
     },
     projection: async () => {
@@ -412,6 +417,9 @@ export function probes(rig, shared) {
       await stage(dead());
       assert.equal((await spend(dead(), "Spirit Projection")).ok, true);
       assert.match(String(sheet(dead()).concentratingOn ?? ""), /spirit projection/i);
+      // A failed concentration save (a 1) ends the projection.
+      await call("apply_damage", { characterId: dead().id, amount: 10, type: "fire" }, [1]);
+      assert.equal(has(dead(), "spirit projection"), false, "the concentration broke and the projection stands");
     },
     "projection-resist": async () => {
       await stage(dead());
@@ -481,8 +489,6 @@ export function probes(rig, shared) {
   const KNOWN = {
     "misty-teleport": { severity: "medium", kind: "rule-missing", where: `${RES} sub_misty_escape (fx buff invisible; no move)`, note: "The reaction lays invisible and leaves the 60 feet to a second call.", fix: "Move the warlock up to 60 feet to a point they name when Misty Escape is spent." },
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
-    "light-sight": { severity: "low", kind: "rule-missing", where: "src/lib/dm/resource-tools.ts heal_dice_pool (no sight test)", note: "", fix: "Refuse a creature the warlock cannot see." },
-    "light-range": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/resource-tools.ts heal_dice_pool (no range test)", note: "", fix: "Refuse a creature more than 60 feet away." },
     "soul-one-target": { severity: "medium", kind: "rule-wrong", where: "src/lib/srd/spell-damage-riders.ts authoredSpellDice (spell_rider rides every target's roll)", note: "", fix: "Add the Charisma modifier to one target's roll of an area spell." },
     "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },
     "curse-incapacitated": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Hexblade's Curse (the buff ends at a minute or a death only)`, note: "", fix: "End the curse when its warlock is incapacitated." },
@@ -491,8 +497,6 @@ export function probes(rig, shared) {
     "wrath-spell-attack": { severity: "medium", kind: "path-parity", where: `${DATA} warlock::Genie's Vessel (rider when "weapon"; note: "the GM adds it to a spell's")`, note: "", fix: "Ride a spell attack's hit as well." },
     "dread-fright": { severity: "medium", kind: "rule-missing", where: `${RES} sub_form_of_dread (fx buff and temporary hit points only)`, note: "", fix: "Once a turn, on a hit in Form of Dread, roll the creature's Wisdom save against frightened." },
     "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
-    "husk-rests": { severity: "medium", kind: "rule-wrong", where: `${RES} sub_necrotic_husk (recharge long, refilled by every long rest)`, note: "", fix: "Recover after 1d4 long rests, as sub_limited_wish does." },
-    "projection-concentration": { severity: "medium", kind: "rule-missing", where: `${RES} sub_spirit_projection (fx buff, no concentration)`, note: "", fix: "Hold the projection by concentration." },
   };
   return { PROBES, KNOWN };
 }

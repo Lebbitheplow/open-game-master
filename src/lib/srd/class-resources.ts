@@ -36,7 +36,7 @@ export type ResourceEffect =
   | { kind: "heal_pool" }
   // Each spent use is one die of healing to the target (Balm of the Summer
   // Court: a pool of d6s), and `tempPerDie` temporary hit points per die.
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   // Heals the target for a rolled expression (Healing Light-likes).
   | { kind: "heal_target"; dice: (level: number, abilityMods: Record<string, number>) => string }
   // Grants the spender (or a target) temporary hit points; 5e temp HP never
@@ -55,6 +55,10 @@ export type ResourceEffect =
       target: "self" | "ally";
       variants?: string[];
       tempHp?: (level: number, abilityMods: Record<string, number>) => string;
+      // Held by the holder's concentration, as a spell is (Mantle of Majesty,
+      // Spirit Projection): the spend takes it, and a broken concentration
+      // ends the buff (src/lib/dm/resource-tools.ts holdConcentration).
+      concentration?: boolean;
     }
   // Hands a target a bonus die their next d20 roll consumes (Bardic
   // Inspiration). `othersOnly`: never the holder ("one creature other than
@@ -118,7 +122,7 @@ export type DiceFormula = string | Array<[number, string]>;
 export type ResourceFx =
   | { kind: "heal_self"; dice: DiceFormula }
   | { kind: "heal_pool" }
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   | { kind: "heal_target"; dice: DiceFormula }
   | { kind: "temp_hp"; dice: DiceFormula }
   | { kind: "condition"; condition: string; rounds: number }
@@ -129,6 +133,7 @@ export type ResourceFx =
       target?: "self" | "ally";
       variants?: string[];
       tempHp?: DiceFormula;
+      concentration?: boolean;
     }
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
@@ -185,7 +190,15 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
     case "heal_pool":
       return { kind: "heal_pool" };
     case "heal_dice_pool":
-      return { kind: "heal_dice_pool", die: fx.die, ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}) };
+      return {
+        kind: "heal_dice_pool",
+        die: fx.die,
+        ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}),
+        // "A creature you can see within 60 feet" (Healing Light): read by
+        // resource-tools.ts reachRefusal.
+        ...(fx.rangeFt ? { rangeFt: fx.rangeFt } : {}),
+        ...(fx.sight ? { sight: true } : {}),
+      };
     case "heal_target":
       return {
         kind: "heal_target",
@@ -202,6 +215,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
         rounds: fx.rounds,
         target: fx.target ?? "self",
         ...(fx.variants ? { variants: fx.variants } : {}),
+        ...(fx.concentration ? { concentration: true } : {}),
         ...(fx.tempHp
           ? {
               tempHp: (level: number, mods: Record<string, number>) =>

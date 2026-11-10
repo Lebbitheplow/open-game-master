@@ -142,6 +142,9 @@ export function probes(rig, shared) {
       await stage(glamour());
       assert.equal((await spend(glamour(), "Mantle of Majesty")).ok, true);
       assert.match(String(sheet(glamour()).concentratingOn ?? ""), /mantle of majesty/i);
+      // A failed concentration save (a 1) ends the mantle.
+      await call("apply_damage", { characterId: glamour().id, amount: 10, type: "fire" }, [1]);
+      assert.equal(has(glamour(), "mantle of majesty"), false, "the concentration broke and the mantle stands");
     },
     "majesty-rest": rests(["bard", "College of Glamour"], "sub_mantle_of_majesty", "long"),
     "unbreakable-cost": async () => {
@@ -305,10 +308,8 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "combat-damage": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Combat Inspiration (one reaction, ac_vs_hit)`, note: "", fix: "Let the inspired creature add the die to a damage roll it just made." },
-    "majesty-concentration": { severity: "medium", kind: "rule-missing", where: `${RES} sub_mantle_of_majesty (fx buff, no concentration)`, note: "", fix: "Hold the mantle by concentration." },
     "flourish-speed": { severity: "low", kind: "rule-missing", where: `${DATA} bard::Blade Flourish (the spend only)`, note: "", fix: "Add 10 feet to the bard's speed on a turn they take the Attack action." },
     "masters-flourish": { severity: "low", kind: "rule-missing", where: `${DATA} bard::Master's Flourish (narrated)`, note: "", fix: "Let Blade Flourish be paid with a d6 when no die is spent." },
-    "blades-no-hit": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Psychic Blades (no afterWeaponHit)`, note: "", fix: "Gate the spend on a weapon hit this turn." },
     unfailing: { severity: "low", kind: "rule-missing", where: `${DATA} bard::Unfailing Inspiration (narrated)`, note: "", fix: "Keep the inspiration of an Eloquence bard when the roll it rode still fails." },
     "focus-text": { severity: "low", kind: "data", where: `${DATA} bard::Spiritual Focus (spell_rider 1d6 from 6th level) and src/lib/srd/subclasses.json (the words name no die)`, note: "", fix: "Write the die the row rolls into the feature's words." },
     "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
