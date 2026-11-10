@@ -4,7 +4,7 @@
 // as a gap() where it says the engine does not. The clause text and the
 // verdict live in the ledger; this file holds only how each is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -393,4 +393,4 @@ P["barbarian.intimidating-presence.unmoved"] = async () => {
   assert.equal(t.budget()?.actionUsed ?? false, false, "the refused use took the action");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-barbarian.mjs", P);
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-barbarian.mjs", P);

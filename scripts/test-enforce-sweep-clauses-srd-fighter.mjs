@@ -2,7 +2,7 @@
 // clause text and the verdict live in scripts/clauses/srd-classes.json; this
 // file holds how each clause that names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -159,4 +159,4 @@ P["fighter.superior-critical.crit-18"] = async () => {
   assert.equal(diceIn(plain.damage), 1, "a 17 is no critical hit");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-fighter.mjs", P);
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-fighter.mjs", P);

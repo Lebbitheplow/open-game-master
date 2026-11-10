@@ -2,7 +2,7 @@
 // clause text and the verdict live in scripts/clauses/srd-classes.json; this
 // file holds how each clause that names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig, TRAINED } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -80,4 +80,4 @@ P["rogue.thiefs-reflexes.surprised"] = async () => {
   assert.equal(t.kit.current()?.characterId, who.id);
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-rogue.mjs", P);
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-rogue.mjs", P);

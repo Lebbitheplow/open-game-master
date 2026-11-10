@@ -10,6 +10,7 @@ import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import type { Advantage } from "@/lib/dice";
 import type { TurnBudget } from "@/lib/dm/action-budget";
+import { wieldsOnlyMonkWeapons } from "@/lib/dm/mt-srd-monk";
 import { attackedWith } from "@/lib/dm/mt-srd-ranger";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { resourceLeft } from "@/lib/dm/attack-rules";
@@ -47,11 +48,11 @@ const hasFeature = (sheet: Pick<CharacterSheet, "features">, name: string) =>
 const hasCondition = (sheet: Pick<CharacterSheet, "conditions">, name: string) =>
   sheet.conditions.some((entry) => entry.trim().toLowerCase() === name);
 
-// Martial Arts works only while the monk wears no armor and carries no
-// shield (SRD 5.1, Martial Arts).
+// Martial Arts works only while the monk wears no armor, carries no shield
+// and holds no weapon that is not a monk weapon (SRD 5.1, Martial Arts).
 export function martialArtsApplies(sheet: CharacterSheet): boolean {
   const worn = acBreakdownFor(sheet);
-  return !worn.armorName && !worn.shieldName;
+  return !worn.armorName && !worn.shieldName && wieldsOnlyMonkWeapons(sheet);
 }
 
 export type AttackOptions = {

@@ -3,7 +3,7 @@
 // scripts/clauses/srd-classes.json; this file holds how each clause that
 // names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -251,4 +251,34 @@ P["monk.quivering-palm.one-at-a-time"] = async () => {
   assert.equal(holding, 1, `${holding} creatures carry the monk's vibrations at once`);
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-monk.mjs", P);
+P["monk.quivering-palm.end-harmlessly"] = async () => {
+  const t = await rig.table();
+  const { who, list } = await palm(t);
+  const before = t.enemy(list[0]).currentHp;
+  t.freshTurn();
+  // A 1 would fail the save and drop the creature: no die is rolled.
+  const end = await t.use(who, "Quivering Palm", { targetEnemyId: list[0].id, variant: "end" }, [1]);
+  assert.equal(end.ok, true, end.error);
+  assert.equal(end.unused, 1, "ending the vibrations harmlessly rolled a save");
+  assert.equal(t.foeHas(list[0], "quivering palm"), false, "the vibrations are still in the creature");
+  assert.equal(t.enemy(list[0]).currentHp, before, "the harmless end dealt damage");
+  assert.equal(t.budget()?.actionUsed ?? false, false, "ending the vibrations harmlessly took the action");
+  assert.equal(t.used(who, "ki"), 3, "the harmless end spent ki of its own");
+};
+
+// The board's water and its climbs, as a walk is costed (battlemap/types.ts
+// moveCost over the traits the sheet's own features give).
+P["monk.unarmored-movement.surfaces"] = async () => {
+  const board = await import("../src/lib/battlemap/types.ts");
+  const t = await rig.table();
+  const cost = (who, tile) => board.moveCost(tile, board.moveTraitsFrom(t.sheet(who).features));
+  const eighth = monk(t, 8);
+  const ninth = monk(t, 9);
+  for (const tile of [board.TERRAIN.water, board.TERRAIN.climb]) {
+    assert.equal(cost(eighth, tile), 2, `the staging: an 8th level monk pays double on "${tile}"`);
+    assert.equal(cost(ninth, tile), 1, `a 9th level monk pays double to cross "${tile}"`);
+  }
+  assert.equal(cost(ninth, board.TERRAIN.difficult), 2, "the 9th level step is not Land's Stride");
+};
+
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-monk.mjs", P);

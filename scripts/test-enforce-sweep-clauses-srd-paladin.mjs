@@ -3,7 +3,7 @@
 // scripts/clauses/srd-classes.json; this file holds how each clause that
 // names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -204,4 +204,4 @@ P["paladin.holy-nimbus.once"] = async () => {
   assert.equal(third.ok, false, "a short rest gave Holy Nimbus back");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-paladin.mjs", P);
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-paladin.mjs", P);

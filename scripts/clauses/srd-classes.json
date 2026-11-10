@@ -3951,11 +3951,9 @@
       },
       {
         "c": "while you are unarmed or wielding only monk weapons",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.only-monk-weapons",
-        "where": "src/lib/dm/attack-logic.ts (where Martial Arts is switched on: armor and shield are read, the other hand's weapon is not)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "a longsword in hand ends Martial Arts for the unarmed strike too (src/lib/dm/mt-srd-monk.ts wieldsOnlyMonkWeapons)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.only-monk-weapons"
       },
       {
         "c": "and you aren't wearing armor or wielding a shield",
@@ -4136,12 +4134,9 @@
       },
       {
         "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
-        "is": "gap",
-        "read_only": true,
-        "why": "no code reads the 9th level step (grep 'vertical', 'liquids' under src/lib finds nothing); the board has no heights to stage a wall, and crossing water at walking cost was not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the board's water and climbs cost a 9th level monk what open ground does (src/lib/battlemap/types.ts moveTraitsFrom); a wall with no climb drawn has no height on the board and is the GM's",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.unarmored-movement.surfaces"
       }
     ]
   },
@@ -4214,11 +4209,9 @@
       },
       {
         "c": "if it is small enough for you to hold in one hand and you have at least one hand free",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.free-hand",
-        "where": "src/lib/dm/reaction-tools.ts (Deflect Missiles' throw back)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "with no hand free, or a missile too large for one hand, nothing is thrown back and no ki is spent (mt-srd-monk.ts catchProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.free-hand"
       },
       {
         "c": "you can spend 1 ki point to make a ranged attack with the weapon or piece of ammunition you just caught, as part of the same reaction",
@@ -4394,11 +4387,9 @@
       },
       {
         "c": "you can use your action",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.action",
-        "where": "src/lib/dm/feature-hooks.ts stillnessOfMind",
-        "severity": "medium",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "the action is priced as any uncounted feature's (combat-features.ts priceTheAction)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.action"
       },
       {
         "c": "to end one effect on yourself that is causing you to be charmed",
@@ -4424,12 +4415,9 @@
     "clauses": [
       {
         "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
-        "is": "gap",
-        "read_only": true,
-        "why": "see monk::Unarmored Movement: no code reads it, not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the board's water and climbs cost a 9th level monk what open ground does (src/lib/battlemap/types.ts moveTraitsFrom)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.unarmored-movement.surfaces"
       }
     ]
   },
@@ -4551,12 +4539,9 @@
       },
       {
         "c": "In addition, you no longer need food or water.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.timeless-body.no-food",
-        "where": "src/lib/dm/supplies.ts (who the dawn's ration and water are asked of)",
-        "severity": "low",
-        "kind": "rule-missing",
-        "note": "reachable only at a table with the supplies variant on"
+        "is": "held",
+        "by": "the supplies variant's dawn skips a monk of 15th level (mt-srd-monk.ts needsNoFoodOrWater)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.timeless-body.no-food"
       }
     ]
   },
@@ -4774,11 +4759,9 @@
       },
       {
         "c": "which last for a number of days equal to your monk level",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.days",
-        "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm (rounds: 14400)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "the vibrations' rounds are a day's times the monk level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.days"
       },
       {
         "c": "The vibrations are harmless unless you use your action to end them.",
@@ -4811,20 +4794,15 @@
       },
       {
         "c": "You can have only one creature under the effect of this feature at a time.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.one-at-a-time",
-        "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "setting new vibrations ends the earlier creature's harmlessly",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.one-at-a-time"
       },
       {
         "c": "You can choose to end the vibrations harmlessly without using an action.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: use_resource Quivering Palm on a creature already carrying the vibrations always prices the action and rolls the save (src/lib/dm/srd-feature-spends.ts quiveringPalm); the only way to drop them unspent is the GM's clear_condition on the enemy",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "variant 'end': no action, no save, no damage",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.end-harmlessly"
       }
     ]
   },

@@ -14,6 +14,7 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
+import { catchProblem } from "@/lib/dm/mt-srd-monk";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
@@ -218,6 +219,10 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
     return { error: "The missile can be thrown back at a living enemy from GAME STATE; it was caught and kept." };
   }
   // Not across a swallower's wall (swallow.ts).
+  const uncaught = catchProblem(getSheetById(sheet.id) ?? sheet, record.attack ?? "missile");
+  if (uncaught) {
+    return { error: `${uncaught} No ki was spent.` };
+  }
   const walled = swallowCoverBetween(sheet.id, enemy.id);
   if (walled) {
     return { error: `${walled} The missile was caught and kept.` };
