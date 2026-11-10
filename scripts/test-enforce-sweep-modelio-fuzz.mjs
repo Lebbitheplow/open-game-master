@@ -196,7 +196,6 @@ const CLASSES = {
 // row id -> [class, where, note]. The rows the 2026-11-09 repair closed (the
 // argument door, src/lib/dm/arg-coerce.ts doorArgs) run as tests.
 const KNOWN_ROWS = {
-  "turn:handle_item:list-for-one:item": ["threw", "src/lib/dm/gear-tool.ts handle_item; src/lib/dm/turn.ts (a handler's throw fails the whole turn: '[dm-turn] advance failed TypeError')", "On a real GM turn the call's TypeError ends the turn as failed: the table gets no narration."],
 };
 const KNOWN = Object.fromEntries(
   Object.entries(KNOWN_ROWS).map(([id, [kind, where, note]]) => [id, { ...CLASSES[kind], where: where ?? CLASSES[kind].where, note }]),
@@ -301,10 +300,15 @@ await test(`the walk covered every tool (${tally.tools}) and ${tally.rows} slips
   const turn = getDmTurn(getLatestDmTurnId(world.campaignId));
   const answers = model.requests.flatMap((request) => model.results(request));
   const answer = answers.find((entry) => entry.id === bad.id)?.result;
+  // The slip's rule (list-for-one, the header): the same as the one value,
+  // or a retry naming the field. Either way the turn finishes and the model
+  // is never handed the handler's crash text.
   const check = () => {
     assert.equal(turn?.status, "done", `the turn ended "${turn?.status}": ${String(turn?.error ?? "").slice(0, 200)}`);
-    assert.ok(answer && answer.retry === true, `the model was answered ${JSON.stringify(answer)?.slice(0, 200)}`);
-    assert.doesNotMatch(String(answer.error), /is not a function|TypeError/, "the refusal is the handler's own crash text");
+    assert.ok(answer, "the model's call was never answered");
+    const asOne = typeof answer.error !== "string";
+    assert.ok(asOne || answer.retry === true, `the model was answered ${JSON.stringify(answer)?.slice(0, 200)}`);
+    assert.doesNotMatch(String(answer.error ?? ""), /is not a function|TypeError/, "the refusal is the handler's own crash text");
   };
   if (KNOWN[id]) await gap(id, KNOWN[id], check);
   else await test(id, check);
