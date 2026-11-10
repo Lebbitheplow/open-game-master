@@ -698,6 +698,8 @@ function useReaction(
         ...(args.variant ? { variant: args.variant } : {}),
         ...(args.targetCharacterId ? { targetCharacterId: args.targetCharacterId } : {}),
         ...(args.targetEnemyId ? { targetEnemyId: args.targetEnemyId } : {}),
+        // The square a reaction moves its holder to (Swarming Dispersal's teleport).
+        ...(args.x !== undefined && args.y !== undefined ? { x: args.x, y: args.y } : {}),
         reason: args.reason ?? feature,
       }),
       sheets,

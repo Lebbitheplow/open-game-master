@@ -412,7 +412,8 @@ export const CLERIC_A = {
     rig.note("trickster", [self.ok, self.error, reach.ok, reach.error, farHas, out.ok, out.error, state, foe.id]);
     return {
       touch: () => assert.equal(reach.ok && farHas, false, "a creature 50 feet away was blessed by touch"),
-      willing: () => assert.equal(self.ok, true, `the cleric, a willing creature, is refused: ${self.error}`),
+      // TCoE (and the stored words): "a willing creature other than yourself".
+      willing: () => assert.equal(self.ok, false, `the cleric blessed themselves: ${JSON.stringify(self.result).slice(0, 160)}`),
       stealth: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(rig.d20s(stealth.result), 2, "the blessed creature's Stealth check");

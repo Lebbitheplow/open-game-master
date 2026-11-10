@@ -775,7 +775,7 @@
           "1": [
             {
               "n": "Blessing of the Trickster",
-              "d": "Touch a willing creature to give it advantage on Stealth checks for an hour."
+              "d": "Touch a willing creature other than yourself to give it advantage on Stealth checks for an hour."
             }
           ],
           "2": [
@@ -1561,6 +1561,11 @@
               "n": "Full of Stars",
               "d": "While in Starry Form you are partly incorporeal and resist bludgeoning, piercing and slashing damage."
             }
+          ]
+        },
+        "spells": {
+          "2": [
+            "Guidance"
           ]
         }
       },
@@ -2655,7 +2660,7 @@
           "3": [
             {
               "n": "Channel Divinity: Watcher's Will",
-              "d": "You and up to your Charisma modifier in allies gain advantage on Intelligence, Wisdom and Charisma saves for a minute."
+              "d": "You and up to your Charisma modifier in allies within 30 feet gain advantage on Intelligence, Wisdom and Charisma saves for a minute."
             },
             {
               "n": "Channel Divinity: Abjure the Extraplanar",
@@ -2677,7 +2682,7 @@
           "20": [
             {
               "n": "Mortal Bulwark",
-              "d": "For a minute: truesight to 120 feet, advantage on attacks against aberrations, celestials, elementals, fey and fiends, and a hit can banish one to its home plane on a failed Charisma save."
+              "d": "For a minute: truesight to 120 feet, advantage on attacks against aberrations, celestials, elementals, fey and fiends, and a hit can banish one to its home plane on a failed Charisma save. A bonus action, once per long rest."
             }
           ]
         },
@@ -2737,7 +2742,7 @@
           "20": [
             {
               "n": "Exalted Champion",
-              "d": "For an hour: resistance to nonmagical weapon damage, advantage on Wisdom saves for you and allies within 30 feet, and death saves at advantage for the same."
+              "d": "For an hour: resistance to nonmagical weapon damage, advantage on Wisdom saves for you and allies within 30 feet, and death saves at advantage for the same. An action, once per long rest."
             }
           ]
         },

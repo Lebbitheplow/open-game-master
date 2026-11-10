@@ -4,6 +4,7 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
 import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
@@ -38,6 +39,10 @@ import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { hasCondition } from "@/lib/srd/authored-effects";
+
+// The once-a-turn mark of Living Legend's turned miss, and its condition.
+const LIVING_LEGEND = "living legend";
 
 // Who the attack is between, read live when the stage runs.
 export type SwingScene = {
@@ -88,6 +93,9 @@ export function markAttackTurn(campaignId: string, record: AttackRecord, key: st
 // Stroke of Luck on a miss. On a hit, the once-a-turn riders it carried are spent.
 export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollResult, notes: string[]): Judged {
   const { campaign } = scene;
+  // A steel defender that attacks was commanded, and is not dodging until its
+  // next turn (defender-dodge.ts).
+  markDefenderCommanded(campaign.id, scene.sheet.id);
   const targetAc = recordTargetAc(campaign.id, record);
   const natural1 = toHit.crit === "nat1";
   const judged = adjudicateHit(toHit.total, toHit.crit, targetAc, { natural: toHit.natural, critRange: record.critRange });
@@ -122,6 +130,14 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     rescuedHit = true;
   } else if (rescued === "stroke of luck" && spendFeatureUse(campaign, scene.sheet.id, STROKE_OF_LUCK, "Stroke of Luck")) {
     notes.push("Stroke of Luck: the miss becomes a hit (the use is spent)");
+    rescuedHit = true;
+  }
+  // Living Legend (Oath of Glory 20): "once on each of your turns a weapon
+  // attack that misses can hit instead". Taken on the first weapon miss of
+  // the paladin's own turn: a hit is what the miss's player wants, and the
+  // mark keeps it to once a turn (no turn running, no mark, no rescue).
+  if (!adjudicated.hit && !rescuedHit && !parry && (record.weaponAttack ?? !record.spell) && hasCondition(scene.sheet, LIVING_LEGEND) && markAttackTurn(campaign.id, record, LIVING_LEGEND)) {
+    notes.push("Living Legend: the miss hits instead (once this turn)");
     rescuedHit = true;
   }
   const hit = adjudicated.hit || rescuedHit;

@@ -44,6 +44,7 @@ import { healDeathHook } from "@/lib/dm/death";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { featureVariantSpend } from "@/lib/dm/feature-spends";
 import { authoredFeatureSpend } from "@/lib/dm/authored-spends";
+import { afterHealingSpell } from "@/lib/dm/heal-after-dra";
 import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
@@ -500,6 +501,12 @@ const argsSchema = z.object({
   // use_resource: the creatures of the user's choice an area feature takes
   // (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect).
   targetEnemyIds: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  // use_resource: the square a feature moves its holder to (Misty Wanderer,
+  // Gathered Swarm's move; src/lib/dm/feature-move.ts). Sent by the console
+  // and the Hand; the model's tool description leaves it out (the compact
+  // budget), and a move it leaves out is credited to move_token as before.
+  x: z.coerce.number().int().min(0).max(500).optional(),
+  y: z.coerce.number().int().min(0).max(500).optional(),
   // purchase: gold each, for a thing no list prices (half a gold piece is 0.5).
   price: z.coerce.number().min(0).max(100000).optional(),
   resource: z.string().optional(),
@@ -857,6 +864,9 @@ function dmMutation(
           magical: args.magical === true,
           // A named spell's damage: Spell Resistance and Aura of Warding resist it.
           spell: Boolean(args.spell),
+          // A creature's blow is enemy_attack or cast_at_player; this tool's
+          // harm names no creature, which Emissary of Redemption does not resist.
+          noCreature: true,
           reason,
         }),
       };
@@ -1014,12 +1024,16 @@ function dmMutation(
       }
       // Any healing ends the dying state.
       const deathInfo = healDeathHook(campaign, turnId, target);
+      // A druid's healing spell reaches past its target: Starry Form's
+      // Chalice and the Unicorn spirit's aura (src/lib/dm/heal-after-dra.ts).
+      const alsoHealed = healSpell && healNote ? afterHealingSpell(campaign, turnId, (args.casterId ? resolve(args.casterId) : null) ?? sheet, target, healSpell, args.level) : [];
       return {
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
           healed: amount,
           ...(healNote ? { spell: healNote } : {}),
+          ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,
         },
       };
@@ -1493,6 +1507,7 @@ function dmMutation(
         args.variant,
         { beforeDrop: charge.beforeDrop },
         { turnId, targetEnemyId: args.targetEnemyId, targetEnemyIds: args.targetEnemyIds },
+        { ...(args.x !== undefined && args.y !== undefined ? { square: { x: args.x, y: args.y } } : {}), ...(args.level !== undefined ? { slotLevel: args.level } : {}) },
       );
       if ("error" in outcome) {
         return { result: outcome };

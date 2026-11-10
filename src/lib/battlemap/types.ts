@@ -239,10 +239,25 @@ export function flyingSpeedOf(input: {
   return input.worn ? Math.max(own ?? 0, input.worn) : own;
 }
 
+const FEATURE_FLIGHT = new Map<string, number>([["flying (writhing tide)", 10]]);
+
 function ownFlyingSpeed(input: Parameters<typeof flyingSpeedOf>[0]): number | null {
   const printed = /\bfly\s+(\d+)/i.exec(input.speedText ?? "");
   if (printed) {
     return Number(printed[1]);
+  }
+  // A flight that names its feet (an Experimental Elixir's "flying (10 ft)")
+  // flies that far, not the Fly spell's 60.
+  const stated = (input.conditions ?? []).map((entry) => /^flying \((\d+) ?(?:ft|feet)\.?\)$/i.exec(entry.trim())).find(Boolean);
+  if (stated) {
+    return Number(stated[1]);
+  }
+  // A flying speed a feature gives at its own number, laid as "flying
+  // (<feature>)": Writhing Tide's swarm carries its ranger 10 feet, not the
+  // Fly spell's 60.
+  const fromFeature = (input.conditions ?? []).map((entry) => FEATURE_FLIGHT.get(entry.trim().toLowerCase())).find((feet) => feet !== undefined);
+  if (fromFeature !== undefined) {
+    return fromFeature;
   }
   if ((input.conditions ?? []).some((entry) => /^flying\b|^fly \(spell\)$/i.test(entry.trim()))) {
     return 60;

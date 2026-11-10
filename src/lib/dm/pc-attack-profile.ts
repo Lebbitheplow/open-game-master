@@ -150,7 +150,9 @@ export function buildAttackProfile(
       damageType: granted.attack.type,
       ranged: granted.attack.ranged,
       thrown: false,
-      reachTiles: 1,
+      // A melee strike with a reach of its own (Dread Lord's shadows: "a
+      // creature in the aura", 30 feet); 5 feet otherwise.
+      reachTiles: Math.max(1, Math.round((granted.attack.reachFeet ?? 5) / 5)),
       rangeTiles,
       longRangeTiles: rangeTiles,
       proficient: true,
@@ -323,7 +325,11 @@ export function buildAttackProfile(
     }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
-    profile = weaponAttackProfile(derived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
+    // A weapon whose feature names its ability (Armor Model: Intelligence)
+    // rolls with it, whatever its kind would use.
+    const own = natural.weapon.ability;
+    const swingDerived = own ? { ...derived, abilityMods: { ...derived.abilityMods, str: derived.abilityMods[own], dex: derived.abilityMods[own] } } : derived;
+    profile = weaponAttackProfile(swingDerived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
       riders,
       martialArts: false,
     });

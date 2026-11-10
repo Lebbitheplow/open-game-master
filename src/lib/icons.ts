@@ -40,6 +40,9 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // A feature's second spend wears the feature's own painting (issue 233).
   "feature/activate-cannon": { kind: "feature", slug: "eldritch-cannon" },
   "feature/move-spirit-totem": { kind: "feature", slug: "spirit-totem" },
+  "feature/spreading-spores": { kind: "feature", slug: "halo-of-spores" },
+  // The Beast Master's command card wears the painting of a hero and its beast.
+  "feature/exceptional-training": { kind: "feature", slug: "bonded-beast" },
   // The Echo Knight's echo (src/lib/srd/authored-effects-data-b.ts) wears its
   // sibling Unleash Incarnation's painting, a sword and its spectral double:
   // the catalogue's own prompt for it read only the duration.

@@ -1,4 +1,5 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
+import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { currentActor } from "@/lib/dm/acting-party";
 import { disarmFightEvents } from "@/lib/db/fight-events";
@@ -595,6 +596,8 @@ export function applyEnemyDamage(
     // A death is a trigger for the reactions that answer one: kept with who
     // dealt the blow (src/lib/dm/last-save.ts, src/lib/srd/trigger-table.ts).
     recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null });
+    // A Wildfire druid near it gains a spectral flame in its space (cauterizing-flames.ts).
+    layFlamesOnDeath(campaign.id, { id: enemy.id, size: typeof enemy.stats.size === "string" ? enemy.stats.size : null });
     const corpse = freeFromCorpse(campaign, updated);
     if (corpse) {
       base.swallowedFreed = corpse;

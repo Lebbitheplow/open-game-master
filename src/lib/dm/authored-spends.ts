@@ -15,7 +15,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, gateHolds, hasCondition, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
 import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
@@ -28,6 +28,7 @@ import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-e
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { drinkerTempHp, lowestSlotLeft, nearZoneRefusal, rollOption, spendSlotOf } from "@/lib/dm/authored-spend-divine-dra";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -35,6 +36,9 @@ export type AuthoredSpendArgs = {
   targetCharacterId?: string;
   targetEnemyId?: string;
   targetEnemyIds?: string[];
+  // A square the feature moves its holder to (src/lib/dm/feature-move.ts).
+  x?: number;
+  y?: number;
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {
@@ -57,6 +61,7 @@ function gateSentence(spend: AuthoredSpend): ToolError {
   if (gate.raging) return { error: `${spend.name} works only while raging (and not in heavy armor).`, refused: "rules" };
   if (gate.condition) return { error: gate.because ? `${spend.name} ${gate.because}. Nothing was spent.` : `${spend.name} works only while ${gate.condition} holds.`, refused: "rules" };
   if (gate.choice) return { error: `${spend.name} belongs to the ${gate.choice} option, which this character has not chosen.`, refused: "rules" };
+  if (gate.pet) return { error: `${spend.name} commands ${gate.pet === "drake" ? "a drake" : gate.pet === "familiar" ? "a familiar" : "a companion"}, and none is out and standing (summon_pet first). Nothing was spent.`, refused: "rules" };
   if (gate.choiceOf) return { error: `${spend.name} belongs to the ${gate.choiceOf.value} ${gate.choiceOf.feature}, which this character has not chosen.`, refused: "rules" };
   return { error: `${spend.name} cannot be used right now.`, refused: "rules" };
 }
@@ -188,6 +193,11 @@ export function authoredFeatureSpend(
     const refusal = gateSentence(spend);
     return { ...refusal, error: `${refusal.error} Nothing was spent.` };
   }
+  // Worked through something on the board within reach (Activate Cannon).
+  const far = spend.nearZone ? nearZoneRefusal(campaign.id, sheet, spend.nearZone, spend.name) : null;
+  if (far) {
+    return far;
+  }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
   if (spend.fight === "out" && inFight) {
@@ -196,14 +206,25 @@ export function authoredFeatureSpend(
   if (spend.oncePer && sheet.conditions.some((entry) => textKey(entry) === textKey(spend.oncePer!.marker))) {
     return { error: `${spend.name} has been used already (${spend.oncePer.marker}). Nothing was spent.`, refused: "rules" };
   }
-  const picked = pickVariant(spend.does, args.variant, spend);
+  // A die that picks the option when none is named (Experimental Elixir's
+  // d6): rolled below, once the use is sure to be paid.
+  const rollsOption = spend.does.kind === "variants" && Boolean(spend.does.roll) && !args.variant?.trim();
+  let picked = rollsOption ? { does: spend.does, action: spend.action, afterWeaponHit: spend.afterWeaponHit } : pickVariant(spend.does, args.variant, spend);
   if ("error" in picked) {
     return picked;
+  }
+  // Twinkling Constellations: a form already up changes for free, once a
+  // turn (spend.swap); taking it again spent another use and stacked a second
+  // form beside the first.
+  const swapping = Boolean(spend.swap && hasCondition(sheet, spend.swap.family) && sheet.features.some((feature) => isNamed(feature.name, spend.swap!.feature)));
+  if (swapping) {
+    picked = { ...picked, action: "none" };
   }
   // The pool: how much, from which counter.
   let poolId: string | null = null;
   let units = 0;
-  if (spend.pool) {
+  let slotLevel: number | null = null;
+  if (spend.pool && !swapping) {
     units = spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
     if (spend.pool.max && units > spend.pool.max) {
       return { error: `${spend.name} takes at most ${spend.pool.max}; ${units} is more than it can hold. Nothing was spent.`, retry: true };
@@ -213,17 +234,31 @@ export function authoredFeatureSpend(
       const state = sheet.resources?.[id];
       return state && state.max - state.used >= units;
     }) ?? null;
-    if (units > 0 && !poolId) {
+    // "Or by expending a spell slot of 1st level or higher": with the
+    // counter spent, the lowest slot left pays (dra-slot-fallback).
+    slotLevel = units > 0 && !poolId && spend.pool.slot ? lowestSlotLeft(sheet) : null;
+    // "Or by expending a 5th-level spell slot" (Living Legend): a slot of
+    // exactly that level, when one is left.
+    const fixed = spend.pool.slotFallback;
+    const fixedSlot = fixed ? sheet.spellcasting?.slots?.[String(fixed)] : null;
+    if (units > 0 && !poolId && slotLevel === null && fixed && fixedSlot && fixedSlot.max - fixedSlot.used > 0) {
+      slotLevel = fixed;
+    }
+    if (slotLevel !== null && rollsOption) {
+      return { error: `${spend.name} bought with a spell slot is brewed by choice: name its effect in variant (${spend.does.kind === "variants" ? Object.keys(spend.does.options).join(", ") : ""}). Nothing was spent.`, retry: true };
+    }
+    if (units > 0 && !poolId && slotLevel === null) {
       const state = sheet.resources?.[spend.pool.id];
       return {
         error: state
           ? `${sheet.name} has ${state.max - state.used}/${state.max} left of what ${spend.name} spends, and it takes ${units}. Nothing was spent.`
-          : `${sheet.name} has no ${counterName(spend.pool.id)} to spend on ${spend.name}.`,
+          : `${sheet.name} has no ${counterName(spend.pool.id)} to spend on ${spend.name}.`
+            + (spend.pool.slotFallback ? ` A level ${spend.pool.slotFallback} spell slot would buy it again, and none is left.` : ""),
         refused: "rules",
       };
     }
   }
-  const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
+  const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : swapping ? `authored:${textKey(spend.name)} swap` : null;
   const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
   if ("error" in charge) {
     return charge;
@@ -238,18 +273,31 @@ export function authoredFeatureSpend(
     spend,
     args,
     units,
+    ...(slotLevel !== null ? { paidBySlot: slotLevel } : {}),
     mods: computeSheetDerived(sheet).abilityMods,
     reason,
     ...("marks" in charge && charge.marks ? { marks: charge.marks } : {}),
   };
+  if (rollsOption && spend.does.kind === "variants") {
+    const rolled = rollOption(ctx, spend.does);
+    picked = { ...rolled.option, action: rolled.option.action ?? spend.action };
+    ctx.args = { ...args, variant: rolled.key };
+  }
   const outcome = resolveSpendEffect(ctx, picked.does);
   if ("error" in outcome) {
     return outcome;
   }
+  const drunk = drinkerTempHp(ctx);
   // Only now is anything written: the effect's own patch, the pool, the
   // once-per marker, the turn.
   const now = getSheetById(sheet.id) ?? sheet;
   const patch: FullPatchSheetInput = { ...(outcome.patch ?? {}) };
+  if (slotLevel !== null) {
+    const casting = patch.spellcasting ?? now.spellcasting;
+    if (casting) {
+      patch.spellcasting = spendSlotOf(casting, slotLevel);
+    }
+  }
   if (poolId && units > 0) {
     // On top of what the effect wrote: Psionic Recovery restores a Psionic
     // Energy die and spends its own use, and the pool written from the sheet
@@ -278,7 +326,10 @@ export function authoredFeatureSpend(
     ok: true,
     resource: spend.name,
     ...(poolId && units > 0 ? { spent: units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
+    ...(slotLevel !== null ? { spent: `a level ${slotLevel} spell slot (no use was left)` } : {}),
+    ...(rollsOption ? { rolled: ctx.args.variant } : {}),
     ...outcome.result,
+    ...(drunk ? { tempHp: drunk } : {}),
     ...charge.commit(),
   };
 }

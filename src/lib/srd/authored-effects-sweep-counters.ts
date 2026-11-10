@@ -70,6 +70,10 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         does: { kind: "buff", target: "allies", condition: "eyes of night (300 ft darkvision)", rounds: 600, rangeFt: 10, count: "wis", sight: true },
       },
     ],
+    // "Darkvision out to 300 feet": the cleric's own, always. Before this
+    // only the shared condition gave it, so the cleric saw nothing in the
+    // dark until they spent the use.
+    effects: [{ kind: "darkvision", feet: 300 }],
   },
   "rogue::Wails from the Grave": {
     subclass: "Phantom",
@@ -142,23 +146,32 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
       },
     ],
   },
-  // A d6 on the table at a long rest; drunk, its one effect.
+  // A d6 on the table at a long rest; drunk, its one effect. "Its effect
+  // rolled on a d6": with no effect named the d6 picks it, in the order
+  // listed. "As an action you can expend a spell slot of 1st level or higher
+  // to brew one more, choosing its effect": the slot pays once the rest's
+  // elixirs are gone, and names its effect. From 9th level the drinker also
+  // gains 2d6 + Intelligence temporary hit points (Restorative Reagents).
   "artificer::Experimental Elixir": {
     subclass: "Alchemist",
     counter: "art_experimental_elixir",
     spends: [
       {
         name: "Experimental Elixir",
-        pool: { id: "art_experimental_elixir" },
+        pool: { id: "art_experimental_elixir", slot: true },
         action: "action",
+        drinker: { feature: "Restorative Reagents", tempHp: (_level, mods) => `2d6+${Math.max(0, mods.int ?? 0)}` },
         does: {
           kind: "variants",
+          roll: "d6",
           options: {
             healing: { does: { kind: "flames", formula: "2d4+int", type: "", healOnly: true } },
             swiftness: { does: { kind: "buff", target: "ally", condition: "elixir of swiftness (+10 ft speed)", rounds: 600 } },
             resilience: { does: { kind: "buff", target: "ally", condition: "elixir of resilience (+1 AC)", rounds: 100 } },
             boldness: { does: { kind: "buff", target: "ally", condition: "elixir of boldness (d4)", rounds: 10 } },
-            flight: { does: { kind: "buff", target: "ally", condition: "flying", rounds: 100 } },
+            // "A 10-foot flying speed", not the Fly spell's 60 (the board's
+            // flyingSpeedOf reads the feet the condition names).
+            flight: { does: { kind: "buff", target: "ally", condition: "flying (10 ft)", rounds: 100 } },
             transformation: { does: { kind: "buff", target: "ally", condition: "elixir of transformation", rounds: 100 } },
           },
         },

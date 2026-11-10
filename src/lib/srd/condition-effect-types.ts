@@ -40,6 +40,10 @@ export type GrantedAttack = {
   // A ranged one's range in feet (Starry Form's Archer 60, Crown of Stars
   // 120). A spell attack has no long range: past this it cannot reach.
   rangeFeet?: number;
+  // A melee one's reach in feet when it is not the 5 feet of a hand's
+  // swing: Dread Lord's shadows strike "a creature in the aura", any within
+  // 30 feet (pc-attack-profile.ts reachTiles, the Hand card's range).
+  reachFeet?: number;
   // The strike comes from something the spell made, not from its holder
   // (issue 659: Spiritual Weapon's floating weapon). Reach is measured from
   // the spell's area of that name on the board, which the strike may first
@@ -131,6 +135,9 @@ export type ConditionEffectRow = {
   // enlarged +1d4). `type` "" = the attack's own damage type. A leading "-"
   // subtracts (reduced).
   onHitDice?: { dice: string; type: string };
+  // The hit's own weapon damage turns to this type while the dice ride it
+  // (Planar Warrior: "its weapon damage plus 1d8 force as force damage").
+  weaponDamageAs?: string;
   // The dice and type ride in the condition's own parentheses, as the cast
   // set them: "absorbed strike (2d6 fire)" (Absorb Elements by slot).
   paramOnHitDice?: boolean;
@@ -154,6 +161,10 @@ export type ConditionEffectRow = {
   // Held by the TARGET: the next attack roll against it spends it (Guiding
   // Bolt's advantage).
   consumedAgainst?: boolean;
+  // Held by the TARGET: an attack that hits it deals these extra dice
+  // (Perfected Armor's glow: "deals an extra 1d6 lightning damage if it
+  // hits"), read by src/lib/dm/attack-damage-riders.ts.
+  hitDiceAgainst?: { dice: string; type: string };
   // Concentration saves cannot roll below this total (Starry Form: Dragon).
   concentrationFloor?: number;
   grantedAttack?: GrantedAttack;

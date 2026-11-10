@@ -19,6 +19,7 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
+import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { graveCurseFor } from "@/lib/dm/grave-curse";
@@ -48,7 +49,7 @@ export function foldDamageRiders(input: {
   kind: AttackKind;
   // The target, for the riders that read it (Colossus Slayer, Demon
   // Armor's curse).
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; stats?: { type?: string } & Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -77,6 +78,11 @@ export function foldDamageRiders(input: {
       ...profile,
       damageExpression: `${profile.damageExpression}${onHit.suffix}`,
     };
+  }
+  // Planar Warrior: the weapon's own damage is force too, so a creature
+  // immune to slashing still takes it (it took only the 1d8 before).
+  if (onHit.damageAs) {
+    profile = { ...profile, damageType: onHit.damageAs };
   }
   for (const rider of featureRiders) {
     profile = {
@@ -290,7 +296,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     (plan.kind === "weapon" && conditionStrikesMagical(plan.sheet.conditions)) ||
     // A pact weapon "counts as magical" (SRD 5.1, Pact of the Blade).
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
-    magicalStrikeApplies(plan)
+    magicalStrikeApplies(plan) ||
+    // Mighty Summoner: a Shepherd's summoned beast or fey (mighty-summoner.ts).
+    summonStrikesAsMagic(plan.sheet)
   );
 }
 

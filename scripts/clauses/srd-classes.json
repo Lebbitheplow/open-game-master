@@ -1894,8 +1894,8 @@
       },
       {
         "c": "that can see or hear you",
-        "is": "gap",
-        "by": "dm/feature-spends.ts turnUndead (no sight or hearing check: a blinded and deafened undead is turned)",
+        "is": "held",
+        "by": "dm/feature-spends.ts turnUndead (an undead that can neither see nor hear the cleric does not save and is not turned)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-turn-undead.sees-or-hears"
       },
       {

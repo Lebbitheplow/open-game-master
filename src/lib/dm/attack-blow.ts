@@ -5,6 +5,7 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -23,6 +24,7 @@ import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
+import { bulwarkBanish } from "@/lib/dm/mortal-bulwark";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
@@ -190,6 +192,11 @@ export function landSwingBlow(
     if (repelled) {
       notes.push(repelled);
     }
+    // The Force Ballista's 5-foot push (cannon-board-dra.ts).
+    const shoved = ballistaPush(campaign, enemy.encounterId, sheet.id, enemy, record.weapon);
+    if (shoved) {
+      notes.push(shoved);
+    }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);
     }
@@ -210,6 +217,13 @@ export function landSwingBlow(
   const authored = live
     ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead })
     : [];
+  // Mortal Bulwark: a hit that dealt damage asks an aberration, celestial,
+  // elemental, fey or fiend for a Charisma save or banishes it
+  // (mortal-bulwark.ts), after the marks above so a banished creature is gone.
+  const banished = !dead && !over ? bulwarkBanish(scene, Number(applied.damageApplied ?? dealt) || 0) : null;
+  if (banished) {
+    authored.push(banished);
+  }
   if (authored.length) {
     out.subclassFeatures = authored;
   }

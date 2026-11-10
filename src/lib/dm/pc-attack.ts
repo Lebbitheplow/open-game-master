@@ -1,4 +1,6 @@
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -8,6 +10,8 @@ import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { markBondSpent } from "@/lib/dm/emboldening-bond";
+import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { publishPersisted } from "@/lib/events";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { applyDmMutation } from "@/lib/dm/mutations";
@@ -367,6 +371,22 @@ export function handlePcAttack(
       return attack[PC_ATTACK_PARKED] ? attack : withApproach(attack, approach.walked);
     }
   }
+  // Distant Strike: a swing refused for reach alone, at a creature within
+  // the ranger's 10-foot teleport of a square beside it, teleports them
+  // there first (src/lib/dm/distant-strike.ts).
+  if (!args.approach && !engine.reactionAttack && holdsFeature(sheet, "Distant Strike")) {
+    const dry = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
+    if ("refused" in dry) {
+      const beside = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, skipReach: true, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
+      const enemyId = resolveEnemyRef(encounter.id, args.targetEnemyId)?.id;
+      const square = !("refused" in beside) && enemyId ? distantStrikeSquare(encounter.id, sheet.id, enemyId) : null;
+      if (square) {
+        const line = distantStrikeTeleport(campaign.id, encounter.id, sheet.id, square);
+        const attack = attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
+        return attack[PC_ATTACK_PARKED] || !line ? attack : { ...attack, teleport: line };
+      }
+    }
+  }
   return attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
 }
 
@@ -601,8 +621,12 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     ...(plan.helped ? [plan.helped] : []),
     ...plan.attackRiders.spent,
   ];
+  // Emboldening Bond's d4 is spent by stamping its turn, not by taking the bond off.
+  markBondSpent(campaign.id, sheet.id, plan.attackRiders.spent);
   if (spentConditions.length) {
-    const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, spentConditions);
+    // Read again when the bond was stamped just above, so the stamp stays.
+    const meta = plan.attackRiders.spent.includes(BOND_SPEND) ? (getSheetById(sheet.id) ?? sheet).conditionMeta : sheet.conditionMeta;
+    const cleared = removeConditions(sheet.conditions, meta, spentConditions);
     const revealed = patchSheet(sheet.id, {
       conditions: cleared.conditions,
       conditionMeta: cleared.meta,

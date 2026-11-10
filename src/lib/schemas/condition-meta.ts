@@ -81,10 +81,20 @@ const conditionInstanceSchema = z.object({
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // Ends when the rest it was raised for ends, short or long (Hearth of
+    // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
+    untilRestEnds: z.boolean().optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
+    // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),
+    // so the next roll of that turn goes without it (Emboldening Bond's d4,
+    // src/lib/dm/emboldening-bond-logic.ts).
+    usedTurn: z.string().trim().min(1).max(160).optional(),
+    // How many of the effect stand on the table (Invoke Duplicity's
+    // illusions: one, four with Improved Duplicity).
+    count: z.number().int().min(1).max(20).optional(),
     // A Dominate spell's standing order: the combatant its creature was told
     // to attack (src/lib/dm/combat-sides-logic.ts dominationOrderOf).
     order: z.string().trim().min(1).max(80).optional(),

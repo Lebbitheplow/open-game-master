@@ -60,11 +60,9 @@
   "clauses": [
    {
     "c": "Read a creature's surface thoughts for a minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Channel Divinity: Read Thoughts#minute",
-    "severity": "low",
-    "where": "src/lib/dm/feature-spends.ts and src/lib/dm/option-costs.ts ('read thoughts'): the Channel Divinity spend answers with the generic option guidance (src/lib/srd/class-resources.ts) and writes nothing on the creature or the cleric, so no reading lasts a minute",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-clr.ts readThoughts (row src/lib/srd/authored-effects-w2-divine-clr.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Channel Divinity: Read Thoughts#minute"
    },
    {
     "c": "and",
@@ -72,11 +70,9 @@
    },
    {
     "c": "cast suggestion on it without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Read Thoughts#free-suggestion",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts Channel Divinity options + src/lib/dm/cast-guard.ts (a free Suggestion at the read creature)"
+    "is": "held",
+    "by": "src/lib/dm/cast-guard.ts castSpell readFree and src/lib/dm/cast-at-enemy.ts readFails (src/lib/dm/read-thoughts.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Read Thoughts#free-suggestion"
    }
   ]
  },
@@ -226,11 +222,9 @@
    },
    {
     "c": "that you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Improved Flare#ally-seen",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/reaction-tools.ts authored reaction disadv_vs_hit: src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Warding Flare\"].reactions[0].sees is \"attacker\", the ally needs the cleric's sight too"
+    "is": "held",
+    "by": "src/lib/dm/authored-reactions.ts disadv_vs_hit with sees both (the Warding Flare row): an ally the cleric cannot see is refused, nothing spent; src/lib/battlemap/hand-react.ts deals no card for it",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Improved Flare#ally-seen"
    },
    {
     "c": "within 30 feet when it is attacked",
@@ -270,11 +264,9 @@
    },
    {
     "c": "For a minute, shed 60 feet of bright light",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Corona of Light#no-cost-stated",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Corona of Light\"].spends[0].pool channel_divinity: Corona of Light is an action of its own, not a Channel Divinity option"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data.ts AUTHORED_TABLE[\"cleric::Corona of Light\"] (no pool)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Corona of Light#no-cost-stated"
    },
    {
     "c": "and",
@@ -288,11 +280,9 @@
    },
    {
     "c": "against fire and radiant spells",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Corona of Light#other-spells",
-    "severity": "high",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Corona of Light\"].effects[0] enemy_save (no damage-type gate): every save in the light gets disadvantage, not only against fire and radiant spells"
+    "is": "held",
+    "by": "src/lib/dm/authored-saves.ts authoredEnemySave (enemy_save damageTypes, the spell's damageType from cast-at-enemy.ts and aoe-damage.ts through forced-save.ts rollEnemySave)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Corona of Light#other-spells"
    }
   ]
  },
@@ -305,11 +295,9 @@
   "clauses": [
    {
     "c": "One druid cantrip",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Acolyte of Nature#cantrip",
-    "severity": "medium",
-    "kind": "builder",
-    "where": "src/lib/srd/class-spell-grants.ts classSpellGrants: no extraCantrips/anyList for the subclass's druid cantrip"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts clericGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Acolyte of Nature#cantrip"
    },
    {
     "c": "and",
@@ -405,11 +393,9 @@
    },
    {
     "c": "cold, fire or lightning damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Divine Strike@Nature Domain#type",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/pc-attack-damage.ts Divine Strike rider: the Nature strike deals the weapon's type instead of cold, fire or lightning"
+    "is": "held",
+    "by": "src/lib/dm/attack-damage-riders.ts riderType / bestTypeAgainst",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Divine Strike@Nature Domain#type"
    },
    {
     "c": "rising to 2d8 at 14th level",
@@ -571,23 +557,19 @@
   "name": "Blessing of the Trickster",
   "group": "Trickery Domain",
   "level": 1,
-  "sha": "4169589d7583",
+  "sha": "d2fd4fef90a6",
   "clauses": [
    {
     "c": "Touch",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Blessing of the Trickster#touch",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Blessing of the Trickster\"].spends[0].does has no rangeFt: a creature 50 feet away is blessed by touch"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts resolveSpendEffect buff (ally rangeFt), row rangeFt 5",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Blessing of the Trickster#touch"
    },
    {
-    "c": "a willing creature",
-    "is": "gap",
+    "c": "a willing creature other than yourself",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Blessing of the Trickster#willing",
-    "severity": "low",
-    "kind": "data",
-    "where": "src/lib/srd/subclasses.json Trickery Domain text: the engine refuses the cleric (SRD: 'a willing creature other than yourself'), the stored words do not say so"
+    "by": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Blessing of the Trickster\"] buff othersOnly: the cleric is refused, nothing spent"
    },
    {
     "c": "to",
@@ -616,11 +598,9 @@
   "clauses": [
    {
     "c": "Create an illusory double for a minute that you can move, cast spells through",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Invoke Duplicity#double",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts Channel Divinity options: 'invoke duplicity' only spends the use"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-clr.ts duplicity",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Invoke Duplicity#double"
    },
    {
     "c": "and",
@@ -628,11 +608,9 @@
    },
    {
     "c": "use to gain attack advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Invoke Duplicity#advantage",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/pc-attack*.ts advantage sources: no illusory double gives advantage"
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts authoredAttackSituation (attack_adv beside_illusion)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Channel Divinity: Invoke Duplicity#advantage"
    }
   ]
  },
@@ -703,11 +681,9 @@
   "clauses": [
    {
     "c": "Invoke Duplicity creates up to four illusory duplicates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Improved Duplicity#four",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Improved Duplicity\"] (src/lib/srd/authored-effects-data4.ts) is narrated: Invoke Duplicity at 17th level leaves no duplicate on the table (no summon, zone or condition meta), let alone four",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-clr.ts duplicity (count 4 with Improved Duplicity)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Improved Duplicity#four"
    }
   ]
  },
@@ -865,11 +841,9 @@
   "clauses": [
    {
     "c": "Learn a necromancy cantrip",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#learn",
-    "severity": "medium",
-    "kind": "builder",
-    "where": "src/lib/srd/class-spell-grants.ts classSpellGrants: the necromancy cantrip Reaper teaches is not on top of the class count"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts clericGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#learn"
    },
    {
     "c": "single-target necromancy cantrips",
@@ -879,19 +853,15 @@
    },
    {
     "c": "can hit a second creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#second",
-    "severity": "high",
-    "kind": "path-parity",
-    "where": "src/lib/dm/authored-reaper.ts handleReaperCast runs only through cast_at_enemy; pc_attack (Chill Touch, an attack-roll cantrip) ignores secondTargetEnemyId"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-parts.ts resolvePart through src/lib/dm/authored-reaper.ts reaperAttackTwin / openReaperShare",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#second"
    },
    {
     "c": "within 5 feet of the first",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#5-feet",
-    "severity": "medium",
-    "kind": "path-parity",
-    "where": "src/lib/dm/authored-reaper.ts (the 5-foot limit cannot apply where the second strike never lands)"
+    "is": "held",
+    "by": "src/lib/dm/authored-reaper.ts reaperAttackTwin (withinFeet 5)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: cleric::Reaper#5-feet"
    }
   ]
  },
@@ -967,11 +937,9 @@
   "clauses": [
    {
     "c": "When you cast a necromancy spell of 1st through 5th level that targets only one creature, it can target two creatures within 5 feet of each other",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Improved Reaper#two-targets",
-    "severity": "medium",
-    "where": "src/lib/dm/authored-reaper.ts handleReaperCast is reached only from cast_at_enemy (src/lib/dm/cast-at-enemy-targets.ts), which sends an attack-roll spell to pc_attack; pc_attack ignores secondTargetEnemyId, so Inflict Wounds strikes one creature (a save spell such as Blindness/Deafness does twin, with the 5-foot and necromancy limits held)",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-parts.ts resolvePart through src/lib/dm/authored-reaper.ts reaperAttackTwin (pc_attack) and handleReaperCast (cast_at_enemy)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-a.mjs :: ro::cleric::Improved Reaper#two-targets"
    },
    {
     "c": "if the spell consumes its material components, you provide them for each target",
@@ -1046,11 +1014,9 @@
   "clauses": [
    {
     "c": "An hour of ritual smithing creates a simple metal item worth up to 100 gp",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Artisan's Blessing#item",
-    "severity": "low",
-    "where": "src/lib/dm/option-costs.ts ('artisan's blessing', ritual) and the Channel Divinity spend: the use is spent and the generic guidance returned, and no item is written onto the sheet's equipment",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-clr.ts forgeItem",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Artisan's Blessing#item"
    }
   ]
  },
@@ -1144,19 +1110,15 @@
    },
    {
     "c": "you can cast spare the dying at 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Circle of Mortality#spare-30-feet",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Circle of Mortality\"].effects[0].note \"Spare the Dying at 30 feet as a bonus action is narrated.\"; stabilize refuses beyond 5 feet"
+    "is": "held",
+    "by": "src/lib/dm/stabilize.ts handleStabilize (Circle of Mortality: 30 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Circle of Mortality#spare-30-feet"
    },
    {
     "c": "as a bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Circle of Mortality#spare-bonus",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Circle of Mortality\"].effects[0].note (narrated)"
+    "is": "held",
+    "by": "src/lib/dm/stabilize.ts handleStabilize (Circle of Mortality: the bonus action)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Circle of Mortality#spare-bonus"
    }
   ]
  },
@@ -1169,11 +1131,9 @@
   "clauses": [
    {
     "c": "Detect undead within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Eyes of the Grave#60-feet",
-    "severity": "low",
-    "where": "src/lib/srd/authored-resources.json sub_eyes_of_the_grave is guidance only: the spend changes nothing on the board, and an undead hidden 50 feet away stays hidden (as does one at 70)",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-clr.ts senseUndead",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Eyes of the Grave#60-feet"
    },
    {
     "c": "as an action",
@@ -1403,19 +1363,15 @@
    },
    {
     "c": "that can see or hear you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Order's Demand#see-or-hear",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/authored-saves.ts (save_area) and the row src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Channel Divinity: Order's Demand\"]: no sight-or-hearing gate"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts saveArea (seesOrHears)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Order's Demand#see-or-hear"
    },
    {
     "c": "makes a Wisdom save or is charmed by you until the end of your next turn or until it takes damage, and you can make any of them drop what they are holding",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Order's Demand#save-charm",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-channel.ts AUTHORED_DATA_CHANNEL[\"cleric::Channel Divinity: Order's Demand\"] onFail: the Wisdom save, the charm until the end of the cleric's next turn and its end on damage hold, but dropping what it holds is only words in the result; nothing on the creature changes",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts saveArea (mark \"disarmed\") and the row in src/lib/srd/authored-effects-channel.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Order's Demand#save-charm"
    }
   ]
  },
@@ -1446,11 +1402,9 @@
    },
    {
     "c": "cast an enchantment spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Embodiment of the Law#first-act",
-    "severity": "low",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/feature-spends.ts counter sub_embodiment_of_the_law: refused as the first thing of the cleric's own turn (turn budget null)"
+    "is": "held",
+    "by": "src/lib/dm/resource-turn.ts castMarkCharge (budgetFor)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Embodiment of the Law#first-act"
    },
    {
     "c": "as a bonus action",
@@ -1586,19 +1540,15 @@
    },
    {
     "c": "can add a d4 to an attack roll, ability check or saving throw it makes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Emboldening Bond#d4",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/rolls.ts and pc-attack: the 'emboldening bond' condition adds no d4 to a roll"
+    "is": "held",
+    "by": "src/lib/dm/emboldening-bond.ts bondRider through src/lib/dm/forced-save.ts rollExtrasFor (saves, checks) and src/lib/dm/attack-roll-extras.ts attackRollExtras (attacks, pc-attack-situation.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Emboldening Bond#d4"
    },
    {
     "c": "once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Emboldening Bond#once-a-turn",
-    "severity": "medium",
-    "where": "src/lib/dm/rolls.ts and pc-attack: the 'emboldening bond' condition adds no d4 to any roll (the d4 gap), so there is no first roll of the turn for the limit to hold to",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/emboldening-bond-logic.ts bondRiderFor / bondSpentMeta (stamped by forced-save.ts spendRollCarriers and pc-attack.ts markBondSpent)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Emboldening Bond#once-a-turn"
    },
    {
     "c": "A proficiency-bonus number of times",
@@ -1638,11 +1588,9 @@
   "clauses": [
    {
     "c": "When a creature bonded by your Emboldening Bond",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Protective Bond#bonded",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/authored-reactions.ts take_for_ally (src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Protective Bond\"]): no check that both creatures carry Emboldening Bond"
+    "by": "src/lib/dm/authored-reactions.ts take_for_ally with bond and teleport (src/lib/dm/protective-bond.ts bothBonded, teleportBeside)"
    },
    {
     "c": "is about to take damage, another bonded creature",
@@ -1668,11 +1616,9 @@
    },
    {
     "c": "teleport to an unoccupied space within 5 feet of it",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Protective Bond#teleport",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/authored-reactions.ts take_for_ally: the protector's token does not move to within 5 feet"
+    "by": "src/lib/dm/authored-reactions.ts take_for_ally with bond and teleport (src/lib/dm/protective-bond.ts bothBonded, teleportBeside)"
    },
    {
     "c": "and",
@@ -1756,11 +1702,9 @@
   "clauses": [
    {
     "c": "Darkvision out to 300 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Eyes of Night#darkvision",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts has no darkvision effect for cleric::Eyes of Night (authoredDarkvisionFeet reads 0)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts AUTHORED_TABLE[\"cleric::Eyes of Night\"] darkvision 300 (attack-light.ts characterSenses)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Eyes of Night#darkvision"
    },
    {
     "c": "shareable with a Wisdom-modifier number of creatures",
@@ -1849,11 +1793,9 @@
    },
    {
     "c": "in dim light or darkness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Steps of Night#dim-or-dark",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-resources.json sub_steps_of_night (fx buff flying) has no light gate: the spend never reads the board's light (src/lib/dm/attack-light.ts ambient), and a cleric on a brightly lit board flies",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/resource-tools.ts (sub_steps_of_night: src/lib/dm/one-with-shadows.ts shadowLightProblem), the Hand's card through view-tactics.ts ownSquareFacts bright and hand.ts darkBound",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Steps of Night#dim-or-dark"
    },
    {
     "c": "grants flight for a minute",
@@ -1940,11 +1882,9 @@
    },
    {
     "c": "two wizard cantrips of your choice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Arcane Initiate#cantrips",
-    "severity": "medium",
-    "kind": "builder",
-    "where": "src/lib/srd/class-spell-grants.ts classSpellGrants: no anyList/extraCantrips for the two wizard cantrips"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts clericGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Arcane Initiate#cantrips"
    }
   ]
  },
@@ -1975,11 +1915,9 @@
    },
    {
     "c": "that can see or hear you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#see-or-hear",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/authored-saves.ts (save_area) and the row: Arcane Abjuration has no sight-or-hearing gate"
+    "is": "held",
+    "by": "src/lib/dm/feature-spends.ts turnUndead (can see or hear the cleric)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#see-or-hear"
    },
    {
     "c": "makes a Wisdom save or",
@@ -2001,27 +1939,21 @@
    },
    {
     "c": "From 5th level, a creature that fails, isn't on its plane of origin",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#banished",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/channel-*.ts arcane abjuration: the banishment from 5th level is only words in the result ('also')"
+    "is": "held",
+    "by": "src/lib/dm/feature-spends.ts turnUndead (banish, CR ladder)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#banished"
    },
    {
     "c": "and has a challenge rating at or below a limit (1/2 at 5th level, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Arcane Abjuration#cr-limit",
-    "severity": "medium",
-    "where": "src/lib/dm/feature-spends.ts Arcane Abjuration: the banishment from 5th level is only words in the result ('also'), so no challenge rating is read against the 1/2, 1, 2, 3, 4 ladder; a CR 1/4 fiend at 5th level is turned, as a CR 1 one is",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/feature-spends.ts turnUndead (banishAt from destroyUndeadCr)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: ro::cleric::Channel Divinity: Arcane Abjuration#cr-limit"
    },
    {
     "c": "is banished for a minute instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#banished",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/channel-*.ts arcane abjuration: the banishment from 5th level is only words in the result ('also')"
+    "is": "held",
+    "by": "src/lib/dm/feature-spends.ts turnUndead (banish, CR ladder)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Arcane Abjuration#banished"
    },
    {
     "c": "as the banishment spell without concentration",
@@ -2038,11 +1970,9 @@
   "clauses": [
    {
     "c": "Restoring hit points with a spell also ends one spell of equal or lower level on the target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Spell Breaker#ends",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Spell Breaker\"].narrated (an end_condition the GM makes)"
+    "is": "held",
+    "by": "src/lib/dm/spell-breaker.ts spellBreaker (from src/lib/dm/heal-spell.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Spell Breaker#ends"
    }
   ]
  },
@@ -2070,11 +2000,9 @@
   "clauses": [
    {
     "c": "Choose one wizard spell each of 6th, 7th, 8th and 9th level; each becomes one of your domain spells, always prepared and counted as a cleric spell for you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Arcane Mastery#picks",
-    "severity": "medium",
-    "kind": "builder",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Arcane Mastery\"].narrated: no builder or level-up pick writes the four wizard spells"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts clericGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Arcane Mastery#picks"
    }
   ]
  },
@@ -2225,11 +2153,9 @@
    },
    {
     "c": "and Channel Divinity",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Elder Champion#channel-saves",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"paladin::Elder Champion\"]: the save disadvantage covers spells, not Channel Divinity saves"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts AUTHORED_TABLE[\"paladin::Elder Champion\"] enemy_save channel: true, read by src/lib/dm/authored-saves.ts authoredEnemySave (options.channel), passed by src/lib/dm/forced-save.ts rollEnemySave from the Channel Divinity saves (authored-spend-effects.ts save_effect and saveArea, channel-fear.ts, feature-spends.ts turn)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Elder Champion#channel-saves"
    }
   ]
  },
@@ -2362,19 +2288,15 @@
    },
    {
     "c": "The first time an enemy enters the aura",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Avenging Angel#enters-the-aura",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "no aura trigger: a creature entering or starting its turn in the aura makes no save"
+    "is": "held",
+    "by": "src/lib/dm/aura-menace.ts auraMenaceAsk, called by src/lib/dm/map-tools.ts move_token after an enemy's move (the burst's aura: true on the Avenging Angel row; a 'faced the aura of menace' mark keeps it to once)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Avenging Angel#enters-the-aura"
    },
    {
     "c": "or starts its turn there during a battle, it makes a Wisdom save or",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: ro::paladin::Avenging Angel#starts-its-turn",
-    "severity": "medium",
-    "where": "src/lib/dm/authored-turns.ts authoredTurnStart reads only enemy_turn_damage effects, and the aura is a one-time burst at the spend (src/lib/dm/authored-spend-effects.ts burst): an enemy that starts its turn 15 feet from the paladin is asked no Wisdom save and is not frightened",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/aura-menace.ts auraMenaceAsk, called by src/lib/dm/authored-turns.ts authoredTurnStart for an enemy whose turn starts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: ro::paladin::Avenging Angel#starts-its-turn"
    },
    {
     "c": "is frightened of you for a minute",
@@ -2384,11 +2306,9 @@
    },
    {
     "c": "or until it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Avenging Angel#until-damage",
-    "severity": "medium",
-    "kind": "state-lifecycle",
-    "where": "the Avenging Angel fear: kept after the creature takes damage"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts burst (burst endsOnDamage lays the fear and the menace with endsOnDamage; spell-effects.ts settleOnDamage ends them) and src/lib/dm/aura-menace.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Avenging Angel#until-damage"
    },
    {
     "c": "attack rolls against a creature frightened this way have advantage",
@@ -2477,11 +2397,9 @@
    },
    {
     "c": "have their speed reduced to 0",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Aura of Conquest#speed-0",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"paladin::Aura of Conquest\"] note \"the board does not stop it\": move_token lets the frightened creature walk"
+    "is": "held",
+    "by": "src/lib/dm/aura-hold.ts auraHoldsSpeed (enemy_turn_damage holdsSpeed on the Aura of Conquest row), read by src/lib/dm/enemy-speed.ts enemyMoveBudget",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Aura of Conquest#speed-0"
    },
    {
     "c": "and",
@@ -2698,11 +2616,9 @@
    },
    {
     "c": "dealt by other creatures",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Emissary of Redemption#other-creatures",
-    "severity": "low",
-    "kind": "rule-wrong",
-    "where": "the Emissary of Redemption resistance: damage with no creature as its source is resisted too"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts authoredResistances (resist fromCreatures on the row, skipped for a blow with noCreature: src/lib/dm/pc-damage.ts PcDamageInput.noCreature, set by mutations.ts apply_damage, hazard-tools.ts, trap-run.ts, zone-quake.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Emissary of Redemption#other-creatures"
    },
    {
     "c": "and a creature that hits you with an attack",
@@ -2710,11 +2626,9 @@
    },
    {
     "c": "takes radiant damage equal to half the damage you take from it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Emissary of Redemption#radiant",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "the Emissary of Redemption echo: the attacker takes half the damage before resistance (3), not half of what the paladin took (1)"
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts authoredAfterHit half_dealt reads input.taken, the blow past the paladin's defenses (src/lib/dm/enemy-attack.ts takenTotal via pc-damage.ts meetDefenses/blowDefenses)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Emissary of Redemption#radiant"
    },
    {
     "c": "If you attack a creature, cast a spell on it or damage it other than through this feature, neither benefit works",
@@ -2749,11 +2663,9 @@
    },
    {
     "c": "advantage on Athletics and Acrobatics, extra carrying capacity, and 10 extra feet of jump distance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Channel Divinity: Peerless Athlete#adv-carry-jump",
-    "severity": "medium",
-    "where": "the advantage holds (check_adv in src/lib/srd/authored-effects-channel.ts), but src/lib/dm/load-rules.ts liftLimits and src/lib/srd/encumbrance.ts encumbranceFor keep Strength x 15 (240 lb) while Peerless Athlete runs, and src/lib/battlemap/view-moves.ts with src/lib/srd/jump.ts longJumpFeet reads Strength alone (8 feet standing either way): no extra carrying capacity, no 10 extra feet of jump",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/carry-jump-effects.ts authoredCarryFactor/authoredJumpFeet (new authored kinds carry_factor and jump_feet on the Peerless Athlete row in authored-effects-channel.ts), read by src/lib/dm/load-rules.ts liftLimits/capacityProblem, encumbranceFor's carryFactor at every caller (srd/index.ts speedFor included), and src/lib/dm/jump-reach.ts jumpReach shared by view-moves.ts viewerMoves and jump-move.ts jumpMove",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Channel Divinity: Peerless Athlete#adv-carry-jump"
    }
   ]
  },
@@ -2803,19 +2715,15 @@
    },
    {
     "c": "allies within 5 feet gain 10 feet of speed until their next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Alacrity#allies-5-feet",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data2.ts AUTHORED_TABLE[\"paladin::Aura of Alacrity\"] speed effect is the paladin's own (note: the allies' 10 feet are narrated): src/app/api/campaigns/[campaignId]/battle-map/move/route.ts refuses an ally who started their turn 5 feet from the paladin a 40-foot walk (\"You cannot reach that tile this turn.\") while it takes their own 30",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts alacrityTurnStart from src/lib/dm/authored-turns.ts authoredTurnStart; condition row aura_of_alacrity (speedBonus 10) in src/lib/srd/authored-conditions.ts, read by pcMoveBudget",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Alacrity#allies-5-feet"
    },
    {
     "c": "10 feet of aura at 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Alacrity#10-feet-at-18",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data2.ts AUTHORED_TABLE[\"paladin::Aura of Alacrity\"] has no ally effect and no 18th-level reach: the move route refuses an ally 10 feet from an 18th-level paladin a 40-foot walk",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts alacrityTurnStart (speed allies.rangeFt ladder [[7,5],[18,10]])",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Alacrity#10-feet-at-18"
    }
   ]
  },
@@ -2877,11 +2785,9 @@
    },
    {
     "c": "a weapon attack that misses can hit instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Living Legend#miss-hits",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "the Living Legend condition's summary '(the GM rules the hit)': a miss cannot be turned into a hit"
+    "is": "held",
+    "by": "src/lib/dm/attack-swing.ts judgeSwing (the first weapon miss of the paladin's own turn while 'living legend' holds hits, marked once a turn with markAttackTurn)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Living Legend#miss-hits"
    },
    {
     "c": "and",
@@ -2901,11 +2807,9 @@
    },
    {
     "c": "or by expending a 5th-level spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Living Legend#5th-level-slot",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts: Living Legend cannot be bought again with a 5th-level slot"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts authoredFeatureSpend (pool.slotFallback 5 on the Living Legend row: with the use spent, a 5th-level slot pays)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Living Legend#5th-level-slot"
    }
   ]
  },
@@ -2914,15 +2818,19 @@
   "name": "Channel Divinity: Watcher's Will",
   "group": "Oath of the Watchers",
   "level": 3,
-  "sha": "e43580d880b9",
+  "sha": "4fadd8f5b4e5",
   "clauses": [
    {
     "c": "You and up to your Charisma modifier in allies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Watcher's Will#range-in-the-words",
-    "severity": "low",
-    "kind": "data",
-    "where": "src/lib/srd/subclasses.json Oath of the Watchers text: the engine takes allies within 30 feet only, the words give no range"
+    "is": "held",
+    "by": "src/lib/srd/subclasses.json Oath of the Watchers text now says 'within 30 feet'",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Watcher's Will#range-in-the-words"
+   },
+   {
+    "c": "within 30 feet",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-channel.ts Watcher's Will buff rangeFt 30",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Watcher's Will#range-in-the-words"
    },
    {
     "c": "gain advantage on Intelligence, Wisdom and Charisma saves",
@@ -2978,11 +2886,9 @@
   "clauses": [
    {
     "c": "You and allies within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Aura of the Sentinel#allies",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"paladin::Aura of the Sentinel\"] note \"the GM adds theirs\": allies within 10 feet add nothing to initiative"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts allyInitiativeAura, through src/lib/dm/forced-save.ts rollExtrasFor (initiativeBonus) and src/lib/dm/rolls.ts resolveRollExpression",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Aura of the Sentinel#allies"
    },
    {
     "c": "add your proficiency bonus to initiative",
@@ -2992,11 +2898,9 @@
    },
    {
     "c": "30 feet at 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of the Sentinel#30-feet-at-18",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts AUTHORED_TABLE[\"paladin::Aura of the Sentinel\"] init_prof is the paladin's own (note \"Allies within 10 feet (30 from 18th level) add it too; the GM adds theirs\"): an ally 30 feet from an 18th-level paladin rolls initiative 12 on a 10, not 18",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts allyInitiativeAura (init_prof rangeFt ladder [[7,10],[18,30]], measured with authored-saves.ts withinFeet)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of the Sentinel#30-feet-at-18"
    }
   ]
  },
@@ -3026,7 +2930,7 @@
   "name": "Mortal Bulwark",
   "group": "Oath of the Watchers",
   "level": 20,
-  "sha": "f1d2ee6269c6",
+  "sha": "6a0b8f8381ff",
   "clauses": [
    {
     "c": "For a minute",
@@ -3042,19 +2946,15 @@
    },
    {
     "c": "For a minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#limit-in-the-words",
-    "severity": "low",
-    "kind": "data",
-    "where": "src/lib/srd/subclasses.json Oath of the Watchers text: names no bonus action and no once-a-long-rest limit the engine charges"
+    "is": "held",
+    "by": "src/lib/srd/subclasses.json Oath of the Watchers text now names the bonus action and once per long rest",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#limit-in-the-words"
    },
    {
     "c": "truesight to 120 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#truesight",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/attack-light.ts characterSenses: no truesight while Mortal Bulwark runs"
+    "is": "held",
+    "by": "src/lib/srd/authored-conditions.ts AUTHORED_CONDITION_ROWS mortal_bulwark (truesightFeet 120, seesInvisible), read by src/lib/dm/attack-light.ts characterSenses through conditionTruesightFeet",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#truesight"
    },
    {
     "c": "advantage on attacks against aberrations, celestials, elementals, fey and fiends",
@@ -3068,11 +2968,15 @@
    },
    {
     "c": "a hit can banish one to its home plane on a failed Charisma save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#banish",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "pc_attack: a hit on a fiend under Mortal Bulwark asks for no Charisma save"
+    "is": "held",
+    "by": "src/lib/dm/mortal-bulwark.ts bulwarkBanish (rollEnemySave cha against the paladin's spell save DC, magical and resist; failure through src/lib/dm/spell-planes.ts sendHome; a made save leaves 'withstood mortal bulwark' for 14400 rounds), called from src/lib/dm/attack-blow.ts landSwingBlow",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#banish"
+   },
+   {
+    "c": "A bonus action, once per long rest",
+    "is": "held",
+    "by": "the counter's action and once-per-long-rest refill (src/lib/srd/authored-resources.json and the AUTHORED_TABLE row), as the capstone scene's cost and long-rest checks run",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Mortal Bulwark#limit-in-the-words"
    }
   ]
  },
@@ -3118,11 +3022,9 @@
   "clauses": [
    {
     "c": "Creatures of your choice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Turn the Tide#choice",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/feature-spends.ts 'turn the tide': heals every hurt ally in range, not only those chosen"
+    "is": "held",
+    "by": "src/lib/dm/authored-heal-area.ts healArea (heal_area chosen on the Turn the Tide row: the character named in targetCharacterId is the one healed)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Channel Divinity: Turn the Tide#choice"
    },
    {
     "c": "within 30 feet below half hit points regain 1d6 + your Charisma modifier hit points",
@@ -3183,7 +3085,7 @@
   "name": "Exalted Champion",
   "group": "Oath of the Crown",
   "level": 20,
-  "sha": "12d38b77541f",
+  "sha": "94c04a0f734f",
   "clauses": [
    {
     "c": "For an hour",
@@ -3199,11 +3101,9 @@
    },
    {
     "c": "For an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#limit-in-the-words",
-    "severity": "low",
-    "kind": "data",
-    "where": "src/lib/srd/subclasses.json Oath of the Crown text: names no action and no once-a-long-rest limit the engine charges"
+    "is": "held",
+    "by": "src/lib/srd/subclasses.json Oath of the Crown text now names the action and once per long rest",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#limit-in-the-words"
    },
    {
     "c": "resistance to nonmagical weapon damage",
@@ -3219,11 +3119,9 @@
    },
    {
     "c": "and allies within 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#allies-wisdom",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "authored-resources.json sub_exalted_champion guidance 'The server applies both to the paladin': allies within 30 feet get no advantage"
+    "is": "held",
+    "by": "src/lib/dm/exalted-aura.ts exaltedAllyAdvantage, passed by src/lib/dm/forced-save.ts rollExtrasFor as allyAdvantage and merged in src/lib/dm/rolls.ts resolveRollExpression",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#allies-wisdom"
    },
    {
     "c": "and",
@@ -3231,11 +3129,15 @@
    },
    {
     "c": "death saves at advantage for the same",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#death-saves",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/death-saves: no advantage on death saves while Exalted Champion runs"
+    "is": "held",
+    "by": "src/lib/srd/authored-conditions.ts exalted_champion deathSaveAdvantage (the paladin, read by src/lib/dm/death.ts), and src/lib/dm/exalted-aura.ts for allies within 30 feet (rolls.ts allyAdvantage on a death save)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#death-saves"
+   },
+   {
+    "c": "An action, once per long rest",
+    "is": "held",
+    "by": "the counter's action and once-per-long-rest refill (src/lib/srd/authored-resources.json and the AUTHORED_TABLE row), as the capstone scene's cost and long-rest checks run",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Exalted Champion#limit-in-the-words"
    }
   ]
  },
@@ -3310,11 +3212,9 @@
    },
    {
     "c": "fiends and undead within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Aura of Hate#fiends-and-undead",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"paladin::Aura of Hate\"] note \"the GM adds theirs\": fiends and undead within 10 feet add nothing"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts hateAuraDamage, added to the blow in src/lib/dm/enemy-attack.ts handleEnemyAttack (melee, not a spell attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Aura of Hate#fiends-and-undead"
    },
    {
     "c": "add your Charisma modifier (at least +1) to melee weapon damage",
@@ -3324,11 +3224,9 @@
    },
    {
     "c": "30 feet at 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Hate#30-feet-at-18",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts AUTHORED_TABLE[\"paladin::Aura of Hate\"] damage_ability is the paladin's own (note \"Fiends and undead within 10 feet (30 from 18th level) add it too; the GM adds theirs\"): an undead 30 feet from an 18th-level oathbreaker hits for 6, not 6 + Charisma 5",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/divine-auras.ts hateAuraDamage (damage_ability aura.rangeFt ladder [[7,10],[18,30]])",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Aura of Hate#30-feet-at-18"
    }
   ]
  },
@@ -3374,11 +3272,9 @@
    },
    {
     "c": "you wrap yourself in a 30-foot aura of gloom that turns bright light in it dim",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Dread Lord#gloom-dims",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data2.ts AUTHORED_TABLE[\"paladin::Dread Lord\"] buff lays no light zone on the battle map: src/lib/battlemap/scene.ts ambientAt over the map's zones still reads bright 30 feet from the oathbreaker, and src/lib/dm/attack-light.ts reads no Dread Lord",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts resolveSpendEffect buff `zone` (placeSpellZone) laying src/lib/battlemap/zones-features.ts FEATURE_ZONE_ROWS[\"dread lord\"] (an aura that follows the paladin, whileCondition \"dread lord\"), read through src/lib/battlemap/zones.ts zoneLights (dimming strips) and src/lib/battlemap/scene.ts ambientAt `dims` (src/lib/dm/zone-rules.ts lightsWithZones, as attack-light.ts reads it)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: ro::paladin::Dread Lord#gloom-dims"
    },
    {
     "c": "Each enemy frightened of you that starts its turn in the aura",
@@ -3412,11 +3308,9 @@
    },
    {
     "c": "against a creature in the aura",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Dread Lord#in-the-aura",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "pc_attack: the shadows' melee spell attack is held to 5-foot melee reach, not the 30-foot aura"
+    "is": "held",
+    "by": "src/lib/srd/authored-conditions.ts dread_lord grantedAttack reachFeet 30, read by src/lib/dm/pc-attack-profile.ts (granted reachTiles) and src/lib/battlemap/hand-granted.ts rangeOf (card range \"30 ft\")",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-b.mjs :: paladin::Dread Lord#in-the-aura"
    },
    {
     "c": "dealing 3d10 + your Charisma modifier necrotic damage",
@@ -3541,19 +3435,15 @@
    },
    {
     "c": "you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Balm of the Summer Court#sight",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "the Balm of the Summer Court spend (authored-resources.json + feature-spends.ts): no sight check on the healed creature"
+    "is": "held",
+    "by": "src/lib/dm/resource-tools.ts computeUseResource heal_dice_pool -> src/lib/dm/ally-reach-dra.ts allyReachRefusal (fx sight, authored-resources.json)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Balm of the Summer Court#sight"
    },
    {
     "c": "within 120 feet by the total rolled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Balm of the Summer Court#120-feet",
-    "severity": "high",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource case heal_dice_pool: the dice are rolled onto the named creature with no range check (no token is read). The total rolled does heal (7 for a 3 and a 4 at 115 feet), but a creature 125 feet off was healed 5 as well.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/resource-tools.ts computeUseResource heal_dice_pool -> src/lib/dm/ally-reach-dra.ts allyReachRefusal (fx rangeFt 120)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Balm of the Summer Court#120-feet"
    },
    {
     "c": "it also gains 1 temporary hit point per die spent",
@@ -3572,11 +3462,9 @@
   "clauses": [
    {
     "c": "During a short or long rest you can touch a point to raise an invisible 30-foot-radius sphere around it until the rest ends or you leave it, blocked by total cover",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Hearth of Moonlight and Shadow#sphere",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts druid::Hearth of Moonlight and Shadow spend (buff, target allies, rounds 4800, fight out): it is refused in a fight, but nothing ties it to a rest. It lands on every party member whether or not they were named or are within 30 feet (an unnamed one got it too), it is still on the ally after take_rest, and nothing ends it when the druid leaves.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/rest-logic.ts longRestPatch/shortRestResourcePatch untilRestEnds (buff untilRestEnds, authored-effects-data4.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Hearth of Moonlight and Shadow#sphere"
    },
    {
     "c": "Inside, you and your allies gain +5 to Dexterity (Stealth) and Wisdom (Perception) checks, and light from open flames inside can't be seen from outside",
@@ -3595,19 +3483,15 @@
   "clauses": [
    {
     "c": "As a bonus action you teleport up to 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#60-feet",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts Hidden Paths: the teleport is handed to the GM (move_token), and a 65-foot target is accepted"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts teleport (feature-teleport.ts credit) + src/lib/dm/map-tools.ts handleTeleportToken range",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#60-feet"
    },
    {
     "c": "to an unoccupied space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#unoccupied",
-    "severity": "low",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/feature-spends.ts Hidden Paths: a target square holding a creature is accepted"
+    "is": "held",
+    "by": "src/lib/dm/map-tools.ts handleTeleportToken occupied refusal",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#unoccupied"
    },
    {
     "c": "you can see, or as an action",
@@ -3615,11 +3499,9 @@
    },
    {
     "c": "you teleport a willing creature you touch up to 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#touch-30-feet",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts Hidden Paths (touch): the willing creature is not moved"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts teleport (touched: within 5 feet) + feature-teleport.ts 30-foot credit",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Hidden Paths#touch-30-feet"
    },
    {
     "c": "a number of times equal to your Wisdom modifier (minimum once)",
@@ -3702,11 +3584,9 @@
    },
    {
     "c": "to a point within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#60-feet",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-resources.json sub_spirit_totem (fx buff on the druid alone, resolved by src/lib/dm/resource-tools.ts computeUseResource case buff): the point named (x, y) is ignored. A point 65 feet off is taken, and no aura stands at the point (allies 0 to 5 feet from it got no temporary hit points).",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts raiseSpiritTotem (the spirit area at use_resource x/y, within 60 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#60-feet"
    },
    {
     "c": "for a minute",
@@ -3722,20 +3602,15 @@
    },
    {
     "c": "with a 30-foot aura",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#30-foot-aura",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource case buff lays 'spirit totem: bear' on the druid only. Nothing measures 30 feet and no creature in the aura gets anything (allies 25 and 35 feet off both hold 0 temporary hit points).",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts raiseSpiritTotem / totemsOver (30-foot aura around the point)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#30-foot-aura"
    },
    {
     "c": "you can move 60 feet as a bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:druid::Spirit Totem::Move Spirit Totem#GUIDANCE_ONLY [spends finding spends-guidance-only-spend-druid-spirit-totem-move-spirit-totem]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-spend-druid-spirit-totem-move-spirit-totem)"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts moveSpiritTotem (spend kind spirit_totem_move, authored-effects-data3.ts): the spirit's area moves up to 60 feet to use_resource x/y (the druid's square when none is named)",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:druid::Spirit Totem::Move Spirit Totem#GUIDANCE_ONLY"
    },
    {
     "c": "Bear",
@@ -3747,11 +3622,9 @@
    },
    {
     "c": "gains 5 + your druid level temporary hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#bear-temp-hp",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Spirit Totem\"]: the Bear spirit gives no temporary hit points"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts raiseSpiritTotem (Bear: 5 + druid level temporary hit points in the aura)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#bear-temp-hp"
    },
    {
     "c": "and",
@@ -3759,11 +3632,9 @@
    },
    {
     "c": "you and your allies have advantage on Strength checks and saves in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#bear-strength",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Spirit Totem\"]: no advantage on Strength checks and saves in the Bear aura"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts spiritTotemRollAdvantage via src/lib/dm/forced-save.ts rollExtrasFor, read in src/lib/dm/rolls.ts resolveRollExpression (totemAdvantage)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#bear-strength"
    },
    {
     "c": "Hawk",
@@ -3779,11 +3650,9 @@
    },
    {
     "c": "you and your allies have advantage on Perception checks in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#hawk-perception",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Spirit Totem\"]: no advantage on Perception checks in the Hawk aura"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts spiritTotemRollAdvantage (Hawk: Perception) via rollExtrasFor / rolls.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#hawk-perception"
    },
    {
     "c": "Unicorn",
@@ -3791,19 +3660,15 @@
    },
    {
     "c": "you and your allies have advantage on checks to detect creatures in the aura, and when you cast a spell with a slot that restores hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#unicorn-detect",
-    "severity": "high",
-    "where": "src/lib/srd/condition-effects.ts spirit_totem_unicorn is a summary only: Perception and Investigation checks of the druid and an ally roll one d20. A Cure Wounds cast with a slot heals no other creature in the aura (the ally 5 feet off stays at 50, through the heal tool).",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts spiritTotemRollAdvantage (Perception, Investigation) and unicornHealing via src/lib/dm/heal-after-dra.ts afterHealingSpell (mutations.ts case heal)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#unicorn-detect"
    },
    {
     "c": "each creature of your choice in the aura regains hit points equal to your druid level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#unicorn-heal",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/heal*.ts: a slot healing spell in the Unicorn aura heals no one else"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts unicornHealing via src/lib/dm/heal-after-dra.ts afterHealingSpell (mutations.ts case heal)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spirit Totem#unicorn-heal"
    }
   ]
  },
@@ -3830,11 +3695,9 @@
    },
    {
     "c": "their natural weapons are magical for overcoming resistance and immunity to nonmagical attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Mighty Summoner#magical",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Mighty Summoner\"] note \"the GM keeps to that\": summoned beasts' natural weapons are not magical"
+    "is": "held",
+    "by": "src/lib/dm/mighty-summoner.ts summonStrikesAsMagic from src/lib/dm/pc-attack-damage.ts strikesAsMagic",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Mighty Summoner#magical"
    }
   ]
  },
@@ -3847,11 +3710,9 @@
   "clauses": [
    {
     "c": "Summoned creatures inside your Spirit Totem aura heal half your druid level at the end of your turns",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Guardian Spirit#heal",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Guardian Spirit\"].narrated (a heal the GM makes)"
+    "is": "held",
+    "by": "src/lib/dm/spirit-totem.ts guardianSpiritHeal from src/lib/dm/authored-turns.ts authoredTurnEnd",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Guardian Spirit#heal"
    }
   ]
  },
@@ -4011,11 +3872,9 @@
    },
    {
     "c": "a bonus action hurls spores into a 10-foot cube within 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spreading Spores#cube",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Spreading Spores\"].narrated (a zone the GM places); no spend named Spreading Spores"
+    "is": "held",
+    "by": "src/lib/dm/spreading-spores.ts hurlSpores (spend Spreading Spores, authored-effects-data4.ts) and the 'spreading spores' area of src/lib/battlemap/zones-spells.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Spreading Spores#cube"
    },
    {
     "c": "for a minute, until you use it again or until the entity ends",
@@ -4023,11 +3882,9 @@
    },
    {
     "c": "A creature that moves into the cube or starts its turn there makes a Constitution save against your spell save DC or takes your Halo of Spores damage, at most once per turn, and you can't use Halo of Spores' reaction while the cube lasts",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spreading Spores#cube-save",
-    "severity": "high",
-    "where": "src/lib/srd/authored-effects-data4.ts druid::Spreading Spores is narrated only: use_resource 'Spreading Spores' is refused (no such resource), no zone is laid, a goblin starting its turn where the cube would be takes nothing, and Halo of Spores' reaction stays open.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/zone-triggers.ts zoneTurnStart (spreading spores trigger, byLevel die) + Halo of Spores gate notCondition (authored-effects-data-b.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spreading Spores#cube-save"
    }
   ]
  },
@@ -4065,11 +3922,9 @@
    },
    {
     "c": "you know guidance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Star Map#guidance",
-    "severity": "medium",
-    "kind": "builder",
-    "where": "src/lib/srd/subclasses.json Circle of Stars spells / features.ts subclassSpellsFor: guidance is not granted"
+    "is": "held",
+    "by": "src/lib/srd/subclasses.json Circle of Stars spells {2: Guidance} read by src/lib/srd/features.ts subclassSpellsFor",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Star Map#guidance"
    },
    {
     "c": "and",
@@ -4108,11 +3963,9 @@
   "clauses": [
    {
     "c": "Spend a Wild Shape use",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#wild-shape-use",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-resources.json: Starry Form spends a pool of its own, Wild Shape is untouched (two pools)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine-dra.ts druid::Starry Form (pool wild_shape; sub_starry_form counter removed) through src/lib/dm/authored-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#wild-shape-use"
    },
    {
     "c": "to glow with a constellation",
@@ -4132,19 +3985,15 @@
    },
    {
     "c": "Chalice heals a second creature whenever you cast a healing spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#chalice",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/heal*.ts: the Chalice form heals no second creature"
+    "is": "held",
+    "by": "src/lib/dm/heal-after-dra.ts chaliceHealing via afterHealingSpell (mutations.ts case heal)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#chalice"
    },
    {
     "c": "Dragon lets you treat a d20 of 9 or lower as a 10 on Intelligence and Wisdom checks and concentration saves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#dragon",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/rolls.ts authoredCheckFloor: the Dragon form's floor of 10 is not applied to Intelligence checks"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredCheckFloor (check_floor abilities int/wis, gate starry form: dragon) from src/lib/dm/rolls.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#dragon"
    }
   ]
  },
@@ -4208,11 +4057,9 @@
    },
    {
     "c": "you may change constellation each turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#change-each-turn",
-    "severity": "low",
-    "kind": "rule-wrong",
-    "where": "the Starry Form spend: changing constellation adds a second form and spends another use instead of replacing it"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts spend.swap (Twinkling Constellations, once a turn, no use) + buff replaces (authored-spend-effects.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Starry Form#change-each-turn"
    }
   ]
  },
@@ -4244,11 +4091,9 @@
   "clauses": [
    {
     "c": "Spend a Wild Shape use to summon a wildfire spirit companion that acts on your turn, with a fiery teleport that damages creatures around its arrival",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Summon Wildfire Spirit#companion",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "the Summon Wildfire Spirit spend sets a condition only: no creature joins, nothing burns on arrival"
+    "is": "held",
+    "by": "src/lib/dm/feature-summons-dra.ts summonWildfireSpirit (kind wildfire_spirit, authored-effects-data-b.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Summon Wildfire Spirit#companion"
    }
   ]
  },
@@ -4261,11 +4106,9 @@
   "clauses": [
    {
     "c": "While the spirit is out, your fire and healing spells gain 1d8, and you may cast them from the spirit's position",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Enhanced Bond#fire-heal-spirit-place",
-    "severity": "medium",
-    "where": "The 1d8 holds (src/lib/srd/authored-effects-data-b.ts druid::Enhanced Bond spell_rider gated on the wildfire spirit condition: Produce Flame rolls 3d8 and Cure Wounds heals 1d8 more while the spirit is out, 2d8 and no bonus without it). But Summon Wildfire Spirit (authored-effects-data-b.ts, does buff) makes the spirit only a condition on the druid: it has no token or sheet, so no spell can be cast from its position.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/feature-summons-dra.ts summonWildfireSpirit (the spirit is a creature on the board) + the spell_rider of authored-effects-data-b.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Enhanced Bond#fire-heal-spirit-place"
    }
   ]
  },
@@ -4278,20 +4121,15 @@
   "clauses": [
    {
     "c": "When a Small or larger creature dies within 30 feet of you or your wildfire spirit, a spectral flame burns in its space for a minute",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Cauterizing Flames#flame",
-    "severity": "high",
-    "where": "src/lib/srd/authored-effects-data-b.ts druid::Cauterizing Flames (does flames, through use_resource): the reaction burns or heals at any moment with no death behind it (a goblin was burned for 15 with nobody dead). A goblin killed 5 feet from the druid leaves no flame in its space (the encounter's zones stay empty).",
-    "kind": "rule-missing"
+    "by": "src/lib/dm/cauterizing-flames.ts layFlamesOnDeath, called where src/lib/dm/enemy-damage.ts records a death (the druid keeps the flame at the dead creature square for 10 rounds); the reaction is refused with no flame"
    },
    {
     "c": "When a creature you can see enters that space, a reaction puts the flame out",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:druid::Cauterizing Flames::Cauterizing Flames#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-spend-druid-cauterizing-flames-cauterizing-flames]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-spend-druid-cauterizing-flames-cauterizing-flames)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:druid::Cauterizing Flames::Cauterizing Flames",
+    "by": "src/lib/dm/authored-spend-divine.ts cauterizing: only on a seen, living creature standing in one of the druid flames, which goes out; the Hand card is shut with no flame (the spends sweep walks counter:sub_cauterizing_flames and spend:druid::Cauterizing Flames clean, staged by a kill and the ally stepping into the flame)"
    },
    {
     "c": "to",
@@ -4365,11 +4203,9 @@
    },
    {
     "c": "and the saves and skills it is proficient in",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Ranger's Companion#saves-skills",
-    "severity": "medium",
-    "where": "src/lib/dm/pet-build.ts buildPet (kind beast_companion): the record keeps name, hp, ac, speed, attacks and notes. It has no saves or skills, so the proficiency bonus never reaches them, and no tool rolls a pet's save or check.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pet-build.ts buildPet (companionRolls)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Ranger's Companion#saves-skills"
    },
    {
     "c": "its hit point maximum is its normal maximum or four times your ranger level, whichever is higher",
@@ -4412,11 +4248,9 @@
   "clauses": [
    {
     "c": "On a turn your companion doesn't attack, a bonus action can command it to Dash, Disengage or Help, and",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Exceptional Training#bonus-command",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts ranger::Exceptional Training note leaves the bonus-action Dash, Disengage or Help to the GM. No tool commands the companion to do any of them (use_resource refuses every name), and a pet has no token to move.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-rng.ts petCommand (spend kind pet_command, row ranger::Exceptional Training in authored-effects-data4.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Exceptional Training#bonus-command"
    },
    {
     "c": "its attacks are magical for overcoming resistance and immunity to nonmagical attacks",
@@ -4435,11 +4269,9 @@
   "clauses": [
    {
     "c": "Your companion makes two attacks when you command it to attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Bestial Fury#two-attacks",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"ranger::Bestial Fury\"].narrated: pet_attack gives one bite per command at 11th level"
+    "is": "held",
+    "by": "src/lib/dm/pet-attack-cost.ts petAttackCost (Bestial Fury's second attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Bestial Fury#two-attacks"
    }
   ]
  },
@@ -4452,11 +4284,9 @@
   "clauses": [
    {
     "c": "A spell you cast on yourself also affects your companion within 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Share Spells#shared",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts ranger::Share Spells is narrated only: Longstrider cast on the ranger leaves the companion's record unchanged (speed 40). A pet record has no conditions, and no place to measure 30 feet from.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/cast-buff.ts handleCastBuff via src/lib/dm/pet-command.ts shareSpell",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Share Spells#shared"
    }
   ]
  },
@@ -4479,19 +4309,15 @@
    },
    {
     "c": "on your first turn 10 extra feet of speed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Dread Ambusher#speed",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd speed derivation: no 10 extra feet on the first turn"
+    "is": "held",
+    "by": "src/lib/battlemap/view.ts pcMoveBudget (ambushRound, src/lib/dm/turn-extra-attacks-logic.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Dread Ambusher#speed"
    },
    {
     "c": "plus one extra attack dealing an extra 1d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Dread Ambusher#extra-attack",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/turn-budget.ts attacksAllowedFor: no extra attack on the first turn"
+    "is": "held",
+    "by": "src/lib/dm/turn-budget.ts budgetFor via src/lib/dm/turn-extra-attacks-logic.ts turnExtraAttacks; the 1d8 in src/lib/dm/pc-attack-plan.ts (ambushAttackDie)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Dread Ambusher#extra-attack"
    }
   ]
  },
@@ -4514,11 +4340,9 @@
    },
    {
     "c": "you are invisible to creatures relying on darkvision to see you in darkness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Umbral Sight#unseen",
-    "severity": "high",
-    "where": "src/lib/dm/attack-light.ts sight (sees): a viewer with darkvision sees any creature in range in darkness, and nothing reads Umbral Sight. A goblin with darkvision attacks the Gloom Stalker with a straight roll, and the ranger's attack on it gets no advantage. The authored note (authored-effects-data4.ts) leaves it to the GM.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/attack-light.ts attackSight (umbral: darkvision alone does not see the holder in darkness)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Umbral Sight#unseen"
    }
   ]
  },
@@ -4550,11 +4374,9 @@
   "clauses": [
    {
     "c": "Once per turn, a missed attack lets you make another one",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Stalker's Flurry#another",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"ranger::Stalker's Flurry\"].narrated: the turn budget refuses the attack a miss allows"
+    "is": "held",
+    "by": "src/lib/dm/turn-budget.ts budgetFor via src/lib/dm/turn-extra-attacks-logic.ts turnExtraAttacks",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Stalker's Flurry#another"
    }
   ]
  },
@@ -4617,11 +4439,9 @@
    },
    {
     "c": "deals its weapon damage plus 1d8 force as force damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Planar Warrior#all-force",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/pc-attack-damage.ts Planar Warrior: the weapon's damage stays its own type instead of force"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-damage.ts foldDamageRiders (condition row weaponDamageAs, src/lib/srd/authored-conditions.ts planar_warrior)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Planar Warrior#all-force"
    },
    {
     "c": "plus 1d8 force",
@@ -4646,11 +4466,9 @@
   "clauses": [
    {
     "c": "Cast etherealness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Ethereal Step#ethereal",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "the Ethereal Step spend: no ethereal condition for the turn"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-rng.ts thisTurn (row ranger::Ethereal Step, src/lib/srd/authored-effects-w2-divine-rng.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Ethereal Step#ethereal"
    },
    {
     "c": "as a bonus action",
@@ -4660,11 +4478,9 @@
    },
    {
     "c": "for one turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Ethereal Step#ethereal",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "the Ethereal Step spend: no ethereal condition for the turn"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-rng.ts thisTurn (row ranger::Ethereal Step, src/lib/srd/authored-effects-w2-divine-rng.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Ethereal Step#ethereal"
    },
    {
     "c": "once per short or long rest",
@@ -4683,11 +4499,9 @@
   "clauses": [
    {
     "c": "Teleport 10 feet before each attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Distant Strike#teleport",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"ranger::Distant Strike\"].narrated: pc_attack refuses a target 15 feet off, no 10-foot teleport"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack.ts handlePcAttack via src/lib/dm/distant-strike.ts distantStrikeSquare",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Distant Strike#teleport"
    },
    {
     "c": "and",
@@ -4695,11 +4509,9 @@
    },
    {
     "c": "attack a third creature if you struck two others this turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Distant Strike#third",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"ranger::Distant Strike\"].narrated: the third attack is refused by the turn budget"
+    "is": "held",
+    "by": "src/lib/dm/turn-extra-attacks-logic.ts turnExtraAttacks and distantStrikeRefusal (pc-attack-plan.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Distant Strike#third"
    }
   ]
  },
@@ -4776,11 +4588,9 @@
    },
    {
     "c": "against it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Slayer's Prey#against-it",
-    "severity": "high",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/pc-attack-damage.ts Slayer's Prey rider: the 1d6 lands on a creature that is not the prey"
+    "is": "held",
+    "by": "src/lib/dm/attack-damage-riders.ts attackDamageRiders (onQuarry; the spend lays quarry, authored-effects-data2.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Slayer's Prey#against-it"
    },
    {
     "c": "each turn",
@@ -4805,11 +4615,9 @@
   "clauses": [
    {
     "c": "Add 1d6 to saves and escape checks against effects from your Slayer's Prey target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Supernatural Defense#d6",
-    "severity": "medium",
-    "where": "The saves hold (src/lib/dm/forced-save.ts rollCharacterSave with save_die_vs: 1d6 on a save against the prey's Hold Person, none against another creature's). The escape check gets nothing: an Athletics check against the prey's grapple rolled 1d20+3 (the authored note in authored-effects-data2.ts says 'the GM's to add').",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/prey-escape.ts preyEscapeDie (rollExtrasFor in forced-save.ts, resolveRollExpression in rolls.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Supernatural Defense#d6"
    }
   ]
  },
@@ -4896,11 +4704,9 @@
   "clauses": [
    {
     "c": "Add your Wisdom modifier to Charisma checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Otherworldly Glamour#wisdom",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/rolls.ts check bonus: no Wisdom modifier on Charisma checks"
+    "is": "held",
+    "by": "src/lib/srd/authored-check-mod.ts authoredCheckMod (roll-feature-riders.ts; row ranger::Otherworldly Glamour, authored-effects-w2-divine-rng.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Otherworldly Glamour#wisdom"
    },
    {
     "c": "and",
@@ -5002,19 +4808,15 @@
   "clauses": [
    {
     "c": "Cast misty step",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#teleport",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "the Misty Wanderer spend: the misty step is handed back, the ranger is not moved"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_misty_wanderer action bonus (resource-turn.ts prepareResourceCharge)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#teleport"
    },
    {
     "c": "Cast misty step",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#bonus-action",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "the Misty Wanderer spend: no bonus action is taken for the misty step"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_misty_wanderer action bonus (resource-turn.ts prepareResourceCharge)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#bonus-action"
    },
    {
     "c": "without a slot",
@@ -5036,11 +4838,9 @@
    },
    {
     "c": "bringing a willing creature within 5 feet along",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#along",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "the Misty Wanderer spend: the willing creature is not brought along"
+    "is": "held",
+    "by": "src/lib/dm/feature-move.ts planFeatureMove along (fx along 5, authored-resources.json sub_misty_wanderer)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Misty Wanderer#along"
    }
   ]
  },
@@ -5065,11 +4865,9 @@
    },
    {
     "c": "or move you 5 feet without provoking",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Gathered Swarm#move-5",
-    "severity": "medium",
-    "where": "src/lib/dm/authored-spend-more.ts swarmPush: the spend has one effect, the push. Sent with variant 'move' and a square, it pushed the goblin 15 feet (it stood at (5,9)) and never moved the ranger. There is no 5-foot move of the ranger.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-rng.ts swarmCarry (variant move, from authored-spend-more.ts swarmPush)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Gathered Swarm#move-5"
    },
    {
     "c": "1d8 from 11th level",
@@ -5117,11 +4915,9 @@
    },
    {
     "c": "a 10-foot flying speed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Writhing Tide#10-feet",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "the Writhing Tide 'flying' buff carries no 10-foot speed (computeSheetDerived speeds)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine-rng.ts ranger::Writhing Tide (move fly 10 gated on flying (writhing tide)); src/lib/battlemap/types.ts flyingSpeedOf FEATURE_FLIGHT",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Writhing Tide#10-feet"
    },
    {
     "c": "for a minute",
@@ -5152,11 +4948,9 @@
   "clauses": [
    {
     "c": "Gathered Swarm's damage becomes 1d8, a creature that fails its save against being moved by the swarm can also be knocked prone, and when the swarm moves you, you have half cover until the start of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Mighty Swarm#d8-prone-cover",
-    "severity": "medium",
-    "where": "The 1d8 holds (authored-effects-data2.ts Gathered Swarm rider) and so does the prone (src/lib/dm/authored-spend-more.ts swarmPush with swarmKnocksProne). But there is no swarm move of the ranger (swarmPush moves only the creature hit), so the half cover never comes: the ranger (AC 12) was hit by a 13. The authored note says the half cover is the GM's.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-rng.ts swarmCarry (swarm cover, src/lib/srd/authored-conditions.ts swarm_cover)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Mighty Swarm#d8-prone-cover"
    }
   ]
  },
@@ -5179,11 +4973,9 @@
    },
    {
     "c": "teleports you 30 feet",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Swarming Dispersal#teleport",
-    "severity": "low",
-    "kind": "rule-missing",
-    "where": "the Swarming Dispersal reaction: the ranger is not teleported"
+    "by": "src/lib/dm/reaction-tools.ts forwards x and y to use_resource, whose teleport moves the ranger (src/lib/dm/feature-move.ts planFeatureMove)"
    },
    {
     "c": "a proficiency-bonus number of times",
@@ -5237,19 +5029,15 @@
   "clauses": [
    {
     "c": "As an action, summon your drake in an unoccupied space within 30 feet, lasting until it drops to 0 hit points, you summon it again or you die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake Companion#summon",
-    "severity": "medium",
-    "where": "src/lib/dm/pet-tools.ts summon_pet: in a fight the summoning costs no action (the turn budget stays untouched), and the drake gets no token (no unoccupied space within 30 feet). At 0 hit points it stays on the sheet. Summoning again does replace it.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pet-command.ts drakeSummonCost (summon_pet, pet-tools.ts) and handleDamagePet's drake at 0 hit points",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake Companion#summon"
    },
    {
     "c": "once per long rest, or by expending a spell slot of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Drake Companion#once-a-long-rest",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/pet-tools.ts summon_pet: the drake is summoned again without spending sub_drake_companion or a slot"
+    "is": "held",
+    "by": "src/lib/dm/pet-command.ts drakeSummonCost (sub_drake_companion, or a slot named in summon_pet level)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Drake Companion#once-a-long-rest"
    },
    {
     "c": "Choose its Draconic Essence when you summon it (acid, cold, fire, lightning or poison",
@@ -5287,11 +5075,9 @@
    },
    {
     "c": "It acts on your initiative and takes the Dodge action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake Companion#initiative-dodge",
-    "severity": "medium",
-    "where": "pet_attack (src/lib/dm/pet-tools.ts) holds the drake to the ranger's turn, so it acts on their initiative. But nothing records the Dodge it takes when not commanded: a pet record has no conditions, and damage_pet takes no attack roll for disadvantage to land on.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pet-command.ts PET_DODGING (pet-build.ts), commandPet and petDodgeTurnStart (authored-turns.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake Companion#initiative-dodge"
    },
    {
     "c": "unless you command it with a bonus action",
@@ -5310,19 +5096,15 @@
   "clauses": [
    {
     "c": "Your drake grows to Medium, grows wings (a flying speed equal to its walking speed) and can carry you as a mount",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Bond of Fang and Scale#medium-wings-mount",
-    "severity": "medium",
-    "where": "src/lib/dm/pet-build.ts buildPet (kind drake, 7th level): the size, the wings and the mount are only words in the notes. The record has no size and no flying speed (speed 40), and mount_up refuses the drake (it takes only the listed mounts).",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pet-build.ts buildPet drake size and fly; src/lib/dm/mount-tools.ts handleMountUp via src/lib/dm/pet-command.ts drakeMount",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Bond of Fang and Scale#medium-wings-mount"
    },
    {
     "c": "its Bite deals an extra 1d6 damage of its essence type, and you have resistance to that damage type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Bond of Fang and Scale#bite-resist",
-    "severity": "high",
-    "where": "The Bite's 1d6 rider of the essence holds (pet-build.ts attack riders: 1d6+3+1d6). But the ranger's resistance is keyed to a builder pick 'Bond of Fang and Scale (Fire)' (authored-effects-data4.ts resist gate choice), which summon_pet's essence never writes: 10 fire on a ranger with a fire drake took 10.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pet-tools.ts handleSummonPet via src/lib/dm/pet-command.ts essenceChoice (writes Bond of Fang and Scale (Fire))",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Bond of Fang and Scale#bite-resist"
    }
   ]
  },
@@ -5335,11 +5117,9 @@
   "clauses": [
    {
     "c": "As an action, you or your drake exhales a 30-foot cone of acid, cold, fire, lightning or poison (your choice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake's Breath#action-cone-type",
-    "severity": "medium",
-    "where": "The action, the type chosen and the 30-foot reach hold (src/lib/dm/counter-saves.ts resolveCounterSave rangeFt 30: 24 fire on a creature immune to cold, one 35 feet off refused). But the cone is checked as a radius: one breath caught creatures 30 feet south and 25 feet north (24 each). The drake can never be its source, since it has no token.",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave cone (src/lib/dm/cone-logic.ts fitsOneCone; fx cone in authored-resources.json)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Drake's Breath#action-cone-type"
    },
    {
     "c": "each creature in it makes a Dexterity save against your spell save DC or takes 8d6 damage (10d6 from 15th level), half on a success",
@@ -5355,11 +5135,9 @@
    },
    {
     "c": "or by expending a spell slot of 3rd level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Drake's Breath#slot",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts: Drake's Breath cannot be bought with a 3rd-level slot"
+    "is": "held",
+    "by": "src/lib/dm/resource-tools.ts computeUseResource slotPayment (ResourceDef.slotFallback 3, authored-resources.json sub_drakes_breath)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Drake's Breath#slot"
    }
   ]
  },
@@ -5376,11 +5154,9 @@
    },
    {
     "c": "its Bite's extra damage becomes 2d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Perfected Bond#2d6",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/pet-tools.ts drake bite: the essence die stays 1d6 at 15th level"
+    "is": "held",
+    "by": "src/lib/dm/pet-build.ts buildPet drake (2d6 from 15th level)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Perfected Bond#2d6"
    },
    {
     "c": "Reflexive Resistance",
@@ -5454,27 +5230,21 @@
    },
    {
     "c": "its effect rolled on a d6: healing (2d4 + your Intelligence modifier hit points)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#healing",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-sweep-counters.ts Experimental Elixir (variants): the healing holds (2d4 + Intelligence), but the spend refuses without a named variant and rolls no d6, so the elixirs of a rest are chosen, not rolled",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts rollsOption + src/lib/dm/authored-spend-divine-dra.ts rollOption (variants roll d6)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#healing"
    },
    {
     "c": "swiftness (walking speed 10 feet higher for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 added to attack rolls and saving throws for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#effects",
-    "severity": "high",
-    "where": "the flight elixir lays the generic 'flying' condition (src/lib/srd/authored-effects-sweep-counters.ts), which src/lib/battlemap/types.ts ownFlyingSpeed reads as a 60-foot flying speed, not 10; swiftness, resilience, boldness and transformation hold",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts ownFlyingSpeed ('flying (10 ft)', authored-effects-sweep-counters.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#effects"
    },
    {
     "c": "As an action you can expend a spell slot of 1st level or higher to brew one more, choosing its effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#slot",
-    "severity": "medium",
-    "where": "src/lib/dm/authored-spends.ts pool spend: with the rest's elixirs gone the spend is refused ('0/1 left'); no spell slot can brew one more",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts pool.slot (lowestSlotLeft / spendSlotOf in authored-spend-divine-dra.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Experimental Elixir#slot"
    },
    {
     "c": "An elixir lasts until it is drunk or you finish a long rest",
@@ -5491,11 +5261,9 @@
   "clauses": [
    {
     "c": "When you cast a spell with alchemist's supplies as your spellcasting focus, add your Intelligence modifier (minimum +1) to one roll of the spell that restores hit points or deals acid, fire, necrotic or poison damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Alchemical Savant#int-bonus",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data4.ts AUTHORED_TABLE[\"artificer::Alchemical Savant\"] spell_rider has no items gate (Arcane Firearm's has one): the +Intelligence lands on Fire Bolt and Cure Wounds with no alchemist's supplies carried",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredSpellDice (spell_rider itemNames: alchemist's supplies)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Alchemical Savant#int-bonus"
    }
   ]
  },
@@ -5508,11 +5276,9 @@
   "clauses": [
    {
     "c": "A creature that drinks one of your experimental elixirs also gains 2d6 + your Intelligence modifier temporary hit points (minimum 1",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Restorative Reagents#temp-hp",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-sweep-counters.ts Experimental Elixir: drinking an Alchemist 9's elixir gives no temporary hit points; no row reads Restorative Reagents on the drink",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-dra.ts drinkerTempHp (spend.drinker on Experimental Elixir)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Restorative Reagents#temp-hp"
    },
    {
     "c": "With alchemist's supplies as your focus",
@@ -5553,19 +5319,15 @@
    },
    {
     "c": "immunity to the poisoned condition",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: artificer::Chemical Mastery#immune",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "set_condition (src/lib/dm/catalog-party.ts / mutations.ts): the Alchemist 15 is given the poisoned condition; no condition immunity is read for Chemical Mastery (src/lib/srd/authored-effects-data*.ts has no row for it)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine-dra.ts artificer::Chemical Mastery immune_condition poisoned",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: artificer::Chemical Mastery#immune"
    },
    {
     "c": "and can cast greater restoration and heal once per long rest each without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Chemical Mastery#free-casts",
-    "severity": "high",
-    "where": "src/lib/srd/counter-casts.ts has no Chemical Mastery row (nor a granted cast in src/lib/srd/granted-casts.ts): the cast guard refuses Heal as a spell the Alchemist 15 does not know or have prepared",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts art_chemical_mastery_restoration / art_chemical_mastery_heal (authored-resources.json) read by granted-casts.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Chemical Mastery#free-casts"
    }
   ]
  },
@@ -5625,27 +5387,21 @@
    },
    {
     "c": "you use Intelligence for the attack and damage rolls of the armor's weapon",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#int",
-    "severity": "high",
-    "where": "pc_attack has no armor weapon: no grantedAttack for the thunder gauntlets or lightning launcher (src/lib/srd/authored-conditions.ts, AUTHORED_TABLE[\"artificer::Armor Model\"] in authored-effects-data3.ts), so 'Thunder Gauntlets' is refused as a weapon the armorer does not carry",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-profile.ts natural weapon ability (NaturalWeapon.ability int, authored-effects-data3.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#int"
    },
    {
     "c": "thunder gauntlets (a 1d8 thunder melee weapon",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#gauntlets",
-    "severity": "high",
-    "where": "pc_attack: the thunder gauntlets are no weapon (no 1d8 thunder melee attack); see Armor Model#int",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts natural_weapon Thunder Gauntlets read by authoredNaturalWeapon / pc-attack-profile.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#gauntlets"
    },
    {
     "c": "a creature hit has disadvantage on attacks against anyone but you until the start of your next turn) and",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#disadvantage-others",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-conditions.ts 'thunder gauntlets' is summaryOnly: the mark is laid on any melee hit (authored-effects-data3.ts effect mark, melee) but the creature's attacks at the armorer's ally roll one d20, and the gauntlets themselves cannot be swung",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (mark weapon Thunder Gauntlets) + authoredIncomingAttack GUARD_MARKS",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#disadvantage-others"
    },
    {
     "c": "Defensive Field (a bonus action gives you temporary hit points equal to your artificer level, a proficiency-bonus number of times per long rest)",
@@ -5655,11 +5411,9 @@
    },
    {
     "c": "a lightning launcher (a 1d6 lightning ranged weapon, 90/300 feet, that once on each of your turns deals an extra 1d6 lightning damage to a creature it strikes), Powered Steps (walking speed 5 feet higher) and Dampening Field (advantage on Stealth checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#infiltrator",
-    "severity": "high",
-    "where": "pc_attack has no lightning launcher (1d6 lightning, 90/300, the once-a-turn extra 1d6); Dampening Field (Stealth advantage) holds, and the Powered Steps speed was not reached",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts natural_weapon Lightning Launcher + rider weapon (attack-damage-riders.ts) + authored-feature-defs.ts merged entries (Powered Steps)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Armor Model#infiltrator"
    }
   ]
  },
@@ -5728,11 +5482,9 @@
    },
    {
     "c": "a creature your lightning launcher damages glows until the start of your next turn, has disadvantage on attack rolls against you, and the next attack roll against it has advantage and deals an extra 1d6 lightning damage if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Perfected Armor#infiltrator",
-    "severity": "medium",
-    "where": "pc_attack has no lightning launcher, so nothing lays 'lit by perfected armor' (src/lib/srd/authored-conditions.ts); the next attack at the creature has no advantage and no extra 1d6 lightning",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/attack-damage-riders.ts withTargetDice (hitDiceAgainst, authored-conditions.ts) + authored-hooks.ts authoredIncomingAttack (disadvantage at the armorer) + mark weapon Lightning Launcher",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Perfected Armor#infiltrator"
    }
   ]
  },
@@ -5760,11 +5512,9 @@
   "clauses": [
    {
     "c": "As an action you create a Small or Tiny cannon (AC 18, hit points five times your artificer level) in an unoccupied space within 5 feet that lasts an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#create",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"artificer::Eldritch Cannon\"] (src/lib/srd/authored-effects-data3.ts) makes the cannon a 600-round buff condition on the artificer: no cannon zone or token is laid (the 'eldritch cannon' zone of src/lib/battlemap/zones-spells.ts is never placed), with no AC 18 or hit points",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/feature-summons-dra.ts createEldritchCannon (a construct AC 18, five times the level hit points, and its area)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#create"
    },
    {
     "c": "once per long rest",
@@ -5774,19 +5524,15 @@
    },
    {
     "c": "or by expending a spell slot of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#slot",
-    "severity": "medium",
-    "where": "src/lib/dm/authored-spends.ts pool spend: a second cannon after the long rest's use is refused ('0/1 left'); no spell slot can pay for it",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts pool.slot (authored-effects-data3.ts Eldritch Cannon)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#slot"
    },
    {
     "c": "A bonus action activates it if it is within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#bonus-60",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"artificer::Eldritch Cannon\"] Activate Cannon is gated on the condition only: the bonus action holds, but with no cannon on the board no 60 feet is measured",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts nearZone -> authored-spend-divine-dra.ts nearZoneRefusal (60 feet of the cannon's area)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#bonus-60"
    },
    {
     "c": "Flamethrower (a 15-foot cone, 2d8 fire damage, half on a successful Dexterity save)",
@@ -5796,11 +5542,9 @@
    },
    {
     "c": "Force Ballista (a ranged spell attack at a creature within 120 feet for 2d8 force damage that pushes it 5 feet) or Protector (it and each creature of your choice within 10 feet of it gain 1d8 + your Intelligence modifier temporary hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#ballista-protector",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-conditions.ts eldritch_cannon grantedAttack Force Ballista: 2d8 force lands but the creature is not pushed 5 feet; Protector's 1d8 + Intelligence temporary hit points hold",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/cannon-board-dra.ts ballistaPush from src/lib/dm/attack-blow.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Eldritch Cannon#ballista-protector"
    }
   ]
  },
@@ -5853,11 +5597,9 @@
    },
    {
     "c": "you and your allies have half cover within 10 feet of one",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Fortified Position#half-cover",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"artificer::Fortified Position\"] (src/lib/srd/authored-effects-data4.ts) is narrated: no +2 AC for an ally within 10 feet of the cannon (and no cannon on the board to measure from)",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/cannon-board-dra.ts fortifiedCover from src/lib/dm/attack-spatial.ts coverFor",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Fortified Position#half-cover"
    }
   ]
  },
@@ -5891,11 +5633,9 @@
    },
    {
     "c": "and you use Intelligence instead of Strength or Dexterity for attack and damage with magic weapons",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Battle Ready#int-magic",
-    "severity": "high",
-    "where": "src/lib/dm/attack-features.ts weapon_ability (magicOnly reads resolved.gear): a +1 Longsword swings on Strength (+3), not Intelligence (+5)",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/attack-features.ts hexWarriorSwing (magicItemBonus counts a +1 weapon as magic)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Battle Ready#int-magic"
    }
   ]
  },
@@ -5908,11 +5648,9 @@
   "clauses": [
    {
     "c": "You build a steel defender that fights beside you and acts on your initiative right after you, taking the Dodge action unless you spend a bonus action to command it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Steel Defender#initiative-dodge",
-    "severity": "medium",
-    "where": "src/lib/dm/summon-defender.ts: the defender acts right after the artificer (initiative 'caster'), but the Dodge it takes unless commanded is trait text only; an attack at it rolls one d20",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/defender-dodge.ts defenderDodging (authored-hooks.ts authoredIncomingAttack) + markDefenderCommanded (attack-swing.ts judgeSwing)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Steel Defender#initiative-dodge"
    },
    {
     "c": "and",
@@ -5964,11 +5702,9 @@
   "clauses": [
    {
     "c": "When your magic weapon or your steel defender hits a target, once per turn you can deal it an extra 2d6 force damage or restore 2d6 hit points to a creature or object you can see within 30 feet of it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Arcane Jolt#jolt",
-    "severity": "medium",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"artificer::Arcane Jolt\"] (src/lib/srd/authored-effects-data3.ts) through src/lib/dm/authored-spends.ts: the hit, once a turn and 2d6 hold, but the heal reaches a creature 35 feet from the creature hit; no 30-foot reach is read",
-    "kind": "rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine-dra.ts joltReachRefusal (flames healReachFt 30, authored-spend-effects.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Arcane Jolt#jolt"
    },
    {
     "c": "a number of times equal to your Intelligence modifier (minimum once)",
