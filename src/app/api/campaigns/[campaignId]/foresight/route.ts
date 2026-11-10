@@ -4,7 +4,6 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, setSheetWatching } from "@/lib/db/sheets";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import { narratorIsAi } from "@/lib/dm/viewer";
 import { publishPersisted } from "@/lib/events";
 
 export const runtime = "nodejs";
@@ -33,8 +32,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (parsed.data.on && !encounter) {
     return Response.json({ error: "There is no fight to watch." }, { status: 409 });
   }
-  // The stops come in the AI GM's turns (src/lib/dm/turn.ts); a person
-  // running the table rolls the monsters from the console, which never stops.
+  // The stops come before any d20 the GM's calls throw, the console's as the
+  // AI's (src/lib/dm/held-call.ts), so a person's table is watched too.
   const power = foretoldLeft(sheet).length
     ? "Portent"
     : holdsFeature(sheet, "chronal shift")
@@ -44,9 +43,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
         : holdsFeature(sheet, "favored by the gods")
           ? "Favored by the Gods"
           : null;
-  if (parsed.data.on && !narratorIsAi(context.campaign.gameSettings.dmMode)) {
-    return Response.json({ error: `A person runs this table: tell them when you use ${power ?? "Portent"}.` }, { status: 409 });
-  }
   // Portent wants a number left; the others are watched for while the
   // character holds them, and a stop is only made while a use (and the
   // reaction, where it costs one) is there to spend (foresight.ts).

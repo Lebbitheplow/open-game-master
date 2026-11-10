@@ -116,6 +116,46 @@ await test("an AI turn's group check waits on the seat's physical die and hands 
   assert.match(String(told), /"passed":true/, `the model reads the group's result: ${String(told).slice(0, 300)}`);
 });
 
+await test("at a table a person runs, a creature's attack from the console stops for a wizard's Portent, and the number lands on its d20 once answered", async () => {
+  reset();
+  const { combatKit } = await import("./lib/enforce-combat.mjs");
+  const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+  const { subscribe } = await import("../src/lib/events.ts");
+  const kit = await combatKit(world);
+  const seer = world.addHero({ name: "Seer", class: "wizard", level: 5, maxHp: 30, abilities: { int: 16 } });
+  world.patch(seer.id, { features: [{ name: "Portent", source: "subclass" }], resources: { sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+  subscribe(world.campaignId, () => {}, seer.userId);
+  await kit.fight(1, { heroFaces: { [seer.id]: 18, [hero.id]: 15, [ally.id]: 14, [lucky.id]: 13 } });
+  const [goblin] = world.enemies();
+  kit.place(ally.id, 5, 5);
+  kit.place(goblin.id, 5, 6);
+  kit.place(seer.id, 5, 2);
+  setDmMode(world.campaignId, "human", world.owner.id);
+  try {
+    world.signIn({ id: seer.userId });
+    const on = await routeCall(await world.route("campaigns/[campaignId]/foresight"), "POST", { on: true, characterId: seer.id }, { campaignId: world.campaignId });
+    assert.equal(on.status, 200, JSON.stringify(on.json));
+    kit.freshRound?.();
+    const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: ally.id });
+    assert.equal(swing.result?.parked, true, JSON.stringify(swing));
+    const [stop] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.parkedFor === "watch");
+    assert.ok(stop, "the console's attack stops for the watcher");
+    const attacks = () => listRecentRolls(world.campaignId, 50).filter((roll) => roll.kind === "attack" && roll.attacker?.id === goblin.id);
+    const before = attacks().length;
+    world.signIn({ id: seer.userId });
+    const answered = await routeCall(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/watch"), "POST", { value: 3 }, { campaignId: world.campaignId, pendingRollId: stop.id });
+    assert.equal(answered.status, 200, JSON.stringify(answered.json));
+    await settleQueue(world.campaignId);
+    const landed = attacks();
+    assert.equal(landed.length, before + 1, "the held attack ran on the answer");
+    assert.equal(landed[0].breakdown.natural, 3, "its d20 shows the foretold 3");
+    assert.deepEqual(world.sheet(seer.id).foretold, [17], "the 3 was paid for");
+  } finally {
+    setDmMode(world.campaignId, "ai", world.owner.id);
+    await kit.endFight();
+  }
+});
+
 model.close();
 world.close();
 finish();

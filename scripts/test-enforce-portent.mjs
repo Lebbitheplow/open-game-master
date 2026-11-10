@@ -329,16 +329,21 @@ await test("With the button off an attack never stops, and the numbers stay.", a
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
 });
 
-await test("The button needs a number held, and a table whose turns the AI GM plays.", async () => {
+// A person's table is watched as the AI's is: the console's calls stop for
+// the watcher before their d20 (src/lib/dm/held-call.ts). Refused there
+// before, Portent on another creature's roll had no door at all at a table a
+// person runs (finding L856 of the 2026-11-09 gap sweep; SRD 5.1 Portent:
+// "any attack roll, saving throw, or ability check made by you or a creature
+// that you can see").
+await test("The button needs a number held, at a table the AI runs or a person does.", async () => {
   arm({ foretold: [] });
   assert.equal((await toggle(true)).status, 409, "no number held");
   arm();
   const { setDmMode } = await import("../src/lib/db/campaigns.ts");
   setDmMode(fightWorld.campaignId, "human", fightWorld.owner.id);
   try {
-    const refused = await toggle(true);
-    assert.equal(refused.status, 409, "a person runs the table: the console's rolls never stop, so the button did nothing");
-    assert.match(JSON.stringify(refused.json ?? refused.body ?? ""), /A person runs this table/);
+    assert.equal((await toggle(true)).status, 200, "a person's console calls stop for the watcher too");
+    assert.equal((await toggle(false)).status, 200);
   } finally {
     setDmMode(fightWorld.campaignId, "ai", fightWorld.owner.id);
   }

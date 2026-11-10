@@ -31,17 +31,23 @@ export function singleD20Expression(expression: string): string {
 }
 
 // The roll with the foretold number on its d20; null when it has no d20.
+// The number IS the d20 roll, so what the roll does to a low face applies to
+// it too: Reliable Talent's "treat a d20 roll of 9 or lower as a 10", carried
+// as the expression's floor (1d20f10). The maintainer's decision R3 of the
+// 2026-11-09 gap sweep; pull request #809 had the number stand unlifted.
 export function withForetoldD20(outcome: RollResult, value: number): RollResult | null {
   const lead = outcome.terms[0];
   if (lead?.kind !== "dice" || lead.sides !== 20) {
     return null;
   }
+  const floor = Number(/^\d*d20(?:k[hl]\d+)?(?:r\d+)?f(\d+)/.exec(outcome.expression.replace(/\s+/g, ""))?.[1] ?? 0);
+  const face = Math.max(value, Math.min(20, floor));
   const rest = { ...outcome };
   delete rest.crit;
   return {
     ...rest,
-    total: outcome.total - lead.subtotal + value,
-    terms: [{ ...lead, dice: [{ sides: 20, value, kept: true }], subtotal: value }, ...outcome.terms.slice(1)],
+    total: outcome.total - lead.subtotal + face,
+    terms: [{ ...lead, dice: [{ sides: 20, value: face, kept: true }], subtotal: face }, ...outcome.terms.slice(1)],
     natural: value,
     ...(value === 20 ? { crit: "nat20" as const } : value === 1 ? { crit: "nat1" as const } : {}),
   };
