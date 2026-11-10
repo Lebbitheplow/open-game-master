@@ -29,6 +29,7 @@ import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { canEnemyAct } from "@/lib/dm/can-act";
 import { standingOn } from "@/lib/dm/combatant";
 import { leftBehind, swallowCoverError } from "@/lib/dm/swallow";
 
@@ -128,6 +129,21 @@ function handleEnemyFlees(
   // and stays where it fell until it comes to, or is carried off.
   if (isKnockedOut(enemy)) {
     return { error: `${enemy.displayName} is knocked out: unconscious, they cannot flee. They stay where they fell.`, refused: "rules" };
+  }
+  // Fleeing is a walk out of the fight, held to what holds its walk on the
+  // board (can-act.ts canEnemyAct "move", and its speed): a Hold Person'd
+  // bandit captain escaped on the AI's word while move_token would not move
+  // it a square.
+  const walks = canEnemyAct({ enemy, encounter, kind: "move" });
+  if (!walks.ok) {
+    return { error: `${walks.error} It cannot flee.`, refused: "rules" };
+  }
+  if (enemySpeedTiles(enemy) === 0) {
+    const held = enemy.conditions.find((entry) => ["grappled", "restrained"].includes(entry.toLowerCase()));
+    return {
+      error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts.`,
+      refused: "rules",
+    };
   }
   patchEnemyHp(enemy.id, enemy.currentHp, "fled");
   // What it swallowed stays, prone where it stood (swallow.ts): asked while

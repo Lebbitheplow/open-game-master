@@ -240,6 +240,28 @@ test("an incapacitated enemy does nothing", () => {
   );
 });
 
+// The enemy doors that move a creature or speak for it (move_token,
+// enemy_flees, declare_intent) ask "move" and "intent": a Hold Person'd
+// captain fled, a surprised goblin walked once the pointer passed its place,
+// and the board showed a sleeping one raising its club.
+test("an enemy's walk is stopped by what says can't move and by surprise, its intent only by unawareness", () => {
+  for (const condition of ["paralyzed", "stunned", "unconscious", "petrified"]) {
+    assert.equal(reasonOf(canEnemyAct({ enemy: goblin({ conditions: [condition] }), encounter: fight(), kind: "move" })), "incapacitated", condition);
+  }
+  // Bare incapacitation takes actions and reactions, not speed; listed first,
+  // it does not hide the stun beside it.
+  assert.deepEqual(canEnemyAct({ enemy: goblin({ conditions: ["incapacitated"] }), encounter: fight(), kind: "move" }), { ok: true });
+  assert.equal(reasonOf(canEnemyAct({ enemy: goblin({ conditions: ["incapacitated", "stunned"] }), encounter: fight(), kind: "move" })), "incapacitated");
+  const passed = fight({ surprisedIds: ["en-1"], turnIndex: 2 });
+  assert.equal(reasonOf(canEnemyAct({ enemy: goblin(), encounter: passed, kind: "move" })), "surprised");
+  assert.deepEqual(canEnemyAct({ enemy: goblin(), encounter: passed, kind: "intent" }), { ok: true });
+  for (const condition of ["unconscious", "petrified"]) {
+    assert.equal(reasonOf(canEnemyAct({ enemy: goblin({ conditions: [condition] }), encounter: fight(), kind: "intent" })), "incapacitated", condition);
+  }
+  assert.deepEqual(canEnemyAct({ enemy: goblin({ conditions: ["stunned"] }), encounter: fight(), kind: "intent" }), { ok: true });
+  assert.equal(reasonOf(canEnemyAct({ enemy: goblin({ status: "dead" }), encounter: fight(), kind: "intent" })), "dead");
+});
+
 test("a surprised enemy loses round 1 and its reaction until its place has gone by", () => {
   const encounter = fight({ surprisedIds: ["en-1"] });
   assert.equal(reasonOf(canEnemyAct({ enemy: goblin(), encounter, kind: "action" })), "surprised");

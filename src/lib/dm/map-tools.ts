@@ -595,9 +595,12 @@ export function handleMoveToken(
     }
   }
   // An enemy walking is an enemy acting: a surprised one stands where it is
-  // through round 1. A push or a drag moves whoever it moves.
+  // through round 1, on its own (lost) turn too, which the reaction's
+  // question let pass once the pointer had gone by its place. A legendary
+  // move is spent on another creature's turn, and asks as a reaction does. A
+  // push or a drag moves whoever it moves.
   if (resolved.kind === "enemy" && resolved.enemy && !args.forced) {
-    const allowed = canEnemyAct({ enemy: resolved.enemy, encounter, kind: "reaction" });
+    const allowed = canEnemyAct({ enemy: resolved.enemy, encounter, kind: allowance ? "reaction" : "move" });
     if (!allowed.ok && allowed.reason === "surprised") {
       return toolError(allowed);
     }
