@@ -235,6 +235,25 @@ await test("a file under public/ is answered only to the table it belongs to, an
   }
 });
 
+await test("a painted portrait copied into uploads gets its smaller copies, as an uploaded one does", async () => {
+  const { copyIntoUploads } = await import("../src/lib/portrait.ts");
+  const { imageVariantsSettled } = await import("../src/lib/image-variants.ts");
+  // A picture with pixels to shrink (the one-pixel PNG above has none).
+  const render = fs.readFileSync(path.join(import.meta.dirname, "..", "public", "assets", "themes", "default", "diffuse-dark.png"));
+  const renders = path.join(process.cwd(), "public", "generated");
+  fs.mkdirSync(renders, { recursive: true });
+  fs.writeFileSync(path.join(renders, "render.png"), render);
+  try {
+    const copied = copyIntoUploads("/generated/render.png");
+    assert.match(copied.url, /^\/uploads\/[0-9a-f-]{36}\.png$/);
+    assert.equal(fs.readFileSync(path.join(uploads, `${copied.id}.png`)).equals(render), true);
+    await imageVariantsSettled();
+    assert.equal(fs.existsSync(path.join(uploads, `${copied.id}.w256.webp`)), true, "no 256 pixel copy beside the portrait");
+  } finally {
+    fs.rmSync(path.join(renders, "render.png"), { force: true });
+  }
+});
+
 await test("the three login folders are sent to that route by path, never by an absolute address", async () => {
   const { loginMediaRewrites } = await import("../next.config.ts");
   assert.deepEqual(loginMediaRewrites, [
