@@ -236,6 +236,43 @@ await test("A spent use is refused at the stop and costs nothing.", async () => 
   assert.equal(flashUsed(), 3);
 });
 
+// apply_hazard throws its saves through cast_at_player, and the stop never
+// came for it (play-test 2026-11-09: a trap's save, with Favored by the Gods
+// watching, went by with no stop).
+await test("A trap the GM springs with apply_hazard stops for the save it throws; a fall, which throws none, does not.", async () => {
+  reset();
+  assert.equal((await toggle(artUser, artificer.id, false)).status, 200);
+  assert.equal((await toggle(solUser, sorcerer.id)).status, 200);
+  await enemyTurn([modelCall("apply_hazard", { type: "generic", characterIds: [sorcerer.id], saveAbility: "con", dc: 10, damage: "1d4", damageType: "poison", reason: "a poison needle trap" })], "The needle bites.");
+  const [stop] = stops();
+  assert.ok(stop, "the hazard's save stops");
+  assert.match(stop.reason, /Sol is about to make a saving throw against a poison needle trap\./);
+  assert.equal(publicPendingRoll(stop).watch.power, "favored_by_the_gods");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices, [{ name: "Sol", when: "if it fails" }]);
+  world.dice(2, 4, 4, 2);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  const [, before, after] = /Sol used Favored by the Gods: Sol's save went from (\d+) to (\d+) against DC 10/.exec(toldLast().savedWith ?? "") ?? [];
+  assert.equal(Number(after) - Number(before), 8, JSON.stringify(toldLast()));
+  assert.equal(lastSave(sorcerer.id)?.total, Number(after), "the stored save carries the 2d4");
+  assert.equal(favoredUsed(), 1);
+  // A trap that catches two: Favored by the Gods answers only Sol's own save.
+  reset();
+  world.patch(sorcerer.id, { watchingEncounterId: world.encounter().id });
+  await enemyTurn([modelCall("apply_hazard", { type: "trap", severity: "setback", characterIds: [ally.id, sorcerer.id] })], "Darts fly.");
+  const [pair] = stops();
+  assert.ok(pair, "a trap's saves stop");
+  assert.match(pair.reason, /2 characters are about to make saving throws against a trap\./);
+  assert.deepEqual(publicPendingRoll(pair).watch.choices, [{ name: "Sol", when: "if it fails" }]);
+  await answer(pair.id, { pass: true }, solUser);
+  await settleQueue(world.campaignId);
+  assert.equal(favoredUsed(), 0, "Let it roll spends nothing");
+  await enemyTurn([modelCall("apply_hazard", { type: "falling", feet: 20, characterIds: [sorcerer.id] })], "Sol falls.");
+  await settleQueue(world.campaignId);
+  assert.equal(stops().length, 0, "a fall throws no save");
+});
+
 model.close();
 finish();
 world.close();

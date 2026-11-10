@@ -1062,7 +1062,7 @@
     "lib/db/core.ts#toLowerCase": [["key",1,"class slug"]],
     "lib/db/creation-rolls.ts#LIKE": [["key",1,"class id, roll scope"]],
     "lib/db/creation-rolls.ts#toLowerCase": [["key",1,"class id, roll scope"]],
-    "lib/dm/foresight.ts#str-eq": [["key",1,"tool names and a roll kind the engine fixes"]],
+    "lib/dm/foresight.ts#str-eq": [["key",3,"tool names, a roll kind and apply_hazard's hazard types the engine fixes"]],
     "lib/db/dm-turns.ts#str-eq": [["key",3,"stored parking reasons"]],
     "lib/db/driver.ts#\\b": [["key",3,"SQL keywords"]],
     "lib/db/driver.ts#re-word": [["key",2,"SQL keywords and driver ids"]],
