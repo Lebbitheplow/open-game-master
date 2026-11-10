@@ -9,7 +9,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { englishHold, englishActs, onlyAsks, onlyAsked, askedSwayRefusal, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
+const { englishHold, englishActs, englishDeclines, onlyAsks, onlyAsked, askedSwayRefusal, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
 const { parseWordReading } = await import("../src/lib/dm/player-word-read.ts");
 
 const FIGHT = "2026-11-08T12:00:00.000Z";
@@ -126,6 +126,54 @@ assert.match(unaskedRefusal("Kara", still), /end_turn ends the turn/);
 const ground = word([line("I hold my ground and swing at anything that comes close.")]);
 assert.deepEqual([ground.declares, ground.holds], [true, true]);
 assert.match(heldRefusal("Kara", ground.holdQuote), /^Kara's player said Kara stays where they are \("hold my ground"\), so the server will not walk them\. Nothing was spent\./);
+
+// ---- an action turned down (issue 761) ----
+
+// The words of the 0.34.1 play-test that ended a turn through the model's
+// end_turn, and the borderline ones: they only say what is not done.
+for (const text of [
+  "I won't attack again.",
+  "Don't attack again this turn. I keep my shield up.",
+  "I keep my hands ready but don't attack again this turn.",
+  "Bryn won't attack again this turn.",
+  "Bryn doesn't attack again this turn.",
+  "No more attacks from me.",
+  "Don't attack again.",
+  "I won't cast anything else this turn.",
+  "Not casting anything else.",
+  "I won't make another attack on the goblin.",
+  "Don't attack again. Don't end my turn yet.",
+]) {
+  assert.equal(englishActs(text, ["Goblin", "Fire Bolt"]), false, `acts: ${text}`);
+  assert.equal(englishDeclines(text), true, `declines: ${text}`);
+  const read = word([line(text)]);
+  assert.deepEqual([read.spoke, read.declares, read.why], [true, false, "declined"], text);
+}
+assert.equal(
+  unaskedRefusal("Kara", { why: "declined" }),
+  "Kara's player only said what Kara will not do; they did not end the turn. Nothing was spent and the turn stays open. Ask them whether Kara moves, uses a bonus action, or ends the turn, and wait for their answer.",
+);
+// Something else asked for beside it is still the player's word.
+for (const text of [
+  "I won't attack again, I step back 10 feet.",
+  "Don't attack again, cast Fire Bolt instead.",
+  "No more attacks but I Dash to the door.",
+  "I'm ready to attack the moment it moves.",
+  "I ready my crossbow.",
+  "I attack the goblin again.",
+]) {
+  assert.equal(englishActs(text, ["Goblin", "Fire Bolt"]), true, `acts: ${text}`);
+  assert.equal(word([line(text)]).declares, true, text);
+}
+// An end in their own words ends the turn as before.
+for (const text of ["I won't attack again, I end my turn.", "No more attacks. That's my turn."]) {
+  assert.equal(word([line(text)]).declares, true, text);
+}
+// A hold that also turns an attack down is a hold: the turn may pass on it.
+const noMore = word([line("I hold my ground, no more attacks.")]);
+assert.deepEqual([noMore.declares, noMore.holds, noMore.why], [false, true, "held"]);
+// Words before the fight that turn an attack down name nothing done in it.
+assert.deepEqual([word([before("We won't attack the goblin.")]).declares, word([before("We won't attack the goblin.")]).why], [false, "before_fight"]);
 
 // A Hand card always declares.
 assert.equal(word([line("I attack the goblin.", undefined, "attack")]).declares, true);
