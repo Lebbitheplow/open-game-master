@@ -62,6 +62,7 @@ import {
   handleLocationCall,
   handleRecordEvent,
   handleRequestPlayerInput,
+  modelCallArguments,
 } from "@/lib/dm/turn";
 import { imagesAvailable } from "@/lib/capabilities";
 import { imageProducerReady } from "@/lib/image-generate";
@@ -114,6 +115,13 @@ async function dispatchCall(
   casting?: OneCasting,
 ): Promise<ToolResult> {
   const { campaign, turn, sheets, sheetsById } = context;
+  // The arguments as every gate and handler reads them, as the model's turn
+  // loop reads them (turn.ts modelCallArguments).
+  const door = modelCallArguments(campaign, name, sentArguments, sheets);
+  if ("refusal" in door) {
+    return door.refusal;
+  }
+  sentArguments = door.rawArguments;
   // A chest's items, a shopping list, the creatures a healing spell
   // reaches: each entry the one-entry call it always was
   // (src/lib/dm/action-parts-logic.ts listedCalls), for a connected agent

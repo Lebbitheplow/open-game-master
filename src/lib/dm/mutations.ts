@@ -228,9 +228,17 @@ export const mutationTools: ToolDef[] = [
     // arguments, checked as that call. The items are not optional: the
     // gpt-oss chat template llama.cpp ships reads an array's items and, with
     // none, fails every call that offers the tools, so the DM ran with none.
+    // And each entry's fields are declared, as every other list of objects
+    // in the catalogue declares them: a reader that wants an object's
+    // properties (Gemini: "should be non-empty for OBJECT type") refused the
+    // whole tool list over a bare object (gap sweep 2026-11-09).
     targets: {
       type: "array",
-      items: { type: "object" },
+      items: {
+        type: "object",
+        properties: { characterId: { type: "string" }, amount: { type: "integer", minimum: 1, maximum: 200 } },
+        required: ["characterId"],
+      },
       description: "Instead of characterId: {characterId, amount} for each creature one spell heals.",
     },
   }, [], false),

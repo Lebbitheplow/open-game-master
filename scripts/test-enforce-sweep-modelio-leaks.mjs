@@ -154,13 +154,9 @@ console.log(`  rows: ${rows}; skipped 0`);
 world.close();
 finish();
 
+// The rows the 2026-11-09 repair closed (src/lib/table-delivery.ts runs
+// every event that can name a creature through src/lib/hidden-names-logic.ts)
+// run as tests.
 function LEAKS_TODAY() {
-  return {
-    "leak:lurker:enemy_attack": "roll_result (attacker: { name }) and sheet_audit (reason \"<name>'s Scimitar\"): a hidden ambusher's first swing names it on every player's stream",
-    "leak:lurker:cast_at_player": "roll_result (detail \"Mira: DEX save vs <name>'s\", attacker: { name })",
-    "leak:lurker:move_token": "roll_result (detail \"... (opportunity attack) vs <name>\") and message_added (the table line \"Mira catches <name> with an opportunity attack as it breaks away\"): the heroes are also given opportunity attacks against a creature kept off the board",
-    "leak:lurker:enemy_flees": "encounter_updated (the order's entry flips to { name, hidden: false } as the creature leaves)",
-    "leak:hero:enemy_flees": "encounter_updated (the order's entry flips to { name, hidden: false } as the creature leaves)",
-    "leak:hero:pc_attack": "roll_result (detail \"Fire Bolt vs <name>\"), sent to the other players' seats too; the swing itself is rolled at disadvantage, so the engine knows the target is unseen",
-  };
+  return {};
 }

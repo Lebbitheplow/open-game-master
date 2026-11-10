@@ -13,7 +13,9 @@ import {
   endpointKind,
   profileById,
   resolveSampling,
+  NO_JINJA_MESSAGE,
   toolRouteFromError,
+  toolsNeedJinjaFlag,
   toolsUnsupportedByServer,
   unsupportedParamFromError,
   type OpenAiToolRoute,
@@ -121,6 +123,9 @@ export type UpstreamResult = {
   // What the backend said the call cost, for the usage ledger
   // (src/lib/usage/ledger.ts); absent when it said nothing.
   usage?: UpstreamUsage;
+  // The backend has no function calling and this reply came from the same
+  // call sent again without tools (sampling-logic.ts toolsUnsupportedByServer).
+  toolsDropped?: true;
 };
 
 export type UpstreamUsage = TokenUsage & {
@@ -407,15 +412,26 @@ export function forgetContextWindows(): void {
 // What a backend's refusal says of its window, when the request was too big
 // for it: llama-server names n_ctx, vLLM and OpenAI the maximum context
 // length. Null when the refusal was about something else; 0 when it was
-// about the window but named no size.
+// about the window but named no size. LM Studio ("loaded with context length
+// of only N"), Gemini ("exceeds the maximum number of tokens allowed (N)"),
+// xAI ("maximum prompt length is N") and text-generation-inference ("must be
+// <= N") word it their own way; each was a bare "Backend request failed"
+// and the window it names was never learned (gap sweep 2026-11-09).
 export function contextOverflowWindow(text: string): number | null {
-  if (!/exceed(?:s|ed)? the available context|context[_ ]length[_ ]exceeded|maximum context length|context window|exceed_context_size|too many tokens|prompt is too long/i.test(text)) {
+  if (
+    !/exceed(?:s|ed)? the available context|context[_ ]length[_ ]exceeded|maximum context length|context window|exceed_context_size|too many tokens|prompt is too long|context the overflows|loaded with context length of only|exceeds the maximum number of tokens allowed|maximum prompt length is|`inputs` tokens \+ `max_new_tokens` must be/i.test(
+      text,
+    )
+  ) {
     return null;
   }
   const named =
     /"n_ctx"\s*:\s*(\d+)/.exec(text) ??
     /maximum context length is (\d+)/i.exec(text) ??
-    /context (?:window|length) of (\d+)/i.exec(text);
+    /context (?:window|length) of (?:only )?(\d+)/i.exec(text) ??
+    /maximum number of tokens allowed \((\d+)\)/i.exec(text) ??
+    /maximum prompt length is (\d+)/i.exec(text) ??
+    /`max_new_tokens` must be <= (\d+)/i.exec(text);
   return named ? Number.parseInt(named[1], 10) : 0;
 }
 
@@ -1321,13 +1337,24 @@ async function requestCustomMessageNow(
     // Some servers don't implement function tools; retry without them.
     // Never on OpenAI, and never for a refusal that names reasoning or the
     // Responses API: those fail loudly below (src/lib/dm/sampling-logic.ts).
-    if (tools?.length && toolsUnsupportedByServer(caps.kind, text)) {
+    // The result says so (toolsDropped), so a caller can tell a narration
+    // that had no tools to call from one that chose none.
+    if (tools?.length && toolsUnsupportedByServer(caps.kind, text, upstream.status)) {
       console.warn(`[model] ${endpoint} refused tools; retrying without them`);
-      return requestCustomMessage(trimmedBase, resolvedModel, apiKey, messages, {
+      const bare = await requestCustomMessage(trimmedBase, resolvedModel, apiKey, messages, {
         ...options,
         tools: undefined,
         toolChoice: undefined,
       });
+      return bare.error ? bare : { ...bare, toolsDropped: true };
+    }
+
+    // llama-server without --jinja: fails loudly, naming the flag
+    // (src/lib/dm/sampling-logic.ts toolsNeedJinjaFlag).
+    if (tools?.length && toolsNeedJinjaFlag(text)) {
+      return {
+        error: Response.json({ error: NO_JINJA_MESSAGE, code: "no_jinja", detail: text.slice(0, 300) }, { status: upstream.status }),
+      };
     }
 
     if (!options.unparsedRetried && UNPARSED_REPLY.test(text)) {

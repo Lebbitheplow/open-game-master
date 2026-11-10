@@ -39,7 +39,7 @@ import {
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
@@ -186,11 +186,13 @@ export function handleTakeRest(
   }
   const args = parseRestArgs(rawArguments);
   if (!args) {
-    return {
-      error:
-        `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
-      retry: true,
-    };
+    // With each field zod refused and why (#875): the fixed line answered
+    // a reason sent as a list with how to send kind, which it had.
+    return argumentsRefusal(
+      `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
+      restArgsSchema,
+      rawArguments,
+    );
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;

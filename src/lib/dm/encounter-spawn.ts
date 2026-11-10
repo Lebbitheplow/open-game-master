@@ -28,7 +28,7 @@ import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { SettingRef } from "@/lib/worlds/preset";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { fieldSheetFoes, sheetFoesByName, type SheetFoe, type SheetFoeEntry } from "@/lib/dm/sheet-foes";
 import { fightingParty, MAX_COMBATANTS } from "@/lib/dm/party-budget";
@@ -307,10 +307,8 @@ export function handleAddEnemies(
   }
   const args = parseAddArgs(rawArguments);
   if (!args) {
-    return {
-      error: 'Invalid add_enemies arguments. Send {"enemies":[{"monster":"goblin","count":2}]}.',
-      retry: true,
-    };
+    // With each field zod refused and why (#875).
+    return argumentsRefusal('Invalid add_enemies arguments. Send {"enemies":[{"monster":"goblin","count":2}]}.', addArgsSchema, rawArguments);
   }
   const outcome = resolveEnemyRequests(campaign.gameSettings, args.enemies, spellAuthorsFor(campaign), campaign.id);
   if ("unknownMonster" in outcome) {

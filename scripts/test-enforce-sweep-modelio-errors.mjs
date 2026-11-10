@@ -29,7 +29,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { failure, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, gap, finish } = suite("test-enforce-sweep-modelio-errors");
-const { toolsUnsupportedByServer, unsupportedParamFromError } = await import("../src/lib/dm/sampling-logic.ts");
+const { NO_JINJA_MESSAGE, toolsNeedJinjaFlag, toolsUnsupportedByServer, unsupportedParamFromError } = await import("../src/lib/dm/sampling-logic.ts");
 const { contextOverflowWindow } = await import("../src/lib/model-client.ts");
 const { rolesMustAlternate } = await import("../src/lib/chat-roles-logic.ts");
 
@@ -43,7 +43,12 @@ const CORPUS = [
   // ---- the server really has no function calling ----
   { id: "ollama-no-tools", status: 400, cause: "no-tools", source: "Ollama's OpenAI endpoint, a model without tool support", body: oai("registry.ollama.ai/library/gemma3:12b does not support tools", { type: "api_error" }) },
   { id: "openrouter-no-tool-endpoints", status: 404, cause: "no-tools", source: "OpenRouter, no provider of the model takes tools", body: json({ error: { message: "No endpoints found that support tool use. To learn more about provider routing, visit: https://openrouter.ai/docs/provider-routing", code: 404 } }) },
-  { id: "llamacpp-no-jinja", status: 500, cause: "no-tools", source: "llama-server started without --jinja", body: json({ error: { code: 500, message: "tools param requires --jinja flag", type: "server_error" } }) },
+  // The server can call tools and was started without the switch that turns
+  // them on: the turn fails loudly, naming the flag, and is never retried
+  // without tools (maintainer decision R13, /tmp/odm-gapstudy/WAVE1.md:
+  // "modelio-no-jinja-not-retried: fail loudly, with a message that names the
+  // --jinja flag for whoever runs the server").
+  { id: "llamacpp-no-jinja", status: 500, cause: "no-jinja", source: "llama-server started without --jinja", body: json({ error: { code: 500, message: "tools param requires --jinja flag", type: "server_error" } }) },
   { id: "vllm-no-tool-parser", status: 400, cause: "no-tools", source: "vLLM started without a tool-call parser", body: json({ object: "error", message: '"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set', type: "BadRequestError", param: null, code: 400 }) },
 
   // ---- the server has tools; something else went wrong, in words that hold "tool" or "function" ----
@@ -157,68 +162,9 @@ const CORPUS = [
   { id: "llamacpp-roles-alternate", status: 500, cause: "roles", source: "llama-server, Mistral's and Gemma 3's templates", body: json({ error: { code: 500, message: "Conversation roles must alternate user/assistant/user/assistant/...", type: "server_error" } }) },
 ];
 
-// What fails today, by row id (`<classifier>:<corpus id>`).
-const READS_TOOLS_OFF = (text) => ({
-  rule: "The retry without tools is for a server with no function calling and nothing else (src/lib/dm/sampling-logic.ts toolsUnsupportedByServer: 'the one case the retry without tools in model-client.ts is for').",
-  where: "src/lib/dm/sampling-logic.ts toolsUnsupportedByServer (/tool|function|not support/i over any error body, at any status)",
-  severity: "medium",
-  note: text,
-});
-const MISSES_OVERFLOW = (who) => ({
-  rule: "A request bigger than the server's window is answered as the fitter's own capacity refusal, so the caller can refit once and the table reads what to change rather than a bare 400 (src/lib/model-client.ts).",
-  where: "src/lib/model-client.ts contextOverflowWindow",
-  severity: "low",
-  note: `${who}'s wording for an overflow is not recognised: the turn fails with "Backend request failed" and the window is never learned.`,
-});
-const MISSES_PARAM = (who) => ({
-  rule: "A strict backend that rejects one named body field has that field dropped and the call retried, 'so a model family ODM has never heard of still runs instead of costing the table its turn' (src/lib/model-client.ts).",
-  where: "src/lib/dm/sampling-logic.ts unsupportedParamFromError (reads OpenAI's error.param, zod's unrecognized_keys and six message patterns)",
-  severity: "medium",
-  note: `${who}: the refusal names the field and it is one the client may drop, but the reader returns null, so every call to that host fails.`,
-});
-const KNOWN = {
-  "tools-off:llamacpp-no-jinja": {
-    rule: "A server with no function calling is retried without tools (docs/text-backends.md: '--jinja enables tool calling'; llama-server without it answers 'tools param requires --jinja flag', tools/server/server-common.cpp).",
-    where: "src/lib/dm/sampling-logic.ts toolsUnsupportedByServer (the /While executing|jinja/ exclusion added for #861 also matches the flag's name)",
-    severity: "low",
-    note: "The #861 exclusion for template errors reads the word jinja anywhere, so the one llama-server refusal that does mean 'no tools' is now a failed turn. Failing loudly may be the better answer here; recorded because the reader's own contract says otherwise and no test names this text.",
-  },
-  "tools-off:groq-tool-use-failed": READS_TOOLS_OFF("Groq's tool_use_failed (the model wrote one bad call) is read as 'no function calling'."),
-  "tools-off:description-too-long": READS_TOOLS_OFF("A host refusing one tool's description length is read as 'no function calling'."),
-  "tools-off:gemini-unknown-schema-key": READS_TOOLS_OFF("Gemini refusing a schema key is read as 'no function calling'."),
-  "tools-off:gemini-call-order": READS_TOOLS_OFF("A refusal about the order of the history's turns is read as 'no function calling'."),
-  "tools-off:openai-unanswered-tool-call": READS_TOOLS_OFF("A history with an unanswered call is read as 'no function calling'."),
-  "tools-off:openai-orphan-tool-message": READS_TOOLS_OFF("A history with an orphan tool result is read as 'no function calling'."),
-  "tools-off:mistral-tool-call-id": READS_TOOLS_OFF("Mistral's rule on call ids is read as 'no function calling'."),
-  "tools-off:anthropic-tool-use-without-result": READS_TOOLS_OFF("Anthropic's unanswered tool_use is read as 'no function calling'."),
-  "tools-off:llamacpp-bad-call-in-history": READS_TOOLS_OFF("llama-server failing to parse an earlier call is read as 'no function calling'."),
-  "tools-off:model-not-supported": { ...READS_TOOLS_OFF("'The requested model is not supported' holds 'not support': the call is sent again without tools and fails the same way."), severity: "low" },
-  "overflow:lmstudio-overflow": MISSES_OVERFLOW("LM Studio"),
-  "overflow:gemini-overflow": MISSES_OVERFLOW("Gemini"),
-  "overflow:xai-overflow": MISSES_OVERFLOW("xAI"),
-  "overflow:tgi-overflow": MISSES_OVERFLOW("text-generation-inference"),
-  "param:pydantic-extra-forbidden": MISSES_PARAM("pydantic's extra_forbidden as Mistral's API returns it, for chat_template_kwargs, which every host that is not OpenAI is sent"),
-  "param:fastapi-extra-forbidden": MISSES_PARAM("pydantic's extra_forbidden as FastAPI returns it"),
-  "param:gemini-unknown-body-field": { ...MISSES_PARAM("Gemini's 'Unknown name' for a body field"), severity: "low" },
-  "e2e:groq-tool-use-failed": {
-    rule: "A turn whose backend has function calling never finishes on a call that carried no tools: 'a retry without tools would turn [it] into a narrator running with no request_roll and no engines, in silence. Such a turn fails loudly instead' (src/lib/dm/sampling-logic.ts).",
-    where: "src/lib/model-client.ts requestCustomMessage (the retry without tools, logged by console.warn only) and src/lib/dm/sampling-logic.ts toolsUnsupportedByServer",
-    severity: "high",
-    note: "Groq's tool_use_failed once: the same call goes out again with no tools, the reply is prose, the turn is stored as done and nothing on the table or the turn says tools were off.",
-  },
-  "e2e:description-too-long": {
-    rule: "A turn whose backend has function calling never finishes on a call that carried no tools.",
-    where: "src/lib/model-client.ts requestCustomMessage; src/lib/dm/sampling-logic.ts toolsUnsupportedByServer; src/lib/dm/tool-profiles.ts moreToolsTool (the 1,247-character description that draws this refusal)",
-    severity: "high",
-    note: "With the compact profile's more_tools over 1,024 characters, a host that enforces OpenAI's cap answers this on every call, and every turn runs with no tools.",
-  },
-  "e2e:gemini-unknown-schema-key": {
-    rule: "A turn whose backend has function calling never finishes on a call that carried no tools.",
-    where: "src/lib/model-client.ts requestCustomMessage; src/lib/dm/sampling-logic.ts toolsUnsupportedByServer",
-    severity: "high",
-    note: "A provider that refuses one schema keyword answers this on every call: the #861 failure again, from a different text.",
-  },
-};
+// What fails today, by row id (`<classifier>:<corpus id>`). Every row the
+// 2026-11-09 repair closed runs as a test.
+const KNOWN = {};
 
 const SKIP = {};
 
@@ -259,6 +205,11 @@ for (const entry of CORPUS) {
     assert.equal(got, entry.cause === "no-tools", `${entry.source}: ${got ? "read as a server with no function calling" : "not read as a server with no function calling"}: ${entry.body.slice(0, 200)}`);
   });
   rows += 1;
+  await row(`jinja:${entry.id}`, () => {
+    assert.equal(toolsNeedJinjaFlag(entry.body), entry.cause === "no-jinja", `${entry.source}: read as llama-server without --jinja`);
+    if (entry.cause === "no-jinja") assert.match(NO_JINJA_MESSAGE, /--jinja/, "the loud failure names the flag");
+  });
+  rows += 1;
   await row(`roles:${entry.id}`, () => {
     assert.equal(rolesMustAlternate(entry.body), entry.cause === "roles", entry.source);
   });
@@ -294,6 +245,6 @@ for (const entry of CORPUS.filter((item) => item.e2e)) {
 }
 model.close();
 
-console.log(`  rows: ${rows} (${CORPUS.length} refusals x 5 readers, ${CORPUS.filter((item) => item.e2e).length} whole turns); skipped ${Object.keys(SKIP).length}`);
+console.log(`  rows: ${rows} (${CORPUS.length} refusals x 6 readers, ${CORPUS.filter((item) => item.e2e).length} whole turns); skipped ${Object.keys(SKIP).length}`);
 world.close();
 finish();

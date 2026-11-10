@@ -26,6 +26,7 @@ export async function modelDoor(world) {
   const { routeToolCall } = await import("../../src/lib/dm/tool-merge.ts");
   const { listedCalls, listRefusal, partsResult, PART_LISTS } = await import("../../src/lib/dm/action-parts-logic.ts");
   const { gateAiCall } = await import("../../src/lib/dm/ai-gate.ts");
+  const { modelCallArguments } = await import("../../src/lib/dm/turn.ts");
   const { seedDice, clearDice, diceLog } = await import("./enforce-world.mjs");
   const db = getDatabase();
   const encounterNames = new Set(ENCOUNTER_TOOL_NAMES);
@@ -40,7 +41,7 @@ export async function modelDoor(world) {
     });
 
   // One call as the turn loop resolves it (src/lib/dm/turn.ts
-  // resolveModelCall): a list of parts split and run in order, "false" sent
+  // resolveModelCall): its arguments through the door, a list of parts split and run in order, "false" sent
   // as a string read as false, a merged or retired name routed, an encounter
   // tool past the AI's gate and run by the encounter engine, the rest
   // dispatched.
@@ -49,6 +50,10 @@ export async function modelDoor(world) {
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     const campaign = world.campaign();
     const context = { campaign, turn, sheets, sheetsById, realDiceUserIds: new Set() };
+    // The argument door the turn loop passes first (turn.ts modelCallArguments).
+    const door = modelCallArguments(campaign, name, rawArguments, sheets);
+    if ("refusal" in door) return door.refusal;
+    rawArguments = door.rawArguments;
     const each = listedCalls(name, rawArguments);
     if (each) {
       const refused = listRefusal(name, each);
@@ -81,6 +86,16 @@ export async function modelDoor(world) {
     // goblins stand. Each call starts from the same sequence.
     const sharedRandom = Math.random;
     Math.random = seededRandom(0x5eed);
+    // And a new record's id: an enemy told no gender takes one picked from
+    // its own id (src/lib/db/encounters.ts pickedGender), so two calls with
+    // fresh random ids "differed" by a goblin's gender, about one run in two.
+    // A call that is kept keeps real ids, so a later one cannot repeat them.
+    const sharedUuid = globalThis.crypto.randomUUID;
+    const idRandom = seededRandom(0x1d5eed);
+    if (!keep) globalThis.crypto.randomUUID = () => {
+      const hex = Array.from({ length: 32 }, () => Math.floor(idRandom() * 16).toString(16)).join("");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+    };
     let out;
     try {
       const turn = createDmTurn(world.campaignId, []);
@@ -95,6 +110,7 @@ export async function modelDoor(world) {
       out = { kind: "threw", error: `${error?.name ?? "Error"}: ${error?.message ?? error}`, result: null, changed: state() !== before, after: state(), stack: String(error?.stack ?? "").split("\n").slice(0, 4).join(" | ") };
     } finally {
       Math.random = sharedRandom;
+      globalThis.crypto.randomUUID = sharedUuid;
       seedDice(null);
       clearDice();
       // The d20s the call threw, for the suites that ask which tools roll.

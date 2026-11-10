@@ -1,7 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { audienceOf } from "@/lib/event-audience";
-import { isSeatOnly, payloadForViewer, tablePayload, viewerFor, type Viewer } from "@/lib/table-delivery";
+import { isSeatOnly, payloadForViewer, tablePayloadFor, viewerFor, type Viewer } from "@/lib/table-delivery";
 
 type Subscriber = (chunk: string) => void;
 
@@ -130,7 +130,7 @@ function fanOut(campaignId: string, chunk: string) {
 export function publishWithSeq(campaignId: string, seq: number, type: string, payload: unknown) {
   // The log holds what the whole table may read: every member can replay
   // it. What one seat is owed beyond that is added when it is sent.
-  const stored = tablePayload(type, payload);
+  const stored = tablePayloadFor(campaignId, type, payload);
   getDatabase()
     .prepare(
       `INSERT INTO campaign_events (campaign_id, seq, type, payload_json, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -214,7 +214,7 @@ export function publishPersisted(campaignId: string, type: string, payload: unkn
 export function publishEphemeral(campaignId: string, type: string, payload: unknown) {
   // The same door as a persisted event: an effect's damage figure, for one,
   // is ephemeral and still only for the seats allowed it.
-  deliver(campaignId, undefined, type, tablePayload(type, payload), payload);
+  deliver(campaignId, undefined, type, tablePayloadFor(campaignId, type, payload), payload);
   globalThis.__odmVoiceEventHook?.(campaignId, type);
 }
 
