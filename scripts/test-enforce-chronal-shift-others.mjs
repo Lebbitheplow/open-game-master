@@ -298,6 +298,31 @@ await test("A swing with Stunning Strike offers the creature's save against the 
   assert.equal(used(), 0);
 });
 
+// A contest's sides have no DC of their own: whether one went the wizard's
+// way is known once both have landed (contest-roll.ts contestShift).
+await test("A grapple's contest: the creature's side that won is rolled again, and the new roll stands.", async () => {
+  reset({ watchingEncounterId: world.encounter().id });
+  kit.setEnemy(goblin.id, { conditions: [], conditionMeta: {} });
+  const order = world.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === ally.id), turnBudget: null, reactionsUsed: [] });
+  model.script([reply({ calls: [modelCall("take_action", { characterId: ally.id, action: "grapple", targetEnemyId: goblin.id })] }), reply({ text: "Kara grabs." })]);
+  await model.turn(world, "I grab the goblin.", ally.id, allyUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the contest stops");
+  const choices = publicPendingRoll(stop).watch.choices;
+  const at = choices.findIndex((choice) => choice.name === goblin.displayName);
+  assert.equal(choices[at]?.when, "if it succeeds", JSON.stringify(choices));
+  // Kara 2, the goblin 18 and wins; rolled again, 1.
+  world.dice(2, 18, 1);
+  assert.equal((await answer(stop.id, { shift: true, choice: at })).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.match(toldLast().chronalShift ?? JSON.stringify(toldLast()), /rolled its side of the contest again, \d+ became \d+/);
+  assert.equal(used(), 1);
+  kit.setEnemy(goblin.id, { conditions: [], conditionMeta: {} });
+  world.patch(ally.id, { conditions: [], conditionMeta: {} });
+});
+
 await test("At the save itself: a foe's success is rolled again and the second roll stands; a failure is left alone.", () => {
   reset();
   saveEncounter({ ...world.encounter(), reactionsUsed: [] });
