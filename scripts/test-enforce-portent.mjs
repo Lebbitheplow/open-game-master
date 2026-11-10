@@ -610,6 +610,33 @@ await test("Grease laid on a square with nobody named stops for the save of the 
   fightWorld.patch(target.id, { equipment: kept });
 });
 
+// Ice Storm laid on a square names nobody either; its burst is read from its
+// text, and it leaves hail as well (issue 570, #889).
+await test("Ice Storm laid on a square with nobody named asks whose save, of the creatures standing in its storm.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const kept = fightWorld.sheet(target.id).equipment;
+  const hp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).currentHp);
+  fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Ice Storm"], slots: { 4: { max: 1, used: 0 } } } });
+  // Kara stands well clear of her own storm, as does the watcher.
+  kit.place(target.id, 0, 9);
+  fightModel.script([reply({ calls: [modelCall("aoe_damage", { casterCharacterId: target.id, spell: "Ice Storm", level: 4, atX: 5, atY: 3 })] }), reply({ text: "Hail hammers the goblins." })]);
+  await fightModel.turn(fightWorld, "I cast Ice Storm over the goblins.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the storm stops before its saves");
+  const { publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices.map((choice) => choice.name).sort(), [goblin.displayName, goblin2.displayName].sort(), "the creatures in the storm, and nobody outside it");
+  assert.equal((await answer(stop.id, { pass: true })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "let it roll spends nothing");
+  const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
+  patchEnemyHp(goblin.id, hp[0], "alive");
+  patchEnemyHp(goblin2.id, hp[1], "alive");
+  kit.place(target.id, 5, 5);
+  fightWorld.patch(target.id, { equipment: kept });
+});
+
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
   arm({ foretold: [17, 9] });
   const order = fightWorld.encounter();
