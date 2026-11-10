@@ -207,7 +207,23 @@ function tableStatements(db: SqliteDatabase, table: string): string[] {
   return [...statements, ...triggersFor(table, columns)];
 }
 
+// The tables a statement changes the shape of: ALTER TABLE's own and the
+// name it renames one to, and a table it creates.
+const SHAPED = /\bALTER\s+TABLE\s+(?:main\.)?["`[]?(\w+)["`\]]?|\bRENAME\s+TO\s+["`[]?(\w+)["`\]]?|\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:main\.)?["`[]?(\w+)["`\]]?/gi;
+
+export function shapedTables(sql: string): string[] {
+  return [...new Set([...sql.matchAll(SHAPED)].map((match) => match[1] ?? match[2] ?? match[3]))];
+}
+
 // Called once the schema is in place (core.ts getDatabase).
+//
+// The triggers name every column of their table, and SQLite checks every
+// trigger on a table when one of its columns is dropped or renamed, so a
+// trigger made before the change refuses it ("no such column: OLD.kind")
+// or, after an added column, keeps a picture without it. Every schema change
+// arrives through exec (driver.ts), so exec is wrapped here: the triggers of
+// each table a statement reshapes are dropped before it runs and built again
+// from the columns it leaves, whether it ran or failed.
 export function installTurnJournal(db: SqliteDatabase) {
   if (installed.has(db)) {
     return;
@@ -216,15 +232,18 @@ export function installTurnJournal(db: SqliteDatabase) {
   db.defineFunction("odm_turn", () => currentTurnId());
   const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((row) => row.name);
   db.exec(journaledTables(tables).flatMap((table) => tableStatements(db, table)).join("\n"));
-}
-
-// After a column is added to a journaled table once the journal is in
-// place (a boot migration that runs on first use, as dm-turns.ts
-// ensureParkColumn does), so the turn's picture of a row holds the new
-// column too and a revert can put it back.
-export function refreshTurnJournal(db: SqliteDatabase, table: string) {
-  if (!installed.has(db) || !journaledTables([table]).length) {
-    return;
-  }
-  db.exec(tableStatements(db, table).join("\n"));
+  const exec = db.exec.bind(db);
+  db.exec = (sql: string) => {
+    const shaped = journaledTables(shapedTables(sql));
+    if (!shaped.length) {
+      exec(sql);
+      return;
+    }
+    exec(shaped.flatMap((table) => ["u", "d", "i"].map((kind) => `DROP TRIGGER IF EXISTS temp.${quote(`odm_tj_${kind}_${table}`)};`)).join("\n"));
+    try {
+      exec(sql);
+    } finally {
+      exec(shaped.flatMap((table) => tableStatements(db, table)).join("\n"));
+    }
+  };
 }

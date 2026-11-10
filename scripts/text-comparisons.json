@@ -2876,7 +2876,9 @@
     "lib/srd/scrolls.ts#toLowerCase": [["key",1,"class id"]],
     "lib/srd/item-charge-rules.ts#str-eq": [["key",1,"a charge count, by its field and type, and what it regains"]],
     "lib/battlemap/hand-items.ts#str-key": [["key",1,"ability ids, to the word a check names"]],
-    "lib/db/turn-journal.ts#re-word": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]],
-    "lib/db/turn-journal.ts#str-key": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]]
+    "lib/db/turn-journal.ts#re-word": [["key",4,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#str-key": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#\\b": [["key",3,"SQL keywords of a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]],
+    "lib/db/turn-journal.ts#\\w": [["key",3,"the table name in a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]]
   }
 }

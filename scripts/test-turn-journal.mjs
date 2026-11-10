@@ -84,27 +84,43 @@ await test("a raw write under a turn is kept and taken back; outside every turn 
 // A boot migration that runs on first use (dm-turns.ts ensureParkColumn adds
 // pending_rolls' later columns the first time a roll is parked on an older
 // database) adds a column after the journal's triggers were made from the
-// table's columns. Refreshed, the turn's picture of a row holds the new
-// column, so a revert can put it back.
-await test("a column added after the journal is in place is kept in the turn's picture once the table is refreshed", async () => {
-  const { refreshTurnJournal } = await import("../src/lib/db/turn-journal.ts");
+// table's columns. The journal builds them again after the ALTER, so the
+// turn's picture of a row holds the new column and a revert can put it back.
+await test("a column added after the journal is in place is kept in the turn's picture", async () => {
   const { world } = await stage("calm");
   const id = npc(world, "Brother Aldo");
   db().exec(`ALTER TABLE npcs ADD COLUMN sweep_late_note TEXT`);
-  db().prepare(`UPDATE npcs SET sweep_late_note = 'before' WHERE id = ?`).run(id);
-  const stale = await inTurn(world, () => db().prepare(`UPDATE npcs SET sweep_late_note = 'stale' WHERE id = ?`).run(id));
-  // Unrefreshed, the picture lacks the column; the turn's only change is in
-  // it, so the row even reads as left as found and is let go. Either way a
-  // revert has nothing to put back.
-  const staleRows = kept(stale);
-  assert.ok(!staleRows.length || !("sweep_late_note" in JSON.parse(staleRows[0].before_json)), "a trigger made before the column kept it");
-  refreshTurnJournal(db(), "npcs");
   db().prepare(`UPDATE npcs SET sweep_late_note = 'before' WHERE id = ?`).run(id);
   const turnId = await inTurn(world, () => db().prepare(`UPDATE npcs SET sweep_late_note = 'during' WHERE id = ?`).run(id));
   assert.equal(JSON.parse(kept(turnId)[0].before_json).sweep_late_note, "before");
   const out = await revertTurn(world, turnId);
   assert.equal(out.status, 200, JSON.stringify(out.json));
   assert.equal(db().prepare(`SELECT sweep_late_note FROM npcs WHERE id = ?`).get(id).sweep_late_note, "before");
+});
+
+// SQLite checks every trigger on a table when a column of it is dropped or
+// renamed, and the journal's name every column: made once at install, they
+// refused a later DROP COLUMN ("error in trigger odm_tj_u_campaigns after
+// drop column: no such column: OLD.kind", the workshop suite's old-schema
+// step). The change goes through, and the rebuilt triggers keep rows as the
+// table now is.
+await test("a column dropped or renamed after the journal is in place changes the table, and a turn's writes are kept as before", async () => {
+  const { world } = await stage("calm");
+  const id = npc(world, "Sister Wenna");
+  // location is one of the columns the install made the triggers name.
+  db().exec(`ALTER TABLE npcs DROP COLUMN location`);
+  db().exec(`ALTER TABLE npcs ADD COLUMN sweep_old_place TEXT NOT NULL DEFAULT ''`);
+  db().exec(`ALTER TABLE npcs RENAME COLUMN sweep_old_place TO location`);
+  const columns = db().prepare(`PRAGMA table_info(npcs)`).all().map((column) => column.name);
+  assert.ok(columns.includes("location") && !columns.includes("sweep_old_place"), columns.join(", "));
+  db().prepare(`UPDATE npcs SET location = 'the mill' WHERE id = ?`).run(id);
+  const turnId = await inTurn(world, () => db().prepare(`UPDATE npcs SET location = 'the weir' WHERE id = ?`).run(id));
+  const image = JSON.parse(kept(turnId)[0].before_json);
+  assert.equal(image.location, "the mill");
+  assert.ok(!("sweep_old_place" in image));
+  const out = await revertTurn(world, turnId);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(db().prepare(`SELECT location FROM npcs WHERE id = ?`).get(id).location, "the mill");
 });
 
 await test("an INSERT OR REPLACE under a turn keeps the row it replaced, and a row the turn made goes", async () => {
