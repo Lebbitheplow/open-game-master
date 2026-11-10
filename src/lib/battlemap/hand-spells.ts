@@ -57,6 +57,7 @@ import {
   type HandTarget,
   type HandTurn,
   type SpellFact,
+  failedSaveGate,
 } from "@/lib/battlemap/hand-core";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { spellDamageRiders, type SpellDamageRiders } from "@/lib/srd/spell-damage-riders";
@@ -765,6 +766,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
           ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }
           : null,
         costGate(cost, turn, sheet, def.displayName),
+        id === "indomitable" ? failedSaveGate(def.displayName, turn) : null,
         // What the counter's own row asks first (counter-rules.ts): Rage while
         // raging, Unearthly Recovery above half, a minute's work in a fight.
         gateOf(counterGate(def, sheet, inFightOf(turn))),
