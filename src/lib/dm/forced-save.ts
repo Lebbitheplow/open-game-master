@@ -53,6 +53,7 @@ import { authoredEnemySave } from "@/lib/dm/authored-saves";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -321,7 +322,7 @@ export function rollCharacterSave(
   const covered = saveCoverBonus(campaign.id, sheet.id, ability, extra);
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
+  const claimed = claim ?? horrorCultSave(sheet, resists, from) ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {

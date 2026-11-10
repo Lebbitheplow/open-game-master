@@ -6,6 +6,7 @@
 // One's Own Luck die, Peerless Skill, and Inspiration spent for advantage.
 // Split from rolls.ts, which folds these into the expression. Pure.
 
+import { horrorSourcedSaves } from "@/lib/srd/genre-a-horror-holds";
 import { lentFor, type LentRoll } from "@/lib/srd/genre-a-lent";
 import type { Advantage } from "@/lib/dice";
 import { named } from "@/lib/dm/roll-about";
@@ -140,7 +141,11 @@ export function rollFeatureRiders(
   // (condition-tick.ts).
   const traitSaves =
     sheet && derivationKind === "saving_throw"
-      ? traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType })
+      ? [
+          ...traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType }),
+          // The horror classes' saves keyed to who forces them (genre-a-horror-holds.ts).
+          ...horrorSourcedSaves(sheet, { against: named(args.against), magical: args.magical, casterType: args.casterType, sourceType: args.sourceType }),
+        ]
       : [];
   // A cursed item against the creature forcing the save (Demon Armor
   // against a demon's spells and special abilities).

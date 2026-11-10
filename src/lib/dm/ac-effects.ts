@@ -15,10 +15,12 @@ import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getSheetById } from "@/lib/db/sheets";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
+import { horrorAcBonus } from "@/lib/dm/genre-a-horror-board";
 
 export function acWithEffects(campaignId: string, sheet: CharacterSheet): number {
   return applyField(
-    effectiveAcFor(sheet),
+    // Alone in the Dark's +1 reads the board (src/lib/dm/genre-a-horror-board.ts).
+    effectiveAcFor(sheet) + horrorAcBonus(campaignId, sheet),
     effectOutcome(campaignId, { kind: "character", id: sheet.id }, "ac"),
   );
 }

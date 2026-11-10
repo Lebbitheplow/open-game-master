@@ -59,6 +59,16 @@ export const GENRE_A_HORROR: GenreRow[] = [
   counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
     spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
   }),
+  // "While no ally is within 10 ft, +1 AC and advantage on Stealth"
+  held("survivor", "Alone in the Dark", "src/lib/dm/genre-a-horror-board.ts", "horrorAcBonus, horrorLentRolls"),
+  // "Immune to being frightened while any ally can see you"
+  held("survivor", "Seen Worse", "src/lib/dm/genre-a-horror-board.ts", "horrorConditionImmunity"),
+  // "Immune to charm and possession by fiends and aberrations"
+  held("apostate", "Apostasy Complete", "src/lib/dm/genre-a-horror-board.ts", "horrorConditionImmunity"),
+  // "Advantage on saves against madness, charm, and fear from aberrations and fiends"
+  held("occultist", "Ink-Stained Mind", "src/lib/srd/genre-a-horror-holds.ts", "horrorSourcedSaves"),
+  // "Advantage on saves against spells cast by fiends, cultists, and aberrations"
+  held("apostate", "Turncoat's Insight", "src/lib/srd/genre-a-horror-holds.ts", "horrorSourcedSaves, horrorCultSave"),
   // "Advantage on death saves; stabilizing you takes no check"
   held("survivor", "Death's Old Acquaintance", "src/lib/dm/death.ts", "horrorDeathSaveAdvantage"),
   // "While you are the last conscious party member, resist all damage and

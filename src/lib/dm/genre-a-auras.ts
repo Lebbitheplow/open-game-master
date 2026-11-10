@@ -13,6 +13,7 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { sideOf } from "@/lib/dm/combatant";
 import { activeAuthored } from "@/lib/srd/authored-effects";
+import { horrorLentRolls } from "@/lib/dm/genre-a-horror-board";
 import type { LentRoll } from "@/lib/srd/genre-a-lent";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -45,5 +46,8 @@ export function lentRolls(campaignId: string, roller: CharacterSheet): LentRoll[
       });
     }
   }
+  // What the roller's own horror features lend from where they stand
+  // (Alone in the Dark: src/lib/dm/genre-a-horror-board.ts).
+  out.push(...horrorLentRolls(campaignId, roller));
   return out;
 }

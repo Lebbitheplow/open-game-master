@@ -44,6 +44,7 @@ import { awardInspirationCounter, heldInspiration, spendInspirationCounter } fro
 import { withoutGrapple } from "@/lib/dm/grapple";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
 import { featureConditionImmunities, sourcedConditionImmunity } from "@/lib/srd/trait-rules";
+import { horrorConditionImmunity } from "@/lib/dm/genre-a-horror-board";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -256,6 +257,12 @@ export function conditionImmunity(
   const warded = conditionGrantedImmunity(sheet.conditions, wanted, source ? String(source.stats.type ?? "") : undefined);
   if (warded) {
     return `${warded} makes them immune`;
+  }
+  // The horror classes' immunities that read the board or the source
+  // (Seen Worse, Apostasy Complete: src/lib/dm/genre-a-horror-board.ts).
+  const horror = horrorConditionImmunity(campaign.id, sheet, wanted, source);
+  if (horror) {
+    return `${horror} makes them immune`;
   }
   const own = featureConditionImmunities(sheet);
   // A worn item's too (SRD 5.1, Periapt of Proof against Poison: "You are

@@ -8,6 +8,20 @@ import { openClauseRig, must } from "./lib/sweep-clauses-genre-a.mjs";
 const t = await openClauseRig();
 const { horrorCheckRider, horrorMagicalAgainst } = await import("../src/lib/srd/genre-a-horror-holds.ts");
 const { soleSurvivorResistances, soleSurvivorSpeed } = await import("../src/lib/dm/genre-a-horror-party.ts");
+const forced = await import("../src/lib/dm/forced-save.ts");
+const campaigns = await import("../src/lib/db/campaigns.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const d20s = () => t.world.diceLog().filter((die) => die.sides === 20).length;
+// One save the engine forces on the holder for a creature of the fight.
+function forcedSave(scene, from, resists, ability = "wis") {
+  t.world.clearDice();
+  t.world.diceLog();
+  t.world.dice(5, 17);
+  forced.rollCharacterSave(campaigns.getCampaignById(t.world.campaignId), null, sheet(scene.holder.id), ability, 10, "a probe", resists, t.kit.enemy(from.id));
+  t.world.clearDice();
+  return d20s();
+}
+const typed = (enemy, type) => t.kit.setEnemy(enemy.id, { stats: { ...t.kit.enemy(enemy.id).stats, type } });
 let passed = 0;
 async function test(name, fn) {
   await fn();
@@ -140,6 +154,52 @@ await test("Borrowed Eyes: a WIS save, and a creature the occultist cannot see i
   must(await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id }), "Borrowed Eyes");
   t.world.clearDice();
   assert.ok(t.kit.enemy(scene.near.id).conditions.some((entry) => entry.toLowerCase().startsWith("borrowed eyes")), "the failed save lends its eyes");
+});
+
+await test("Ink-Stained Mind: a fiend's fear is saved against with advantage, a humanoid's is not, and a fiend's poison is not", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 7 });
+  typed(scene.near, "fiend (devil)");
+  assert.equal(forcedSave(scene, scene.near, { against: "frightened" }), 2, "the fiend's fear");
+  assert.equal(forcedSave(scene, scene.far, { against: "frightened" }), 1, "a humanoid's fear");
+  assert.equal(forcedSave(scene, scene.near, { against: "poisoned" }, "con"), 1, "the fiend's poison");
+});
+
+await test("Turncoat's Insight: a cultist's spell and a fiend's spell are saved against with advantage, a cultist's club is not", async () => {
+  const scene = await t.stage({ classId: "apostate", level: 13 });
+  const cultist = { ...scene.near };
+  getDatabase().prepare("UPDATE encounter_enemies SET slug = ? WHERE id = ?").run("cultist", scene.near.id);
+  assert.equal(t.kit.enemy(scene.near.id).slug, "cultist", "the staged cultist");
+  assert.equal(forcedSave(scene, cultist, { magical: true }), 2, "the cultist's spell");
+  assert.equal(forcedSave(scene, cultist, {}), 1, "the cultist's own ability");
+  assert.equal(forcedSave(scene, scene.far, { magical: true }), 1, "a humanoid's spell");
+  typed(scene.far, "fiend");
+  assert.equal(forcedSave(scene, scene.far, { magical: true, casterType: "fiend" }), 2, "a fiend's spell");
+});
+
+await test("Seen Worse: frightened is refused while an ally sees the survivor, and lands once the only ally awake is blinded", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 14 });
+  const fear = () => t.world.invoke("set_condition", { characterId: scene.holder.id, condition: "frightened", sourceEnemyId: scene.near.id });
+  const out = await fear();
+  assert.ok(!out.ok || !sheet(scene.holder.id).conditions.includes("frightened"), "an ally sees them");
+  t.world.patch(scene.ally.id, { conditions: ["blinded"] });
+  must(await fear(), "the fear with no ally seeing them");
+  assert.ok(sheet(scene.holder.id).conditions.includes("frightened"), "the fallen ally and the blinded one see nothing");
+});
+
+await test("Alone in the Dark: no bonus with an ally within 10 feet, +1 AC once none is, and nothing off the board", async () => {
+  const { acWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const scene = await t.stage({ classId: "survivor", level: 3 });
+  const ac = () => acWithEffects(t.world.campaignId, sheet(scene.holder.id));
+  const base = ac();
+  t.kit.place(scene.ally.id, 7, 5);
+  assert.equal(ac(), base, "the ally 10 feet off");
+  t.kit.place(scene.ally.id, 8, 5);
+  assert.equal(ac(), base, "the fallen ally still beside them");
+  t.kit.place(scene.fallen.id, 16, 12);
+  assert.equal(ac(), base + 1, "nobody within 10 feet");
+  t.fresh();
+  const lone = sheet(t.hero("survivor", 3).id);
+  assert.equal(acWithEffects(t.world.campaignId, lone), base, "off the board the party stands together");
 });
 
 t.close();

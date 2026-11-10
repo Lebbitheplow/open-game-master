@@ -7,6 +7,7 @@
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeCreatureType } from "@/lib/bestiary/creature-type";
+import { textKey } from "@/lib/language/text-logic";
 
 export function horrorHolds(sheet: AuthoredSheet, feature: string): boolean {
   return heldAuthored(sheet).some((entry) => isNamed(entry.feature, feature));
@@ -44,6 +45,50 @@ export function horrorCheckRider(
 export function horrorMagicalAgainst(sheet: AuthoredSheet, type: string | undefined): boolean {
   const kind = type ? normalizeCreatureType(type) : null;
   return (kind === "fiend" || kind === "undead") && horrorHolds(sheet, "Consecrated Tools");
+}
+
+// The saves a horror feature gives advantage on for who forces them:
+//   Ink-Stained Mind (occultist 7): "Advantage on saves against madness,
+//     charm, and fear from aberrations and fiends" (madness is no condition of
+//     the SRD's: the charm and the fear are what the engine can name);
+//   Turncoat's Insight (apostate 13): "Advantage on saves against spells cast
+//     by fiends, cultists, and aberrations" (the cultists by their stat
+//     blocks: horrorCultSave below).
+// The source is the spell's caster (`casterType`, named by the engine or the
+// GM's request_roll) or the creature forcing the save (`sourceType`, set by
+// src/lib/dm/forced-save.ts). Read by src/lib/dm/roll-feature-riders.ts, so a
+// forced save and a requested one answer alike.
+export function horrorSourcedSaves(
+  sheet: AuthoredSheet,
+  roll: { against?: string; magical?: boolean; casterType?: string; sourceType?: string },
+): string[] {
+  const kind = roll.casterType ?? (roll.sourceType ? normalizeCreatureType(roll.sourceType) : null);
+  if (kind !== "fiend" && kind !== "aberration") {
+    return [];
+  }
+  const notes: string[] = [];
+  if ((roll.against === "charmed" || roll.against === "frightened") && horrorHolds(sheet, "Ink-Stained Mind")) {
+    notes.push(`Ink-Stained Mind: advantage against the charm and fear of ${kind}s`);
+  }
+  if (roll.magical && horrorHolds(sheet, "Turncoat's Insight")) {
+    notes.push(`Turncoat's Insight: advantage against a spell cast by a ${kind}`);
+  }
+  return notes;
+}
+
+// Turncoat's Insight against a cultist's spell: a cultist is a humanoid, so
+// its type says nothing and its stat block's slug does (the slugs Hunted
+// Instincts reads). src/lib/dm/forced-save.ts asks with the creature forcing
+// the save.
+const CULT_SLUGS = ["cultist", "cult_fanatic"];
+export function horrorCultSave(
+  sheet: AuthoredSheet,
+  resists: { magical?: boolean } | undefined,
+  from: { slug?: string } | null | undefined,
+): { advantage: "advantage"; reason: string } | null {
+  return resists?.magical && CULT_SLUGS.includes(textKey(from?.slug ?? "")) && horrorHolds(sheet, "Turncoat's Insight")
+    ? { advantage: "advantage", reason: "Turncoat's Insight: advantage against a cultist's spell" }
+    : null;
 }
 
 // Death's Old Acquaintance (survivor 17): "Advantage on death saves", read by

@@ -709,18 +709,20 @@
    {
     "c": "Advantage on saves against madness, charm, and fear from aberrations and fiends",
     "run": {
-     "k": "save_adv",
+     "k": "save_adv_from",
      "ability": "wis",
      "against": [
       "charmed",
       "frightened"
+     ],
+     "from": [
+      "aberration",
+      "fiend"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Ink-Stained Mind#0",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Ink-Stained Mind#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorSourcedSaves, read by src/lib/dm/roll-feature-riders.ts with the casters type or the type of the creature forcing the save (src/lib/dm/forced-save.ts); madness is no SRD condition"
    }
   ]
  },
@@ -1434,11 +1436,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Seen Worse#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Seen Worse#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorConditionImmunity, read by src/lib/dm/set-condition.ts conditionImmunity: an ally awake and not blinded with line of sight; the control is in scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -1560,24 +1560,19 @@
      "n": 1,
      "alone": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Alone in the Dark#0",
-    "observed": "the armor class the club swung against: the engine gives 12, the text 13",
-    "where": "src/lib/srd/index.ts effectiveAcFor and src/lib/srd/feature-effects.ts ac_bonus: no conditional entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Alone in the Dark#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorAcBonus, read by src/lib/dm/ac-effects.ts acWithEffects: no ally of the party within 10 feet on the fights board"
    },
    {
     "c": "advantage on Stealth",
     "run": {
-     "k": "check",
-     "skill": "stealth",
-     "want": "adv"
+     "k": "check_alone",
+     "skill": "stealth"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Alone in the Dark#1",
-    "observed": "d20s thrown for the stealth check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Alone in the Dark#1",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorLentRolls, lent to the holders own Stealth check by src/lib/dm/genre-a-auras.ts lentRolls; off the board the party stands together and the GM gives the advantage"
    }
   ]
  },
@@ -2891,15 +2886,17 @@
    {
     "c": "Advantage on saves against spells cast by fiends, cultists, and aberrations",
     "run": {
-     "k": "save_adv",
+     "k": "save_adv_from",
      "ability": "wis",
-     "magical": true
+     "magical": true,
+     "from": [
+      "fiend",
+      "aberration"
+     ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Turncoat's Insight#0",
-    "observed": "d20s thrown for the wis save against a spell: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Turncoat's Insight#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorSourcedSaves (fiends and aberrations) and horrorCultSave (a cultists stat block, asked by src/lib/dm/forced-save.ts)"
    }
   ]
  },
@@ -2970,16 +2967,15 @@
    {
     "c": "Immune to charm and possession by fiends and aberrations",
     "run": {
-     "k": "cond_immune",
+     "k": "cond_immune_from",
      "conditions": [
       "charmed"
-     ]
+     ],
+     "from": "fiend"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Apostasy Complete#0",
-    "observed": "charmed was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Apostasy Complete#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorConditionImmunity, read by src/lib/dm/set-condition.ts conditionImmunity with the creature laying the charm; possession is the charm a fiends power lays"
    }
   ]
  },
