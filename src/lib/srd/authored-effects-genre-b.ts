@@ -65,7 +65,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "While unarmored, AC equals 13 + DEX modifier": three over the unarmored 10.
   row("Adaptive Hide", ["aberrant"], { effects: [{ kind: "ac", amount: 3, gate: { unarmored: true } }] }),
   // "Immune to poison and disease": the damage and the condition.
-  row("Toxic Blood", ["aberrant"], { effects: [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned"] }] }),
+  // "a creature that hits you with a bite takes 2d6 poison".
+  row("Toxic Blood", ["aberrant"], { effects: [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned"] }, { kind: "retaliate", formula: "2d6", type: "poison", melee: true, attacks: ["bite"] }] }),
   row("Chameleon Skin", ["aberrant"], { effects: [{ kind: "check_adv", skills: ["stealth"] }] }),
   row("Scrap Armor Weave", ["salvage_tech"], { effects: [{ kind: "ac", amount: 1 }, { kind: "resist", types: ["lightning"] }] }),
   // The holder's own part of "You and allies within 10 ft have resistance to

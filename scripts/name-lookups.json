@@ -1228,7 +1228,7 @@
     "lib/dm/authored-hooks.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"],["key",1,"once-a-turn stamps by holder id"]],
     "lib/dm/authored-hooks.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/authored-hooks.ts#partial": [["key",5,"the SRD row's creature type"]],
-    "lib/dm/authored-hooks.ts#whole": [["identity",4,"conditions by whole name"],["identity",1,"features set aside against an attacker, by whole name"]],
+    "lib/dm/authored-hooks.ts#whole": [["identity",4,"conditions by whole name"],["identity",1,"features set aside against an attacker, by whole name"],["key",1,"a stat block attack name's whole words against a row's attack kinds (Toxic Blood's bite)"]],
     "lib/dm/authored-mote.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/authored-mote.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/authored-mote.ts#partial": [["key",2,"ODM's own \"|\" list"]],

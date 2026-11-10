@@ -1243,16 +1243,15 @@
    },
    {
     "c": "a creature that hits you with a bite takes 2d6 poison",
-    "is": "gap",
-    "probe": "not run: the hit record does not say which of a creature's attacks was a bite, so a retaliate cannot be held to one.",
-    "observed": "nothing in the engine answers to Toxic Blood: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the hit record does not say which of a creature's attacks was a bite, so a retaliate cannot be held to one."
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 poison, one that clubs them nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Toxic Blood (retaliate 2d6 poison, attacks: bite), src/lib/dm/authored-hooks.ts authoredAfterHit with the attack's name from src/lib/dm/enemy-attack.ts"
    },
    {
     "c": "2d6 poison",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 poison, one that clubs them nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Toxic Blood (2d6 poison)"
    }
   ]
  },

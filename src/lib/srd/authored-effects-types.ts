@@ -178,7 +178,8 @@ export type AuthoredEffect = Base &
         typeFrom?: { condition: string; map: Record<string, string> };
       }
     // A creature that hits the holder takes damage back.
-    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean }
+    // `attacks`: only a hit by an attack whose name holds one of these words.
+    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[] }
     // Enemies starting their turn near the holder take damage (Aura of
     // Conquest: only frightened ones).
     | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean }

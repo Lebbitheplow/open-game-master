@@ -228,5 +228,24 @@ await run("Warlord of the Wastes: an ally within 30 ft who can see the road warr
   assert.equal(await toHit(), off, "an ally who cannot see the road warrior still gained the +1");
 });
 
+// ---- blows sent back ----
+
+await run("Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 poison, one that clubs them nothing", async () => {
+  const hero = rig.holder(feature("aberrant", "Toxic Blood", 9));
+  const { near } = await rig.fight(hero);
+  const struck = async (attack) => {
+    kit.setEnemy(near.id, { currentHp: 300, stats: { ...kit.enemy(near.id).stats, attacks: [attack] } });
+    kit.handOnEnemies();
+    kit.freshRound();
+    clearDice();
+    dice(16, 4, 3, 3);
+    rig.must(await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: hero.id }), "enemy_attack");
+    clearDice();
+    return lost(near);
+  };
+  assert.equal(await struck({ name: "Bite", toHit: 4, damage: "1d6+2", type: "piercing" }), 6, "the bite sent back other than 2d6 poison");
+  assert.equal(await struck({ name: "Club", toHit: 4, damage: "1d6+2", type: "bludgeoning" }), 0, "a club was answered as a bite");
+});
+
 world.close();
 finish();

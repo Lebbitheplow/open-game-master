@@ -22,7 +22,7 @@
 // enemy-damage.ts, which reaches it.
 
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
@@ -199,7 +199,7 @@ export function authoredIncomingAttack(input: {
 // character's features send back.
 export function authoredAfterHit(
   campaign: Campaign,
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; ranged?: boolean },
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; ranged?: boolean; attackName?: string },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
@@ -232,6 +232,11 @@ export function authoredAfterHit(
       break;
     }
     if (spurned.includes(held.feature) || (effect.melee && input.ranged)) {
+      continue;
+    }
+    // Only a hit with an attack of this kind, by the stat block's attack name
+    // (Toxic Blood: "a creature that hits you with a bite").
+    if (effect.attacks && !effect.attacks.some((kind) => words(textKey(input.attackName ?? "")).includes(kind))) {
       continue;
     }
     const amount =
