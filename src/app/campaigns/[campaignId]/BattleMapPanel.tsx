@@ -60,6 +60,7 @@ import type { PlayerMapView } from "@/lib/battlemap/view";
 import { boardHudGates } from "@/lib/battlemap/hand-hud";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
+import { TurnHoldNote, turnHeldLine, useTurnHeld } from "@/app/campaigns/[campaignId]/TurnHoldNote";
 import type { CameraEvent, SceneState } from "@/lib/scene/state";
 import { SkyLayer } from "@/components/SkyLayer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -345,6 +346,8 @@ export function BattleMapPanel({
   const [orderScore, setOrderScore] = useState(12);
   const [orderConfirm, setOrderConfirm] = useState<{ key: string; title: string; line: string; body: Record<string, unknown> } | null>(null);
   const [endingTurn, setEndingTurn] = useState(false);
+  // The End Turn is in and the move waits on a watcher's stop (turn-hold.ts).
+  const turnHeld = useTurnHeld(encounter);
   const turnKey = view.turn ? `${view.turn.tokenId}:${view.turn.round}` : "";
   const [seenTurn, setSeenTurn] = useState(turnKey);
   const [bannerKey, setBannerKey] = useState<string | null>(null);
@@ -1159,7 +1162,7 @@ export function BattleMapPanel({
     hint: [hudHint ?? (handAim?.active ? "Choose the card's target on the board or in your hand, then play the card." : cameraLocked ? "The DM is steering the view" : boardHintText({ canDirect, tool, teleporting: Boolean(teleporting), held: Boolean(held), liveOrigin: Boolean(liveOrigin), pointing, drawing, targeting: Boolean(targeting), canMove, moveAimed: Boolean(livePending), scene, budgetLeft: view.budgetLeft, hasToken: Boolean(view.myTokenId) })), moveModeHint(moveMode, view.moves), areaAim.hint].filter(Boolean).join("\n"),
     notices: [...moveNotes.notes.map(note => note.text), ...(fieldRoll ? [fieldRoll.label] : []), ...(handStatus?.notice ? [handStatus.notice] : []), ...(areaAim.caught.length ? [`Area catches: ${areaAim.caught.join(", ")}`] : []), ...(liveMeasure?.caught.length ? [`Measured: ${liveMeasure.caught.map(entry => entry.name).join(", ")}`] : [])], error, pending: busy || endingTurn || Boolean(handStatus?.sending),
     controls: prompt && tokensById.has(prompt.tokenId) ? [{ id: "prompt-submit", label: "Apply", disabled: null }, { id: "prompt-cancel", label: "Cancel input", disabled: null }] : [
-      ...(myTurn && !scene && !targeting ? [{ id: "end-turn" as const, label: "End turn", disabled: endingTurn ? "Ending turn…" : null }] : []),
+      ...(myTurn && !scene && !targeting ? [{ id: "end-turn" as const, label: "End turn", disabled: endingTurn ? "Ending turn…" : turnHeld ? turnHeldLine(turnHeld, true) : null }] : []),
       ...(undoFeet !== null && !targeting ? [{ id: "undo-move" as const, label: `Undo ${undoFeet} ft`, disabled: null }] : []),
       ...(!cameraLocked ? [{ id: "fit" as const, label: "Fit board", disabled: null }] : []),
       ...(canDirect ? [{ id: "camera-pull" as const, label: "Bring everyone here", disabled: null }, { id: "camera-lock" as const, label: "Lock view", disabled: null }, { id: "camera-free" as const, label: "Free view", disabled: null }] : []),
@@ -1588,11 +1591,13 @@ export function BattleMapPanel({
           <button
             type="button"
             onClick={() => void endTurn()}
-            disabled={endingTurn}
+            disabled={endingTurn || Boolean(turnHeld)}
+            aria-busy={turnHeld ? true : undefined}
             className={TURN_BUTTON}
           >
-            <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">End turn</span>
+            <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">{turnHeld ? "Ending turn…" : "End turn"}</span>
           </button>
+          {turnHeld ? <TurnHoldNote held={turnHeld} mine className="max-w-56 rounded bg-black/60 px-2 py-1" /> : null}
         </div>
       ) : null}
       {/* Camera controls: corner buttons for everyone, the DM's pull and

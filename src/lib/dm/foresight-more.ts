@@ -7,7 +7,11 @@
 // character's check through forced-save.ts throwWatchedCheck, a creature's
 // side of a contest tagged in action-common.ts and roll-gates.ts.
 
+import type { Campaign } from "@/lib/db/campaigns";
+import { listEffects } from "@/lib/db/active-effects";
 import { listEnemies, type Encounter } from "@/lib/db/encounters";
+import { walkedEnemiesHeld } from "@/lib/dm/condition-tick";
+import { instancesOf, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollExpression } from "@/lib/dice";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { potionPlan } from "@/lib/dm/consumables";
@@ -125,7 +129,62 @@ function moveAbout(encounter: Encounter, args: Record<string, unknown>, sheets: 
   return rolls.length > 1 ? { line: `${hero?.name ?? foe!.displayName} is about to move.`, rollerId: moverId, rolls, perCreature: true, rollerWaits: false } : null;
 }
 
-export function moreAbout(encounter: Encounter, name: string, args: Record<string, unknown>, sheets: readonly CharacterSheet[]): About | null {
+// ---- the saves a pointer move rolls ----
+
+// Whether a character holds something they save against as their turn ends:
+// a save-ends condition (condition-tick.ts endTurnSaves) or an effect with a
+// save (effect-saves.ts).
+function savesAtTurnEnd(campaign: Campaign, sheet: CharacterSheet): boolean {
+  const meta = sheet.conditionMeta as ConditionMetaMap;
+  return (
+    sheet.conditions.some((name) => instancesOf(meta[name]).some((instance) => Boolean(instance.saveEnds))) ||
+    listEffects(campaign.id).some((effect) => effect.targetId === sheet.id && Boolean(effect.saveAbility) && Boolean(effect.saveDc))
+  );
+}
+
+const dying = (sheet: CharacterSheet) => sheet.currentHp <= 0 && !sheet.deathSaves?.dead && !sheet.deathSaves?.stable;
+
+// What the move off the current character's turn rolls (encounter-tools.ts
+// advancePointer): their own end-of-turn saves, the saves of the enemies the
+// last move walked past against the holds their turns ended under, and the
+// death saves of the dying whose turns the move starts, up to the next
+// character standing. The pointer move's watch stop reads it (turn-hold.ts),
+// and so does the model's end_turn. The ending character is the roller, so
+// their own watch never holds their own turn's end.
+export function moveSavesAbout(campaign: Campaign, encounter: Encounter, sheets: readonly CharacterSheet[]): About | null {
+  const current = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  const leaving = current?.kind === "pc" ? sheets.find((sheet) => sheet.id === current.characterId) : undefined;
+  if (!leaving) {
+    return null;
+  }
+  const rolls: Seen[] = savesAtTurnEnd(campaign, leaving) ? [heroSave(leaving)] : [];
+  for (const id of walkedEnemiesHeld(campaign, encounter)) {
+    const enemy = getFoe(id);
+    if (enemy && enemy.status === "alive") rolls.push(foeRoll(enemy, "save"));
+  }
+  for (let step = 1; step < encounter.order.length; step += 1) {
+    const entry = encounter.order[(encounter.turnIndex + step) % encounter.order.length];
+    const sheet = entry.kind === "pc" ? sheets.find((each) => each.id === entry.characterId) : undefined;
+    if (!sheet) {
+      continue;
+    }
+    if (!dying(sheet)) {
+      break;
+    }
+    rolls.push({ tag: { roller: "hero", kind: "death_save", who: sheet.name }, ref: sheet.id, name: sheet.name });
+  }
+  const seen = rolls.filter((roll) => !unseen(sheets.find((sheet) => sheet.id === roll.ref) ?? getFoe(roll.ref)));
+  if (!seen.length) {
+    return null;
+  }
+  const line = seen.length === 1 ? `${leaving.name}'s turn is ending: ${seen[0].name} is about to make a saving throw.` : `${leaving.name}'s turn is ending: ${seen.length} creatures are about to make saving throws.`;
+  return { line, rollerId: leaving.id, rolls: seen, perCreature: true, rollerWaits: false };
+}
+
+export function moreAbout(campaign: Campaign, encounter: Encounter, name: string, args: Record<string, unknown>, sheets: readonly CharacterSheet[]): About | null {
+  if (name === "end_turn") {
+    return moveSavesAbout(campaign, encounter, sheets);
+  }
   const user = typeof args.characterId === "string" ? sheets.find((sheet) => sheet.id === args.characterId) : undefined;
   if (name === "take_action") {
     return actionAbout(args, sheets);

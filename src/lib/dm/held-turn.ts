@@ -164,6 +164,12 @@ export function releasesReadiedOffTurn(encounter: Encounter | null, sheet: { id:
 // skipped or played after them. A reaction, an opportunity attack and a
 // readied release are not their turn's, and pass.
 export function heldTurnRefusal(encounter: Encounter | null, sheet: { id: string; name: string; conditions: string[]; conditionMeta?: unknown }): ToolError | null {
+  // Their End Turn is in, and the move waits on a watch stop (turn-hold.ts):
+  // the turn is over, so nothing more of it is taken.
+  const held = encounter?.legendary.heldMove;
+  if (held && held.characterId === sheet.id && reacting.getStore() !== sheet.id) {
+    return { error: `${sheet.name}'s turn is ending: it passes once ${held.watcher || "the watcher"} has answered the roll it brings. Nothing was spent.`, retry: true };
+  }
   if (!encounter || reacting.getStore() === sheet.id || readiedHeld(sheet) || !turnHeldForEnemies(encounter, sheet.id)) {
     return null;
   }

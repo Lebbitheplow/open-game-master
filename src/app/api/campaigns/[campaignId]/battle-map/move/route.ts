@@ -42,6 +42,7 @@ import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { swallowWalk } from "@/lib/dm/swallow";
 import { beginHeldTurnOf, enemiesAhead, heldTurnLine } from "@/lib/dm/held-turn";
+import { heldMoveLine } from "@/lib/dm/turn-hold";
 
 export const runtime = "nodejs";
 
@@ -140,6 +141,12 @@ export async function POST(
   }
 
   const floor = getFloor(campaignId);
+  // Their End Turn is in and the move waits on a watcher's stop
+  // (src/lib/dm/turn-hold.ts): the turn is over.
+  const ending = heldMoveLine(encounter, sheet.id);
+  if (ending) {
+    return Response.json({ error: ending }, { status: 409 });
+  }
   // A turn held for the enemies before it has not begun until they have
   // acted (src/lib/dm/held-turn.ts): the walk waits for it, as an action
   // does, and once nothing is still to act it begins the turn.

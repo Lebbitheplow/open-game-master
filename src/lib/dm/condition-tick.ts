@@ -454,6 +454,16 @@ export function turnHoldKeys(campaign: Campaign, encounterId: string, enemyIds: 
   return keys;
 }
 
+// The enemies the last move walked past that will save against a hold as
+// the pointer next moves (endTurnSaves): those holding one their turn ended
+// under (walkedHolds), any one on a row written before that list. For a watch
+// stop before the move (src/lib/dm/turn-hold.ts).
+export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): string[] {
+  const walked = encounter.legendary.walked ?? [];
+  const recorded = encounter.legendary.walkedHolds ? new Set(encounter.legendary.walkedHolds) : null;
+  return walked.filter((id) => turnHoldKeys(campaign, encounter.id, [id]).some((hold) => !recorded || recorded.has(hold)));
+}
+
 // A hold saved against only far from its source (Dreadful Aspect: a creature
 // that ends its turn more than 30 feet away). Measured on the board as reach
 // is (authored-saves.ts): off the board it counts as close, as the fear's

@@ -56,6 +56,7 @@ import { finishTour, useTourFinished } from "@/lib/tours/tour-store";
 import type { InputKind } from "@/lib/campaign-types";
 import type { Floor } from "@/lib/db/campaigns";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
+import { turnHeldLine, useTurnHeld } from "@/app/campaigns/[campaignId]/TurnHoldNote";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The Hand: on your turn in a fight, your options as cards above the message
@@ -309,11 +310,17 @@ function HandInner({
   // A wand's, a staff's or a scroll's spell as a card: a host that cannot
   // resolve one leaves them typed.
   const items = hostOffers(capabilities, "handItemCasts");
+  const turnHeld = useTurnHeld(encounter);
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
-    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting]);
+    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items })), waiting)];
+    // Their End Turn is in and the move waits on a watcher's stop
+    // (turn-hold.ts): the turn takes nothing more but a reaction, and every
+    // other card says why, End turn's own included.
+    const ending = turnHeld?.characterId === sheet.id ? turnHeldLine(turnHeld, true) : null;
+    return ending ? dealt.map((card) => (card.cost === "reaction" ? card : { ...card, disabled: ending })) : dealt;
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, turnHeld]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
@@ -537,6 +544,7 @@ function HandInner({
 
   const commit = useCallback(async () => {
     if (!picked || !sheet || sending || commitBusy.current) return;
+    if (picked.intent.card === "basic" && picked.intent.action === "end-turn" && turnHeld?.characterId === sheet.id) { say(turnHeldLine(turnHeld, true)); return; }
     if (inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction") { say(blockedReason); return; }
     if (!handReady(picked, aim, choices)) { say(picked.asks === "trigger" && !choices.trigger?.trim() ? "Name the trigger first." : picked.summon && !choices.choice ? "Choose the creature first." : "Pick a target or an area first."); return; }
     if (picked.compose) {
@@ -594,9 +602,14 @@ function HandInner({
       // A share of the card the engine refused for one creature while the
       // rest landed (the actions route at a table the GM runs): said, as a
       // refusal is, and the card is spent, since the others are done.
-      const answered = (await response.json().catch(() => ({}))) as { refused?: string };
+      const answered = (await response.json().catch(() => ({}))) as { refused?: string; held?: boolean };
       if (typeof answered.refused === "string" && answered.refused) {
         say(answered.refused);
+      }
+      // The End Turn is in and the move waits on a watcher's stop
+      // (turn-hold.ts): said here as the banner and the board say it.
+      if (ending && answered.held) {
+        say(turnHeldLine(turnHeld ?? { characterId: sheet.id, watcher: "" }, true));
       }
       // A reaction waits by its hero until the GM resolves it, whoever's it is.
       if (picked.cost === "reaction") onReactionSent?.(picked.actor?.id ?? sheet.id);
@@ -631,7 +644,7 @@ function HandInner({
       commitBusy.current = false;
       setSending(false);
     }
-  }, [picked, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative]);
+  }, [picked, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative, turnHeld]);
 
   const nativePanel = useMemo<BoardPanel | null>(() => {
     if (!boardNative) return null;
