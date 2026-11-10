@@ -1735,8 +1735,7 @@
   "clauses": [
    {
     "c": "Bodyguard works for allies within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#0:take_hit",
+    "is": "held",
     "k": "take_hit",
     "p": {
      "name": "Bodyguard",
@@ -1749,16 +1748,14 @@
       4
      ]
     },
-    "observed": "use_reaction Bodyguard: Ally is beyond 5 feet of Holder. Nothing was spent.",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED Bodyguard (rangeFt 5 at every level)"
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED Bodyguard (take_for_ally rangeFt 10 from 6th level, reaction-kinds.ts reachAtLevel)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Meat Shield#0:take_hit; scripts/test-genre-b-mystery-features.mjs Meat Shield: Bodyguard reaches an ally 10 feet off"
    },
    {
     "c": "you move up to 10 ft to intercept",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Meat Shield: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts bodyguardExtras (the step to the ally's side, asked by src/lib/dm/authored-reactions.ts take_for_ally)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Meat Shield: Bodyguard reaches an ally 10 feet off, and the enforcer steps to their side to take the blow"
    }
   ]
  },
@@ -2108,11 +2105,9 @@
   "clauses": [
    {
     "c": "Enemies leaving your reach provoke opportunity attacks even if they Disengage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Picket Stance#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Picket Stance: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts picketHolds, read by src/lib/dm/map-tools.ts move_token and src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (only)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Picket Stance: a creature that Disengages and walks out of the enforcer's reach still takes their opportunity attack"
    }
   ]
  },
@@ -2124,11 +2119,9 @@
   "clauses": [
    {
     "c": "When you use Bodyguard, the attacker takes your STR mod + proficiency in damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Solidarity#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Solidarity: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts bodyguardExtras (STR modifier + proficiency bonus onto the attacker, untyped)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Solidarity: the creature whose blow Bodyguard took loses the enforcer's STR modifier + proficiency bonus"
    }
   ]
  },

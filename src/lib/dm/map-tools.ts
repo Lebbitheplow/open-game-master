@@ -64,6 +64,7 @@ import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
+import { picketHolds, picketStands } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
 import { nearerSquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
@@ -819,13 +820,14 @@ export function handleMoveToken(
   // exactly as the reverse does when a player walks off. Forced movement
   // (a shove, a gust of wind) provokes nothing.
   const opportunity =
-    resolved.kind === "enemy" && !args.forced && !disengaged && (!allowance || allowance.provokes)
+    resolved.kind === "enemy" && !args.forced && (!disengaged || picketStands(campaign.id)) && (!allowance || allowance.provokes)
       ? resolvePcOpportunityAttacks(
           campaign,
           resolved.token.refId,
           origin,
           landing,
           walkedPart(path, landing),
+          disengaged ? picketHolds : undefined,
         )
       : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).

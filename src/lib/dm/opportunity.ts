@@ -56,6 +56,7 @@ import { hasTrait } from "@/lib/dm/monster-abilities";
 import { enfeebledBlow, spellRetort } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Opportunity attacks: walking out of an enemy's reach is not free. Before
 // this, a player could stroll away from a troll with no consequence at all,
@@ -410,6 +411,9 @@ export function resolvePcOpportunityAttacks(
   from: XY,
   to: XY,
   path?: XY[],
+  // Only these characters react: the walker Disengaged, and Picket Stance
+  // answers it all the same (src/lib/dm/genre-b-mystery-enforcer.ts).
+  only?: (sheet: CharacterSheet) => boolean,
 ): string[] {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -429,7 +433,7 @@ export function resolvePcOpportunityAttacks(
   for (const stale of listSheets(campaign.id)) {
 
     const sheet = getSheetById(stale.id) ?? stale;
-    if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
+    if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide || (only && !only(sheet))) {
       continue;
     }
     if (
@@ -511,7 +515,7 @@ export function resolvePcOpportunityAttacks(
   }
   // A creature the party dominates walking away from its old allies: they
   // strike it as it goes (opportunity-sides.ts posts its own lines).
-  if (moverKind === "enemy") {
+  if (moverKind === "enemy" && !only) {
     notes.push(...enemiesStrikeWalker(campaign.id, enemyId, steps, moverFootprint));
   }
   return notes;
