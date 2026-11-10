@@ -42,7 +42,9 @@ import {
   recordRelationshipEvent,
   resolveActor,
   resolveSubject,
+  type Subject,
 } from "@/lib/dm/relationship-subject";
+import { refusedLeavesNothing } from "@/lib/dm/refusal-rollback";
 import { handleNpcAdvance } from "@/lib/dm/npc-advance";
 import { conscienceNotes, landBeat, landBystanders, landOnVictim, settleUnrecordedDeeds, type DeedOptions, type Landing } from "@/lib/dm/beat-landing";
 import { DEED_KINDS, DEED_SEVERITIES, deedSeverity, doneToDelta, isDeedKind, valueLabel, type DeedKind } from "@/lib/dm/companion-values-logic";
@@ -722,6 +724,27 @@ export function handleRomanceAdvance(
   if ("error" in subject) {
     return subject;
   }
+  // The step opens the bond its rules read, so a refusal rolls that back
+  // (refusal-rollback.ts); a held step the refused one answered stays
+  // answered.
+  let answered: string | null = null;
+  const out = refusedLeavesNothing(() => romanceStep(campaign, turn, args, to, sheet, subject, sheets, (id) => (answered = id)));
+  if ("error" in out && answered) {
+    settleHeldStep(campaign.id, answered, to);
+  }
+  return out;
+}
+
+function romanceStep(
+  campaign: Campaign,
+  turn: DmTurn,
+  args: z.infer<typeof advanceSchema>,
+  to: NonNullable<z.infer<typeof advanceSchema>["to"]>,
+  sheet: CharacterSheet,
+  subject: Subject,
+  sheets: CharacterSheet[],
+  onAnswered: (relationshipId: string) => void,
+): ToolResult {
   const relationship = openLedger(campaign, sheet, subject);
   if (relationship.status === "parted") {
     return {
@@ -750,6 +773,7 @@ export function handleRomanceAdvance(
   }
   // A step held in a fight is answered now, whatever the answer.
   settleHeldStep(campaign.id, relationship.id, to);
+  onAnswered(relationship.id);
   // An act is played to the letter: the step reads the warmth shown.
   const shown = outwardApproval(relationship);
   const act = runningAct(relationship);

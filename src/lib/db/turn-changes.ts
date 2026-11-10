@@ -10,6 +10,9 @@ import { publishPersisted } from "@/lib/events";
 //   - fight: the turn wrote rows of the fight or the board
 //     (src/lib/db/turn-rows.ts keeps them, one row each, as the turn found
 //     them); one per turn, what makes the event log offer its revert.
+//   - story: the turn wrote rows outside the fight (the scene, an NPC, a
+//     quest, a pet on a sheet no audit row names; src/lib/db/turn-journal.ts
+//     keeps them); one per turn, written when the turn's work is done.
 //   - fight_event: a prepared fight's event that fired, its line and the
 //     GM's note of what it could not do (src/lib/dm/fight-event-undo.ts arms
 //     it again; what it did is the turn's fight rows).
@@ -25,7 +28,7 @@ import { publishPersisted } from "@/lib/events";
 // A row is written only under a turn: work outside every turn is nobody's to
 // revert.
 
-export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "cue";
+export type TurnChangeKind = "fight" | "story" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "cue";
 
 export type TurnChange = {
   id: string;
@@ -51,7 +54,7 @@ type Row = {
   created_at: string;
 };
 
-const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon", "cue"];
+const KINDS: readonly TurnChangeKind[] = ["fight", "story", "fight_event", "dice_face", "dice_seed", "card", "summon", "cue"];
 
 // Kept for the revert, never shown or counted in the event log: a creature
 // a spell called up, and the prepared fight whose cue the turn spent.

@@ -2723,6 +2723,12 @@
     "lib/battlemap/hand-items.ts#bypass": [["identity",4,"the lines that answer to a carried item's own name, and its name handed to the gates"]],
     "lib/battlemap/hand-items.ts#partial": [["key",1,"two scrolls under one name (dedupe) and the budget's own mark for a spell drawn"]],
     "lib/battlemap/hand-items.ts#keyed": [["key",1,"ability ids, to the word a check names"]],
-    "lib/battlemap/hand-items.ts#whole-single": [["identity",1,"the spell a casting held from this item runs, against the card's, by textKey"]]
+    "lib/battlemap/hand-items.ts#whole-single": [["identity",1,"the spell a casting held from this item runs, against the card's, by textKey"]],
+    "lib/dm/clock-rewind-logic.ts#keyed": [["key",8,"the clock's own field names, read and written back"]],
+    "lib/dm/turn-rows-logic.ts#fallback": [["key",1,"table and column names, and a fight's kind and standing (the schema's own vocabulary)"]],
+    "lib/dm/turn-rows-logic.ts#partial": [["key",1,"table and column names, and a fight's kind and standing (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#partial": [["key",5,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#whole": [["key",1,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#first": [["key",1,"table and column names and SQL column types (the schema's own vocabulary)"]]
   }
 }

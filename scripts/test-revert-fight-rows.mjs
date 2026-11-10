@@ -335,13 +335,23 @@ await test("the rules: a row made goes, one taken comes back, one changed is wri
   assert.deepEqual(restoredColumns("encounter_enemies", goblinRow).sort(), ["current_hp", "display_name", "status"]);
 });
 
-await test("the rules: a fight begun in the turn goes whole; one ended stays, and says so", () => {
+// WAVE1 maintainer decision on LC-REV-13 (/tmp/odm-gapstudy/WAVE1.md): "a
+// turn that ended a fight reopens it (or refuses with a sentence saying why
+// it cannot, if reopening is unsafe)". This suite pinned the old rule, that
+// a fight the turn ended stays ended with what was done in it.
+await test("the rules: a fight begun in the turn goes whole; one it ended opens again, or is refused with another fight on", () => {
   const row = { table: "encounter_enemies", rowId: "g", before: { id: "g", current_hp: 7 }, after: { id: "g", current_hp: 3 }, now: { id: "g", current_hp: 3 }, encounterId: "e" };
   const begun = planRowsRevert([row], new Map([["e", { active: true, begunInTurn: true, endedInTurn: false }]]));
   assert.deepEqual([begun.dropFights, begun.updates], [["e"], []]);
   const ended = planRowsRevert([row], new Map([["e", { active: false, begunInTurn: false, endedInTurn: true }]]));
-  assert.deepEqual([ended.dropFights, ended.updates], [[], []]);
-  assert.match(ended.warnings.join(" "), /ended the fight: it stays ended/);
+  assert.deepEqual([ended.dropFights, ended.updates, ended.refusal], [[], [{ table: "encounter_enemies", rowId: "g", values: { current_hp: 7 } }], null]);
+  assert.match(ended.warnings.join(" "), /ended the fight: reverting it opens the fight again/);
+  const blocked = planRowsRevert([row], new Map([["e", { active: false, begunInTurn: false, endedInTurn: true, blocked: true }]]));
+  assert.match(blocked.refusal ?? "", /another fight has begun since/);
+  assert.deepEqual(blocked.updates, []);
+  const since = planRowsRevert([row], new Map([["e", { active: false, begunInTurn: false, endedInTurn: false }]]));
+  assert.deepEqual([since.updates, since.refusal], [[], null]);
+  assert.match(since.warnings.join(" "), /has ended since: what the turn did in it stays/);
   assert.equal(fightLine({ encounter_enemies: 2, battle_tokens: 1, encounters: 1 }), "The fight changes: 2 creatures, 1 token and the order of turns.");
 });
 

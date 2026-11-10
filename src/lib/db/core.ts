@@ -21,6 +21,7 @@ import { tableHazardsFrom } from "@/lib/db/table-hazards";
 import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
 import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
+import { installTurnJournal } from "@/lib/db/turn-journal";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -3946,6 +3947,7 @@ export function getDatabase() {
       ensureSchema(globalThis.__localRoleplayDb);
       schemaEnsured = true;
     }
+    installTurnJournal(globalThis.__localRoleplayDb);
     return globalThis.__localRoleplayDb;
   }
 
@@ -3999,6 +4001,8 @@ export function getDatabase() {
   db.pragma("foreign_keys = ON");
   ensureSchema(db);
   schemaEnsured = true;
+  // Every write a GM turn makes is kept with the turn (turn-journal.ts).
+  installTurnJournal(db);
   if (revision < SCHEMA_REVISION) {
     db.pragma(`user_version = ${SCHEMA_REVISION}`);
   }
