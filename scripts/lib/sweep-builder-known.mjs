@@ -2,68 +2,22 @@
 // rule a row breaks, where the fix goes, and the rows that fail for that one
 // cause today (scripts/lib/sweep-builder-rows.mjs expand()).
 
-// "Fill what's left" gives a species' free skill picks out of the class's own
-// short list, so a cleric (two from History, Insight, Medicine, Persuasion,
-// Religion) whose acolyte background already holds Insight and Religion is
-// left one skill to pick two from, and the builder refuses the save.
-const STARVED_CLASS_SKILLS = {
-  rule:
-    "SRD 5.1, Cleric, Proficiencies: \"Skills: Choose two from History, Insight, Medicine, Persuasion, and Religion\"; Half-Elf, Skill Versatility: \"You gain proficiency in two skills of your choice.\" The fill must end in a character the builder's own save check passes (scripts/test-quick-build.mjs).",
-  where: "src/app/characters/builder/quickBuild.ts fillRound (the race.skillChoice block: skillOrder leads with the class's own list)",
-  severity: "medium",
-  note: "The species' two free picks take History and Medicine; the class is left Persuasion alone. The gate then says \"Pick 1 more skill your training taught you\".",
-};
-
 export const KNOWN_FILL_CLASSES = [];
 export const SKIP_FILL_CLASSES = {};
 
 export const KNOWN_FILL_SUBCLASSES_A = [];
 export const SKIP_FILL_SUBCLASSES_A = {};
 
-export const KNOWN_FILL_SUBCLASSES_B = [
-  {
-    id: "fill-any-weapon-pick",
-    rule:
-      "A subclass's training that leaves a weapon to the player is filled from the grant's own list (quickBuild.ts fillFeatPicks: \"A tool or weapon pick with no list of its own takes any\"). College of the Cat's grant is an any-kind pick over weapons, and the fill leaves it unmade.",
-    where: "src/app/characters/builder/quickBuild.ts fillFeatPicks (top(\"weapons\", spec.weapons, ...) leaves out spec.any when anyKinds includes weapons, as the skills line above it does not)",
-    severity: "medium",
-    note: "The pick itself is a misreading of the pack's text (test-enforce-sweep-builder-training-text.mjs): the fill still has to make every pick the gate asks for.",
-    rows: ["fill:subclass:bard/College of the Cat@3", "fill:subclass:bard/College of the Cat@20"],
-  },
-];
+export const KNOWN_FILL_SUBCLASSES_B = [];
 export const SKIP_FILL_SUBCLASSES_B = {};
 
-export const KNOWN_FILL_SPECIES = [
-  {
-    id: "fill-starves-class-skills",
-    ...STARVED_CLASS_SKILLS,
-    rows: [
-      "fill:species:changeling/cleric@1",
-      "fill:species:half-elf/cleric@1",
-      "fill:species:half-elf/cleric@5",
-      "fill:species:kenku/cleric@1",
-      "fill:species:lizardfolk/cleric@1",
-    ],
-  },
-];
+export const KNOWN_FILL_SPECIES = [];
 export const SKIP_FILL_SPECIES = {};
 
 export const KNOWN_FILL_BACKGROUNDS = [];
 export const SKIP_FILL_BACKGROUNDS = {};
 
-export const KNOWN_FILL_NOPACK = [
-  {
-    id: "nopack-fill-starves-class-skills",
-    ...STARVED_CLASS_SKILLS,
-    rows: [
-      "nopack:species:half_elf/cleric@1",
-      "nopack:species:kenku/cleric@1",
-      "nopack:species:changeling/cleric@1",
-      "nopack:species:lizardfolk/cleric@1",
-      "nopack:species:lizardfolk/cleric@5",
-    ],
-  },
-];
+export const KNOWN_FILL_NOPACK = [];
 export const SKIP_FILL_NOPACK = {};
 
 export const KNOWN_PACK_PARITY = [];

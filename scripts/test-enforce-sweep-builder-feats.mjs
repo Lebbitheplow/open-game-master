@@ -219,15 +219,12 @@ for (const row of feats) {
     });
     await rows.row(`${prefix}:${row.name}:fill`, async () => {
       const { built } = withFeatAbility();
-      // quickBuild.ts fillFeatPicks: "Damage types and taught spells are left
-      // for the player." A fill that stops only at one of those has kept
-      // its word; the findings file carries the ruling for the maintainer.
-      const spec = featGrantSpec(featDescs[textKey(row.name)]);
-      const leftToPlayer =
-        built.blocker &&
-        (spec.damageTypes.length > 0 || spec.taught.cantrips + spec.taught.spells > 0) &&
-        new RegExp(`^${row.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: pick (a damage type|a class list|\\d+ [^,.]*(spells?|cantrips?))(, (\\d+ [^,.]*(spells?|cantrips?)|a damage type))*\\.$`).test(built.blocker.message);
-      assert.ok(!built.blocker || leftToPlayer, `fill (${open.base.classId}): after the fill the builder still refuses the save: ${JSON.stringify(built.blocker)}`);
+      // The maintainer's decision R12 (/tmp/odm-gapstudy/WAVE1.md, wave 1):
+      // "'Fill what's left' fills a feat's taught spells and damage types
+      // too." A fill that stopped at Magic Initiate's spells or Elemental
+      // Adept's damage type was held as keeping its word before; it no
+      // longer is.
+      assert.equal(built.blocker, null, `fill (${open.base.classId}): after the fill the builder still refuses the save: ${JSON.stringify(built.blocker)}`);
     });
   } else {
     untaken += 1;
