@@ -12,7 +12,7 @@
 // throw, or ability check made by you or a creature that you can see").
 
 import type { Campaign } from "@/lib/db/campaigns";
-import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
+import { listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getMounts } from "@/lib/db/mounts";
 import { getParty } from "@/lib/db/party";
 import { spellEngineName } from "@/lib/content";
@@ -21,15 +21,23 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { hostileTo } from "@/lib/dm/combatant";
 import { enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph-logic";
 import { formationView } from "@/lib/dm/formation-logic";
+import { withinFeet } from "@/lib/dm/authored-saves";
+import { channelSaveReach } from "@/lib/dm/feature-spends";
 import { exposureShrug } from "@/lib/dm/hazard-tools";
+import { pickNaturalAttack } from "@/lib/dm/natural-attack";
+import { findPet } from "@/lib/dm/pet-tools";
+import { QUIVERING } from "@/lib/dm/srd-feature-spends";
 import { unwillingSaveFor } from "@/lib/dm/hostile-buffs";
 import { formationPartyIds } from "@/lib/dm/roster";
 import { canonicalCondition } from "@/lib/dm/set-condition";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
+import { POISON_COAT } from "@/lib/dm/attack-onhit";
 import type { RollTag } from "@/lib/dice-script-logic";
-import { isConditionNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { authoredSpendFor, heldReaction } from "@/lib/srd/authored-effects";
+import { resourceDef } from "@/lib/srd/class-resources";
 import { trapAt } from "@/lib/srd/table-hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -62,7 +70,7 @@ export function foeRoll(enemy: { id: string; displayName: string; slug?: string 
 const SAVE_ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 
 // The characters' saves, one each, or several the watcher picks from.
-function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving throws"): About | null {
+export function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving throws"): About | null {
   const seen = heroes.filter((hero, at) => !unseen(hero) && heroes.findIndex((each) => each.id === hero.id) === at);
   if (!seen.length) {
     return null;
@@ -71,7 +79,7 @@ function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving t
   return { line, rollerId: seen[0].id, rolls: seen.map(heroSave), perCreature: seen.length > 1, rollerWaits: false };
 }
 
-function oneFoe(enemy: EncounterEnemy | null, line: (name: string) => string, rollerId?: string): About | null {
+export function oneFoe(enemy: EncounterEnemy | null, line: (name: string) => string, rollerId?: string): About | null {
   if (!enemy || unseen(enemy)) {
     return null;
   }
@@ -133,6 +141,10 @@ function shapeAbout(campaign: Campaign, encounter: Encounter, args: Record<strin
   }
   const spell = args.spell.trim().slice(0, 60);
   const engine = spellEngineName(spell, spellAuthorsFor(campaign));
+  // Dispel Magic on a spell above its slot asks the caster's check (dispel.ts).
+  if (isNamed(engine, "dispel magic")) {
+    return contestAbout(caster, null, ` to end the spell`);
+  }
   if (typeof args.targetEnemyId === "string" && enemyShapeSpellFor(engine)) {
     return oneFoe(getFoe(args.targetEnemyId), (who) => `${caster.name} is about to cast ${spell} at ${who}.`, caster.id);
   }
@@ -143,6 +155,139 @@ function shapeAbout(campaign: Campaign, encounter: Encounter, args: Record<strin
     .map((ref) => sheets.find((sheet) => sheet.id === ref))
     .filter((target): target is CharacterSheet => Boolean(target) && target!.id !== caster.id && hostileTo(encounter, { kind: "sheet", id: caster.id }, { kind: "sheet", id: target!.id }));
   return heroesAbout(targets, ` against ${spell}`);
+}
+
+// ---- the saves a character's own call makes creatures roll ----
+
+// The creatures a call aims at, by the ids it sends.
+function namedFoes(args: Record<string, unknown>): EncounterEnemy[] {
+  const refs = [args.targetEnemyId, ...(Array.isArray(args.targetEnemyIds) ? args.targetEnemyIds : [])];
+  const foes: EncounterEnemy[] = [];
+  for (const ref of refs) {
+    const foe = typeof ref === "string" ? getFoe(ref) : null;
+    if (foe && foe.status === "alive" && !foes.some((entry) => entry.id === foe.id)) foes.push(foe);
+  }
+  return foes;
+}
+
+// The living creatures of the fight within `feet` of the character, as an
+// area feature finds them on the board (off the board, all of them).
+function foesNear(encounter: Encounter, user: CharacterSheet, feet: number): EncounterEnemy[] {
+  return listEnemies(encounter.id).filter((enemy) => enemy.status === "alive" && withinFeet(encounter.id, user.id, enemy.id, feet));
+}
+
+function foesAbout(user: CharacterSheet, foes: EncounterEnemy[], what: string): About | null {
+  const seen = foes.filter((foe) => !unseen(foe));
+  if (!seen.length) {
+    return null;
+  }
+  const against = ` against ${what.slice(0, 60)}`;
+  const line = seen.length === 1 ? `${seen[0].displayName} is about to make a saving throw${against}.` : `${seen.length} creatures are about to make saving throws${against}.`;
+  return { line, rollerId: user.id, rolls: seen.map((foe) => foeRoll(foe, "save")), perCreature: seen.length > 1, rollerWaits: false };
+}
+
+// use_resource on a feature that makes creatures save: Intimidating
+// Presence, Quivering Palm's second use, a Channel Divinity turning or fear,
+// an authored feature whose effect is a save or a burst (authored-spends.ts).
+function featureAbout(encounter: Encounter, args: Record<string, unknown>, user: CharacterSheet): About | null {
+  const resource = typeof args.resource === "string" ? args.resource : "";
+  const variant = typeof args.variant === "string" ? args.variant : undefined;
+  const named = namedFoes(args);
+  const authored = resource ? authoredSpendFor(user, resourceDef(resource)?.displayName ?? resource)?.spend : undefined;
+  let reach: number | null = null;
+  if (authored) {
+    const does = authored.does;
+    if (does.kind === "save_effect") {
+      reach = does.rangeFt ?? 30;
+    } else if ("burst" in does && does.burst) {
+      reach = does.burst.rangeFt;
+    } else {
+      return null;
+    }
+  } else if (isNamed(resource, "intimidating presence")) {
+    reach = 30;
+  } else if (isNamed(resource, "quivering palm")) {
+    // Its first use sets the vibrations; only ending them asks the save.
+    return foesAbout(user, named.filter((foe) => holdsCondition(foe, QUIVERING)), "Quivering Palm");
+  } else {
+    reach = channelSaveReach(resource, variant);
+  }
+  if (reach === null) {
+    return null;
+  }
+  return foesAbout(user, named.length ? named : foesNear(encounter, user, reach), authored?.name ?? resource);
+}
+
+// use_reaction: Hellish Rebuke at the creature that hurt the character, or
+// an authored reaction whose answer is a save (authored-reactions.ts).
+function reactionAbout(encounter: Encounter, args: Record<string, unknown>, user: CharacterSheet): About | null {
+  const feature = typeof args.feature === "string" ? args.feature : "";
+  const named = namedFoes(args);
+  if (isNamed(feature, "hellish rebuke")) {
+    return foesAbout(user, named, "Hellish Rebuke");
+  }
+  const does = feature ? heldReaction(user, feature)?.reaction.does : undefined;
+  if (!does || !("save" in does) || !does.save) {
+    return null;
+  }
+  const reach = "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : 60;
+  return foesAbout(user, named.length ? named : foesNear(encounter, user, reach), feature);
+}
+
+// pet_attack: the pet's attack roll, and the save its hit may force (an
+// imp's poison, natural-onhit.ts). The pet is no sheet, so only a foretold
+// number answers its own roll here.
+function petAbout(args: Record<string, unknown>, owner: CharacterSheet): About | null {
+  const pet = findPet(owner, typeof args.petName === "string" ? args.petName : undefined);
+  const attack = pet ? pickNaturalAttack(pet.attacks, typeof args.attack === "string" ? args.attack : undefined) : undefined;
+  const enemy = typeof args.targetEnemyId === "string" ? getFoe(args.targetEnemyId) : null;
+  if (!pet || !attack || !enemy) {
+    return null;
+  }
+  const rolls: Seen[] = [{ tag: { roller: "hero", kind: "attack", who: pet.name }, ref: `pet:${owner.id}:${pet.name}`, name: pet.name }];
+  if (attack.onHit?.save && !unseen(enemy)) rolls.push(foeRoll(enemy, "save"));
+  return { line: `${pet.name} is about to attack ${enemy.displayName}.`, rollerId: owner.id, rolls, perCreature: rolls.length > 1, rollerWaits: false };
+}
+
+const SAVE_MANEUVERS = ["trip attack", "menacing attack", "pushing attack", "disarming attack", "goading attack"];
+
+// pc_attack's hits that make the creature hit save: Stunning Strike, Open
+// Hand Technique's push or knock-down, a Battle Master maneuver's rider, a
+// coat of poison on the weapon (pc-attack-riders.ts, attack-blow.ts,
+// attack-onhit.ts). The creatures that may save, each once.
+export function attackRiderFoes(args: Record<string, unknown>, hero: CharacterSheet): EncounterEnemy[] {
+  const entries = Array.isArray(args.attacks) ? args.attacks.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object") : [args];
+  const coated = holdsCondition(hero, POISON_COAT);
+  const foes: EncounterEnemy[] = [];
+  for (const entry of entries) {
+    const rider =
+      coated ||
+      entry.stunningStrike === true ||
+      (typeof entry.openHand === "string" && !isNamed(entry.openHand, "no reactions")) ||
+      (typeof entry.maneuver === "string" && SAVE_MANEUVERS.some((name) => isNamed(String(entry.maneuver), name)));
+    const ref = entry.targetEnemyId ?? args.targetEnemyId;
+    const foe = rider && typeof ref === "string" ? getFoe(ref) : null;
+    if (foe && !unseen(foe) && !foes.some((each) => each.id === foe.id)) foes.push(foe);
+  }
+  return foes;
+}
+
+// ---- the checks a call throws inside it ----
+
+export function heroCheck(hero: CharacterSheet): Seen {
+  return { tag: { roller: "hero", kind: "check", who: hero.name }, ref: hero.id, name: hero.name };
+}
+
+// One character's check, or a contest between a character and a creature:
+// each side's d20 is its own, and the watcher picks whose.
+export function checksAbout(rollerId: string, rolls: Seen[], line: string): About | null {
+  return rolls.length ? { line, rollerId, rolls, perCreature: rolls.length > 1, rollerWaits: false } : null;
+}
+
+export function contestAbout(hero: CharacterSheet, foe: EncounterEnemy | null, what: string): About | null {
+  const rolls = [...(unseen(hero) ? [] : [heroCheck(hero)]), ...(foe && !unseen(foe) ? [foeRoll(foe, "check")] : [])];
+  const line = foe ? `${hero.name} and ${foe.displayName} are about to roll a contest${what}.` : `${hero.name} is about to make an ability check${what}.`;
+  return checksAbout(hero.id, rolls, line);
 }
 
 export function savesAbout(campaign: Campaign, encounter: Encounter, name: string, args: Record<string, unknown>, sheets: readonly CharacterSheet[]): About | null {
@@ -160,6 +305,28 @@ export function savesAbout(campaign: Campaign, encounter: Encounter, name: strin
   }
   if (name === "cast_buff") {
     return shapeAbout(campaign, encounter, args, sheets);
+  }
+  const user = typeof args.characterId === "string" ? sheets.find((sheet) => sheet.id === args.characterId) : undefined;
+  if (name === "use_resource" && user) {
+    // Indomitable's reroll is the user's own save; Insightful Fighting a
+    // contest with the creature (feature-spends.ts, authored-spend-effects.ts).
+    if (isNamed(String(args.resource ?? ""), "indomitable")) {
+      return heroesAbout([user], " again");
+    }
+    if (isNamed(String(args.resource ?? ""), "insightful fighting")) {
+      return contestAbout(user, namedFoes(args)[0] ?? null, " to read the creature");
+    }
+    return featureAbout(encounter, args, user);
+  }
+  if (name === "use_reaction" && user) {
+    // Counterspell against a higher spell asks the caster's check (reaction-spells.ts).
+    if (isNamed(String(args.feature ?? ""), "counterspell")) {
+      return contestAbout(user, null, " to counter the spell");
+    }
+    return reactionAbout(encounter, args, user);
+  }
+  if (name === "pet_attack" && user) {
+    return petAbout(args, user);
   }
   if (name === "afflict" && args.save !== false && (args.kind === "disease" || args.kind === "poison" || (args.kind === "madness" && Number(args.saveDc) >= 1))) {
     // A disease's infection, a poison's save, a madness's when its source

@@ -213,7 +213,7 @@ export function takeSaveHelp(campaignId: string, tag: RollTag, saver: string, ou
   const helped = flash ? withFlatBonus(outcome, intelligence) : withBonusDie(withBonusDie(outcome, d4()), d4());
   const feature = flash ? "Flash of Genius" : "Favored by the Gods";
   const verdict = helped.total >= dc ? "it succeeds" : "it still fails";
-  armed.note = `${helper.name} used ${feature}: ${saver}'s save went from ${outcome.total} to ${helped.total} against DC ${dc}, and ${verdict}.`;
+  armed.note = `${helper.name} used ${feature}: ${saver}'s ${tag.kind === "check" ? "check" : "save"} went from ${outcome.total} to ${helped.total} against DC ${dc}, and ${verdict}.`;
   return { outcome: helped, line: `${feature}: ${outcome.total} became ${helped.total}` };
 }
 

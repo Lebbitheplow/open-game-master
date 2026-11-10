@@ -33,7 +33,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { findCarriedItem } from "@/lib/dm/item-logic";
 import { resolveRollExpression } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals-logic";
@@ -232,8 +232,8 @@ export function handleStabilize(
       storeBudget(encounter, spent.budget);
     }
     readied?.release();
-    const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: healer.name } });
-    const outcome = heldDieWaits(healer, STABILIZE_DC) ? settleHeldDie(campaign.id, healer.id, thrown, STABILIZE_DC) : thrown;
+    // Watched as any check a call throws (forced-save.ts throwWatchedCheck).
+    const outcome = throwWatchedCheck(campaign.id, healer, resolved.expression, STABILIZE_DC, heldDieWaits(healer, STABILIZE_DC));
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: healer.id,

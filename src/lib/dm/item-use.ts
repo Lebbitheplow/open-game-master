@@ -23,10 +23,10 @@ import { publishWithSeq } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
-import { rollExpression } from "@/lib/dice";
+
 import { itemSpellCast, itemSpellsOfRow, type ItemSpellCast } from "@/lib/srd/item-spells";
 import { itemBarrier } from "@/lib/srd/item-barrier";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
@@ -72,8 +72,7 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
     return { total: 0, success: false };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
+  const outcome = throwWatchedCheck(campaign.id, sheet, resolved.expression, check.dc, waits);
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return { total: outcome.total, success: outcome.total >= check.dc };

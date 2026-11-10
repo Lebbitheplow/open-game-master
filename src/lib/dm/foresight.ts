@@ -35,7 +35,8 @@ import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { inPlay } from "@/lib/dm/roster";
 import { publishPersisted } from "@/lib/events";
-import { foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
+import { moreAbout } from "@/lib/dm/foresight-more";
+import { attackRiderFoes, foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // A stop comes before every watched roll, so it cannot ask for long.
@@ -156,7 +157,11 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     if (!hero || unseen(hero)) {
       return null;
     }
-    return { line: `${hero.name} is about to attack.`, rollerId: hero.id, rolls: [{ tag: { roller: "hero", kind: "attack", who: hero.name }, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
+    // The save a hit may force on the creature hit (Stunning Strike, a
+    // maneuver) is thrown inside the call: the watcher picks the swing or
+    // that save.
+    const riders = attackRiderFoes(args, hero).map((foe) => foeRoll(foe, "save"));
+    return { line: `${hero.name} is about to attack.`, rollerId: hero.id, rolls: [{ tag: { roller: "hero", kind: "attack", who: hero.name }, ref: hero.id, name: hero.name }, ...riders], perCreature: riders.length > 0, rollerWaits: rollsCanWait(hero) };
   }
   if (call.name === "cast_at_player") {
     // An enemy or a hazard forces one character's save, which the server rolls.
@@ -234,7 +239,7 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
   }
-  return savesAbout(campaign, encounter, call.name, args, sheets);
+  return savesAbout(campaign, encounter, call.name, args, sheets) ?? moreAbout(encounter, call.name, args, sheets);
 }
 
 // "Within 30 feet" and "a creature you can see", for Chronal Shift: the
@@ -253,7 +258,10 @@ function savesHelped(campaignId: string, encounter: Encounter, sheet: CharacterS
   }
   const side = (ref: string) => sideOf(encounter, kindOfId(encounter.id, ref) ?? "enemy", ref);
   return [...(about.rollerWaits ? [] : about.rolls), ...(about.riderSaves ?? [])].filter((roll) => {
-    const saver = roll.tag.roller === "hero" && roll.tag.kind === "save" ? sheets.find((entry) => entry.id === roll.ref) : null;
+    // Flash of Genius answers an ability check as well as a save ("makes an
+    // ability check or a saving throw"); Favored by the Gods a save only.
+    const answers = roll.tag.kind === "save" || (power === "flash_of_genius" && roll.tag.kind === "check");
+    const saver = roll.tag.roller === "hero" && answers ? sheets.find((entry) => entry.id === roll.ref) : null;
     if (!saver) {
       return false;
     }
@@ -281,9 +289,9 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
     // A foe's success is rolled again, an ally's failure; a roll the
     // roller's own card answers once it lands is offered there instead.
     const mine = side(sheet.id);
-    const reach = about.rollerWaits || about.rolls.every((roll) => roll.tag.roller === "enemy" && roll.tag.kind === "attack")
-      ? []
-      : about.rolls.filter((roll) => !(roll.tag.roller === "enemy" && roll.tag.kind === "attack") && shiftReaches(campaignId, sheet, roll, sheets));
+    const reach = about.rolls.filter(
+      (roll) => !(about.rollerWaits && roll.ref === about.rollerId) && !(roll.tag.roller === "enemy" && roll.tag.kind === "attack") && shiftReaches(campaignId, sheet, roll, sheets),
+    );
     if (reach.length && canShiftNow(campaignId, sheet)) {
       return { watcher: sheet, power: "chronal_shift", choices: choicesOf(reach, (roll) => (side(roll.ref) === mine ? "failure" : "success")) };
     }

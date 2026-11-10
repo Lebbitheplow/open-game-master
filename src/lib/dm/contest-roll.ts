@@ -13,9 +13,11 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck, throwWatchedSave } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
+import type { RollTag } from "@/lib/dice-script-logic";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -80,8 +82,8 @@ export function rollCharacterCheck(
     return { total: 1, expression: "", notes: resolved.notes, rollId: null, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits && check.dc ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
+  // A watch stop's answer lands here (foresight-saves.ts).
+  const outcome = throwWatchedCheck(campaign.id, sheet, resolved.expression, check.dc, waits);
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -101,6 +103,24 @@ export function rollCharacterCheck(
     notes: resolved.conditionNotes ?? [],
     rollId: roll.id,
   };
+}
+
+// A contest once both sides have landed (SRD 5.1, Contests): a Chronal Shift
+// a watch stop armed for one side is asked now, when whether that side won is
+// known ("you make this decision after you see whether the roll succeeds or
+// fails"), and that side is rolled again; the new roll stands. A side has no
+// DC of its own to be judged by as it lands (throwWatchedCheck).
+type ContestSide = { tag: RollTag; total: number; again: () => number };
+export function contestShift(campaignId: string, mine: ContestSide, theirs: ContestSide, mineWins: (mine: number, theirs: number) => boolean): { mine: number; theirs: number } {
+  const won = mineWins(mine.total, theirs.total);
+  const side = takeShift(campaignId, mine.tag, won) ? "mine" : takeShift(campaignId, theirs.tag, !won) ? "theirs" : null;
+  if (!side) {
+    return { mine: mine.total, theirs: theirs.total };
+  }
+  const rolled = side === "mine" ? mine : theirs;
+  const total = rolled.again();
+  noteShift(campaignId, `Chronal Shift: ${[rolled.tag.who ?? []].flat()[0] ?? "the creature"} rolled its side of the contest again, ${rolled.total} became ${total}, and the new roll stands.`);
+  return side === "mine" ? { mine: total, theirs: theirs.total } : { mine: mine.total, theirs: total };
 }
 
 // A saving throw a feature makes the character roll outside any tool that
@@ -130,8 +150,7 @@ export function rollFeatureSave(
     return { success: false, total: null, notes: resolved.notes };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  const outcome = throwWatchedSave(campaign.id, sheet, resolved.expression, dc, waits);
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

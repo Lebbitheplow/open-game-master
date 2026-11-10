@@ -15,7 +15,7 @@ import { dcForDifficulty, difficultyOfDc, normalizeDifficulty } from "@/lib/srd/
 import { strictnessShift } from "@/lib/dm/safety-logic";
 import { resolveRollExpression, resolveSheetRef } from "@/lib/dm/rolls";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
 import { rollEffectExtras } from "@/lib/dm/effect-tools";
 import { exhaustionRollState, mergeAdvantage, rollDerivation, type AdvantageState } from "@/lib/dm/condition-logic";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -287,8 +287,12 @@ export function handleGroupCheck(
     }
     // An inspiration die or a held Help is spent by the roll it rides.
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const thrown = rollExpression(resolved.expression, undefined, { purpose: heroRollTag(rollArgs.kind, sheet.name) });
-    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc.dc) : thrown;
+    // A check is watched as any check a call throws (forced-save.ts).
+    const tag = heroRollTag(rollArgs.kind, sheet.name);
+    const rolled = tag?.kind === "check" ? throwWatchedCheck(campaign.id, sheet, resolved.expression, dc.dc, waits) : (() => {
+      const thrown = rollExpression(resolved.expression, undefined, { purpose: tag });
+      return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc.dc) : thrown;
+    })();
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

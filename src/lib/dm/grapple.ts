@@ -38,11 +38,11 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { rollEnemyContest } from "@/lib/dm/action-common";
+import { enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { rollCharacterCheck } from "@/lib/dm/contest-roll";
+import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { characterSpellEscape, characterSpellHold, enemySpellEscape, enemySpellHold } from "@/lib/dm/spell-escape";
@@ -147,7 +147,17 @@ export function characterEscape(
           })();
   // Against a DC, meeting it escapes; in a contest a tie leaves things as
   // they are: the grapple holds.
-  const escaped = !mine.autoFailed && (theirs === null ? mine.total >= (held.escapeDc ?? 0) : mine.total > theirs);
+  // In a contest with a creature, a Chronal Shift a watch stop armed for
+  // either side (contest-roll.ts).
+  const settled = theirs !== null && enemyHolder && !mine.autoFailed
+    ? contestShift(
+        campaign.id,
+        { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill }, `${sheet.name}: ${skill} to escape the grapple, rolled again`).total },
+        { tag: enemyContestTag(enemyHolder), total: theirs, again: () => rollEnemyContest(campaign, turn, enemyHolder, "athletics", `${holderName}: Athletics to hold the grapple, rolled again`) },
+        (a, b) => a > b,
+      )
+    : { mine: mine.total, theirs };
+  const escaped = !mine.autoFailed && (settled.theirs === null ? settled.mine >= (held.escapeDc ?? 0) : settled.mine > settled.theirs);
   if (escaped) {
     const fresh = getSheetById(sheet.id) ?? sheet;
     const cleared = withoutGrapple(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, held);

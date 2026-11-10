@@ -174,7 +174,9 @@ export function rollContest(
     ...(effect?.disadvantage ? ["disadvantage" as const] : []),
   ]);
   const modifier = creatureCheckMod(opponent.stats, theirs, ability) + (effect?.bonus ?? 0);
-  const outcome = derivation.autoFail ? null : rollExpression(d20Expression(modifier, advantage));
+  // A creature of the fight's side is tagged as its check (a watch stop's
+  // number, foresight-saves.ts); a named person outside it is not watched.
+  const outcome = derivation.autoFail ? null : rollExpression(d20Expression(modifier, advantage), undefined, opponent.enemyId ? { purpose: { roller: "enemy", kind: "check", who: opponent.name } } : {});
   const total = outcome?.total ?? 0;
   if (outcome) {
     const roll = insertRoll({

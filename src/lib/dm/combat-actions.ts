@@ -12,12 +12,12 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { sizeForRace } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import type { TurnBudget } from "@/lib/dm/action-budget";
-import { addSheetCondition, rollEnemyContest } from "@/lib/dm/action-common";
+import { addSheetCondition, enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
 import { handsBusy } from "@/lib/dm/cast-rules";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { seenClearlyDespiteTraits } from "@/lib/dm/hide-traits";
-import { rollCharacterCheck } from "@/lib/dm/contest-roll";
+import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -236,8 +236,18 @@ export function contest(
     if (die) {
       costs.superiorityDie = `${die.label}: +${extra} on the Athletics check (one Superiority Die)`;
     }
-    const theirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}`);
-    return { text: `${mine.total} vs ${theirs}`, won: !mine.autoFailed && mine.total > theirs };
+    const rolledTheirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}`);
+    if (mine.autoFailed) {
+      return { text: `${mine.total} vs ${rolledTheirs}`, won: false };
+    }
+    // A Chronal Shift a watch stop armed for either side (contest-roll.ts).
+    const settled = contestShift(
+      campaign.id,
+      { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}, rolled again`).total + extra },
+      { tag: enemyContestTag(enemy), total: rolledTheirs, again: () => rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}, rolled again`) },
+      (a, b) => a > b,
+    );
+    return { text: `${settled.mine} vs ${settled.theirs}`, won: settled.mine > settled.theirs };
   };
   const outcome = helpless ? { text: `no contest: ${enemy.displayName} is ${helpless}`, won: true } : rollContest(bought);
   const contested = outcome.text;

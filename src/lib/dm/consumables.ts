@@ -23,10 +23,10 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { rollExpression } from "@/lib/dice";
+
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck, throwWatchedSave } from "@/lib/dm/forced-save";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -252,8 +252,7 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
     return { success: false };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = heldDieWaits(sheet, dc) ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  const outcome = throwWatchedSave(campaign.id, sheet, resolved.expression, dc, heldDieWaits(sheet, dc));
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return { success: outcome.total >= dc };
@@ -276,8 +275,7 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
     let total = 0;
     if (!("error" in resolved) && !("autoFail" in resolved)) {
       spendRollCarriers(campaign.id, reader.id, resolved.spendInspiration);
-      const thrown = rollExpression(resolved.expression);
-      const outcome = heldDieWaits(reader, dc) ? settleHeldDie(campaign.id, reader.id, thrown, dc) : thrown;
+      const outcome = throwWatchedCheck(campaign.id, reader, resolved.expression, dc, heldDieWaits(reader, dc));
       total = outcome.total;
       const roll = insertRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
       publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });

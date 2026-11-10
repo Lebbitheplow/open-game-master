@@ -3,6 +3,7 @@
 // block. Split from action-tools.ts so the grapple, object and reaction
 // modules can use them without importing the take_action handler.
 
+import type { RollTag } from "@/lib/dice-script-logic";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
@@ -65,6 +66,12 @@ export function contestModifier(
     : Math.max(athletics, skills.acrobatics ?? bare("dex"));
 }
 
+// The tag an enemy's side of a contest rolls under: a character fighting the
+// party rolls as the character it is (rollEnemyContest below).
+export function enemyContestTag(enemy: EncounterEnemy): RollTag {
+  return { roller: isSheetFoe(enemy) ? "hero" : "enemy", kind: "check", who: enemy.displayName };
+}
+
 // An enemy's side of a contest: the d20 with the modifier above, under the
 // conditions that put its ability checks at disadvantage, stored and
 // published as a dice card.
@@ -89,7 +96,9 @@ export function rollEnemyContest(
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;
   const advantage = mergeAdvantage([...rollDerivation(enemy.conditions, "skill_check", "str").sources, ...(worn ? ["disadvantage" as const] : [])]);
-  const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage));
+  // Tagged as the creature's check, so a foretold number a watch stop armed
+  // for its side of the contest lands on its d20 (foresight-saves.ts).
+  const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage), undefined, { purpose: { roller: "enemy", kind: "check", who: enemy.displayName } });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: null,

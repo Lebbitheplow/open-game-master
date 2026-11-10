@@ -20,7 +20,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 
 const { test, finish } = suite("test-enforce-portent");
-const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { getDmTurn, getPendingRoll, listOpenPendingRolls, publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
 const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
@@ -503,6 +503,142 @@ await test("A rider thrown from the saddle stops for the save to land on their f
   assert.equal(saveRolls().at(-1)?.breakdown.natural, 17);
   assert.ok(!fightWorld.sheet(target.id).conditions.includes("prone"), "17 lands on their feet");
   setMount(fightWorld.campaignId, target.id, null);
+});
+
+// A character's own call that makes a creature save (foresight-saves.ts):
+// the creature's save, rolled inside the call, stopped for nobody.
+const choiceNames = (stop) => publicPendingRoll(stop).watch.choices.map((choice) => choice.name);
+const letItRoll = async (stop) => {
+  await answer(stop.id, { pass: true });
+  await settleQueue(fightWorld.campaignId);
+};
+
+// These calls run as they are let go, and their blows land: the goblins are
+// kept standing through them, and given back their hit points after.
+let goblinsBefore;
+await test("A feature a character spends stops for the creature's save it asks.", async () => {
+  goblinsBefore = [goblin, goblin2].map((enemy) => ({ id: enemy.id, currentHp: kit.enemy(enemy.id).currentHp, maxHp: kit.enemy(enemy.id).maxHp }));
+  for (const enemy of goblinsBefore) kit.setEnemy(enemy.id, { currentHp: 300, maxHp: 300 });
+  arm();
+  await enemyTurn([modelCall("use_resource", { characterId: target.id, resource: "Intimidating Presence", targetEnemyId: goblin.id })], "Kara roars.");
+  const [scare] = stops();
+  assert.ok(scare, "Intimidating Presence's save stops");
+  assert.match(scare.reason, /Goblin \S* ?is about to make a saving throw against Intimidating Presence\./);
+  await letItRoll(scare);
+});
+
+await test("A reaction that makes the attacker save stops for that save.", async () => {
+  arm();
+  await enemyTurn([modelCall("use_reaction", { characterId: target.id, feature: "Hellish Rebuke", targetEnemyId: goblin.id })], "Flames answer.");
+  const [rebuke] = stops();
+  assert.ok(rebuke, "Hellish Rebuke's save stops");
+  assert.match(rebuke.reason, /against Hellish Rebuke\./);
+  await letItRoll(rebuke);
+});
+
+await test("A pet's attack stops, for its d20 or the save its sting asks, and the number lands on the pet's d20.", async () => {
+  arm();
+  fightWorld.patch(target.id, { pets: [{ name: "Imp", kind: "familiar", form: "imp", hp: 10, maxHp: 10, ac: 13, speed: 20, attacks: [{ name: "Sting", toHit: 5, damage: "1d4+3", type: "piercing", onHit: { save: "con", dc: 11 } }], notes: "" }] });
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightModel.script([reply({ calls: [modelCall("pet_attack", { characterId: target.id, targetEnemyId: goblin.id })] }), reply({ text: "The imp stings." })]);
+  await fightModel.turn(fightWorld, "My imp stings the goblin.", target.id, targetUser.id);
+  const [sting] = stops();
+  assert.ok(sting, "the pet's attack stops");
+  assert.match(sting.reason, /Imp is about to attack Goblin/);
+  assert.deepEqual(choiceNames(sting), ["Imp", goblin.displayName], "the sting's d20 or the poison's save");
+  assert.equal((await answer(sting.id, { value: 17, choice: 0 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(hitRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the sting's d20");
+  fightWorld.patch(target.id, { pets: [] });
+});
+
+await test("A swing with Stunning Strike stops for the swing or the creature's save against the stun.", async () => {
+  arm();
+  await enemyTurn([modelCall("pc_attack", { characterId: target.id, attacks: [{ targetEnemyId: goblin.id, stunningStrike: true }] })], "Kara strikes.");
+  const [stun] = stops();
+  assert.ok(stun, "the swing stops");
+  assert.deepEqual(choiceNames(stun), ["Kara", goblin.displayName], "the swing, or the creature's save against the stun");
+  await letItRoll(stun);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "Let it roll spends nothing");
+});
+
+// The rest a call throws inside it (foresight-more.ts): a hurt creature's
+// save, an action's contest, a walk, a legendary action.
+// The last call's answer, as the model read it: rolls stored in the same
+// millisecond have no order to read them back by.
+const toldConcentration = () => fightModel.requests.at(-1)?.messages.filter((message) => message.role === "tool").map((message) => message.content).join(" ");
+const kindRolls = (kind) => listRecentRolls(fightWorld.campaignId, 200).filter((roll) => roll.kind === kind);
+const karaTurn = (calls, said, tail = "It is done.") => {
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightModel.script([reply({ calls }), reply({ text: tail })]);
+  return fightModel.turn(fightWorld, said, target.id, targetUser.id);
+};
+
+await test("Damage to a concentrating character or creature stops for the save it asks, and the number lands on it.", async () => {
+  arm();
+  fightWorld.patch(target.id, { concentratingOn: "Bless" });
+  // No creature is left due: its own swing after the narration would ask the
+  // save again.
+  await enemyTurn([modelCall("apply_damage", { characterId: target.id, dice: "1d4", type: "fire", reason: "embers" })], "Embers sear.", []);
+  const [held] = stops();
+  assert.ok(held, "the character's concentration save stops");
+  assert.match(held.reason, /Kara is about to make a saving throw as the blow lands\./);
+  assert.equal((await answer(held.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.match(String(toldConcentration()), /"rolled":17/, "the foretold 17 is the concentration save's d20");
+  assert.equal(fightWorld.sheet(target.id).concentratingOn, "Bless", "the 17 keeps it");
+  fightWorld.patch(target.id, { concentratingOn: null, currentHp: 60 });
+  arm();
+  kit.setEnemy(goblin2.id, { currentHp: 300, maxHp: 300 });
+  (await import("../src/lib/db/encounters.ts")).setEnemyConcentration(goblin2.id, "Bless");
+  await enemyTurn([modelCall("apply_damage", { enemyId: goblin2.id, dice: "1d4", type: "fire", source: "hazard", reason: "embers" })], "Embers sear.", []);
+  const [foe] = stops();
+  assert.ok(foe, "the creature's concentration save stops");
+  assert.equal((await answer(foe.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(kit.enemy(goblin2.id).concentration, null, `the 3 breaks it: ${JSON.stringify(fightModel.requests.at(-1)?.messages.filter((message) => message.role === "tool").map((message) => message.content.slice(0, 400)))}`);
+});
+
+await test("A grapple stops for either side of its contest, and the number lands on the side picked.", async () => {
+  arm();
+  kit.setEnemy(goblin.id, { conditions: [], conditionMeta: {} });
+  await karaTurn([modelCall("take_action", { characterId: target.id, action: "grapple", targetEnemyId: goblin.id })], "I grab the goblin.");
+  const [grab] = stops();
+  assert.ok(grab, "the contest stops");
+  assert.deepEqual(choiceNames(grab), ["Kara", goblin.displayName]);
+  const before = kindRolls("skill_check").length;
+  assert.equal((await answer(grab.id, { value: 3, choice: 1 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = kindRolls("skill_check").slice(before);
+  assert.ok(landed.some((roll) => roll.characterId === null && roll.breakdown.natural === 3), `the goblin's side shows the 3 (${JSON.stringify(landed.map((roll) => [roll.characterId, roll.breakdown.natural]))})`);
+  assert.ok(landed.some((roll) => roll.characterId === target.id), "Kara's side rolled too");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  kit.setEnemy(goblin.id, { conditions: [], conditionMeta: {} });
+  fightWorld.patch(target.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("A walk out of a creature's reach and a legendary action stop for the rolls they may throw.", async () => {
+  arm();
+  kit.place(target.id, 5, 5);
+  kit.place(goblin.id, 6, 5);
+  await karaTurn([modelCall("move_token", { token: target.id, x: 5, y: 9 })], "I back away.");
+  const [walk] = stops();
+  assert.ok(walk, "the walk stops");
+  assert.match(walk.reason, /Kara is about to move\./);
+  assert.ok(choiceNames(walk).includes(goblin.displayName), "the goblin's opportunity attack is one");
+  await letItRoll(walk);
+  kit.place(target.id, 5, 5);
+  arm();
+  await enemyTurn([modelCall("legendary_action", { enemyId: goblin.id, action: "Club", targetCharacterId: target.id })], "It lashes out.");
+  const [legend] = stops();
+  assert.ok(legend, "the legendary action stops");
+  assert.deepEqual(choiceNames(legend), [goblin.displayName, "Kara"]);
+  await letItRoll(legend);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+  for (const enemy of goblinsBefore) kit.setEnemy(enemy.id, { currentHp: enemy.currentHp, maxHp: enemy.maxHp });
+  fightWorld.patch(target.id, { currentHp: 60, conditions: [], conditionMeta: {} });
 });
 
 await test("A poison laid with afflict stops for its save.", async () => {

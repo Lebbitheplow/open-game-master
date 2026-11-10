@@ -174,7 +174,8 @@ function noPet(sheet: CharacterSheet, petName?: string): ToolError {
 
 // The creature a call names, by its whole name or form; with no name, the
 // only one there is. Never the nearest name, nor the first of several.
-function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
+// A watch stop names the pet the same way (foresight-saves.ts).
+export function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
   const wanted = textKey(petName ?? "");
   if (!wanted) {
     return sheet.pets.length === 1 ? sheet.pets[0] : null;
@@ -312,7 +313,9 @@ export function handlePetAttack(
   // petCreatureType).
   const incoming = conditionIncomingAttackState(enemy.conditions, petCreatureType(pet));
   const advantage = mergeAdvantage(incoming.sources);
-  const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage));
+  // Tagged as an ally's attack, so a foretold number a watch stop armed for
+  // the pet lands on its d20 (foresight-saves.ts).
+  const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
