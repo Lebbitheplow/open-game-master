@@ -31,6 +31,8 @@ const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "sub
   entry: { subclass: "genre", ...entry },
 });
 
+const CHIMERIC_LIMB = { name: "Chimeric Limb", aliases: ["claw", "tendril", "bone blade", "limb"], type: "slashing", ability: "cha" as const };
+
 export const GENRE_B_AUTHORED: GenreRow[] = [
   // ---- mystery ----
   // "Advantage on saves against fear and charm".
@@ -81,6 +83,14 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   row("Adamant Boiler", ["steam_knight"], { effects: [{ kind: "crit_immune" }] }),
   // "opportunity attacks against you have disadvantage".
   row("Cat's Grace", ["aeronaut"], { effects: [{ kind: "oa_disadv" }] }),
+
+  // "A claw, tendril, or bone blade: a natural weapon dealing 1d8 + CHA
+  // slashing": pc_attack names it, swung with CHA (src/lib/srd/authored-effects-more.ts
+  // authoredNaturalWeapon, src/lib/dm/pc-attack-profile.ts). Casting a mutation
+  // through it is the GM's to narrate: a spell's reach is the spell's.
+  row("Chimeric Limb", ["aberrant"], { effects: [{ kind: "natural_weapon", weapon: { ...CHIMERIC_LIMB, dice: "1d8" } }] }),
+  // "Your Chimeric Limb deals 2d8, counts as magical, and grants 10-ft reach."
+  row("Perfect Chimera", ["aberrant"], { effects: [{ kind: "natural_weapon", weapon: { ...CHIMERIC_LIMB, dice: "2d8", reach: true, magical: true, remakes: true } }] }),
 
   // ---- passives on the engine's own readers (wave 2, second pass) ----
   // "Darkvision 60 ft" (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet).

@@ -1411,25 +1411,15 @@
   "clauses": [
    {
     "c": "A claw, tendril, or bone blade: a natural weapon dealing 1d8 + CHA slashing, and you can cast mutations through it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Chimeric Limb: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Chimeric Limb: a natural weapon of 1d8 + CHA slashing that pc_attack swings",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chimeric Limb (natural_weapon, ability cha), src/lib/srd/authored-effects-more.ts authoredNaturalWeapon, src/lib/dm/pc-attack-profile.ts (the weapon's own ability); a mutation cast through it is the spell's own reach"
    },
    {
     "c": "1d8 + CHA slashing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#1:rider",
-    "k": "rider",
-    "p": {
-     "dice": "1d8",
-     "gear": "none",
-     "args": {
-      "weapon": "Chimeric Limb"
-     }
-    },
-    "observed": "a hit rolls refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) with Chimeric Limb (refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) withou"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Chimeric Limb: a natural weapon of 1d8 + CHA slashing that pc_attack swings",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chimeric Limb (1d8 slashing, swung with CHA)"
    }
   ]
  },
@@ -1514,21 +1504,21 @@
   "clauses": [
    {
     "c": "Your Chimeric Limb deals 2d8, counts as magical, and grants 10-ft reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perfect Chimera: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (natural_weapon remakes the Chimeric Limb: 2d8, reach, magical), src/lib/dm/pc-attack-profile.ts magicWeapon"
    },
    {
     "c": "10-ft reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (reach: 10 feet)"
    },
    {
     "c": "2d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (2d8)"
    }
   ]
  },

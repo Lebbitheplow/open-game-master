@@ -291,6 +291,14 @@ export type NaturalWeapon = {
   // turn.
   onHit?: "bite_heal";
   extraAttack?: boolean;
+  // Swung with this ability for its attack and damage rolls, as Hex Warrior's
+  // weapon is (Chimeric Limb: "1d8 + CHA slashing").
+  ability?: Ability;
+  // Its blows are magical (Perfect Chimera: "counts as magical").
+  magical?: boolean;
+  // A later feature that remakes the same weapon (Perfect Chimera's Chimeric
+  // Limb): it stands in for the earlier feature's when both are held.
+  remakes?: boolean;
 };
 
 export type AuthoredEffectKind = AuthoredEffect["kind"];

@@ -70,18 +70,19 @@ export function authoredNaturalWeapon(
   if (!wanted) {
     return null;
   }
-  for (const { effect, held } of activeAuthored(sheet, "natural_weapon")) {
-    const names = [effect.weapon.name, ...(effect.weapon.aliases ?? [])].flatMap((name) => pluralForms(textKey(name)));
-    if (names.includes(wanted)) {
-      return {
-        feature: held.feature,
-        weapon: effect.weapon,
-        srd: toSrd(effect.weapon, held.level, mods),
-        second: effect.weapon.second ?? null,
-      };
-    }
-  }
-  return null;
+  // A weapon a later feature remakes is that one's (Perfect Chimera).
+  const held = activeAuthored(sheet, "natural_weapon").filter(({ effect }) =>
+    [effect.weapon.name, ...(effect.weapon.aliases ?? [])].flatMap((name) => pluralForms(textKey(name))).includes(wanted),
+  );
+  const [found] = [...held].sort((a, b) => Number(Boolean(b.effect.weapon.remakes)) - Number(Boolean(a.effect.weapon.remakes)));
+  return found
+    ? {
+        feature: found.held.feature,
+        weapon: found.effect.weapon,
+        srd: toSrd(found.effect.weapon, found.held.level, mods),
+        second: found.effect.weapon.second ?? null,
+      }
+    : null;
 }
 
 // A natural weapon the sheet would have if its gate held: for the refusal

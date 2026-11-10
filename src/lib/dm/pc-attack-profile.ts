@@ -324,11 +324,14 @@ export function buildAttackProfile(
     }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
-    profile = weaponAttackProfile(derived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
+    // A weapon swung with its own ability (Chimeric Limb's CHA).
+    const own = natural.weapon.ability ? derived.abilityMods[natural.weapon.ability] : null;
+    const swungWith = own === null ? derived : { ...derived, abilityMods: { ...derived.abilityMods, str: own, dex: own } };
+    profile = weaponAttackProfile(swungWith, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
       riders,
       martialArts: false,
     });
-    profile = { ...profile, proficient: true, riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
+    profile = { ...profile, proficient: true, ...(natural.weapon.magical ? { magicWeapon: true } : {}), riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
     kind = "weapon";
   } else if (shapedAttacks?.length && sheet.wildShape) {
     // Transformed: the form's natural attacks replace the sheet's weapons,

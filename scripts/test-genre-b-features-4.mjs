@@ -155,5 +155,28 @@ await run("Storm Step: a bonus action that moves the channeler 30 ft as a telepo
   assert.equal(rig.budget().bonusUsed, true, "the step cost no bonus action");
 });
 
+// ---- the aberrant's limb ----
+
+// A STR 10, CHA 20 aberrant: the limb's modifier is the +5 of CHA.
+const charismatic = (hero) => world.patch(hero.id, { abilities: { ...world.sheet(hero.id).abilities, str: 10, dex: 10, cha: 20 } });
+
+await run("Chimeric Limb: a natural weapon of 1d8 + CHA slashing that pc_attack swings", async () => {
+  const hero = rig.holder(feature("aberrant", "Chimeric Limb", 1));
+  charismatic(hero);
+  const { near } = await rig.fight(hero);
+  await rig.swing(hero, near, { weapon: "Chimeric Limb" });
+  assert.equal(lost(near), 8, `the limb dealt ${lost(near)} (a 3 and CHA +5)`);
+});
+
+await run("Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing", async () => {
+  const hero = rig.holder(feature("aberrant", "Perfect Chimera", 14));
+  charismatic(hero);
+  const { far } = await rig.fight(hero);
+  kit.place(far.id, 7, 2);
+  kit.setEnemy(far.id, { stats: { ...kit.enemy(far.id).stats, resist: "bludgeoning, piercing, and slashing from nonmagical attacks" } });
+  await rig.swing(hero, far, { weapon: "claw" });
+  assert.equal(lost(far), 11, `the limb dealt ${lost(far)} at 10 feet (two 3s and CHA +5, unresisted)`);
+});
+
 world.close();
 finish();
