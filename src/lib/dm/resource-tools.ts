@@ -1,3 +1,4 @@
+import { genreCounterHeal, genreStimTemp } from "@/lib/dm/genre-a-heals";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { insertRoll } from "@/lib/db/rolls";
@@ -517,6 +518,20 @@ export function computeUseResource(
     return outcome;
   }
 
+  // The genre healers' reach, the ally they may be spent on, and what rides
+  // the use beyond its hit points (src/lib/dm/genre-a-heals.ts).
+  const genreHeal = genreCounterHeal(campaign, def.id, def.displayName, sheet, target);
+  if (genreHeal && "error" in genreHeal) {
+    return genreHeal;
+  }
+  if (genreHeal && Object.keys(genreHeal.patch).length) {
+    if (target.id === sheet.id) Object.assign(outcome.patch, genreHeal.patch);
+    else outcome.patchTarget = { characterId: target.id, patch: genreHeal.patch };
+  }
+  if (genreHeal?.notes.length) {
+    outcome.result.riders = genreHeal.notes.join(" ");
+  }
+
   const derived = computeSheetDerived(sheet);
   // Multiclass: an effect's level-scaled dice read the owning class's level
   // (Second Wind heals 1d10 + FIGHTER level), not the summed character level.
@@ -568,6 +583,12 @@ export function computeUseResource(
       const total = rollHealing(campaign, target, def.displayName, expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
+      const temp = genreStimTemp(campaign, def.id, sheet);
+      if (temp !== null && temp > target.tempHp) {
+        if (target.id === sheet.id) outcome.patch.tempHp = temp;
+        else outcome.patchTarget = { characterId: target.id, patch: { ...outcome.patchTarget?.patch, tempHp: temp } };
+        outcome.result.tempHp = `Extraction: ${temp} temporary hit points to ${target.name}`;
+      }
       return outcome;
     }
     case "temp_hp": {

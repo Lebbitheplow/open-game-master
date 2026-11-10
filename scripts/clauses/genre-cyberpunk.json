@@ -849,18 +849,17 @@
      "hp": 100,
      "refused": "at full hit points"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Wired Soul#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_wired_soul was accepted (at full hit points)"
+    "is": "held",
+    "by": "requires below_half on cyberpunk_wired_soul (genre-a-counter-terms.ts), read by src/lib/srd/counter-rules.ts counterGate",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Wired Soul#1"
    },
    {
     "c": "bonus action",
     "run": {
      "k": "spend_cost",
      "cost": "bonus",
-     "id": "cyberpunk_wired_soul"
+     "id": "cyberpunk_wired_soul",
+     "hp": 40
     },
     "is": "held",
     "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
@@ -2481,11 +2480,9 @@
      "feet": 30,
      "refused": "an ally 30 feet away is not touched"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Stim Injector#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_stim_injector was accepted (an ally 30 feet away is not touched)"
+    "is": "held",
+    "by": "the stim's touch reach (5 ft, 30 ft with Stim Injector (ranged)) in src/lib/dm/genre-a-heals.ts, called by resource-tools.ts computeUseResource",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Stim Injector#1"
    },
    {
     "c": "an ally regains 1d6 + WIS HP",
@@ -2608,11 +2605,9 @@
      "dice": 2,
      "plus": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Boosted Dosage#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "the stim's dice ladder (2d6 + WIS from 6th level) on cyberpunk_stim_injector's effect (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Boosted Dosage#0"
    }
   ]
  },
@@ -2653,11 +2648,9 @@
      "conditions": "prone",
      "want": "stands"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Adrenal Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "the stimmed ally is still prone"
+    "is": "held",
+    "by": "the stim rider in src/lib/dm/genre-a-heals.ts: a prone ally stands",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Adrenal Protocol#0"
    }
   ]
  },
@@ -2687,11 +2680,9 @@
      "target": "ally",
      "refused": "the ally stands at 20 hit points"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Miracle Worker#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_miracle_worker was accepted (the ally stands at 20 hit points)"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts: refused on an ally above 0 hit points, nothing spent",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Miracle Worker#1"
    },
    {
     "c": "within 30 ft",
@@ -2702,11 +2693,9 @@
      "feet": 35,
      "refused": "the ally lies 35 feet away"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Miracle Worker#2",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_miracle_worker was accepted (the ally lies 35 feet away)"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts: refused beyond 30 feet, nothing spent",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Miracle Worker#2"
    },
    {
     "c": "regains 3d6 + WIS HP",
@@ -2738,11 +2727,9 @@
      "dice": 3,
      "plus": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Stim Injector (ranged)#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "the stim's dice ladder (3d6 + WIS from 11th level)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Stim Injector (ranged)#0"
    },
    {
     "c": "can be fired as a dart at 30 ft",
@@ -2884,11 +2871,9 @@
      "conditions": "poisoned|blinded",
      "want": "cured"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Plague Breaker#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "conditions left on the creature touched"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts cures: disease, poison, blindness, deafness, paralysis on the touched creature",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Plague Breaker#1"
    }
   ]
  },
@@ -3002,11 +2987,9 @@
      "dice": 3,
      "want": "temp"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Extraction#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "temporary hit points on the healed ally"
+    "is": "held",
+    "by": "genreStimTemp (src/lib/dm/genre-a-heals.ts): 1d6 temporary hit points after the stim's heal",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Extraction#1"
    }
   ]
  },
@@ -3025,11 +3008,9 @@
      "dice": 3,
      "want": "ac"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Covering Stim#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "what the heal added to the ally's armor class"
+    "is": "held",
+    "by": "the covering stim condition (+2 AC until the start of the trauma doc's next turn, src/lib/srd/genre-a-conditions.ts) laid by genre-a-heals.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Covering Stim#0"
    }
   ]
  },

@@ -983,11 +983,9 @@
      "conditions": "poisoned|blinded",
      "want": "cured"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Panacea#1",
-    "observed": "conditions left on the creature touched",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts cures: poison, disease, curse, blindness, deafness, paralysis",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Panacea#1"
    }
   ]
  },

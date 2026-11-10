@@ -1040,11 +1040,9 @@
      "conditions": "frightened",
      "want": "cured"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Quiet the Voices#1",
-    "observed": "conditions left on the creature touched",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts cureOne: one charm or fear on an ally within 30 feet",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Quiet the Voices#1"
    }
   ]
  },

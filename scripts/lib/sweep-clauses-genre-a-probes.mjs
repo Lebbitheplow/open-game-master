@@ -333,7 +333,8 @@ export const PROBES = {
 
   // A use spent with the action cost the text names.
   async spend_cost(t, run, feature) {
-    const scene = await t.stage(feature, { level: run.level });
+    // `hp`: a use the text allows only below half (Wired Soul).
+    const scene = await t.stage(feature, { level: run.level, ...(run.hp ? { hp: run.hp } : {}) });
     const tries = [{}, { targetCharacterId: scene.ally.id }, { targetEnemyId: scene.near.id }];
     let out = null;
     for (const args of tries) {

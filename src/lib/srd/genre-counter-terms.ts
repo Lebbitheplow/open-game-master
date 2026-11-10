@@ -11,7 +11,7 @@
 import type { CustomResourceRow, ResourceDef } from "@/lib/srd/class-resources";
 import { GENRE_A_COUNTER_TERMS, GENRE_A_EXTRA_COUNTERS, GENRE_A_EXTRA_TERMS } from "@/lib/srd/genre-a-counter-terms";
 
-export type CounterTerms = Partial<Pick<ResourceDef, "passive" | "options" | "outOfFight" | "fightOnly" | "action" | "guidance" | "rechargeFor" | "upgrades" | "extraAction" | "recovers" | "noRefill" | "effect">>;
+export type CounterTerms = Partial<Pick<ResourceDef, "passive" | "options" | "outOfFight" | "fightOnly" | "action" | "guidance" | "rechargeFor" | "upgrades" | "extraAction" | "recovers" | "noRefill" | "effect" | "requires">>;
 
 export const GENRE_COUNTER_TERMS: Record<string, CounterTerms> = {
   ...GENRE_A_COUNTER_TERMS,

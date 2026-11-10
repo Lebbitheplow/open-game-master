@@ -15,6 +15,8 @@
   ],
   "sites": {
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],
+    "lib/dm/genre-a-heals.ts#str-eq": [["key",1,"condition names the healers end or lay (engine vocabulary)"]],
+    "lib/dm/genre-a-heals.ts#str-list": [["key",3,"condition names the healers end (engine vocabulary)"]],
     "lib/dm/sampling-logic.ts#str-eq": [["key", 1, "pydantic's error type and loc names"]],
     "lib/hidden-names-logic.ts#RegExp i": [["key", 1, "a hidden creature's own names in the table's prose"]],
     "lib/hidden-names-logic.ts#toLowerCase": [["key", 2, "creature names compared as the table shows them"]],

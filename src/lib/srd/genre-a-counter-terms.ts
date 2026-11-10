@@ -51,6 +51,13 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
     rechargeFor: (level: number) => (level >= 5 ? "short" : "long"),
     effect: { kind: "inspire", die: (level: number) => (level >= 15 ? "d12" : level >= 10 ? "d10" : level >= 5 ? "d8" : "d6") },
   },
+  // Stim Injector 1d6 + WIS, Boosted Dosage (6th) 2d6, Stim Injector
+  // (ranged) (11th) 3d6; its reach and riders: src/lib/dm/genre-a-heals.ts.
+  cyberpunk_stim_injector: {
+    effect: { kind: "heal_target", dice: (level: number, mods: Record<string, number>) => `${level >= 11 ? 3 : level >= 6 ? 2 : 1}d6+${mods.wis ?? 0}` },
+  },
+  // "1/long rest while below half HP, bonus action to regain 10 + level HP"
+  cyberpunk_wired_soul: { requires: "below_half" },
   cyberpunk_one_more_dawn: HELD_AT_THE_DROP("One More Dawn", "once a long rest, an ally within 30 feet of the trauma doc who would drop to 0 hit points (not killed outright) drops to 1 instead."),
   horror_final_benediction: HELD_AT_THE_DROP("Final Benediction", "once a long rest, when an ally within 30 feet of the exorcist drops to 0 hit points (not killed outright), they drop instead to five times the exorcist's Wisdom modifier."),
 };
