@@ -31,8 +31,18 @@ import { isNamed } from "@/lib/srd/feature-names";
 export const ONE_WITH_SHADOWS = "One with Shadows";
 
 // Why the warlock's square is too bright to vanish in, or null when it is dim
-// or dark (or there is no board to read the light from).
-export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">): ToolError | null {
+// or dark (or there is no board to read the light from). `feature`: another
+// that asks the same light (Steps of Night), named in the refusal.
+export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, feature = ONE_WITH_SHADOWS): ToolError | null {
+  const bright = brightSquare(campaignId, sheet);
+  return bright ? { error: `${bright}; ${feature} works only in dim light or darkness. Nothing was spent.`, refused: "rules" } : null;
+}
+
+// Where the character stands in bright light on the board, said for a
+// refusal ("X stands in bright light at (x,y)"), or null when the square is
+// dim or dark, or there is no board. The Hand's board facts carry it
+// (view-tactics.ts ownSquareFacts), so a card that asks the dark closes too.
+export function brightSquare(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">): string | null {
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
@@ -64,13 +74,7 @@ export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterShee
       listTokens(map.id),
       map.lights,
     ).has(tileIndex(map.width, token.x, token.y));
-  if (local === "bright" || lit) {
-    return {
-      error: `${sheet.name} stands in bright light at (${token.x},${token.y}); One with Shadows works only in dim light or darkness. Nothing was spent.`,
-      refused: "rules",
-    };
-  }
-  return null;
+  return local === "bright" || lit ? `${sheet.name} stands in bright light at (${token.x},${token.y})` : null;
 }
 
 // The invisibility One with Shadows gives, as the condition list and meta to

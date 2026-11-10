@@ -11,18 +11,16 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { Encounter } from "@/lib/db/encounters";
 import { listEnemies } from "@/lib/db/encounters";
 import { publishPersisted } from "@/lib/events";
-import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
-import { highJumpFeet, planLongJump, RUN_UP_TILES } from "@/lib/srd/jump";
+import { planLongJump, RUN_UP_TILES } from "@/lib/srd/jump";
+import { jumpReach } from "@/lib/dm/jump-reach";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { resolveOpportunityAttacks, type OpportunityOutcome } from "@/lib/dm/opportunity";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { conditionJumpMultiplier } from "@/lib/srd/condition-effect-queries";
-import { holdsFeature } from "@/lib/srd/feature-names";
 import { WIND_STEP } from "@/lib/dm/action-budget";
 import { budgetFor } from "@/lib/dm/turn-budget";
 
@@ -40,23 +38,9 @@ function windStepJump(encounter: Encounter, sheetId: string): number {
   return budgetFor(encounter, sheetId, 1)?.oncePerTurn.includes(WIND_STEP) ? 2 : 1;
 }
 
-// The feet class features add to a running jump, long and high:
-//   - SRD 5.1 fighter, Champion, Remarkable Athlete: "when you make a running
-//     long jump, the distance you can cover increases by a number of feet
-//     equal to your Strength modifier."
-//   - SRD 5.1 rogue, Thief, Second-Story Work: "when you make a running jump,
-//     the distance you cover increases by a number of feet equal to your
-//     Dexterity modifier" (a running high jump too).
-// A negative modifier shortens nothing: "increases by".
-export function runningJumpFeet(sheet: CharacterSheet, runningStart: boolean): { long: number; high: number } {
-  if (!runningStart) {
-    return { long: 0, high: 0 };
-  }
-  const mod = (ability: "str" | "dex") => Math.max(0, Math.floor((computeAbilityScore(sheet, ability) - 10) / 2));
-  const athlete = holdsFeature(sheet, "Remarkable Athlete") ? mod("str") : 0;
-  const climber = holdsFeature(sheet, "Second-Story Work") ? mod("dex") : 0;
-  return { long: athlete + climber, high: climber };
-}
+// The running jump's class features moved to jump-reach.ts with the rest of
+// the reach, so the board view reads the same number.
+export { runningJumpFeet } from "@/lib/dm/jump-reach";
 
 export function jumpMove(input: {
   campaign: Campaign;
@@ -75,14 +59,13 @@ export function jumpMove(input: {
   }
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   const occupied = occupiedTiles(map, listTokens(map.id), token, footprintLookup(enemiesById));
-  const strength = computeAbilityScore(sheet, "str");
-  // The Jump spell triples the distance (condition-effects-last.ts), and
-  // Step of the Wind doubles it for the turn.
-  const leap = conditionJumpMultiplier(sheet.conditions) * (scene ? 1 : windStepJump(encounter, sheet.id));
   // A 10-foot run on foot this turn is the running start; out of a fight
   // there is all the room in the world to take one.
   const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
-  const extra = runningJumpFeet(sheet, runningStart);
+  // The Jump spell triples the distance (condition-effects-last.ts), and
+  // Step of the Wind doubles it for the turn: the reach the board view
+  // shows, from the same helper (jump-reach.ts).
+  const reach = jumpReach(sheet, runningStart, scene ? 1 : windStepJump(encounter, sheet.id));
   const plan = planLongJump({
     terrain: map.terrain,
     width: map.width,
@@ -90,9 +73,8 @@ export function jumpMove(input: {
     occupied,
     from: token,
     to,
-    // A running long jump covers the Strength score in feet, so the class
-    // features' extra feet ride on it.
-    strength: (strength + extra.long) * leap,
+    strength: reach.strength,
+    extraFeet: reach.extraFeet,
     runningStart,
     budgetTiles: input.budgetTiles,
     name: sheet.name,
@@ -129,7 +111,7 @@ export function jumpMove(input: {
   }
   return {
     ok: true,
-    jump: { feet: plan.feet, highJumpFeet: (highJumpFeet(strength, runningStart) + extra.high) * leap, landed },
+    jump: { feet: plan.feet, highJumpFeet: reach.highFeet, landed },
     opportunity,
     zoneEffects,
     lasting: plan.landsInDifficult || letGo.length > 0,

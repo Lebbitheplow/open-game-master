@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -163,6 +164,19 @@ export function authoredIncomingAttack(input: {
       }
     }
   }
+  // The steel defender takes the Dodge action unless commanded (defender-dodge.ts).
+  const dodging = defenderDodging(target);
+  if (dodging) {
+    sources.push("disadvantage");
+    notes.push(dodging);
+  }
+  // Perfected Armor (Infiltrator): the glowing creature "has disadvantage on
+  // attack rolls against you", the armorer whose launcher lit it.
+  const lit = attacker.conditions.find((entry) => textKey(entry) === "lit by perfected armor");
+  if (lit && metaOf(attacker, lit)?.source === target.id) {
+    sources.push("disadvantage");
+    notes.push(`${lit}: it attacks ${target.name} at disadvantage`);
+  }
   // Totemic Attunement (Bear): a creature within 5 feet of the raging
   // barbarian attacks anyone else at disadvantage.
   for (const guardian of fielded(input.campaignId)) {
@@ -188,7 +202,8 @@ export function authoredIncomingAttack(input: {
 // character's features send back.
 export function authoredAfterHit(
   campaign: Campaign,
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; ranged?: boolean },
+  // `taken`: what the character took of it past their defenses.
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
@@ -225,7 +240,7 @@ export function authoredAfterHit(
     }
     const amount =
       effect.formula === "half_dealt"
-        ? Math.floor(input.dealt / 2)
+        ? Math.floor((input.taken ?? input.dealt) / 2)
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
       lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
@@ -267,6 +282,12 @@ export function authoredAttackSituation(input: {
       applies = Boolean(condition && metaOf(enemy, condition)?.source === sheet.id);
     } else if (effect.vs === "types") {
       applies = (effect.types ?? []).some((kind) => type.includes(kind));
+    } else if (effect.vs === "beside_illusion") {
+      // Invoke Duplicity: "if you and your illusion are both within 5 feet of
+      // a creature that can see the illusion". The double has no token: it is
+      // placed beside the creature the cleric fights, so the cleric within 5
+      // feet of one that is not blinded is the whole test.
+      applies = withinFeet(encounter.id, sheet.id, enemy.id, 5) && !enemy.conditions.some((entry) => isConditionNamed(entry, "blinded"));
     }
     if (applies) {
       sources.push("advantage");
@@ -350,7 +371,7 @@ export function authoredOnHit(
     }
     if (input.weapon !== false) {
       const melee = input.melee ?? withinFeet(encounter.id, sheet.id, enemy.id, 5);
-      lines.push(...markEnemy(encounter, sheet, enemy, melee));
+      lines.push(...markEnemy(encounter, sheet, enemy, melee, input.weaponName));
     }
   }
   if (input.dead) {
@@ -361,10 +382,14 @@ export function authoredOnHit(
 
 // The marks this character's hit lays on the creature it hit, once a turn
 // where the feature says so.
-function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean): string[] {
+function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean, weaponName?: string): string[] {
   const lines: string[] = [];
   for (const { effect, held } of activeAuthored(sheet, "mark")) {
     if (effect.melee && !melee) {
+      continue;
+    }
+    // A mark of one weapon (the thunder gauntlets) is laid by that weapon alone.
+    if (effect.weapon && textKey(effect.weapon) !== textKey(weaponName ?? "")) {
       continue;
     }
     if (effect.firstRoundOnly && encounter.round > 1) {

@@ -25,6 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { READING_THOUGHTS, isSuggestion, readsThoughts } from "@/lib/dm/read-thoughts";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -47,7 +48,7 @@ import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
@@ -559,6 +560,9 @@ export function castSpell(
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
     sheet.conditions.some((entry) => isConditionNamed(entry, MANTLE_OF_MAJESTY));
+  // Read Thoughts: the Suggestion cast at the creature read costs no slot,
+  // and casting it ends the reading (src/lib/dm/read-thoughts.ts).
+  const readFree = !input.ritual && !signature && !freeCast && !mantled && isSuggestion(engine.trim()) && readsThoughts(sheet);
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
@@ -579,6 +583,8 @@ export function castSpell(
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
           ? { kind: "none", note: `${name} is cast through Mantle of Majesty: no slot spent.` }
+        : readFree
+          ? { kind: "none", note: `${name} is cast through Read Thoughts: no slot spent, and the reading ends.` }
         : // A slot the player marked spent by hand for this cast pays for it;
           // a casting begun now leaves the mark for its completion.
           paidByManualTick(sheet, slotPlan(sheet, spell, facts, input.level), input.level ?? facts?.level, facts?.level, Boolean(input.dryRun) || holdRounds !== null);
@@ -636,6 +642,11 @@ export function castSpell(
     patch.spellcasting = spellcastingAfter(sheet, slot);
   }
   Object.assign(patch, materialPatch(sheet, material, result));
+  if (readFree) {
+    const cleared = removeConditions(patch.conditions ?? sheet.conditions, (patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap, [READING_THOUGHTS]);
+    patch.conditions = cleared.conditions;
+    patch.conditionMeta = cleared.meta as FullPatchSheetInput["conditionMeta"];
+  }
   if (signature) {
     patch.resources = spendSignature(sheet.resources, signature);
   }

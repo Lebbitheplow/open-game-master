@@ -27,10 +27,17 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
+import { swarmCarry } from "@/lib/dm/authored-spend-divine-rng";
+import { textKey } from "@/lib/language/text-logic";
 
-type Resolution = ToolError | { result: Record<string, unknown> };
+type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
 export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "swarm_push" }>): Resolution {
+  // "or move you 5 feet without provoking": the variant "move" carries the
+  // ranger instead (src/lib/dm/authored-spend-divine-rng.ts swarmCarry).
+  if (textKey(ctx.args.variant ?? "") === "move") {
+    return swarmCarry(ctx);
+  }
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter) {
     return { error: `${ctx.spend.name} moves a creature in a fight; there is no fight. Nothing was spent.`, refused: "rules" };
@@ -103,7 +110,7 @@ export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "s
 // holder's latest damage roll against the creature (the rider is added after
 // the weapon's dice, src/lib/dm/pc-attack-damage.ts). Zero when the roll is
 // not on record.
-function swarmDieBack(ctx: SpendContext, enemy: { id: string }): number {
+export function swarmDieBack(ctx: SpendContext, enemy: { id: string }): number {
   const rider = (ctx.held.entry.effects ?? []).find((effect) => effect.kind === "rider");
   const dice = rider && "dice" in rider && rider.dice ? resolveFormula(rider.dice, ctx.held.level) : "1d6";
   const sides = Number(/d(\d+)/.exec(dice)?.[1] ?? 6);
@@ -118,7 +125,7 @@ function swarmDieBack(ctx: SpendContext, enemy: { id: string }): number {
 }
 
 // The swarm's damage taken back, as the push replaces it.
-function giveBack(ctx: SpendContext, enemyId: string, amount: number): string[] {
+export function giveBack(ctx: SpendContext, enemyId: string, amount: number): string[] {
   const fresh = getEnemy(enemyId);
   if (!fresh || fresh.status !== "alive" || amount <= 0) {
     return [];

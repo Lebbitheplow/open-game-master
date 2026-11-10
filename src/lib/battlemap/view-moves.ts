@@ -11,11 +11,11 @@ import { tileIndex, type BattleToken } from "@/lib/battlemap/types";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { dragCostFactor, grappledBy } from "@/lib/dm/drag";
-import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import { sizeForRace } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
-import { highJumpFeet, longJumpFeet, RUN_UP_TILES } from "@/lib/srd/jump";
+import { RUN_UP_TILES } from "@/lib/srd/jump";
+import { jumpReach } from "@/lib/dm/jump-reach";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether a character's move is priced as standing up or crawling: prone,
@@ -50,15 +50,17 @@ export function viewerMoves(input: {
   const charged = cells
     .map((cell) => [cell, prone ? proneCharge(walks.get(cell), crawls.get(cell), stand, budget.fullTiles)?.cost : walks.get(cell)] as const)
     .filter((entry): entry is readonly [number, number] => entry[1] !== undefined);
-  const strength = computeAbilityScore(sheet, "str");
   const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  // The reach the jump door accepts (src/lib/dm/jump-move.ts asks the same
+  // helper), less the turn's own Step of the Wind, which only the door knows.
+  const reach = jumpReach(sheet, runningStart);
   const held = input.enemies.filter((enemy) => enemy.status === "alive" && grappledBy(enemy, sheet.id));
   return {
     reachable: charged.map(([cell]) => cell),
     reachableCost: charged.map(([, cost]) => cost),
     moves: {
-      jumpFeet: longJumpFeet(strength, runningStart),
-      highJumpFeet: highJumpFeet(strength, runningStart),
+      jumpFeet: reach.longFeet,
+      highJumpFeet: reach.highFeet,
       runningStart,
       drag: held.length
         ? {

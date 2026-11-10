@@ -403,6 +403,10 @@ export function signature(scene, tried) {
   const names = new Map([[scene.holder.id, "<holder>"], [scene.ally.id, "<ally>"], [scene.fallen.id, "<fallen>"], [scene.near.id, "<near>"], [scene.far.id, "<far>"]]);
   return `${tried.ok ? "ok" : tried.kind} | counters: ${part(read.counters)} | cost: ${part(read.cost)} | effects: ${part(read.effects)} | rolls ${read.rolls}`
     .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, "<time>")
+    // A summoned creature's companion user is named for a random id
+    // (db/users.ts createCompanionUser): two runs of the same spend differ
+    // there and nowhere else, as two ids do.
+    .replace(/companion-([a-z0-9_]+)-[0-9a-f]{1,8}/g, "companion-$1-<id>")
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => names.get(id) ?? "<id>");
 }
 

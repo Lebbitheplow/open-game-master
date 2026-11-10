@@ -734,6 +734,16 @@ export const petSchema = z.object({
   resist: z.string().trim().max(200).optional(),
   immune: z.string().trim().max(200).optional(),
   vulnerable: z.string().trim().max(120).optional(),
+  // What the bond makes of the creature beyond its block (src/lib/dm/
+  // pet-build.ts): a drake's size and wings (Bond of Fang and Scale), a
+  // companion's save and skill bonuses with the ranger's proficiency added
+  // (Ranger's Companion), and what it is doing ("dodging" while uncommanded,
+  // src/lib/dm/pet-command.ts). Absent on a pet stored before them.
+  size: z.string().trim().max(20).optional(),
+  fly: z.number().int().min(0).max(120).optional(),
+  saves: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
+  skills: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
+  conditions: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 

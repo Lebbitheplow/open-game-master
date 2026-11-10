@@ -40,8 +40,12 @@ import type {
 } from "@/lib/srd/authored-effects-types";
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
+import { AUTHORED_DATA_W2_DIVINE } from "@/lib/srd/authored-effects-w2-divine";
+import { AUTHORED_DATA_W2_DIVINE_CLR } from "@/lib/srd/authored-effects-w2-divine-clr";
+import { AUTHORED_DATA_W2_DIVINE_DRA } from "@/lib/srd/authored-effects-w2-divine-dra";
+import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divine-rng";
 import { textKey } from "@/lib/language/text-logic";
-import { choiceIn } from "@/lib/srd/feature-names";
+import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 
@@ -55,6 +59,10 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_C,
   ...AUTHORED_DATA_CHANNEL,
   ...AUTHORED_DATA_COUNTERS,
+  ...AUTHORED_DATA_W2_DIVINE,
+  ...AUTHORED_DATA_W2_DIVINE_CLR,
+  ...AUTHORED_DATA_W2_DIVINE_DRA,
+  ...AUTHORED_DATA_W2_DIVINE_RNG,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -73,6 +81,8 @@ export const DAMAGE_TYPES = [
 // What the readers need of a character. Every field is optional so a test
 // double, the builder's preview and a full sheet all answer.
 export type AuthoredSheet = {
+  // The creatures bound to the holder (a pet gate reads them).
+  pets?: Array<{ kind: string; hp: number }>;
   class?: string;
   level?: number;
   classes?: Array<{ id: string; level: number; subclass?: string }>;
@@ -180,12 +190,14 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
 
 const GENRE_BY_NAME = new Map(GENRE_AUTHORED.map((row) => [textKey(row.feature), row]));
 
+// The condition by its whole name, with a bracket note ("spirit totem
+// (bear)") or as the family of a "Family: Choice" name ("starry form:
+// archer"). textKey drops the bracket and the colon, so the prefixes this once
+// compared after it ("starry form (", "starry form:") never matched, and every
+// gate on a family (Full of Stars on any Starry Form) stayed shut.
 export function hasCondition(sheet: AuthoredSheet, name: string): boolean {
   const wanted = textKey(name);
-  return (sheet.conditions ?? []).some((entry) => {
-    const held = textKey(entry);
-    return held === wanted || held.startsWith(`${wanted} (`) || held.startsWith(`${wanted}:`);
-  });
+  return (sheet.conditions ?? []).some((entry) => textKey(entry) === wanted || isConditionNamed(entry, name) || choiceIn(entry, name) !== null);
 }
 
 // Heavy armor on the body, read the way the armor engine reads "worn"
@@ -236,6 +248,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.level && held.level < gate.level) {
+    return false;
+  }
+  if (gate.pet && !(sheet.pets ?? []).some((pet) => pet.kind === gate.pet && pet.hp > 0)) {
     return false;
   }
   if (gate.choiceOf) {
@@ -295,10 +310,12 @@ export function activeAuthored<K extends AuthoredEffectKind>(
 
 // `except`: features set aside for this blow (Emissary of Redemption against
 // a creature the paladin attacked).
-export function authoredResistances(sheet: AuthoredSheet, options: { magical?: boolean; spell?: boolean; except?: string[] } = {}): string[] {
+// `noCreature`: the blow has no creature behind it (a fall, a trap, the GM's
+// apply_damage), which a `fromCreatures` resistance does not meet.
+export function authoredResistances(sheet: AuthoredSheet, options: { magical?: boolean; spell?: boolean; except?: string[]; noCreature?: boolean } = {}): string[] {
   const out: string[] = [];
   for (const { effect, held } of activeAuthored(sheet, "resist")) {
-    if (options.except?.includes(held.feature)) {
+    if (options.except?.includes(held.feature) || (effect.fromCreatures && options.noCreature)) {
       continue;
     }
     if (effect.spells && !options.spell) {

@@ -27,6 +27,8 @@ import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
+import { planFeatureMove, type Square } from "@/lib/dm/feature-move";
+import { allyReachRefusal } from "@/lib/dm/ally-reach-dra";
 
 export { computePurchase } from "@/lib/dm/purchase-math";
 
@@ -322,10 +324,22 @@ function rollCounterSave(
     condition: base.condition,
     rounds: effect.rounds,
     rangeFt: effect.rangeFt,
+    ...(effect.cone ? { cone: true } : {}),
     types: effect.types,
     ...(most ? { most } : {}),
     magical: effect.magical ?? def.id !== "breath_weapon",
   }, aim ?? {});
+}
+
+// The slot a counter's slotFallback is paid with: of that level at least,
+// and free, or the refusal (cast-rules.ts says which slots are free).
+function slotPayment(sheet: CharacterSheet, def: ResourceDef, level: number): ToolError | { spellcasting: NonNullable<CharacterSheet["spellcasting"]> } {
+  const casting = sheet.spellcasting;
+  const slot = casting?.slots?.[String(level)];
+  if (!casting || level < (def.slotFallback ?? 1) || !slot || slot.used >= slot.max) {
+    return spentSlotRefusal(sheet.name, casting, { level, lowest: def.slotFallback ?? 1, what: def.displayName, withPact: true });
+  }
+  return { spellcasting: { ...casting, slots: { ...casting.slots, [String(level)]: { ...slot, used: slot.used + 1 } } } };
 }
 
 export function computeUseResource(
@@ -343,7 +357,13 @@ export function computeUseResource(
   // The creatures a save the counter forces is rolled for, and the turn its
   // dice cards belong to (src/lib/dm/counter-saves.ts).
   aim?: CounterSaveAim,
+  // The square a teleport goes to, from the console or the Hand
+  // (src/lib/dm/feature-move.ts); without it the teleport is credited to
+  // move_token. `slotLevel`: the spell slot that pays once the uses are
+  // gone (ResourceDef.slotFallback).
+  more: { square?: Square; slotLevel?: number } = {},
 ): Outcome | ToolError {
+  const square = more.square;
   const def = matchResource(resourceName);
   const state = def ? (sheet.resources[def.id] ?? heldUnlimitedState(def, sheet) ?? undefined) : undefined;
   if (!def || !state) {
@@ -477,14 +497,23 @@ export function computeUseResource(
     }
   }
   const left = state.max - state.used;
-  const payment = payForUse(sheet, def, state, cost);
+  // Drake's Breath: "Once per long rest, or by expending a spell slot of 3rd
+  // level or higher". With the use spent the slot named pays; before this
+  // the spend was refused at 0 uses whatever slot was offered.
+  const slotPays = def.slotFallback && left < cost && more.slotLevel !== undefined ? slotPayment(sheet, def, more.slotLevel) : null;
+  if (slotPays && "error" in slotPays) {
+    return slotPays;
+  }
+  const payment = slotPays ? { fallback: null } : payForUse(sheet, def, state, cost);
   if ("error" in payment) {
-    return payment;
+    return def.slotFallback ? { ...payment, error: `${payment.error} A spell slot of level ${def.slotFallback} or higher buys another use (pass level).` } : payment;
   }
   const paid = payment.fallback;
   // A feature with no limit is used, not counted down.
   const unlimited = isUnlimited(state);
-  const spent = paid
+  const spent = slotPays
+    ? sheet.resources
+    : paid
     ? { ...sheet.resources, [paid.id]: { max: paid.state.max, used: paid.state.used + paid.amount } }
     : unlimited
       ? sheet.resources
@@ -493,12 +522,12 @@ export function computeUseResource(
   // marker the rest counts down (src/lib/dm/rest-logic.ts).
   const recovering = def.recovers && !paid && !unlimited ? recoveryMarker(campaign, sheet, def) : null;
   const outcome: Outcome = {
-    patch: { resources: spent, ...(recovering ? { conditions: recovering.conditions } : {}) },
+    patch: { resources: spent, ...(recovering ? { conditions: recovering.conditions } : {}), ...(slotPays ? { spellcasting: slotPays.spellcasting } : {}) },
     result: {
       ok: true,
       ...(recovering ? { returns: recovering.note } : {}),
       resource: def.displayName,
-      spent: paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : cost,
+      spent: slotPays ? `a level ${more.slotLevel} spell slot (no use was left)` : paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : cost,
       left: unlimited ? "unlimited" : paid ? `0/${state.max}` : `${left - cost}/${state.max}`,
       refills: def.recharge === "short" ? "on any rest" : "on a long rest",
       effect: def.guidance,
@@ -515,6 +544,14 @@ export function computeUseResource(
     Object.assign(outcome.patch, shadowInvisibility(sheet));
     outcome.result.invisible = `${sheet.name} is invisible until they move or take an action or a reaction.`;
     return outcome;
+  }
+  // Steps of Night (Twilight Domain 6): "while in dim light or darkness" the
+  // cleric takes wing; before this the cleric flew on a brightly lit board.
+  if (def.id === "sub_steps_of_night") {
+    const bright = shadowLightProblem(campaign.id, sheet, def.displayName);
+    if (bright) {
+      return bright;
+    }
   }
 
   const derived = computeSheetDerived(sheet);
@@ -542,6 +579,13 @@ export function computeUseResource(
       // Each spent use is one die of healing to the target.
       if (target.deathSaves?.dead) {
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
+      }
+      // The pool's own reach and sight (Balm of the Summer Court: "a creature
+      // you can see within 120 feet"), before a die is rolled: a creature
+      // 125 feet off and an invisible one were healed all the same.
+      const outOfReach = allyReachRefusal(campaign.id, sheet, target, { feature: def.displayName, rangeFt: def.effect.rangeFt, sight: def.effect.sight });
+      if (outOfReach) {
+        return outOfReach;
       }
       const total = rollHealing(campaign, target, def.displayName, `${amount}${def.effect.die}`);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
@@ -671,6 +715,19 @@ export function computeUseResource(
       return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {
+      // A square named: the move is made in the spend, a willing creature
+      // the feature brings along with it (Misty Wanderer: "bringing a
+      // willing creature within 5 feet along"). Before this the step was
+      // handed back as words.
+      if (square) {
+        const along = def.effect.along && target.id !== sheet.id ? { refId: target.id, withinFeet: def.effect.along } : null;
+        const move = planFeatureMove(campaign, { refId: sheet.id, square, feet: def.effect.feet, what: def.displayName, teleport: true, along });
+        if ("error" in move) {
+          return move;
+        }
+        outcome.result.teleport = move.go();
+        return outcome;
+      }
       creditFeatureTeleport(sheet.id, def.displayName, def.effect.feet);
       outcome.result.teleport = `${sheet.name} teleports up to ${def.effect.feet} feet: if a battle map is live, move their token with move_token, teleport true, spell "${def.displayName}" and casterCharacterId ${sheet.id}.`;
       return outcome;

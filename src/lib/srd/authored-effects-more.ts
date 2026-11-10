@@ -162,8 +162,11 @@ export function authoredSpellDice(
     const casterClasses = [textKey(sheet.class ?? ""), ...(sheet.classes ?? []).map((entry) => textKey(entry.id))];
     const listed = !effect.classes || casterClasses.some((entry) => effect.classes!.includes(entry));
     const wanted = effect.items;
-    const item = wanted ? (sheet.equipment ?? []).find((entry) => wanted.some((tag) => hasItemTag(entry, tag))) : null;
-    if (!typed || !listed || (wanted && !item)) {
+    const named = effect.itemNames?.map(textKey);
+    const item = wanted || named
+      ? (sheet.equipment ?? []).find((entry) => (wanted ?? []).some((tag) => hasItemTag(entry, tag)) || (named ?? []).includes(textKey(entry.name)))
+      : null;
+    if (!typed || !listed || ((wanted || named) && !item)) {
       continue;
     }
     const rolled = resolveFormula(effect.dice, held.level, mods);
@@ -281,10 +284,10 @@ export function authoredDamageAbility(
 
 // The lowest a d20 may count on a check with this skill (Silver Tongue's 10,
 // Ear for Deceit's 8), or 0.
-export function authoredCheckFloor(sheet: AuthoredSheet, skill: string): number {
+export function authoredCheckFloor(sheet: AuthoredSheet, skill: string, ability?: string): number {
   let floor = 0;
   for (const { effect } of activeAuthored(sheet, "check_floor")) {
-    if (effect.skills.some((entry) => textKey(entry) === textKey(skill))) {
+    if (effect.skills.some((entry) => textKey(entry) === textKey(skill)) || Boolean(ability && effect.abilities?.includes(ability as never))) {
       floor = Math.max(floor, effect.floor);
     }
   }

@@ -102,6 +102,8 @@ await test("Blessing of the Trickster goes to a creature other than the cleric: 
   }
   await stage(cleric);
   world.patch(friend.id, { conditions: [], conditionMeta: {} });
+  // "Touch a willing creature": the friend beside the cleric.
+  kit.place(friend.id, 4, 5);
   const out = await world.invoke("use_resource", { characterId: cleric.id, resource: "Blessing of the Trickster", targetCharacterId: friend.id });
   assert.equal(out.ok, true, out.error);
   assert.ok(world.sheet(friend.id).conditions.includes("blessing of the trickster"));

@@ -20,7 +20,7 @@ import {
   type StruckSwing,
   type TurnBudget,
 } from "@/lib/dm/action-budget";
-import { conditionTurnShape, type TurnShape } from "@/lib/srd/condition-effects";
+import { conditionExtraAttacks, conditionTurnShape, type TurnShape } from "@/lib/srd/condition-effects";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { summonAttacksPerTurn } from "@/lib/dm/summon-rules";
@@ -29,6 +29,7 @@ import { formSees } from "@/lib/srd/form-sees";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { beginHeldTurnOf, releasesReadiedOffTurn, turnHeldForEnemies } from "@/lib/dm/held-turn";
 import { getSheetById } from "@/lib/db/sheets";
+import { turnExtraAttacks } from "@/lib/dm/turn-extra-attacks-logic";
 
 // The combatant the initiative pointer is currently on, or null out of
 // combat and while initiative is still being rolled.
@@ -71,8 +72,12 @@ export function budgetFor(
   // that lasts until the start of their next one (a Dodge).
   beginHeldTurnOf(encounter, ownerId);
   const { extraActions, slowed, actionHeld } = typeof shape === "number" ? { extraActions: shape, slowed: false, actionHeld: false } : shape;
-  // Slow: one attack a turn, whatever Extra Attack would give.
-  const allowed = slowed ? 1 : attacksAllowed;
+  // Slow: one attack a turn, whatever Extra Attack would give. A ranger's
+  // archetype adds attacks on the turn's own record (Dread Ambusher, Stalker's
+  // Flurry, Distant Strike: turn-extra-attacks-logic.ts); every door that
+  // counts a turn's attacks asks this budget, so they are added here once.
+  const record = budgetApplies(encounter.turnBudget, ownerId, encounter.round) ? encounter.turnBudget : null;
+  const allowed = slowed ? 1 : attacksAllowed + (owner ? turnExtraAttacks(owner, record, encounter.round) : 0);
   if (budgetApplies(encounter.turnBudget, ownerId, encounter.round)) {
     // A casting that held this turn's action has ended (its concentration
     // broke, or was let go): the action was never spent on anything else, so
@@ -190,7 +195,8 @@ export function attacksAllowedFor(sheet: CharacterSheet): number {
   // Thirsting Blade's second pact weapon attack (pact-weapon.ts); Extra
   // Attack features do not add together.
   const seen = formSees(sheet);
-  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen));
+  // A condition's extra attack (Invincible Conqueror) comes on top.
+  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen)) + conditionExtraAttacks(sheet.conditions ?? []);
   return shaped !== null ? Math.max(shaped, own) : own;
 }
 

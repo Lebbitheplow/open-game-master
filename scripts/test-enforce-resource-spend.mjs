@@ -346,13 +346,16 @@ await test("an unspent inspiration die is gone after 10 minutes", async () => {
 
 await test("Channel Divinity at cleric 2 is once between rests", async () => {
   const table = await openTable();
-  const cleric = table.addHero({ class: "cleric", level: 2 });
-  assert.equal((await spend(table, cleric.id, "Channel Divinity")).ok, true);
-  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity"));
+  // Spent through an option (gap study WAVE2 D1: a bare Channel Divinity
+  // spend names none and is refused): Knowledge of the Ages works out of a fight.
+  const cleric = table.addHero({ class: "cleric", subclass: "Knowledge Domain", level: 2 });
+  const option = { variant: "arcana" };
+  assert.equal((await spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option)).ok, true);
+  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option));
   assert.equal((await table.invoke("take_rest", { kind: "short" })).ok, true);
   assert.deepEqual(table.sheet(cleric.id).resources.channel_divinity, { max: 1, used: 0 });
-  assert.equal((await spend(table, cleric.id, "Channel Divinity")).ok, true);
-  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity"));
+  assert.equal((await spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option)).ok, true);
+  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option));
 });
 
 // ---- findings ----

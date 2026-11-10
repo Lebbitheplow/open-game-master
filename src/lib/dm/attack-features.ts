@@ -27,6 +27,7 @@ import { favoredEnemies } from "@/lib/srd/check-traits";
 import { sameRulesKey } from "@/lib/srd/name-forms";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
+import { magicItemBonus } from "@/lib/srd/item-row";
 
 type Sheet = Pick<CharacterSheet, "name" | "class" | "level" | "classes" | "features" | "feats" | "conditions" | "resources" | "spellcasting">;
 
@@ -168,7 +169,11 @@ export function hexWarriorSwing(
   }
   for (const { effect, held } of activeAuthored(sheet, "weapon_ability")) {
     // Battle Ready: any magic weapon. Hex Warrior: the weapon its option names.
-    const fits = effect.magicOnly ? Boolean(resolved.gear) : Boolean(held.choice) && textKey(held.choice ?? "") === textKey(srd.name);
+    // A "+1 Longsword" is a magic weapon by the bonus its name declares, as
+    // its attack roll reads it (attack-logic.ts magicItemBonus): it swung on
+    // Strength before, the gear table holding no row for it.
+    const magic = Boolean(resolved.gear) || magicItemBonus(resolved.displayName) > 0;
+    const fits = effect.magicOnly ? magic : Boolean(held.choice) && textKey(held.choice ?? "") === textKey(srd.name);
     if (!fits) {
       continue;
     }

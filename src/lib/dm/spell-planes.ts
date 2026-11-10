@@ -120,6 +120,9 @@ export function sendHome(
   spell: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  // What keeps it there. Divine Word's own words by default; Mortal Bulwark
+  // (mortal-bulwark.ts) banishes with no return named, so it passes "".
+  stays = " and cannot return for 24 hours",
 ): string | null {
   const type = (enemy.stats.type ?? "").toLowerCase();
   if (types !== "any" && !types.some((entry) => type.includes(entry))) {
@@ -137,5 +140,5 @@ export function sendHome(
   if (encounter && !listEnemies(encounter.id).some((entry) => entry.status === "alive")) {
     finishEncounter(campaign, turn, encounter, "enemies_fled", sheets, sheetsById);
   }
-  return `${enemy.displayName} is forced back to its home plane by ${spell} and cannot return for 24 hours.${behind ? ` ${behind}` : ""}`;
+  return `${enemy.displayName} is forced back to its home plane by ${spell}${stays}.${behind ? ` ${behind}` : ""}`;
 }

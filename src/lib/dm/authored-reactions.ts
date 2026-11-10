@@ -11,6 +11,7 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { bothBonded, teleportBeside } from "@/lib/dm/protective-bond";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -144,7 +145,7 @@ function asNormalHit(swing: SwingRecord): SwingRecord {
 // "A creature you can see": the one the hit fell on (authored `sees`), asked
 // after the reach, which says more when both fail.
 function unseenTarget(ctx: Ctx, found: Found, seen: CharacterSheet): ToolError | null {
-  if (found.reaction.sees !== "target" || seen.id === found.holder.id) return null;
+  if ((found.reaction.sees !== "target" && found.reaction.sees !== "both") || seen.id === found.holder.id) return null;
   return unseenRefusal(ctx.encounter?.id, found.holder, seen, found.reaction.name);
 }
 
@@ -504,6 +505,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         if (does.rangeFt && encounter && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
           return { error: `${covered.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
         }
+        // Improved Flare: "a creature other than you that you can see".
+        const hidden = unseenTarget(ctx, found, covered);
+        if (hidden) return hidden;
       }
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
@@ -511,8 +515,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (swing.natural === null) {
         return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
       }
-      // Warding Flare: "a creature ... that you can see" attacks.
-      const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
+      // Warding Flare: "a creature ... that you can see" attacks (with
+      // Improved Flare the ally it attacks is seen too, asked above).
+      const unseen = reaction.sees === "attacker" || reaction.sees === "both" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
       if (unseen) return unseen;
       // Shadowy Dodge: only against an attack roll made without advantage.
       if (does.notVsAdvantage && swing.advantage === "advantage") {
@@ -643,6 +648,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      // Only between two creatures the bond joins (protective-bond.ts).
+      if (does.bond && !bothBonded(does.bond, getSheetById(ctx.sheet.id) ?? ctx.sheet, ally)) {
+        return { error: `${reaction.name} passes a blow between two creatures of the ${does.bond}, and ${ctx.sheet.name} and ${ally.name} are not both bonded. Nothing was spent.`, refused: "rules" };
+      }
       const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !answeredBy(hit, label) && hit.swings.some((swing) => swing.hit));
       if (!record) {
         return noHit(ally.name, reaction.name, `an attack that hit ${ally.name}`);
@@ -658,6 +667,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         : record.swings.map((swing) => ({ ...swing, hit: false, raw: 0 }));
       const settled = settle(ctx, record, corrected, label);
       const share = share_ ? Math.floor(raw / 2) : raw;
+      // The protector teleports beside the creature first (Protective Bond).
+      const stepped = does.teleport ? teleportBeside(ctx.campaign.id, ctx.sheet.id, ally.id) : null;
       // The damage lands on the paladin as it was dealt: nothing reduces it.
       const taken = applyPcDamage(ctx.campaign, ctx.turn.id, getSheetById(ctx.sheet.id) ?? ctx.sheet, { amount: share, reason: `${reaction.name} for ${ally.name}` });
       return {
@@ -665,6 +676,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           ? `${ctx.sheet.name} takes ${share} of the ${raw} damage and ${ally.name} keeps ${kept}: ${settled.given} hit points come back to ${ally.name}.`
           : `${ctx.sheet.name} takes ${share === raw ? `the ${raw} damage` : `half of the ${raw} damage (${share})`} meant for ${ally.name}, whose ${settled.given} hit points come back.`,
         taken,
+        ...(stepped ? { teleported: stepped } : {}),
       };
     }
     case "echo_hit": {
@@ -746,7 +758,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       // Halo of Spores: "a creature you can see" starting its turn near; the
       // creature struck back is the one that must be seen.
-      const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter.id, ctx.sheet, { id: enemy.id, name: enemy.displayName }, reaction.name) : null;
+      const unseen = reaction.sees === "attacker" || reaction.sees === "both" ? unseenRefusal(encounter.id, ctx.sheet, { id: enemy.id, name: enemy.displayName }, reaction.name) : null;
       if (unseen) return unseen;
       const type = strikeType(ctx, does, found.variant, reaction.name, enemy);
       if (typeof type !== "string") {

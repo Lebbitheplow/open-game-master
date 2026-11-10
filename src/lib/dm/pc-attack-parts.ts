@@ -50,6 +50,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { resolveAttackWeapon } from "@/lib/dm/attack-logic";
 import { grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { textKey } from "@/lib/language/text-logic";
+import { openReaperShare, reaperAttackTwin } from "@/lib/dm/authored-reaper";
 
 // A part parked for the player's physical dice: its roll takes its place
 // in the call's answer when the turn resumes (src/lib/dm/turn.ts).
@@ -305,7 +306,24 @@ function resolvePart(
     return { result: bought.refused, notes: said };
   }
   const notes = bought ? [bought.note, ...said] : said;
+  // Reaper and Improved Reaper on an attack-roll spell: the second creature
+  // within 5 feet of the first, from the same casting (authored-reaper.ts).
+  const twin = reaperAttackTwin(campaign, sheet, args);
+  if (twin && "error" in twin) {
+    return { result: twin, notes };
+  }
+  delete args.secondTargetEnemyId;
   const result = handlePcAttack(campaign, turn, JSON.stringify(args), sheets, sheetsById, realDiceUserIds, toolCallId, { mayWait: true });
+  if (twin && typeof result.error !== "string") {
+    openReaperShare(campaign, sheet, twin.spell, args.level);
+    // A first roll waiting on the player's dice: the share stays open, and the
+    // second creature's attack is its own pc_attack call once that roll lands.
+    if (result[PC_ATTACK_PARKED]) {
+      return { result, notes: [...notes, `${twin.feature}: ${twin.secondName} is struck from the same casting with its own pc_attack call (spell "${twin.spell}"), nothing more spent.`] };
+    }
+    const again = handlePcAttack(campaign, turn, JSON.stringify({ ...args, targetEnemyId: twin.second }), sheets, sheetsById, realDiceUserIds, toolCallId, { mayWait: true });
+    return { result: { ...result, secondTarget: again, [twin.feature]: `${twin.spell} also strikes ${twin.secondName}.` }, notes };
+  }
   // A feature of theirs that makes no attack of its own (Sneak Attack, a
   // rider on the swing) is no part's feature: sent back
   // with the names a part takes, so the swing is made in the next call

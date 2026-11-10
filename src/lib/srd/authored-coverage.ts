@@ -119,6 +119,9 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   save_swap: { file: "src/lib/srd/index.ts", call: "authoredSaveModifier(" },
   ac: { file: "src/lib/srd/index.ts", call: "authoredAcBonus(" },
   speed: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
+  // Peerless Athlete's capacity and jumps (src/lib/srd/carry-jump-effects.ts).
+  carry_factor: { file: "src/lib/dm/load-rules.ts", call: "authoredCarryFactor(" },
+  jump_feet: { file: "src/lib/dm/jump-reach.ts", call: "authoredJumpFeet(" },
   move: { file: "src/lib/srd/index.ts", call: "authoredSpeeds(" },
   init_adv: { file: "src/lib/srd/trait-rules.ts", call: "authoredInitiativeAdvantage(" },
   init_ability: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
@@ -173,6 +176,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   damage_ability: { file: "src/lib/dm/attack-damage-riders.ts", call: "authoredDamageAbility(" },
   init_prof: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_floor: { file: "src/lib/dm/rolls.ts", call: "authoredCheckFloor(" },
+  check_ability_mod: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredCheckMod(" },
   grim_harvest: { file: "src/lib/dm/authored-hooks.ts", call: 'activeAuthored(killer, "grim_harvest")' },
   slot_refund: { file: "src/lib/dm/cast-guard.ts", call: "authoredSlotRefund(" },
   summon_hp_per_hd: { file: "src/lib/dm/summon-cast.ts", call: "authoredSummonHitPoints(" },

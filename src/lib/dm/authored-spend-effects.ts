@@ -14,7 +14,7 @@ import { getActiveEncounter, getEnemy, patchEnemyConditions, type Encounter, typ
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { hasCondition, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
 import { likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -30,7 +30,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { unseenBecause, unseenByConditions, withinFeet } from "@/lib/dm/authored-saves";
-import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
+import { darknessNear, dispelZones, placeSpellZone } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
@@ -46,6 +46,11 @@ import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
+import { divineSpend } from "@/lib/dm/authored-spend-divine";
+import { rangerSpend } from "@/lib/dm/authored-spend-divine-rng";
+import { clericSpend } from "@/lib/dm/authored-spend-divine-clr";
+import { draSpend, joltReachRefusal } from "@/lib/dm/authored-spend-divine-dra";
+import { noteAuraAsked } from "@/lib/dm/aura-menace";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -63,8 +68,10 @@ export type SpendContext = {
   sheet: CharacterSheet;
   held: HeldAuthored;
   spend: AuthoredSpend;
-  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
+  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[]; x?: number; y?: number };
   units: number;
+  // The spell slot level that paid in place of the counter (pool.slot).
+  paidBySlot?: number;
   mods: Record<string, number>;
   reason: string;
 };
@@ -153,12 +160,14 @@ function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: str
   return true;
 }
 
-function sheetCondition(campaign: Campaign, target: CharacterSheet, condition: string, rounds: number, extra: FullPatchSheetInput = {}) {
+// `source`: who laid it, for a reader that asks (Emboldening Bond's reach
+// grows with the cleric who made the bond, emboldening-bond.ts).
+function sheetCondition(campaign: Campaign, target: CharacterSheet, condition: string, rounds: number, extra: FullPatchSheetInput = {}, source?: string, untilRestEnds?: boolean) {
   const fresh = getSheetById(target.id) ?? target;
   const kept = fresh.conditions.filter((entry) => textKey(entry) !== textKey(condition));
   const updated = patchSheet(fresh.id, {
     conditions: [...kept, condition],
-    conditionMeta: { ...fresh.conditionMeta, [condition]: { rounds } },
+    conditionMeta: { ...fresh.conditionMeta, [condition]: { rounds, ...(source ? { source } : {}), ...(untilRestEnds ? { untilRestEnds: true } : {}) } },
     ...extra,
   });
   if (updated) {
@@ -225,7 +234,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
           return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
         }
-        const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
+        // "Until the end of your next turn" (Path to the Grave), or a count of rounds.
+        const landed = enemyCondition(ctx, enemy, condition, does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
       } else if (does.target === "allies") {
         const count = does.count ? Number(formula(ctx, does.count)) : 5;
@@ -244,7 +254,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const left = reach.filter((ally) => unseen(ally));
         const touched = reach.filter((ally) => !unseen(ally)).slice(0, count + 1);
         for (const ally of touched) {
-          sheetCondition(campaign, ally, condition, does.rounds);
+          sheetCondition(campaign, ally, condition, does.rounds, {}, sheet.id, does.untilRestEnds);
         }
         lines.push(`${touched.map((entry) => entry.name).join(", ")}: ${condition} for ${does.rounds} rounds.`);
         if (left.length) {
@@ -259,6 +269,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const ally = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : sheet;
         if (!ally || ally.campaignId !== campaign.id) {
           return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
+        }
+        // A reach the row states (Blessing of the Trickster's touch): before
+        // this an ally across the board was blessed by touch.
+        const live = getActiveEncounter(campaign.id);
+        if (ally.id !== sheet.id && live && does.rangeFt && !withinFeet(live.id, sheet.id, ally.id, does.rangeFt)) {
+          return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
         }
         if (ally.id !== sheet.id) {
           sheetCondition(campaign, ally, condition, does.rounds, tempHp > ally.tempHp ? { tempHp } : {});
@@ -289,7 +305,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
       // answered ok and landed nothing.
       if (!does.target || does.target === "self" || does.target === "ally") {
-        const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
+        // One form at a time: a constellation taken again replaces the one it
+        // finds (it was added beside it, two forms at once).
+        const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition) && !(does.replaces && hasCondition({ conditions: [entry] }, does.replaces)));
         patch = {
           conditions: [...kept, condition],
           conditionMeta: { ...sheet.conditionMeta, [condition]: { ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }), ...(quarry ? { quarry: quarry.id } : {}) } },
@@ -315,6 +333,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       if (does.burst) {
         lines.push(...burst(ctx, does.burst));
+      }
+      // The area the condition carries (Dread Lord's 30-foot gloom): laid on
+      // the board around the holder, it follows their token and ends with the
+      // condition (zone-store.ts zoneHolds whileCondition). Off the board
+      // nothing is laid.
+      const area = does.zone ? placeSpellZone(campaign, { spell: does.zone, caster: { kind: "pc", id: sheet.id, name: sheet.name } }) : null;
+      if (area) {
+        lines.push(area);
       }
       return { patch, result: { applied: lines } };
     }
@@ -352,6 +378,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const keen = does.advantageAt ? Number(enemy.stats.abilities?.[does.advantageAt.ability] ?? 10) >= does.advantageAt.atLeast : false;
       const save = rollEnemySave(campaign.id, enemy, ability, dc, {
         ...(keen ? { advantage: true } : {}),
+        // A Channel Divinity option's save (Elder Champion reads it).
+        ...(ctx.spend.pool?.id === "channel_divinity" ? { channel: true } : {}),
         resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
         against: does.condition,
         // A DEX save takes the cover between the character and it.
@@ -426,6 +454,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };
     }
     case "teleport": {
+      // "A willing creature you touch" (Hidden Paths): one named must stand
+      // within 5 feet, refused before the use is paid.
+      const touchedOne = does.touched && ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : null;
+      if (touchedOne && touchedOne.id !== sheet.id && ctx.encounter && !withinFeet(ctx.encounter.id, sheet.id, touchedOne.id, 5)) {
+        return { error: `${touchedOne.name} is beyond ${sheet.name}'s touch (5 feet); ${ctx.spend.name} moves a creature they touch. Nothing was spent.`, refused: "rules" };
+      }
       creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);
       const move = `move_token, teleport true, spell "${ctx.spend.name}" and casterCharacterId ${sheet.id}`;
       return {
@@ -497,6 +531,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (!canRegain(ally)) {
           return { error: `${ally.name} cannot regain hit points right now, so ${ctx.spend.name} would heal nothing. Nothing was spent.`, refused: "rules" };
         }
+        // Arcane Jolt's healing reaches a creature the jolter can see within
+        // 30 feet of the creature hit: one 35 feet off was healed before.
+        const reachRefusal = does.healReachFt ? joltReachRefusal(ctx, ally, does.healReachFt) : null;
+        if (reachRefusal) {
+          return reachRefusal;
+        }
         const rolled = rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, formula(ctx, does.formula), null).total;
         const gained = regainHitPoints(campaign, ctx.turnId, ally, rolled, `${ctx.spend.name} (${sheet.name})`);
         return { result: { healed: `${ally.name} regains ${gained} hit points (${rolled} rolled).` } };
@@ -544,6 +584,29 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    // The divine package's spends (src/lib/dm/authored-spend-divine.ts).
+    case "reveal_defenses":
+    case "smite_temp_hp":
+    case "forge_blessing":
+    case "cauterizing":
+      return divineSpend(ctx, does);
+    // The cleric's (src/lib/dm/authored-spend-divine-clr.ts).
+    case "read_thoughts":
+    case "duplicity":
+    case "forge_item":
+    case "sense_undead":
+      return clericSpend(ctx, does);
+    // The ranger's (src/lib/dm/authored-spend-divine-rng.ts).
+    case "pet_command":
+    case "this_turn":
+      return rangerSpend(ctx, does);
+    // The druid's and artificer's (src/lib/dm/authored-spend-divine-dra.ts).
+    case "spirit_totem":
+    case "spirit_totem_move":
+    case "spreading_spores":
+    case "wildfire_spirit":
+    case "eldritch_cannon":
+      return draSpend(ctx, does);
   }
 }
 
@@ -576,13 +639,20 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
       damageEnemy(ctx, getEnemy(enemy.id) ?? enemy, rolled, spec.type ?? "");
       lines.push(`${enemy.displayName} takes ${rolled} ${spec.type ?? ""} damage.`.replace("  ", " "));
     }
+    // Avenging Angel's fear and its menace end when the creature takes damage
+    // (spell-effects.ts settleOnDamage reads endsOnDamage on each instance).
+    const lasting = { ...(spec.rounds ? { rounds: spec.rounds } : {}), ...(spec.endsOnDamage ? { endsOnDamage: true } : {}) };
     if (spec.condition) {
-      const landed = enemyCondition(ctx, enemy, spec.condition, spec.rounds ? { rounds: spec.rounds } : {});
+      const landed = enemyCondition(ctx, enemy, spec.condition, lasting);
       lines.push(landed ? `${enemy.displayName} is ${spec.condition}.` : `${enemy.displayName} cannot be ${spec.condition}.`);
     }
     if (spec.mark) {
-      enemyCondition(ctx, getEnemy(enemy.id) ?? enemy, spec.mark, spec.rounds ? { rounds: spec.rounds } : {});
+      enemyCondition(ctx, getEnemy(enemy.id) ?? enemy, spec.mark, lasting);
     }
+  }
+  // An aura asks each enemy once: those in it as it opens have been asked.
+  if (spec.aura) {
+    lines.push(...noteAuraAsked(ctx.campaign, ctx.sheet.id, enemies.map((enemy) => enemy.id)));
   }
   return lines;
 }
@@ -607,6 +677,9 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       enemy.currentHp > 0 &&
       withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
       (!does.sight || !(does.sight === "seesHolder" ? unseenBecause(encounter.id, enemy, sheet) : unseenBecause(encounter.id, sheet, enemy))) &&
+      // "That can see or hear you" (Order's Demand): one deafened and unable
+      // to see the holder is left out; before this it was charmed.
+      (!does.seesOrHears || !(enemy.conditions.some((entry) => isConditionNamed(entry, "deafened")) && unseenBecause(encounter.id, enemy, sheet))) &&
       // Total cover: a wall of the board between them (as cast-reach.ts reads
       // it, past the squares beside the holder).
       (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&
@@ -635,6 +708,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   for (const enemy of targets) {
     const save = rollEnemySave(campaign.id, enemy, does.save, dc, {
       magical: true,
+      ...(ctx.spend.pool?.id === "channel_divinity" ? { channel: true } : {}),
       resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
       against: does.condition,
       origin: { ref: sheet.id },
@@ -664,7 +738,12 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
         parts.push(`is ${does.condition}`);
       }
     }
-    if (does.onFail) {
+    // A second mark a failure leaves (Order's Demand: what it held is
+    // dropped, the "disarmed" a Disarming Attack leaves too).
+    if (does.mark && !immuneToCondition(fresh(), does.mark)) {
+      layEnemyConditionInstance(campaign, fresh(), does.mark, { source: sheet.id });
+      parts.push(`is ${does.mark}`);
+    } else if (does.onFail) {
       parts.push(does.onFail);
     }
     lines.push(`${enemy.displayName} ${parts.join(", and ")} ${resisted}.`);

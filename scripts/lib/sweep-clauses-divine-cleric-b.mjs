@@ -20,6 +20,9 @@ export const CLERIC_B = {
     const armor = await rig.spend(who, "Blessing of the Forge", { variant: "armor", targetCharacterId: friend.id });
     const acBlessed = rig.world.sheet(friend.id).ac;
     const metaArmor = rig.meta(friend, "blessing of the forge");
+    const sameDay = await rig.spend(who, "Blessing of the Forge", { variant: "weapon", targetCharacterId: who.id });
+    // The next day's blessing (the counter back, as a long rest gives it).
+    rig.setUsed(who, "sub_blessing_of_the_forge", 0);
     const again = await rig.spend(who, "Blessing of the Forge", { variant: "weapon", targetCharacterId: who.id });
     const stillArmored = rig.has(friend, "blessing of the forge");
     const [foe] = await rig.fight(who);
@@ -37,7 +40,7 @@ export const CLERIC_B = {
         assert.equal(swing.damage?.total, 4 + 3 + 1, `and ${swing.damage?.expression} for damage`);
       },
       "until-again": () => assert.equal(stillArmored, false, "after the cleric blessed a weapon, the armor blessed before still carries its +1"),
-      "after-a-long-rest": () => assert.equal(again.ok, false, `a second blessing the same day was taken (${brief(again.result, 120)}): nothing holds the feature to one object a long rest`),
+      "after-a-long-rest": () => assert.equal(sameDay.ok, false, `a second blessing the same day was taken (${brief(sameDay.result, 120)}): nothing holds the feature to one object a long rest`),
     };
   },
 
@@ -102,15 +105,28 @@ export const CLERIC_B = {
 
   "cleric::Channel Divinity: Path to the Grave": async (rig) => {
     const who = rig.hero("cleric", "Grave Domain", 2);
-    const [foe] = await rig.fight(who);
+    const [foe, far] = await rig.fight(who, { enemies: 2 });
     const before = brief([rig.enemy(foe.id).conditions, rig.conditions(who)]);
+    // The second dummy stands 50 feet off: beyond the curse's 30.
+    const tooFar = await rig.channel(who, "path to the grave", { targetEnemyId: far.id });
+    const usedTooFar = rig.res(who, "channel_divinity").used;
     const out = await rig.channel(who, "path to the grave", { targetEnemyId: foe.id });
     const state = { budget: rig.budget(), used: rig.res(who, "channel_divinity").used, marks: brief([rig.enemy(foe.id).conditions, rig.conditions(who)]) };
+    const lasts = rig.enemy(foe.id).conditionMeta?.["path to the grave"] ?? null;
     rig.kit.freshTurn();
     const swing = await rig.kit.swing(who.id, foe.id, [18, 4]);
     const took = 300 - rig.enemy(foe.id).currentHp;
+    rig.kit.freshTurn();
+    await rig.kit.swing(who.id, foe.id, [18, 4]);
+    const tookAgain = 300 - took - rig.enemy(foe.id).currentHp;
     rig.note("path", [out.ok, out.error, brief(out.result, 160), state, before, swing.result]);
     return {
+      "thirty-feet-next-turn": () => {
+        assert.equal(tooFar.ok, false, "a creature 50 feet off was cursed");
+        assert.equal(usedTooFar, 0, "the refusal spent the use");
+        assert.equal(lasts?.untilTurnEndOf, who.id, `the curse lasts ${JSON.stringify(lasts)}: until the end of the cleric's next turn`);
+      },
+      ends: () => assert.equal(tookAgain, 7, `the hit after the cursed one took ${tookAgain}: the curse ends with the first`),
       action: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(state.budget?.actionUsed, true);
@@ -312,7 +328,9 @@ export const CLERIC_B = {
     const farBonded = rig.has(far, "emboldening bond");
     const out = farOut.ok && !farBonded && rig.has(near, "emboldening bond") && rig.has(me, "emboldening bond") ? farOut : await rig.spend(me, "Emboldening Bond", { targetCharacterIds: [me.id, near.id] });
     const state = { budget: rig.budget(), meta: rig.meta(near, "emboldening bond"), self: rig.has(me, "emboldening bond"), near: rig.has(near, "emboldening bond") };
-    const expressionOf = (kind) => rig.lastRolls(4).find((roll) => roll.kind === kind && roll.characterId === near.id)?.expression;
+    // The latest such roll: listRecentRolls lists the oldest first, and find
+    // read the first save back as the second.
+    const expressionOf = (kind) => rig.lastRolls(4).findLast((roll) => roll.kind === kind && roll.characterId === near.id)?.expression;
     await rig.save(near, "wis", {}, [10, 2]);
     const firstSave = expressionOf("saving_throw");
     await rig.save(near, "wis", {}, [10, 2]);
@@ -441,6 +459,10 @@ export const CLERIC_B = {
   "cleric::Steps of Night": async (rig) => {
     const who = rig.hero("cleric", "Twilight Domain", 6);
     await rig.fight(who);
+    // "As a bonus action while in dim light or darkness" (Steps of Night): a
+    // night board, as the feature asks; the fight's board is lit by day.
+    const { getDatabase } = await rig.load("lib/db/core.ts");
+    getDatabase().prepare("UPDATE battle_maps SET ambient = ?, outdoors = 0 WHERE id = ?").run("dim", rig.kit.map().id);
     const out = await rig.spend(who, "Steps of Night");
     const state = { budget: rig.budget(), meta: rig.meta(who, "flying"), speeds: rig.srd.computeSheetDerived(rig.world.sheet(who.id)).speeds ?? null, conditions: rig.conditions(who) };
     rig.note("steps", [out.ok, out.error, brief(out.result), state]);
@@ -507,7 +529,11 @@ export const CLERIC_B = {
     const [foe] = await rig.fight(who);
     rig.kit.place(friend.id, 4, 5);
     rig.world.patch(friend.id, { currentHp: 50 });
-    const held = await rig.call("set_condition", { characterId: friend.id, condition: "paralyzed", rounds: 10, magical: true, source: "Hold Person", spell: "Hold Person", level: 2, casterEnemyId: foe.id });
+    // Staged as a cast Hold Person lays it (spell-effects.ts): the spell, its
+    // slot and its caster on the instance. set_condition takes none of these,
+    // so the paralysis it laid was no spell at all and nothing could end one.
+    rig.world.patch(friend.id, { conditions: ["paralyzed"], conditionMeta: { paralyzed: { rounds: 10, spell: "Hold Person", slotLevel: 2, source: foe.id } } });
+    const held = { ok: true, error: "", result: { staged: "Hold Person (2nd level) from the foe" } };
     const before = rig.conditions(friend);
     const heal = await rig.call("heal", { characterId: friend.id, casterId: who.id, spell: "Cure Wounds", level: 2 }, [4, 4]);
     const after = rig.conditions(friend);

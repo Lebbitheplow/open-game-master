@@ -36,6 +36,10 @@ export const COUNTER_CASTS: CounterCast[] = [
   { counter: "sub_star_map", features: ["Star Map"], spells: ["Guiding Bolt"], rest: "long" },
   { counter: "sub_consult_the_spirits", features: ["Consult the Spirits"], spells: ["Augury", "Clairvoyance"], rest: "short", noMaterial: true },
   { counter: "art_restorative_reagents", features: ["Restorative Reagents"], spells: ["Lesser Restoration"], rest: "long" },
+  // Chemical Mastery: "can cast greater restoration and heal once per long
+  // rest each without a slot", one counter for each spell.
+  { counter: "art_chemical_mastery_restoration", features: ["Chemical Mastery"], spells: ["Greater Restoration"], rest: "long" },
+  { counter: "art_chemical_mastery_heal", features: ["Chemical Mastery"], spells: ["Heal"], rest: "long" },
   { counter: "sub_fey_reinforcements", features: ["Fey Reinforcements"], spells: ["Summon Fey"], rest: "long", noMaterial: true },
   { counter: "sub_grasping_tentacles", features: ["Grasping Tentacles"], spells: ["Black Tentacles", "Evard's Black Tentacles"], rest: "long", note: "Casting it gives the warlock temporary hit points equal to their warlock level, and damage cannot break their concentration on it." },
   // Not selfOnly: the wizard knows polymorph too, and a grant's selfOnly holds

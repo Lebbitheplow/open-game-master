@@ -4,6 +4,8 @@
 // Protective Spirit, Celestial Resilience. Split from authored-hooks.ts,
 // which holds the attack moments.
 
+import { guardianSpiritHeal } from "@/lib/dm/spirit-totem";
+import { petDodgeTurnStart } from "@/lib/dm/pet-command";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -21,6 +23,8 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { withActor } from "@/lib/dm/acting-party";
 import { regainHitPoints } from "@/lib/dm/regain";
 import { risesWithVengeance, searingVengeance } from "@/lib/dm/searing-vengeance";
+import { auraMenaceAsk } from "@/lib/dm/aura-menace";
+import { alacrityTurnStart } from "@/lib/dm/divine-auras";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -85,12 +89,21 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
           lines.push(`${held.feature}: ${sheet.name} regains ${given} hit points.`);
         }
       }
+      // An ally's Aura of Alacrity is read where the turn starts beside it
+      // (divine-auras.ts): 10 more feet until this turn ends.
+      lines.push(...alacrityTurnStart(campaign, encounter, getSheetById(id) ?? sheet));
+      // An uncommanded companion or drake dodges from its owner's turn on
+      // (pet-command.ts).
+      lines.push(...petDodgeTurnStart(campaign, getSheetById(id) ?? sheet));
       continue;
     }
     const enemy = getEnemy(id);
     if (!enemy || enemy.status !== "alive") {
       continue;
     }
+    // An aura that asks an enemy once, as it starts its turn in it (Avenging
+    // Angel's aura of menace, src/lib/dm/aura-menace.ts).
+    lines.push(...auraMenaceAsk(campaign, id));
     for (const holder of holders) {
       for (const { effect, held } of activeAuthored(holder, "enemy_turn_damage")) {
         const live = getEnemy(id);
@@ -126,6 +139,9 @@ export function authoredTurnEnd(campaign: Campaign, combatantIds: string[]): str
     if (!sheet || sheet.deathSaves?.dead || sheet.currentHp <= 0) {
       continue;
     }
+    // Guardian Spirit: the druid's summons in the Spirit Totem aura heal half
+    // the druid level as the druid's turn ends (spirit-totem.ts).
+    lines.push(...guardianSpiritHeal(campaign, null, sheet));
     for (const { effect, held } of activeAuthored(sheet, "turn_heal")) {
       if (effect.when !== "end") {
         continue;

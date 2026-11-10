@@ -36,7 +36,7 @@ import { isQuake, quakeFissures, quakeShake } from "@/lib/dm/zone-quake";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { saveDamageTaken } from "@/lib/srd/trait-rules";
+import { classLevelOf, saveDamageTaken } from "@/lib/srd/trait-rules";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { breakConcentration, clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { laySpellConditionsOnEnemy } from "@/lib/dm/spell-effects";
@@ -78,7 +78,12 @@ function diceOf(trigger: ZoneTrigger, row: ZoneRow, zone: SpellZone, times: numb
     return null;
   }
   const above = Math.max(0, (zone.slotLevel ?? row.level) - row.level);
-  const one = trigger.perSlot ? addDice(trigger.dice, trigger.perSlot, above) : trigger.dice;
+  // A die that grows with its caster's class level (Spreading Spores).
+  const ladder = trigger.byLevel;
+  const casterSheet = ladder && zone.casterKind === "pc" ? getSheetById(zone.casterId) : null;
+  const level = casterSheet && ladder ? classLevelOf(casterSheet, ladder.class) : 0;
+  const grown = ladder ? ladder.dice.filter(([from]) => level >= from).at(-1)?.[1] ?? trigger.dice : trigger.dice;
+  const one = trigger.perSlot ? addDice(grown, trigger.perSlot, above) : grown;
   if (times <= 1) {
     return one;
   }

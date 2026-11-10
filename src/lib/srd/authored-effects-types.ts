@@ -38,6 +38,9 @@ export type Gate = {
   // The class that granted the feature has reached this level (a part of
   // the feature that arrives later: Spiritual Focus's d6 from 6th level).
   level?: number;
+  // The holder has a living pet of this kind on their sheet (Exceptional
+  // Training commands the companion; the card stays shut without one).
+  pet?: "familiar" | "beast_companion" | "drake";
 };
 
 type Base = { gate?: Gate; note?: string };
@@ -46,7 +49,10 @@ type Base = { gate?: Gate; note?: string };
 export type AuthoredEffect = Base &
   (
     // Damage resistance. `spells`: only to damage from spells.
-    | { kind: "resist"; types: string[] | "all"; except?: string[]; nonmagical?: boolean; spells?: boolean }
+    // `fromCreatures`: only damage a creature deals, not a fall, a trap or
+    // harm the GM applies with no creature behind it (Emissary of Redemption:
+    // "damage dealt by other creatures").
+    | { kind: "resist"; types: string[] | "all"; except?: string[]; nonmagical?: boolean; spells?: boolean; fromCreatures?: boolean }
     | { kind: "immune_damage"; types: string[] }
     | { kind: "immune_condition"; conditions: string[] }
     // Advantage on a save: against what the save resists (one of the
@@ -57,8 +63,16 @@ export type AuthoredEffect = Base &
     // A save of one ability uses another ability's modifier when higher.
     | { kind: "save_swap"; save: Ability; use: Ability }
     | { kind: "ac"; amount: number }
-    // Walking speed, through feature-effects' speed_bonus.
-    | { kind: "speed"; amount: number }
+    // Walking speed, through feature-effects' speed_bonus. `allies`: an ally
+    // who starts their turn within the ladder's reach of the holder (up and
+    // not incapacitated) holds `condition`, whose row carries the speed,
+    // until that turn ends (Aura of Alacrity; src/lib/dm/divine-auras.ts).
+    | { kind: "speed"; amount: number; allies?: { rangeFt: Array<[number, number]>; condition: string } }
+    // Carrying, pushing, dragging and lifting capacity times `factor`, and
+    // flat feet on long and high jumps after the Strength reach (Peerless
+    // Athlete: 2 and 10; src/lib/srd/carry-jump-effects.ts).
+    | { kind: "carry_factor"; factor: number }
+    | { kind: "jump_feet"; feet: number }
     // Other movement modes: a number of feet, or "walk" for the walking speed.
     | { kind: "move"; fly?: number | "walk"; swim?: number | "walk" }
     | { kind: "init_adv" }
@@ -90,19 +104,37 @@ export type AuthoredEffect = Base &
     // An ability modifier (at least +1) added to the damage of the holder's weapon attacks
     // (Aura of Hate: Charisma, melee; Song of Victory: Intelligence, melee,
     // while bladesinging).
-    | { kind: "damage_ability"; ability: Ability; when: "melee" | "weapon"; requiresCondition?: string }
+    // `aura`: creatures of these types within the ladder's reach of the
+    // holder (up) add it to their melee weapon blows too (Aura of Hate:
+    // fiends and undead; src/lib/dm/divine-auras.ts hateAuraDamage).
+    | {
+        kind: "damage_ability";
+        ability: Ability;
+        when: "melee" | "weapon";
+        requiresCondition?: string;
+        aura?: { rangeFt: Array<[number, number]>; types: string[] };
+      }
     // The proficiency bonus added to initiative (Aura of the Sentinel).
-    | { kind: "init_prof" }
+    // `rangeFt`: allies within the ladder's reach of the holder (up) add the
+    // holder's bonus to theirs (src/lib/dm/divine-auras.ts allyInitiativeAura).
+    | { kind: "init_prof"; rangeFt?: Array<[number, number]> }
     // A d20 at or below `floor` - 1 counts as `floor` on checks with these
     // skills (Silver Tongue: 10 on Persuasion and Deception).
-    | { kind: "check_floor"; skills: string[]; floor: number }
+    // `abilities`: every check of those abilities (Starry Form's Dragon:
+    // Intelligence and Wisdom checks).
+    | { kind: "check_floor"; skills: string[]; floor: number; abilities?: Ability[] }
+    // An ability's modifier added to checks of other abilities (Otherworldly
+    // Glamour: Wisdom on Charisma checks; src/lib/srd/authored-check-mod.ts).
+    | { kind: "check_ability_mod"; checks: Ability[]; ability: Ability }
     // A spell of 1st level or higher that kills heals the holder twice its
     // level, three times for necromancy, once a turn (Grim Harvest).
     | { kind: "grim_harvest" }
     // The holder's attacks have advantage: against a creature that has not
     // taken a turn in the fight yet, against one the holder frightened,
     // against one the holder distracted, or against creatures of these types.
-    | { kind: "attack_adv"; vs: "not_acted" | "frightened_by_self" | "distracted" | "types"; types?: string[] }
+    // "beside_illusion": a creature within 5 feet of the holder that can see
+    // (Invoke Duplicity's double, placed beside the creature fought).
+    | { kind: "attack_adv"; vs: "not_acted" | "frightened_by_self" | "distracted" | "types" | "beside_illusion"; types?: string[] }
     | { kind: "auto_crit"; vs: "surprised" }
     // Rolling initiative with none of this counter left gives one back.
     | { kind: "init_refill"; resource: string }
@@ -128,6 +160,8 @@ export type AuthoredEffect = Base &
         when: "weapon" | "melee" | "ranged";
         oncePerTurn?: boolean;
         requiresCondition?: string;
+        // Only the weapon of this name (the Infiltrator's lightning launcher).
+        weapon?: string;
       }
     // A weapon hit marks the creature: it attacks anyone but the holder at
     // disadvantage (halving that damage when `halve`), or attacks against it
@@ -142,6 +176,9 @@ export type AuthoredEffect = Base &
         halve?: boolean;
         dice?: string;
         damageType?: string;
+        // Only a hit with the weapon of this name (the Guardian's thunder
+        // gauntlets, the Infiltrator's lightning launcher).
+        weapon?: string;
       }
     // A creature within 5 feet of the raging holder attacks anyone but the
     // holder at disadvantage (Totemic Attunement: Bear).
@@ -156,7 +193,11 @@ export type AuthoredEffect = Base &
     // Enemies save at disadvantage: when the holder casting is hidden from
     // them, when they carry the holder's mark, or when they stand within
     // range of the holder (a spell's save, any caster when `anyCaster`).
-    | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean }
+    // `channel`: also against the holder's Channel Divinity (Elder Champion:
+    // "against your spells and Channel Divinity").
+    // `damageTypes`: only against a spell that deals one of these (Corona of
+    // Light: fire or radiant).
+    | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean; damageTypes?: string[]; channel?: boolean }
     // Allies in range (and the holder) resist: spell damage, or the damage
     // type the holder's own condition names.
     | {
@@ -169,7 +210,9 @@ export type AuthoredEffect = Base &
     | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean }
     // Enemies starting their turn near the holder take damage (Aura of
     // Conquest: only frightened ones).
-    | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean }
+    // `holdsSpeed`: a creature frightened of the holder has speed 0 while in
+    // the aura (Aura of Conquest; src/lib/dm/aura-hold.ts).
+    | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean; holdsSpeed?: boolean }
     // Flurry of Blows grants this many strikes instead of two.
     | { kind: "flurry"; strikes: number }
     // Sneak Attack with no advantage and no ally when the rogue duels one
@@ -211,6 +254,10 @@ export type AuthoredEffect = Base &
         // Cast through a carried item that is one of these
         // (src/lib/srd/item-tags.ts).
         items?: ItemTag[];
+        // Or through a carried item of one of these names, a focus no tag
+        // names alone (Alchemical Savant: alchemist's supplies, which the
+        // gear table tags only as tools).
+        itemNames?: string[];
       }
     // Casting the spell gives temporary hit points, and damage never breaks
     // the concentration on it (Grasping Tentacles).
@@ -278,6 +325,10 @@ export type NaturalWeapon = {
   // turn.
   onHit?: "bite_heal";
   extraAttack?: boolean;
+  // Its attack and damage rolls use this ability, whatever the weapon's kind
+  // (Armor Model: "you use Intelligence for the attack and damage rolls of
+  // the armor's weapon").
+  ability?: Ability;
 };
 
 export type AuthoredEffectKind = AuthoredEffect["kind"];
@@ -311,14 +362,28 @@ export type SpendDoes =
       // The spend's own burst (Arms of the Astral Self, Avenging Angel).
       // `mark`: a second condition each creature that failed carries
       // (Avenging Angel: "menaced", which gives every attacker advantage).
-      burst?: { save: Ability; dcAbility: Ability | "spell"; rangeFt: number; dice?: Formula; type?: string; condition?: string; mark?: string; rounds?: number };
+      // `endsOnDamage`: the condition and the mark end when the creature takes
+      // damage (Avenging Angel: "for a minute or until it takes damage").
+      // `aura`: the burst is an aura that also asks each enemy as it first
+      // enters it or starts its turn in it (src/lib/dm/aura-menace.ts).
+      burst?: { save: Ability; dcAbility: Ability | "spell"; rangeFt: number; dice?: Formula; type?: string; condition?: string; mark?: string; rounds?: number; endsOnDamage?: boolean; aura?: boolean };
       // Until the end of the holder's next turn, not a count of rounds (Cloak
       // of Shadows). `rounds` still states its length on the card.
       untilNextTurnEnds?: boolean;
+      // A condition of this family the holder already carries is taken off
+      // first: one form at a time (Starry Form's constellations).
+      replaces?: string;
+      // Until the rest it was raised for ends, short or long (Hearth of
+      // Moonlight and Shadow): take_rest takes it off.
+      untilRestEnds?: boolean;
       // Only allies the holder can see (Watcher's Will: "creatures you can
       // see"): an invisible one, or any while the holder is blinded, is left
       // out, and one named for it is refused with nothing spent.
       sight?: boolean;
+      // The area the holder's condition carries on the board, laid around
+      // them with it (Dread Lord's gloom: a row of
+      // src/lib/battlemap/zones-features.ts, gone with the condition).
+      zone?: string;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -399,6 +464,12 @@ export type SpendDoes =
       // any spell level (Radiance of the Dawn). With darkness in reach the use
       // is not refused for want of a foe.
       dispelsDarkness?: boolean;
+      // Only a creature that can see or hear the holder: one deafened that
+      // cannot see them is left out (Order's Demand).
+      seesOrHears?: true;
+      // A second condition each creature that failed carries, until it is
+      // taken off (Order's Demand: "disarmed", what it held dropped).
+      mark?: string;
     }
   | { kind: "reroll_save" }
   // Temporary hit points: to the holder, or to allies in range.
@@ -411,7 +482,10 @@ export type SpendDoes =
   // nobody to heal, nothing is spent (src/lib/dm/authored-heal-area.ts).
   // `divided`: the formula is a total shared among those healed (Clockwork
   // Cavalcade's 100 hit points), not each one's.
-  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string; divided?: boolean }
+  // `chosen`: creatures of the holder's choice (Turn the Tide): a character
+  // named in targetCharacterId is the one healed, and with none named every
+  // one in reach is.
+  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string; divided?: boolean; chosen?: boolean }
   // A creature touched rolls the die and regains one spent spell slot of
   // that level or lower (Bolstering Magic).
   | { kind: "regain_slot"; die: string }
@@ -428,11 +502,17 @@ export type SpendDoes =
   | { kind: "storm_aura" }
   // Cauterizing Flames: heal an ally or burn an enemy. `healOnly`: it only
   // heals (Hand of Healing).
-  | { kind: "flames"; formula: Formula; type: string; healOnly?: boolean }
+  // `healReachFt`: the creature healed stands within that many feet of the
+  // creature the turn's weapon hit landed on, and in the holder's sight
+  // (Arcane Jolt: "a creature or object you can see within 30 feet of it").
+  | { kind: "flames"; formula: Formula; type: string; healOnly?: boolean; healReachFt?: number }
   // A variant word picks one of several spends.
   // An option that rides a weapon hit this turn (Telekinetic Thrust after
   // Psionic Strike's) says so; the others of the same spend do not.
-  | { kind: "variants"; options: Record<string, { does: SpendDoes; action?: SpendAction; afterWeaponHit?: boolean }> }
+  // `roll`: with no variant named, this die picks the option, in the order
+  // listed (Experimental Elixir's d6); a use bought with a spell slot still
+  // names its own (src/lib/dm/authored-spends.ts).
+  | { kind: "variants"; options: Record<string, { does: SpendDoes; action?: SpendAction; afterWeaponHit?: boolean }>; roll?: string }
   // Insightful Fighting: an Insight check against the creature's Deception.
   | { kind: "insight_contest"; condition: string; rounds: number }
   // Gathered Swarm's push: after the holder's hit this turn, the creature hit
@@ -447,7 +527,50 @@ export type SpendDoes =
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // Hunter's Sense: the named creature's damage immunities, resistances and
+  // vulnerabilities, read from its stat block (src/lib/dm/authored-spend-divine.ts).
+  | { kind: "reveal_defenses"; sight: true }
+  // Inspiring Smite: right after a Divine Smite this turn, temporary hit
+  // points rolled once and shared between the holder and the creature named
+  // within rangeFt (amount: the named creature's part, the rest the holder's).
+  | { kind: "smite_temp_hp"; formula: Formula; rangeFt: number }
+  // Blessing of the Forge: the condition on the creature whose armor or
+  // weapon is blessed (the holder or an ally), and the holder's earlier
+  // blessing, of the family, taken off whoever carries it.
+  | { kind: "forge_blessing"; condition: string; family: string; rounds: number }
+  // Cauterizing Flames: on a creature standing in one of the druid's spectral
+  // flames (src/lib/dm/cauterizing-flames.ts), heal it or burn it (the
+  // flames kind, its `mode` the variant), and the flame goes out.
+  | { kind: "cauterizing"; mode: "heal" | "burn"; formula: Formula; type: string }
+  // The cleric spends of the divine package (src/lib/dm/authored-spend-divine-clr.ts):
+  // Read Thoughts' save and reading, Invoke Duplicity's double (four with
+  // Improved Duplicity), Artisan's Blessing's item, Eyes of the Grave's sense.
+  | { kind: "read_thoughts"; rangeFt: number }
+  | { kind: "duplicity"; condition: string; rounds: number }
+  | { kind: "forge_item" }
+  | { kind: "sense_undead"; rangeFt: number }
+  // Exceptional Training: the Beast Master's bonus-action command to its
+  // companion, one of `options` (src/lib/dm/authored-spend-divine-rng.ts).
+  | { kind: "pet_command"; options: string[] }
+  // A condition on the holder for the rest of this turn (Ethereal Step's
+  // etherealness, "for one turn"); a round out of a fight.
+  | { kind: "this_turn"; condition: string }
+  // The druid and artificer spends of the divine package
+  // (src/lib/dm/authored-spend-divine-dra.ts). Spirit Totem: the spirit called
+  // to the point named (use_resource x and y, else the druid's square) within 60 feet, its
+  // 30-foot aura a board area, and the bonus action that moves it 60 feet
+  // (src/lib/dm/spirit-totem.ts).
+  | { kind: "spirit_totem"; spirit: "bear" | "hawk" | "unicorn"; rounds: number }
+  | { kind: "spirit_totem_move" }
+  // Spreading Spores: a 10-foot cube at the square named within rangeFt, a
+  // board area for `rounds` (src/lib/dm/spreading-spores.ts).
+  | { kind: "spreading_spores"; rangeFt: number; rounds: number }
+  // A creature the feature makes beside its holder, and the condition the
+  // holder carries while it stands (src/lib/dm/feature-summons-dra.ts):
+  // Summon Wildfire Spirit, Eldritch Cannon.
+  | { kind: "wildfire_spirit"; condition: string; rounds: number }
+  | { kind: "eldritch_cannon"; condition: string; rounds: number };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -459,7 +582,12 @@ export type AuthoredSpend = {
   // (ki, bardic_inspiration, sorcery_points, wild_shape...). `perUnit`: the
   // call's amount is what is spent (Touch of the Long Death's ki); `optional`
   // lets a call spend none.
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string };
+  // `slot`: with the counter spent, a spell slot of 1st level or higher pays
+  // for one more (Experimental Elixir, Eldritch Cannon), the lowest left.
+  // `slotFallback`: with the counter spent, a spell slot of exactly this
+  // level buys the use again (Living Legend: "Once per long rest, or by
+  // expending a 5th-level spell slot").
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; slot?: boolean; slotFallback?: number };
   action?: SpendAction;
   gate?: Gate;
   // Once per rage and similar: a marker condition the spend leaves.
@@ -479,6 +607,18 @@ export type AuthoredSpend = {
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
   // which the GM may have the sorcerer roll).
   gm?: boolean;
+  // The thing the spend works through must stand within `feet` of the
+  // holder: its board area (Eldritch Cannon: "a bonus action activates it if
+  // it is within 60 feet").
+  nearZone?: { zone: string; feet: number; label: string };
+  // While the holder carries a condition of `family` and holds `feature`, the
+  // spend changes it for free, once a turn: no use, no action
+  // (Twinkling Constellations: "you may change constellation each turn").
+  swap?: { family: string; feature: string };
+  // The creature the spend is given to (targetCharacterId, else the holder)
+  // also gains these temporary hit points while the holder holds `feature`
+  // (Restorative Reagents on an Experimental Elixir drunk).
+  drinker?: { feature: string; tempHp: Formula };
   does: SpendDoes;
 };
 
@@ -515,7 +655,10 @@ export type ReactionDoes =
   // (Penance Shared); "split", each takes half (Blood Bond).
   // `resistFrom`: from this class level the holder resists what it takes
   // (Protective Bond with Expansive Bond).
-  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number }
+  // `bond`: both creatures carry this condition (Protective Bond, the
+  // Emboldening Bond); `teleport`: the holder steps to an open square beside
+  // the ally first (src/lib/dm/protective-bond.ts).
+  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; bond?: string; teleport?: true }
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";
@@ -581,8 +724,10 @@ export type AuthoredReaction = {
   // Its text needs the holder to see a creature: the one the hit fell on
   // ("a creature you can see", Runic Shield, Sentinel at Death's Door) or the
   // attacker (Warding Flare). On a board, line of sight decides; off one, it
-  // is open.
-  sees?: "target" | "attacker";
+  // is open. "both": the attacker and the ally it struck (Warding Flare with
+  // Improved Flare: "a creature you can see within 30 feet attacks ... a
+  // creature other than you that you can see").
+  sees?: "target" | "attacker" | "both";
   does: ReactionDoes;
 };
 

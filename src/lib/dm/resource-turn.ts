@@ -156,7 +156,10 @@ export function castMarkCharge(
     return null;
   }
   const encounter = getActiveEncounter(campaign.id);
-  const budget = encounter && (encounter.kind ?? "fight") === "fight" ? encounter.turnBudget : null;
+  // The turn's budget as every door reads it: a turn nothing has been done
+  // in yet has no stored budget, and the raw read refused Embodiment of the
+  // Law as the first thing of the cleric's own turn.
+  const budget = encounter && (encounter.kind ?? "fight") === "fight" ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
   if (!budget || budget.ownerId !== sheet.id) {
     return { error: `${sheet.name} uses this on their own turn in a fight, as the spell it changes is cast. Nothing was spent.`, refused: "rules" };
   }
@@ -166,7 +169,7 @@ export function castMarkCharge(
   return {
     apply: () => {
       const live = getActiveEncounter(campaign.id);
-      const now = live?.turnBudget;
+      const now = live ? budgetFor(live, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
       if (live && now && now.ownerId === sheet.id && !now.oncePerTurn.includes(mark)) {
         storeBudget(live, { ...now, oncePerTurn: [...now.oncePerTurn, mark] });
       }

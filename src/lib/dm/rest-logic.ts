@@ -155,7 +155,7 @@ export function longRestPatch(
     let restedMeta = patch.conditionMeta ?? sheet.conditionMeta;
     let changed = false;
     for (const name of restedConditions) {
-      const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilLongRest === true);
+      const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilLongRest === true || instance.untilRestEnds === true);
       if (result.removed) {
         changed = true;
         restedConditions = result.conditions;
@@ -227,6 +227,19 @@ export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInp
   const patch: FullPatchSheetInput = {};
   if (changed) {
     patch.resources = next;
+  }
+  // What lasts "until the rest ends" (Hearth of Moonlight and Shadow) ends
+  // with a short rest as with a long one: it outlasted the rest before.
+  let restedConditions = sheet.conditions;
+  let restedMeta = sheet.conditionMeta;
+  for (const name of sheet.conditions) {
+    const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilRestEnds === true);
+    if (result.removed) {
+      restedConditions = result.conditions;
+      restedMeta = result.meta;
+      patch.conditions = restedConditions;
+      patch.conditionMeta = restedMeta;
+    }
   }
   if (sheet.spellcasting?.pact && sheet.spellcasting.pact.used > 0) {
     // Multiclass warlock: the pact slots refill, the shared pool does not.

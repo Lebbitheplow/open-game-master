@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
@@ -26,6 +27,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allySaveAura } from "@/lib/dm/aura";
+import { allyInitiativeAura } from "@/lib/dm/divine-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
 import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -49,17 +51,30 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { authoredEnemySave } from "@/lib/dm/authored-saves";
+import { exaltedAllyAdvantage } from "@/lib/dm/exalted-aura";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
+import { preyEscapeDie } from "@/lib/dm/prey-escape";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
+import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
 // this kind of roll, and the table's encumbrance rule.
 export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: string) {
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
+  // An ally's Aura of the Sentinel on initiative (divine-auras.ts): every
+  // initiative roll comes through here, so the ally's bonus is read once.
+  const sentinel = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  // Exalted Champion's allies (exalted-aura.ts): advantage on Wisdom and death saves.
+  const exalted = kind === "saving_throw" ? exaltedAllyAdvantage(campaign.id, sheet) : null;
   return {
     ...(aura ? { saveBonus: aura.bonus, saveNote: aura.note } : {}),
+    ...(exalted ? { allyAdvantage: exalted } : {}),
+    // A Spirit Totem's aura the roller stands in (spirit-totem.ts).
+    ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { totemAdvantage: spiritTotemRollAdvantage(campaign.id, sheet) } : {}),
+    ...(sentinel ? { initiativeBonus: sentinel.bonus, initiativeNote: sentinel.note } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
@@ -77,6 +92,12 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     fearOutOfSight:
       kind !== "saving_throw" &&
       fearAsRolled(getActiveBoard(campaign.id)?.id ?? null, sheet.id, sheet.conditions, sheet.conditionMeta).length < sheet.conditions.length,
+    // Emboldening Bond's d4, once a turn, beside another bonded creature
+    // (emboldening-bond.ts): a check, a save or initiative (a Dexterity check).
+    bondDie: bondRider(campaign.id, sheet),
+    // Supernatural Defense's 1d6 on a check to escape the prey's grapple
+    // (prey-escape.ts); rolls.ts adds it to a check named against the hold.
+    escapeDie: kind === "skill_check" || kind === "ability_check" ? preyEscapeDie(sheet) : null,
   };
 }
 
@@ -113,13 +134,15 @@ export function spendRollCarriers(campaignId: string, sheetId: string, spent: st
   if (!sheet) {
     return;
   }
-  const { conditions, meta } = removeConditions(
+  const { conditions, meta: cleared } = removeConditions(
     sheet.conditions,
     sheet.conditionMeta,
     spent.split("|"),
   );
   // Inspiration is a counter, not a condition (src/lib/dm/roll-riders.ts).
   const carriers = spent.split("|");
+  // Emboldening Bond's die stamps its turn on the bond, which stays.
+  const meta = bondStamped(campaignId, { conditions, conditionMeta: cleared }, carriers) ?? cleared;
   let resources = carriers.includes(INSPIRATION_SPEND) ? spendInspirationCounter(sheet.resources) : undefined;
   // A luck point is a counter too (Lucky).
   if (carriers.includes(LUCK_SPEND)) {
@@ -186,7 +209,7 @@ export function settleAttackDie(campaignId: string, sheet: Pick<CharacterSheet, 
 
 // What a spent carrier is called on the event log.
 function carrierWords(carrier: string): string {
-  return carrier === INSPIRATION_SPEND ? "Inspiration" : carrier === LUCK_SPEND ? "a luck point" : carrier;
+  return carrier === INSPIRATION_SPEND ? "Inspiration" : carrier === LUCK_SPEND ? "a luck point" : carrier === BOND_SPEND ? "Emboldening Bond's d4" : carrier;
 }
 
 export type ForcedSave = {
@@ -451,6 +474,8 @@ export function rollEnemySave(
   // enemy's save is on the record like every other roll.
   options: {
     magical?: boolean;
+    // Against a Channel Divinity option (Elder Champion's disadvantage, authored-saves.ts).
+    channel?: boolean;
     advantage?: boolean;
     disadvantage?: boolean;
     record?: { turn?: DmTurn; detail: string };
@@ -468,6 +493,9 @@ export function rollEnemySave(
     // to measure it from (SaveExtra).
     cover?: number;
     origin?: SaveOrigin;
+    // The damage the spell deals ("fire", "fire, radiant"), for a lean that
+    // holds against some types only (Corona of Light, authored-saves.ts).
+    damageType?: string;
   } = {},
 ): ForcedSave {
   // A character fighting the party, seen as a foe (sheet-foe.ts), saves as
@@ -508,7 +536,7 @@ export function rollEnemySave(
   // counts on its saves exactly as it would on a character's.
   const riders = conditionRollRiders(enemy.conditions, "save", ability);
   // Authored subclass features (Magical Ambush, Hound of Ill Omen, Unsettling Words): authored-saves.ts.
-  const authored = authoredEnemySave(campaignId, enemy, { magical: options.magical });
+  const authored = authoredEnemySave(campaignId, enemy, { channel: options.channel, magical: options.magical, damageType: options.damageType });
   const resistsMagic = options.magical === true && hasTrait(enemy.stats, "magicResistance");
   const against = conditionSaveLean(enemy.stats, options.against);
   // Sunlight Weakness: its saves are at disadvantage in sunlight.

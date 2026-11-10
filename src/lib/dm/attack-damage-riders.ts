@@ -17,14 +17,26 @@ import { DAMAGE_TYPES } from "@/lib/dm/condition-logic";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { subclassFeatureDescription } from "@/lib/srd/features";
-import { conditionOnHitDice } from "@/lib/srd/condition-effects";
+import { activeConditionEffects, conditionOnHitDice } from "@/lib/srd/condition-effects";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
+import { textKey, words } from "@/lib/language/text-logic";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
+
+// Of the types offered, the one a creature takes the most of: not immune,
+// then not resistant, a vulnerability best; the first when all are alike.
+function bestTypeAgainst(types: string[], defenses?: Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">>): string {
+  const listed = (value: unknown) => words(typeof value === "string" ? value : "").map(textKey);
+  const immune = listed(defenses?.immune);
+  const resist = listed(defenses?.resist);
+  const vulnerable = listed(defenses?.vulnerable);
+  const score = (type: string) => (immune.includes(type) ? -2 : resist.includes(type) ? -1 : vulnerable.includes(type) ? 1 : 0);
+  return types.reduce((best, type) => (score(type) > score(best) ? type : best), types[0]);
+}
 
 export type AttackDamageRiders = {
   rageBonus: number;
@@ -41,7 +53,9 @@ export function attackDamageRiders(input: {
   // The target, for the riders that read it (Colossus Slayer). Absent (the
   // Hand, which deals before a target is picked): the riders that need one
   // are left out.
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp">;
+  // `stats`: the creature's defenses, for a rider whose type is the
+  // attacker's choice (the Nature Domain's Divine Strike).
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; conditions?: string[]; stats?: Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -52,7 +66,7 @@ export function attackDamageRiders(input: {
     kind === "weapon" || kind === "natural"
       ? authoredDamageAbility(sheet, { melee: !profile.ranged }, Object.fromEntries(Object.entries(sheet.abilities).map(([key, score]) => [key, Math.floor((score - 10) / 2)])))
       : [];
-  const onHit = attackOnHitDice(sheet, kind, !profile.ranged, marked);
+  const onHit = withTargetDice(attackOnHitDice(sheet, kind, !profile.ranged, marked), input.enemy?.conditions ?? []);
   // Feature damage riders ride weapon attacks only; once-per-turn ones are
   // reconciled with the turn budget (pc-attack-damage.ts
   // claimOncePerTurnRiders), as Sneak Attack is.
@@ -67,10 +81,25 @@ export function attackDamageRiders(input: {
             if (rider.when === "ranged" && !profile.ranged) {
               return false;
             }
-            return !rider.requiresCondition || sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition);
+            // A rider of one weapon (the lightning launcher's extra 1d6).
+            if (rider.weapon && textKey(rider.weapon) !== textKey(profile.weapon)) {
+              return false;
+            }
+            return !rider.requiresCondition || (sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition) && onQuarry(sheet, rider.requiresCondition, input.enemy?.id));
           })
-          .map((rider) => ({ ...rider, type: riderType(sheet, rider) }));
+          .map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }));
   return { rageBonus, abilityRiders, onHit, featureRiders };
+}
+
+// A rider gated on a condition that names one creature (its meta's quarry:
+// Slayer's Prey, "your first hit against it") rides a hit on that creature
+// only. Before this the 1d6 landed on any creature the ranger hit. With no
+// target named (the Hand, before a pick) the rider is shown.
+function onQuarry(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">, condition: string, enemyId: string | undefined): boolean {
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { quarry?: string } | undefined>;
+  const held = sheet.conditions.find((entry) => entry.toLowerCase() === condition);
+  const quarry = held ? meta[held]?.quarry : undefined;
+  return !quarry || !enemyId || quarry === enemyId;
 }
 
 // The dice a held condition rides on this kind of attack's hit (Hex on any
@@ -87,6 +116,21 @@ export function attackOnHitDice(
     melee,
     ...(marked ? { marked: (condition: string) => marked.has(condition) } : {}),
   });
+}
+
+// The dice a condition on the TARGET adds to a hit on it (Perfected Armor's
+// glow: an extra 1d6 lightning), beside the attacker's own.
+function withTargetDice(own: ReturnType<typeof conditionOnHitDice>, targetConditions: string[]): ReturnType<typeof conditionOnHitDice> {
+  const extra = activeConditionEffects(targetConditions).flatMap(({ row, condition }) => (row.hitDiceAgainst ? [{ ...row.hitDiceAgainst, condition }] : []));
+  if (!extra.length) {
+    return own;
+  }
+  return {
+    ...own,
+    suffix: `${own.suffix}${extra.map((entry) => `+${entry.dice}`).join("")}`,
+    notes: [...own.notes, ...extra.map((entry) => `${entry.condition}: +${entry.dice} ${entry.type} damage`)],
+    typed: [...own.typed, ...extra.map(({ dice, type }) => ({ dice, type }))],
+  };
 }
 
 // Hunter's Prey, Colossus Slayer (SRD 5.1, Hunter 3): once per turn, 1d8
@@ -111,9 +155,12 @@ function pactRiders(sheet: CharacterSheet, kind: AttackKind, profile: AttackProf
 // A Divine Strike rider's damage type. The domains share the name and the
 // dice but not the type, so the parsed rider carries none; the sheet's own
 // domain says which: the SRD Life Domain's is radiant, an authored domain's
-// is in its text, and "of the weapon's type" (War) or a choice of three
-// (Nature) rides as the weapon's own.
-function riderType(sheet: CharacterSheet, rider: FeatureRider): string {
+// is in its text, and "of the weapon's type" (War) rides as the weapon's own.
+// A choice ("cold, fire or lightning damage", Nature) is the type the
+// creature's defenses let the most of through, the first named when they
+// are alike: before this the Nature strike dealt the weapon's type, and a
+// creature immune to slashing took nothing of it.
+function riderType(sheet: CharacterSheet, rider: FeatureRider, defenses?: Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">>): string {
   if (rider.type || !isNamed(rider.feature, "divine strike")) {
     return rider.type;
   }
@@ -126,9 +173,10 @@ function riderType(sheet: CharacterSheet, rider: FeatureRider): string {
       return "radiant";
     }
     const text = subclassFeatureDescription("cleric", subclass, "Divine Strike") ?? "";
-    const typed = /extra \d+d\d+ ([a-z]+) damage/i.exec(text);
-    if (typed && (DAMAGE_TYPES as readonly string[]).includes(typed[1].toLowerCase())) {
-      return typed[1].toLowerCase();
+    const typed = /extra \d+d\d+ (.+?) damage/i.exec(text);
+    const choices = typed ? words(typed[1]).map(textKey).filter((word) => (DAMAGE_TYPES as readonly string[]).includes(word)) : [];
+    if (choices.length) {
+      return bestTypeAgainst(choices, defenses);
     }
   }
   return "";

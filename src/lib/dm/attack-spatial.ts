@@ -6,6 +6,7 @@
 // Must not import encounter-tools, pc-attack or action-tools: all three
 // call in here.
 
+import { fortifiedCover } from "@/lib/dm/cannon-board-dra";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { otherSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
@@ -174,7 +175,8 @@ export function coverFor(encounterId: string, attackerRef: string, targetRef: st
 
   // Blade Barrier gives three-quarters cover to what stands behind it (zone-rules.ts).
   const blades = zoneCoverBetween(encounterId, attackerRef, targetRef);
-  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef) || twilightShroudCover(map, targetRef) ? 2 : terrain;
+  // Fortified Position: half cover within 10 feet of the artificer's cannon (cannon-board-dra.ts).
+  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef) || twilightShroudCover(map, targetRef) || fortifiedCover(map, targetRef) ? 2 : terrain;
 }
 
 // Twilight Shroud (Twilight Domain 17): the cleric and their allies have half

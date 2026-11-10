@@ -574,8 +574,23 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         does: { kind: "temp_hp", formula: (level) => level },
       },
     ],
+    // The armor's weapons are weapons of the feature (pc_attack weapon
+    // "Thunder Gauntlets" or "Lightning Launcher"), swung with Intelligence;
+    // the gauntlets' mark is laid by their hit alone, and the launcher's extra
+    // 1d6 rides its own hit once a turn. Before this neither could be swung.
     effects: [
-      { kind: "mark", condition: "thunder gauntlets", effect: "disadv_others", melee: true, gate: { choice: "guardian" } },
+      {
+        kind: "natural_weapon",
+        gate: { choice: "guardian" },
+        weapon: { name: "Thunder Gauntlets", aliases: ["thunder gauntlet", "gauntlets", "gauntlet"], dice: "1d8", type: "thunder", ability: "int" },
+      },
+      { kind: "mark", condition: "thunder gauntlets", effect: "disadv_others", melee: true, weapon: "Thunder Gauntlets", gate: { choice: "guardian" } },
+      {
+        kind: "natural_weapon",
+        gate: { choice: "infiltrator" },
+        weapon: { name: "Lightning Launcher", aliases: ["launcher"], dice: "1d6", type: "lightning", ranged: true, rangeFt: 90, longRangeFt: 300, ability: "int" },
+      },
+      { kind: "rider", dice: "1d6", type: "lightning", when: "ranged", oncePerTurn: true, weapon: "Lightning Launcher", gate: { choice: "infiltrator" } },
       { kind: "speed", amount: 5, gate: { choice: "infiltrator" } },
       { kind: "check_adv", skills: ["stealth"], gate: { choice: "infiltrator" } },
     ],
@@ -592,7 +607,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       },
     ],
     effects: [
-      { kind: "mark", condition: "lit by perfected armor", effect: "attacked_adv", gate: { choiceOf: { feature: "Armor Model", value: "infiltrator" } } },
+      // "A creature your lightning launcher damages glows": the launcher's hit
+      // alone lays it (src/lib/srd/authored-conditions.ts reads its advantage
+      // and 1d6, authored-hooks.ts its disadvantage on attacks at the armorer).
+      { kind: "mark", condition: "lit by perfected armor", effect: "attacked_adv", weapon: "Lightning Launcher", gate: { choiceOf: { feature: "Armor Model", value: "infiltrator" } } },
     ],
   },
   "artificer::Arcane Firearm": {
@@ -611,15 +629,21 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Eldritch Cannon",
         aliases: ["Create Eldritch Cannon", "Create Cannon"],
-        pool: { id: "sub_eldritch_cannon" },
+        // "Once per long rest, or by expending a spell slot of 1st level or
+        // higher": the slot pays once the rest's cannon is made.
+        pool: { id: "sub_eldritch_cannon", slot: true },
         action: "action",
-        does: { kind: "buff", condition: "eldritch cannon", rounds: 600 },
+        // The cannon is a creature beside the artificer (AC 18, five times the
+        // artificer level hit points) and the area marking its square
+        // (src/lib/dm/feature-summons-dra.ts).
+        does: { kind: "eldritch_cannon", condition: "eldritch cannon", rounds: 600 },
       },
       {
         name: "Activate Cannon",
         aliases: ["Flamethrower", "Protector", "Activate Eldritch Cannon"],
         action: "bonus",
         gate: { condition: "eldritch cannon" },
+        nearZone: { zone: "eldritch cannon", feet: 60, label: "the cannon" },
         does: {
           kind: "variants",
           options: {
@@ -661,7 +685,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         pool: { id: "art_arcane_jolt" },
         oncePerTurn: true,
         afterWeaponHit: true,
-        does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force" },
+        does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force", healReachFt: 30 },
       },
     ],
   },
@@ -675,17 +699,35 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "Battle Smith",
     effects: [{ kind: "defender_upgrade", ac: 2 }],
   },
-  // Spirit Totem (XGtE): "As a bonus action, you can move the spirit up to 60
-  // feet to a point you can see" (issue 233).
+  // Spirit Totem: "call a spirit to a point within 60 feet for a minute (once
+  // per short or long rest), with a 30-foot aura you can move 60 feet as a
+  // bonus action" (issue 233). The spirit is a board area at the point
+  // (use_resource x and y, else the druid's square) that the aura's readers
+  // measure from (src/lib/dm/spirit-totem.ts); before this it was a condition
+  // on the druid alone and its move a note.
   "druid::Spirit Totem": {
     subclass: "Circle of the Shepherd",
+    counter: "sub_spirit_totem",
     spends: [
+      {
+        name: "Spirit Totem",
+        pool: { id: "sub_spirit_totem" },
+        action: "bonus",
+        does: {
+          kind: "variants",
+          options: {
+            bear: { does: { kind: "spirit_totem", spirit: "bear", rounds: 10 } },
+            hawk: { does: { kind: "spirit_totem", spirit: "hawk", rounds: 10 } },
+            unicorn: { does: { kind: "spirit_totem", spirit: "unicorn", rounds: 10 } },
+          },
+        },
+      },
       {
         name: "Move Spirit Totem",
         aliases: ["Move the Spirit", "Move Spirit"],
         action: "bonus",
         gate: { condition: "spirit totem" },
-        does: { kind: "note", text: "The spirit moves up to 60 feet to a point the druid can see, and its 30-foot aura moves with it." },
+        does: { kind: "spirit_totem_move" },
       },
     ],
   },

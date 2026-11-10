@@ -115,7 +115,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "cleric::Improved Duplicity": {
     subclass: "Trickery Domain",
-    narrated: "Up to four illusory duplicates of Invoke Duplicity: positions the GM places, each casting and flanking as the one did.",
+    // Invoke Duplicity's count of four (authored-spend-divine-clr.ts duplicity).
+    heldBy: { file: "src/lib/dm/authored-spend-divine-clr.ts", call: "\"Improved Duplicity\") ? 4" },
   },
   "cleric::Avatar of Battle": {
     subclass: "War Domain",
@@ -129,11 +130,13 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "cleric::Spell Breaker": {
     subclass: "Arcana Domain",
-    narrated: "Ending a spell on the creature a healing spell touched is an end_condition the GM makes, of a level no higher than the slot.",
+    heldBy: { file: "src/lib/dm/spell-breaker.ts", call: "spellBreaker(" },
   },
   "cleric::Arcane Mastery": {
     subclass: "Arcana Domain",
-    narrated: "The four wizard spells (6th to 9th level) are the cleric's choice; once chosen they are written onto the sheet as always prepared.",
+    // Four wizard spells of 6th to 9th level, picked off the cleric list and
+    // held on top of the prepared count (class-spell-grants.ts).
+    heldBy: { file: "src/lib/srd/class-spell-grants.ts", call: "clericGrants(" },
   },
 
   // ---- druid ----
@@ -153,21 +156,38 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         name: "Hearth of Moonlight and Shadow",
         action: "none",
         fight: "out",
-        does: { kind: "buff", target: "allies", condition: "hearth of moonlight and shadow", rounds: 4800, rangeFt: 30, count: "12" },
+        // "During a short or long rest ... until the rest ends": take_rest
+        // takes it off every creature inside (it outlasted the rest before).
+        does: { kind: "buff", target: "allies", condition: "hearth of moonlight and shadow", rounds: 4800, rangeFt: 30, count: "12", untilRestEnds: true },
       },
     ],
   },
   "druid::Mighty Summoner": {
     subclass: "Circle of the Shepherd",
-    effects: [{ kind: "summon_hp_per_hd", amount: 2, types: ["beast", "fey"], note: "Their natural weapons count as magical against resistance; the GM keeps to that." }],
+    // The natural weapons' magic reads these types too (src/lib/dm/mighty-summoner.ts).
+    effects: [{ kind: "summon_hp_per_hd", amount: 2, types: ["beast", "fey"], note: "Their natural weapons count as magical against resistance and immunity to nonmagical attacks." }],
   },
+  // "Summoned creatures inside your Spirit Totem aura heal half your druid
+  // level at the end of your turns": the turn's end heals them
+  // (src/lib/dm/spirit-totem.ts guardianSpiritHeal, from authored-turns.ts).
   "druid::Guardian Spirit": {
     subclass: "Circle of the Shepherd",
-    narrated: "Summoned creatures ending a turn in the Spirit Totem aura regain half the druid level: a heal the GM makes at the end of the druid's turn.",
+    heldBy: { file: "src/lib/dm/authored-turns.ts", call: "guardianSpiritHeal(" },
   },
+  // "While Symbiotic Entity is active, a bonus action hurls spores into a
+  // 10-foot cube within 30 feet for a minute": a board area at the square
+  // named (src/lib/dm/spreading-spores.ts) that strikes as the spell areas do,
+  // and Halo of Spores' reaction stays shut while it lasts (its row's gate).
   "druid::Spreading Spores": {
     subclass: "Circle of Spores",
-    narrated: "A 10-foot cube of spores is a zone the GM places; a creature entering or starting there takes the Halo of Spores damage on a failed Constitution save.",
+    spends: [
+      {
+        name: "Spreading Spores",
+        action: "bonus",
+        gate: { condition: "symbiotic entity", because: "needs Symbiotic Entity running" },
+        does: { kind: "spreading_spores", rangeFt: 30, rounds: 10 },
+      },
+    ],
   },
   "druid::Full of Stars": {
     subclass: "Circle of Stars",
@@ -326,11 +346,25 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "paladin::Aura of the Sentinel": {
     subclass: "Oath of the Watchers",
-    effects: [{ kind: "init_prof", note: "Allies within 10 feet (30 from 18th level) add it too; the GM adds theirs." }],
+    effects: [
+      {
+        kind: "init_prof",
+        rangeFt: [[7, 10], [18, 30]],
+        note: "Allies within 10 feet (30 from 18th level) add it too, while the paladin is up; the server adds it to their initiative.",
+      },
+    ],
   },
   "paladin::Aura of Hate": {
     subclass: "Oathbreaker",
-    effects: [{ kind: "damage_ability", ability: "cha", when: "melee", note: "Fiends and undead within 10 feet (30 from 18th level) add it too; the GM adds theirs." }],
+    effects: [
+      {
+        kind: "damage_ability",
+        ability: "cha",
+        when: "melee",
+        aura: { rangeFt: [[7, 10], [18, 30]], types: ["fiend", "undead"] },
+        note: "Fiends and undead within 10 feet (30 from 18th level) add it too, while the paladin is up; the server adds it to their melee weapon blows.",
+      },
+    ],
   },
   "paladin::Supernatural Resistance": {
     subclass: "Oathbreaker",
@@ -340,33 +374,52 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   // ---- ranger ----
   "ranger::Umbral Sight": {
     subclass: "Gloom Stalker",
-    effects: [{ kind: "darkvision", feet: 60, orAdd: 30, note: "Unseen by creatures that rely on darkvision in darkness: the GM keeps to that." }],
+    effects: [{ kind: "darkvision", feet: 60, orAdd: 30, note: "Unseen by creatures that rely on darkvision in darkness: the board's sight rule keeps to it (src/lib/dm/attack-light.ts)." }],
   },
+  // One more attack of the Attack action after a miss, once a turn, and a
+  // third creature's attack after two were attacked: the turn budget gives
+  // them (src/lib/dm/turn-extra-attacks-logic.ts, read by budgetFor).
   "ranger::Stalker's Flurry": {
     subclass: "Gloom Stalker",
-    narrated: "One more weapon attack after a miss, once a turn: the GM calls pc_attack again for it.",
+    heldBy: { file: "src/lib/dm/turn-extra-attacks-logic.ts", call: "export function turnExtraAttacks(" },
   },
   "ranger::Distant Strike": {
     subclass: "Horizon Walker",
-    narrated: "A 10-foot teleport before each attack (move_token) and a third attack after striking two creatures: the GM allows them.",
+    heldBy: { file: "src/lib/dm/turn-extra-attacks-logic.ts", call: "export function distantStrikeRefusal(" },
   },
+  // Two attacks for one command: pet_attack's second is free once the first
+  // is made (src/lib/dm/pet-attack-cost.ts).
   "ranger::Bestial Fury": {
     subclass: "Beast Master",
-    narrated: "The companion is its own sheet (pet-tools); the GM gives it two attacks when commanded to attack.",
+    heldBy: { file: "src/lib/dm/pet-attack-cost.ts", call: 'holdsFeature(sheet, "Bestial Fury")' },
   },
+  // A spell the ranger casts on themselves lands on the companion's record
+  // too (cast_buff, src/lib/dm/pet-command.ts shareSpell).
   "ranger::Share Spells": {
     subclass: "Beast Master",
-    narrated: "A spell the ranger casts on themselves also affects the companion within 30 feet: the GM applies it to the companion's sheet.",
+    heldBy: { file: "src/lib/dm/cast-buff.ts", call: "shareSpell(" },
   },
   "ranger::Exceptional Training": {
     subclass: "Beast Master",
-    effects: [
+    // "On a turn your companion doesn't attack, a bonus action can command
+    // it to Dash, Disengage or Help" (src/lib/dm/authored-spend-divine-rng.ts).
+    spends: [
       {
-        kind: "pet_magical",
-        pets: ["beast_companion"],
-        note: "A bonus action commands the companion to Dash, Disengage or Help on a turn it does not attack; the GM moves it.",
+        name: "Exceptional Training",
+        aliases: ["Command Companion"],
+        action: "bonus",
+        gate: { pet: "beast_companion" },
+        does: {
+          kind: "variants",
+          options: {
+            dash: { does: { kind: "pet_command", options: ["dash"] } },
+            disengage: { does: { kind: "pet_command", options: ["disengage"] } },
+            help: { does: { kind: "pet_command", options: ["help"] } },
+          },
+        },
       },
     ],
+    effects: [{ kind: "pet_magical", pets: ["beast_companion"] }],
   },
   "ranger::Fey Wanderer Magic": { subclass: "Fey Wanderer", heldBy: SPELL_TABLE },
   "ranger::Swarmkeeper Magic": { subclass: "Swarmkeeper", heldBy: SPELL_TABLE },
@@ -596,7 +649,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         classes: ["artificer"],
         damageTypes: ["acid", "fire", "necrotic", "poison"],
         healing: true,
-        note: "One roll of a spell cast through alchemist's supplies; the GM keeps to that.",
+        // "When you cast a spell with alchemist's supplies as your
+        // spellcasting focus": none carried, nothing is added (the bonus
+        // landed on Fire Bolt and Cure Wounds with no supplies at all).
+        itemNames: ["alchemist's supplies"],
+        note: "One roll of a spell cast through alchemist's supplies.",
       },
     ],
   },

@@ -12,6 +12,7 @@ import {
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { heldHelp } from "@/lib/dm/help-logic";
 import { encumbranceCovers, encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import {
@@ -323,6 +324,12 @@ export function resolveRollExpression(
   extras?: {
     saveBonus?: number;
     saveNote?: string;
+    // An ally's aura that gives advantage on saves of these abilities, and on
+    // death saves (Exalted Champion, src/lib/dm/exalted-aura.ts).
+    allyAdvantage?: { saves: string[]; death: boolean; note: string } | null;
+    // A Spirit Totem's aura the roller stands in (src/lib/dm/spirit-totem.ts):
+    // advantage on saves and checks of these abilities and on these skills.
+    totemAdvantage?: { saves: string[]; checks: string[]; skills: string[]; note: string } | null;
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -358,6 +365,16 @@ export function resolveRollExpression(
     // Every source of the roller's fear is out of sight on the board
     // (attack-light.ts fearAsRolled): frightened costs the check nothing.
     fearOutOfSight?: boolean;
+    // Emboldening Bond's d4 (src/lib/dm/emboldening-bond.ts): the die, its
+    // note, and the carrier the caller's spendRollCarriers stamps as spent.
+    bondDie?: { dice: string; note: string; spend: string } | null;
+    // A die on a check to escape a hold, and the holds it answers
+    // (Supernatural Defense, src/lib/dm/prey-escape.ts).
+    escapeDie?: { dice: string; note: string; against: string[] } | null;
+    // An ally's aura on the roller's initiative (Aura of the Sentinel,
+    // src/lib/dm/divine-auras.ts), read by the caller as the save aura is.
+    initiativeBonus?: number;
+    initiativeNote?: string;
   },
 ):
   | {
@@ -477,6 +494,8 @@ export function resolveRollExpression(
           strength: sheet.abilities.str,
           equipment: sheet.equipment ?? [],
           coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
+          // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
+          carryFactor: authoredCarryFactor(sheet),
         })
       : null;
   const overloaded =
@@ -508,6 +527,19 @@ export function resolveRollExpression(
     extras?.charmedTarget && (derivationKind === "skill_check" || derivationKind === "ability_check") && derivationAbility === "cha"
       ? extras.charmedTarget
       : null;
+  // Exalted Champion's allies: a Wisdom save, or a death save (exalted-aura.ts).
+  const ally = args.kind === "saving_throw" ? extras?.allyAdvantage : null;
+  const allyAdvantaged = Boolean(ally && (extras?.death ? ally.death : ally.saves.includes(String(derivationAbility ?? ""))));
+  // Spirit Totem: the Bear's Strength checks and saves, the Hawk's
+  // Perception, the Unicorn's checks to find a creature, in the aura.
+  const totem = extras?.totemAdvantage;
+  const totemSkill = derivationKind === "skill_check" ? findSkill(textKey(args.skill ?? "").replace(/[\s-]+/g, "_"))?.id : undefined;
+  const totemAdvantaged = Boolean(
+    totem &&
+      (derivationKind === "saving_throw"
+        ? !extras?.death && totem.saves.includes(String(derivationAbility ?? ""))
+        : (derivationKind === "skill_check" || derivationKind === "ability_check") && (totem.checks.includes(String(derivationAbility ?? "")) || Boolean(totemSkill && totem.skills.includes(totemSkill)))),
+  );
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
     ...(charming ? ["advantage" as const] : []),
@@ -520,8 +552,13 @@ export function resolveRollExpression(
     ...riders.advantageSources,
     ...(armorUntrained ? ["disadvantage" as const] : []),
     ...(overloaded ? ["disadvantage" as const] : []),
+    ...(allyAdvantaged ? ["advantage" as const] : []),
+    ...(totemAdvantaged ? ["advantage" as const] : []),
   ]);
-  const bonusDie = `${riders.dice}${effects.diceSuffix}`;
+  const bond = extras?.bondDie && derivationKind ? extras.bondDie : null;
+  // A check named against the hold it escapes (`against: "grappled"`).
+  const escapes = (derivationKind === "skill_check" || derivationKind === "ability_check") && extras?.escapeDie && extras.escapeDie.against.includes(named(args.against) ?? "") ? extras.escapeDie : null;
+  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}`;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
     riders.inspirationCondition,
@@ -530,6 +567,7 @@ export function resolveRollExpression(
     ...effects.spent,
     ...riders.authoredSpent,
     riders.inspired ? INSPIRATION_SPEND : null,
+    bond?.spend ?? null,
   ].filter(Boolean) as string[];
   const carriersSpent = [...spent, ...(luckPoint ? [LUCK_SPEND] : [])];
   const inspirationFields = carriersSpent.length ? { spendInspiration: carriersSpent.join("|") } : {};
@@ -543,6 +581,8 @@ export function resolveRollExpression(
     ...(helped ? ["spends the Help their ally gave them: advantage"] : []),
     ...(untrainedHelper ? [`${untrainedHelper}'s Help gives nothing here: they are not trained with ${args.tool}`] : []),
     ...riders.notes,
+    ...(bond ? [bond.note] : []),
+    ...(escapes ? [escapes.note] : []),
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
       : []),
@@ -613,7 +653,8 @@ export function resolveRollExpression(
         ? strengthCheckFloor(sheet, computeAbilityScore(sheet, "str"), skillModifier)
         : null;
     // Silver Tongue, Ear for Deceit: a skill's own floor (authored-effects-more.ts).
-    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id));
+    // Starry Form's Dragon: a floor on every Intelligence and Wisdom check.
+    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, checkAbility));
     // Reroll (Lucky) comes before floor (Reliable Talent): the 1 is rerolled,
     // then the surviving face is raised to 10 if still low.
     const d20Mods = `${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`;
@@ -735,7 +776,8 @@ export function resolveRollExpression(
     }
     const derived = computeSheetDerived(sheet);
     // A lasting effect on initiative (Gift of Alacrity) adds to the roll.
-    const initiativeEffect = extras?.effectBonus ?? 0;
+    // An ally's Aura of the Sentinel adds to it too (extras.initiativeBonus).
+    const initiativeEffect = (extras?.effectBonus ?? 0) + (extras?.initiativeBonus ?? 0);
     const luckyBase = withLuck(d20Expression(derived.initiative + initiativeEffect, advantage)).replace(
       /^(\d+d20(?:k[hl]\d+)?)/,
       lucky ? "$1r1" : "$1",
@@ -743,9 +785,10 @@ export function resolveRollExpression(
     const initiativeNotes = [
       ...(conditionNotes ?? []),
       ...(extras?.effectNote ? [extras.effectNote] : []),
+      ...(extras?.initiativeBonus && extras.initiativeNote ? [extras.initiativeNote] : []),
     ];
     return {
-      expression: `${luckyBase}${effects.diceSuffix}`,
+      expression: `${luckyBase}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}`,
       detail: "initiative",
       ...(initiativeNotes.length ? { conditionNotes: initiativeNotes } : {}),
       ...inspirationFields,

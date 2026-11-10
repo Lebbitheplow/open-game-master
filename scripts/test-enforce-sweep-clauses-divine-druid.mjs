@@ -5,5 +5,6 @@
 // scripts/lib/sweep-clauses-divine-druid.mjs.
 import { runClauseSuite } from "./lib/sweep-clauses-divine.mjs";
 import { DRUID } from "./lib/sweep-clauses-divine-druid.mjs";
+import { RO_DRUID_B } from "./lib/sweep-clauses-divine-ro-B-druid.mjs";
 
-await runClauseSuite("test-enforce-sweep-clauses-divine-druid.mjs", DRUID);
+await runClauseSuite("test-enforce-sweep-clauses-divine-druid.mjs", { ...DRUID, ...RO_DRUID_B });

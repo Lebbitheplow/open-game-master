@@ -9,6 +9,7 @@
 import { holdsMoteDie } from "@/lib/dm/after-roll-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
+import type { BondRider } from "@/lib/dm/emboldening-bond-logic";
 
 // An unspent Bardic Inspiration die: the size rides in the condition name,
 // "bardic inspiration (d8)", as use_resource writes it.
@@ -22,8 +23,16 @@ function heldInspiration(conditions: string[]): { condition: string; die: string
   return null;
 }
 
-export function attackRollExtras(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): ConditionRollRiders {
+// `bond`: Emboldening Bond's d4 when another bonded creature stands in reach
+// this turn, read off the board by the engine (src/lib/dm/emboldening-bond.ts
+// bondRider); the Hand, which reads no distances, passes none.
+export function attackRollExtras(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">, bond: BondRider | null = null): ConditionRollRiders {
   const riders = conditionRollRiders(sheet.conditions, "attack");
+  if (bond) {
+    riders.diceSuffix += `+${bond.dice}`;
+    riders.notes.push(bond.note);
+    riders.spent.push(bond.spend);
+  }
   // A held Bardic Inspiration die is the holder's to add once the d20 is
   // rolled (SRD 5.1): the attack adds it only to a miss it can turn into a
   // hit (forced-save.ts settleHeldDie). A mote's die bursts at the throw

@@ -63,7 +63,7 @@ export function springTrapOn(
     if (dice !== "0") {
       const rolled = rollCard(campaign, turn, victim.id, "damage", rollOn(`${trap.fallFeet} ft fall into ${name} (${dice} bludgeoning)`, [victim.name]), dice, null);
       const fall = openFall(campaign.id, victim.id);
-      applyPcDamage(campaign, turn.id, sheet(), { amount: rolled.total, type: "bludgeoning", knocksProne: true, reason: name });
+      applyPcDamage(campaign, turn.id, sheet(), { noCreature: true, amount: rolled.total, type: "bludgeoning", knocksProne: true, reason: name });
       fall.close(rolled.total);
       lines.push(`${victim.name} falls ${trap.fallFeet} feet: ${rolled.total} bludgeoning, prone.`);
     }
@@ -83,7 +83,7 @@ export function springTrapOn(
       ? Number(dice)
       : rollCard(campaign, turn, victim.id, "damage", rollOn(`${name} (${dice} ${part.type})`, [victim.name]), dice, null).total;
     if (amount > 0) {
-      applyPcDamage(campaign, turn.id, sheet(), { amount, type: part.type, reason: name });
+      applyPcDamage(campaign, turn.id, sheet(), { noCreature: true, amount, type: part.type, reason: name });
       lines.push(`${amount} ${part.type}.`);
     }
   }

@@ -206,6 +206,12 @@ await test("Cauterizing Flames is played from its cards: the fire card burns the
     const enemy = await stage(druid);
     kit.place(ally.id, 4, 5);
     world.patch(ally.id, { currentHp: 20 });
+    // Cauterizing Flames answers a creature standing in one of the druid's
+    // spectral flames (src/lib/dm/cauterizing-flames.ts): one under each, as
+    // two deaths there would leave them.
+    const flamesAt = [kit.token(enemy.id), kit.token(ally.id)].map((token) => ({ x: token.x, y: token.y, untilRound: 99 }));
+    const now = world.sheet(druid.id);
+    world.patch(druid.id, { conditions: [...now.conditions.filter((entry) => entry !== "spectral flames"), "spectral flames"], conditionMeta: { ...now.conditionMeta, "spectral flames": { flames: flamesAt } } });
     assert.equal(flames(FRESH_TURN).length, 2, "a card for each aim");
     const card = flames(offTurn).find((entry) => entry.intent.variant === variant);
     assert.ok(card, variant);
@@ -238,7 +244,7 @@ await test("use_reaction names the way a counted reaction with two ways goes, an
   await stage(druid);
   const asked = await world.invoke("use_reaction", { characterId: druid.id, feature: "Cauterizing Flames" });
   assert.equal(asked.ok, false);
-  assert.match(asked.error, /takes variant "heal" or "burn"/);
+  assert.match(asked.error, /needs a variant: heal or burn/);
   assert.equal(world.sheet(druid.id).resources.sub_cauterizing_flames.used, 0, "the refusal costs nothing");
 });
 

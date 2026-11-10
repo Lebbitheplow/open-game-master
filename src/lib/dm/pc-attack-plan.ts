@@ -33,6 +33,7 @@ import {
 import { gatePcAttack } from "@/lib/dm/pc-attack-gate";
 import { checkAttackOptions, claimedAdvantage, type AttackOptions } from "@/lib/dm/pc-attack-options";
 import { spendAttackEconomy } from "@/lib/dm/pc-attack-spend";
+import { ambushAttackDie, distantStrikeRefusal } from "@/lib/dm/turn-extra-attacks-logic";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { buildAttackProfile, type BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { pickManeuver, type OnHitSpends } from "@/lib/dm/pc-attack-riders";
@@ -504,6 +505,15 @@ export function planPcAttack(input: {
       };
     }
   }
+  // A swing of the Attack action a ranger's archetype added: Distant
+  // Strike's goes at a third creature, Dread Ambusher's deals 1d8 more
+  // (src/lib/dm/turn-extra-attacks-logic.ts).
+  const madeBefore = budget?.attacksMade ?? 0;
+  const actionSwing = Boolean(budget) && weaponAttack && !grantedBonusAction && !args.offHand && !args.bonusAttack && !args.hordeBreaker;
+  const thirdOnly = actionSwing && budget ? distantStrikeRefusal(sheet, budget, encounter.round, madeBefore, attacksAllowedFor(sheet), enemy.displayName) : null;
+  if (thirdOnly) {
+    return { refused: { error: thirdOnly, refused: "rules" } };
+  }
   // The part of the turn the attack spends (src/lib/dm/pc-attack-spend.ts).
   const spent = spendAttackEconomy({
     sheet,
@@ -574,6 +584,10 @@ export function planPcAttack(input: {
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
   const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);
   profile = gear.profile;
+  const ambush = actionSwing ? ambushAttackDie(sheet, encounter.round, madeBefore, attacksAllowedFor(sheet)) : null;
+  if (ambush) {
+    profile = { ...profile, damageExpression: `${profile.damageExpression}+${ambush}`, riderNotes: [...profile.riderNotes, `Dread Ambusher: +${ambush} on the first turn's extra attack`] };
+  }
   // Bestow Curse's necrotic rides its caster's hits on the cursed (spell-retort.ts).
   const curse = curseRider(enemy, sheet.id);
   if (curse) {

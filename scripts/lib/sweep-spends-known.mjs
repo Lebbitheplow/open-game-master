@@ -100,8 +100,6 @@ export const KNOWN = {
   "counter:sub_arcane_shot": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_breath_of_the_dragon": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:sub_call_the_hunt": { SPENT_FOR_NOTHING: { severity: "medium", note: "its trigger (the rage just entered) is on record now; the effect (a d6 on each chosen ally's hit, 5 temporary hit points per ally) is the martial package's to build" } },
-  "counter:sub_cauterizing_flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "counter:sub_hunters_sense": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_manifest_mind_casts": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_power_surge": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
@@ -109,14 +107,13 @@ export const KNOWN = {
   "counter:sub_spell_thief": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_unleash_incarnation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "reaction:fighter::Hold the Line::Hold the Line": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
-  "spend:druid::Cauterizing Flames::Cauterizing Flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "spend:druid::Spirit Totem::Move Spirit Totem": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "spend:monk::Ascendant Aspect::Explosive Fury": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "spend:warlock::Master of Hexes::Master of Hexes": { TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
 };
 
 export const RULINGS = {
-  "counter:channel_divinity": { SPENT_FOR_NOTHING: "src/lib/dm/mutations.ts use_resource: \"A Channel Divinity in a fight names its option\" (a plain spend is taken only outside a fight)" },
+  "spend:ranger::Hunter's Sense::Hunter's Sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
+  "counter:sub_hunters_sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:cyberpunk_jury_rig": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:cyberpunk_the_net_remembers": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:dark_fantasy_immolate_the_sin": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },

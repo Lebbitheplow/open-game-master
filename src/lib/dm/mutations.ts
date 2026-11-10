@@ -44,6 +44,7 @@ import { healDeathHook } from "@/lib/dm/death";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { featureVariantSpend } from "@/lib/dm/feature-spends";
 import { authoredFeatureSpend } from "@/lib/dm/authored-spends";
+import { afterHealingSpell } from "@/lib/dm/heal-after-dra";
 import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
@@ -110,7 +111,7 @@ import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
-import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
@@ -500,6 +501,12 @@ const argsSchema = z.object({
   // use_resource: the creatures of the user's choice an area feature takes
   // (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect).
   targetEnemyIds: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  // use_resource: the square a feature moves its holder to (Misty Wanderer,
+  // Gathered Swarm's move; src/lib/dm/feature-move.ts). Sent by the console
+  // and the Hand; the model's tool description leaves it out (the compact
+  // budget), and a move it leaves out is credited to move_token as before.
+  x: z.coerce.number().int().min(0).max(500).optional(),
+  y: z.coerce.number().int().min(0).max(500).optional(),
   // purchase: gold each, for a thing no list prices (half a gold piece is 0.5).
   price: z.coerce.number().min(0).max(100000).optional(),
   resource: z.string().optional(),
@@ -857,6 +864,9 @@ function dmMutation(
           magical: args.magical === true,
           // A named spell's damage: Spell Resistance and Aura of Warding resist it.
           spell: Boolean(args.spell),
+          // A creature's blow is enemy_attack or cast_at_player; this tool's
+          // harm names no creature, which Emissary of Redemption does not resist.
+          noCreature: true,
           reason,
         }),
       };
@@ -1014,12 +1024,16 @@ function dmMutation(
       }
       // Any healing ends the dying state.
       const deathInfo = healDeathHook(campaign, turnId, target);
+      // A druid's healing spell reaches past its target: Starry Form's
+      // Chalice and the Unicorn spirit's aura (src/lib/dm/heal-after-dra.ts).
+      const alsoHealed = healSpell && healNote ? afterHealingSpell(campaign, turnId, (args.casterId ? resolve(args.casterId) : null) ?? sheet, target, healSpell, args.level) : [];
       return {
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
           healed: amount,
           ...(healNote ? { spell: healNote } : {}),
+          ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,
         },
       };
@@ -1429,7 +1443,18 @@ function dmMutation(
         return { result: option.refused };
       }
       const pool = counter ? sheet.resources[counter.id] : undefined;
-      if (!option && counter?.id === "channel_divinity" && fighting && pool) {
+      // An option the sheet holds that the cost table does not list (a
+      // workshop subclass's own) is still an option named, at the cost its
+      // feature keeps.
+      const heldChannel = counter?.id === "channel_divinity" && !option
+        ? channelOptions(sheet).find((entry) => [args.variant ?? "", nameChoice(resourceName) ?? ""].some((name) => name && isNamed(name, entry.name)))
+        : undefined;
+      // A bare Channel Divinity spend does nothing in a fight or out of one,
+      // so it is refused with the options, spending nothing (gap study WAVE2
+      // D1: "A bare Channel Divinity spend (no option named) does nothing, in
+      // a fight or out: refuse it with a pointer to the options, spending
+      // nothing (R10 extended)").
+      if (!option && !heldChannel && counter?.id === "channel_divinity" && pool) {
         // The uses and the turn before the option: which one is moot when
         // none can be paid for. The turn is held to the cheapest option.
         const payment = payForUse(sheet, counter, pool, 1);
@@ -1443,14 +1468,16 @@ function dmMutation(
           return { result: turnGate };
         }
         const held = channelOptionsHeld(sheet);
+        const unknown = args.variant?.trim() ? `"${args.variant.trim()}" is not a Channel Divinity option ${sheet.name} holds. ` : "";
         return {
           result: {
-            error: `Channel Divinity in a fight is one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
+            error: `${unknown}Channel Divinity is always one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
             retry: true,
           },
         };
       }
-      const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
+      const heldCost = heldChannel && heldChannel.cost !== "ritual" ? heldChannel.cost : undefined;
+      const optionCharge = option?.cost ?? heldCost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
       // Embodiment of the Law and the genre surges move the next spell to
       // the bonus action (src/lib/dm/resource-turn.ts castMarkCharge).
       const castMark = castMarkCharge(campaign, sheet, counter?.id);
@@ -1480,6 +1507,7 @@ function dmMutation(
         args.variant,
         { beforeDrop: charge.beforeDrop },
         { turnId, targetEnemyId: args.targetEnemyId, targetEnemyIds: args.targetEnemyIds },
+        { ...(args.x !== undefined && args.y !== undefined ? { square: { x: args.x, y: args.y } } : {}), ...(args.level !== undefined ? { slotLevel: args.level } : {}) },
       );
       if ("error" in outcome) {
         return { result: outcome };

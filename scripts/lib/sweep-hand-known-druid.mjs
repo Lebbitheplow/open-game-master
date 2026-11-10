@@ -4,6 +4,5 @@ export const ROWS = {
   "test-enforce-sweep-hand-druid-a": [
   ],
   "test-enforce-sweep-hand-druid-b": [
-    ["P1|Circle of Wildfire@20|out-of-fight|feature:sub_cauterizing_flames:heal", "hand-reaction-no-trigger"],
   ],
 };

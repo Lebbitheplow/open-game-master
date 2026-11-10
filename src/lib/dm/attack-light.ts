@@ -30,7 +30,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { lightSourcesWithZones, lightsWithZones, zoneHidesFrom } from "@/lib/dm/zone-rules";
 import { conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
 import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
-import { isConditionNamed } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
+import { getSheetById } from "@/lib/db/sheets";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
 import { tilesApart } from "@/lib/dm/board-reach";
 
@@ -146,7 +147,16 @@ export function attackSight(input: {
     obscureBeyond: map.outdoors ? weatherObscurementTiles(clock.weather) : Infinity,
   };
   const lit = cachedLitTiles({ ...vision, id: map.id }, listTokens(map.id), lightSourcesWithZones(map));
-  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken): boolean => {
+  // Umbral Sight (Gloom Stalker 3): "you are invisible to creatures relying
+  // on darkvision to see you in darkness". Darkvision alone does not find
+  // its holder in the dark; a light, blindsight, tremorsense, truesight or
+  // Devil's Sight still does. Before this a goblin's darkvision saw the
+  // ranger and attacked with a straight roll.
+  const umbral = (refId: string) => {
+    const sheet = getSheetById(refId);
+    return Boolean(sheet && holdsFeature(sheet, "Umbral Sight"));
+  };
+  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken, unseenByDarkvision = false): boolean => {
     const distance = chebyshev(viewer.x, viewer.y, subject.x, subject.y);
     if (distance <= senses.blindsight) {
       return true;
@@ -164,14 +174,14 @@ export function attackSight(input: {
     }
     return (
       lit.has(tileIndex(map.width, subject.x, subject.y)) ||
-      distance <= senses.darkvision ||
+      (distance <= senses.darkvision && !unseenByDarkvision) ||
       distance <= senses.devilsSight ||
       distance <= senses.truesight
     );
   };
   return {
-    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to),
-    targetSees: !veiled.target && sees(to, input.target.senses, from),
+    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to, umbral(input.target.refId)),
+    targetSees: !veiled.target && sees(to, input.target.senses, from, umbral(input.attacker.refId)),
   };
 }
 

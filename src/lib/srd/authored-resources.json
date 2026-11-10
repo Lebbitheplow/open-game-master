@@ -260,6 +260,19 @@
    "passive": true
   },
   {
+   "id": "sub_blessing_of_the_forge",
+   "displayName": "Blessing of the Forge",
+   "match": [
+    "blessing of the forge"
+   ],
+   "uses": 1,
+   "recharge": "long",
+   "action": "none",
+   "outOfFight": true,
+   "passive": true,
+   "guidance": "Spent through use_resource 'Blessing of the Forge' with variant 'armor' or 'weapon' (targetCharacterId the creature it goes to), out of a fight, after a long rest: bless a suit of armor (+1 AC) or a weapon (+1 to attack and damage rolls) the cleric touches, until they use the feature again. Once a long rest. The server lays the blessing and takes the earlier one off."
+  },
+  {
    "id": "sub_eyes_of_night",
    "displayName": "Eyes of Night",
    "match": [
@@ -333,7 +346,9 @@
    "fx": {
     "kind": "heal_dice_pool",
     "die": "d6",
-    "tempPerDie": 1
+    "tempPerDie": 1,
+    "rangeFt": 120,
+    "sight": true
    },
    "perUse": "half_level"
   },
@@ -1456,7 +1471,7 @@
    "guidance": "A bonus action granting a 10-foot flying speed for 1 minute, carried by the swarm.",
    "fx": {
     "kind": "buff",
-    "condition": "flying",
+    "condition": "flying (writhing tide)",
     "rounds": 10
    }
   },
@@ -1486,10 +1501,12 @@
    "uses": 1,
    "ability": "wis",
    "recharge": "long",
-   "guidance": "A free misty step that can bring one willing creature within 5 feet along.",
+   "action": "bonus",
+   "guidance": "A free misty step (a bonus action, no spell slot) that can bring one willing creature within 5 feet along (targetCharacterId).",
    "fx": {
     "kind": "teleport",
-    "feet": 30
+    "feet": 30,
+    "along": 5
    }
   },
   {
@@ -1514,7 +1531,7 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "Summon the drake with summon_pet (its stat block: 5 + five times the ranger level hit points, a bite for 1d6 + proficiency piercing, immune to its chosen essence); a spell slot of 1st level or higher buys another summoning.",
+   "guidance": "Summon the drake with summon_pet, which spends this use (its stat block: 5 + five times the ranger level hit points, a bite for 1d6 + proficiency piercing, immune to its chosen essence; in a fight the ranger's action); with the use spent, summon_pet's level spends a spell slot of 1st level or higher for another.",
    "passive": true
   },
   {
@@ -1527,7 +1544,8 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "The ranger or the drake exhales a 30-foot cone of acid, cold, fire, lightning or poison: 8d6 (10d6 from 15th level), halved on a Dexterity save. A spell slot of 3rd level or higher buys extra uses.",
+   "slotFallback": 3,
+   "guidance": "The ranger or the drake exhales a 30-foot cone of acid, cold, fire, lightning or poison: 8d6 (10d6 from 15th level), halved on a Dexterity save. With the use spent, a spell slot of 3rd level or higher buys another (level).",
    "fx": {
     "kind": "aoe",
     "dice": [
@@ -1551,6 +1569,7 @@
     ],
     "half": true,
     "rangeFt": 30,
+    "cone": true,
     "magical": true
    }
   },
@@ -1994,26 +2013,28 @@
    "passive": true
   },
   {
-   "id": "sub_starry_form",
-   "displayName": "Starry Form",
+   "id": "art_chemical_mastery_restoration",
+   "displayName": "Chemical Mastery: Greater Restoration",
    "match": [
-    "starry form"
+    "chemical mastery"
    ],
-   "uses": 2,
+   "uses": 1,
    "ability": null,
-   "recharge": "short",
-   "action": "bonus",
-   "guidance": "A bonus action spends one Wild Shape use to take a starry form for 10 minutes: Archer (a bonus-action luminous arrow, resolved by the server), Chalice (healing spells also heal a second creature 1d8 + WIS), or Dragon (concentration saves treat a low d20 as a 10). Pass variant to choose; the constellation's mechanics apply automatically. This counter mirrors Wild Shape uses.",
-   "fx": {
-    "kind": "buff",
-    "condition": "starry form: archer",
-    "rounds": 100,
-    "variants": [
-     "starry form: archer",
-     "starry form: chalice",
-     "starry form: dragon"
-    ]
-   }
+   "recharge": "long",
+   "guidance": "A free casting of greater restoration without a spell slot, once a long rest: cast it with its own tool and the cast spends the use (no use_resource call).",
+   "passive": true
+  },
+  {
+   "id": "art_chemical_mastery_heal",
+   "displayName": "Chemical Mastery: Heal",
+   "match": [
+    "chemical mastery"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "long",
+   "guidance": "A free casting of heal without a spell slot, once a long rest: cast it with its own tool and the cast spends the use (no use_resource call).",
+   "passive": true
   },
   {
    "id": "sub_embodiment_of_the_law",
@@ -2108,7 +2129,7 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action: resistance to all damage for a minute (the server applies it); the extra attack and the 19-20 critical are narrated."
+   "guidance": "An action: for a minute, resistance to all damage, one more attack with the Attack action, and melee weapon attacks that score a critical hit on a 19 or 20. The server applies all three."
   },
   {
    "id": "sub_living_legend",
@@ -2144,7 +2165,7 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action: for an hour, resistance to nonmagical weapon damage and advantage on Wisdom saves. The server applies both to the paladin."
+   "guidance": "An action: for an hour, resistance to nonmagical weapon damage, and advantage on Wisdom saves and death saves for the paladin and allies within 30 feet. The server applies all of it."
   },
   {
    "id": "sub_dread_lord",

@@ -88,6 +88,10 @@ export type PcDamageInput = {
   // Features whose resistance does not hold against this blow (Emissary of
   // Redemption against a creature the paladin attacked).
   exceptFeatures?: string[];
+  // No creature dealt it: a fall, a trap, a hazard, or the GM's apply_damage
+  // with no attacker. A resistance to damage "dealt by other creatures"
+  // (Emissary of Redemption) does not meet it.
+  noCreature?: boolean;
   reason?: string;
 };
 
@@ -96,7 +100,7 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature">;
 
 export type BlowDefenses = {
   resisted: string;
@@ -125,7 +129,7 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   const shape = sheet.wildShape;
   const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
   const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);

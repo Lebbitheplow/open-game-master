@@ -13,6 +13,8 @@
 // spends nothing.
 //
 // Must not import mutations.ts.
+import { fitsOneCone } from "@/lib/dm/cone-logic";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
@@ -51,6 +53,8 @@ export type CounterSave = {
   // one they can see.
   rangeFt?: number;
   sight?: boolean;
+  // The creatures named must stand in one cone from the holder.
+  cone?: boolean;
   // The creature types it takes ("humanoid" for Words of Terror).
   types?: string[];
   // The most creatures one use takes (Enthralling Performance: the bard's
@@ -111,6 +115,16 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
       return { error: `${enemy.displayName} is not ${spec.types.join(" or ")} (${creatureTypeOf(enemy.stats)}); ${spec.name} takes one. Nothing was spent.`, refused: "rules" };
     }
     found.push(enemy);
+  }
+  // A cone opens one way from the holder: creatures it cannot hold at once
+  // are refused, nothing spent (cone-logic.ts).
+  if (spec.cone && found.length > 1) {
+    const map = getBattleMapForEncounter(encounter.id);
+    const origin = map ? getTokenByRef(map.id, sheet.id) : null;
+    const spots = map ? found.map((enemy) => getTokenByRef(map.id, enemy.id)) : [];
+    if (origin && spots.every(Boolean) && !fitsOneCone(origin, spots as Array<{ x: number; y: number }>)) {
+      return { error: `${found.map((enemy) => enemy.displayName).join(" and ")} do not stand in one cone from ${sheet.name}; ${spec.name} opens one way. Name the creatures one cone holds. Nothing was spent.`, retry: true };
+    }
   }
   if (spec.most && found.length > spec.most) {
     return { error: `${spec.name} takes at most ${spec.most} creature${spec.most === 1 ? "" : "s"} for ${sheet.name}; ${found.length} were named. Nothing was spent.`, retry: true };

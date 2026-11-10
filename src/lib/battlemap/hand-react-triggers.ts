@@ -125,6 +125,9 @@ export function triggerCards(
       if (!spec || (pool && "id" in pool && (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) < (pool.amount ?? 1))) continue;
       for (const event of openFor(spec, events, context(triggerKey(textKey(reaction.name), sheet.id))).slice(-2)) {
         if (reaction.sees === "attacker" && event.creatureId && unseen?.has(event.creatureId)) continue;
+        // An attack made with the reaction reaches only so far (Slayer's
+        // Counter's weapon attack), as authored-reactions.ts refuses it beyond.
+        if (does.kind === "attack" && does.rangeFt && event.creatureId && !near(event.creatureId, does.rangeFt)) continue;
         cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec, event, intent: { card: "reaction", feature: reaction.name }, rules: `${reaction.name} answers ${spec.what}.`, resource: "" }));
       }
     }

@@ -8,6 +8,8 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
+import { heldFlames } from "@/lib/dm/cauterizing-flames";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -55,11 +57,21 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  // The creature Hunter's Sense reads (authored-spend-divine.ts).
+  if (does.kind === "reveal_defenses") return "enemy";
+  // The ally Inspiring Smite shares its temporary hit points with.
+  if (does.kind === "smite_temp_hp") return "ally";
+  // The creature whose armor or weapon Blessing of the Forge blesses.
+  if (does.kind === "forge_blessing") return "ally";
+  // The creature standing in a spectral flame: healed or burned.
+  if (does.kind === "cauterizing") return does.mode === "heal" ? "ally" : "enemy";
+  // The creature whose thoughts Read Thoughts reads (authored-spend-divine-clr.ts).
+  if (does.kind === "read_thoughts") return "enemy";
   return "none";
 }
 
 // The kinds the engine resolves only on a creature in a fight.
-const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest"]);
+const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest", "reveal_defenses"]);
 
 // The option an aim plays, or the spend's own.
 function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
@@ -74,7 +86,7 @@ function sightBound(does: SpendDoes): boolean {
   // The creatures of the player's choice that they can see (Champion
   // Challenge): a blinded holder sees none, and the engine finds nothing in reach.
   if (does.kind === "save_area") return Boolean(does.chosen) && does.sight === true;
-  return does.kind === "save_effect" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
+  return does.kind === "save_effect" || does.kind === "reveal_defenses" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
 }
 
 // The sight a card aimed at a foe carries (HandCard.sight): the spend's own
@@ -134,7 +146,9 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
 // card per aim, as Arcane Jolt has. As one plain reaction card it sent neither
 // the pick nor a target, and the engine refused it every time.
 function aimedReaction(spend: AuthoredSpend): boolean {
-  return spendAction(spend) === "reaction" && spend.does.kind === "flames";
+  // Cauterizing Flames' heal or burn, each aimed at the creature in a flame.
+  const options = spend.does.kind === "variants" ? Object.values(spend.does.options) : [];
+  return spendAction(spend) === "reaction" && (spend.does.kind === "flames" || (options.length > 0 && options.every((option) => option.does.kind === "cauterizing")));
 }
 
 // The turn's cost as the engine charges it (authored-spends.ts prepareCost):
@@ -197,6 +211,18 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
   // hit, its leap at the psi warrior): one card each, so each sends its aim.
   if (does.kind === "variants") {
     const options = Object.entries(does.options);
+    // Cauterizing Flames: its fire card and its healing card, worded as the
+    // flames the druid raises (cauterizing-flames.ts).
+    if (options.length && options.every(([, option]) => option.does.kind === "cauterizing")) {
+      return options.flatMap(([variant, option]): Aim[] => {
+        const flame = option.does;
+        if (flame.kind !== "cauterizing") return [];
+        const dice = resolveFormula(flame.formula, level, mods);
+        return flame.mode === "heal"
+          ? [{ variant, label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true }]
+          : [{ variant, label: flame.type, target: "enemy" as const, dice: `${dice} ${flame.type}`, heals: false }];
+      });
+    }
     const targets = new Set(options.map(([, option]) => targetOf(option.does)));
     if (targets.size > 1) {
       return options.map(([variant, option]) => ({ variant, label: pickLabel(variant), target: targetOf(option.does), dice: linesOf(option.does).dice, heals: false, afterWeaponHit: option.afterWeaponHit, action: option.action, reach: reachOf(option.does) }));
@@ -296,6 +322,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       poolGate,
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        : null,
+      // Cauterizing Flames answers a creature in one of the druid's flames.
+      aimDoes(does, aim.variant).kind === "cauterizing" && !heldFlames(sheet).length
+        ? { reason: `${spend.name} answers a creature entering a spectral flame, and none burns for ${sheet.name} now.`, spent: false }
+        : null,
+      // Inspiring Smite comes right after a Divine Smite (authored-spend-divine.ts).
+      aimDoes(does, aim.variant).kind === "smite_temp_hp" && !(turn.marks ?? []).includes(DIVINE_SMITE_LANDED)
+        ? { reason: `${spend.name} comes right after a Divine Smite: land one this turn first.`, spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.

@@ -28,6 +28,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
+import { drakeMount } from "@/lib/dm/pet-command";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -147,7 +148,15 @@ export function handleMountUp(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
-  const checked = args.customName
+  // Bond of Fang and Scale: the bonded drake carries its ranger, by its
+  // name (pet-command.ts drakeMount); the listed mounts refused it.
+  const drake = args.customName ? null : drakeMount(sheet, args.mount ?? "");
+  if (drake && "error" in drake) {
+    return drake;
+  }
+  const checked = drake
+    ? { ok: true as const, state: drake }
+    : args.customName
     ? checkMount({
         ref: args.customName,
         riderSize: riderSize(sheet),

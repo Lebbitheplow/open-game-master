@@ -36,7 +36,9 @@ export type ResourceEffect =
   | { kind: "heal_pool" }
   // Each spent use is one die of healing to the target (Balm of the Summer
   // Court: a pool of d6s), and `tempPerDie` temporary hit points per die.
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  // `rangeFt` and `sight`: only a creature that near, and one the spender
+  // can see (Balm: "a creature you can see within 120 feet").
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   // Heals the target for a rolled expression (Healing Light-likes).
   | { kind: "heal_target"; dice: (level: number, abilityMods: Record<string, number>) => string }
   // Grants the spender (or a target) temporary hit points; 5e temp HP never
@@ -74,7 +76,8 @@ export type ResourceEffect =
     } & SaveTerms)
   // Repositioning the server cannot fully own (maps are player-moved);
   // reported with the distance so move_token resolves it.
-  | { kind: "teleport"; feet: number }
+  // along: a willing creature within that many feet comes too (Misty Wanderer).
+  | { kind: "teleport"; feet: number; along?: number }
   // Extra damage onto the creature a weapon hit landed on this turn
   // (Fury of the Small: the level, against a creature larger than the
   // holder), dealt by the spend (src/lib/dm/counter-saves.ts).
@@ -101,6 +104,9 @@ export type SaveTerms = {
   half?: boolean;
   rounds?: number;
   rangeFt?: number;
+  // The area opens as a cone from the holder (Drake's Breath): the creatures
+  // named must fit one (src/lib/dm/cone-logic.ts).
+  cone?: boolean;
   types?: string[];
   // The most creatures one use takes: a number, or an ability's modifier
   // (at least one).
@@ -118,7 +124,7 @@ export type DiceFormula = string | Array<[number, string]>;
 export type ResourceFx =
   | { kind: "heal_self"; dice: DiceFormula }
   | { kind: "heal_pool" }
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   | { kind: "heal_target"; dice: DiceFormula }
   | { kind: "temp_hp"; dice: DiceFormula }
   | { kind: "condition"; condition: string; rounds: number }
@@ -133,7 +139,8 @@ export type ResourceFx =
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
   | ({ kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula } & SaveTerms)
-  | { kind: "teleport"; feet: number }
+  // along: a willing creature within that many feet comes too (Misty Wanderer).
+  | { kind: "teleport"; feet: number; along?: number }
   | { kind: "hit_damage"; dice: DiceFormula; larger?: boolean };
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
@@ -170,8 +177,8 @@ export function resolveDiceFormula(
 }
 
 function saveTermsOf(fx: SaveTerms): SaveTerms {
-  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical } = fx;
-  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
 }
 
 // Lifts a JSON fx row into the executable effect shape.
@@ -185,7 +192,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
     case "heal_pool":
       return { kind: "heal_pool" };
     case "heal_dice_pool":
-      return { kind: "heal_dice_pool", die: fx.die, ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}) };
+      return { kind: "heal_dice_pool", die: fx.die, ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}), ...(fx.rangeFt ? { rangeFt: fx.rangeFt } : {}), ...(fx.sight ? { sight: true } : {}) };
     case "heal_target":
       return {
         kind: "heal_target",
@@ -229,7 +236,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
           : {}),
       };
     case "teleport":
-      return { kind: "teleport", feet: fx.feet };
+      return { kind: "teleport", feet: fx.feet, ...(fx.along ? { along: fx.along } : {}) };
     case "hit_damage":
       return { kind: "hit_damage", dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods), ...(fx.larger ? { larger: true } : {}) };
   }
@@ -302,6 +309,9 @@ export type ResourceDef = {
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
+  // With no use left, a spell slot of at least this level the call names
+  // (use_resource level) pays for one (Drake's Breath: 3rd).
+  slotFallback?: number;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
   requires?: "below_half";
@@ -743,6 +753,7 @@ type SubclassResourceRow = {
   // What a use costs of the turn, when the guidance names it.
   action?: ResourceAction;
   fallbackPool?: { id: string; amount: number };
+  slotFallback?: number;
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
@@ -784,6 +795,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.outOfFight ? { outOfFight: true } : {}),
   ...(row.action ? { action: row.action } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
+  ...(row.slotFallback ? { slotFallback: row.slotFallback } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),

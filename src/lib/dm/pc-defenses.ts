@@ -49,7 +49,7 @@ export function pcResistances(input: {
   class?: string;
   level?: number;
   wildShape?: WildShapeView;
-}, options?: { magical?: boolean; spell?: boolean; except?: string[] }): string {
+}, options?: { magical?: boolean; spell?: boolean; except?: string[]; noCreature?: boolean }): string {
   // A Polymorph's beast has none of the character's lineage, features or
   // gear; the effects laid on the creature still hold (shape-rules.ts).
   const sheet = formSees(input);

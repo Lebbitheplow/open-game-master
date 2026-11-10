@@ -19,8 +19,10 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
+import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
+import { graveCurseFor } from "@/lib/dm/grave-curse";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { allyAdjacentToEnemy } from "@/lib/dm/map-tools";
 import { storeBudget } from "@/lib/dm/turn-budget";
@@ -47,7 +49,7 @@ export function foldDamageRiders(input: {
   kind: AttackKind;
   // The target, for the riders that read it (Colossus Slayer, Demon
   // Armor's curse).
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; stats?: { type?: string } & Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -76,6 +78,11 @@ export function foldDamageRiders(input: {
       ...profile,
       damageExpression: `${profile.damageExpression}${onHit.suffix}`,
     };
+  }
+  // Planar Warrior: the weapon's own damage is force too, so a creature
+  // immune to slashing still takes it (it took only the 1d8 before).
+  if (onHit.damageAs) {
+    profile = { ...profile, damageType: onHit.damageAs };
   }
   for (const rider of featureRiders) {
     profile = {
@@ -289,7 +296,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     (plan.kind === "weapon" && conditionStrikesMagical(plan.sheet.conditions)) ||
     // A pact weapon "counts as magical" (SRD 5.1, Pact of the Blade).
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
-    magicalStrikeApplies(plan)
+    magicalStrikeApplies(plan) ||
+    // Mighty Summoner: a Shepherd's summoned beast or fey (mighty-summoner.ts).
+    summonStrikesAsMagic(plan.sheet)
   );
 }
 
@@ -399,7 +408,11 @@ export function landBlow(input: {
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
 }): Record<string, unknown> {
-  const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  const { campaign, turn, encounter, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  // Path to the Grave: this hit meets a vulnerability to all of its damage,
+  // and the curse ends with it (src/lib/dm/grave-curse.ts).
+  const curse = isSheetFoe(input.enemy) ? null : graveCurseFor(input.enemy);
+  const enemy = curse?.enemy ?? input.enemy;
   // A silvered or adamantine weapon passes the resistances that name it.
   const material = profile.material ?? {};
   const nonlethal = input.nonlethal === true;
@@ -465,5 +478,5 @@ export function landBlow(input: {
       ...(input.adeptOthers?.length ? { ignoreTypes: { types: input.adeptOthers, by: "Elemental Adept" } } : {}),
     });
   }
-  return applied;
+  return curse ? { ...applied, graveCurse: curse.end() } : applied;
 }

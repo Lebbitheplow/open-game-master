@@ -35,6 +35,9 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         name: "Halo of Spores",
         // "a creature you can see": the creature struck (authored-reactions.ts strike_back).
         sees: "attacker",
+        // Spreading Spores: "you can't use Halo of Spores' reaction while the
+        // cube lasts" (the druid carries "spreading spores" while it does).
+        gate: { notCondition: "spreading spores" },
         does: {
           kind: "strike_back",
           amount: [[2, "1d4"], [6, "1d6"], [10, "1d8"], [14, "1d10"]],
@@ -82,7 +85,10 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         aliases: ["Wildfire Spirit"],
         pool: { id: "wild_shape" },
         action: "action",
-        does: { kind: "buff", condition: "wildfire spirit", rounds: 600 },
+        // The spirit joins the table as a creature beside the druid and burns
+        // what stands around its arrival (src/lib/dm/feature-summons-dra.ts);
+        // the condition is what Enhanced Bond and Blazing Revival read.
+        does: { kind: "wildfire_spirit", condition: "wildfire spirit", rounds: 600 },
       },
     ],
   },
@@ -107,7 +113,15 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         name: "Cauterizing Flames",
         pool: { id: "sub_cauterizing_flames" },
         action: "reaction",
-        does: { kind: "flames", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" },
+        // On a creature standing in one of the druid's spectral flames
+        // (src/lib/dm/cauterizing-flames.ts): heal it or burn it.
+        does: {
+          kind: "variants",
+          options: {
+            heal: { does: { kind: "cauterizing", mode: "heal", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" } },
+            burn: { does: { kind: "cauterizing", mode: "burn", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" } },
+          },
+        },
       },
     ],
   },

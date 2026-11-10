@@ -668,8 +668,8 @@ function subclassReactions(
       // turn near, and its card on a hit was refused.
       if (dealtByTrigger(reaction.name, reaction.gate?.condition)) continue;
       // "A creature you can see", as the engine asks it (authored-reactions.ts).
-      if (reaction.sees === "target" && whose === "ally" && hidden(unseen, hit.characterId)) continue;
-      if (reaction.sees === "attacker" && hidden(unseen, hit.attackerId)) continue;
+      if ((reaction.sees === "target" || reaction.sees === "both") && whose === "ally" && hidden(unseen, hit.characterId)) continue;
+      if ((reaction.sees === "attacker" || reaction.sees === "both") && hidden(unseen, hit.attackerId)) continue;
       const pool = reaction.pool;
       if (pool && "id" in pool) {
         const state = sheet.resources[pool.id];

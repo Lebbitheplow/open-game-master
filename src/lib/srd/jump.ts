@@ -58,6 +58,9 @@ export function planLongJump(input: {
   to: XY;
   strength: number;
   runningStart: boolean;
+  // Flat feet added after the Strength reach, which a standing start does
+  // not halve (Peerless Athlete's 10; src/lib/dm/jump-reach.ts).
+  extraFeet?: number;
   budgetTiles: number;
   name: string;
 }): JumpPlan {
@@ -67,7 +70,7 @@ export function planLongJump(input: {
   }
   const tiles = chebyshev(from.x, from.y, to.x, to.y);
   const feet = tiles * TILE_FEET;
-  const reach = longJumpFeet(input.strength, input.runningStart);
+  const reach = longJumpFeet(input.strength, input.runningStart) + Math.max(0, input.extraFeet ?? 0);
   if (tiles < 1) {
     return { ok: false, error: "A jump has to go somewhere." };
   }

@@ -22,6 +22,7 @@ import { unseenBecause } from "@/lib/dm/authored-saves";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { silenceAround } from "@/lib/dm/zone-rules";
+import { brightSquare } from "@/lib/dm/one-with-shadows";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -131,5 +132,8 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   if (hide) out.hide = hide.error;
   const silence = silenceAround(campaignId, sheet.id);
   if (silence !== null) out.silence = { by: silence };
+  // Bright light on the square: Steps of Night and One with Shadows refuse.
+  const bright = brightSquare(campaignId, sheet);
+  if (bright) out.bright = bright;
   return out;
 }

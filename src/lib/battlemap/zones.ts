@@ -459,6 +459,13 @@ export function zoneLights(zones: SpellZone[], width: number): LightZone[] {
   const out: LightZone[] = [];
   for (const zone of zones) {
     const row = rowOf(zone);
+    if (row?.dims && zone.cells.length) {
+      // Dread Lord's gloom dims only bright light and never lights the dark,
+      // so it is drawn row by row of its squares (the bounding square of a
+      // round aura would dim its corners too) as patches that dim.
+      out.push(...dimmingStrips(zone.cells, width));
+      continue;
+    }
     if (!row || (!row.light && !row.darkness) || !zone.cells.length) {
       continue;
     }
@@ -474,6 +481,24 @@ export function zoneLights(zones: SpellZone[], width: number): LightZone[] {
     });
   }
   return out;
+}
+
+// One patch per run of squares on a row: an area's own shape, as patches
+// that turn bright light dim (scene.ts ambientAt `dims`).
+function dimmingStrips(cells: number[], width: number): LightZone[] {
+  const sorted = [...cells].sort((a, b) => a - b);
+  const strips: LightZone[] = [];
+  for (const cell of sorted) {
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    const last = strips[strips.length - 1];
+    if (last && last.y0 === y && last.x1 === x - 1) {
+      last.x1 = x;
+    } else {
+      strips.push({ x0: x, y0: y, x1: x, y1: y, ambient: "dim", kind: "light", dims: true });
+    }
+  }
+  return strips;
 }
 
 // The areas of magical darkness with any square within `tiles` of the

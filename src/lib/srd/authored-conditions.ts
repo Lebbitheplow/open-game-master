@@ -176,9 +176,12 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   {
     id: "lit_by_perfected_armor",
     match: ["lit by perfected armor"],
-    summary: "Perfected Armor: the next attack roll against this glowing creature has advantage.",
+    summary: "Perfected Armor: the glowing creature attacks the armorer at disadvantage, and the next attack roll against it has advantage and deals an extra 1d6 lightning on a hit.",
     attacksAgainstAdvantage: true,
     consumedAgainst: true,
+    // "And deals an extra 1d6 lightning damage if it hits": the attack the
+    // advantage rode carries it, and spends the glow with it.
+    hitDiceAgainst: { dice: "1d6", type: "lightning" },
   },
   summaryOnly("orders_wrath", "order's wrath", "Order's Wrath: the next ally to hit this creature deals +2d8 psychic."),
   {
@@ -186,6 +189,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     match: ["planar warrior"],
     summary: "Planar Warrior: the next weapon hit this turn deals +1d8 force.",
     onHitDice: { dice: "1d8", type: "force" },
+    weaponDamageAs: "force",
     weaponOnly: true,
     consumedBy: "hit",
   },
@@ -194,6 +198,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     match: ["planar warrior (2d8)"],
     summary: "Planar Warrior: the next weapon hit this turn deals +2d8 force.",
     onHitDice: { dice: "2d8", type: "force" },
+    weaponDamageAs: "force",
     weaponOnly: true,
     consumedBy: "hit",
   },
@@ -205,6 +210,16 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     resistances: ALL_BUT("force", "radiant"),
   },
   summaryOnly("otherworldly_wings", "otherworldly wings", "Otherworldly Wings: a flying speed of 30 feet."),
+  // Mighty Swarm: "when the swarm moves you, you have half cover until the
+  // start of your next turn" (laid by src/lib/dm/authored-spend-divine-rng.ts).
+  {
+    id: "swarm_cover",
+    match: ["swarm cover"],
+    summary: "Mighty Swarm: half cover, +2 AC and +2 on Dexterity saves, until the start of the ranger's next turn.",
+    acBonus: 2,
+    saveFlat: 2,
+    saveFlatAbility: "dex",
+  },
   {
     id: "bulwark_of_force",
     match: ["bulwark of force"],
@@ -242,6 +257,9 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("elder_champion", "elder champion", "Elder Champion: 10 hit points at the start of each turn, and enemies within 10 feet save at disadvantage against the paladin."),
   summaryOnly("vow_of_enmity", "vow of enmity", "Vow of Enmity: advantage on attacks against the creature vowed against, for a minute."),
   summaryOnly("avenging_angel", "avenging angel", "Avenging Angel: a 60-foot flying speed for an hour, and a 30-foot aura of menace that frightens enemies who fail a Wisdom save."),
+  // Asked once by the aura of menace (src/lib/dm/aura-menace.ts): it is not
+  // asked again while the wings last.
+  summaryOnly("faced_the_aura_of_menace", "faced the aura of menace", "Avenging Angel's aura has asked this creature for its Wisdom save once; it is not asked again this hour."),
   {
     id: "menaced_by_an_avenging_angel",
     match: ["menaced by an avenging angel"],
@@ -251,29 +269,48 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   {
     id: "invincible_conqueror",
     match: ["invincible conqueror"],
-    summary: "Invincible Conqueror: resistance to all damage for a minute; the extra attack and the 19-20 critical are narrated.",
+    // "For a minute: resistance to all damage, an extra attack with the
+    // Attack action, and melee critical hits on a 19 or 20": the attack is
+    // read by the turn budget, the critical by the attack record.
+    summary: "Invincible Conqueror: for a minute, resistance to all damage, one more attack with the Attack action, and melee weapon attacks score a critical hit on a 19 or 20.",
     resistances: ALL_BUT(),
+    extraAttacks: 1,
+    meleeCritRange: 19,
   },
   {
     id: "living_legend",
     match: ["living legend"],
-    summary: "Living Legend: advantage on Charisma checks for a minute, once on each turn a missed weapon attack can hit instead (the GM rules the hit), and a reaction rerolls a failed save (use_resource 'Living Legend Reroll').",
+    summary: "Living Legend: advantage on Charisma checks for a minute, once on each of their turns their first weapon attack that misses hits instead, and a reaction rerolls a failed save (use_resource 'Living Legend Reroll').",
     advantageOn: [{ kind: "check", ability: "cha" }],
   },
-  summaryOnly("mortal_bulwark", "mortal bulwark", "Mortal Bulwark: truesight 120 feet and advantage on attacks against aberrations, celestials, elementals, fey and fiends."),
+  {
+    id: "mortal_bulwark",
+    match: ["mortal bulwark"],
+    // "For a minute: truesight to 120 feet": read by attack-light.ts
+    // characterSenses, as True Seeing's is. The advantage is the authored
+    // row's attack_adv; the banishment on a hit is mortal-bulwark.ts.
+    summary: "Mortal Bulwark: for a minute, truesight 120 feet, advantage on attacks against aberrations, celestials, elementals, fey and fiends, and a hit that deals one of them damage makes it save on Charisma against the paladin's spell save DC or be banished to its home plane.",
+    seesInvisible: true,
+    truesightFeet: 120,
+  },
+  // The creature made its Charisma save against this paladin's Mortal
+  // Bulwark: "the creature can't be banished by this feature for 24 hours".
+  summaryOnly("withstood_mortal_bulwark", "withstood mortal bulwark", "This creature made its Charisma save against the Watchers paladin's Mortal Bulwark and cannot be banished by it for 24 hours."),
   {
     id: "exalted_champion",
     match: ["exalted champion"],
-    summary: "Exalted Champion: resistance to nonmagical weapon damage and advantage on Wisdom saves for an hour.",
+    summary: "Exalted Champion: resistance to nonmagical weapon damage, and advantage on Wisdom saves and death saves for the paladin and allies within 30 feet, for an hour.",
     resistances: ["bludgeoning", "piercing", "slashing"],
     nonmagicalOnly: true,
     advantageOn: [{ kind: "save", ability: "wis" }],
+    // The allies' part is src/lib/dm/exalted-aura.ts.
+    deathSaveAdvantage: true,
   },
   {
     id: "dread_lord",
     match: ["dread lord"],
     summary:
-      "Dread Lord: a 30-foot aura of gloom; attack rolls against the oathbreaker by creatures that rely on sight are at disadvantage, enemies frightened of them that start a turn in it take 4d10 psychic, and a bonus-action melee spell attack with the shadows (pc_attack weapon \"Dread Lord's Shadows\") deals 3d10 + Charisma necrotic.",
+      "Dread Lord: a 30-foot aura of gloom that turns bright light in it dim; attack rolls against the oathbreaker by creatures that rely on sight are at disadvantage, enemies frightened of them that start a turn in it take 4d10 psychic, and a bonus-action melee spell attack with the shadows (pc_attack weapon \"Dread Lord's Shadows\") at a creature in the aura, within 30 feet, deals 3d10 + Charisma necrotic.",
     attacksAgainstDisadvantage: true,
     grantedAttack: {
       name: "Dread Lord's Shadows",
@@ -282,6 +319,9 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
       abilityToDamage: true,
       ranged: false,
       bonusAction: true,
+      // "Against a creature in the aura": a melee spell attack that reaches
+      // anywhere in the 30-foot gloom, not a hand's 5 feet.
+      reachFeet: 30,
     },
   },
   {
@@ -360,6 +400,14 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     ],
   },
   summaryOnly("emissary_lapsed", "emissary lapsed", "Emissary of Redemption is set aside until a long rest: the paladin attacked or harmed a creature."),
+  // Laid as an ally's turn starts beside a Glory paladin (src/lib/dm/divine-auras.ts
+  // alacrityTurnStart); the end of that turn takes it.
+  {
+    id: "aura_of_alacrity",
+    match: ["aura of alacrity"],
+    summary: "Aura of Alacrity: 10 more feet of walking speed until the end of this turn, from starting it beside a Glory paladin.",
+    speedBonus: 10,
+  },
   summaryOnly("spurned_by_redemption", "spurned by redemption", "The Redemption paladin attacked this creature: their Emissary of Redemption holds nothing against it until their long rest."),
   summaryOnly("withstood_among_the_dead", "withstood among the dead", "This undead made its save against the Undying warlock's Among the Dead and may attack them for 24 hours."),
   summaryOnly("withstood_instinctive_charm", "withstood instinctive charm", "This creature resisted the Enchantment wizard's Instinctive Charm, which cannot sway it again until their long rest."),
@@ -380,7 +428,14 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("revelation_in_flesh_swim", "revelation in flesh (swim)", "Revelation in Flesh: a swimming speed of twice the walking speed, and the sorcerer breathes water."),
   summaryOnly("revelation_in_flesh_see", "revelation in flesh (see)", "Revelation in Flesh: the sorcerer sees any invisible creature within 60 feet that is not behind total cover."),
   summaryOnly("revelation_in_flesh_squeeze", "revelation in flesh (squeeze)", "Revelation in Flesh: the sorcerer moves through a space an inch wide and spends 5 feet of movement to escape nonmagical restraints or a grapple."),
-  summaryOnly("emboldening_bond", "emboldening bond", "Emboldening Bond: once a turn, within 30 feet of another bonded creature (60 from the cleric's 17th level), add a d4 to an attack roll, ability check or saving throw (roll it as a bonus die)."),
+  summaryOnly("emboldening_bond", "emboldening bond", "Emboldening Bond: once a turn, within 30 feet of another bonded creature (60 from the cleric's 17th level), add a d4 to an attack roll, ability check or saving throw (the server adds it to the first such roll of each turn)."),
+  // The cleric conditions of the divine package's second wave
+  // (src/lib/dm/authored-spend-divine-clr.ts, src/lib/dm/read-thoughts.ts).
+  summaryOnly("read_thoughts", "read thoughts", "Read Thoughts: a Knowledge cleric reads this creature's surface thoughts for a minute; their Suggestion at it costs no slot and it fails the save."),
+  summaryOnly("reading_thoughts", "reading thoughts", "Reading thoughts: the creature named in the meta is read for a minute; casting Suggestion at it needs no slot and ends the reading."),
+  summaryOnly("invoke_duplicity", "invoke duplicity", "Invoke Duplicity: an illusory double (four with Improved Duplicity) for a minute; attacks on a creature beside the cleric that can see it have advantage."),
+  summaryOnly("eyes_of_the_grave", "eyes of the grave", "Eyes of the Grave: until the end of the cleric's next turn they know where every undead within 60 feet is."),
+  summaryOnly("disarmed", "disarmed", "Disarmed: it dropped what it was holding (a Disarming Attack, Order's Demand); it must pick it up again to use it."),
   // Hexblade's Curse: the warlock's condition names the cursed creature in
   // its meta (quarry): +proficiency damage on every hit against it, and a
   // critical hit on 19-20 (src/lib/dm/attack-marks.ts).
