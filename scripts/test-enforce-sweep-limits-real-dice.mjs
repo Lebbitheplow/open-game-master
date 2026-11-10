@@ -23,16 +23,6 @@ const KNOWN = {
     note: "On the server's dice the parts resolve in turn and the second is seen (the row checks that first). On entered dice the sword part still rolls with \"attacker is hidden: advantage\" and draws no Parry.",
   },
 
-  "819-parry-and-shield-not-steady:server's dice": {
-    where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-resolve.ts rescueMiss (Foe Slayer's lift judged against one reaction at a time)",
-    severity: "low",
-    note: "Needs a creature with both Parry and Shield: none of the six SRD Parry creatures has Shield, so homebrew or the content pack.",
-  },
-  "819-parry-and-shield-not-steady:entered dice": {
-    where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-parked.ts (the same stages on entered dice)",
-    severity: "low",
-    note: "Same faces, same result as the server's dice: the two paths agree, and both are unsteady.",
-  },
 
 };
 const RULING = {
