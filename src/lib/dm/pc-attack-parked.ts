@@ -24,7 +24,8 @@ import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { entryDice, type RollResult } from "@/lib/dice";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { isKnockedOut } from "@/lib/dm/knockout";
 import { rollAgainst } from "@/lib/roll-labels";
 
 // A blow with no dice to roll (a Blowgun's 1 piercing, Contagion's 0) lands
@@ -254,10 +255,15 @@ function blowSentences(scene: SwingScene, ask: DamageAsk, out: Record<string, un
   }
   const byType = Array.isArray(out.damageByType) ? ` (${(out.damageByType as string[]).join(", ")})` : "";
   const dealt = Number(out.damage ?? 0);
+  // A blow declared nonlethal leaves the creature at 0 and stable, as the
+  // server's dice say of it (knockout.ts): "now dead" told the GM otherwise
+  // (finding L820-knockout-note-says-dead).
+  const after = getFoe(scene.enemy.id);
+  const now = after && isKnockedOut(after) ? "knocked out: unconscious and stable" : out.dead ? "SLAIN" : String(out.health ?? "unharmed");
   const parts = [
     ask.half
-      ? `The server already applied half ${total === undefined ? "the" : `of this ${total}`} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health ?? "unharmed")}).`
-      : `The server already applied this ${dealt} damage${byType} to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health)}).`,
+      ? `The server already applied half ${total === undefined ? "the" : `of this ${total}`} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${now}).`
+      : `The server already applied this ${dealt} damage${byType} to ${scene.enemy.displayName} (now ${now}).`,
   ];
   if (out.encounterOver) {
     parts.push(`The encounter ended: ${String(out.outcome)}. XP was awarded automatically.`);

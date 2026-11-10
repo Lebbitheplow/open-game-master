@@ -29,11 +29,7 @@ const KNOWN = {
     severity: "low",
     note: "On the server's dice the parts resolve in turn and the second is seen (the row checks that first). On entered dice the sword part still rolls with \"attacker is hidden: advantage\" and draws no Parry.",
   },
-  "820-knockout-note": {
-    where: "src/lib/dm/pc-attack-parked.ts / pending-roll-land.ts (the note a landed damage roll writes for the GM)",
-    severity: "low",
-    note: "The table is right on both dice (the creature is down, not dead); only the entered-dice note tells the GM model \"now dead\" and \"The encounter ended: victory\" for a blow declared nonlethal, so the narration kills a creature the player spared.",
-  },
+
   "819-parry-and-shield-not-steady:server's dice": {
     where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-resolve.ts rescueMiss (Foe Slayer's lift judged against one reaction at a time)",
     severity: "low",
