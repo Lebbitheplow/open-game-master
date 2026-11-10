@@ -285,6 +285,19 @@ await test("In an area the wizard picks whose save: 'if it succeeds' for a foe, 
   assert.equal(used(), 1);
 });
 
+// The save a monk's hit asks of the creature hit is thrown inside pc_attack
+// (pc-attack-riders.ts): the wizard may answer it there, as a foe's save.
+await test("A swing with Stunning Strike offers the creature's save against the stun.", async () => {
+  reset({ watchingEncounterId: world.encounter().id });
+  await enemyTurn([modelCall("pc_attack", { characterId: ally.id, attacks: [{ targetEnemyId: goblin.id, stunningStrike: true }] })], "Kara strikes.");
+  const [stop] = stops();
+  assert.ok(stop, "the swing stops");
+  assert.ok(publicPendingRoll(stop).watch.choices.some((choice) => choice.name === goblin.displayName && choice.when === "if it succeeds"), JSON.stringify(publicPendingRoll(stop).watch.choices));
+  await answer(stop.id, { pass: true });
+  await settleQueue(world.campaignId);
+  assert.equal(used(), 0);
+});
+
 await test("At the save itself: a foe's success is rolled again and the second roll stands; a failure is left alone.", () => {
   reset();
   saveEncounter({ ...world.encounter(), reactionsUsed: [] });

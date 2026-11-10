@@ -20,7 +20,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 
 const { test, finish } = suite("test-enforce-portent");
-const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { getDmTurn, getPendingRoll, listOpenPendingRolls, publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
 const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
@@ -503,6 +503,59 @@ await test("A rider thrown from the saddle stops for the save to land on their f
   assert.equal(saveRolls().at(-1)?.breakdown.natural, 17);
   assert.ok(!fightWorld.sheet(target.id).conditions.includes("prone"), "17 lands on their feet");
   setMount(fightWorld.campaignId, target.id, null);
+});
+
+// A character's own call that makes a creature save (foresight-saves.ts):
+// the creature's save, rolled inside the call, stopped for nobody.
+const choiceNames = (stop) => publicPendingRoll(stop).watch.choices.map((choice) => choice.name);
+const letItRoll = async (stop) => {
+  await answer(stop.id, { pass: true });
+  await settleQueue(fightWorld.campaignId);
+};
+
+await test("A feature a character spends stops for the creature's save it asks.", async () => {
+  arm();
+  await enemyTurn([modelCall("use_resource", { characterId: target.id, resource: "Intimidating Presence", targetEnemyId: goblin.id })], "Kara roars.");
+  const [scare] = stops();
+  assert.ok(scare, "Intimidating Presence's save stops");
+  assert.match(scare.reason, /Goblin \S* ?is about to make a saving throw against Intimidating Presence\./);
+  await letItRoll(scare);
+});
+
+await test("A reaction that makes the attacker save stops for that save.", async () => {
+  arm();
+  await enemyTurn([modelCall("use_reaction", { characterId: target.id, feature: "Hellish Rebuke", targetEnemyId: goblin.id })], "Flames answer.");
+  const [rebuke] = stops();
+  assert.ok(rebuke, "Hellish Rebuke's save stops");
+  assert.match(rebuke.reason, /against Hellish Rebuke\./);
+  await letItRoll(rebuke);
+});
+
+await test("A pet's attack stops, for its d20 or the save its sting asks, and the number lands on the pet's d20.", async () => {
+  arm();
+  fightWorld.patch(target.id, { pets: [{ name: "Imp", kind: "familiar", form: "imp", hp: 10, maxHp: 10, ac: 13, speed: 20, attacks: [{ name: "Sting", toHit: 5, damage: "1d4+3", type: "piercing", onHit: { save: "con", dc: 11 } }], notes: "" }] });
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightModel.script([reply({ calls: [modelCall("pet_attack", { characterId: target.id, targetEnemyId: goblin.id })] }), reply({ text: "The imp stings." })]);
+  await fightModel.turn(fightWorld, "My imp stings the goblin.", target.id, targetUser.id);
+  const [sting] = stops();
+  assert.ok(sting, "the pet's attack stops");
+  assert.match(sting.reason, /Imp is about to attack Goblin/);
+  assert.deepEqual(choiceNames(sting), ["Imp", goblin.displayName], "the sting's d20 or the poison's save");
+  assert.equal((await answer(sting.id, { value: 17, choice: 0 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(hitRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the sting's d20");
+  fightWorld.patch(target.id, { pets: [] });
+});
+
+await test("A swing with Stunning Strike stops for the swing or the creature's save against the stun.", async () => {
+  arm();
+  await enemyTurn([modelCall("pc_attack", { characterId: target.id, attacks: [{ targetEnemyId: goblin.id, stunningStrike: true }] })], "Kara strikes.");
+  const [stun] = stops();
+  assert.ok(stun, "the swing stops");
+  assert.deepEqual(choiceNames(stun), ["Kara", goblin.displayName], "the swing, or the creature's save against the stun");
+  await letItRoll(stun);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "Let it roll spends nothing");
 });
 
 await test("A poison laid with afflict stops for its save.", async () => {

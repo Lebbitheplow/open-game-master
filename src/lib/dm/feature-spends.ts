@@ -128,6 +128,21 @@ function within(campaignId: string, fromRef: string, toRef: string, feet: number
 
 }
 
+// How far a Channel Divinity option reaches when it makes the creatures it
+// reaches save (a turning, a fear, Control Undead), for a watch stop before
+// the call (src/lib/dm/foresight-saves.ts); null for an option that asks no
+// save. Read as featureVariantSpend below reads the option.
+export function channelSaveReach(resourceName: string, variant: string | undefined): number | null {
+  if (matchResource(resourceName)?.id !== "channel_divinity") {
+    return null;
+  }
+  const wanted = variant ?? nameChoice(resourceName) ?? "";
+  if (isNamed(wanted, "turn the unholy", "turn undead", "destroy undead", "control undead") || CHANNEL_TURNINGS.some((entry) => isNamed(wanted, entry.name))) {
+    return TURN_RANGE_FEET;
+  }
+  return CHANNEL_FEAR.find((entry) => isNamed(wanted, entry.name))?.rangeFt ?? null;
+}
+
 // A use_resource call this module resolves, or null for the generic path.
 export function featureVariantSpend(
   campaign: Campaign,
