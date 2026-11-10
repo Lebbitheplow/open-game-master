@@ -97,6 +97,7 @@ const REGISTRY = {
   "turn-warmup.ts:__odmTurnWarmups": { kind: PLUMBING, what: "prompt warm-ups" },
   "turn.ts:CARDS_OUT": { kind: PLUMBING, what: "one call's scratch" },
   "turn.ts:toolsSentByTurn": { kind: PLUMBING, what: "the tools a running turn was sent" },
+  "turn.ts:toolFieldsByName": { kind: PLUMBING, what: "a cache of each tool's parameter shapes for the argument door, built again from the tool catalogue when empty" },
 };
 
 const found = scan();
