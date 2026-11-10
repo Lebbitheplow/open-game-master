@@ -9,11 +9,17 @@
 //     the concentration save in src/lib/dm/concentration.ts;
 //   attacked_disadv with besideDowned (Shield the Fallen, "While adjacent to
 //     a downed ally, attacks against you have disadvantage"): the incoming
-//     attack in src/lib/dm/authored-hooks.ts authoredIncomingAttack.
+//     attack in src/lib/dm/authored-hooks.ts authoredIncomingAttack;
+//   Field Surgeon ("creatures you stabilize wake with 1 HP after 1 minute"):
+//     the stable creature's wait, at src/lib/dm/stabilize.ts, is ten rounds
+//     on its unconscious condition, the clock that gives the 1 hit point back
+//     (death.ts wakeStable), in place of the SRD's 1d4 hours.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { activeAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
+import { downConditions, STABLE_SOURCE } from "@/lib/dm/vitals-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 // The fall's damage type when a row resists falling, for applyPcDamage's
 // `resists`; nothing otherwise.
@@ -33,4 +39,14 @@ const downed = (sheet: Pick<CharacterSheet, "currentHp" | "deathSaves">) => shee
 export function besideDownedAlly(campaignId: string, encounterId: string, target: Pick<CharacterSheet, "id">): CharacterSheet | null {
   const party = listSheets(campaignId).map((stale) => getSheetById(stale.id) ?? stale);
   return party.find((ally) => ally.id !== target.id && downed(ally) && withinFeet(encounterId, target.id, ally.id, 5)) ?? null;
+}
+
+// The minute's wait a Field Surgeon's patient keeps, or null for any other
+// healer (the 1d4 hours are rolled then).
+export function fieldSurgeonWait(healer: CharacterSheet, patient: Pick<CharacterSheet, "conditions" | "conditionMeta">) {
+  if (!holdsFeature(healer, "Field Surgeon")) {
+    return null;
+  }
+  const held = downConditions({ conditions: patient.conditions, conditionMeta: patient.conditionMeta });
+  return { minutes: 1, conditions: held.conditions, conditionMeta: { ...held.conditionMeta, unconscious: { rounds: 10, source: STABLE_SOURCE } } };
 }

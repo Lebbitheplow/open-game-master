@@ -8,6 +8,7 @@
 // point after 1d4 hours (src/lib/dm/death.ts rollStableTimer).
 //
 // This module must not import mutations.ts (which imports it).
+import { fieldSurgeonWait } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { catalogName } from "@/lib/srd/adventuring-gear";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -294,7 +295,9 @@ export function handleStabilize(
       note: `${how}. Healer: ${sheet.name} is stable and regains 1 hit point, awake again.`,
     };
   }
-  const wait = rollStableTimer(campaign, sheet);
+  // Field Surgeon: a minute, not 1d4 hours (genre-a-cyberpunk-defenses.ts).
+  const minute = fieldSurgeonWait(healer, sheet);
+  const wait = minute ?? rollStableTimer(campaign, sheet);
   // Stable resets both counts (SRD 5.1, Stabilizing a Creature).
   const nextTrack = stableDeathTrack();
   write(campaign, turnId, sheet, "stabilize", { deathSaves: nextTrack, healer: healer.name }, reason, {
@@ -309,7 +312,7 @@ export function handleStabilize(
     ok: true,
     stabilized: true,
     ...check,
-    note: `${how}. ${sheet.name} is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}, or sooner if healed.`,
+    note: `${how}. ${sheet.name} is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in ${"minutes" in wait ? "1 minute (Field Surgeon)" : `${wait.hours} hour${wait.hours === 1 ? "" : "s"}`}, or sooner if healed.`,
   };
 }
 

@@ -2502,11 +2502,9 @@
      "k": "stabilize",
      "want": "wake"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Field Surgeon#1",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium",
-    "observed": "the stabilized creature wakes after a minute; the engine wrote [{\"ok\":true,\"stabilized\":true,\"rolled\":18,\"dc\":10,\"note\":\"Holder's Medicine check (18) meets DC 10. Ally Down is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in 2 hours, or sooner i"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-defenses.ts fieldSurgeonWait at src/lib/dm/stabilize.ts: ten rounds on the stable creature unconscious condition, the clock death.ts wakeStable answers with 1 hit point",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Field Surgeon#1"
    }
   ]
  },

@@ -46,5 +46,16 @@ await test("Psi Font: each short rest gives one 1st-level slot back, the second 
   assert.equal((await t.world.invoke("use_resource", { characterId: hero.id, resource: "cyberpunk_psi_font" })).ok, false, "a bare spend of a counter the rest spends");
 });
 
+await test("Field Surgeon: the stabilized ally's wait is ten rounds on the stable clock, not 1d4 hours", async () => {
+  const scene = await t.stage({ classId: "trauma_doc", level: 5 });
+  t.world.clearDice();
+  t.world.dice(15);
+  must(await t.world.invoke("stabilize", { characterId: scene.fallen.id, healerId: scene.holder.id }), "stabilizing");
+  t.world.clearDice();
+  const meta = t.world.sheet(scene.fallen.id).conditionMeta?.unconscious;
+  assert.equal(meta?.rounds, 10, JSON.stringify(meta));
+  assert.equal(meta?.source, "stable");
+});
+
 t.close();
 console.log(`test-genre-a-cyberpunk: ${passed} passed`);
