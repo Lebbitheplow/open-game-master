@@ -170,7 +170,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   weapon_ability: { file: "src/lib/dm/pc-attack-profile.ts", call: "hexWarriorSwing(" },
   // Its Appendix B (features no engine read).
   darkvision: { file: "src/lib/dm/attack-light.ts", call: "authoredDarkvisionFeet(" },
-  damage_ability: { file: "src/lib/dm/pc-attack-damage.ts", call: "authoredDamageAbility(" },
+  damage_ability: { file: "src/lib/dm/attack-damage-riders.ts", call: "authoredDamageAbility(" },
   init_prof: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_floor: { file: "src/lib/dm/rolls.ts", call: "authoredCheckFloor(" },
   grim_harvest: { file: "src/lib/dm/authored-hooks.ts", call: 'activeAuthored(killer, "grim_harvest")' },

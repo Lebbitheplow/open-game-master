@@ -55,8 +55,7 @@ import { beginWithSlotTool, castingRoundsOf, castingTimeWords, completedCastingO
 import { beginHeldCasting, clearCompletedCasting, registerCastingCompletion } from "@/lib/dm/long-casting";
 import {
   casterStateProblem,
-  componentProblem,
-  focusProblem,
+  castComponents,
   materialPlan,
   openCastOf,
   ritualProblem,
@@ -66,7 +65,6 @@ import {
   turnCharge,
   withOpenCast,
   bonusCastOf,
-  componentsAsCast,
   grantedCastOf,
   grantCastsFree,
   MANTLE_OF_MAJESTY,
@@ -502,12 +500,14 @@ export function castSpell(
   // The components as this caster makes them: none of the material for an
   // invocation that says so, an Archdruid's druid spells without the voice,
   // the gestures or a free material (cast-rules.ts componentsAsCast).
-  const castFacts = componentsAsCast(sheet, facts, grant, extras);
+  // The Hand's spell cards ask castComponents too (hand-spells.ts).
+  const components = castComponents(sheet, facts, grant, extras);
+  const castFacts = components.facts;
   const state = casterStateProblem(sheet);
   if (state) {
     return state;
   }
-  const voice = componentProblem(sheet, castFacts) ?? focusProblem(sheet, castFacts) ?? silenceProblem(campaign.id, sheet.id, sheet.name, castFacts) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
+  const voice = components.problem ?? silenceProblem(campaign.id, sheet.id, sheet.name, castFacts) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
   if (voice) {
     return voice;
   }

@@ -74,6 +74,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { z } from "zod";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { zoneCoverBetween } from "@/lib/dm/zone-rules";
+import { longRangeTilesOf, pastNormalRange } from "@/lib/dm/attack-rules";
 import { dragLandings, enemyDrag } from "@/lib/dm/drag-move";
 import { walkCostFactor } from "@/lib/dm/drag";
 import { flightOf, markSqueezing } from "@/lib/dm/token-state";
@@ -956,7 +957,7 @@ export function pcAttackSpatials(
 
     // Past the weapon's normal range but inside its long range: the SRD
     // penalty is disadvantage, and checkPcAttackRange allows up to double.
-    longRange: (options.ranged || options.thrown) && distance > options.rangeTiles,
+    longRange: pastNormalRange(options, distance),
     distanceTiles: distance,
     outdoors: map.outdoors,
   };
@@ -988,7 +989,7 @@ export function checkPcAttackRange(
     return null;
   }
   const distance = tilesApart(attacker, target);
-  const maxTiles = options.longRangeTiles ?? options.rangeTiles * 2;
+  const maxTiles = longRangeTilesOf(options);
   const sighted = hasLineOfSightBetween(map.terrain, map.width, spaceOf(attacker), spaceOf(target));
 
   if (!options.ranged && distance <= options.reachTiles) {

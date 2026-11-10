@@ -48,6 +48,7 @@ import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/a
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
 import { holdSentReactions, reactionAim, reactionCards, reactionPicks, reactionStrips, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
 import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
+import { aimedCard } from "@/lib/battlemap/hand-odds";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
 
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
@@ -143,6 +144,8 @@ function HandInner({
   unseen,
   drops,
   mounts,
+  board,
+  sight,
   genre,
   multiCharacter,
   runsTable = false,
@@ -181,6 +184,11 @@ function HandInner({
   // Pick up and Dismount.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
+  // The engine's verdicts on this character's own square (PlayerMapView.self):
+  // a Hide refused there, the Silence it stands in.
+  board?: PlayerMapView["self"];
+  // Sight as this character's attack roll reads it (PlayerMapView.sight).
+  sight?: PlayerMapView["sight"];
   genre?: string | null;
   // The table's fielding rule: with all of a player's characters fielded,
   // any of them may answer a hit with a reaction, not only the one acting.
@@ -312,8 +320,11 @@ function HandInner({
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
-    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting]);
+    // The board reads the viewer's own token, so it says nothing of a
+    // companion or a dominated hero the GM seat plays.
+    const ownBoard = sheet.userId === meUserId ? board : undefined;
+    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
@@ -369,8 +380,8 @@ function HandInner({
   );
 
   const targets = useMemo<HandTargetChip[]>(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }),
-    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order],
+    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }, sheet?.userId === meUserId ? sight : undefined),
+    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order, sight, sheet?.userId, meUserId],
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
@@ -405,11 +416,17 @@ function HandInner({
   // What the hover previews are worked against until something is aimed at.
   const defaultAim = aim?.kind === "enemy" ? aim : enemyTargets[0] ?? null;
   const conditions = sheet?.conditions ?? EMPTY;
+  // The card as aimed: an option that hangs on the aim (Rapid Strike needs
+  // advantage to trade) is judged against it (hand-odds.ts aimedCard).
+  const raised = useMemo(
+    () => (picked ? aimedCard(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions) : null),
+    [picked, aim, defaultAim, conditions],
+  );
 
   const attachedRiders = picked?.intent.card === "attack" && !picked.intent.offHand ? riders : EMPTY_CARDS;
   // The options, trigger, choice and area the card carries; the board hears
   // of the raised card from here too (useHandChoices.ts).
-  const { choices, resetChoices, barProps } = useHandChoices(picked, aim);
+  const { choices, resetChoices, barProps } = useHandChoices(raised, aim);
   const sentence = picked ? composeSentence(picked, aim, attachedRiders, choices) : "";
   const rows = useMemo(
     () => (picked ? previewRows(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions, choices) : []),
@@ -560,7 +577,7 @@ function HandInner({
                 content: sentence,
                 kind: "do",
                 characterId: picked.actor?.id ?? sheet?.id,
-                intent: intentBody(picked, aim, attachedRiders, choices),
+                intent: intentBody(raised ?? picked, aim, attachedRiders, choices),
                 ...(concentrationAck ? { concentrationAck } : {}),
               }),
             });
@@ -631,7 +648,7 @@ function HandInner({
       commitBusy.current = false;
       setSending(false);
     }
-  }, [picked, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative]);
+  }, [picked, raised, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative]);
 
   const nativePanel = useMemo<BoardPanel | null>(() => {
     if (!boardNative) return null;

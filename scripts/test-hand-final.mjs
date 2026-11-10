@@ -16,6 +16,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { previewRows, composeSentence, intentBody, toggleOption } = await import("../src/lib/battlemap/hand-play.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+const { aimedCard } = await import("../src/lib/battlemap/hand-odds.ts");
 const { spellChoice } = await import("../src/lib/battlemap/hand-spells.ts");
 const { featureChoices } = await import("../src/lib/battlemap/hand-subclass.ts");
 const { conditionNote, conditionNoteLine } = await import("../src/lib/battlemap/condition-notes.ts");
@@ -147,9 +148,18 @@ test("Rapid Strike is a toggle for a Samurai 15 and sends pc_attack's rapidStrik
   const samurai = sheet({
     subclass: "Samurai", level: 15, classes: [{ id: "fighter", level: 15 }], features: [feature("Rapid Strike")], equipment: [item("Longsword")],
   });
+  // Rapid Strike: "Trade advantage on one attack for an extra attack"
+  // (subclasses.json). pc_attack refuses it on a swing with no advantage, so
+  // the chip is shut as dealt and opens against a creature the swing has
+  // advantage on (hand-odds.ts aimedCard): a prone one beside the samurai.
   const card = byId(deriveHand(samurai, mine()), "attack:longsword");
-  assert.equal(option(card, "rapidStrike")?.disabled, null);
-  assert.equal(intentBody(card, aimAt, [], { options: ["rapidStrike"] }).attack.rapidStrike, true);
+  assert.match(option(card, "rapidStrike")?.disabled ?? "", /has none here/);
+  assert.equal(intentBody(card, aimAt, [], { options: ["rapidStrike"] }).attack?.rapidStrike, undefined);
+  const prone = { ...aimAt, conditions: ["prone"], edge: { cover: 0, flanking: false, adjacent: true } };
+  const aimed = aimedCard(card, prone, []);
+  assert.equal(option(aimed, "rapidStrike")?.disabled, null);
+  assert.equal(intentBody(aimed, prone, [], { options: ["rapidStrike"] }).attack.rapidStrike, true);
+  assert.match(option(aimedCard(card, aimAt, []), "rapidStrike")?.disabled ?? "", /has none here/);
   assert.equal(option(byId(deriveHand(sheet({ equipment: [item("Longsword")] }), mine()), "attack:longsword"), "rapidStrike"), undefined);
 });
 

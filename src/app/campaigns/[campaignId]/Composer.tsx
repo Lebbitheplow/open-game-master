@@ -108,6 +108,8 @@ function ComposerInner({
   unseen,
   drops,
   mounts,
+  board,
+  sight,
   genre,
   highlight = false,
   directorArm,
@@ -187,6 +189,9 @@ function ComposerInner({
   // What lies on the board and who rides what, for the Hand's gear cards.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
+  // The engine's verdicts on this character's own square (PlayerMapView.self).
+  board?: PlayerMapView["self"];
+  sight?: PlayerMapView["sight"];
   genre?: string | null;
   // A gold pulse on the frame: the board says it is this player's turn.
   highlight?: boolean;
@@ -397,6 +402,8 @@ function ComposerInner({
             unseen={unseen}
             drops={drops}
             mounts={mounts}
+            board={board}
+            sight={sight}
             genre={genre}
           />
         ) : null}

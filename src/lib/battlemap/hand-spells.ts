@@ -3,11 +3,13 @@
 // spends, read from the same tables the cast and use_resource tools read.
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, grantCastsFree, grantedCastOf, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
+import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
+import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
+import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { grantUses } from "@/lib/srd/granted-casts";
-import { computeSheetDerived, spellAbilityFor, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
@@ -37,7 +39,6 @@ import {
   gated,
   lowestSlot,
   primaryClass,
-  signed,
   slotLine,
   standingGate,
   type Gate,
@@ -271,10 +272,6 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // cast's own (Infernal Legacy's hellish rebuke at 2nd, 3d10).
   const castLevel = slotLevel ?? (free?.free ? free.castAt : undefined);
   const derived = computeSheetDerived(sheet);
-  // The ability this spell is cast with: the ring's stored caster's, a race's
-  // or a feat's own (issue #833), else the class's.
-  const castWith = stored ? null : spellAbilityFor(sheet, name);
-  const abilityMod = stored ? stored.entry.abilityMod ?? 0 : castWith ? derived.abilityMods[castWith] : 0;
   const scaled = scaledSpellDice({
     spellLevel: fact.level,
     desc: fact.desc,
@@ -299,7 +296,17 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // upcastDamage reads a healing step too, so a higher slot heals more.
     const healing = scaled?.dice ?? baseHealingDice(fact.desc);
     heals = true;
-    damage = healing ? addFlat(healing, /spellcasting ability modifier|spellcasting modifier/i.test(fact.desc) ? abilityMod : 0) : null;
+    // The modifier and what the caster's features add, as the heal tool
+    // rolls them (heal-bonus.ts): an item's spell heals with the modifier its
+    // own DC implies, a ring's with its first caster's.
+    const added = healAdditions(sheet, castLevel ?? fact.level, derived.abilityMods);
+    const modifier = healModifier({
+      dc: stored ? stored.entry.saveDc ?? null : spellSaveDcFor(sheet, name),
+      proficiencyBonus: derived.proficiencyBonus,
+      noModifier: mech.healNoModifier,
+      abilityMod: stored && !stored.item ? stored.entry.abilityMod ?? 0 : undefined,
+    });
+    damage = healing ? addFlat([healing, ...added.dice].join("+"), modifier + added.flat) : null;
   }
   // Agonizing Blast and its kin ride one named cantrip.
   const rider = riders.cantripAbilityRiders.find((entry) => textKey(entry.spell) === textKey(name));
@@ -332,19 +339,23 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   if (damage && bonus) {
     damage = addFlat([damage, ...bonus.dice, ...bonus.diceSecond].join("+"), bonus.flat + bonus.flatSecond);
   }
+  // A spell attack carries what pc_attack adds to any attack its caster
+  // makes (hand-attack-lines.ts): Bless's die on the roll, Hex's on the hit.
+  const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind)) : null;
+  if (struck?.onHit && damage) damage = `${damage}${struck.onHit}`;
   const dice = heals
     ? damage ? `heals ${damage}` : "heals"
     : save
       ? typed ? `${typed}, ${save.ability} save` : `${save.ability} save DC ${save.dc}`
-      : typed ||
+      : (typed && struck?.onHit ? `${typed} ${struck.onHit.replace(/^\+/, "+ ")}` : typed) ||
         (mech.buff
           ? // A buff with an aura that hurts (Spirit Guardians) names the
             // engine's dice beside it; the card itself aims at no enemy.
             `${mech.buff.condition}${mech.resolution === "buff" && rolled ? `, ${typedDice(rolled.dice, mech)}` : ""}`
           : "");
   const roll =
-    toHit !== null ? `${signed(toHit)} to hit` : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
-  const notes: string[] = [];
+    struck ? toHitWords(struck) : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
+  const notes: string[] = [...(struck?.notes ?? [])];
   if (beam) {
     notes.push("Beam connected: free at its target. Others: new casting, beam ends.");
   }
@@ -366,6 +377,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // costly material neither carried nor affordable, no slot, and the
   // bonus-action spell rule.
   const problem = (refusal: ToolError | null, spent = false): Gate => (refusal ? { reason: refusal.error, spent } : null);
+  const components = castComponents(sheet, facts, grantedCastOf(sheet, name, facts), undefined);
   const material = materialPlan(sheet, facts, { inFight: true, slotLevel: slotLevel ?? fact.level });
   const slotRefusal =
     !stored && fact.level > 0 && !slot && !free?.free
@@ -410,7 +422,9 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
-    toHit,
+    toHit: struck ? struck.toHit : toHit,
+    ...(struck?.toHitDice ? { toHitDice: struck.toHitDice } : {}),
+    ...(struck?.rollAdvantage ? { rollAdvantage: struck.rollAdvantage } : {}),
     damage,
     damageType: heals ? "healing" : mech.damageType ?? "",
     ...(!heals && mech.damageType && mech.secondType ? { secondType: mech.secondType } : {}),
@@ -478,7 +492,10 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     card,
     standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),
     problem(casterStateProblem(sheet)),
-    problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
+    // The components as this caster makes them (an Archdruid's druid spells
+    // need neither voice nor hands), and the Silence the board says they
+    // stand in, as the cast guard asks them (cast-rules.ts castComponents).
+    problem(components.problem ?? (options.board?.silence && components.facts?.verbal ? silenceRefusal(sheet.name, options.board.silence.by || null, components.facts.name) : null)),
     // A reaction spell needs a reaction to spend (slowed takes it away).
     cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
     "error" in material ? { reason: material.error, spent: false } : null,

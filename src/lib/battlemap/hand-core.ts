@@ -117,6 +117,15 @@ export type HandCard = {
   icon: IconRef;
   target: HandTarget;
   toHit: number | null;
+  // Dice the attack roll adds beside its bonus ("+1d4" while blessed), and
+  // the advantage a held condition gives it (True Strike), as the roll is
+  // made (hand-attack-lines.ts attackRollLine). Absent when none.
+  toHitDice?: string;
+  rollAdvantage?: Array<"advantage" | "disadvantage">;
+  // A ranged or thrown attack's reach in feet: its melee reach (0 for a
+  // ranged weapon), its normal and its long range. The preview reads the
+  // board's distance against them (hand-attack-lines.ts attackReach).
+  shot?: { reachFt: number; normalFt: number; longFt: number; thrown: boolean };
   // A dice expression the preview can average; null when nothing is rolled.
   damage: string | null;
   damageType: string;
@@ -251,6 +260,9 @@ export type HandAttackOption = {
   disabled: string | null;
   // Options of one group exclude each other (Open Hand's three riders).
   group?: "openHand";
+  // Open only on a swing with advantage (Rapid Strike): shut as dealt, and
+  // judged again against the creature aimed at (hand-odds.ts aimedCard).
+  needsAdvantage?: true;
 };
 
 // The turn so far, read from the engine's TurnBudget
@@ -344,7 +356,17 @@ export type HandOptions = {
   // for a host too old to resolve them (src/lib/capabilities.ts
   // handItemCasts). Absent means they are.
   items?: boolean;
+  // What the board says of the character's own square (PlayerMapView.self).
+  board?: HandBoardFacts;
 };
+
+// The engine's own verdicts on the square a character stands on, sent by
+// the board view for the viewer's own token (src/lib/battlemap/view.ts):
+// take_action's refusal of a Hide there (hide-traits.ts hideRefusal), and
+// the Silence it stands in, by who cast it ("" for nobody named;
+// zone-rules.ts silenceAround). Absent off the map and from an older host,
+// whose cards are dealt as before.
+export type HandBoardFacts = { hide?: string; silence?: { by: string } };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,

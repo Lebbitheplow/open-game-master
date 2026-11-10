@@ -360,7 +360,7 @@ export async function handRig() {
     const turn = turnFromEncounter(encounter, sheet, { myTurn: true });
     const authors = tableAuthors(world.campaignId);
     const hits = encounter?.lastHits ?? [];
-    const chips = encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter) : handTargets([], sheets, sheet.id, undefined);
+    const chips = encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter, view?.sight) : handTargets([], sheets, sheet.id, undefined);
     const creatures = encounter ? handTargets(encounter.enemies, sheets, sheet.id, undefined, encounter.sides) : [];
     const unseen = view?.unseen ? new Set(view.unseen) : undefined;
     const reactions = handReact.reactionCards(sheet, turn, hits, sheets, "you", view?.feet, encounter?.lastSaves, view?.feet ? creatures : undefined, view?.feet && unseen ? unseen : undefined);
@@ -370,7 +370,9 @@ export async function handRig() {
       allies: sheets.filter((entry) => entry.id !== sheet.id).length,
       dying: sheets.filter((entry) => entry.currentHp <= 0 && !entry.deathSaves?.dead && !entry.deathSaves?.stable).map((entry) => ({ id: entry.id, name: entry.name })),
     };
-    const options = { spells: spellsFor(sheet), trackAmmo: campaign.gameSettings?.variantRules?.trackAmmo, gear, blasts: true, summons: summonsFor(sheet, authors), items: true };
+    // The board's verdicts on the hero's own square, as the page hands them
+    // to the Hand (Hand.tsx: PlayerMapView.self for the viewer's own token).
+    const options = { spells: spellsFor(sheet), trackAmmo: campaign.gameSettings?.variantRules?.trackAmmo, gear, blasts: true, summons: summonsFor(sheet, authors), items: true, board: view?.self };
     const cards = handReact.withReactions(reactions, hand.deriveHand(sheet, turn, options));
     return { sheet, sheets, campaign, encounter, view, turn, hits, chips, cards, authors };
   }

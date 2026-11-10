@@ -24,6 +24,7 @@ import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
 import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
@@ -316,6 +317,15 @@ export function handsBusy(sheet: Pick<Caster, "equipment" | "proficiencies" | "c
   return Math.min(2, shield + weapons);
 }
 
+// SRD 5.1, Grappling: "Using at least one free hand". take_action's grapple
+// and the Hand's Grapple card both ask this, so the card is shut in the
+// words the engine refuses with.
+export function grappleHandsProblem(sheet: Parameters<typeof handsBusy>[0] & { name: string }): ToolError | null {
+  return handsBusy(sheet) >= 2
+    ? { error: `${sheet.name} has no free hand: a weapon and a shield (or two weapons) fill both. A grapple takes at least one free hand; unequip one on the sheet first. Nothing was spent.`, refused: "rules" }
+    : null;
+}
+
 // Classes that may bear their spellcasting focus on a shield (a holy symbol
 // as an emblem), which makes the shield hand the hand for a material.
 const EMBLEM_BEARERS = new Set(["cleric", "paladin"]);
@@ -354,6 +364,23 @@ export function componentProblem(sheet: Caster, facts: SpellFacts | null): ToolE
     return null;
   }
   return { error: `${facts.name} needs a free hand for its material component${facts.somatic ? " (the same hand makes the gestures)" : ""}, and both of ${sheet.name}'s hands are full${castsWithHandsFull(sheet) ? "; War Caster frees the gestures, not the material" : ""}. They must put a weapon away or lower the shield first (unequip it on the sheet).`, refused: "rules" };
+}
+
+// The components as this caster makes them, and the first refusal of them
+// (the voice, the hands, the focus). The cast guard and the Hand's spell
+// cards both ask this, so a card is never shut on a component the cast does
+// not need: the Hand read the printed components, and shut every spell of a
+// level 20 druid with both hands full though Archdruid casts them.
+export function castComponents(sheet: Caster, facts: SpellFacts | null, grant: GrantedCast | null, extras?: SubclassExtras): { facts: SpellFacts | null; problem: ToolError | null } {
+  const cast = componentsAsCast(sheet, facts, grant, extras);
+  return { facts: cast, problem: componentProblem(sheet, cast) ?? focusRefusal(sheet, cast) };
+}
+
+// Silence around a caster (SRD 5.1: "Casting a spell that includes a verbal
+// component is impossible there"), in the words zone-rules.ts silenceProblem
+// refuses with and the Hand shuts a card with. `by` is who cast the Silence.
+export function silenceRefusal(casterName: string, by: string | null, spell: string): ToolError {
+  return { error: `${casterName} stands inside ${by ? `${by}'s ` : ""}Silence, where no sound is made: ${spell} has a verbal component and cannot be cast there. Step out of the silence first, or cast a spell with no verbal component. Nothing was spent.`, refused: "rules" };
 }
 
 // ---- a material that costs ----

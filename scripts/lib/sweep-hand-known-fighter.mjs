@@ -2,24 +2,9 @@
 // WRITTEN by scripts/lib/sweep-hand-triage.mjs --known; do not edit by hand.
 export const ROWS = {
   "test-enforce-sweep-hand-fighter": [
-    ["P1|*|*|attack:dagger:opt:rapidStrike", "hand-rapid-strike-open"],
-    ["P1|*|*|attack:longsword:opt:rapidStrike", "hand-rapid-strike-open"],
-    ["P1|*|*|attack:unarmed strike:opt:rapidStrike", "hand-rapid-strike-open"],
     ["P1|*|*|feature:indomitable", "hand-reroll-no-failed-save"],
     ["P1|*|*|feature:sub_psionic_recovery", "hand-feature-precondition-open"],
-    ["P1|*|*|spell:misty step", "hand-silence-open"],
-    ["P1|*|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,silenced,no-free-hand,foe-30ft,foe-100ft,foe-invisible|basic:hide", "hand-hide-seen"],
-    ["P1|*|no-free-hand|basic:grapple", "hand-grapple-no-free-hand"],
-    ["P1|*|out-of-fight|basic:hide", "hand-hide-out-of-fight-retry"],
-    ["P1|Eldritch Knight@20|concentrating|basic:hide", "hand-hide-seen"],
     ["P1|Eldritch Knight@20|fresh,action-spent,bonus-spent,prone,grappled,blinded,darkness,concentrating,foe-30ft,foe-100ft,foe-invisible,out-of-fight,failed-save|spell:shield", "hand-reaction-no-trigger"],
-    ["P1|Eldritch Knight@20|silenced|spell:burning hands", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:fire bolt", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:fireball", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:hold person", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:magic missile", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:shield", "hand-silence-open"],
-    ["P1|Eldritch Knight@20|silenced|spell:shocking grasp", "hand-silence-open"],
     ["P1|Psi Warrior@20|fresh,action-spent,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,silenced,no-free-hand,foe-30ft,foe-100ft,foe-invisible|option:sub_psionic_energy:psionic-strike", "hand-feature-needs-target"],
     ["P1|Psi Warrior@20|fresh,bonus-spent,reaction-spent,prone,grappled,blinded,darkness,silenced,no-free-hand,foe-30ft,foe-100ft,foe-invisible|feature:authored:telekinetic-adept", "hand-feature-needs-target"],
     ["P1|Psi Warrior@20|out-of-fight|feature:authored:telekinetic-adept", "hand-fight-only-open-out-of-fight"],
@@ -34,8 +19,5 @@ export const ROWS = {
     ["P4|*|*|feature:sub_telekinetic_master", "hand-counter-cost-not-charged"],
     ["P4|*|*|feature:sub_unleash_incarnation", "hand-counter-cost-not-charged"],
     ["P5|*|*|basic:help", "hand-help-range"],
-    ["P5|*|foe-30ft|attack:dagger", "hand-thrown-long-range"],
-    ["P6|*|foe-30ft|attack:dagger", "hand-thrown-long-range"],
-    ["P7|*|*|basic:ready:left", "hand-ready-attack-left"],
   ],
 };

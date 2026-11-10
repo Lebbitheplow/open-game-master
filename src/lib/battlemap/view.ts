@@ -51,7 +51,7 @@ import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound } from "@/lib/dm/can-act";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/battlemap/view-stage";
-import { targetEdges } from "@/lib/battlemap/view-tactics";
+import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
@@ -614,6 +614,7 @@ export function buildPlayerMapView(
     edges:
       sheet && myToken && encounter.kind === "fight"
         ? targetEdges({
+            campaignId,
             encounterId: encounter.id,
             characterId: sheet.id,
             characterConditions: sheet.conditions,
@@ -621,6 +622,10 @@ export function buildPlayerMapView(
             flankingRule: getCampaignById(campaignId)?.gameSettings.variantRules.flanking === true,
           })
         : {},
+    ...(sheet && myToken ? { self: ownSquareFacts(campaignId, encounter, sheet) } : {}),
+    ...(sheet && myToken && encounter.kind === "fight"
+      ? { sight: targetSight({ campaignId, encounterId: encounter.id, characterId: sheet.id, enemyIds: tokens.filter((token) => token.kind === "enemy" && (!token.hidden || fullVision)).map((token) => token.refId) }) }
+      : {}),
     ...(sheet && myToken && encounter.kind === "fight"
       ? (() => {
           // Measured on the stored tokens, footprints and all, as withinFeet

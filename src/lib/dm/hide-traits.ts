@@ -27,6 +27,7 @@ import { holdsFeature } from "@/lib/srd/trait-rules";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { ToolError } from "@/lib/dm/tool-errors";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
 const rank = (size: string | undefined) => {
@@ -44,6 +45,17 @@ function lightlyObscuredByNature(campaign: Campaign, map: { outdoors?: boolean; 
     return true;
   }
   return weatherPerceptionRider(normalizeClock(campaign.clock).weather).disadvantage;
+}
+
+// take_action's refusal of a Hide (SRD 5.1, Hiding: "You can't hide from a
+// creature that can see you clearly"), or null. The board view sends it for
+// the viewer's own token, so the Hand shuts its Hide cards in these words;
+// before it the cards were open on a lit, open field and the engine refused.
+export function hideRefusal(campaign: Campaign, encounterId: string, sheet: CharacterSheet): ToolError | null {
+  const watcher = seenClearlyDespiteTraits(campaign, encounterId, sheet);
+  return watcher
+    ? { error: `${sheet.name} cannot hide: ${watcher} sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.`, refused: "rules" }
+    : null;
 }
 
 // The name of a watcher who sees this character clearly and whom no trait

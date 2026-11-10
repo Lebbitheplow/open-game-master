@@ -32,7 +32,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
-import { authoredSpellDice } from "@/lib/srd/authored-effects-more";
+import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
@@ -222,24 +222,25 @@ export function castHealingSpell(
   const dc = spellSaveDcFor(caster, input.spell);
   // Regenerate's 4d8 + 15 carries its own bonus: no modifier rides it.
   // A spell a ring stored keeps its original caster's modifier.
-  const modifier = dc !== null && !mech?.healNoModifier ? (itemCastNumbers(caster.id, input.spell)?.abilityMod ?? runningItemSpell(caster, input.spell)?.abilityMod ?? dc - 8 - derived.proficiencyBonus) : 0;
-  const riders: string[] = [];
+  // The modifier, Disciple of Life and an authored feature's die (Enhanced
+  // Bond, Alchemical Savant) are heal-bonus.ts's, which the Hand's healing
+  // cards print from too.
+  const modifier = healModifier({
+    dc,
+    proficiencyBonus: derived.proficiencyBonus,
+    noModifier: mech?.healNoModifier,
+    abilityMod: itemCastNumbers(caster.id, input.spell)?.abilityMod ?? runningItemSpell(caster, input.spell)?.abilityMod,
+  });
+  const added = healAdditions(caster, slotLevel, derived.abilityMods);
+  const riders: string[] = [...added.notes];
   // Signed: a WIS 8 cleric's Cure Wounds is 1d8 - 1 (the floor is on the total).
-  let bonus = modifier;
-  if (slotLevel >= 1 && holdsFeature(caster, "disciple of life")) {
-    bonus += 2 + slotLevel;
-    riders.push(`Disciple of Life +${2 + slotLevel}`);
-  }
+  const bonus = modifier + added.flat;
   const maximize =
     (slotLevel >= 1 && holdsFeature(caster, "supreme healing")) ||
     // Circle of Mortality: on a creature at 0 hit points (authored-effects.ts).
     authoredHealMax(caster, target) !== null ||
     target.conditions.some((entry) => entry.toLowerCase() === "beacon of hope");
-  // Enhanced Bond: the wildfire spirit adds 1d8 to a healing spell
-  // (src/lib/srd/authored-effects-more.ts).
-  const bond = authoredSpellDice(caster, { healing: true }, derived.abilityMods);
-  riders.push(...bond.notes);
-  const withBond = [expression, ...bond.dice].join("+");
+  const withBond = [expression, ...added.dice].join("+");
   const full = bonus > 0 ? `${withBond}+${bonus}` : bonus < 0 ? `${withBond}-${-bonus}` : withBond;
   let amount: number;
   if (maximize) {

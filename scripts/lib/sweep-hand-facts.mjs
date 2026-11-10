@@ -21,7 +21,8 @@ export async function handFacts(src) {
     const entry = content.findSpellByName(name);
     const text = (value) => (typeof value === "string" ? value : "");
     if (entry) {
-      fact = { level: entry.level, school: entry.school, castingTime: text(entry.data.casting_time), range: text(entry.data.range), desc: text(entry.data.desc), higherLevel: text(entry.data.higher_level), concentration: entry.concentration };
+      // The row's own facts, as HandSpells.tsx toFact sends them.
+      fact = { level: entry.level, school: entry.school, castingTime: text(entry.data.casting_time), range: text(entry.data.range), desc: text(entry.data.desc), higherLevel: text(entry.data.higher_level), concentration: entry.concentration, facts: content.spellFactsFor(name) };
     } else {
       const bundled = bundledSpellFacts(name);
       const authored = authoredSpellRow(name);
