@@ -68,7 +68,7 @@ export function attackDamageRiders(input: {
           ...riders.damageRiders,
           ...hunterRiders(sheet, input.enemy),
           ...pactRiders(sheet, kind, profile),
-          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed } : undefined),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked } : undefined),
         ]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {

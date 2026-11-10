@@ -12,6 +12,7 @@
 // dealt nothing.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
+import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -35,7 +36,7 @@ export const GENRE_AUTHORED: GenreRow[] = [
   },
   {
     feature: "Quarry",
-    entry: { subclass: "genre", spends: [{ name: "Quarry", action: "bonus", does: { kind: "buff", condition: "quarry", rounds: 600, quarry: true } }] },
+    entry: { subclass: "genre", effects: QUARRY_LADDER, spends: [{ name: "Quarry", action: "bonus", does: { kind: "buff", condition: "quarry", rounds: 600, quarry: true } }] },
   },
   // ---- bonus actions ----
   {

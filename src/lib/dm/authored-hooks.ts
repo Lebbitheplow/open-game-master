@@ -22,6 +22,7 @@
 // enemy-damage.ts, which reaches it.
 
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { endHorrorMarks } from "@/lib/dm/genre-a-horror-marks";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -487,6 +488,7 @@ export function authoredOnKill(
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }
+  lines.push(...endHorrorMarks(campaign, fielded(campaign.id), enemy));
   return lines;
 }
 

@@ -1830,11 +1830,9 @@
      "k": "mark_ends",
      "res": "Quarry"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Quarry#3",
-    "observed": "the mark is still held after the marked creature died",
-    "where": "src/lib/srd/authored-conditions.ts quarry buff on the holder: not cleared when the marked creature dies",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Quarry#3",
+    "by": "src/lib/dm/genre-a-horror-marks.ts endHorrorMarks, called by src/lib/dm/authored-hooks.ts authoredOnKill: every Quarry mark on the dead creature ends"
    }
   ]
  },
@@ -1897,11 +1895,9 @@
      "dice": 2,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Improved Quarry#0",
-    "observed": "what the mark adds to a hit (11 marked, 8 unmarked): the engine gives 3, the text 6",
-    "where": "src/lib/srd/authored-effects-genre.ts (the quarry buff) and its rider in src/lib/srd/authored-conditions.ts: no upgrade for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Improved Quarry#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts QUARRY_LADDER on the Quarry row (hit_rider 1d6, vsMark quarry, from class level 11), read by src/lib/dm/genre-a-strikes.ts"
    },
    {
     "c": "marking is free when a creature harms an ally",
@@ -2076,11 +2072,9 @@
      "k": "two_marks",
      "res": "Quarry"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Extinction#1",
-    "observed": "both marked creatures take the rider (damage rolls 1d8+4 and 1d8+4+1d6)",
-    "where": "src/lib/dm/resource-tools.ts (the quarry buff keeps one creature): a second mark replaces the first",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Extinction#1",
+    "by": "src/lib/dm/genre-a-horror-marks.ts horrorMarkCondition, asked by the Quarry spend (src/lib/dm/authored-spend-effects.ts): a second living creature takes the mark \"quarry (second)\""
    }
   ]
  },

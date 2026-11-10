@@ -21,3 +21,9 @@ export const GENRE_A_HORROR: GenreRow[] = [
   // "Advantage on death saves; stabilizing you takes no check"
   held("survivor", "Death's Old Acquaintance", "src/lib/dm/death.ts", "horrorDeathSaveAdvantage"),
 ];
+
+// Improved Quarry (slayer 11): "Quarry damage rises to +2d6": a second d6 on
+// hits against the marked creature, from the level the class grants it
+// (src/lib/dm/genre-a-strikes.ts reads vsMark). It rides the Quarry row, which
+// authored-effects-genre.ts spreads in.
+export const QUARRY_LADDER = [{ kind: "hit_rider" as const, dice: "1d6", vsMark: "quarry", gate: { level: 11 } }];

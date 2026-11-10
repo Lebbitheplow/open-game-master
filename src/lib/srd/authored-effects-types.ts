@@ -296,6 +296,9 @@ export type AuthoredEffect = Base &
         oncePerTurn?: boolean;
         vsTypes?: string[];
         vsNotActed?: boolean;
+        // Only a hit on the creature this mark of the holder's names
+        // (Improved Quarry: "Quarry damage rises to +2d6").
+        vsMark?: string;
         weapons?: string[];
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.

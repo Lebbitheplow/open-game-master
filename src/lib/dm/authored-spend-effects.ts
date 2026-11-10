@@ -35,6 +35,7 @@ import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
 import { summonGenreCompanion } from "@/lib/dm/genre-a-summons";
+import { horrorMarkCondition } from "@/lib/dm/genre-a-horror-marks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -205,7 +206,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return { patch: { features }, result: { chosen: `${ctx.held.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
-      const condition = conditionName(ctx, does);
+      let condition = conditionName(ctx, does);
       if (typeof condition !== "string") {
         return condition;
       }
@@ -284,6 +285,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (unseen) {
           return { error: `${sheet.name} cannot see ${quarry.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
         }
+        // Extinction: a second Quarry is a mark of its own (genre-a-horror-marks.ts).
+        condition = horrorMarkCondition(sheet, condition, quarry.id);
       }
       let patch: FullPatchSheetInput | undefined;
       // An ally other than the holder has returned above, so "ally" here is the
