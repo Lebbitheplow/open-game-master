@@ -30,6 +30,7 @@ import { liveZones } from "@/lib/dm/zone-store";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { silenceRefusal } from "@/lib/dm/cast-rules";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 
 function zonesOf(map: BattleMap | null): SpellZone[] {
@@ -136,9 +137,18 @@ export function silenceProblem(campaignId: string, casterId: string, casterName:
     return null;
   }
   const hush = silentAt(zonesOf(map), tileIndex(map.width, token.x, token.y));
-  return hush
-    ? { error: `${casterName} stands inside ${hush.casterName ? `${hush.casterName}'s ` : ""}Silence, where no sound is made: ${facts.name} has a verbal component and cannot be cast there. Step out of the silence first, or cast a spell with no verbal component. Nothing was spent.`, refused: "rules" }
-    : null;
+  return hush ? silenceRefusal(casterName, hush.casterName || null, facts.name) : null;
+}
+
+// Who cast the Silence a creature stands in ("" for one nobody named), or
+// null when it stands in none: the board view sends it for the viewer's own
+// token, so the Hand shuts a verbal spell's card in silenceRefusal's words.
+export function silenceAround(campaignId: string, refId: string): string | null {
+  const encounter = getActiveEncounter(campaignId) ?? getActiveBoard(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, refId) : null;
+  const hush = map && token ? silentAt(zonesOf(map), tileIndex(map.width, token.x, token.y)) : null;
+  return hush ? hush.casterName : null;
 }
 
 // ", thunder" for a creature standing inside Silence, which is immune to

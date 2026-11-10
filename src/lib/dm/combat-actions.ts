@@ -13,10 +13,10 @@ import { sizeForRace } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { addSheetCondition, rollEnemyContest } from "@/lib/dm/action-common";
-import { handsBusy } from "@/lib/dm/cast-rules";
+import { grappleHandsProblem } from "@/lib/dm/cast-rules";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
-import { seenClearlyDespiteTraits } from "@/lib/dm/hide-traits";
+import { hideRefusal } from "@/lib/dm/hide-traits";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -65,12 +65,10 @@ export function hide(
   // fight that is read from the board: a sight line with no cover and
   // no darkness between is a clear view.
   // Naturally Stealthy and Mask of the Wild answer some watchers (hide-traits.ts).
-  const watcher = seenClearlyDespiteTraits(campaign, encounter.id, sheet);
-  if (watcher) {
-    return {
-      error: `${sheet.name} cannot hide: ${watcher} sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.`,
-      refused: "rules",
-    };
+  // The board view sends the same refusal to the Hand (hide-traits.ts).
+  const seen = hideRefusal(campaign, encounter.id, sheet);
+  if (seen) {
+    return seen;
   }
   spend();
   // A Stealth check like any other (src/lib/dm/contest-roll.ts): noisy
@@ -199,12 +197,11 @@ export function contest(
       refused: "rules",
     };
   }
-  // SRD 5.1, Grappling: "Using at least one free hand" (cast-rules.ts handsBusy).
-  if (action === "grapple" && handsBusy(sheet) >= 2) {
-    return {
-      error: `${sheet.name} has no free hand: a weapon and a shield (or two weapons) fill both. A grapple takes at least one free hand; unequip one on the sheet first. Nothing was spent.`,
-      refused: "rules",
-    };
+  // SRD 5.1, Grappling: "Using at least one free hand" (cast-rules.ts; the
+  // Hand's Grapple card asks the same).
+  const handsFull = action === "grapple" ? grappleHandsProblem(sheet) : null;
+  if (handsFull) {
+    return handsFull;
   }
   // Hands on the target: it has to be within reach, with no wall between.
   const apart = tilesBetween(encounter.id, sheet.id, enemy.id);
