@@ -349,14 +349,11 @@
    {
     "c": "Concentration on your litanies cannot be broken by damage of 20 or less",
     "run": {
-     "k": "conc",
-     "keep": 1
+     "k": "litany"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::The Litany Unbroken#0",
-    "observed": "concentration after 10 damage and a failed save: the engine gives null, the text \"Bless\"",
-    "where": "src/lib/dm/concentration.ts (the save on damage): no rider for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts litanyHolds (read by concentration.ts concentrationDamageHook)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::The Litany Unbroken#0"
    }
   ]
  },
@@ -747,11 +744,9 @@
      "k": "stabilize",
      "want": "wake"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Triage#1",
-    "observed": "the stabilized creature wakes after a minute; the engine wrote [{\"ok\":true,\"stabilized\":true,\"rolled\":18,\"dc\":10,\"note\":\"Holder's Medicine check (18) meets DC 10. Ally Down is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in 2 hours, or sooner i",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-vitals.ts triageWait (stabilize.ts) and triageWake (death.ts wakeStable)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Triage#1"
    }
   ]
  },
@@ -2783,11 +2778,9 @@
      "want": "auto",
      "face": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Last Rites#0",
-    "observed": "a 1 on the Medicine check still stabilizes: {\"ok\":true,\"stabilized\":false,\"rolled\":4,\"dc\":10,\"note\":\"Holder's Medicine check (4) misses DC 10. Ally Down is still dying; their action is spent.\"}: the engine gives false, the text true",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-vitals.ts lastRites and ritesWard (stabilize.ts: no check, a ward)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Last Rites#0"
    },
    {
     "c": "it cannot be raised as undead",

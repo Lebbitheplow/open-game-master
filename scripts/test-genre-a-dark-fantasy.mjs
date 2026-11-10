@@ -213,5 +213,25 @@ await test("The Flame That Judges: each enemy within 30 feet that fails its Wisd
   assert.equal(Object.keys(sheet(scene.holder.id).conditionMeta).filter((name) => name.startsWith("judged (")).length, 1);
 });
 
+await test("Triage: a stabilized patient waits a minute and wakes with the d4's hit points; Last Rites stabilizes with no check and wards", async () => {
+  const { wakeStable } = await import("../src/lib/dm/death.ts");
+  const scene = await t.stage({ classId: "plague_doctor", level: 6 });
+  t.world.dice(15, 3);
+  const out = must(await t.world.invoke("stabilize", { characterId: scene.fallen.id, healerId: scene.holder.id }), "stabilizing");
+  t.world.clearDice();
+  assert.match(JSON.stringify(out.result), /1 minute/);
+  const meta = sheet(scene.fallen.id).conditionMeta;
+  assert.equal(meta.unconscious?.rounds, 10);
+  assert.ok(conditions(scene.fallen.id).includes("triaged (3)"), JSON.stringify(conditions(scene.fallen.id)));
+  wakeStable(t.world.campaign(), scene.fallen.id);
+  assert.equal(sheet(scene.fallen.id).currentHp, 3);
+  const singer = await t.stage({ classId: "dirgesinger", level: 3 });
+  t.world.dice(1);
+  const sung = must(await t.world.invoke("stabilize", { characterId: singer.fallen.id, healerId: singer.holder.id }), "Last Rites");
+  t.world.clearDice();
+  assert.equal(sheet(singer.fallen.id).deathSaves.stable, true, JSON.stringify(sung.result).slice(0, 200));
+  assert.ok(conditions(singer.fallen.id).includes("warded by last rites"));
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

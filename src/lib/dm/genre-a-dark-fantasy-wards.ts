@@ -62,3 +62,11 @@ export function darkFantasyWeaponWard(
   }
   return cut ? { amount: Math.max(1, amount - cut), notes } : { amount, notes };
 }
+
+// The Litany Unbroken (15th): "Concentration on your litanies cannot be broken
+// by damage of 20 or less". Every spell the witch hunter casts is a litany
+// (Litany: "Casts paladin-list spells as litanies"), so damage of 20 or less
+// asks no save; dropping to 0 still ends it (concentration.ts asks that first).
+export function litanyHolds(sheet: CharacterSheet, damage: number): string | null {
+  return damage <= 20 && holdsFeature(sheet, "The Litany Unbroken") ? "The Litany Unbroken: damage of 20 or less cannot break a litany" : null;
+}

@@ -13,6 +13,7 @@
     "lib/dm/arg-coerce.ts#whole": [["identity", 1, "a character ref by its sheet id; a name by textKey on both sides; a miss is refused with the party listed"]],
     "lib/dm/arg-coerce.ts#keyed": [["key", 3, "tool-argument field names and the tool's published field kinds"]],
     "lib/dm/genre-a-heals.ts#whole": [["identity",3,"a condition by its keyed name on both sides"]],
+    "lib/dm/genre-a-dark-fantasy-vitals.ts#partial": [["parse",1,"the hit points the engine wrote into its own triaged (N) mark"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#whole": [["identity",2,"a brand or the lanced wound a sheet or a creature holds, by its keyed name on both sides"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#keyed": [["key",2,"a condition's meta read by the condition's own stored name"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#first": [["key",1,"the first foe beside the lanced creature, by id, when the call names none (the text's one creature adjacent)"]],
