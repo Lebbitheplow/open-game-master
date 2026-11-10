@@ -11,10 +11,12 @@
 // the size it needs with ?w= and the serve route answers with the variant
 // when it exists, else the original.
 
-export const VARIANT_WIDTHS = [256, 1024] as const;
-export type VariantWidth = (typeof VARIANT_WIDTHS)[number];
+// The sizes and the address a page asks for one with are in
+// ./image-variant-url.ts, which has no Buffer in it, so a page can import
+// them without this module's bytes-reading half.
+import { VARIANT_WIDTHS, type VariantWidth } from "./image-variant-url.ts";
+export { VARIANT_WIDTHS, variantUrl, type VariantWidth } from "./image-variant-url.ts";
 
-const VARIANT_ROOTS = ["/generated/", "/uploads/"];
 const VARIANT_NAME = /\.w(256|1024)\.webp$/i;
 
 export type ImageFormat = "png" | "jpeg" | "webp";
@@ -108,20 +110,4 @@ export function variantFileName(fileName: string, width: VariantWidth): string {
 // server's own copies rather than an original (the backfill skips these).
 export function isVariantFileName(fileName: string): boolean {
   return VARIANT_NAME.test(fileName);
-}
-
-// A picture address with the size a consumer wants. Only the server's own
-// generated and uploaded pictures have variants, so anything else (data:,
-// blob:, built-in art, another origin, an address that already carries a
-// query) comes back untouched. The form is a query, never a path suffix,
-// because the apps route these to the host by path prefix and pass the
-// query through.
-export function variantUrl(src: string, width: VariantWidth): string {
-  if (!VARIANT_ROOTS.some((root) => src.startsWith(root))) {
-    return src;
-  }
-  if (src.includes("?") || src.includes("#")) {
-    return src;
-  }
-  return `${src}?w=${width}`;
 }

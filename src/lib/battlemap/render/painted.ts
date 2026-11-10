@@ -23,7 +23,8 @@ export type TileEntry = {
   themes?: string[];
 };
 export type ObjectEntry = { id: string; src: string; sets: string[]; kind: string; label?: string; span?: number };
-type DecalEntry = { id: string; src: string };
+// `shape`, `family` and `on` are how the renderer picks a decal (decalDrawn).
+type DecalEntry = { id: string; src: string; shape?: "edge" | "scatter"; family?: string; on?: string[] };
 type Manifests = { tiles: Map<string, TileEntry>; objects: ObjectEntry[]; decals: DecalEntry[]; categories: Map<string, string> };
 
 // A placed stamp: a painted object at a square (MapProp.stamp, scene.ts).
@@ -107,7 +108,30 @@ function picture(src: string): Promise<ImageBitmap | null> {
   return pending;
 }
 
-async function assetsFor(skin: Skin, all: Manifests, stamps: PaintStamp[] = []): Promise<RenderAssets> {
+// Whether the renderer can draw this decal for this skin at this quality:
+// the test it makes itself (renderer.js decalsFor, and its scatter pass,
+// which a low-quality paint skips). A fight used to fetch and decode all 72
+// decals, 570 KiB, whatever the place: a meadow took the lava crusts and the
+// ice rime with it, and a phone the scatter it never draws. A decal that
+// fails this is one the renderer would not have looked at, so the picture
+// is the same. Kept beside the renderer's own test: a new way of choosing
+// decals there needs its twin here, or its decals never load.
+function decalDrawn(decal: DecalEntry, skin: Skin, quality: PaintQuality): boolean {
+  if (decal.shape === "scatter") {
+    return quality !== "low" && Array.isArray(decal.on) && decal.on.includes(skin.ground as string);
+  }
+  if (decal.shape !== "edge") {
+    return false;
+  }
+  const families: Array<[family: unknown, ids: unknown]> = [
+    [skin.roughDecals, skin.fringe],
+    [skin.shoreDecals, skin.shore],
+    [skin.wallDecals, skin.lip],
+  ];
+  return families.some(([family, ids]) => Boolean(family) && decal.family === family && (!ids || (ids as string[]).includes(decal.id)));
+}
+
+async function assetsFor(skin: Skin, all: Manifests, stamps: PaintStamp[] = [], quality: PaintQuality = "full"): Promise<RenderAssets> {
   const assets: RenderAssets = { tiles: {}, objects: {}, decals: {}, catalogue: { objects: all.objects, decals: all.decals } };
   const tileIds = new Set<string>(Object.values(skin.bind));
   if (skin.patch) tileIds.add(skin.patch.id);
@@ -128,6 +152,7 @@ async function assetsFor(skin: Skin, all: Manifests, stamps: PaintStamp[] = []):
     jobs.push(picture(object.src).then((p) => void (p && (assets.objects[object.id] = p as unknown as HTMLImageElement))));
   }
   for (const decal of all.decals) {
+    if (!decalDrawn(decal, skin, quality)) continue;
     jobs.push(picture(decal.src).then((p) => void (p && (assets.decals[decal.id] = p as unknown as HTMLImageElement))));
   }
   await Promise.all(jobs);
@@ -176,7 +201,7 @@ export async function paintCanvas(request: PaintRequest): Promise<HTMLCanvasElem
   if (!all) return null;
   const skin = resolveSkin(request.genre, request.theme, request.skin, all.categories);
   const stamps = (request.stamps ?? []).filter((stamp) => all.objects.some((object) => object.id === stamp.id));
-  const assets = await assetsFor(skin, all, stamps);
+  const assets = await assetsFor(skin, all, stamps, request.quality);
   if (!Object.keys(assets.tiles).length) return null;
   const rows: string[] = [];
   for (let y = 0; y < request.height; y++) {

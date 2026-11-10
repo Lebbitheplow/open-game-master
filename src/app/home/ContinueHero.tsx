@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { campaignPlaceholder, miscPlaceholder } from "@/lib/placeholders";
 import { agoLabel, chapterLine, nextSessionLine, seatLine, type HomeCampaign } from "@/app/home/types";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // The title screen's painting: the table you were last at fills the whole
 // screen, the way a game's main menu shows the world behind its Continue.
@@ -65,9 +66,12 @@ export function ContinueHero({ campaign, userId }: { campaign: HomeCampaign; use
       <div className="ts-party ts-reveal" style={{ animationDelay: "520ms" }}>
         {faces.length ? (
           <span className="ts-faces" aria-hidden="true">
+            {/* Forty pixels across, so the small copy the server keeps of a
+                portrait (src/lib/image-format.ts), not the painting itself:
+                four faces were ten megabytes of a home page. */}
             {faces.slice(0, 5).map((face, index) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={`${face.name}-${index}`} src={face.url} alt="" className="ts-face" title={face.name} style={{ animationDelay: `${540 + index * 60}ms` }} />
+              <img key={`${face.name}-${index}`} src={variantUrl(face.url, 256)} alt="" className="ts-face" title={face.name} style={{ animationDelay: `${540 + index * 60}ms` }} />
             ))}
           </span>
         ) : null}

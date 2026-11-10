@@ -78,7 +78,10 @@ test("the narration draws a character's portrait or plate, the cast's face for a
     { id: "npc-tobb", name: "Old Tobb", portraitUrl: "", hasVoice: false },
   ];
   const markup = renderToStaticMarkup(createElement(DmContent, { content, rollsById: new Map(), sheetsById, cast, lines }));
-  assert.deepEqual(imgSources(markup), ["/uploads/marla.webp", plate(ysolde), "/uploads/brannoc.webp"]);
+  // A painted face is asked for as the small copy the server keeps of it
+  // (src/lib/image-variant-url.ts): a face beside a line is a thumbnail, and
+  // the full portraits were megabytes each. A built-in plate has no copies.
+  assert.deepEqual(imgSources(markup), ["/uploads/marla.webp?w=256", plate(ysolde), "/uploads/brannoc.webp?w=256"]);
   assert.match(markup, />O<\/span>/, "Old Tobb, unpainted, keeps his initial");
 });
 
@@ -92,9 +95,9 @@ test("a player's line draws the first of their faces in the medallion", () => {
         createElement(PlayerMessage, { message, mine: false, sheets, sheetsById: new Map(sheets.map((entry) => [entry.id, entry])), membersById: new Map(members.map((member) => [member.userId, member])) }),
       ),
     );
-  assert.deepEqual(render([brannoc], []), ["/uploads/brannoc.webp"]);
+  assert.deepEqual(render([brannoc], []), ["/uploads/brannoc.webp?w=256"]);
   const unpainted = { ...brannoc, portrait: null };
-  assert.deepEqual(render([unpainted], [{ userId: brannoc.userId, avatar: { url: "/uploads/avatar.webp" } }]), ["/uploads/avatar.webp"]);
+  assert.deepEqual(render([unpainted], [{ userId: brannoc.userId, avatar: { url: "/uploads/avatar.webp" } }]), ["/uploads/avatar.webp?w=256"]);
   assert.deepEqual(render([unpainted], []), [plate(brannoc)]);
 });
 

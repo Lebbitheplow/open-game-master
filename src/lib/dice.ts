@@ -1,4 +1,3 @@
-import { randomInt } from "node:crypto";
 import type { RollTag } from "@/lib/dice-script-logic";
 
 // Rolls one die: returns an integer in [1, sides]. Injectable for testing.
@@ -81,12 +80,38 @@ export function registerScriptedDice(hook: ScriptedDie) {
 
 let frame: RollFrame | null = null;
 
+// Node's crypto, asked for by name instead of imported. This module is
+// bundled for the browser too (the screens import its types and helpers),
+// and an import of "node:crypto" there made the bundler ship a whole Node
+// crypto polyfill with the table, the table view and the character builder:
+// 438 KiB of script, 131 KiB on the wire, for dice the browser never rolls
+// for anything that counts. The server gets the same module an import gave
+// it, read at each roll, so the suites that replace its randomInt to force
+// a die (scripts/lib/enforce-world.mjs) still do.
+type NodeRandomInt = (min: number, max: number) => number;
+function nodeCrypto(): { randomInt: NodeRandomInt } | undefined {
+  const host = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
+  return host?.getBuiltinModule?.("node:crypto") as { randomInt: NodeRandomInt } | undefined;
+}
+
+// A whole number in [1, sides] from the browser's own generator: uniform,
+// by drawing again when a draw lands in the uneven tail of the 32-bit range.
+function webDie(sides: number): number {
+  const limit = 0x1_0000_0000 - (0x1_0000_0000 % sides);
+  const draw = new Uint32Array(1);
+  do {
+    globalThis.crypto.getRandomValues(draw);
+  } while (draw[0] >= limit);
+  return 1 + (draw[0] % sides);
+}
+
 export function defaultRng(sides: number) {
   const scripted = globalThis.__odmScriptedDie?.(sides, frame ?? { purpose: null, forcedD20: null });
   if (scripted !== undefined && scripted !== null) {
     return scripted;
   }
-  return randomInt(1, sides + 1);
+  const node = nodeCrypto();
+  return node ? node.randomInt(1, sides + 1) : webDie(sides);
 }
 
 export type RollOptions = {

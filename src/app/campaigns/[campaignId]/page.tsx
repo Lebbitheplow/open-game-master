@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, lazy, use, useCallback, useEffect, type ComponentProps } from "react";
 import { useCampaignStream, type CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { ContentScopeProvider } from "@/lib/content-scope";
+import { useCoversBackdrop } from "@/lib/backdrop-cover";
 import { pushView, replaceView } from "@/lib/navigation";
 import { installPageErrorRecorder } from "@/lib/page-errors";
 import { noteTableLanguage } from "@/lib/dictation-language";
@@ -49,10 +50,21 @@ export default function CampaignPage({
     void loadSessionView();
   }, []);
   // A running campaign whose prep this viewer may open (issue 530) has the
-  // lobby's panels ready before they are asked for.
+  // lobby's panels ready before they are asked for: once the table is drawn
+  // and the browser has a moment, not beside the table's own download. The
+  // lobby brings the character builder with it, and fetched at once it made
+  // whoever steers the story wait on it before their table could be used.
   const mayPrep = state.campaign?.status === "active" && Boolean(state.caps?.steersStory);
   useEffect(() => {
-    if (mayPrep) void loadLobby();
+    if (!mayPrep) return;
+    const preload = () => void loadLobby();
+    const idle = typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback(preload, { timeout: 5000 })
+      : window.setTimeout(preload, 2500);
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle as number);
+      window.clearTimeout(idle as number);
+    };
   }, [mayPrep]);
 
   // The admin's browser keeps the game page's own errors for "Report a
@@ -126,6 +138,9 @@ type TableHandlers = Omit<ComponentProps<typeof SessionView>, "state" | "prep">;
 // cannot carry it. The table stays mounted underneath: the call, the board
 // and the chat carry on, and Back to the table is instant.
 function CampaignScreen({ state, refresh, table }: { state: CampaignState; refresh: () => void; table: TableHandlers }) {
+  // The lobby and the table both paint over the whole window: the layout's
+  // backdrop rests while either is up (src/lib/backdrop-cover.ts).
+  useCoversBackdrop();
   // Under the page's Suspense: Next renders a reader of the address there.
   const query = useSearchParams();
   const campaignId = state.campaign?.id ?? "";

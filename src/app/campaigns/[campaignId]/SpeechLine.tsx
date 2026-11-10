@@ -7,6 +7,7 @@ import { useFaceChain } from "@/app/campaigns/[campaignId]/useFaceChain";
 import { useFaceSize } from "@/app/campaigns/[campaignId]/useFaceSize";
 import { textKey } from "@/lib/language/text-logic";
 import { castFaces } from "@/lib/speaker-faces";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // One attributed line in the transcript (docs/vtt-parity-implementation-
 // plan.md 8.1): the face at the left, the name in eyebrow caps, the words
@@ -38,7 +39,7 @@ export function SpeechLine({
     <div className={cn("animate-fade-up flex items-start gap-2.5", className)} style={face ? faceStyle : undefined}>
       {face ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={face} alt="" onError={onFaceError} className="speech-face mt-0.5 shrink-0 rounded-full border border-amber-700/60 object-cover shadow-glow-gold" />
+        <img src={variantUrl(face, 256)} alt="" onError={onFaceError} className="speech-face mt-0.5 shrink-0 rounded-full border border-amber-700/60 object-cover shadow-glow-gold" />
       ) : (
         <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-stone-700 bg-stone-900 font-display text-sm text-amber-100">
           {speaker.name.charAt(0).toUpperCase()}
