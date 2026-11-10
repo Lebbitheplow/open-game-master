@@ -71,6 +71,8 @@ export type SpendContext = {
   units: number;
   mods: Record<string, number>;
   reason: string;
+  // The die rolled in place of the pool's when none was left (pool.freeDie).
+  freeDie?: string;
 };
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
@@ -498,7 +500,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if ("error" in enemy) {
         return enemy;
       }
-      const die = `1${bardicDie(ctx.held.level)}`;
+      const die = `1${ctx.freeDie ?? bardicDie(ctx.held.level)}`;
       const rolled = damageDice(ctx, enemy, die);
       const result: Record<string, unknown> = { rolled: `${die}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, "") };
       if (isNamed(ctx.args.variant ?? "", "defensive flourish", "defensive")) {

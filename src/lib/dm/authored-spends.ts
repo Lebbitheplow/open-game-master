@@ -17,7 +17,7 @@ import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
-import { nameChoice } from "@/lib/srd/feature-names";
+import { holdsFeature, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -221,6 +221,7 @@ export function authoredFeatureSpend(
   // and the spell slot that paid instead of a use.
   let paidUnits: number | null = null;
   let slotPaid: number | null = null;
+  let freeDie: string | null = null;
   if (spend.pool) {
     units = spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
     if (spend.pool.max && units > spend.pool.max) {
@@ -231,6 +232,11 @@ export function authoredFeatureSpend(
       const state = sheet.resources?.[id];
       return state && state.max - state.used >= units;
     }) ?? null;
+    // Master's Flourish: with no use left, the feature's own die and nothing spent.
+    if (units > 0 && !poolId && spend.pool.freeDie && holdsFeature(sheet, spend.pool.freeDie.feature)) {
+      freeDie = spend.pool.freeDie.die;
+      units = 0;
+    }
     // With no use left, the other price the counter's row names pays
     // (src/lib/srd/counter-rules.ts otherPrice): so many sorcery points, or
     // a spell slot of the level the row names.
@@ -269,6 +275,7 @@ export function authoredFeatureSpend(
     mods: computeSheetDerived(sheet).abilityMods,
     reason,
     ...("marks" in charge && charge.marks ? { marks: charge.marks } : {}),
+    ...(freeDie ? { freeDie } : {}),
   };
   const outcome = resolveSpendEffect(ctx, picked.does);
   if ("error" in outcome) {

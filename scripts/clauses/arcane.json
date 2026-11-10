@@ -3023,8 +3023,9 @@
    },
    {
     "c": "and once on each of your turns, when you hit a creature with an attack roll, you can make it save on Wisdom against your spell save DC or be frightened of you until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dread-fright"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dread-fright",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts warlock::Form of Dread hit_save (src/lib/dm/hit-save.ts, from authoredOnHit)"
    }
   ]
  },
@@ -3532,8 +3533,9 @@
   "clauses": [
    {
     "c": "Roll a d6 for a flourish instead of spending a Bardic Inspiration die.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: masters-flourish"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: masters-flourish",
+    "by": "src/lib/srd/authored-effects-data.ts bard::Blade Flourish pool.freeDie Master's Flourish d6 (src/lib/dm/authored-spends.ts)"
    }
   ]
  },

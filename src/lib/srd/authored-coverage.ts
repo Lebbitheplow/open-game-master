@@ -136,6 +136,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rest_temp_hp: { file: "src/lib/dm/rest-tools.ts", call: "authoredRestTempHp(" },
   rider: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   mark: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
+  hit_save: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
   guard_aura: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   pack_adv: { file: "src/lib/dm/pc-attack-situation.ts", call: "authoredAttackSituation(" },
   bonus_route: { file: "src/lib/dm/bonus-routes.ts", call: "authoredBonusRoute(" },

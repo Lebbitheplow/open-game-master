@@ -158,6 +158,10 @@ export type AuthoredEffect = Base &
     // them, when they carry the holder's mark, or when they stand within
     // range of the holder (a spell's save, any caster when `anyCaster`).
     | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean }
+    // Once on each of the holder's turns, a creature their attack hits saves
+    // against their spell save DC or takes `condition` until the end of the
+    // holder's next turn (Form of Dread: src/lib/dm/hit-save.ts).
+    | { kind: "hit_save"; save: Ability; condition: string }
     // Allies in range (and the holder) resist: spell damage, or the damage
     // type the holder's own condition names.
     | {
@@ -487,7 +491,10 @@ export type AuthoredSpend = {
   // (ki, bardic_inspiration, sorcery_points, wild_shape...). `perUnit`: the
   // call's amount is what is spent (Touch of the Long Death's ki); `optional`
   // lets a call spend none.
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string };
+  // `freeDie`: with no use left, a holder of that feature rolls the die in
+  // place of the pool's and spends nothing (Master's Flourish: "you can roll
+  // a d6 and use it instead of expending a Bardic Inspiration die").
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; freeDie?: { feature: string; die: string } };
   action?: SpendAction;
   gate?: Gate;
   // Once per rage and similar: a marker condition the spend leaves.

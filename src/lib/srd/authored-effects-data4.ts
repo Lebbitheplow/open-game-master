@@ -59,9 +59,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
 
   // ---- bard ----
+  // Blade Flourish's freeDie (authored-effects-data.ts): with no Bardic
+  // Inspiration left, the flourish rolls a d6 and spends nothing.
   "bard::Master's Flourish": {
     subclass: "College of Swords",
-    narrated: "A flourish paid with a d6 instead of a Bardic Inspiration die: the GM adds the d6 when Blade Flourish is spent with nothing from the pool.",
+    heldBy: { file: "src/lib/dm/authored-spends.ts", call: "spend.pool.freeDie" },
   },
   "bard::Silver Tongue": {
     subclass: "College of Eloquence",

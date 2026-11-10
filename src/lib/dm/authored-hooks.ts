@@ -44,6 +44,7 @@ import type { Advantage } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
+import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -352,6 +353,10 @@ export function authoredOnHit(
     if (input.weapon !== false) {
       const melee = input.melee ?? withinFeet(encounter.id, sheet.id, enemy.id, 5);
       lines.push(...markEnemy(encounter, sheet, enemy, melee));
+    }
+    // Form of Dread's fright on a hit (src/lib/dm/hit-save.ts).
+    if (!input.dead) {
+      lines.push(...hitSavesOnHit(campaign, encounter, sheet, enemy));
     }
   }
   if (input.dead) {

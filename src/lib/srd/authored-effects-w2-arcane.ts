@@ -43,6 +43,15 @@ export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
     subclass: "College of Creation",
     spends: [{ name: "Performance of Creation", pool: { id: "sub_performance_of_creation" }, action: "action", does: { kind: "create_item", gpPerLevel: 20 } }],
   },
+  // "Once on each of your turns, when you hit a creature with an attack roll,
+  // you can make it save on Wisdom against your spell save DC or be
+  // frightened of you until the end of your next turn", while the form runs
+  // (src/lib/dm/hit-save.ts). Its temporary hit points and its immunity to
+  // fright are the counter's and condition-effects.ts's.
+  "warlock::Form of Dread": {
+    subclass: "The Undead",
+    effects: [{ kind: "hit_save", save: "wis", condition: "frightened", gate: { condition: "form of dread" } }],
+  },
   // The Bladesong's "advantage on Acrobatics" while it runs (the counter
   // sub_bladesong lays the condition; its AC and speed are condition-effects.ts's).
   "wizard::Bladesong": {

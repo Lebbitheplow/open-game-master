@@ -188,8 +188,16 @@ export function probes(rig, shared) {
     "masters-flourish": async () => {
       const [enemy] = await struck(swords(14), "Scimitar");
       drain(swords(14), "bardic_inspiration");
+      const before = foe(enemy).currentHp;
       const out = await spend(swords(14), "Blade Flourish", { targetEnemyId: enemy.id, variant: "defensive" }, [3]);
       assert.equal(out.ok, true, `with no Bardic Inspiration left, a d6 pays for the flourish: ${String(out.error).slice(0, 160)}`);
+      assert.equal(before - foe(enemy).currentHp, 3, "the d6 (a 3) to the damage");
+      assert.match(JSON.stringify(out.result), /1d6/, "the die is a d6");
+      assert.equal(left(swords(14), "bardic_inspiration"), 0, "nothing spent");
+      // Below 14th level the empty pool refuses.
+      const [other] = await struck(swords(13), "Scimitar");
+      drain(swords(13), "bardic_inspiration");
+      assert.equal((await spend(swords(13), "Blade Flourish", { targetEnemyId: other.id, variant: "defensive" }, [3])).ok, false, "a 13th-level bard has no Master's Flourish");
     },
     // ---- College of Whispers
     "blades-cost": async () => {
@@ -326,7 +334,6 @@ export function probes(rig, shared) {
   const KNOWN = {
     "combat-damage": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Combat Inspiration (one reaction, ac_vs_hit)`, note: "", fix: "Let the inspired creature add the die to a damage roll it just made." },
     "flourish-speed": { severity: "low", kind: "rule-missing", where: `${DATA} bard::Blade Flourish (the spend only)`, note: "", fix: "Add 10 feet to the bard's speed on a turn they take the Attack action." },
-    "masters-flourish": { severity: "low", kind: "rule-missing", where: `${DATA} bard::Master's Flourish (narrated)`, note: "", fix: "Let Blade Flourish be paid with a d6 when no die is spent." },
     unfailing: { severity: "low", kind: "rule-missing", where: `${DATA} bard::Unfailing Inspiration (narrated)`, note: "", fix: "Keep the inspiration of an Eloquence bard when the roll it rode still fails." },
     "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
     session: { severity: "low", kind: "rule-missing", where: `${RES} sub_spirit_session (a counter with guidance)`, note: "", fix: "Teach the chosen divination or necromancy spell until the next long rest." },

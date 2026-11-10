@@ -275,7 +275,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "College of Swords",
     spends: [
       // "when you hit a creature with a weapon attack" (XGtE): after the hit.
-      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
+      // Master's Flourish (14): with no die left, a d6 pays.
+      { name: "Blade Flourish", pool: { id: "bardic_inspiration", freeDie: { feature: "Master's Flourish", die: "d6" } }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
     ],
   },
   "bard::Psychic Blades": {

@@ -415,7 +415,14 @@ export function probes(rig, shared) {
       const [enemy] = await dread();
       const swing = await kit.swing(dead().id, enemy.id, [15, 4, 1], { weapon: "Longsword" });
       assert.equal(swing.ok, true, swing.error);
-      assert.ok(foe(enemy).conditions.includes("frightened") || JSON.stringify(swing.result).match(/frighten/i), `a hit in Form of Dread, the creature's Wisdom save a 1: ${show(swing).slice(0, 200)}`);
+      assert.ok(foe(enemy).conditions.includes("frightened"), `a hit in Form of Dread, the creature's Wisdom save a 1: ${show(swing).slice(0, 200)}`);
+      assert.equal(foe(enemy).conditionMeta.frightened?.untilTurnEndOf, dead().id, "until the end of the warlock's next turn");
+      // Once on each turn: a second hit asks no second save.
+      kit.setEnemy(enemy.id, { conditions: [] });
+      kit.saveEncounter({ ...world.encounter(), turnBudget: { ...budget(), actionUsed: false, attacksMade: 0 } });
+      const again = await kit.swing(dead().id, enemy.id, [15, 4, 1], { weapon: "Longsword" });
+      assert.equal(again.ok, true, again.error);
+      assert.ok(!foe(enemy).conditions.includes("frightened"), "a second save in the same turn");
     },
     "grave-die": async () => {
       const [enemy] = await dread();
@@ -550,7 +557,6 @@ export function probes(rig, shared) {
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
     "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
-    "dread-fright": { severity: "medium", kind: "rule-missing", where: `${RES} sub_form_of_dread (fx buff and temporary hit points only)`, note: "", fix: "Once a turn, on a hit in Form of Dread, roll the creature's Wisdom save against frightened." },
     "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
   };
   return { PROBES, KNOWN };
