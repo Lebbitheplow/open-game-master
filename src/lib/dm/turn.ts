@@ -72,7 +72,7 @@ import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { AWAITING_ROLL, fillQueuedParts } from "@/lib/dm/pc-attack-parts";
 import type { AttackRecord } from "@/lib/dm/attack-record";
-import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
+import { doorArgs, strictBooleanArgs, type DoorField } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
@@ -295,7 +295,7 @@ import { BINDER_TOOL_NAMES, binderTools } from "@/lib/dm/binder-tools";
 import { FACTION_TOOL_NAMES, factionTools } from "@/lib/dm/faction-tools";
 import { actionTools } from "@/lib/dm/action-tools";
 import { SHOP_TOOL_NAMES, shopTools, shopsBlock } from "@/lib/dm/shop-tools";
-import { preparedEncounterTools, preparedFightsBlock } from "@/lib/dm/prepared-encounter-tool";
+import { preparedEncounterTools, preparedFightsBlock, runPreparedEncounterTool } from "@/lib/dm/prepared-encounter-tool";
 import { fireFightEvents, firedEventsNote } from "@/lib/dm/fight-events";
 import { SETTLEMENT_TOOL_NAMES, settlementTools } from "@/lib/dm/settlement-tools";
 import { placeIsWritten, populateSettlement } from "@/lib/dm/settlement";
@@ -1718,6 +1718,38 @@ export function dmTurnToolCatalogue(campaign: Campaign, imageEnabled: boolean, l
   ];
 }
 
+// Each tool's published fields, by name, for the argument door: what a
+// field's kind is does not change from table to table, so it is read from
+// the first catalogue that offers the tool and kept.
+const toolFieldsByName = new Map<string, Record<string, DoorField>>();
+function toolFields(campaign: Campaign, name: string): Record<string, DoorField> {
+  if (!toolFieldsByName.has(name)) {
+    const offered = [...(dmTurnToolCatalogue(campaign, true, false) as ToolDefLike[]), readCardTool, runPreparedEncounterTool, completeBeatTool, recallStoryTool] as ToolDefLike[];
+    for (const tool of offered) {
+      const properties = (tool.function.parameters as { properties?: Record<string, DoorField> } | undefined)?.properties;
+      if (properties && !toolFieldsByName.has(tool.function.name)) {
+        toolFieldsByName.set(tool.function.name, properties);
+      }
+    }
+  }
+  return toolFieldsByName.get(name) ?? {};
+}
+
+// The arguments of one GM tool call as every gate and handler reads them:
+// null and "" read as absent, a list of one where a list is asked, a
+// character's name read as their id, a list of ids refused at the first one
+// that names nobody (src/lib/dm/arg-coerce.ts doorArgs says why). The
+// model's calls (resolveModelCall below) and the console's and agent
+// programs' (invoke-dispatch.ts dispatchCall) pass it, once each.
+export function modelCallArguments(
+  campaign: Campaign,
+  name: string,
+  rawArguments: string,
+  sheets: readonly CharacterSheet[],
+): { rawArguments: string } | { refusal: ToolResult } {
+  return doorArgs(rawArguments, { properties: toolFields(campaign, name), sheets });
+}
+
 // Whether a set of tools takes a call by this name: one it offers, or a
 // retired name whose merged tool it offers (issue #471), which a stored turn
 // or an agent program may still send.
@@ -2627,7 +2659,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         (cardKey ? castStopped.get(cardKey) : null) ??
         ranAbove(toolCall, inputInFight, false) ??
         (offersTool(catalogue, toolCall.name)
-          ? await resolveModelCall(context, turn, toolCall)
+          ? await answerModelCall(context, turn, toolCall)
           : { error: `The engine has no action called "${toolCall.name}".`, retry: true });
       if (cardKey) {
         const stop = drawStopsCast(toolCall.name, outcome);
@@ -2789,12 +2821,40 @@ const CARDS_OUT = new WeakSet<object>();
 // companion roster refresh, and parking for physical dice. Everything else
 // goes through the same dispatch the DM console uses
 // (src/lib/dm/invoke-dispatch.ts), so the two callers cannot drift.
+// A handler that throws on one malformed argument answers that call with a
+// retry, and the turn goes on: handle_item with its item sent as a list
+// threw a TypeError that ended the whole turn as failed, and the table got
+// no narration (gap sweep 2026-11-09). The crash's own text stays in the
+// server log; the model is told which call to send again. A stopped job
+// still stops the turn.
+async function answerModelCall(
+  context: TurnContext,
+  turn: DmTurn,
+  toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
+): Promise<ToolResult> {
+  try {
+    return await resolveModelCall(context, turn, toolCall);
+  } catch (error) {
+    if (error instanceof DmJobStopped) {
+      throw error;
+    }
+    console.error(`[dm-turn] ${toolCall.name} threw:`, error);
+    return { error: `${toolCall.name} could not read these arguments, so nothing came of it. Check each field against the tool's description (one value where it asks one, a list where it asks a list) and send it again.`, retry: true };
+  }
+}
+
 async function resolveModelCall(
   context: TurnContext,
   turn: DmTurn,
   toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
 ): Promise<ToolResult> {
   const { campaign, sheets, sheetsById, realDiceUserIds } = context;
+  // The call's arguments as every gate and handler below reads them.
+  const door = modelCallArguments(campaign, toolCall.name, toolCall.rawArguments, sheets);
+  if ("refusal" in door) {
+    return door.refusal;
+  }
+  toolCall = { ...toolCall, rawArguments: door.rawArguments };
   // A chest's items, a shopping list, the creatures a healing spell
   // reaches: each entry the one-entry call it always was
   // (src/lib/dm/action-parts-logic.ts listedCalls).
@@ -3103,7 +3163,7 @@ function castSlotlessFor(context: TurnContext, turn: DmTurn): (cast: { casterId:
     const id = `slotless_${turn.conversation.length}`;
     const rawArguments = JSON.stringify(call.args);
     turn.conversation.push({ role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: call.name, arguments: rawArguments } }] });
-    const outcome = await resolveModelCall(context, turn, { id, name: call.name, rawArguments });
+    const outcome = await answerModelCall(context, turn, { id, name: call.name, rawArguments });
     turn.conversation.push({ role: "tool", tool_call_id: id, content: JSON.stringify(outcome) });
     saveDmTurn(turn);
     if (typeof outcome.error === "string") {
