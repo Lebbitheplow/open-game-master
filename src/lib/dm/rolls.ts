@@ -23,7 +23,7 @@ import { strengthCheckFloor } from "@/lib/srd/trait-rules";
 import { computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
-import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, xmlToolCallRegex } from "@/lib/dm/tool-text";
+import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, withoutCardLines, xmlToolCallRegex } from "@/lib/dm/tool-text";
 import { acBreakdownFor, computeSheetDerived, findSkill } from "@/lib/srd";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -238,7 +238,10 @@ export function salvageTextualToolCalls(text: string): {
     return { text, calls: [] };
   }
   const calls: ParsedToolCall[] = [];
-  const cleaned = text
+  // A card line copied into the reply goes first (issue 900): it names a tool
+  // and its arguments in words, and is neither a call to run nor the story,
+  // so the claims reader must not find a blow or a roll in it either.
+  const cleaned = withoutCardLines(text)
     .replace(toolTextRegex(), (_match, name: string, body: string) => {
       const args = parseKeyValueArgs(body);
       if (Object.keys(args).length) {
