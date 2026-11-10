@@ -553,9 +553,9 @@
   background: #575170;
   transition: background-color var(--dur-beat) var(--ease-snap), box-shadow var(--dur-beat) var(--ease-snap);
 }
-.ts-status-awake .ts-lamp { background: var(--ts-gold); box-shadow: 0 0 8px var(--ts-gold); animation: ts-lamp 2.6s ease-in-out infinite; }
+.ts-status-awake .ts-lamp { background: var(--ts-gold); box-shadow: 0 0 11px var(--ts-gold); animation: ts-lamp 2.6s ease-in-out infinite; }
 .ts-status-dozing .ts-lamp { background: var(--ts-ember); box-shadow: 0 0 8px var(--ts-ember); }
-.ts-status-wait .ts-lamp { animation: ts-lamp 1.2s ease-in-out infinite; }
+.ts-status-wait .ts-lamp { box-shadow: 0 0 11px currentColor; animation: ts-lamp 1.2s ease-in-out infinite; }
 
 /* ------------------------------------------------------------------------
    Save slots: your tables along the bottom edge
@@ -903,9 +903,12 @@
   60% { text-shadow: 0 0 28px rgba(212, 171, 58, 0.8); }
   to { opacity: 1; transform: none; text-shadow: 0 0 20px rgba(212, 171, 58, 0.45); }
 }
+/* The lamp breathes by its opacity alone, under a glow that stands still:
+   a shadow that changes size is painted on the main thread sixty times a
+   second for as long as the screen is open, for a dot of seven pixels. */
 @keyframes ts-lamp {
-  0%, 100% { box-shadow: 0 0 8px currentColor; opacity: 1; }
-  50% { box-shadow: 0 0 14px currentColor; opacity: 0.75; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* ------------------------------------------------------------------------
@@ -2155,6 +2158,7 @@ html[data-theme="light"] .ts-below { padding-top: 8rem; }
   border-radius: 9999px;
   color: #e3c15c;
   background: #e3c15c;
+  box-shadow: 0 0 9px currentColor;
   animation: ts-lamp 2.6s ease-in-out infinite;
 }
 .ts-slot-title { transition: color var(--dur-quick) var(--ease-snap); }
