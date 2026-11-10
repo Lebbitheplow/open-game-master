@@ -4,6 +4,5 @@ export const ROWS = {
   "test-enforce-sweep-hand-bard-a": [
   ],
   "test-enforce-sweep-hand-bard-b": [
-    ["P1|College of Eloquence@20|out-of-fight|feature:sub_infectious_inspiration", "hand-reaction-no-trigger"],
   ],
 };
