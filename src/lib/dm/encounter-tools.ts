@@ -56,6 +56,7 @@ import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
 import { askShares, conductGate } from "@/lib/dm/party-conduct";
 import { registerFightStarter } from "@/lib/dm/turncoat";
 import { askThoseTheOpeningLeft } from "@/lib/dm/fight-opening-ask";
+import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { hasHumanDm } from "@/lib/dm/viewer";
 import { decideAmbush, rollOpeningInitiative } from "@/lib/dm/encounter-open";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
@@ -1093,16 +1094,29 @@ function handleEndEncounter(
     }
     return { error: "No active encounter: there is no fight to end.", retry: true };
   }
+  // A refused parse keeps the outcome it can read: one unreadable optional
+  // field (reason null, or a list) discarded the readable "victory" beside
+  // it, and the fight was recorded as a truce at half the XP.
   let args: z.infer<typeof endArgsSchema>;
   try {
     args = endArgsSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    args = { outcome: undefined };
+    let raw: unknown = null;
+    try {
+      raw = JSON.parse(rawArguments || "{}");
+    } catch {
+      raw = null;
+    }
+    const outcome = raw && typeof raw === "object" ? endArgsSchema.shape.outcome.safeParse((raw as Record<string, unknown>).outcome) : null;
+    args = { outcome: outcome?.success ? outcome.data : undefined };
   }
   // A foe lying knocked out is beaten, not standing (issue #667: the fight
   // read as a truce, paid half and marked the beaten foe fled).
   const statuses = listEnemies(encounter.id).map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
   const { outcome, inferred } = resolveEncounterOutcome(args.outcome, statuses);
+  // Its creatures let go of whoever they held: none of them is in reach
+  // once the fight is over (grapple.ts releaseGrapplesHeldByAny).
+  releaseGrapplesHeldByAny(campaign, listEnemies(encounter.id).map((enemy) => enemy.id));
   return {
     ok: true,
     ...(inferred

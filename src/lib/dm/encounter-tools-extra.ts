@@ -30,6 +30,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { canEnemyAct } from "@/lib/dm/can-act";
+import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { standingOn } from "@/lib/dm/combatant";
 import { leftBehind, swallowCoverError } from "@/lib/dm/swallow";
 
@@ -146,6 +147,8 @@ function handleEnemyFlees(
     };
   }
   patchEnemyHp(enemy.id, enemy.currentHp, "fled");
+  // Gone from the fight, it holds nobody (grapple.ts releaseGrapplesHeldByAny).
+  releaseGrapplesHeldByAny(campaign, [enemy.id]);
   // What it swallowed stays, prone where it stood (swallow.ts): asked while
   // its token is still there to stand them beside.
   const behind = leftBehind(campaign, encounter.id, enemy, "flees");
