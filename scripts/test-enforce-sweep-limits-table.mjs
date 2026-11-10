@@ -13,11 +13,6 @@ import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { limitsTable } from "./lib/sweep-limits-world.mjs";
 
 const KNOWN = {
-  "849-use_item-spends-and-does-nothing:Ball Bearings (bag of 1,000)": {
-    where: "src/lib/dm/gear-zones.ts / gear-ground.ts (caltrops spread a zone through use_item; ball bearings have no row) and src/lib/dm/item-use.ts",
-    severity: "low",
-    note: "Caltrops, the same shape, answer with \"spread: Caltrops covers 1 square ... DC 15 DEX save\". Ball bearings are taken from the pack and the action spent, and the board is unchanged.",
-  },
 };
 const RULING = {};
 const SKIP = {
