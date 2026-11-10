@@ -513,7 +513,12 @@ const letItRoll = async (stop) => {
   await settleQueue(fightWorld.campaignId);
 };
 
+// These calls run as they are let go, and their blows land: the goblins are
+// kept standing through them, and given back their hit points after.
+let goblinsBefore;
 await test("A feature a character spends stops for the creature's save it asks.", async () => {
+  goblinsBefore = [goblin, goblin2].map((enemy) => ({ id: enemy.id, currentHp: kit.enemy(enemy.id).currentHp, maxHp: kit.enemy(enemy.id).maxHp }));
+  for (const enemy of goblinsBefore) kit.setEnemy(enemy.id, { currentHp: 300, maxHp: 300 });
   arm();
   await enemyTurn([modelCall("use_resource", { characterId: target.id, resource: "Intimidating Presence", targetEnemyId: goblin.id })], "Kara roars.");
   const [scare] = stops();
@@ -632,6 +637,8 @@ await test("A walk out of a creature's reach and a legendary action stop for the
   assert.deepEqual(choiceNames(legend), [goblin.displayName, "Kara"]);
   await letItRoll(legend);
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+  for (const enemy of goblinsBefore) kit.setEnemy(enemy.id, { currentHp: enemy.currentHp, maxHp: enemy.maxHp });
+  fightWorld.patch(target.id, { currentHp: 60, conditions: [], conditionMeta: {} });
 });
 
 await test("A poison laid with afflict stops for its save.", async () => {
