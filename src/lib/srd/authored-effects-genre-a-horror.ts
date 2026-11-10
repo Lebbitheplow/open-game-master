@@ -17,7 +17,19 @@ const held = (classId: string, feature: string, file: string, call: string, more
   entry: { subclass: "genre", heldBy: { file, call }, ...more },
 });
 
+const counted = (classId: string, feature: string, counter: string, more: Omit<AuthoredEntry, "subclass" | "counter">): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", counter, ...more },
+});
+
 export const GENRE_A_HORROR: GenreRow[] = [
+  // "1/long rest, cast one stigmata of 5th level or lower without a slot at
+  // its maximum effect": the mark lasts the turn, and the cast it pays for
+  // (src/lib/dm/genre-a-casts.ts) clears it at its maximum damage.
+  counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
+    spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
+  }),
   // "Advantage on death saves; stabilizing you takes no check"
   held("survivor", "Death's Old Acquaintance", "src/lib/dm/death.ts", "horrorDeathSaveAdvantage"),
   // "While you are the last conscious party member, resist all damage and

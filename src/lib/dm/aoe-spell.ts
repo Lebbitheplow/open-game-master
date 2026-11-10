@@ -38,6 +38,7 @@ import { maximumOf } from "@/lib/dm/heal-spell";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
 
 const FEET_PER_TILE = 5;
 
@@ -328,6 +329,13 @@ export function planAoeSpell(
     damageParts = damageParts ? [String(maximumOf(damageParts[0])), String(maximumOf(damageParts[1]))] : null;
     damage = damageParts ? damageParts.join("+") : String(maximumOf(damage));
     corrections.push(payOverchannel(campaign, turn, caster.id, spellLevel));
+  }
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  const genreMaximum = !input.overchannel && damage ? genreCastsAtMaximum(caster, spellLevel) : null;
+  if (genreMaximum && damage) {
+    damageParts = damageParts ? [String(maximumOf(damageParts[0])), String(maximumOf(damageParts[1]))] : null;
+    damage = damageParts ? damageParts.join("+") : String(maximumOf(damage));
+    corrections.push(`${genreMaximum}: the spell deals its maximum damage.`);
   }
   const condition = mech?.condition ?? null;
   const runsAs = resolved?.runsAs ?? facts?.runsAs;

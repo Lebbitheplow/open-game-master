@@ -25,11 +25,16 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 
-type GenreCast = { counter: string; feature: string } & ({ mark: string; maxLevel: number } | { level: number });
+// `atMaximum`: the spell the mark pays for deals its maximum damage (Their
+// Power, Your Hands: "without a slot at its maximum effect").
+type GenreCast = { counter: string; feature: string } & ({ mark: string; maxLevel: number; atMaximum?: boolean } | { level: number });
 
 export const GENRE_A_CASTS: GenreCast[] = [
   { counter: "cyberpunk_singularity", feature: "Singularity", mark: "singularity", maxLevel: 5 },
   { counter: "horror_author_of_the_unwritten", feature: "Author of the Unwritten", mark: "author of the unwritten", maxLevel: 5 },
+  // Their Power, Your Hands (apostate 20): "cast one stigmata of 5th level or
+  // lower without a slot at its maximum effect".
+  { counter: "horror_their_power_your_hands", feature: "Their Power, Your Hands", mark: "their power, your hands", maxLevel: 5, atMaximum: true },
   { counter: "horror_apocrypha", feature: "Apocrypha", level: 6 },
   { counter: "horror_seventh_seal", feature: "Seventh Seal", level: 7 },
 ];
@@ -57,6 +62,18 @@ export function genreFreeCast(
     const state = sheet.resources?.[row.counter];
     if (facts.level === row.level && state && state.used < state.max) {
       return { row, note: `${facts.name} is cast through ${row.feature}, with no spell slot: once until a long rest.` };
+    }
+  }
+  return null;
+}
+
+// The feature that casts a spell of this level at its maximum: a mark held
+// whose row says so, read before the cast clears it (cast-at-enemy.ts,
+// aoe-spell.ts), or null.
+export function genreCastsAtMaximum(sheet: Pick<CharacterSheet, "conditions">, level: number): string | null {
+  for (const row of GENRE_A_CASTS) {
+    if ("mark" in row && row.atMaximum && level >= 1 && level <= row.maxLevel && sheet.conditions.some((entry) => isConditionNamed(entry, row.mark))) {
+      return row.feature;
     }
   }
   return null;

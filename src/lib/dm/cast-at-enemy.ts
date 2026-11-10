@@ -66,6 +66,7 @@ import { itemCastOpen } from "@/lib/dm/item-casts";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { swallowCover } from "@/lib/dm/swallow";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
 
 const castArgsSchema = z.object({
   characterId: z.string(),
@@ -452,6 +453,8 @@ export function handleCastAtEnemy(
   // dice stay written (landSpellDamage maximizes them) so a spell of two types
   // keeps both: collapsed to one number here, Ice Storm landed all as hail.
   const overchannel = Boolean(args.overchannel && damageExpression);
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  const genreMaximum = Boolean(damageExpression) && genreCastsAtMaximum(sheet, spellLevel) !== null;
   if (overchannel) {
     base.overchannel = payOverchannel(campaign, turn, sheet.id, spellLevel);
   }
@@ -529,7 +532,7 @@ export function handleCastAtEnemy(
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
         ...(sharedSecond !== undefined ? { sharedSecond } : {}),
-        ...(overchannel ? { atMaximum: true } : {}),
+        ...(overchannel || genreMaximum ? { atMaximum: true } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;

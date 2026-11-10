@@ -73,5 +73,33 @@ await test("Sole Survivor: no resistance while an ally stands; every type and do
   assert.equal(t.hp(scene.holder.id), 85, "half once the holder is the last one conscious");
 });
 
+await test("Their Power, Your Hands: the next stigmata of 5th level or lower costs no slot and deals its maximum", async () => {
+  const slotsGone = (id) => t.world.patch(id, { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 4 }, 2: { max: 3, used: 3 }, 3: { max: 3, used: 3 }, 4: { max: 3, used: 3 } }, prepared: ["Inflict Wounds", "Blight"], known: ["Inflict Wounds", "Blight"], cantrips: [] } });
+  const marked = (id) => sheet(id).conditions.some((entry) => entry.toLowerCase().startsWith("their power"));
+  // A spell attack (pc_attack): Inflict Wounds, 3d10 at most 30.
+  let scene = await t.stage({ classId: "apostate", level: 20 });
+  slotsGone(scene.holder.id);
+  const unpaid = await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" });
+  assert.ok(unpaid.ok === false || unpaid.error, "with every slot spent and no mark, the cast is not paid");
+  t.kit.giveTurn(scene.holder.id);
+  must(await spend(scene, "horror_their_power_your_hands"), "Their Power, Your Hands");
+  let before = t.foeHp(scene.near.id);
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" }), "Inflict Wounds");
+  assert.equal(before - t.foeHp(scene.near.id), 30, "Inflict Wounds at its maximum");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["1"].used, 4, "no slot spent");
+  assert.ok(!marked(scene.holder.id), "the cast clears the mark");
+  // A save spell (cast_at_enemy): Blight, 8d8 at most 64 on a failed save.
+  scene = await t.stage({ classId: "apostate", level: 20 });
+  slotsGone(scene.holder.id);
+  must(await spend(scene, "horror_their_power_your_hands"), "Their Power, Your Hands");
+  before = t.foeHp(scene.near.id);
+  t.world.dice(1, 1, 1, 1, 1, 1, 1, 1, 1);
+  const out = await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Blight" });
+  t.world.clearDice();
+  assert.notEqual(out.ok, false, JSON.stringify(out).slice(0, 300));
+  assert.equal(before - t.foeHp(scene.near.id), 64, "Blight at its maximum");
+  assert.ok(!marked(scene.holder.id), "the cast clears the mark");
+});
+
 t.close();
 console.log(`test-genre-a-horror: ${passed} passed`);
