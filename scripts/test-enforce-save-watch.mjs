@@ -315,6 +315,25 @@ await test("An enemy's hit on a concentrating character stops for the concentrat
   kit.place(sorcerer.id, 8, 8);
 });
 
+// Flash of Genius answers an ability check as well as a save, and a check a
+// call throws (a group's check here) has no card of its own.
+await test("An ally's check a call throws stops for Flash of Genius, which adds to it when it fails.", async () => {
+  reset();
+  assert.equal((await toggle(solUser, sorcerer.id, false)).status, 200);
+  assert.equal((await toggle(artUser, artificer.id)).status, 200);
+  await enemyTurn([modelCall("group_check", { characterIds: [ally.id], skill: "athletics", dc: 15, reason: "the wall" })], "Kara climbs.");
+  const [stop] = stops();
+  assert.ok(stop, "the check stops");
+  assert.equal(publicPendingRoll(stop).watch.power, "flash_of_genius");
+  // 9 + 3 (Strength) = 12 against DC 15: Intelligence +3 carries it.
+  world.dice(9);
+  assert.equal((await answer(stop.id, { shift: true })).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.equal(flashUsed(), 1);
+  assert.match(toldLast().savedWith ?? JSON.stringify(toldLast()), /Ines used Flash of Genius: Kara's check went from 12 to 15 against DC 15/);
+});
+
 model.close();
 finish();
 world.close();

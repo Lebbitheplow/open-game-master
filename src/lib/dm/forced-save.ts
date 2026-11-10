@@ -188,6 +188,30 @@ export function throwWatchedSave(campaignId: string, sheet: Pick<CharacterSheet,
   return takeSaveHelp(campaignId, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
 }
 
+// A character's ability check thrown inside a call (a contest's side, a
+// scroll read above their slots, an item's check, a healer's Medicine): tagged
+// as the character's check, so a watch stop's foretold number lands on its
+// d20. With a DC its outcome is known as it lands, so a Chronal Shift armed
+// for it rolls it again and Flash of Genius adds to it when it fails; a
+// contest's side has no DC of its own, and only the number answers it.
+export function throwWatchedCheck(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, expression: string, dc: number | null | undefined, waits: boolean): RollResult {
+  const purpose = { roller: "hero" as const, kind: "check" as const, who: sheet.name };
+  const throwCheck = () => {
+    const thrown = rollExpression(expression, undefined, { purpose });
+    return waits && dc ? settleHeldDie(campaignId, sheet.id, thrown, dc) : thrown;
+  };
+  let outcome = throwCheck();
+  if (!dc) {
+    return outcome;
+  }
+  const shiftedBy = takeShift(campaignId, purpose, outcome.total >= dc);
+  if (shiftedBy) {
+    outcome = throwCheck();
+    noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the check again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
+  }
+  return takeSaveHelp(campaignId, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
+}
+
 // An attack roll's held Bardic Inspiration die (settleHeldDie): added only to
 // a roll that misses `ac` and is no natural 1 or critical, when the die can
 // lift it to a hit. The same object back when nothing was added.

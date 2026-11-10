@@ -13,7 +13,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck, throwWatchedSave } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -80,8 +80,8 @@ export function rollCharacterCheck(
     return { total: 1, expression: "", notes: resolved.notes, rollId: null, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits && check.dc ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
+  // A watch stop's answer lands here (foresight-saves.ts).
+  const outcome = throwWatchedCheck(campaign.id, sheet, resolved.expression, check.dc, waits);
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -130,8 +130,7 @@ export function rollFeatureSave(
     return { success: false, total: null, notes: resolved.notes };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  const outcome = throwWatchedSave(campaign.id, sheet, resolved.expression, dc, waits);
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

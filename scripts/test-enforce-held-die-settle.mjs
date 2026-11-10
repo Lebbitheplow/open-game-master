@@ -173,8 +173,9 @@ await test("Every site that rolls with a held die settles it after the d20, or n
   for (const file of fs.readdirSync(dir).filter((name) => name.endsWith(".ts"))) {
     const text = fs.readFileSync(path.join(dir, file), "utf8");
     const sites = (text.match(/spendRollCarriers\([^)]*resolved\.spendInspiration\)/g) ?? []).length;
-    // throwWatchedSave (forced-save.ts) settles it for the save it throws.
-    const settled = (text.match(/settleHeldDie\(|throwWatchedSave\(/g) ?? []).length;
+    // throwWatchedSave and throwWatchedCheck (forced-save.ts) settle it for
+    // the roll they throw.
+    const settled = (text.match(/settleHeldDie\(|throwWatchedSave\(|throwWatchedCheck\(/g) ?? []).length;
     if (sites > settled && !NO_TARGET.has(file)) {
       missing.push(`${file}: ${sites} rolls with carriers, ${settled} settled`);
     }

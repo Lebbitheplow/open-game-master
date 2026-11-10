@@ -70,7 +70,7 @@ export function foeRoll(enemy: { id: string; displayName: string; slug?: string 
 const SAVE_ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 
 // The characters' saves, one each, or several the watcher picks from.
-function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving throws"): About | null {
+export function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving throws"): About | null {
   const seen = heroes.filter((hero, at) => !unseen(hero) && heroes.findIndex((each) => each.id === hero.id) === at);
   if (!seen.length) {
     return null;
@@ -79,7 +79,7 @@ function heroesAbout(heroes: CharacterSheet[], against: string, many = "saving t
   return { line, rollerId: seen[0].id, rolls: seen.map(heroSave), perCreature: seen.length > 1, rollerWaits: false };
 }
 
-function oneFoe(enemy: EncounterEnemy | null, line: (name: string) => string, rollerId?: string): About | null {
+export function oneFoe(enemy: EncounterEnemy | null, line: (name: string) => string, rollerId?: string): About | null {
   if (!enemy || unseen(enemy)) {
     return null;
   }
@@ -141,6 +141,10 @@ function shapeAbout(campaign: Campaign, encounter: Encounter, args: Record<strin
   }
   const spell = args.spell.trim().slice(0, 60);
   const engine = spellEngineName(spell, spellAuthorsFor(campaign));
+  // Dispel Magic on a spell above its slot asks the caster's check (dispel.ts).
+  if (isNamed(engine, "dispel magic")) {
+    return contestAbout(caster, null, ` to end the spell`);
+  }
   if (typeof args.targetEnemyId === "string" && enemyShapeSpellFor(engine)) {
     return oneFoe(getFoe(args.targetEnemyId), (who) => `${caster.name} is about to cast ${spell} at ${who}.`, caster.id);
   }
@@ -268,6 +272,24 @@ export function attackRiderFoes(args: Record<string, unknown>, hero: CharacterSh
   return foes;
 }
 
+// ---- the checks a call throws inside it ----
+
+export function heroCheck(hero: CharacterSheet): Seen {
+  return { tag: { roller: "hero", kind: "check", who: hero.name }, ref: hero.id, name: hero.name };
+}
+
+// One character's check, or a contest between a character and a creature:
+// each side's d20 is its own, and the watcher picks whose.
+export function checksAbout(rollerId: string, rolls: Seen[], line: string): About | null {
+  return rolls.length ? { line, rollerId, rolls, perCreature: rolls.length > 1, rollerWaits: false } : null;
+}
+
+export function contestAbout(hero: CharacterSheet, foe: EncounterEnemy | null, what: string): About | null {
+  const rolls = [...(unseen(hero) ? [] : [heroCheck(hero)]), ...(foe && !unseen(foe) ? [foeRoll(foe, "check")] : [])];
+  const line = foe ? `${hero.name} and ${foe.displayName} are about to roll a contest${what}.` : `${hero.name} is about to make an ability check${what}.`;
+  return checksAbout(hero.id, rolls, line);
+}
+
 export function savesAbout(campaign: Campaign, encounter: Encounter, name: string, args: Record<string, unknown>, sheets: readonly CharacterSheet[]): About | null {
   if (name === "apply_hazard") {
     return hazardAbout(campaign, args, sheets);
@@ -286,9 +308,21 @@ export function savesAbout(campaign: Campaign, encounter: Encounter, name: strin
   }
   const user = typeof args.characterId === "string" ? sheets.find((sheet) => sheet.id === args.characterId) : undefined;
   if (name === "use_resource" && user) {
+    // Indomitable's reroll is the user's own save; Insightful Fighting a
+    // contest with the creature (feature-spends.ts, authored-spend-effects.ts).
+    if (isNamed(String(args.resource ?? ""), "indomitable")) {
+      return heroesAbout([user], " again");
+    }
+    if (isNamed(String(args.resource ?? ""), "insightful fighting")) {
+      return contestAbout(user, namedFoes(args)[0] ?? null, " to read the creature");
+    }
     return featureAbout(encounter, args, user);
   }
   if (name === "use_reaction" && user) {
+    // Counterspell against a higher spell asks the caster's check (reaction-spells.ts).
+    if (isNamed(String(args.feature ?? ""), "counterspell")) {
+      return contestAbout(user, null, " to counter the spell");
+    }
     return reactionAbout(encounter, args, user);
   }
   if (name === "pet_attack" && user) {

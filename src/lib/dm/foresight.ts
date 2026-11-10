@@ -35,6 +35,7 @@ import { spendForetold } from "@/lib/dm/foretold";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { publishPersisted } from "@/lib/events";
+import { moreAbout } from "@/lib/dm/foresight-more";
 import { attackRiderFoes, foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -234,7 +235,7 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
   }
-  return savesAbout(campaign, encounter, call.name, args, sheets);
+  return savesAbout(campaign, encounter, call.name, args, sheets) ?? moreAbout(encounter, call.name, args, sheets);
 }
 
 // "Within 30 feet" and "a creature you can see", for Chronal Shift: the
@@ -253,7 +254,10 @@ function savesHelped(campaignId: string, encounter: Encounter, sheet: CharacterS
   }
   const side = (ref: string) => sideOf(encounter, kindOfId(encounter.id, ref) ?? "enemy", ref);
   return [...(about.rollerWaits ? [] : about.rolls), ...(about.riderSaves ?? [])].filter((roll) => {
-    const saver = roll.tag.roller === "hero" && roll.tag.kind === "save" ? sheets.find((entry) => entry.id === roll.ref) : null;
+    // Flash of Genius answers an ability check as well as a save ("makes an
+    // ability check or a saving throw"); Favored by the Gods a save only.
+    const answers = roll.tag.kind === "save" || (power === "flash_of_genius" && roll.tag.kind === "check");
+    const saver = roll.tag.roller === "hero" && answers ? sheets.find((entry) => entry.id === roll.ref) : null;
     if (!saver) {
       return false;
     }
