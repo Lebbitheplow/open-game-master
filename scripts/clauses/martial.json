@@ -3019,8 +3019,9 @@
   "clauses": [
    {
     "c": "When you hit a surprised creature, it makes a Constitution save against 8 + Dexterity + proficiency or takes double damage.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double",
+    "by": "src/lib/dm/death-strike.ts deathStrikeDoubles, attack-blow.ts landSwingBlow, pc-attack-damage.ts landBlow doubled"
    }
   ]
  },
@@ -3502,9 +3503,9 @@
   "clauses": [
    {
     "c": "After a sneak attack drops or wounds a creature, a second creature within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the spend follows any weapon hit this turn (afterWeaponHit), not a Sneak Attack's, and its die_damage row carries no rangeFt and does not refuse the creature first hit; no probe swings without Sneak Attack, names the first creature, or stands the second beyond 30 feet"
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts sneakAnswerFor (the turn's SNEAK_HIT mark, a second creature within 30 feet of the first), afterSneak on the die_damage row",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: wails-needs-a-sneak-attack"
    },
    {
     "c": "takes half your sneak attack dice in necrotic damage",
@@ -3585,10 +3586,15 @@
   "sha": "9f9cc868079d",
   "clauses": [
    {
-    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second, and at the end of a long rest a soul trinket appears in your hand if you have none.",
+    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second",
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts (afterSneak.firstToo: Death's Friend) and authored-spend-effects.ts die_damage",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-first-too"
+   },
+   {
+    "c": "at the end of a long rest a soul trinket appears in your hand if you have none.",
     "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Death's Friend: \"the GM applies the damage and the trinket\"): damage is a number, a gap of kind rule-missing"
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-trinket-at-rest"
    }
   ]
  },

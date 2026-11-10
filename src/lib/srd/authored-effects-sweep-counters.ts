@@ -81,7 +81,10 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         action: "none",
         oncePerTurn: true,
         afterWeaponHit: true,
-        does: { kind: "die_damage", dice: HALF_SNEAK, type: "necrotic" },
+        // Answers the turn's Sneak Attack, on a second creature within 30
+        // feet of the first (src/lib/dm/sneak-answer.ts); Death's Friend
+        // lands it on the first creature as well.
+        does: { kind: "die_damage", dice: HALF_SNEAK, type: "necrotic", afterSneak: { rangeFt: 30, firstToo: "Death's Friend" } },
       },
     ],
   },

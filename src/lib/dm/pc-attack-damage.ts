@@ -398,8 +398,13 @@ export function landBlow(input: {
   holdVictory?: boolean;
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
+  // Death Strike's failed save: the whole blow is doubled, every type of it,
+  // before any resistance meets it (src/lib/dm/death-strike.ts).
+  doubled?: boolean;
 }): Record<string, unknown> {
-  const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, crit, critExtraDice, magical } = input;
+  const times = input.doubled ? 2 : 1;
+  const dealt = input.dealt * times;
   // A silvered or adamantine weapon passes the resistances that name it.
   const material = profile.material ?? {};
   const nonlethal = input.nonlethal === true;
@@ -413,7 +418,7 @@ export function landBlow(input: {
   const parts = damageParts(damageOutcome, profile.damageType, input.typedRiders, {
     crit,
     trailingTerms: crit ? critExtraDice : 0,
-  });
+  }).map((part) => ({ ...part, amount: part.amount * times }));
   let applied: Record<string, unknown>;
   if (dealt <= 0) {
     applied = unharmed;

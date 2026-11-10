@@ -420,7 +420,11 @@ export type SpendDoes =
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.
-  | { kind: "die_damage"; dice: Formula; type: string }
+  // `afterSneak`: it answers the turn's Sneak Attack hit (action-budget.ts
+  // SNEAK_HIT) and lands on a second creature within `rangeFt` of the one the
+  // Sneak Attack struck, never that one; holding `firstToo`, the struck one
+  // takes it as well (Wails from the Grave, Death's Friend).
+  | { kind: "die_damage"; dice: Formula; type: string; afterSneak?: { rangeFt: number; firstToo?: string } }
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a
   // defensive flourish.
   | { kind: "flourish" }

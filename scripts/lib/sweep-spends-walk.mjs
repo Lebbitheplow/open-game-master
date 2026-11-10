@@ -45,7 +45,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder sneak attacked a foe"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -193,6 +193,17 @@ async function step(rig, scene, name, notes) {
       return swing([18, 5]);
     case "the holder missed a foe":
       return swing([2]);
+    // A finesse blade at the second foe, brought beside the holder and the
+    // hurt ally: the hit carries Sneak Attack, and the foe beside them (the
+    // ladder's target) is the other creature within 30 feet, for what answers
+    // a Sneak Attack on another creature (Wails from the Grave).
+    case "the holder sneak attacked a foe": {
+      const held = world.sheet(holder);
+      world.patch(holder, { equipment: [...(held.equipment ?? []), { name: "Dagger", qty: 1, equipped: true }] });
+      kit.place(scene.far.id, 4, 6);
+      world.dice(18, ...new Array(12).fill(3));
+      return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.far.id, weapon: "Dagger" });
+    }
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);

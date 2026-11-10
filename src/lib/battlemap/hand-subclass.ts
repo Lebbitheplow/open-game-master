@@ -7,7 +7,7 @@
 // offered for a spend use_resource would refuse for want of the feature.
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
-import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -295,6 +295,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       poolGate,
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        : null,
+      // What answers a Sneak Attack waits for the hit that dealt it, as the
+      // engine does (src/lib/dm/sneak-answer.ts).
+      (() => {
+        const aimed = aimDoes(does, aim.variant);
+        return aimed.kind === "die_damage" && aimed.afterSneak && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(SNEAK_HIT));
+      })()
+        ? { reason: `${spend.name} answers a Sneak Attack: land one this turn first.`, spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.

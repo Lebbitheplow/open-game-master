@@ -197,6 +197,48 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(out.ok, true, out.error);
     assert.equal(before - foe(second).currentHp, 2 * Math.ceil(sneakDice(9) / 2), `half the sneak attack dice (3d6 of 2s) in necrotic to a second creature 15 feet off: ${show(out)}`);
   });
+  // The defect found at integration: the spend answered any weapon hit, had
+  // no 30-foot limit and took the first creature as the second.
+  await probe("wails-needs-a-sneak-attack", async () => {
+    const [first, second] = await stage(phantom, { enemies: 2, cast: [] });
+    const plain = await swing(phantom, first, [15, 4]);
+    assert.equal(plain.result.hit, true, plain.error);
+    assert.doesNotMatch(expr(plain), /d6/, `the staging: a hit with no Sneak Attack (${expr(plain)})`);
+    const unanswered = await spend(phantom, "Wails from the Grave", { targetEnemyId: second.id }, 2);
+    assert.equal(unanswered.ok, false, `a hit without Sneak Attack let the wail out: ${show(unanswered)}`);
+    assert.equal(r.used(phantom, "sub_wails_from_the_grave"), 0, "and the refusal spent nothing");
+    const [one, two] = await stage(phantom, { enemies: 2, cast: [] });
+    kit.setEnemy(one.id, { conditions: ["prone"] });
+    const sneak = await swing(phantom, one, [15, 15, ...new Array(12).fill(2)]);
+    assert.equal(sneak.result.hit, true, sneak.error);
+    assert.equal((await spend(phantom, "Wails from the Grave", { targetEnemyId: one.id }, 2)).ok, false, "the first creature is not the second");
+    kit.place(two.id, 13, 5);
+    assert.equal((await spend(phantom, "Wails from the Grave", { targetEnemyId: two.id }, 2)).ok, false, "a creature 35 feet from the first is beyond 30 feet");
+    assert.equal(r.used(phantom, "sub_wails_from_the_grave"), 0, "neither refusal spent a use");
+    kit.place(two.id, 12, 5);
+    const near = await spend(phantom, "Wails from the Grave", { targetEnemyId: two.id }, 2);
+    assert.equal(near.ok, true, `a creature 30 feet from the first: ${show(near)}`);
+    assert.equal(foe(one).currentHp, 300 - (2 + 2 * sneakDice(9) + MOD), "and the first creature takes no wail");
+  });
+  await probe("deaths-friend-first-too", async () => {
+    const friend = hero("rogue", "Phantom", 17, RAPIER);
+    const [one, two] = await stage(friend, { enemies: 2, cast: [] });
+    kit.setEnemy(one.id, { conditions: ["prone"] });
+    const sneak = await swing(friend, one, [15, 15, ...new Array(20).fill(2)]);
+    assert.equal(sneak.result.hit, true, sneak.error);
+    const struck = foe(one).currentHp;
+    const out = await spend(friend, "Wails from the Grave", { targetEnemyId: two.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    const wail = 2 * Math.ceil(sneakDice(17) / 2);
+    assert.deepEqual([300 - foe(two).currentHp, struck - foe(one).currentHp], [wail, wail], `the wail lands on both creatures: ${show(out)}`);
+  });
+  await probe("deaths-friend-trinket-at-rest", async () => {
+    const friend = hero("rogue", "Phantom", 17, RAPIER);
+    await kit.endFight();
+    const out = await world.invoke("take_rest", { kind: "long" });
+    assert.equal(out.ok, true, out.error);
+    assert.ok(sheet(friend).conditions.includes("soul trinket"), "a long rest's end with no trinket carried leaves none in the rogue's hand");
+  });
   await probe("tokens-save-advantage", async () => {
     await kit.endFight();
     give(phantom, "soul trinket", { rounds: 14400 });

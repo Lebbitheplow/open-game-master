@@ -12,7 +12,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { RollResult } from "@/lib/dice";
-import { budgetApplies, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
+import { budgetApplies, SNEAK_HIT, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
@@ -145,6 +145,12 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // to the holders of a rider.
     if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
+    }
+    // The hit that spent the turn's Sneak Attack names its creature, so a
+    // feature that answers a Sneak Attack (Wails from the Grave) knows the
+    // first creature, and that one landed at all.
+    if (record.hitClaims?.includes("sneak_attack")) {
+      markAttackTurn(campaign.id, record, `${SNEAK_HIT}${record.targetEnemyId}`);
     }
   }
   return { hit, crit, rolledHit: adjudicated.hit, total: toHit.total, targetAc, natural1, natural20: toHit.crit === "nat20" };

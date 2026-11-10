@@ -20,6 +20,7 @@ import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
+import { deathStrikeDoubles } from "@/lib/dm/death-strike";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
@@ -131,9 +132,9 @@ export function landSwingBlow(
     ...(record.mageSlayer ? { concentrationDisadvantage: true } : {}),
     blow: record.blow ?? {},
   };
-  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number) =>
+  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) =>
     landRoll(roll.id, enemy.id, () =>
-      landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice }),
+      landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice, doubled }),
     );
   // Acid Arrow's miss: half of the spell's dice, under its own type alone.
   if (ask.half) {
@@ -148,7 +149,9 @@ export function landSwingBlow(
   const dealt = Math.max(0, damageOutcome.total);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   emitAttackFx(campaign.id, attackStage(campaign.id, sheet, enemy), { hit: true, crit, ranged: record.ranged === true, damage: dealt, damageType: record.damageType ?? "", visibility });
-  const applied = land(dealt, ask.riders, crit, critExtraDice);
+  // Death Strike: a surprised creature's failed save doubles the blow.
+  const doubled = deathStrikeDoubles({ campaignId: campaign.id, turn: scene.turn, encounter, sheet, enemy, notes });
+  const applied = land(dealt, ask.riders, crit, critExtraDice, doubled);
   if (hitLog && toHit) {
     // A critical that came only from the character it struck lying unconscious
     // at 0 within 5 ft keeps its ordinary damage from the same dice, for a

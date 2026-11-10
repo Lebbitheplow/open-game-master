@@ -391,7 +391,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "rogue::Impostor": { subclass: "Assassin", narrated: "Mimicking a studied person: roleplay the GM judges with a Deception check." },
   "rogue::Death Strike": {
     subclass: "Assassin",
-    narrated: "A hit on a surprised creature: it makes a Constitution save (DC 8 + Dexterity + proficiency) or takes double damage, which the GM applies after the hit.",
+    // The save and the doubling are the engine's (src/lib/dm/death-strike.ts).
+    narrated: "A hit on a surprised creature: it makes a Constitution save (DC 8 + Dexterity + proficiency) or takes double damage; the engine rolls the save and doubles the blow.",
   },
   "rogue::Mage Hand Legerdemain": {
     subclass: "Arcane Trickster",
@@ -411,7 +412,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
   "rogue::Death's Friend": {
     subclass: "Phantom",
-    narrated: "Wails from the Grave's necrotic on the first creature too, and a soul trinket at a long rest's end: the GM applies the damage and the trinket.",
+    // The damage on the first creature is Wails from the Grave's own spend
+    // (authored-effects-sweep-counters.ts, afterSneak.firstToo).
+    narrated: "Wails from the Grave's necrotic lands on the first creature too (the spend does it), and a soul trinket appears at a long rest's end if none is carried: the GM gives the trinket.",
   },
   "rogue::Psi-Bolstered Knack": {
     subclass: "Soulknife",
