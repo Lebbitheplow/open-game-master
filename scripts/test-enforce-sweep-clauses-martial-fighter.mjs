@@ -387,6 +387,8 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     // hit points; the spends sweep stages the echo's fall through its own door.
     const { recordTrigger } = await import("../src/lib/dm/last-save.ts");
     const [foe] = world.enemies();
+    const unbroken = await spend(echo, "Reclaim Potential", {}, 2);
+    assert.equal(unbroken.ok, false, `with no echo destroyed on record: ${show(unbroken)}`);
     recordTrigger(world.campaignId, { kind: "echo_destroyed", characterId: echo.id, forcer: { id: foe.id, name: foe.displayName } });
     const out = await spend(echo, "Reclaim Potential", {}, 2);
     assert.equal(out.ok, true, out.error);

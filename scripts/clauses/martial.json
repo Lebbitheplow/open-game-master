@@ -749,8 +749,9 @@
   "clauses": [
    {
     "c": "When your echo is destroyed by damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_reclaim_potential#TRIGGER_AS_CARD"
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts sub_reclaim_potential own_echo_destroyed (authored-reactions.ts records it as Shadow Martyr's echo falls)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: reclaim-potential-temporary-hit-points"
    },
    {
     "c": "gain temporary hit points of 2d6 + your Constitution modifier",
