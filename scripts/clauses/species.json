@@ -767,7 +767,7 @@
     "c": "Tinker",
     "is": "gap",
     "read_only": true,
-    "why": "not built: SRD 5.1 Tinker is an hour's work and 10 gp of materials for one of three Tiny clockwork devices, three at most at a time, each stopping after 24 hours; the engine has no door that takes the gold and the hour and hands over a device that expires (see /tmp/odm-gapstudy/repair/w2-mt-species-handoff.jsonl)"
+    "why": "not built: SRD 5.1 Tinker is an hour's work and 10 gp of materials for one of three Tiny clockwork devices (a toy, a fire starter, a music box), three at most at a time, each stopping after 24 hours unless an hour is spent repairing it. The hour, the gold and the count of three can be held today; the 24 hours cannot, because an equipment row carries no instant it was made at, and nothing ran the clause"
    }
   ]
  },
