@@ -2,7 +2,6 @@
 
 import { Check, Copy, QrCode, Share2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
@@ -10,6 +9,7 @@ import { shareableAddresses } from "@/lib/server-address";
 import { shareSheet } from "@/lib/shell-host";
 import { ui } from "@/lib/ui";
 import { pageOrigin } from "@/lib/navigation";
+import { drawQrCode } from "@/lib/qr-code";
 
 // The little button in the corner of every page: tap it and the server's
 // address comes up as a QR code and as text with a copy button. The client
@@ -75,7 +75,7 @@ export function ServerAddressButton() {
       return;
     }
     let cancelled = false;
-    QRCode.toDataURL(picked, {
+    drawQrCode(picked, {
       margin: 1,
       width: 224,
       color: { dark: "#1c1917", light: "#fef3c7" },
