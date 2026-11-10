@@ -233,5 +233,14 @@ await test("Triage: a stabilized patient waits a minute and wakes with the d4's 
   assert.ok(conditions(singer.fallen.id).includes("warded by last rites"));
 });
 
+await test("Rose Thorn Oath: a pact-blade hit heals the knight their Charisma modifier, once a turn", async () => {
+  const scene = await t.stage({ classId: "grave_knight", level: 5 }, { hp: 50 });
+  must(await spend(scene, "Deathly Pact Blade"), "Deathly Pact Blade");
+  must(await swing(scene, scene.near), "the first hit");
+  assert.equal(sheet(scene.holder.id).currentHp, 52);
+  must(await swing(scene, scene.near), "the second hit, the same turn");
+  assert.equal(sheet(scene.holder.id).currentHp, 52, "once a turn");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

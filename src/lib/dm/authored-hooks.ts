@@ -23,6 +23,7 @@
 
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { darkFantasyAttackEdge } from "@/lib/dm/genre-a-dark-fantasy-edges";
+import { darkFantasyOnHit } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -324,6 +325,8 @@ export function authoredOnHit(
   const encounter = getActiveEncounter(campaign.id) ?? input.encounter;
   // Form of the Beast's bite (src/lib/dm/authored-attacks.ts).
   lines.push(...naturalWeaponOnHit(campaign, encounter, sheet, input.weaponName));
+  // Rose Thorn Oath (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  lines.push(...darkFantasyOnHit(campaign, encounter, sheet, input));
   // Emissary of Redemption: attacking a creature sets the feature aside
   // against that creature alone, until the paladin's long rest.
   const struck = getEnemy(input.enemy.id);

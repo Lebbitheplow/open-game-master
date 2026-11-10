@@ -1606,15 +1606,9 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Rose Thorn Oath#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-hits.ts darkFantasyOnHit (the turn mark, as Form of the Beast's bite keeps its own)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Rose Thorn Oath"
    },
    {
     "c": "when your pact blade hits, regain HP equal to your CHA modifier",
@@ -1623,11 +1617,9 @@
      "amount": "cha",
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Rose Thorn Oath#1",
-    "observed": "hit points regained on the hit: the engine gives 0, the text 2",
-    "where": "src/lib/dm/pc-attack-damage.ts: no heal on a hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-hits.ts darkFantasyOnHit (read by authored-hooks.ts authoredOnHit)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Rose Thorn Oath#1"
    }
   ]
  },
