@@ -376,7 +376,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "warlock::Radiant Soul": {
     subclass: "The Celestial",
-    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], note: "One radiant or fire damage roll of the spell, against one of its targets." }],
+    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], oneTarget: true, note: "One radiant or fire damage roll of the spell, against one of its targets." }],
   },
   // Hexblade's Curse: the warlock's condition marks the cursed creature
   // (its meta's quarry): +proficiency damage and a critical hit on 19-20

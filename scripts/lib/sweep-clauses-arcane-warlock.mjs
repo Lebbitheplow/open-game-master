@@ -172,7 +172,9 @@ export function probes(rig, shared) {
       const out = await call("aoe_damage", { casterCharacterId: who.id, spell: "Burning Hands", enemyIds: [one.id, two.id] }, [20, 20, 2, 2, 2]);
       if (!out.ok) throw new Error(out.error);
       const dealt = [300 - foe(one).currentHp, 300 - foe(two).currentHp];
-      assert.equal(dealt[0] + dealt[1], 6 + 6 + MOD.cha, `Burning Hands (3d6 of 2s, both saved for half: 3 each) dealt ${dealt.join(" and ")}: the Charisma modifier rides one target's roll`);
+      // Both take the one roll (the pact slot is 3rd level), and the
+      // Charisma modifier rides the first creature's damage alone.
+      assert.equal(dealt[0] - dealt[1], MOD.cha, `Burning Hands dealt ${dealt.join(" and ")}: the Charisma modifier rides one target's roll`);
     },
     "resilience-choice": async () => {
       await kit.endFight();
@@ -541,7 +543,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
-    "soul-one-target": { severity: "medium", kind: "rule-wrong", where: "src/lib/srd/spell-damage-riders.ts authoredSpellDice (spell_rider rides every target's roll)", note: "", fix: "Add the Charisma modifier to one target's roll of an area spell." },
     "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },
     "coil-near": { severity: "medium", kind: "rule-wrong", where: `${DATA} warlock::Guardian Coil (rangeFt 30 from the warlock, not 10 feet from the tentacle)`, note: "", fix: "Measure the coil's reach from the tentacle's zone." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },

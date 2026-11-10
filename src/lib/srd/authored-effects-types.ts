@@ -212,6 +212,10 @@ export type AuthoredEffect = Base &
         // Cast through a carried item that is one of these
         // (src/lib/srd/item-tags.ts).
         items?: ItemTag[];
+        // Against one of the spell's targets only (Radiant Soul: "one radiant
+        // or fire damage roll of that spell against one of its targets"): an
+        // area spell adds it to its first creature alone (aoe-damage.ts).
+        oneTarget?: boolean;
       }
     // Casting the spell gives temporary hit points, and damage never breaks
     // the concentration on it (Grasping Tentacles).

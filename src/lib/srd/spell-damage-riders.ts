@@ -44,6 +44,9 @@ export type SpellDamageRiders = {
   // Dice only a two-type spell's second type earned (Enhanced Bond on a
   // spell whose fire is its second type): they deal that type.
   diceSecond: string[];
+  // The riders of `dice` / `diceSecond` that land on one target only
+  // (Radiant Soul): an area spell takes them out of its shared roll.
+  oneTarget: Array<{ rolled: string; second: boolean }>;
   // A successful save against this cantrip still takes half.
   potentCantrip: boolean;
   notes: string[];
@@ -61,7 +64,7 @@ export function spellDamageRiders(
     classes?: string[];
   },
 ): SpellDamageRiders {
-  const riders: SpellDamageRiders = { flat: 0, flatSecond: 0, dice: [], diceSecond: [], potentCantrip: false, notes: [] };
+  const riders: SpellDamageRiders = { flat: 0, flatSecond: 0, dice: [], diceSecond: [], oneTarget: [], potentCantrip: false, notes: [] };
   const school = (spell.school ?? "").toLowerCase();
   const wizardSpell = !spell.classes?.length || spell.classes.includes("wizard");
   if (school === "evocation" && wizardSpell && holdsFeature(sheet, "empowered evocation")) {
@@ -97,6 +100,7 @@ export function spellDamageRiders(
   const authored = authoredSpellDice(sheet, { damageType: spell.damageType, secondType: spell.secondType, level: spell.level }, mods);
   riders.dice.push(...authored.dice);
   riders.diceSecond.push(...authored.diceSecond);
+  riders.oneTarget.push(...authored.oneTarget);
   riders.notes.push(...authored.notes);
   return riders;
 }

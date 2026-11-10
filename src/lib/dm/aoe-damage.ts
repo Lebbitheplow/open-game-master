@@ -578,8 +578,16 @@ export function handleAoeDamage(
   const saveCover = (refId: string): number =>
     plan?.mech?.ignoresCover ? 0 : origin ? coverFromPoint(encounter.id, origin, refId) : originRef ? coverFor(encounter.id, originRef, refId) : 0;
 
+  // Radiant Soul's bonus rides the first creature's damage alone (aoe-spell.ts oneTarget).
+  const blastFor = (index: number): DamagePart[] => {
+    const one = index === 0 && args.damage !== undefined && args.damage !== 0 && args.damage !== "0" ? plan?.oneTarget : null;
+    if (!one || (!one.first && !one.second)) {
+      return blast;
+    }
+    return blast.map((part, at) => ({ ...part, amount: part.amount + (at === 0 ? one.first + (blast.length === 1 ? one.second : 0) : one.second) }));
+  };
   // Enemy saves roll silently from stat blocks; results ride the table.
-  for (const enemy of enemyTargets) {
+  for (const [index, enemy] of enemyTargets.entries()) {
     // The creature's conditions decide the save as a character's would.
     // Stinking Cloud cannot touch a creature immune to poison.
     const untouched = plan ? spellAutoSave(plan.mech, enemy) : null;
@@ -598,7 +606,7 @@ export function handleAoeDamage(
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });
     const success = untouched ? true : save ? save.success : false;
-    const taken = partsTaken(blast, success ? (halfOnSave ? "half" : "none") : "full");
+    const taken = partsTaken(blastFor(index), success ? (halfOnSave ? "half" : "none") : "full");
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: enemy.displayName,

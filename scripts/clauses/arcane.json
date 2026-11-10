@@ -2485,8 +2485,9 @@
    },
    {
     "c": "to one radiant or fire damage roll of that spell against one of its targets",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: soul-one-target"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: soul-one-target",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Radiant Soul spell_rider oneTarget (src/lib/dm/aoe-spell.ts oneTarget, src/lib/dm/aoe-damage.ts blastFor)"
    }
   ]
  },

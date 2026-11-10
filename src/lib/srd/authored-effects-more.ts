@@ -144,10 +144,13 @@ export function authoredSpellDice(
   sheet: AuthoredSheet & { level?: number },
   spell: { damageType?: string | null; secondType?: string | null; healing?: boolean; level?: number },
   mods: Record<string, number> = {},
-): { dice: string[]; diceSecond: string[]; notes: string[] } {
+): { dice: string[]; diceSecond: string[]; notes: string[]; oneTarget: Array<{ rolled: string; second: boolean }> } {
   const dice: string[] = [];
   const diceSecond: string[] = [];
   const notes: string[] = [];
+  // The riders that land on one target only; each is in dice (or diceSecond)
+  // too, so a spell at one creature reads them as any other rider.
+  const oneTarget: Array<{ rolled: string; second: boolean }> = [];
   for (const { effect, held } of activeAuthored(sheet, "spell_rider")) {
     // Potent Spellcasting: cantrips only.
     if (effect.cantrips && spell.level !== 0) {
@@ -168,9 +171,12 @@ export function authoredSpellDice(
     }
     const rolled = resolveFormula(effect.dice, held.level, mods);
     (bySecond ? diceSecond : dice).push(rolled);
-    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}`);
+    if (effect.oneTarget) {
+      oneTarget.push({ rolled, second: bySecond });
+    }
+    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}${effect.oneTarget ? " (one target)" : ""}`);
   }
-  return { dice, diceSecond, notes };
+  return { dice, diceSecond, notes, oneTarget };
 }
 
 // Grasping Tentacles: the spell whose concentration damage cannot break, and
