@@ -8,6 +8,7 @@
 // Split out of cast-tools.ts, which re-exports it. Imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { shareSpell } from "@/lib/dm/pet-command";
 import { rollCard } from "@/lib/dm/roll-card";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -513,12 +514,16 @@ export function handleCastBuff(
     return { error: `${resolvedMech.name} landed on no valid target.`, retry: true };
   }
 
+  // Share Spells: a spell the Beast Master cast on themselves lands on their
+  // companion too (src/lib/dm/pet-command.ts shareSpell).
+  const shared = targetSheets.some((target) => target.id === sheet.id) && !warded.has(sheet.id) ? shareSpell(campaign, sheet, condition) : null;
   const summary = conditionEffectsFor(condition)?.summary;
   return {
     ok: true,
     spell: resolvedMech.name,
     applied: condition,
     targets: applied,
+    ...(shared ? { companion: shared } : {}),
     ...(noEffect ? { noEffect } : {}),
     ...(quarry ? { quarry: quarry.displayName } : {}),
     ...(maxHpGain ? { hitPoints: `+${maxHpGain} to the maximum and current hit points of each` } : {}),

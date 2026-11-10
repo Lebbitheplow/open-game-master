@@ -306,9 +306,13 @@ export const RO_RANGER_B = {
     const afterCold = petOf(rig, who)?.hp;
     const dead = await rig.call("damage_pet", { characterId: who.id, petName: "Ember", amount: 30, type: "cold" });
     const gone = (rig.world.sheet(who.id).pets ?? []).length;
+    // Each summoning is the ranger's action (the clause's own "As an action"),
+    // so each comes on a turn of its own.
     rig.setUsed(who, "sub_drake_companion", 0);
+    rig.kit.freshTurn();
     await rig.call("summon_pet", { characterId: who.id, kind: "drake", form: "drake", essence: "cold", name: "Ember" });
     rig.setUsed(who, "sub_drake_companion", 0);
+    rig.kit.freshTurn();
     const again2 = await rig.call("summon_pet", { characterId: who.id, kind: "drake", form: "drake", essence: "acid", name: "Rime" });
     const drakes = (rig.world.sheet(who.id).pets ?? []).filter((entry) => entry.kind === "drake").length;
     const order = rig.world.encounter().order;
@@ -320,7 +324,12 @@ export const RO_RANGER_B = {
       summon: () => {
         assert.equal(summon.ok, true, summon.error);
         assert.equal(cost?.actionUsed, true, `summoning the drake in a fight cost ${brief(cost, 120)}`);
-        assert.ok(tokens.some((entry) => /drake|ember|pet/i.test(entry)), `the drake has no space on the board: tokens ${tokens}`);
+        // Maintainer ruling D2 (gap study wave 2): "A pet has no token: it
+        // stands with its owner, so a range between a pet and its owner always
+        // holds and a range from the pet is measured from the owner's place."
+        // The check asked for a token of the drake's own; the ruling is that
+        // it has none.
+        assert.ok(!tokens.some((entry) => /drake|ember|pet/i.test(entry)), `D2: the drake stands with its ranger, no token of its own: tokens ${tokens}`);
         assert.equal(gone, 0, "the drake at 0 hit points is still out");
         assert.equal(drakes, 1, "a second summoning left two drakes");
       },

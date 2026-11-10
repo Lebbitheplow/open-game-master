@@ -29,6 +29,8 @@ import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { resolveMonster } from "@/lib/bestiary";
+import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -130,6 +132,8 @@ const summonSchema = z.object({
   essence: z.string().trim().max(20).optional(),
   hp: z.coerce.number().int().min(1).max(300).optional(),
   ac: z.coerce.number().int().min(1).max(30).optional(),
+  // kind=drake: the spell slot that pays once the free summoning is spent.
+  level: z.coerce.number().int().min(1).max(9).optional(),
   reason: z.string().optional(),
 });
 
@@ -217,16 +221,31 @@ export function handleSummonPet(
   // ritual re-shapes the same spirit), companions and drakes are unique. A
   // story pet may be a monster this table's DMs built in the workshop.
   const authors = spellAuthorsFor(campaign);
-  const built = buildPet(sheet, args, { tableMonster: (name) => findTableMonster(authors, name) });
+  const built = buildPet(sheet, args, {
+    tableMonster: (name) => findTableMonster(authors, name),
+    // A companion's skills come from its published block (pet-build.ts).
+    blockSkills: (name) => resolveMonster(name, campaign.gameSettings)?.stats.skills ?? null,
+  });
   if ("error" in built) {
     return built;
   }
-  const remaining = sheet.pets.filter((pet) => pet.kind !== built.kind || built.kind === "other");
+  // Drake Companion's action and its once-a-long-rest or spell slot
+  // (pet-command.ts drakeSummonCost), asked before anything is written.
+  const cost = built.kind === "drake" ? drakeSummonCost(sheet, args.level, getActiveEncounter(campaign.id)) : null;
+  if (cost && "error" in cost) {
+    return cost;
+  }
+  const paid = cost ? cost.commit() : [];
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const remaining = fresh.pets.filter((pet) => pet.kind !== built.kind || built.kind === "other");
   const pets = [...remaining, built];
-  patchSheet(sheet.id, { pets });
+  // Bond of Fang and Scale: the ranger resists the essence summoned with.
+  const features = built.kind === "drake" && built.immune ? essenceChoice(fresh, built.immune) : null;
+  patchSheet(sheet.id, { pets, ...(features ? { features } : {}) });
   publishSheet(campaign, sheet.id);
   return {
     ok: true,
+    ...(paid.length ? { cost: paid.join(" ") } : {}),
     pet: `${built.name} (${built.form}${built.creatureType ? `, a ${built.creatureType}` : ""}): ${built.hp} HP, AC ${built.ac}, speed ${built.speed} ft`,
     ...(built.attacks.length
       ? {
@@ -330,6 +349,8 @@ export function handlePetAttack(
   turn.rollIds.push(hitRoll.id);
 
   const economy = charge.commit();
+  // Commanded, the creature is not dodging this turn (pet-command.ts).
+  commandPet(campaign, sheet.id, pet.name);
 
   // The enemy's real AC today: a spell or an effect on it counts.
   const vsAc = enemyAcWithEffects(campaign.id, enemy);
@@ -443,6 +464,13 @@ export function handleDamagePet(
   const typed = args.type?.trim() ? { type: args.type.trim() } : {};
   const defended = adjusted.note ? { defenses: `${pet.name} is ${adjusted.note}.` } : {};
   const hp = Math.max(0, pet.hp - dealt);
+  // Drake Companion: it lasts "until it drops to 0 hit points": then it is
+  // gone, until the ranger summons it again.
+  if (hp <= 0 && pet.kind === "drake") {
+    patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
+    publishSheet(campaign, sheet.id);
+    return { ok: true, pet: pet.name, damage: dealt, ...typed, ...defended, vanished: `${pet.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+  }
   if (hp <= 0 && pet.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.
     const pets = sheet.pets.filter((entry) => entry !== pet);

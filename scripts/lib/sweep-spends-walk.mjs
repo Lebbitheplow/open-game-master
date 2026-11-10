@@ -23,6 +23,9 @@ export const TRIGGERS = [
   "the holder hit a foe",
   "the holder missed a foe",
   "the holder killed a foe",
+  // A spectral flame the holder's kill left, and the ally standing in it
+  // (Cauterizing Flames, src/lib/dm/cauterizing-flames.ts).
+  "the ally entered a spectral flame",
   // The triggers the engine records besides a hit (src/lib/dm/last-save.ts,
   // read through src/lib/srd/trigger-table.ts): once a reaction is held to
   // its record, these are what it answers.
@@ -47,7 +50,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder smote a foe"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder smote a foe", "the ally entered a spectral flame"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -203,6 +206,14 @@ async function step(rig, scene, name, notes) {
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);
+    case "the ally entered a spectral flame": {
+      kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
+      const out = await swing([18, 5]);
+      const flames = world.sheet(holder).conditionMeta?.["spectral flames"]?.flames ?? [];
+      if (!flames.length) return { ok: false, error: `no spectral flame was laid (${String(out.error ?? "").slice(0, 120)})` };
+      kit.place(scene.ally.id, flames[0].x, flames[0].y);
+      return out;
+    }
     case "the foe forced a save the holder failed":
       return forced([1, 3, 3], { dc: 25, damage: "2d6", damageType: "psychic" });
     case "the foe forced a save the holder made":
@@ -248,6 +259,10 @@ async function step(rig, scene, name, notes) {
       return world.invoke("take_action", { characterId: holder, action: "dash", bonus: true });
     case "the holder's drake summoned":
       return world.invoke("summon_pet", { characterId: holder, kind: "drake", form: "drake", essence: "fire" });
+    // A spend gated on a living companion (Exceptional Training's command:
+    // src/lib/srd/authored-effects-types.ts Gate.pet).
+    case "the holder's companion summoned":
+      return world.invoke("summon_pet", { characterId: holder, kind: "beast_companion", form: "wolf" });
     default:
       throw new Error(`no staging step called "${name}"`);
   }

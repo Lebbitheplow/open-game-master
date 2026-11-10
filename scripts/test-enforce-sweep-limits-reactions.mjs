@@ -528,6 +528,9 @@ await row("787-fallen-knight-wording", {
 });
 
 const ranger = table.hero({ class: "ranger", subclass: "Drakewarden" });
+// Summoned between fights: in one, Drake Companion's summoning is the
+// ranger's action on their own turn (src/lib/dm/pet-command.ts).
+await kit.endFight();
 const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" });
 const drake = () => world.sheet(ranger.id).pets.find((pet) => pet.kind === "drake");
 

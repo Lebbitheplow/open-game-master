@@ -939,6 +939,9 @@ await test("a drake attacks on the ranger's bonus action, once", async () => {
     equipment: [{ name: "Longbow", qty: 1 }],
   });
   heroes.push(warden);
+  // Summoned between fights: in one, Drake Companion's summoning is the
+  // ranger's action on their own turn (src/lib/dm/pet-command.ts).
+  await kit.endFight();
   assert.equal((await world.invoke("summon_pet", { characterId: warden.id, kind: "drake", form: "drake", essence: "fire" })).ok, true);
   const enemy = await stage(warden);
   world.dice(15, 3);

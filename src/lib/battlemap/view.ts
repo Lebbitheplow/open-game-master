@@ -1,4 +1,5 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
 import { tokenSides } from "@/lib/dm/combatant";
 import { getCampaignById, getFloor } from "@/lib/db/campaigns";
 import { actingSheetFor } from "@/lib/character-seat";
@@ -62,7 +63,7 @@ import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
-import { enemiesAhead } from "@/lib/dm/held-turn";
+import { enemiesAhead, ownTurnOf } from "@/lib/dm/held-turn";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -147,7 +148,10 @@ export function pcMoveBudget(
       });
   // An active effect on their speed (set_effect) moves the base first.
   const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")));
-  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved));
+  // Dread Ambusher: "on your first turn 10 extra feet of speed", on the
+  // ranger's own turn of the fight's first round (turn-extra-attacks-logic.ts).
+  const ambush = encounter.kind !== "scene" && ownTurnOf(encounter, sheet.id) && ambushRound(sheet, encounter.round) ? 10 : 0;
+  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush));
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
   if (encounter.kind === "scene") {

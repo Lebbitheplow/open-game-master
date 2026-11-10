@@ -1027,11 +1027,14 @@ export function conditionOnHitDice(
   notes: string[];
   typed: Array<{ dice: string; type: string }>;
   hitSpent: string[];
+  // The type the hit's weapon damage turns to (Planar Warrior's force).
+  damageAs?: string;
 } {
   let suffix = "";
   const notes: string[] = [];
   const typed: Array<{ dice: string; type: string }> = [];
   const hitSpent: string[] = [];
+  let damageAs: string | undefined;
   for (const { row, condition } of activeConditionEffects(conditions)) {
     // The type is optional: a die that adds to the weapon's own damage
     // carries none ("superiority strike (1d8)").
@@ -1060,11 +1063,14 @@ export function conditionOnHitDice(
         typed.push({ dice, type });
       }
     }
+    if (row.weaponDamageAs && context.weapon !== false) {
+      damageAs = row.weaponDamageAs;
+    }
     if (row.consumedBy === "hit") {
       hitSpent.push(condition);
     }
   }
-  return { suffix, notes, typed, hitSpent };
+  return { suffix, notes, typed, hitSpent, ...(damageAs ? { damageAs } : {}) };
 }
 
 // Attack-roll state granted by the TARGET's conditions (blur, faerie fire,

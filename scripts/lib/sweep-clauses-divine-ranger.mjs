@@ -88,7 +88,12 @@ export const RANGER = {
     const who = rig.hero("ranger", "Gloom Stalker", 3);
     const rolled = await rig.call("request_roll", { characterId: who.id, kind: "initiative", reason: "a fight" }, [10]);
     const [foe] = await rig.fight(who);
-    const speed = rig.srd.speedFor(rig.world.sheet(who.id));
+    // The speed the turn moves at is the move budget's (src/lib/battlemap/view.ts
+    // pcMoveBudget), which the board and the move route read; the sheet's own
+    // speed (speedFor) knows nothing of the turn. The check read that static
+    // number, or a budget field no turn has.
+    const view = await rig.load("lib/battlemap/view.ts");
+    const speed = view.pcMoveBudget(rig.world.campaignId, rig.world.encounter(), rig.kit.map(), rig.world.sheet(who.id), rig.kit.token(who.id)).speed;
     const first = await rig.kit.swing(who.id, foe.id, [18, 4, 5]);
     const budget = rig.budget();
     const second = await rig.kit.swing(who.id, foe.id, [18, 4, 5]);
@@ -96,10 +101,10 @@ export const RANGER = {
     return {
       initiative: () => assert.equal(rolled.result.total, 10 + 2 + wis(3), `initiative on a 10 with Dexterity +2 and Wisdom +${wis(3)}: ${rolled.result.total}`),
       "extra-attack": () => {
-        assert.equal(second.ok, true, `on the first turn of the fight a 3rd-level Gloom Stalker's second attack: ${second.error.slice(0, 160)}`);
+        assert.equal(second.ok, true, `on the first turn of the fight a 3rd-level Gloom Stalker's second attack: ${(second.error ?? "").slice(0, 160)}`);
         assert.equal(rig.diceIn(second.damage, 8), 2, `it rolled ${second.damage?.expression}: the longsword's d8 and 1d8 more`);
       },
-      speed: () => assert.equal(budget?.speedBonus ?? speed, 40, `on the first turn the ranger's speed reads ${speed} (budget ${brief(budget, 160)})`),
+      speed: () => assert.equal(speed, 40, `on the first turn the ranger's speed reads ${speed} (budget ${brief(budget, 160)})`),
     };
   },
 
@@ -133,7 +138,7 @@ export const RANGER = {
       another: () => {
         assert.equal(one.result.hit, false);
         assert.equal(two.ok, true, two.error);
-        assert.equal(three.ok, true, `after a miss and a hit with Extra Attack's two attacks, the one more the miss allows: ${three.error.slice(0, 200)}; the row is narrated: "the GM calls pc_attack again for it."`);
+        assert.equal(three.ok, true, `after a miss and a hit with Extra Attack's two attacks, the one more the miss allows: ${(three.error ?? "").slice(0, 200)}; the row is narrated: "the GM calls pc_attack again for it."`);
       },
     };
   },
@@ -208,9 +213,9 @@ export const RANGER = {
     return {
       third: () => {
         assert.equal(one.ok && two.ok, true, one.error || two.error);
-        assert.equal(three.ok, true, `after striking two different creatures, the attack at a third: ${three.error.slice(0, 200)}; the row is narrated: "the GM allows them."`);
+        assert.equal(three.ok, true, `after striking two different creatures, the attack at a third: ${(three.error ?? "").slice(0, 200)}; the row is narrated: "the GM allows them."`);
       },
-      teleport: () => assert.equal(far.ok, true, `a longsword at a creature 15 feet off, 10 feet of teleport away: ${far.error.slice(0, 160)}`),
+      teleport: () => assert.equal(far.ok, true, `a longsword at a creature 15 feet off, 10 feet of teleport away: ${(far.error ?? "").slice(0, 160)}`),
     };
   },
 
@@ -437,7 +442,11 @@ export const RANGER = {
     const cost = rig.budget();
     const infused = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id });
     await rig.kit.endFight();
+    const slotsUsed = () => Object.values(rig.world.sheet(scene.who.id).spellcasting?.slots ?? {}).reduce((sum, slot) => sum + slot.used, 0);
+    const slotsBefore = slotsUsed();
     const second = await rig.call("summon_pet", { characterId: scene.who.id, kind: "drake", form: "drake", essence: "cold", name: "Rime" });
+    // With the free summoning spent, the lowest slot pays (pet-command.ts).
+    const slotPaid = slotsUsed() - slotsBefore;
     const afterSecond = rig.res(scene.who, "sub_drake_companion");
     rig.note("drake", [scene.called.ok, scene.called.error, brief(scene.pet, 420), counter, bite.ok, bite.error, rolls, cost, infused.ok, infused.error.slice(0, 160), second.ok, second.error, afterSecond]);
     const hpOf = (pet) => pet?.maxHp ?? pet?.hp?.max ?? pet?.hp;
@@ -451,7 +460,7 @@ export const RANGER = {
         assert.ok(rolls.some((expression) => /1d6\+2\b/.test(expression)), `the bite rolled ${rolls}: 1d6 + the proficiency bonus`);
       },
       "bonus-command": () => assert.ok(cost?.bonusUsed === true && cost?.actionUsed !== true, `commanding the drake cost ${brief(cost, 120)}`),
-      "once-a-long-rest": () => assert.ok(counter?.used === 1 && (!second.ok || afterSecond?.used > 1), `summoning the drake left the feature's counter at ${brief(counter)}, and a second summoning the same day was ${second.ok ? "taken" : "refused"} (${brief(afterSecond)}): nothing holds it to once a long rest or a spell slot`),
+      "once-a-long-rest": () => assert.ok(counter?.used === 1 && (!second.ok || afterSecond?.used > 1 || slotPaid === 1), `summoning the drake left the feature's counter at ${brief(counter)}, and a second summoning the same day was ${second.ok ? "taken" : "refused"} (${brief(afterSecond)}): nothing holds it to once a long rest or a spell slot`),
       "infused-strikes": () => assert.equal(infused.ok, true, `use_reaction "Infused Strikes": ${infused.error.slice(0, 200)}`),
     };
   },
@@ -459,9 +468,10 @@ export const RANGER = {
   "ranger::Drake's Breath": async (rig) => {
     const facts = await rig.counterFacts("ranger", "Drakewarden", 11, "sub_drakes_breath");
     const who = rig.hero("ranger", "Drakewarden", 15);
-    await rig.fight(who);
+    const [foe] = await rig.fight(who);
     rig.setUsed(who, "sub_drakes_breath", 1);
-    const bought = await rig.spend(who, "Drake's Breath", { level: 3 });
+    // The breath catches a creature: the spend rolls its save, so it names one.
+    const bought = await rig.spend(who, "Drake's Breath", { level: 3, variant: "fire", targetEnemyIds: [foe.id] }, Array(11).fill(3));
     const slot = rig.world.sheet(who.id).spellcasting.slots["3"].used;
     rig.note("breath", [facts, bought.ok, bought.error.slice(0, 200), slot]);
     return {

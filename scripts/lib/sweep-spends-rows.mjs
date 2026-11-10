@@ -80,6 +80,7 @@ export async function tableRows(rig) {
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
       ...preyOf(item).map((mark) => `mark: ${mark}`),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
+      ...(gate.pet === "beast_companion" ? ["the holder's companion summoned"] : gate.pet === "drake" ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
