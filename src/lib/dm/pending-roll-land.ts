@@ -31,6 +31,8 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
+import { backstopTurn } from "@/lib/dm/backstop-calls";
+import { resumeBackstop } from "@/lib/dm/backstop-resume";
 import { publishWithSeq } from "@/lib/events";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 
@@ -223,7 +225,14 @@ export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcom
   if (!roll) {
     return null;
   }
-  const remaining = listPendingForTurn(pending.turnId).filter((entry) => entry.status === "pending");
+  const pendings = listPendingForTurn(pending.turnId);
+  const remaining = pendings.filter((entry) => entry.status === "pending");
+  // A roll of the backstop's (backstop-calls.ts): the creature's turn ran as
+  // it landed (landHeld), and the pass goes on with no model call.
+  if (!remaining.length && backstopTurn(pendings)) {
+    enqueueDmJob(campaign.id, () => resumeBackstop(campaign.id, pending.turnId), { kind: "turn" });
+    return roll;
+  }
   if (!remaining.length) {
     // A turn a person opened has no model waiting on the answer: the roll
     // already published itself and applied what it applies, so closing the

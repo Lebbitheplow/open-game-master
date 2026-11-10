@@ -138,6 +138,8 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
+import { backstopTurn, backstopWaiting } from "@/lib/dm/backstop-calls";
+import { resumeBackstop } from "@/lib/dm/backstop-resume";
 import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
@@ -1149,6 +1151,12 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   }
   const pendings = listPendingForTurn(turnId);
   if (pendings.some((pending) => pending.status === "pending")) {
+    return;
+  }
+  // The rolls waited on the enemy-turn backstop, after the narration
+  // (backstop-calls.ts): the pass goes on, and no model is asked again.
+  if (backstopTurn(pendings)) {
+    await resumeBackstop(campaignId, turnId);
     return;
   }
   // A person holds the seat now: the table switched from the AI while this
@@ -4038,6 +4046,10 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // landed, so the server's next-turn note follows it in the transcript.
   // Runs before the hold below so a hold wraps the NEW turn's floor.
   advanceAfterTurn(context.campaign, turn);
+  // A creature the backstop played waits on a watcher or a seat's dice
+  // (backstop-calls.ts): the turn waits with it, and its close goes on once
+  // the answer is in (backstop-resume.ts).
+  const backstopHeld = backstopWaiting(turn.id);
 
   // Held responses: after a successful narration the table is locked for
   // discussion until the lead releases. A spotlight set this turn becomes
@@ -4054,7 +4066,11 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // Wait for the table: the narration opens a new beat, so every seat is told
   // who the DM now waits on. Posts made while this turn wrote count already,
   // and if they are the whole table the next turn wakes at once.
-  if (settleTableWait(campaignId)) {
+  // Not while the backstop waits: the turn that would wake would find this
+  // one still open (resumeBackstop wakes it).
+  if (backstopHeld) {
+    // Woken by resumeBackstop once the pass is done.
+  } else if (settleTableWait(campaignId)) {
     wakeDm(campaignId);
   }
 
@@ -4076,8 +4092,11 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     }
   }
 
-  turn.status = "done";
+  turn.status = backstopHeld ? "awaiting_rolls" : "done";
   saveDmTurn(turn);
+  if (backstopHeld) {
+    setDmStatus(campaignId, "awaiting_rolls");
+  }
   toolsSentByTurn.delete(turn.id);
   // A fight begun or ended, or a companion who joined, changes the next
   // turn's first message: the narrator reads it now, while the table reads.

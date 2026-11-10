@@ -287,6 +287,17 @@ const answer = (id, body, user = seerUser) => {
   fightWorld.signIn(user);
   return call(fightRoute.watch, "POST", body, { campaignId: fightWorld.campaignId, pendingRollId: id });
 };
+// A creature's turn the GM narrated and left unplayed is played by the
+// server after the narration, and its attack waits for the watcher as a
+// GM's enemy_attack does (src/lib/dm/backstop-calls.ts). A test whose turn
+// leaves the goblin's action unspent ends with that stop open: let it roll.
+const backstopStops = () => stops().filter((stop) => stop.watch?.calls?.[0]?.name === "backstop_enemy_turn");
+async function passBackstops() {
+  for (let guard = 0; guard < 4 && backstopStops().length; guard += 1) {
+    await answer(backstopStops()[0].id, { pass: true });
+    await settleQueue(fightWorld.campaignId);
+  }
+}
 const toggle = (on, user = seerUser) => {
   fightWorld.signIn(user);
   return call(fightRoute.toggle, "POST", { on, characterId: seer.id }, { campaignId: fightWorld.campaignId });
@@ -422,11 +433,19 @@ await test("A number no die took costs nothing: the rules refused the attack.", 
   await settleQueue(fightWorld.campaignId);
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
   assert.equal(fightWorld.sheet(seer.id).resources.sub_portent.used, 0);
+  // The refused attack left the goblin's turn unplayed: the server plays it
+  // after the narration, and its attack roll waits for the watcher too.
+  const [owed] = backstopStops();
+  assert.ok(owed, "the goblin's turn the server played never stopped for the watcher");
+  assert.match(owed.reason, /is about to make an attack roll/);
+  await passBackstops();
+  assert.equal(stops().length, 0);
 });
 
 const saveRolls = () => listRecentRolls(fightWorld.campaignId, 100).filter((roll) => roll.kind === "saving_throw");
 
 await test("A save one creature makes stops too: a hazard forcing a hero's save takes the number on its d20.", async () => {
+  await passBackstops();
   arm();
   const before = saveRolls().length;
   await enemyTurn([modelCall("cast_at_player", { characterId: target.id, source: "a poison needle", saveAbility: "con", dc: 25, damage: "1d4", damageType: "poison" })], "The needle bites.");
@@ -441,6 +460,7 @@ await test("A save one creature makes stops too: a hazard forcing a hero's save 
 });
 
 await test("A hero's spell at one creature stops before it is cast, and the number lands on that creature's save.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -459,6 +479,7 @@ await test("A hero's spell at one creature stops before it is cast, and the numb
 });
 
 await test("An area with one creature in it stops for that one's save; with two the player picks whose save takes the number.", async () => {
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall.");
   const [stop] = stops();
@@ -470,6 +491,8 @@ await test("An area with one creature in it stops for that one's save; with two 
   const told = JSON.parse(fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").at(-1).content);
   assert.match(told.portent ?? "", /its d20 shows 3/, JSON.stringify(told));
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  // The area had no caster: the goblin's turn is the server's to play.
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin.id, goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall again.");
   const [pair] = stops();
@@ -498,6 +521,7 @@ await test("An area with one creature in it stops for that one's save; with two 
 });
 
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
+  await passBackstops();
   arm({ foretold: [17, 9] });
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -526,6 +550,7 @@ await test("A foretold miss on a hero's own swing still leaves them their Bardic
 });
 
 await test("A blinded wizard sees nothing to stop, and the fight's end ends the watch.", async () => {
+  await passBackstops();
   arm({ conditions: ["blinded"] });
   fightWorld.dice(10, 4);
   await enemyTurn([strike()]);
@@ -543,6 +568,7 @@ await test("A blinded wizard sees nothing to stop, and the fight's end ends the 
 });
 
 await test("A restart lets an open stop go, and its attack rolls.", async () => {
+  await passBackstops();
   await kit.fight(1, { heroFaces: { [seer.id]: 19, [target.id]: 15 } });
   const [lone] = fightWorld.enemies();
   kit.place(target.id, 5, 5);
@@ -570,6 +596,7 @@ await test("A restart lets an open stop go, and its attack rolls.", async () => 
 });
 
 await test("What a stop holds never rides to the table.", async () => {
+  await passBackstops();
   await kit.endFight();
   await kit.fight(1, { heroFaces: { [seer.id]: 19, [target.id]: 15 } });
   const [lone] = fightWorld.enemies();
@@ -595,6 +622,7 @@ await test("What a stop holds never rides to the table.", async () => {
 });
 
 await test("A call that throws is answered, and the table does not wait on it for good.", async () => {
+  await passBackstops();
   const [lone] = fightWorld.enemies();
   arm();
   turnOf(lone);
@@ -618,6 +646,7 @@ await test("A call that throws is answered, and the table does not wait on it fo
 });
 
 await test("Dying among the held calls answers them; they do not run twice.", async () => {
+  await passBackstops();
   const [lone] = fightWorld.enemies();
   arm();
   turnOf(lone, []);
@@ -637,6 +666,7 @@ await test("Dying among the held calls answers them; they do not run twice.", as
 });
 
 await test("A number a stop has promised cannot be spent again on the wizard's own card.", async () => {
+  await passBackstops();
   const [lone] = fightWorld.enemies();
   arm();
   turnOf(lone);
@@ -664,6 +694,7 @@ await test("A number a stop has promised cannot be spent again on the wizard's o
 });
 
 await test("The watch button waits for a host that answers it.", async () => {
+  await passBackstops();
   const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
   const { hostOffers } = await import("../src/lib/use-capabilities.ts");
   assert.equal(SERVER_FEATURES.portentWatch, true);

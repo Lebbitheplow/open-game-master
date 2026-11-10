@@ -133,6 +133,8 @@ import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { attackLine, attackStopOf, standStillLine, stillFromStop, tableName, type StandStill } from "@/lib/dm/turn-lines-logic";
 import { endTurnSaves, startTurnConditions, tickEncounterConditions } from "@/lib/dm/condition-tick";
 import { endTurns } from "@/lib/dm/turn-end";
+import { isHeldPark, registerNamedHeldRunner, runHeld } from "@/lib/dm/held-call";
+import { BACKSTOP_CALL, backstopWaiting } from "@/lib/dm/backstop-calls";
 import { turnStartEffects } from "@/lib/dm/turn-start-effects";
 import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
@@ -2034,13 +2036,46 @@ function sayLostTurns(campaign: Campaign, encounter: Encounter) {
   }
 }
 
+// One enemy's turn the model left, played by the server as a held call of
+// its own (backstop-calls.ts says why): its lines, or null when a d20 in it
+// waits on a watcher or a player's dice, and the pass stops there.
+function playSkippedEnemy(
+  campaign: Campaign,
+  turn: DmTurn,
+  encounter: Encounter,
+  enemyId: string,
+  hidden: Set<string>,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): string[] | null {
+  const played = runHeld(campaign, turn, { name: BACKSTOP_CALL, rawArguments: JSON.stringify({ enemyId }), toolCallId: null }, () =>
+    playSkippedEnemyNow(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById),
+  );
+  return isHeldPark(played) ? null : (played as string[]);
+}
+
+// The held call run again once its roll or its watcher has answered: that
+// creature's turn, played and said in a note of its own. The pass goes on
+// from the creature after it (continueBackstop).
+registerNamedHeldRunner(BACKSTOP_CALL, (campaign, turn, call) => {
+  const { enemyId } = JSON.parse(call.rawArguments || "{}") as { enemyId?: unknown };
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter || typeof enemyId !== "string") {
+    return { ok: true, lines: [] };
+  }
+  const sheets = listSheets(campaign.id);
+  const lines = playSkippedEnemyNow(campaign, turn, encounter, enemyId, hiddenNow(encounter.id), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  postSkippedNote(campaign, turn, lines, true);
+  return { ok: true, lines };
+});
+
 // One enemy's turn the model left, played by the server: the lines it
 // earns, its attack or why it made none (issue #666: the turn note named four
 // foes and two lines followed; an enemy out of reach walked across the board
 // with no word). Nothing only for one no longer in the fight (dead or fled,
 // announced when it happened) or one whose action was already played, by
 // whoever played it, who posted its line.
-function playSkippedEnemy(
+function playSkippedEnemyNow(
   campaign: Campaign,
   turn: DmTurn,
   encounter: Encounter,
@@ -2180,7 +2215,7 @@ export function autoActSkippedEnemies(
   // A person who played the enemies themselves hands the turn on with
   // play=false: only the end of those turns is applied.
   options: { play?: boolean } = {},
-) {
+): string[] | null {
   const play = options.play !== false;
   const notes: string[] = [];
   // Who the table may not be told is there (the tracker's "someone unseen").
@@ -2188,28 +2223,87 @@ export function autoActSkippedEnemies(
   // The ones a pass walked past while they could not act lost their turns:
   // said first, as the turns came (issue #666).
   notes.push(...lostTurnLines(campaign.id, enemyIds, hidden));
-  for (const enemyId of play ? enemyIds : []) {
-    notes.push(...playSkippedEnemy(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById));
+  // The enemies not played because one of them waits on a roll or a
+  // watcher (playSkippedEnemy): it and the ones after it, in order.
+  let rest: string[] | null = null;
+  for (const [at, enemyId] of (play ? enemyIds : []).entries()) {
+    const lines = playSkippedEnemy(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById);
+    if (!lines) {
+      rest = enemyIds.slice(at);
+      break;
+    }
+    notes.push(...lines);
   }
   // The enemies handed out have had their turns: what lasted until the end
-  // of one of them ends now (src/lib/dm/turn-end.ts).
-  const ended = endTurns(campaign, encounter.id, enemyIds);
+  // of one of them ends now (src/lib/dm/turn-end.ts). Those still to play
+  // end theirs when the pass goes on.
+  const ended = endTurns(campaign, encounter.id, rest ? enemyIds.slice(0, enemyIds.length - rest.length) : enemyIds);
   notes.push(...ended.lines);
   if (ended.enemiesChanged) {
     publishEncounter(campaign.id);
   }
-  if (notes.length) {
-    const seq = tableNoteSeq(campaign.id);
-    const message = insertCampaignMessage({
-      campaignId: campaign.id,
-      seq,
-      authorType: "system",
-      glyph: "cue-battle",
-      content: play ? `Skipped enemy turns resolve automatically: ${notes.join(" ")}` : notes.join(" "),
-    });
-    publishWithSeq(campaign.id, seq, "message_added", { message });
-    saveDmTurn(turn);
+  postSkippedNote(campaign, turn, notes, play);
+  return rest;
+}
+
+function postSkippedNote(campaign: Campaign, turn: DmTurn, notes: string[], play: boolean) {
+  if (!notes.length) {
+    return;
   }
+  const seq = tableNoteSeq(campaign.id);
+  const message = insertCampaignMessage({
+    campaignId: campaign.id,
+    seq,
+    authorType: "system",
+    glyph: "cue-battle",
+    content: play ? `Skipped enemy turns resolve automatically: ${notes.join(" ")}` : notes.join(" "),
+  });
+  publishWithSeq(campaign.id, seq, "message_added", { message });
+  saveDmTurn(turn);
+}
+
+// The backstop stopped on a held roll: where the close of the turn goes on
+// once it is in (continueBackstop).
+function holdBackstop(campaign: Campaign, turn: DmTurn, then: "narration" | "follow") {
+  const live = getActiveEncounter(campaign.id);
+  if (live) {
+    live.legendary.backstop = { turnId: turn.id, then };
+    saveEncounter(live);
+  }
+}
+
+// The roll or the watcher the backstop stopped for has answered and its
+// creature's turn was played (the held call's runner, above): the close of
+// the turn goes on from where it stopped, the enemies after that one played
+// in order, and the turn that follows woken. Called once per answer
+// (backstop-resume.ts); a later creature that waits stops it again.
+export function continueBackstop(campaign: Campaign, turn: DmTurn) {
+  if (backstopWaiting(turn.id)) {
+    return;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const held = encounter?.legendary.backstop;
+  if (encounter && held) {
+    delete encounter.legendary.backstop;
+    saveEncounter(encounter);
+  }
+  // A person's hand-on (onPersonsTurn): it plays the rest of what is due.
+  if (turn.actor === "human_dm") {
+    if (encounter && enemiesDue(encounter).length) {
+      handOnEnemyTurns(campaign, turn, true);
+    }
+    return;
+  }
+  if (!held || held.turnId !== turn.id || held.then === "narration") {
+    advanceAfterTurn(campaign, turn);
+    return;
+  }
+  playEnemiesDue(campaign, turn);
+  if (backstopWaiting(turn.id)) {
+    holdBackstop(campaign, turn, "follow");
+    return;
+  }
+  followTurn(campaign, turn);
 }
 
 // Called from finalize() on a successful DM turn: the pointer moves only
@@ -2247,6 +2341,12 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // played: the backstop plays the rest, and the turn they held up begins.
   if (turn && enemiesDue(encounter).length) {
     playEnemiesDue(campaign, turn);
+    // One of them waits on a roll or a watcher: the close goes on, from the
+    // top, once it is in.
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "narration");
+      return;
+    }
     Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   }
   // The model's end_turn already moved the pointer in this DM turn and
@@ -2260,7 +2360,18 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     // An enemy it plays may take out the summon whose turn it is.
     const holder = turnHolder(campaign.id);
-    autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
+    const rest = autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
+    // One of them waits on a roll or a watcher: the handoff keeps the ones
+    // still to play, and the close goes on from here once it is in.
+    if (rest) {
+      const live = getActiveEncounter(campaign.id);
+      if (live) {
+        live.legendary.handoff = { ...handoff, enemyIds: rest };
+        saveEncounter(live);
+      }
+      holdBackstop(campaign, turn, "narration");
+      return;
+    }
     beginHeldTurn(campaign);
     passOnFrom(campaign, holder);
     // The pass the model's end_turn made, said now that the narration is in,
@@ -2318,6 +2429,10 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // for them (followTurn).
   if (turn && !stuck) {
     playEnemiesDue(campaign, turn);
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "follow");
+      return;
+    }
   }
   followTurn(campaign, turn);
 }
@@ -2329,6 +2444,10 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 function playEnemiesDue(campaign: Campaign, turn: DmTurn) {
   const holder = turnHolder(campaign.id);
   handOnEnemyTurns(campaign, turn, true);
+  // Stopped on a held roll: the hold stays up until the pass goes on.
+  if (backstopWaiting(turn.id)) {
+    return;
+  }
   passOnFrom(campaign, holder);
 }
 
@@ -2342,6 +2461,9 @@ function followTurn(campaign: Campaign, turn?: DmTurn) {
   const encounter = getActiveEncounter(campaign.id);
   if (encounter && enemiesDue(encounter).length) {
     playEnemiesDue(campaign, turn);
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "follow");
+    }
   }
 }
 
@@ -2801,7 +2923,19 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
   if (due.length) {
     const sheets = fieldedSheets(campaign);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
-    autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
+    const rest = autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
+    // One of them waits on a roll or a watcher (playSkippedEnemy): it and the
+    // ones after it stay due and the hold stays up; the pass goes on once the
+    // answer is in (continueBackstop).
+    if (rest) {
+      const live = getActiveEncounter(campaign.id);
+      if (live) {
+        live.legendary.due = [...new Set([...rest, ...(live.legendary.due ?? [])])];
+        saveEncounter(live);
+      }
+      publishEncounter(campaign.id);
+      return null;
+    }
   }
   releaseEnemyHold(campaign);
   // The enemies before the character up next have had their turns: theirs

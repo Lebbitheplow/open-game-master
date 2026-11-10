@@ -1553,6 +1553,7 @@
     "lib/dm/last-hit.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary)"]],
     "lib/dm/legendary-logic.ts#\\b": [["table-language",3,"meaning reader: legendary and lair action lines (pack rows, and the lines a workshop author writes) parsed for costs, saves and damage"]],
     "lib/dm/legendary-logic.ts#re-word": [["table-language",2,"meaning reader: legendary and lair action lines (pack rows, and the lines a workshop author writes) parsed for costs, saves and damage"]],
+    "lib/dm/legendary-logic.ts#str-eq": [["key",1,"the backstop's resume stage, a stored enum (engine vocabulary)"]],
     "lib/dm/legendary-logic.ts#str-list": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/legendary-logic.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/legendary-tools.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
