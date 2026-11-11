@@ -31,6 +31,13 @@ export const ARCHETYPE = "archetype made flesh";
 // whose Trauma Map the alienist holds.
 export const EXAMINED = "the examined mind";
 
+// Doorstep Ambush: asked once, it is not surprised by the next question.
+export const WARY = "wary of the press";
+export const DOORSTEP_RITE = "doorstep ambush";
+// Print Deadline: "Advantage on checks made under time pressure", laid by the
+// GM for the check the clock is on.
+export const DEADLINE = "print deadline";
+
 export const GENRE_B_MYSTERY_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
     id: "chorus_of_the_dead",
@@ -61,4 +68,7 @@ export const GENRE_B_MYSTERY_CONDITION_EFFECTS: ConditionEffectRow[] = [
   { id: "the_story_of_the_century", match: [STORY_RITE], summary: "The Story of the Century: the named creature's public standing collapses; each of its allies makes a WIS save against the muckraker's DC or abandons it." },
   { id: "archetype_made_flesh", match: [ARCHETYPE], summary: "Archetype Made Flesh: its next saving throw against the alienist's treatment (a spell of theirs) counts as a roll of 1." },
   { id: "the_examined_mind", match: [EXAMINED], summary: "The Examined Mind: the alienist's next treatment cannot be resisted by a creature whose Trauma Map they hold." },
+  { id: "wary_of_the_press", match: [WARY], summary: "Wary of the press: a muckraker's question has caught it once; it is not surprised by another (Doorstep Ambush)." },
+  { id: "doorstep_ambush", match: [DOORSTEP_RITE], summary: "Doorstep Ambush: the creature surprised by the muckraker's question answers before thinking, one truthful sentence, unless it makes a WIS save against their DC." },
+  { id: "print_deadline", match: [DEADLINE], summary: "Print Deadline: advantage on the next ability check, one made under time pressure.", advantageOn: [{ kind: "check" }], consumedBy: "check" },
 ];

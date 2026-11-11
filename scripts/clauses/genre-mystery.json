@@ -2064,11 +2064,10 @@
   "clauses": [
    {
     "c": "Advantage on Persuasion with laborers, dockhands, and the working poor",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Working Class Hero#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Working Class Hero: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts socialEdge, asked by src/lib/dm/social-tools.ts social_check (advantage on Persuasion with a person on file as working folk, filed by the Working Class Hero spend)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Working Class Hero#0:unhooked; scripts/test-genre-b-mystery-features.mjs Working Class Hero: Persuasion with a person the enforcer has on file as working folk is rolled with advantage, and with anyone else it is not"
    },
    {
     "c": "they will hide or help you",
@@ -2233,16 +2232,16 @@
   "clauses": [
    {
     "c": "A creature you surprise with a question answers before thinking: one truthful sentence (WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Doorstep Ambush: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts doorstep (the at-will Doorstep Ambush spend: the creature asked saves WIS against 8 + proficiency + CHA or answers, and is wary of the press for ten minutes, so a second question does not surprise it)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Doorstep Ambush#0:unhooked; scripts/test-genre-b-mystery-features.mjs Doorstep Ambush: the creature asked saves (WIS) or answers one truthful sentence, and is not surprised by a second question"
    },
    {
     "c": "(WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts doorstep (rollEnemySave WIS)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Doorstep Ambush: the creature asked saves (WIS) or answers one truthful sentence, and is not surprised by a second question"
    }
   ]
  },
@@ -2300,11 +2299,8 @@
   "clauses": [
    {
     "c": "Public figures hesitate: creatures who know you are press have disadvantage on Intimidation against you and think twice before violence",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Byline Armor#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Byline Armor: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "left",
+    "why": "Roleplay the GM plays, with no roll the engine makes: no door rolls a creature's Intimidation against a character (a player decides how their character takes a threat; social_check rolls the party's words on a person, never the reverse), and whether a public figure thinks twice before violence is the GM's to play. The catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses\")."
    }
   ]
  },
@@ -2379,11 +2375,9 @@
    },
    {
     "c": "you cannot be surprised by creatures you have investigated",
-    "is": "gap",
-    "probe": "not run: which creatures the muckraker investigated is no record the ambush opening reads.",
-    "observed": "nothing in the engine answers to Two Steps Ahead: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: which creatures the muckraker investigated is no record the ambush opening reads."
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts investigatedBy, asked by src/lib/dm/genre-b-surprise.ts canSurprise (src/lib/dm/encounter-open.ts decideAmbush); the Investigated spend of the feature's row puts a creature on file",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Two Steps Ahead: a creature the muckraker has investigated cannot surprise them; one they have not still can"
    }
   ]
  },
@@ -2508,11 +2502,10 @@
   "clauses": [
    {
     "c": "Advantage on checks made under time pressure",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Print Deadline#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Print Deadline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/srd/genre-b-mystery-conditions.ts print deadline (advantage on the next ability check, spent by it), laid by the GM's Print Deadline spend (src/lib/dm/genre-b-mystery-spends.ts deadline): whether the clock is on a check is the GM's to say",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Print Deadline#0:unhooked; scripts/test-genre-b-mystery-features.mjs Print Deadline: with the clock on a check the muckraker's next ability check has advantage, and the one after does not"
    }
   ]
  },

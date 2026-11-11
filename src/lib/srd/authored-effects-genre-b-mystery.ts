@@ -134,7 +134,20 @@ export const GENRE_B_MYSTERY_AUTHORED: GenreRow[] = [
   // against you thereafter": social_check keeps the file and reads it.
   row("Sunk Cost", ["grifter"], { heldBy: { file: "src/lib/dm/social-tools.ts", call: "socialEdge(" } }),
 
+  // "Advantage on Persuasion with laborers, dockhands, and the working poor":
+  // the people the enforcer has on file as working folk (the same files).
+  atWill("Working Class Hero", ["enforcer"], mystery("working_folk", "enemy")),
+
   // ---- muckraker ----
+  // "A creature you surprise with a question answers before thinking: one
+  // truthful sentence (WIS save negates)."
+  atWill("Doorstep Ambush", ["muckraker"], mystery("doorstep", "enemy")),
+  // "you cannot be surprised by creatures you have investigated": the creature
+  // named goes on file; "Advantage on initiative" is the row's own effect.
+  { feature: "Two Steps Ahead", classes: ["muckraker"], entry: { subclass: "genre", effects: [{ kind: "init_adv" }], spends: [{ name: "Investigated", aliases: ["Two Steps Ahead"], action: "none", does: mystery("investigated", "enemy") }] } },
+  // "Advantage on checks made under time pressure": whether the clock is on a
+  // check is the GM's to say, so the spend is theirs (no card in the Hand).
+  { feature: "Print Deadline", classes: ["muckraker"], entry: { subclass: "genre", spends: [{ name: "Print Deadline", action: "none", gm: true, does: mystery("deadline") }] } },
   // "1/long rest, publish the truth: a named creature's public standing
   // collapses, and its allies must save (WIS) or abandon it."
   spend("The Story of the Century", ["muckraker"], "mystery_the_story_of_the_century", undefined, mystery("story", "enemy")),

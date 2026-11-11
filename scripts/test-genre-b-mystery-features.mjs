@@ -572,6 +572,62 @@ await run("Sunk Cost: once a creature has believed the grifter's lie, their next
 
 // ---- the muckraker ----
 
+await run("Doorstep Ambush: the creature asked saves (WIS) or answers one truthful sentence, and is not surprised by a second question", async () => {
+  const hero = rig.holder(feature("muckraker", "Doorstep Ambush", 5));
+  const { near } = await rig.fight(hero);
+  const ask = async (face) => {
+    clearDice();
+    dice(face);
+    const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Doorstep Ambush", targetEnemyId: near.id, reason: "test" });
+    clearDice();
+    return out;
+  };
+  const out = rig.must(await ask(1), "use_resource Doorstep Ambush");
+  assert.equal(out.saveAbility, "wis");
+  assert.match(String(out.applied), /one truthful sentence/);
+  const again = await ask(1);
+  assert.equal(again.ok, false, "the same creature was surprised by a second question");
+});
+
+await run("Two Steps Ahead: a creature the muckraker has investigated cannot surprise them; one they have not still can", async () => {
+  const hero = rig.holder(feature("muckraker", "Two Steps Ahead", 14));
+  const ambush = async () => {
+    await kit.endFight();
+    clearDice();
+    dice(1, 20, 15, 15);
+    const opened = rig.must(await world.invoke("start_encounter", { enemies: [{ monster: "goblin", count: 1 }], ambush: "enemies" }), "start_encounter");
+    clearDice();
+    const name = world.enemies()[0].displayName;
+    const caught = /\bHolder\b[^.]*\bnotices? nothing\b/.test(String(opened.ambush ?? ""));
+    await kit.endFight();
+    return { name, caught };
+  };
+  const before = await ambush();
+  assert.equal(before.caught, true, "the staging surprises nobody");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Two Steps Ahead", variant: before.name, reason: "test" }), "use_resource Two Steps Ahead");
+  const after = await ambush();
+  assert.equal(after.name, before.name, "the second ambusher goes by another name");
+  assert.equal(after.caught, false, "a creature the muckraker investigated surprised them");
+});
+
+await run("Working Class Hero: Persuasion with a person the enforcer has on file as working folk is rolled with advantage, and with anyone else it is not", async () => {
+  const hero = rig.holder(feature("enforcer", "Working Class Hero", 3));
+  await person("Dockhand Bram");
+  await person("Lady Ashdown");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Working Class Hero", variant: "Dockhand Bram", reason: "test" }), "use_resource Working Class Hero");
+  assert.equal((await sway(hero, "Dockhand Bram", "persuade")).d20s, 2, "Persuasion with working folk threw one d20");
+  assert.equal((await sway(hero, "Dockhand Bram", "intimidate")).d20s, 1, "Intimidation took the advantage");
+  assert.equal((await sway(hero, "Lady Ashdown", "persuade")).d20s, 1, "Persuasion with a lady took the advantage");
+});
+
+await run("Print Deadline: with the clock on a check the muckraker's next ability check has advantage, and the one after does not", async () => {
+  const hero = rig.holder(feature("muckraker", "Print Deadline", 3));
+  assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "investigation" }), 1, "the staging rolls with advantage already");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Print Deadline", reason: "test" }), "use_resource Print Deadline");
+  assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "investigation" }), 2, "the check under the deadline threw one d20");
+  assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "investigation" }), 1, "the deadline's advantage outlived its check");
+});
+
 await run("The Story of the Century: the named creature's allies save (WIS) or abandon it and flee; the creature itself does not save", async () => {
   const hero = rig.holder(feature("muckraker", "The Story of the Century", 20));
   const { near, far } = await rig.fight(hero);

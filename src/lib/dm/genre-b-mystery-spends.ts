@@ -52,7 +52,7 @@ import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { rollAgainst } from "@/lib/roll-labels";
 import { computeSheetDerived } from "@/lib/srd";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
-import { ARCHETYPE, CHORUS, DREAM_RITE, EXAMINED, FERRY_RITE, QUIET_COURT, SPIRIT_ANCHORED, SPIRIT_WARD, STORY_RITE, TRANCE, TRANCE_RITE } from "@/lib/srd/genre-b-mystery-conditions";
+import { ARCHETYPE, CHORUS, DEADLINE, DOORSTEP_RITE, DREAM_RITE, EXAMINED, WARY, FERRY_RITE, QUIET_COURT, SPIRIT_ANCHORED, SPIRIT_WARD, STORY_RITE, TRANCE, TRANCE_RITE } from "@/lib/srd/genre-b-mystery-conditions";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -464,7 +464,62 @@ function examinedMind(ctx: SpendContext): Resolution {
   return { patch: { ...patch, conditions, conditionMeta: { ...((patch.conditionMeta ?? ctx.sheet.conditionMeta) as ConditionMetaMap), [EXAMINED]: { rounds: 600 } } }, result: free.result };
 }
 
+function investigated(ctx: SpendContext): Resolution {
+  const subject = subjectOf(ctx);
+  if ("error" in subject) return subject;
+  if (onFile(ctx.campaign.id, ctx.sheet.id, subject.name, FILE.investigated)) {
+    return { error: `${ctx.sheet.name} has ${subject.name} on file already. Nothing was spent.`, refused: "rules" };
+  }
+  openFile(ctx.campaign, ctx.sheet, subject.name, FILE.investigated, subject);
+  return { result: { applied: `${ctx.sheet.name} has investigated ${subject.name}: it cannot surprise them.` } };
+}
+
+function workingFolk(ctx: SpendContext): Resolution {
+  const subject = subjectOf(ctx);
+  if ("error" in subject) return subject;
+  if (onFile(ctx.campaign.id, ctx.sheet.id, subject.name, FILE.kin)) {
+    return { error: `${ctx.sheet.name} knows ${subject.name} for working folk already. Nothing was spent.`, refused: "rules" };
+  }
+  openFile(ctx.campaign, ctx.sheet, subject.name, FILE.kin, subject);
+  return { result: { applied: `${subject.name} is working folk to ${ctx.sheet.name}: advantage on Persuasion with them.` } };
+}
+
+// "A creature you surprise with a question answers before thinking: one
+// truthful sentence (WIS save negates)". Asked once, it is surprised no more.
+function doorstep(ctx: SpendContext): Resolution {
+  const dc = dcOf(ctx.sheet, "cha");
+  if (!ctx.encounter) {
+    return rite(ctx, DOORSTEP_RITE, `${ctx.spend.name}: the creature surprised by ${ctx.sheet.name}'s question answers before thinking, one truthful sentence, unless it makes a WIS save (DC ${dc}).`);
+  }
+  const enemy = namedEnemy(ctx);
+  if (!enemy) {
+    return { error: `${ctx.spend.name} is a question put to a creature of the fight (targetEnemyId). Nothing was spent.`, refused: "rules" };
+  }
+  if (enemy.conditions.some((entry) => isConditionNamed(entry, WARY))) {
+    return { error: `${enemy.displayName} has been caught by a question already and is not surprised by another. Nothing was spent.`, refused: "rules" };
+  }
+  const rolled = save(ctx, enemy, "wis", dc, undefined);
+  layEnemyConditionInstance(ctx.campaign, getEnemy(enemy.id) ?? enemy, WARY, { source: ctx.sheet.id, rounds: 10 * MINUTE });
+  publishEncounter(ctx.campaign.id);
+  return {
+    result: {
+      saveAbility: "wis",
+      dc,
+      applied: rolled.success ? `${enemy.displayName} catches itself and says nothing (WIS ${rolled.total} vs DC ${dc}).` : `${enemy.displayName} answers before thinking: one truthful sentence (WIS ${rolled.total} vs DC ${dc}).`,
+    },
+  };
+}
+
+// The GM's word that the clock is on a check: the muckraker's next one has advantage.
+function deadline(ctx: SpendContext): Resolution {
+  return rite(ctx, DEADLINE, `${ctx.sheet.name} works to a deadline: advantage on their next ability check.`);
+}
+
 const EFFECTS: Record<string, (ctx: SpendContext) => Resolution> = {
+  investigated,
+  working_folk: workingFolk,
+  doorstep,
+  deadline,
   trauma_map: traumaMap,
   case_study: caseStudy,
   nemesis,

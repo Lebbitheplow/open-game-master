@@ -14,6 +14,11 @@
 //   Sunk Cost (grifter)        "A creature that has believed one of your lies
 //                              has disadvantage on Insight against you
 //                              thereafter"
+//   Two Steps Ahead            "you cannot be surprised by creatures you have
+//     (muckraker)              investigated"
+//   Working Class Hero         "Advantage on Persuasion with laborers,
+//     (enforcer)               dockhands, and the working poor": the people the
+//                              enforcer has on file as working folk
 //   Archetype Made Flesh       "your treatments treat one target's saving
 //     (alienist)               throw as if it rolled a 1"
 //
@@ -39,7 +44,7 @@ import { ARCHETYPE, EXAMINED } from "@/lib/srd/genre-b-mystery-conditions";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export const FILE = { trauma: "trauma_map", study: "case_study", nemesis: "nemesis", lied: "believed_lie" } as const;
+export const FILE = { trauma: "trauma_map", study: "case_study", nemesis: "nemesis", lied: "believed_lie", investigated: "investigated", kin: "working_folk" } as const;
 type FileFlag = (typeof FILE)[keyof typeof FILE];
 
 // The name a creature of a fight is on file under: the person it is, else its own.
@@ -86,6 +91,10 @@ export function socialEdge(campaignId: string, sheet: CharacterSheet, npcName: s
   if (approach === "persuade" && holdsGenreFeature(sheet, "alienist", "Case Study") && onFile(campaignId, sheet.id, npcName, FILE.study)) {
     edge.advantage = true;
     edge.notes.push("Case Study: advantage on Persuasion against the creature studied");
+  }
+  if (approach === "persuade" && holdsGenreFeature(sheet, "enforcer", "Working Class Hero") && onFile(campaignId, sheet.id, npcName, FILE.kin)) {
+    edge.advantage = true;
+    edge.notes.push("Working Class Hero: advantage on Persuasion with working folk");
   }
   if (approach === "deceive" && holdsGenreFeature(sheet, "grifter", "Sunk Cost") && onFile(campaignId, sheet.id, npcName, FILE.lied)) {
     edge.dcShift = -5;
@@ -136,4 +145,13 @@ export function treatmentUndoes(campaignId: string, enemy: EncounterEnemy, magic
     return { face: 1, note: `Archetype Made Flesh: the save against ${alienist.name}'s treatment counts as a roll of 1` };
   }
   return null;
+}
+
+// Two Steps Ahead: a creature the muckraker has investigated cannot surprise
+// them (src/lib/dm/genre-b-surprise.ts canSurprise).
+export function investigatedBy(sheet: CharacterSheet, enemy: Partial<Pick<EncounterEnemy, "displayName" | "npcId">>): boolean {
+  if (!enemy.displayName || !holdsGenreFeature(sheet, "muckraker", "Two Steps Ahead")) {
+    return false;
+  }
+  return onFile(sheet.campaignId, sheet.id, fileNameOf({ displayName: enemy.displayName, npcId: enemy.npcId }), FILE.investigated);
 }

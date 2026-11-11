@@ -45,7 +45,7 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   row("Mirror Talk", ["grifter"], { effects: [{ kind: "save_adv", against: ["charmed"] }] }),
   row("Patient Hands", ["grifter"], { effects: [{ kind: "check_adv", skills: ["sleight_of_hand"] }] }),
   row("Iron Jaw", ["enforcer"], { effects: [{ kind: "resist", types: ["bludgeoning"], nonmagical: true }] }),
-  row("Two Steps Ahead", ["muckraker"], { effects: [{ kind: "init_adv" }] }),
+  // Two Steps Ahead's row is src/lib/srd/authored-effects-genre-b-mystery.ts's (its file on the creatures investigated).
   row("Between Worlds", ["spirit_medium"], { effects: [{ kind: "resist", types: ["necrotic"] }] }),
   // "Double proficiency bonus on Insight", "... on Intimidation", "... on Investigation".
   row("Read the Mind's Wound", ["alienist"], { effects: [{ kind: "skill_expertise", skills: ["insight"] }] }),
