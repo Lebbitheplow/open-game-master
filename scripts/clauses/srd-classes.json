@@ -7868,9 +7868,9 @@
       },
       {
         "c": "This weapon counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "a Pact of the Blade warlock's melee weapon strikes as magical: a creature resistant to nonmagical attacks takes its full damage (src/lib/dm/pc-attack-damage.ts, src/lib/srd/pact-weapon.ts pactWeaponAttack)",
+        "probe": "scripts/test-enforce-srd-classes.mjs: CLS-14"
       },
       {
         "c": "Your pact weapon disappears if it is more than 5 feet away from you for 1 minute or more.",
