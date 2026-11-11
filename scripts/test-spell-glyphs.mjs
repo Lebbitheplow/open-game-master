@@ -159,7 +159,18 @@ test("a screen reader hears the glyph in words", () => {
   assert.equal(spellGlyphLabel("fire"), "fire damage");
   assert.equal(spellGlyphLabel("physical"), "weapon damage");
   assert.equal(spellGlyphLabel("choice"), "damage type of your choice");
-  assert.equal(spellGlyphLabel("heal"), "heal");
+  // An effect is said in plain words, as the card's own lines are: "buff"
+  // and "debuff" are game jargon, and "heal" or "summon" read as a verb.
+  assert.equal(spellGlyphLabel("heal"), "healing");
+  assert.equal(spellGlyphLabel("restore"), "ends a condition");
+  assert.equal(spellGlyphLabel("guard"), "protection");
+  assert.equal(spellGlyphLabel("dispel"), "ends a spell");
+  assert.equal(spellGlyphLabel("buff"), "boon");
+  assert.equal(spellGlyphLabel("debuff"), "hindrance");
+  assert.equal(spellGlyphLabel("summon"), "summoning");
+  assert.equal(spellGlyphLabel("teleport"), "teleportation");
+  assert.equal(spellGlyphLabel("detection"), "detection");
+  assert.equal(spellGlyphLabel("utility"), "utility");
   assert.equal(spellGlyphLabel("unknown"), "");
 });
 
