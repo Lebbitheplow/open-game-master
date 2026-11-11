@@ -25,6 +25,7 @@ import {
 import {
   createDmTurn,
   failStaleRunningTurns,
+  getAwaitingTurn,
   getDmTurn,
   getLatestDmTurnId,
   listPendingForTurn,
@@ -1148,6 +1149,34 @@ export function pendingRollAnswer(pending: PendingRoll, roll: StoredRoll) {
   };
 }
 
+// A parked turn closed with nothing more said: the rolls it waited on have
+// published themselves and applied what they apply.
+function closeUntold(campaignId: string, turn: DmTurn) {
+  if (takeNarrationSeq(campaignId, turn.id) !== null) {
+    // A message posted while the turn waited reserved a place for its
+    // narration, and nothing will fill it; the draft bubble lets it go.
+    publishEphemeral(campaignId, "dm_draft_seq", { seq: null });
+  }
+  turn.status = "done";
+  saveDmTurn(turn);
+  setDmStatus(campaignId, "idle");
+}
+
+// A turn parked on a swing that landed on nothing, once the story has gone
+// on without it (src/lib/dm/open-roll-logic.ts parkedTurnIsStale): closed
+// untold, where resuming it had the GM narrate a lost attack turns later.
+export async function closeStaleDmTurn(campaignId: string, turnId: string) {
+  const turn = getDmTurn(turnId);
+  if (!turn || turn.status !== "awaiting_rolls" || listPendingForTurn(turnId).some((pending) => pending.status === "pending")) {
+    return;
+  }
+  closeUntold(campaignId, turn);
+  // Another turn may still wait on dice of its own.
+  if (getAwaitingTurn(campaignId)) {
+    setDmStatus(campaignId, "awaiting_rolls");
+  }
+}
+
 export async function resumeDmTurn(campaignId: string, turnId: string) {
   const campaign = getCampaignById(campaignId);
   const turn = getDmTurn(turnId);
@@ -1170,14 +1199,7 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // model to hand them to, so the turn closes as a person's does rather than
   // narrating at a table the AI no longer runs.
   if (personRunsTable(campaign)) {
-    if (takeNarrationSeq(campaignId, turn.id) !== null) {
-      // A message posted while the turn waited reserved a place for its
-      // narration, and nothing will fill it; the draft bubble lets it go.
-      publishEphemeral(campaignId, "dm_draft_seq", { seq: null });
-    }
-    turn.status = "done";
-    saveDmTurn(turn);
-    setDmStatus(campaignId, "idle");
+    closeUntold(campaignId, turn);
     return;
   }
 

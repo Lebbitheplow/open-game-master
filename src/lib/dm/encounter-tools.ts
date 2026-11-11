@@ -45,6 +45,7 @@ import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
+import { endTurnToolLine, endTurnWaitsLine, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -1214,9 +1215,10 @@ function handleEndTurn(
   // Their attack's d20 waits on the player's choice (after-roll.ts): ended
   // now, the swing would never land, and what they chose would be spent on
   // nothing. The resumed turn ends it once the roll lands.
-  const choosing = listOpenPendingRolls(campaign.id).some((entry) => entry.characterId === sheet.id && entry.kind === "attack" && entry.parkedFor === "after_roll");
-  if (choosing) {
-    return { error: `${sheet.name}'s attack roll waits on their player's choice. End the turn once it lands. Nothing was changed.`, retry: true };
+  // Nor would one whose dice the player has yet to enter (open-roll-logic.ts).
+  const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+  if (withPlayer) {
+    return { error: endTurnToolLine(sheet.name, withPlayer), retry: true };
   }
   // A pass now would leave the enemies before this turn behind
   // (src/lib/dm/enemies-due.ts).
@@ -2907,6 +2909,11 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   if (enemiesOwedTurn(encounter).length || encounter.legendary.heldMove) {
     return false;
   }
+  // Their attack's d20 is still with them: ended now, the swing would never
+  // land (open-roll-logic.ts). endTurnRefusal says which card to answer.
+  if (toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
+    return false;
+  }
   // A watcher who could answer a save this move rolls: the move waits on
   // their choice (src/lib/dm/turn-hold.ts).
   if (holdMoveForWatch(campaign, encounter, current.characterId)) {
@@ -2966,6 +2973,10 @@ export function endTurnRefusal(campaignId: string, userId: string): string {
     return dominated;
   }
   if (encounter && campaign && current?.kind === "pc" && turnUserId(campaign, current) === userId) {
+    const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
+    if (withPlayer && !enemiesOwedTurn(encounter).length) {
+      return endTurnWaitsLine(withPlayer);
+    }
     const waiting = owedNamesForTable(encounter);
     if (waiting.length) {
       const one = waiting.length === 1;

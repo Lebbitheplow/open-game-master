@@ -1753,6 +1753,7 @@
     "lib/dm/ooc-question.ts#re-affix": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/ooc-question.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/ooc-question.ts#str-eq": [["key",7,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/open-roll-logic.ts#str-eq": [["key",1,"a roll kind the engine fixes"]],
     "lib/dm/opportunity-strike.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/opportunity-strike.ts#str-includes": [["key", 2, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/opportunity-strike.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],

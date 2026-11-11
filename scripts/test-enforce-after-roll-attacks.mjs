@@ -31,7 +31,9 @@ const { subscribe } = await import("../src/lib/events.ts");
 const route = {
   choice: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
   pending: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"),
+  floor: await world.route("campaigns/[campaignId]/floor"),
 };
+const tools = await import("../src/lib/dm/encounter-tools.ts");
 
 // A fifth-level fighter: +6 to hit with the longsword, 1d8+3 damage, two
 // attacks a turn. The goblin's AC is 15.
@@ -222,6 +224,80 @@ await test("The turn cannot be ended while the player decides, and a turn skippe
   assert.equal(hp(enemy), 400);
 });
 
+// Table report, 2026-11-10: alone at the table no clock keeps the roll, and
+// End Turn went through with the card open. The swing was lost and the card
+// stayed up through the turns that followed (src/lib/dm/open-roll-logic.ts).
+await test("The player's own End Turn waits for the card: nothing moves, the button says which roll, and the turn ends once it is kept.", async () => {
+  const enemy = await stage(LUCKY);
+  world.dice(3);
+  await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+  world.clearDice();
+  const [pending] = open();
+  assert.ok(pending?.thrown, "the miss waits on the choice");
+  const userId = world.sheet(hero.id).userId;
+  assert.equal(kit.endTurn(userId), false, "End Turn is refused while the card is open");
+  assert.equal(kit.current().characterId, hero.id);
+  assert.match(tools.endTurnRefusal(world.campaignId, userId), /Longsword attack is waiting on your choice\. Change the roll or keep it, then end the turn\./);
+  assert.equal((await choose(pending.id, { keep: true })).status, 200);
+  assert.equal(open().length, 0);
+  assert.equal(kit.endTurn(userId), true, "and goes through once the roll has landed");
+  assert.equal(kit.current().characterId, ally.id);
+  assert.equal(world.sheet(hero.id).resources.luck_points.used, 0);
+});
+
+await test("A card left open by a fight that is over holds no turn of the next one.", async () => {
+  const enemy = await stage(LUCKY);
+  world.dice(3);
+  await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+  world.clearDice();
+  const [stale] = open();
+  assert.ok(stale?.thrown);
+  await stage(LUCKY);
+  assert.equal(kit.endTurn(world.sheet(hero.id).userId), true, "the new fight's turn ends");
+  await choose(stale.id, { keep: true });
+  assert.equal(open().length, 0);
+});
+
+await test("Dice the player has yet to enter hold the turn the same way, at the button and at end_turn.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    assert.equal(toHit.thrown, null, "no dice yet");
+    assert.equal(kit.endTurn(userId), false);
+    assert.match(tools.endTurnRefusal(world.campaignId, userId), /Longsword attack is waiting on your roll\. Roll it, then end the turn\./);
+    const ended = await world.invoke("end_turn", { characterId: hero.id });
+    assert.equal(ended.ok, false);
+    assert.match(ended.error, /waits on their player's dice/);
+    assert.equal(kit.current().characterId, hero.id);
+    world.signIn({ id: userId });
+    const entered = await call(route.pending, "POST", { dice: [2] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(entered.status, 200, JSON.stringify(entered.json));
+    assert.equal(open().length, 0, "a miss with nothing to spend lands at once");
+    assert.equal(kit.endTurn(userId), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
+await test("The lead's skip keeps a thrown roll as it lies: no card outlives the turn, and nothing is spent.", async () => {
+  const enemy = await stage(LUCKY);
+  world.dice(3);
+  await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+  world.clearDice();
+  const [pending] = open();
+  world.signIn({ id: world.owner.id });
+  const skipped = await call(route.floor, "POST", {}, { campaignId: world.campaignId });
+  assert.equal(skipped.status, 200, JSON.stringify(skipped.json));
+  assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+  assert.equal(open().length, 0, "the card went with the turn");
+  assert.match(getPendingRoll(pending.id).combatNote, /does not land/);
+  assert.equal(world.sheet(hero.id).resources.luck_points.used, 0);
+  assert.equal(hp(enemy), 400);
+});
+
 await test("A readied attack, made on another's turn, never waits: it would never land.", async () => {
   const enemy = await stage(LUCKY);
   const ready = await world.invoke("take_action", { characterId: hero.id, action: "ready", trigger: "when it moves" });
@@ -346,6 +422,46 @@ await test("An AI turn waits on the first swing, and resumes with both swings' a
   assert.equal(answer.attacks[1].hit, true, JSON.stringify(answer.attacks[1]));
   assert.equal(answer.attacks[1].damage, 8);
   assert.ok(!JSON.stringify(answer).includes(QUEUED_BEHIND), "no placeholder is left");
+});
+
+await test("A swing lost with its turn, answered after the story has gone on, wakes no narrator: the turn it was parked on closes untold.", async () => {
+  // A table of its own: the fight above still stands on the last one.
+  const lane = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const laneKit = await combatKit(lane);
+  model.pointAt(lane);
+  const gear = { class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1, equipped: true }] };
+  const first = lane.addHero({ name: "Althen", ...gear });
+  const second = lane.addHero({ name: "Mira", ...gear });
+  lane.patch(first.id, { conditions: [], feats: ["Lucky"], resources: { ...lane.sheet(first.id).resources, luck_points: { max: 3, used: 0 } } });
+  await laneKit.fight(1, { heroFaces: { [first.id]: 19, [second.id]: 10 } });
+  const [enemy] = lane.enemies();
+  laneKit.setEnemy(enemy.id, { maxHp: 400, currentHp: 400, ac: 15 });
+  laneKit.place(first.id, 5, 5);
+  laneKit.place(second.id, 5, 7);
+  laneKit.place(enemy.id, 5, 6);
+  model.script([
+    reply({ calls: [modelCall("pc_attack", { characterId: first.id, targetEnemyId: enemy.id })] }),
+    reply({ text: "Mira waits." }),
+    reply({ text: "A swing two turns old." }),
+  ]);
+  lane.dice(3);
+  await model.turn(lane, "I swing at the goblin.", first.id, lane.sheet(first.id).userId);
+  lane.clearDice();
+  const [pending] = listOpenPendingRolls(lane.campaignId);
+  assert.ok(pending?.thrown, "the miss waits on the choice");
+  // The order is edited under the roll (the one way left to pass it), and
+  // the story goes on: another turn is told.
+  laneKit.giveTurn(second.id);
+  await model.turn(lane, "I hold here.", second.id, lane.sheet(second.id).userId);
+  const told = model.requests.length;
+  lane.signIn({ id: pending.userId });
+  const kept = await call(await lane.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { keep: true }, { campaignId: lane.campaignId, pendingRollId: pending.id });
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  await settleQueue(lane.campaignId);
+  assert.equal(getDmTurn(pending.turnId).status, "done");
+  assert.equal(model.requests.length, told, "the narrator is not asked about the lost swing");
+  assert.equal(lane.sheet(first.id).resources.luck_points.used, 0);
+  lane.close();
 });
 
 model.close();

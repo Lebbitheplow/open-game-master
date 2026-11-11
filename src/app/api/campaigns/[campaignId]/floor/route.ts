@@ -7,6 +7,7 @@ import { heroFell } from "@/lib/characters/fallen-logic";
 import { fightOwnsFloor, floorAfterRelease, skipCurrentTurn } from "@/lib/dm/encounter-tools";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { handOnFromBanner } from "@/lib/dm/invoke";
+import { keepRollsLeftBehind } from "@/lib/dm/pending-roll-land";
 import { requestDmTurn } from "@/lib/dm/loop";
 import { settleTableWait, tableWaitHasAnswers } from "@/lib/dm/table-wait";
 import { publishPersisted } from "@/lib/events";
@@ -108,6 +109,8 @@ export async function POST(
   // advances and the DM plays any intervening enemies.
   if (floor.mode === "initiative") {
     if (skipCurrentTurn(campaignId)) {
+      // A card the skipped player left open goes with their turn.
+      keepRollsLeftBehind(context.campaign);
       requestDmTurn(campaignId);
     }
     return Response.json({ ok: true });
