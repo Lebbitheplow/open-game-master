@@ -514,6 +514,26 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
   const r = await openRig();
   const { world, kit, hero, stage, swing, sheet, foe, has, rage, forced } = r;
 
+  // "If a spell, such as raise dead, has the sole effect of restoring you to
+  // life (but not undeath), the caster doesn't need material components to
+  // cast that spell on you": a priest with no diamond raises the dead zealot
+  // with Revivify, and cannot raise a dead fighter the same way.
+  await probe("warrior-of-the-gods-no-diamond", async () => {
+    await kit.endFight();
+    const priest = hero("cleric", "Life Domain", 5, { equipment: [], gold: 0, spellcasting: { ability: "wis", slots: { 3: { max: 2, used: 0 } }, prepared: ["Revivify"], known: [], cantrips: [] } });
+    const dead = (who) => world.patch(who.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+    const zealot = hero("barbarian", "Path of the Zealot", 3, AXE);
+    const fighter = hero("fighter", "Champion", 3);
+    dead(zealot);
+    dead(fighter);
+    const other = await world.invoke("heal", { characterId: fighter.id, casterId: priest.id, spell: "Revivify", level: 3 });
+    assert.equal(other.ok, false, "a fighter's Revivify still asks for the diamond");
+    const out = await world.invoke("heal", { characterId: zealot.id, casterId: priest.id, spell: "Revivify", level: 3 });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(sheet(zealot).deathSaves?.dead ?? false, false, "the zealot is back");
+    assert.equal(sheet(priest).spellcasting.slots[3].used, 1, "the slot is still paid");
+  });
+
   await probe("divine-fury", async () => {
     for (const level of [5, 14]) {
       const zealot = hero("barbarian", "Path of the Zealot", level, AXE);

@@ -1735,9 +1735,9 @@
   "clauses": [
    {
     "c": "A spell that restores you to life needs no material component.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: a revivify cast on a zealot with no diamond was not staged (src/lib/srd/authored-effects-data.ts4 barbarian::Warrior of the Gods narrated)"
+    "is": "held",
+    "by": "src/lib/dm/cast-guard.ts warriorOfTheGods, asked through heal-spell.ts revive (use_spell_slot's internal revives): a spell returning the dead zealot to life asks its caster no material component",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: warrior-of-the-gods-no-diamond"
    }
   ]
  },

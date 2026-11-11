@@ -148,6 +148,8 @@ export type CastInput = {
   // The damage type the cast tool was asked for: a swap for a holder of
   // Awakened Spellbook (src/lib/dm/ar-ws-awakened.ts), nothing to anyone else.
   swapType?: string;
+  // The dead character this casting returns to life (heal-spell.ts revive).
+  revives?: string;
 };
 
 export type CastStoring = { ring: string; holderId: string };
@@ -564,7 +566,13 @@ export function castSpell(
   if (holdRounds !== null && via !== "slot") {
     return { error: beginWithSlotTool(sheet.name, name, castingTimeWords(facts, Boolean(input.ritual))), retry: true };
   }
-  const material = materialPlan(sheet, castFacts, { inFight, units: input.units, slotLevel: input.level ?? facts?.level ?? null });
+  // SRD 5.1 Path of the Zealot, Warrior of the Gods: "If a spell, such as
+  // raise dead, has the sole effect of restoring you to life (but not
+  // undeath), the caster doesn't need material components to cast that
+  // spell on you."
+  const material = input.revives && warriorOfTheGods(input.revives)
+    ? ({ kind: "none" } as const)
+    : materialPlan(sheet, castFacts, { inFight, units: input.units, slotLevel: input.level ?? facts?.level ?? null });
   if ("error" in material) {
     return material;
   }
@@ -968,3 +976,9 @@ registerCastingCompletion((campaign, sheetId, spell) => {
     },
   });
 });
+
+// A dead zealot a spell returns to life asks no material of its caster.
+function warriorOfTheGods(revivedId: string): boolean {
+  const revived = getSheetById(revivedId);
+  return Boolean(revived?.deathSaves?.dead && holdsFeature(revived, "Warrior of the Gods"));
+}

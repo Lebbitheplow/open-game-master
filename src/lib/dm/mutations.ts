@@ -482,6 +482,10 @@ const argsSchema = z.object({
   // use_spell_slot, internal: the damage type the cast tool was asked for
   // (Awakened Spellbook's swap, src/lib/dm/ar-ws-awakened.ts).
   swapType: z.string().max(30).optional(),
+  // use_spell_slot, internal: the dead character this casting returns to
+  // life (heal-spell.ts revive), so Warrior of the Gods' "needs no material
+  // component" is asked of them (cast-guard.ts). Not in the tool schema.
+  revives: z.string().max(80).optional(),
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
@@ -1830,6 +1834,7 @@ function dmMutation(
             ...(args.uses ? { uses: args.uses } : {}),
             ...(args.units ? { units: args.units } : {}),
             ...(args.swapType ? { swapType: args.swapType } : {}),
+            ...(args.revives ? { revives: args.revives } : {}),
             ...zonePlacement(args),
           },
           {

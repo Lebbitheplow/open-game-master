@@ -42,7 +42,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "barbarian::Warrior of the Gods": {
     subclass: "Path of the Zealot",
-    narrated: "A revival spell cast on the barbarian needs no material component: the caster's casting, not a number on this sheet.",
+    // A spell that returns the dead zealot to life costs its caster no
+    // material component (the diamonds of Revivify or Raise Dead).
+    heldBy: { file: "src/lib/dm/cast-guard.ts", call: "warriorOfTheGods(" },
   },
   "barbarian::Rage Beyond Death": {
     subclass: "Path of the Zealot",

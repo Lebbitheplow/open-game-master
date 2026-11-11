@@ -354,6 +354,8 @@ function revive(
     spell: input.spell,
     ...(input.level !== undefined ? { level: input.level } : {}),
     via: "heal",
+    // Who is returned to life: Warrior of the Gods asks it (cast-guard.ts).
+    revives: target.id,
     reason: input.reason || `${name} on ${target.name}`,
   });
   if (typeof paid.error === "string") {
