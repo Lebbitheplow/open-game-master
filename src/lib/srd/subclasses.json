@@ -3720,7 +3720,7 @@
           "6": [
             {
               "n": "Psionic Sorcery",
-              "d": "Cast your psionic spells by spending sorcery points instead of a slot, with no verbal, somatic or costly components."
+              "d": "Cast your psionic spells by spending sorcery points equal to the spell's level instead of a slot, with no verbal, somatic or costly components."
             },
             {
               "n": "Psychic Defenses",

@@ -274,7 +274,8 @@ export function buildPlayerMapView(
   // Spell areas stop sight (a fog cloud, magical darkness) and light it
   // (Daylight): src/lib/dm/zone-rules.ts.
   const vision = {
-    terrain: sheet ? sightTerrainFor(map, sheetSenses(sheet)) : map.terrain,
+    // `self`: a darkness its own caster sees through is no wall to them.
+    terrain: sheet ? sightTerrainFor(map, { ...sheetSenses(sheet), self: sheet.id }) : map.terrain,
     width: map.width,
     height: map.height,
     ambient,
@@ -305,7 +306,8 @@ export function buildPlayerMapView(
       truesightTiles: senses.truesight,
       devilsSightTiles: senses.devilsSight,
     };
-    visible = visibleTiles(vision, viewer, tokens, sources, lit);
+    // A darkness this character sees through is not there for them (zones.ts zoneLights).
+    visible = visibleTiles({ ...vision, zones: lightsWithZones(map, sheet.id) }, viewer, tokens, sources, lit);
     explored = mergeExplored(map.id, sheet.id, visible, tileCount);
   } else if (sheet) {
     explored = getExplored(map.id, sheet.id, tileCount);

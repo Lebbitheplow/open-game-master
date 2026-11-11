@@ -309,6 +309,9 @@ export type SpendDoes =
   // "{units}" (what the call spent), or step with the class level.
   | {
       kind: "buff";
+      // The named creature's mark comes with the Hound of Ill Omen itself, a
+      // creature on the holder's side bound to it (src/lib/dm/ar-ws-hound.ts).
+      hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
       target?: "self" | "ally" | "enemy" | "allies";

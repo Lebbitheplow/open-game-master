@@ -3,6 +3,7 @@
 // spends, read from the same tables the cast and use_resource tools read.
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
@@ -407,6 +408,13 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     bonusCast: bonusCastOf(sheet, facts, null),
   });
   const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
+  // Sorcery points in place of the slot (Psionic Sorcery, Eyes of the Dark),
+  // as the cast guard pays them: a psionic spell is cast bare when a component
+  // cannot be made, and the points pay when no slot can
+  // (src/lib/dm/ar-ws-points-offer.ts).
+  const hushed = Boolean(options.board?.silence && components.facts?.verbal);
+  const byPoints = stored || beam ? null : pointsForCard(sheet, engine, facts, slotLevel, { components: Boolean(components.problem) || hushed || "error" in material, slot: Boolean(slotRefusal && "error" in slotRefusal) });
+  const bare = Boolean(byPoints?.bare);
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
   if (stored) {
@@ -425,7 +433,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
+    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : byPoints ? `Sorcery points ${byPoints.points}` : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
     ...(stored ? { fromItem: stored.fromItem } : {}),
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
@@ -511,11 +519,11 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // The components as this caster makes them (an Archdruid's druid spells
     // need neither voice nor hands), and the Silence the board says they
     // stand in, as the cast guard asks them (cast-rules.ts castComponents).
-    problem(components.problem ?? (options.board?.silence && components.facts?.verbal ? silenceRefusal(sheet.name, options.board.silence.by || null, components.facts.name) : null)),
+    bare ? null : problem(components.problem ?? (hushed ? silenceRefusal(sheet.name, options.board!.silence!.by || null, components.facts!.name) : null)),
     // A reaction spell needs a reaction to spend (slowed takes it away).
     cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
-    "error" in material ? { reason: material.error, spent: false } : null,
-    slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
+    !bare && "error" in material ? { reason: material.error, spent: false } : null,
+    !byPoints && slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
     chargeGate,
     // Last: what else would shut it says more (slowed, no slot).
     waits,

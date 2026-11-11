@@ -162,6 +162,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     }),
   ),
   summaryOnly("hound_of_ill_omen", "hound of ill omen", "Hound of Ill Omen: a shadow hound hunts this creature; it saves at disadvantage against the sorcerer's spells."),
+  summaryOnly("hunting_its_quarry", "hunting its quarry", "Hound of Ill Omen: this hound hunts one creature. It attacks no other, and is gone when its quarry falls."),
   summaryOnly("eldritch_strike", "eldritch strike", "Eldritch Strike: disadvantage on the next save against the fighter's spell before the end of their next turn."),
   summaryOnly("distracted", "distracted", "Distracted by a mage hand: the rogue who distracted it has advantage on attacks against it this turn."),
   summaryOnly("ancestral_protectors", "ancestral protectors", "Ancestral Protectors: disadvantage on attacks against anyone but the barbarian, whose allies resist its damage, until the barbarian's next turn."),
