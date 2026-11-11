@@ -2029,8 +2029,9 @@
   "clauses": [
    {
     "c": "Spend 1 to 5 sorcery points to give a creature that many d8s to spend reducing damage, until your next long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door",
+    "by": "authored spend Bastion of Law (does damage_ward, 1 to 5 sorcery points in amount, an action, within 30 feet): src/lib/dm/ar-ws-bastion.ts layWard lays the condition bastion of law (Nd8) until the next long rest, ending an earlier ward; spendWardDice (mutations.ts use_resource, variant reduce, the dice in amount) rolls the dice off the heaviest attack or fall damage on record against the warded creature for no reaction, each blow once. Ruling: damage with no hit record (a failed save) cannot be given back and is refused with the dice kept"
    }
   ]
  },

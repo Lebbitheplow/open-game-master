@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
+import { layWard } from "@/lib/dm/ar-ws-bastion";
 import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
@@ -606,6 +607,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return createItem(ctx, does);
     case "light":
       return toggleLight(ctx, does);
+    case "damage_ward":
+      return layWard(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

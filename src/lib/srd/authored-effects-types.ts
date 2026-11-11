@@ -450,6 +450,10 @@ export type SpendDoes =
   | { kind: "reroll_heal" }
   // Temporary hit points: to the holder, or to allies in range.
   | { kind: "temp_hp"; formula: Formula; allies?: { rangeFt: number; count: Formula } }
+  // A ward of dice on a creature in reach, one die for each unit spent, which
+  // the creature spends off damage it takes until its next long rest (Bastion
+  // of Law: src/lib/dm/ar-ws-bastion.ts).
+  | { kind: "damage_ward"; die: string; rangeFt: number; condition: string }
   // Hit points to the characters in reach (Turn the Tide, Balm of Peace), at
   // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
   // healing the holder deals as they walk past. `belowHalf`: only those at or

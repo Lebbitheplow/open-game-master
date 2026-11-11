@@ -66,6 +66,14 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
     ],
     spends: [{ name: "Lunar Empowerment", aliases: ["Moonlight"], action: "bonus", gate: { choiceOf: FULL_MOON }, does: { kind: "light", brightFt: 10, dimFt: 10, condition: "moonlight" } }],
   },
+  // "Spend 1 to 5 sorcery points to give a creature that many d8s to spend
+  // reducing damage, until your next long rest": the points in amount, an
+  // action, the creature within 30 feet; the warded creature spends the dice
+  // itself (src/lib/dm/ar-ws-bastion.ts).
+  "sorcerer::Bastion of Law": {
+    subclass: "Clockwork Soul",
+    spends: [{ name: "Bastion of Law", pool: { id: "sorcery_points", perUnit: true, max: 5 }, action: "action", does: { kind: "damage_ward", die: "d8", rangeFt: 30, condition: "bastion of law" } }],
+  },
   // "Spend 1 sorcery point to reroll healing dice for yourself or an ally,
   // once per turn": it answers the healing dice a spell rolled this turn
   // (src/lib/srd/trigger-table.ts), costs nothing of the turn, and keeps its

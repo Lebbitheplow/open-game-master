@@ -31,6 +31,7 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
 import { dealtByTrigger, triggerCards } from "@/lib/battlemap/hand-react-triggers";
+import { wardCards } from "@/lib/battlemap/hand-ar-ws-ward";
 import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
@@ -504,6 +505,8 @@ export function reactionCards(
   // The reactions and triggered uses whose trigger is not a hit: a death, a
   // turn's end, a save forced, damage, a cast (hand-react-triggers.ts).
   cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach), unseen));
+  // A ward of Bastion of Law the character carries, spent off an open blow (hand-ar-ws-ward.ts).
+  cards.push(...wardCards(sheet, turn, hits));
   return cards;
 }
 

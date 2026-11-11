@@ -10,7 +10,7 @@ const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother } = shared;
+  const { friend, drain, freeReactions, uses, rests, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
   rig.outfit("sorcerer", "Divine Soul", { spells: ["Cure Wounds"] });
   rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
@@ -465,7 +465,59 @@ export function probes(rig, shared) {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();
       await balanceRest();
     },
-    "bastion-door": hasDoor(["sorcerer", "Clockwork Soul"], "Bastion of Law", () => ({ targetCharacterId: friend().id, amount: 2 })),
+    // The ward and its dice (src/lib/dm/ar-ws-bastion.ts): laid for 1 to 5
+    // sorcery points as an action on a creature within 30 feet, spent by the
+    // warded creature off a blow on record for no reaction, gone at a long rest.
+    "bastion-door": async () => {
+      const who = clock();
+      const points = () => left(who, "sorcery_points");
+      const ward = (carrier) => sheet(carrier).conditions.filter((entry) => entry.startsWith("bastion of law"));
+      const dice = (carrier, args, faces) => spend(carrier, "Bastion of Law", { variant: "reduce", ...args }, faces);
+      const [enemy] = await stage(who, { others: [friend()] });
+      kit.place(enemy.id, 4, 4);
+      // Six points are more than it takes; 35 feet is farther than it reaches.
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 6 })).ok, false, "6 sorcery points");
+      kit.place(friend().id, 12, 5);
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 })).ok, false, "a creature 35 feet away");
+      assert.deepEqual([points(), budget()?.actionUsed ?? false, ward(friend())], [20, false, []], "nothing spent on a refusal");
+      kit.place(friend().id, 4, 5);
+      const laid = await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 });
+      assert.equal(laid.ok, true, laid.error);
+      assert.deepEqual([points(), budget().actionUsed, ward(friend())], [17, true, ["bastion of law (3d8)"]], "[sorcery points, the action, the friend's ward]");
+      // With no blow on record the dice are kept.
+      assert.equal((await dice(friend(), { amount: 2 }, [3, 1])).ok, false, "no damage to reduce");
+      assert.deepEqual(ward(friend()), ["bastion of law (3d8)"]);
+      assert.equal(rig.table.offered(friend(), "Bastion of Law").length, 0, "no card with no blow open");
+      // The dummy's club lands for 6; two dice (a 3 and a 1) give 4 back.
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal(sheet(friend()).currentHp, 44);
+      assert.deepEqual(rig.table.offered(friend(), "Bastion of Law").map((card) => [card.disabled, card.intent.variant]), [[null, "reduce"]], "the warded creature's card");
+      const cut = await dice(friend(), { amount: 2 }, [3, 1]);
+      assert.equal(cut.ok, true, cut.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend()), rig.reacted(friend())], [48, ["bastion of law (1d8)"], false], "[hit points, the ward left, a reaction spent]");
+      // One blow is answered once; a new blow takes no more dice than the ward holds.
+      assert.equal((await dice(friend(), {}, [8])).ok, false, "the same blow again");
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal((await dice(friend(), { amount: 2 }, [8, 8])).ok, false, "two dice of a ward of one");
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [42, ["bastion of law (1d8)"]], "nothing rolled, nothing spent");
+      const last = await dice(friend(), {}, [8]);
+      assert.equal(last.ok, true, last.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [48, []], "an 8 takes the whole 6 off, and the ward is spent");
+      // Laid again, the earlier ward ends: on the sorcerer first, then on the friend.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { amount: 1 })).ok, true);
+      assert.deepEqual([ward(who), points()], [["bastion of law (1d8)"], 16]);
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 2 })).ok, true);
+      assert.deepEqual([ward(who), ward(friend()), points()], [[], ["bastion of law (2d8)"], 14], "one ward at a time");
+      // "until your next long rest". The clock is put back after it, so the
+      // probes that follow fight at the hour they would have.
+      const clocks = await import("../../src/lib/db/clock.ts");
+      const hour = clocks.getClock(world.campaignId);
+      await rig.rest("long");
+      clocks.setClock(world.campaignId, hour);
+      assert.deepEqual(ward(friend()), [], "after a long rest");
+    },
     "trance-on": async () => {
       await tranced();
       assert.equal(sheet(clock()).conditionMeta["trance of order"].rounds, 10);
@@ -646,7 +698,6 @@ export function probes(rig, shared) {
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
-    "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
   };
   return { PROBES, KNOWN };
 }

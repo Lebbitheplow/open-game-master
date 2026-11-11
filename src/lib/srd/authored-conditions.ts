@@ -96,6 +96,10 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   },
   summaryOnly("tides_of_chaos_check", "tides of chaos (check)", "Tides of Chaos: advantage on the next ability check, which spends it."),
   summaryOnly("tides_of_chaos_save", "tides of chaos (save)", "Tides of Chaos: advantage on the next saving throw, which spends it."),
+  // Bastion of Law's ward, the dice left in its name (src/lib/dm/ar-ws-bastion.ts).
+  ...[1, 2, 3, 4, 5].map((dice) =>
+    summaryOnly(`bastion_of_law_${dice}`, `bastion of law (${dice}d8)`, `Bastion of Law: a ward of ${dice}d8. When they take damage they may spend any of the dice to reduce it by the total rolled, for no reaction; it lasts until a long rest.`),
+  ),
   // Lunar Empowerment's light in the Full Moon phase (src/lib/dm/ar-ws-lunar-empowerment.ts).
   summaryOnly("moonlight", "moonlight", "Lunar Empowerment (Full Moon): sheds bright light for 10 feet and dim light for 10 feet beyond; the same bonus action douses it."),
   // Laid by a Metamagic spend, taken by the next casting (src/lib/dm/ar-ws-lunar-boons.ts).
