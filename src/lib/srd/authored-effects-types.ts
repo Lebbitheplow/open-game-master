@@ -208,6 +208,9 @@ export type AuthoredEffect = Base &
     // The weapon the holder swings deals this damage type and can be thrown,
     // coming back to the hand (Elemental Cleaver's infused weapon).
     | { kind: "infuse"; type: string; rangeFt: number; longRangeFt: number }
+    // Feet added to the long jump and the high jump, running or standing
+    // (Totem Spirit's tiger, while raging).
+    | { kind: "jump"; long: number; high: number }
     // Sneak Attack gains dice against a creature the holder marked
     // (Eye for Weakness: 3d6 against the Insightful Fighting target).
     | { kind: "sneak_bonus"; dice: number; mark: string }

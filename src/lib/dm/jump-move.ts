@@ -15,6 +15,7 @@ import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
 import { highJumpFeet, planLongJump, RUN_UP_TILES } from "@/lib/srd/jump";
+import { authoredJump, jumpStrength } from "@/lib/srd/authored-mt-fb";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -83,6 +84,8 @@ export function jumpMove(input: {
   // there is all the room in the world to take one.
   const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
   const extra = runningJumpFeet(sheet, runningStart);
+  // Feet a feature adds to any jump, standing too (Totem Spirit's tiger).
+  const flat = authoredJump(sheet);
   const plan = planLongJump({
     terrain: map.terrain,
     width: map.width,
@@ -92,7 +95,7 @@ export function jumpMove(input: {
     to,
     // A running long jump covers the Strength score in feet, so the class
     // features' extra feet ride on it.
-    strength: (strength + extra.long) * leap,
+    strength: jumpStrength(strength + extra.long, flat.long, runningStart) * leap,
     runningStart,
     budgetTiles: input.budgetTiles,
     name: sheet.name,
@@ -129,7 +132,7 @@ export function jumpMove(input: {
   }
   return {
     ok: true,
-    jump: { feet: plan.feet, highJumpFeet: (highJumpFeet(strength, runningStart) + extra.high) * leap, landed },
+    jump: { feet: plan.feet, highJumpFeet: (highJumpFeet(strength, runningStart) + extra.high + flat.high) * leap, landed },
     opportunity,
     zoneEffects,
     lasting: plan.landsInDifficult || letGo.length > 0,

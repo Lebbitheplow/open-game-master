@@ -16,6 +16,7 @@ import type { ViewZone } from "@/lib/dm/zone-view";
 import { sizeForRace } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { highJumpFeet, longJumpFeet, RUN_UP_TILES } from "@/lib/srd/jump";
+import { authoredJump, jumpStrength } from "@/lib/srd/authored-mt-fb";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether a character's move is priced as standing up or crawling: prone,
@@ -57,8 +58,9 @@ export function viewerMoves(input: {
     reachable: charged.map(([cell]) => cell),
     reachableCost: charged.map(([, cost]) => cost),
     moves: {
-      jumpFeet: longJumpFeet(strength, runningStart),
-      highJumpFeet: highJumpFeet(strength, runningStart),
+      // With the feet a feature adds to any jump (Totem Spirit's tiger).
+      jumpFeet: longJumpFeet(jumpStrength(strength, authoredJump(sheet).long, runningStart), runningStart),
+      highJumpFeet: highJumpFeet(strength, runningStart) + authoredJump(sheet).high,
       runningStart,
       drag: held.length
         ? {

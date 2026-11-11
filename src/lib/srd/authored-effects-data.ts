@@ -28,6 +28,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       { kind: "bonus_route", action: "dash", gate: { ...RAGING, choice: "eagle" } },
       { kind: "oa_disadv", gate: { ...RAGING, choice: "eagle" } },
       { kind: "speed", amount: 15, gate: { ...RAGING, choice: "elk" } },
+      { kind: "jump", long: 10, high: 3, gate: { ...RAGING, choice: "tiger" } },
       { kind: "pack_adv", rangeFt: 5, gate: { ...RAGING, choice: "wolf" } },
     ],
   },

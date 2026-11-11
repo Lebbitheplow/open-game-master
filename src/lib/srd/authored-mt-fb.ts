@@ -28,3 +28,23 @@ export function authoredInfusion(sheet: AuthoredSheet): { type: string; rangeFt:
   const found = activeAuthored(sheet, "infuse")[0];
   return found ? { type: found.effect.type, rangeFt: found.effect.rangeFt, longRangeFt: found.effect.longRangeFt, feature: found.held.feature } : null;
 }
+
+// jump: feet added to the long jump and the high jump, whatever the start
+// (Totem Spirit's tiger, while raging: "add 10 feet to your long jump distance
+// and 3 feet to your high jump distance").
+export function authoredJump(sheet: AuthoredSheet): { long: number; high: number } {
+  let long = 0;
+  let high = 0;
+  for (const { effect } of activeAuthored(sheet, "jump")) {
+    long += effect.long;
+    high += effect.high;
+  }
+  return { long, high };
+}
+
+// The Strength score a long jump is planned with once those feet are in it:
+// a standing jump covers half the score, so the feet are doubled first to
+// come out whole (src/lib/srd/jump.ts longJumpFeet).
+export function jumpStrength(strength: number, extraFeet: number, runningStart: boolean): number {
+  return strength + (runningStart ? extraFeet : extraFeet * 2);
+}

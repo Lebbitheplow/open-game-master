@@ -1295,10 +1295,9 @@
    },
    {
     "c": "Tiger adds 10 feet to your long jump and 3 feet to your high jump",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totem-spirit-tiger-jump",
-    "stopped": "the jump helpers take a Strength score alone (src/lib/srd/jump.ts longJumpFeet(strength, runningStart)); no sheet reaches them, so a run cannot show the Tiger's 10 feet"
+    "by": "src/lib/srd/authored-mt-fb.ts authoredJump (src/lib/dm/jump-move.ts, src/lib/battlemap/view-moves.ts)"
    },
    {
     "c": "Wolf gives your allies advantage on melee attacks against any hostile creature within 5 feet of you",

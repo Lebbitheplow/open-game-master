@@ -60,7 +60,31 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(speedFor(sheet(elk)) - calm, 15);
   });
 
-  await probe("totem-spirit-tiger-jump", () => {});
+  // "Tiger adds 10 feet to your long jump and 3 feet to your high jump",
+  // through the board's own move route. Strength 16: a standing long jump of
+  // 8 feet is one square, and the Tiger's 10 make it three while raging.
+  await probe("totem-spirit-tiger-jump", async () => {
+    const moveRoute = await import("../src/app/api/campaigns/[campaignId]/battle-map/move/route.ts");
+    const jump = async (who, x, y) => {
+      r.world.signIn({ id: r.sheet(who).userId });
+      const response = await moveRoute.POST(
+        new Request(`http://odm.test/api/campaigns/${r.world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x, y, jump: true }) }),
+        { params: Promise.resolve({ campaignId: r.world.campaignId }) },
+      );
+      return { status: response.status, body: JSON.stringify(await response.json()) };
+    };
+    const tiger = await totem(3, "tiger");
+    await stage(tiger);
+    assert.notEqual((await jump(tiger, 5, 8)).status, 200, "three squares from a standing start with no rage");
+    rage(tiger);
+    const leapt = await jump(tiger, 5, 8);
+    assert.equal(leapt.status, 200, `a raging Tiger's standing long jump of 15 feet: ${leapt.body}`);
+    assert.match(leapt.body, /"highJumpFeet":6\b/, `a standing high jump of 3 feet and the Tiger's 3: ${leapt.body}`);
+    const bear = await totem(3, "bear");
+    await stage(bear);
+    rage(bear);
+    assert.notEqual((await jump(bear, 5, 8)).status, 200, "a Bear jumps no farther for raging");
+  });
 
   await probe("totem-spirit-wolf-allies", async () => {
     const wolf = await totem(3, "wolf");
