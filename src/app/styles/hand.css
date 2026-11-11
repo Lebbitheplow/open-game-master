@@ -690,6 +690,8 @@
 .hand-arrange-done:is(:hover, :focus-visible) { filter: brightness(1.08); outline: none; transform: translateY(-1px); }
 html[data-theme="light"] .hand-arrange-seat { background: rgba(255, 250, 235, 0.8); border-color: #a6842a; }
 html[data-theme="light"] .hand-arrange-step { color: #44403c; border-color: rgba(120, 100, 60, 0.5); }
+/* The opener's pale gold faded into the day sheet; the arrange buttons' gold reads. */
+html[data-theme="light"] .hand-full-text-toggle { color: #6b4f12; }
 html[data-theme="light"] .hand-arrange-move { color: #6b4f12; background: rgba(255, 248, 225, 0.8); border-color: #a6842a; }
 
 /* ---- quieter tables ---- */
