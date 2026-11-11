@@ -31,6 +31,8 @@
     "lib/dm/ar-ws-deflection.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/ar-ws-scrivener.ts#str-eq": [["key", 1, "a spell's casting time, a fixed choice of the spell facts"]],
     "lib/srd/ar-ws-spellbook.ts#str-list": [["key", 1, "the fixed names of the sheet's four spell lists"]],
+    "lib/dm/ar-ws-origin-swap.ts#str-list": [["key",3,"class list ids and schools of magic (engine vocabulary)"]],
+    "lib/dm/ar-ws-spell-swap-record.ts#re-word": [["english-source",1,"the engine's own \"Spell swap:\" feature prefix (written by the level-up)"]],
     "lib/dm/spell-damage-mark.ts#str-includes": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],
     "lib/dm/pc-damage.ts#str-list": [["key", 1, "weapon properties (engine vocabulary)"]],
     "lib/srd/feat-ac.ts#str-includes": [["key", 1, "weapon properties (engine vocabulary)"]],

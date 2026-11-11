@@ -3710,7 +3710,7 @@
           "1": [
             {
               "n": "Psionic Spells",
-              "d": "A set of psionic spells always known that do not count against your spells known, swappable for divination and enchantment spells as you level."
+              "d": "A set of psionic spells always known that do not count against your spells known, swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list."
             },
             {
               "n": "Telepathic Speech",
@@ -3775,7 +3775,7 @@
           "1": [
             {
               "n": "Clockwork Magic",
-              "d": "A set of order-themed spells always known that do not count against your spells known, swappable for abjuration and transmutation spells as you level."
+              "d": "A set of order-themed spells always known that do not count against your spells known, swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list."
             },
             {
               "n": "Restore Balance",

@@ -52,7 +52,9 @@ export function pointsOfferFor(sheet: CharacterSheet, engine: string, facts: Spe
     // The table writes a spell under the name its book gives ("Evard's Black
     // Tentacles"), the content under the SRD's ("Black Tentacles"): any of the
     // spell's names answers.
-    if (hasName(subclassSpellsFor("sorcerer", "Aberrant Mind", level), namesOf(engine, facts))) {
+    // With the sheet's features: a psionic spell replaced at a level-up gives
+    // way to the one swapped in (ar-ws-spell-swap-record.ts).
+    if (hasName(subclassSpellsFor("sorcerer", "Aberrant Mind", level, undefined, sheet.features), namesOf(engine, facts))) {
       return { feature: "Psionic Sorcery", points: facts.level, level: facts.level, bare: true, seesThrough: false, first: false };
     }
   }

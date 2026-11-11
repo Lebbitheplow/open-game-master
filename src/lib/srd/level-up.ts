@@ -76,6 +76,7 @@ import {
   type SpellFacts,
 } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
 import { featChoice } from "@/lib/schemas/sheet";
 
 export type LevelUpContext = {
@@ -642,6 +643,9 @@ export function buildLevelUp(
       if ("error" in learned) {
         return refuse(learned.error);
       }
+      // An origin's spell replaced with this level is recorded on the sheet
+      // (src/lib/dm/ar-ws-spell-swap-record.ts).
+      features = carrySwapRecords(features, learned.view.features, (name) => ({ name, source: "story" as const }));
       nextViews = views.some((view) => view.classId.toLowerCase() === classId)
         ? views.map((view) => (view.classId.toLowerCase() === classId ? learned.view : view))
         : [...views, learned.view];

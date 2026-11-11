@@ -25,9 +25,10 @@
 //     gesture or produce the material: cast for points it needs none of them.
 //
 // Points cast a spell at its own level only. A psionic spell is one of the
-// origin's Psionic Spells table at the sorcerer's level: the spells swapped in
-// "as you level" are not told apart from any other spell known, so they are
-// not counted. None of the table's spells consumes a costly material, so a
+// origin's Psionic Spells table at the sorcerer's level, or the spell a
+// level-up put in the place of one (the sheet's record,
+// ar-ws-spell-swap-record.ts): the one swapped in is paid with points, the
+// one given up no longer. None of the table's spells consumes a costly material, so a
 // casting the points pay because no slot is left reads the material as the
 // slot would (the caster had it, and nothing is used up).
 //

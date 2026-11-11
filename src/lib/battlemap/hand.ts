@@ -49,6 +49,7 @@ import { itemSpellCards, itemSpellNames } from "@/lib/battlemap/hand-items";
 import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
+import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
@@ -444,6 +445,14 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     };
   };
   for (const basic of BASICS) {
+    // Revelation in Flesh's slip out of a grapple or a nonmagical restraint,
+    // as take_action escape answers it (src/lib/dm/ar-ws-squeeze.ts): 5 feet
+    // of movement, so the card costs no action and rolls nothing.
+    if (basic.id === "escape" && squeezeSlips(sheet)) {
+      const slip: HandCard = { ...make(basic, null), cost: "free", dice: "", roll: "no roll", condition: "", rules: "Revelation in Flesh: you slip free for 5 feet of movement. No action, no roll." };
+      cards.push(gated(slip, standingGate(sheet, turn, "move")));
+      continue;
+    }
     // Escape is only there to take while something holds you.
     if (basic.id === "escape" && !grappled && !hold) continue;
     // Standing up is only there to take while lying prone.
