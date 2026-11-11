@@ -2295,9 +2295,12 @@
   "clauses": [
    {
     "c": "Reaction when a creature damages you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:genre::feedback loop::Feedback Loop#TRIGGER_UNCHECKED",
-    "recorded_as": "spends-trigger-unchecked-reaction-genre-feedback-loop-feedback-loop"
+    "run": {
+     "k": "feedback"
+    },
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"feedback loop\" (damaged), read by src/lib/dm/reaction-triggers.ts triggerRefusal: an open hit, a save that dealt damage, or a \"damaged\" record (src/lib/dm/last-save.ts recordDamage, written by src/lib/dm/aoe-characters.ts for a creature's area)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Feedback Loop#0"
    },
    {
     "c": "it takes psychic damage equal to your CHA modifier",

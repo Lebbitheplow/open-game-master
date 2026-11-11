@@ -3,7 +3,7 @@
 // src/lib/dm/genre-a-cyberpunk-*.ts, same contract as the probes of
 // sweep-clauses-genre-a-probes.mjs (an assertion is the rule not held, any
 // other throw is the probe's setup breaking).
-import { must, eq } from "./sweep-clauses-genre-a.mjs";
+import { must, eq, mod } from "./sweep-clauses-genre-a.mjs";
 import { TRAINED } from "./enforce-combat.mjs";
 
 const key = (name) => name.toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
@@ -195,4 +195,26 @@ CYBER.focus = async function focus(t, run, feature) {
     must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion");
     eq(await cast(), true, "Mage Armor cast with a drone on the board");
   }
+};
+
+// "Reaction when a creature damages you": refused with nothing dealt to the
+// esper; after a foe's Burning Hands catches them (an area's save, which
+// leaves no hit record: src/lib/dm/last-save.ts recordDamage) the reaction
+// answers that creature with no target named.
+CYBER.feedback = async function feedback(t, run, feature) {
+  const scene = await t.stage(feature);
+  const react = () => t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "Feedback Loop" });
+  eq((await react()).ok, false, "Feedback Loop with no damage dealt to the esper");
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 2 }, spells: [{ name: "Burning Hands", level: 1 }] } } });
+  t.foesTurn(scene);
+  t.kit.freshRound();
+  t.world.clearDice();
+  t.world.dice(3, 3, 3, 3);
+  must(await t.world.invoke("aoe_damage", { casterEnemyId: scene.near.id, spell: "Burning Hands", characterIds: [scene.holder.id] }), "the foe's Burning Hands");
+  t.world.clearDice();
+  if (t.hp(scene.holder.id) >= 100) throw new Error("the staged Burning Hands dealt the esper nothing");
+  const before = t.foeHp(scene.near.id);
+  const out = await react();
+  eq(out.ok, true, `Feedback Loop after an area's damage (${out.error ?? "accepted"})`);
+  eq(before - t.foeHp(scene.near.id), mod("cha"), "psychic damage dealt back to the creature that breathed");
 };

@@ -38,7 +38,7 @@ import "@/lib/db/item-cast-credits";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { findNamed, textKey } from "@/lib/language/text-logic";
-import { openSaves } from "@/lib/dm/last-save";
+import { damageDealtBy } from "@/lib/dm/last-save";
 
 // ---- reaction spells ----
 
@@ -84,13 +84,13 @@ const TRIGGERS: Array<{ spell: string; when: (name: string) => string; open: (ca
 
 // The creature whose damage to the caster Hellish Rebuke answers ("in response
 // to being damaged by a creature"): an open hit that dealt some, or a save it
-// forced that dealt some (a spell's failed save leaves no hit record:
-// src/lib/dm/last-save.ts noteSaveDamage). The one named, when the call names one.
+// forced that dealt some, or damage it dealt with neither (a spell's failed
+// save and a breath weapon leave no hit record: src/lib/dm/last-save.ts
+// recordDamage). The one named, when the call names one.
 function damagedBy(campaignId: string, sheetId: string, named?: string): string | null {
   const hit = freshLastHit(campaignId, sheetId, (record) => attackerFoeId(record) !== null && record.swings.some((swing) => swing.hit && swing.raw > 0) && (!named || record.attacker.id === named));
   if (hit) return attackerFoeId(hit);
-  const save = openSaves(campaignId).filter((record) => record.characterId === sheetId && (record.damage?.amount ?? 0) > 0 && (!named || record.forcer.id === named)).at(-1);
-  return save?.forcer.id ?? null;
+  return damageDealtBy(campaignId, sheetId, named);
 }
 
 // Whether what this reaction spell answers has happened, for a card about to draw

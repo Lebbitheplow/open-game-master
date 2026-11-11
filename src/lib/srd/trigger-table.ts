@@ -27,7 +27,9 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   pet_damage   `characterId`'s pet took damage
 //   weapon_hit   `characterId` hit `creatureId` with a weapon on their turn
 //   surge        `characterId` used Action Surge this turn; wind_step: Step of the Wind
-export type TriggerEventKind = "hit" | "miss" | "save" | "death" | "turn_end" | "turn_start" | "cast" | "pet_damage" | "weapon_hit" | "surge" | "wind_step";
+//   damaged      `creatureId` damaged `characterId` through neither a hit nor a
+//                save of record (a breath weapon, an aura)
+export type TriggerEventKind = "hit" | "miss" | "save" | "death" | "turn_end" | "turn_start" | "cast" | "pet_damage" | "damaged" | "weapon_hit" | "surge" | "wind_step";
 
 export type TriggerEvent = {
   id: string;
@@ -237,7 +239,7 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
   const self = (id: string) => id === ctx.holderId;
   switch (on.kind) {
     case "damaged":
-      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
+      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save" || event.kind === "damaged") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
     case "missed":
       return event.kind === "miss" && self(event.characterId) && (!on.melee || Boolean(event.melee));
     case "hit_seen":

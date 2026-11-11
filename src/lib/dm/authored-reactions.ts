@@ -37,7 +37,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, kindOf, MENTAL, openSaves, openTriggers, savedIt, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, damageDealtBy, kindOf, MENTAL, openSaves, openTriggers, savedIt, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -735,7 +735,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const record = does.afterSave
         ? null
         : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
-      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : attackerFoeId(record));
+      // With no hit open, the creature whose damage is on record (a breath
+      // weapon, a spell's save: last-save.ts recordDamage).
+      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : (attackerFoeId(record) ?? damageDealtBy(ctx.campaign.id, ctx.sheet.id)));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }

@@ -2,8 +2,10 @@
 // reactions that answer them: a save made or failed and the creature that
 // forced it (Vigilant Rebuke), damage a creature dealt through a save (Hellish
 // Rebuke), a creature dying, a turn ending and with it the next one starting,
-// a creature casting a spell at a character, damage to a pet. The table of
-// what answers which is src/lib/srd/trigger-table.ts.
+// a creature casting a spell at a character, damage to a pet, damage a
+// creature dealt a character through neither a hit nor a save of record (a
+// breath weapon, an aura: recordDamage). The table of what answers which is
+// src/lib/srd/trigger-table.ts.
 //
 // A hit on a character is last-hit.ts's record; everything else a reaction
 // answers is one of these, written by the engine where the event happens. A
@@ -30,7 +32,7 @@ type Ref = { id: string; name: string };
 
 // The last four are read off the running turn, never written here
 // (reaction-triggers.ts triggerRecords).
-export type TriggerKind = "save" | "death" | "turn_end" | "cast" | "pet_damage" | "turn_start" | "weapon_hit" | "surge" | "wind_step";
+export type TriggerKind = "save" | "death" | "turn_end" | "cast" | "pet_damage" | "damaged" | "turn_start" | "weapon_hit" | "surge" | "wind_step";
 
 // One trigger. `characterId` is the character it befell (who saved, whose pet
 // was hurt, who surged); `forcer` the creature that did it (forced the save,
@@ -45,7 +47,8 @@ export type LastSave = {
   success?: boolean;
   // What the save resisted ("charmed", "frightened"), when the engine knew.
   against?: string;
-  // Damage the forcer dealt through the save (a spell's, with `spell`), or to the pet.
+  // Damage the forcer dealt through the save (a spell's, with `spell`), to the
+  // pet, or (kind "damaged") with no hit and no save to carry it.
   damage?: { amount: number; type: string; spell?: boolean };
   petName?: string;
   // A death: the creature's type ("humanoid", "beast"), and who struck it.
@@ -169,8 +172,37 @@ export function noteSaveDamage(campaignId: string, characterId: string, forcerId
 // A trigger other than a save, written where it happens: a death
 // (enemy-damage.ts), a turn's end (last-hit.ts closeHitsAtTurnEnd), a cast, a
 // pet's damage (pet-tools.ts), an Action Surge (resource-turn.ts).
-export function recordTrigger(campaignId: string, record: { kind: "death" | "turn_end" | "cast" | "pet_damage"; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy">>, turn?: string): LastSave | null {
+export function recordTrigger(campaignId: string, record: { kind: "death" | "turn_end" | "cast" | "pet_damage" | "damaged"; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy">>, turn?: string): LastSave | null {
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);
+}
+
+// Damage a creature dealt a character outside an attack's hit, which is
+// last-hit.ts's record: an area the creature breathed or cast, an aura. Every
+// such path that knows its source calls this, and the reactions to "a
+// creature damages you" (Feedback Loop, Hellish Rebuke, Misty Escape) read
+// it. The damage goes on the save that creature forced on the character this
+// turn when there is one (made or failed: a save for half still damages),
+// and is otherwise a record of its own, kind "damaged".
+export function recordDamage(campaignId: string, characterId: string, forcer: Ref, amount: number, type: string, spell = false) {
+  if (amount <= 0) {
+    return;
+  }
+  const saved = openSaves(campaignId).some((record) => record.characterId === characterId && record.forcer.id === forcer.id);
+  if (saved) {
+    noteSaveDamage(campaignId, characterId, forcer.id, amount, type, spell);
+    return;
+  }
+  recordTrigger(campaignId, { kind: "damaged", characterId, forcer, damage: { amount, type, ...(spell ? { spell: true } : {}) } });
+}
+
+// The creature whose open damage to the character a reaction answers, the
+// latest first: a save it forced that dealt some, or a "damaged" record. The
+// one named, when the call names one. Hits are last-hit.ts's to answer.
+export function damageDealtBy(campaignId: string, characterId: string, named?: string): string | null {
+  const open = openTriggers(campaignId).filter(
+    (record) => (kindOf(record) === "save" || kindOf(record) === "damaged") && record.characterId === characterId && (record.damage?.amount ?? 0) > 0 && (!named || record.forcer.id === named),
+  );
+  return open.at(-1)?.forcer.id ?? null;
 }
 
 // A turn ending, as the pointer leaves it: kept under the ending turn's key,
