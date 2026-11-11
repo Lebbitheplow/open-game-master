@@ -150,8 +150,9 @@
   "clauses": [
    {
     "c": "Add your proficiency bonus to ability checks made as part of an abjuration spell, such as counterspell and dispel magic.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: improved-abjuration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: improved-abjuration",
+    "by": "authored effect spell_check_prof (src/lib/srd/authored-effects-w2-ar-ws.ts), added by src/lib/dm/ar-ws-spell-check.ts withSpellCheckBonus inside contest-roll.ts rollCharacterCheck, where Counterspell (reaction-spells.ts) and Dispel Magic (dispel.ts) name their spell"
    }
   ]
  },
@@ -196,8 +197,9 @@
   "clauses": [
    {
     "c": "Teleport 30 feet or swap places with a willing creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-swap"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-swap",
+    "by": "sub_benign_transposition fx teleport 30 with swap (src/lib/srd/authored-resources.json): the plain jump waits for move_token and is held to 30 feet (feature-teleport.ts), and with targetCharacterId the two tokens change squares, the creature within 30 feet (src/lib/dm/ar-ws-transposition.ts planSwap, from resource-tools.ts computeUseResource)"
    },
    {
     "c": "recharges on a long rest",
@@ -207,8 +209,9 @@
    },
    {
     "c": "or when you cast a conjuration spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-recharge-on-cast"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-recharge-on-cast",
+    "by": "the counter castRefill conjuration, 1st level or higher (src/lib/srd/authored-resources.json), given back by src/lib/dm/ar-ws-transposition.ts castRefills inside cast-guard.ts castSpell, the door every casting passes"
    }
   ]
  },
@@ -260,8 +263,9 @@
    },
    {
     "c": "or a creature you can see with one of them",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 856-no-stop-at-a-person-run-table"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 856-no-stop-at-a-person-run-table",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 856-no-stop-at-a-person-run-table: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "three dice from 14th level",
@@ -311,8 +315,9 @@
    },
    {
     "c": "gain one of these until you are incapacitated or take a short or long rest: darkvision out to 60 feet, sight of the Ethereal Plane to 60 feet, the ability to read any language, or sight of invisible creatures and objects within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_third_eye#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_third_eye#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_third_eye: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -344,8 +349,9 @@
    },
    {
     "c": "choose a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 5 feet",
@@ -355,8 +361,9 @@
    },
    {
     "c": "if it can see or hear you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-senses"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-senses",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze senses see_or_hear (src/lib/dm/authored-save-effect-extras.ts saveEffectRefusal)"
    },
    {
     "c": "it makes a Wisdom save against your spell save DC",
@@ -372,35 +379,39 @@
    },
    {
     "c": "with speed 0 and incapacitated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-incapacitated"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-incapacitated",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze alsoCondition incapacitated, laid and ended with the charm"
    },
    {
     "c": "and later actions extend it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a second use is taken as a new use (see gaze-once), so an extension cannot be told from it"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze oncePerCreature: variant extend renews the held gaze for the action, no save (authored-save-effect-extras.ts extendsHeld)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-extend"
    },
    {
     "c": "It ends if you move more than 5 feet away",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-leash"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-leash",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze leashFeet 5 (src/lib/dm/condition-leash.ts)"
    },
    {
     "c": "if it can't see or hear you",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the charm takes a creature that can neither see nor hear to begin with (gaze-senses), so its ending was not staged"
+    "is": "held",
+    "by": "the instance the gaze lays carries endsUnsensed (src/lib/dm/authored-save-effect-extras.ts layWithExtras, for a row whose senses is see_or_hear), ended by src/lib/dm/ar-ws-senses-logic.ts endUnsensed where every write of an enemy condition lands (src/lib/db/encounters.ts patchEnemyConditions) once the creature is blinded and deafened both",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-unsensed"
    },
    {
     "c": "or if it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-damage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-damage",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze endsOnDamage"
    },
    {
     "c": "Once you use it on a creature, whatever the result, you can't use it on that creature again until you finish a long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-once"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-once",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze oncePerCreature: the met mark (untilLongRest) refuses a second use"
    }
   ]
  },
@@ -412,8 +423,9 @@
   "clauses": [
    {
     "c": "When a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-sight",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Instinctive Charm sees attacker (authored-reactions.ts redirect: unseenRefusal)"
    },
    {
     "c": "within 30 feet",
@@ -435,8 +447,9 @@
    },
    {
     "c": "deciding before you know whether the attack hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-before-hit"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-before-hit",
+    "by": "ruling (round 5): the server resolves an attack in one step and cannot hold the roll back, so the reaction answers the attack roll on record whichever way it went; a missed attack is taken as a hit is, the attacker saves, and on a failure the same roll meets the Armor Class of the creature closest to it, the attacker's damage rolled then (src/lib/dm/ar-ws-charm-miss.ts, from authored-reactions.ts redirect). The table still sees the roll before the wizard speaks"
    },
    {
     "c": "If it succeeds, you can't use this on it again until you finish a long rest",
@@ -472,8 +485,9 @@
    },
    {
     "c": "can target a second",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: split-distance"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: split-distance",
+    "by": "authored effect twin_spell enchantment 1 to 9, anywhere (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/authored-reaper.ts handleReaperCast asks the 5 feet between the two only of a row that does not say anywhere, and holds the second creature to the spell's own range before the slot is spent (cast-reach.ts spellReachProblem)"
    }
   ]
  },
@@ -490,8 +504,9 @@
    },
    {
     "c": "and you can strip up to your Charisma modifier plus one hour of memory on a failed save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: alter-memories-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: alter-memories-door",
+    "by": "authored spend Alter Memories, strip_memory (src/lib/srd/authored-effects-w2-ar-ws.ts): an action, the charmed creature's Intelligence save against the spell save DC, and on a failure the mark memory stripped (N hours), N the amount asked, at most the Charisma modifier plus one (src/lib/dm/ar-ws-alter-memories.ts); out of a fight it answers with the DC and the hours for the GM's roll"
    }
   ]
  },
@@ -574,13 +589,15 @@
    },
    {
     "c": "killing a creature with a spell of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-paths"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-paths",
+    "by": "src/lib/dm/ar-ws-harvest.ts spellKill and killingSpell: every path a character's spell kills by names the spell to authored-hooks.ts authoredOnKill (cast-at-enemy-damage.ts, aoe-damage.ts, and attack-blow.ts through authoredOnHit for pc_attack's spell attacks)"
    },
    {
     "c": "restores twice the spell's level in hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-upcast"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-upcast",
+    "by": "src/lib/dm/ar-ws-harvest.ts killingSpell. Ruling: the spell's level is the level it was cast at (SRD 5.1, Casting a Spell at a Higher Level: the spell assumes the higher level for that casting); a cantrip is never of 1st level"
    },
    {
     "c": "three times for necromancy spells",
@@ -594,22 +611,25 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "School of Necromancy",
   "level": 6,
-  "sha": "2bf8d39ddee0",
+  "sha": "18a72aed5bde",
   "clauses": [
    {
     "c": "You learn animate dead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-learn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-learn",
+    "by": "src/lib/srd/subclasses.json School of Necromancy spells 6 (Animate Dead), read by subclassSpellsFor"
    },
    {
     "c": "raise one extra corpse per casting",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-extra"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-extra",
+    "by": "src/lib/dm/ar-ws-thralls.ts thrallSpell (authored effect summon_extra, Animate Dead, one), from summon-cast.ts castSummon and the summons route. Ruling: the extra corpse joins the casting's budget at every slot level, of either form; reasserting control holds no more than the spell says"
    },
    {
-    "c": "and your undead gain extra hit points and add your proficiency bonus to weapon damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-sturdier"
+    "c": "and undead you create with a necromancy spell gain your wizard level in extra hit points and add your proficiency bonus to weapon damage",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-sturdier",
+    "by": "src/lib/dm/ar-ws-thralls.ts thrallForm (authored effect summon_thrall, necromancy, undead), from summon-cast.ts castSummon. The text now states the number (the wizard level). Ruling: every attack of the stat blocks Animate Dead and Create Undead make is a weapon attack, so each attack's own damage roll takes the bonus once"
    }
   ]
  },
@@ -627,8 +647,9 @@
    },
    {
     "c": "and your hit point maximum cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: inured-maximum"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: inured-maximum",
+    "by": "src/lib/dm/ar-ws-inured-logic.ts maxHpCannotFall (authored effect max_hp_fixed), asked at every door that lowers a maximum: a drain condition in src/lib/db/sheets.ts patchSheet (ar-ws-inured.ts keptFromDrain) and enemy-hit.ts drainMaxHp, set_effect field maxHp (effect-tools.ts, refused), and exhaustion 4 in condition-logic.ts effectiveMaxHp. Ruling: every reduction counts, exhaustion included; a bonus that ends (Aid) is not a reduction"
    }
   ]
  },
@@ -682,9 +703,9 @@
    },
    {
     "c": "An undead with an Intelligence of 12 or higher that failed repeats the save at the end of every hour, breaking free on a success.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's onFail leaves the hourly save to the GM (\"which the GM rolls when an hour passes\"); pass_time was not walked an hour with a commanded undead"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-command-hours.ts commandedHourlySaves (save_effect hourlySaveAt int 12), called by src/lib/db/clock.ts advanceClock for every passing of time. Ruling: the repeat is the same save (Charisma against the spell save DC, with the advantage Intelligence 8 gave the first); the hours are the campaign clock's, a fight's rounds are not counted",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: command-undead-hourly"
    }
   ]
  },
@@ -733,8 +754,9 @@
    },
    {
     "c": "changeable when you cast a transmutation spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: stone-change"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: stone-change",
+    "by": "src/lib/dm/ar-ws-stone.ts (choose changeAfterCast transmutation 1): cast-guard.ts castSpell opens one change on a transmutation spell of 1st level or higher, authored-spends.ts refuses a change without it and lets one through in a fight. Ruling: the first benefit is chosen freely out of a fight; a change needs such a spell just cast, in a fight or out, and each casting opens one"
    }
   ]
  },
@@ -746,8 +768,9 @@
   "clauses": [
    {
     "c": "You add polymorph to your spellbook if it isn't there",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-book"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-book",
+    "by": "src/lib/srd/subclasses.json School of Transmutation spells 10 (Polymorph), read by subclassSpellsFor"
    },
    {
     "c": "and you can cast it without a spell slot",
@@ -757,9 +780,9 @@
    },
    {
     "c": "targeting only yourself and becoming a beast of challenge rating 1 or lower",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the free casting (src/lib/srd/counter-casts.ts sub_shapechanger) carries this limit only as its note; no probe casts it free on another creature or into a beast above challenge rating 1"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_shapechanger freeLimit, read by src/lib/dm/cast-guard.ts (freeFits from cast-buff.ts withinFreeLimit): outside it a slot pays or the cast is refused",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-limit"
    },
    {
     "c": "once per short or long rest",
@@ -802,8 +825,9 @@
    },
    {
     "c": "or failing a save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "grants +2 AC",
@@ -813,13 +837,15 @@
    },
    {
     "c": "or +4 on the save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "at the cost of casting only cantrips on your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost",
+    "by": "the reaction row cantripsOnly (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectionAftermath lays the mark arcane deflection to the end of the wizard next turn, and src/lib/dm/ar-ws-deflection-mark.ts deflectionCastProblem refuses any spell but a cantrip at the one cast door (cast-guard.ts castSpell) and on the Hand spell, reaction-spell and summoning cards (ruling: later rays of a casting already made, a held spell repeated effect, a readied release and a spell an item casts are no new casting and pass)"
    }
   ]
  },
@@ -851,23 +877,27 @@
    },
    {
     "c": "After a long rest you have one",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-long-rest"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-long-rest",
+    "by": "src/lib/srd/authored-resources.json sub_power_surge restHolds.long (src/lib/srd/resource-refills.ts)"
    },
    {
     "c": "you gain one whenever you end a spell with dispel magic or counterspell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-counterspell"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-counterspell",
+    "by": "src/lib/dm/spell-damage-mark.ts gainPowerSurge (reaction-spells.ts finishCounterspell, dispel.ts handleDispelMagic)"
    },
    {
     "c": "and you gain one at the end of a short rest if you have none",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-short-rest"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-short-rest",
+    "by": "src/lib/srd/authored-resources.json sub_power_surge restHolds.shortIfNone (src/lib/srd/resource-refills.ts)"
    },
    {
     "c": "Once per turn when you deal damage to a creature or object with a wizard spell, you can spend one to deal extra force damage equal to half your wizard level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_power_surge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: surge-spend",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Power Surge (afterSpellDamage: src/lib/dm/spell-damage-mark.ts)"
    }
   ]
  },
@@ -893,8 +923,9 @@
   "clauses": [
    {
     "c": "Arcane Deflection also deals half your wizard level in force damage to up to three creatures within 60 feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud",
+    "by": "src/lib/dm/ar-ws-deflection.ts deflectingShroud, dealt inside deflectionAftermath by either half of the Arcane Deflection reaction for a holder of the feature: half the wizard level in force to the foes named in targetEnemyIds (three at most), else the three nearest, each within 60 feet and seen by the wizard; a creature named beyond the reach, unseen or a fourth is refused before the reaction is spent (shroudRefusal)"
    }
   ]
  },
@@ -916,7 +947,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Bladesinging",
   "level": 2,
-  "sha": "d429d47f0f73",
+  "sha": "1d0692a1c542",
   "clauses": [
    {
     "c": "A bonus action",
@@ -944,13 +975,15 @@
    },
    {
     "c": "advantage on Acrobatics",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-acrobatics"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-acrobatics",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Bladesong check_adv acrobatics (gate: the bladesong condition)"
    },
    {
-    "c": "and a concentration-save bonus",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration"
+    "c": "and your Intelligence modifier (at least +1) on Constitution saves to keep concentration",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration",
+    "by": "src/lib/dm/ar-ws-bladesong.ts bladesongConcentrationBonus, added to the save in src/lib/dm/concentration.ts concentrationDamageHook (the Intelligence modifier, at least +1, only while the bladesong condition holds; the text was given the number)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -974,8 +1007,9 @@
    },
    {
     "c": "and one of those attacks may be a cantrip with a casting time of one action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip",
+    "by": "authored effect attack_cantrip (src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Extra Attack), counted by src/lib/dm/ar-ws-cantrip-attack.ts spendActionCast inside cast-rules.ts turnCharge, which the cast guard (pc_attack with spell, cast_at_enemy) and the Hand spell cards both ask: a cantrip with a casting time of one action is one attack of the Attack action, before or after the weapon attack, one per action (ruling: Haste extra action, one weapon attack, never pays for it)"
    }
   ]
  },
@@ -1027,8 +1061,9 @@
   "clauses": [
    {
     "c": "After you or a creature you can see within 30 feet makes an attack roll, ability check or saving throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-dice-windows.mjs :: windows.take_action.hero_grapple"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-dice-windows.mjs :: windows.take_action.hero_grapple",
+    "by": "scripts/test-enforce-sweep-dice-windows.mjs row windows.take_action.hero_grapple: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "a reaction forces a reroll once you see whether it succeeded, and the second roll stands",
@@ -1066,8 +1101,9 @@
   "clauses": [
    {
     "c": "As an action, a Large or smaller creature you can see within 60 feet makes a Constitution save against your spell save DC or is incapacitated with speed 0 until the end of your next turn or until it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_momentary_stasis#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_momentary_stasis#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_momentary_stasis: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "a number of times equal to your Intelligence modifier (minimum once) per long rest",
@@ -1081,12 +1117,13 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Chronurgy Magic",
   "level": 10,
-  "sha": "24a38ff4a2fc",
+  "sha": "e453bdf4b922",
   "clauses": [
    {
-    "c": "Store a spell of 4th level or lower in a bead that anyone can break to cast it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: abeyance"
+    "c": "Store a spell of 4th level or lower for an hour in a bead that anyone can break to cast it with your spell save DC and spell attack bonus",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: abeyance",
+    "by": "src/lib/dm/ar-ws-abeyance.ts storeInBead, through use_spell_slot storeIn (src/lib/dm/spell-storing.ts storeSpell) and the store door of the cast guard (src/lib/dm/ring-store.ts storeRefusal and putInRing, src/lib/dm/ar-ws-bead-store.ts); the bead is a spell storer (src/lib/srd/spell-storing.ts isSpellStorer, src/lib/srd/ar-ws-conjured.ts), cast from with use_item, gone as its spell is cast (ring-store.ts takeFromRing) or when the clock ends its hour (src/lib/db/clock.ts advanceClock). The hour and the wizard's numbers were written into the stored text."
    },
    {
     "c": "recharges on a short or long rest",
@@ -1110,8 +1147,9 @@
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-range",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Convergent Future force_miss rangeFt 60 (authored-reactions.ts force_miss: the attacker's roll within reach)"
    },
    {
     "c": "as a success or a failure",
@@ -1134,8 +1172,9 @@
   "clauses": [
    {
     "c": "Halve or double a creature's or object's weight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy",
+    "by": "src/lib/dm/ar-ws-buff-aim.ts buffAim and strayBuffTarget, through src/lib/dm/authored-spend-effects.ts (buff); row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Adjust Density (target creature). A creature of either side: the enemy named, else the ally named, else the wizard; a target a buff cannot use is refused with nothing spent. An object's weight is the GM's to narrate: no object stands on the board."
    },
    {
     "c": "for a minute",
@@ -1151,9 +1190,9 @@
    },
    {
     "c": "carrying capacity",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: encumbrance was not weighed under the condition"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-carry",
+    "by": "src/lib/srd/ar-ws-density.ts densityCarryFactor, read by src/lib/srd/encumbrance.ts encumbranceFor and src/lib/dm/load-rules.ts liftLimits. Ruling: the text says the capacity changes and not which way, so it goes the way the Strength checks do: doubled with the weight doubled, halved with it halved."
    },
    {
     "c": "and Strength checks",
@@ -1184,8 +1223,9 @@
   "clauses": [
    {
     "c": "When a creature you can see within 60 feet hits with a weapon attack, a reaction adds 1d10 to its damage; or when a creature within 60 feet takes falling damage, a reaction adds 2d10.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_violent_attraction#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: attraction-hit",
+    "by": "src/lib/dm/arcane-triggered.ts violentAttraction (the hit record and the turn's weapon hit)"
    },
    {
     "c": "A number of times equal to your Intelligence modifier (minimum once) per long rest",
@@ -1203,8 +1243,9 @@
   "clauses": [
    {
     "c": "As an action, for a minute (concentration) you emanate a 30-foot field: each hostile creature that starts its turn in it makes a Strength save against your spell save DC, taking 2d10 force damage and having speed 0 until the start of its next turn on a failure, or half damage on a success, after which every foot it moves in the field costs 2 extra feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_event_horizon#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_event_horizon#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_event_horizon: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
@@ -1214,8 +1255,9 @@
    },
    {
     "c": "or by expending a spell slot of 3rd level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: horizon-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: horizon-slot",
+    "by": "src/lib/srd/authored-resources.json sub_event_horizon fallbackSlot minLevel 3, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -1244,15 +1286,15 @@
    },
    {
     "c": "When you cast a wizard spell with a slot you can change its damage type to one found in another spell in your book of the slot's level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves it to the GM (narrated); whether the cast tools take a damageType the book allows, and refuse one it does not, was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: awakened-type",
+    "by": "src/lib/dm/ar-ws-awakened.ts awakenedDamageType, asked by the one cast guard (src/lib/dm/cast-guard.ts castSpell, swapType) for the type cast_at_enemy (damageType) and aoe_damage (type) were given; the tools deal the type it answers (castDamageType). A type no other spell of the slot's level in the book deals is refused with nothing spent."
    },
    {
     "c": "once per long rest you can cast a ritual spell from the book at its normal casting time rather than adding 10 minutes",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves it to the GM (narrated); no counter holds the once a day, and a ritual's clock was not timed"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: awakened-ritual",
+    "by": "src/lib/srd/authored-resources.json sub_awakened_spellbook (uses 1, recharge long) and row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Awakened Spellbook (the use lays the mark swift ritual until a long rest); src/lib/dm/ar-ws-awakened.ts swiftRitual and spendSwiftRitual, read by src/lib/dm/cast-guard.ts castSpell where a ritual's 10 minutes are charged."
    },
    {
     "c": "and over a short rest your quill can turn a blank book into a new home for its mind",
@@ -1297,8 +1339,9 @@
    },
    {
     "c": "or costs a spell slot of any level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-slot",
+    "by": "src/lib/srd/authored-resources.json sub_manifest_mind fallbackSlot minLevel 1, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -1310,8 +1353,9 @@
   "clauses": [
    {
     "c": "After a long rest you can create a magic scroll of a 1st- or 2nd-level wizard spell from your book with a casting time of an action; it is cast as if one level higher, and it vanishes once cast or when you finish a long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: scrivener"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: scrivener",
+    "by": "src/lib/dm/ar-ws-scrivener.ts scribeScroll (row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Master Scrivener, counter sub_master_scrivener); the scroll is a spell scroll read through src/lib/dm/consumables.ts readScroll, which casts it one level higher (src/lib/srd/ar-ws-conjured.ts scrollCastLevel) and uses it up; src/lib/dm/rest-logic.ts longRestPatch takes an unread one away. Ruling: it is a spell scroll, so it carries the Spell Scroll table's save DC and attack bonus for the level it is cast at."
    }
   ]
  },
@@ -1323,8 +1367,9 @@
   "clauses": [
    {
     "c": "While your spellbook is on your person you have advantage on Intelligence (Arcana) checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-arcana"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-arcana",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::One with the Word check_adv arcana"
    },
    {
     "c": "If you take damage while the book's mind is manifested, a reaction dismisses it to prevent all of that damage",
@@ -1334,8 +1379,9 @@
    },
    {
     "c": "then roll 3d6, and spells in your book with a combined level at least that total vanish from it until you finish 1d6 long rests (if there aren't enough, you drop to 0 hit points)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish",
+    "by": "src/lib/dm/ar-ws-word.ts payTheWord, called by src/lib/dm/reaction-counters.ts (One with the Word); the spells and their long rests are kept on the sheet (spellcasting.vanished, src/lib/srd/ar-ws-spellbook.ts) and counted back by src/lib/dm/rest-logic.ts longRestPatch. Rulings: the spells are the wizard's choice in the source, so the call may name the ones to lose first (variant) and the server takes unprepared spells before prepared ones beyond those; a book that cannot pay keeps its spells and the wizard drops to 0 hit points."
    },
    {
     "c": "Once per long rest",
@@ -1359,9 +1405,9 @@
    },
    {
     "c": "the GM may have you roll a d20; on a 1 you roll on the wild magic table",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the engine holds no wild magic table (grep finds the words in the text and the cast guard only); what the d20 and the table do is the GM's narration, with no written reason on the row"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: surge-roll",
+    "by": "authored spend Wild Magic Surge (the GM call, does wild_surge, gate surge chance): src/lib/dm/ar-ws-wild-surge.ts wildSurge rolls the sorcerer d20 and on a 1 a die on the app own table (src/lib/srd/ar-ws-wild-surge-table.ts, an original table of ten entries, not the printed one) and applies the entry; surgeChanceAfter (cast-guard.ts castSpell) opens the chance after every sorcerer spell of 1st level or higher. Ruling: with Tides of Chaos spent the surge is triggered outright, no d20, and the use comes back"
    }
   ]
  },
@@ -1425,8 +1471,9 @@
   "clauses": [
    {
     "c": "Once per turn, the highest damage die you roll for a spell explodes: roll it again and add it.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door",
+    "by": "src/lib/dm/ar-ws-bombardment.ts spellBombardment, called where a character spell damage is rolled: cast-at-enemy-damage.ts landSpellDamage, aoe-damage.ts, attack-blow.ts landSwingBlow (pc_attack spells, both dice paths) and zone-triggers.ts. Applied without a call (it only helps): of the kept dice at their highest number the largest is rolled again once and joins its own term; once per turn by the fight turn marks; a die dealt at its maximum without a roll does not explode"
    }
   ]
  },
@@ -1438,9 +1485,9 @@
   "clauses": [
    {
     "c": "You can learn cleric spells as sorcerer spells",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the builder's spell offer is the builder sweep's (scripts/test-enforce-sweep-builder-spell-offer.mjs); the subclass's spellLists was not walked here"
+    "is": "held",
+    "by": "subclasses.json spellLists read by src/lib/srd/spell-prep.ts spellOnCasterList (the builder's spell step, creation, the level-up, learn_spell) and said in the level-up's offer (src/lib/dm/ar-ws-origin-swap.ts originSpellNotes); cast with the sorcerer's Charisma",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-cleric-list"
    },
    {
     "c": "and you choose an affinity for your divine power that teaches you one more sorcerer spell, which doesn't count against your spells known: cure wounds (good), inflict wounds (evil), bless (law), bane (chaos) or protection from evil and good (neutrality)",
@@ -1450,9 +1497,9 @@
    },
    {
     "c": "If you replace that spell later, it must become a cleric spell.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap of the affinity spell was not walked"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor). Ruling: a cleric spell of any level the sorcerer has slots for",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-affinity-swap"
    }
   ]
  },
@@ -1484,8 +1531,9 @@
   "clauses": [
    {
     "c": "Spend 1 sorcery point to reroll healing dice for yourself or an ally, once per turn.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door",
+    "by": "authored spend Empowered Healing (does reroll_heal, 1 sorcery point, no cost of the turn): src/lib/dm/ar-ws-empowered-healing.ts rerollHealing answers the heal_roll trigger record heal-spell.ts writes (last-save.ts, trigger-table.ts: this turn, rolled by the sorcerer or a creature within 5 feet). Rulings: the dice rolled again are those showing half their faces or less, or the lowest N when amount says; the new roll stands, higher or lower; once a turn on the fight turn marks; in a fight only, as every trigger record is"
    }
   ]
  },
@@ -1558,14 +1606,15 @@
    },
    {
     "c": "you can cast it with 2 sorcery points as well as a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-points",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsOfferFor (Darkness, 2 points, from sorcerer level 3), paid at the one cast door (src/lib/dm/cast-guard.ts castSpell): the points pay when no slot level is named and 2 are held, or when no slot can pay; a slot level named spends that slot"
    },
    {
     "c": "and when you do you can see through that darkness",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no casting for points exists to see through (eyes-points)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-see-through",
+    "by": "the Darkness the points paid for is laid with seenThroughBy its caster (cast-guard.ts castSpell, zone-cast.ts placeSpellZone), and every sight reader skips it for that viewer: src/lib/battlemap/zones.ts zoneBlocksSight, zoneSightTerrain and zoneLights, read by attack-light.ts attackSight and view.ts buildPlayerMapView"
    }
   ]
  },
@@ -1589,9 +1638,9 @@
    },
    {
     "c": "or a critical hit",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a critical hit that drops the sorcerer was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: grave-crit",
+    "by": "src/lib/dm/pc-damage.ts strengthOfTheGrave (input.crit: enemy_attack marks a natural 20, and the save is not rolled)"
    },
    {
     "c": "and after a success you can't use it again until a long rest",
@@ -1615,8 +1664,9 @@
    },
    {
     "c": "to summon a shadow dire wolf that chases one creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: hound-wolf"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: hound-wolf",
+    "by": "authored spend Hound of Ill Omen, buff hound (src/lib/srd/authored-effects-w2-ar-ws-sorcerer.ts): src/lib/dm/ar-ws-hound.ts summonHound brings in the SRD dire wolf as a creature on the sorcerer's side with temporary hit points equal to half the sorcerer level and its own initiative; ar-ws-hound-quarry.ts binds it to the creature named (pc-attack-gate.ts refuses a bite at any other, summon-store.ts sweepSummons removes it when its quarry falls or the fight is over)"
    },
    {
     "c": "gives your spells advantage against it",
@@ -1644,15 +1694,15 @@
    },
    {
     "c": "teleports 120 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the board is 100 feet wide, so a move beyond 120 feet cannot be staged; the spend only tells the GM to move the token"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-reach",
+    "by": "src/lib/dm/ar-ws-shadow-walk.ts jumpToSquare (authored-spend-effects.ts teleport, through map-tools.ts teleportSquareRefusal): use_resource with atX and atY, the square fields its door already parses, moves the sorcerer up to 120 feet and refuses a farther, walled, occupied or off-map square with nothing spent; with no square the teleport waits for move_token, held to the same 120 feet by the credit (feature-teleport.ts)"
    },
    {
     "c": "between dim or dark spaces",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the spend's note leaves the light at both ends to the GM (\"from one patch of dim light or darkness to another\"); a walk from bright light was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-light",
+    "by": "src/lib/dm/ar-ws-shadow-light.ts shadowsRefusal and lightAt (the row's shadows flag): the square the sorcerer stands on and the one they arrive on are both out of bright light, the board's own or a lamp's or carried light's bright radius; asked by the spend that names its square before anything is spent, and by move_token's teleport when it takes the spend's credit (map-tools.ts handleTeleportToken)"
    }
   ]
  },
@@ -1682,9 +1732,9 @@
    },
    {
     "c": "and the ability to move through creatures and objects",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: movement through an occupied square was not walked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: umbral-through",
+    "by": "src/lib/dm/ar-ws-umbral-logic.ts movesThroughEverything (src/lib/battlemap/passage.ts pcMoveTraits, every walk of a character): under the condition a walk passes any creature's space and any object on the board (a prop) at double cost and ends inside neither. Ruling: walls and shut doors are the building, no object, and still stop it"
    }
   ]
  },
@@ -1710,8 +1760,9 @@
   "clauses": [
    {
     "c": "Before or after casting a spell of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger",
+    "by": "src/lib/dm/ar-ws-tempest-logic.ts castFirstRefusal (authored-spends.ts, the row's afterLevelledCast; the Hand's card reads the same rule). Ruling: in a fight the flight is open once the turn has seen a spell of 1st level or higher cast; taken before, nothing could hold the sorcerer to casting one, so it follows the cast; out of a fight no turn is kept and it is open"
    },
    {
     "c": "a bonus action lets you fly 10 feet without provoking",
@@ -1735,8 +1786,9 @@
    },
    {
     "c": "and casting a spell of those types deals half your sorcerer level in damage to creatures within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst",
+    "by": "src/lib/dm/ar-ws-heart-storm.ts eruptOnCast (authored effect cast_burst, called by cast-guard.ts castSpell, the one cast door; landed at the end of the tool call by ar-ws-after-call.ts). Rulings: a spell of 1st level or higher; the engine chooses every hostile creature within 10 feet the sorcerer can see and no ally; lightning or thunder, whichever gets through more; once per casting; off a board the GM lands it"
    }
   ]
  },
@@ -1767,8 +1819,9 @@
    },
    {
     "c": "and pushes it 20 feet on a failed Strength save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push",
+    "by": "src/lib/dm/ar-ws-storm-fury.ts pushStraightAway (authored-reactions.ts strike_back, save.pushFeet 20): on the failed Strength save the creature is moved up to 20 feet straight away from the sorcerer through the board's forced move, stopping at a wall, an occupied square or the map's edge"
    }
   ]
  },
@@ -1808,7 +1861,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Aberrant Mind",
   "level": 1,
-  "sha": "845ecf5e948f",
+  "sha": "9c7ca3ec92e9",
   "clauses": [
    {
     "c": "A set of psionic spells always known that do not count against your spells known",
@@ -1817,10 +1870,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-spells"
    },
    {
-    "c": "swappable for divination and enchantment spells as you level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap was not walked"
+    "c": "swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list",
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts). The text now states the level and the lists",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-swap"
    }
   ]
  },
@@ -1841,18 +1894,19 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Aberrant Mind",
   "level": 6,
-  "sha": "bfc993979760",
+  "sha": "f9a75020af62",
   "clauses": [
    {
-    "c": "Cast your psionic spells by spending sorcery points instead of a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-sorcery"
+    "c": "Cast your psionic spells by spending sorcery points equal to the spell's level instead of a slot",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-sorcery",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsOfferFor (a spell of the Psionic Spells table, its own level in points), paid at the one cast door (src/lib/dm/cast-guard.ts castSpell) when no slot can pay or the components cannot be made; a slot pays while one can. Ruling: the cast tools carry no word for the payment, so a sorcerer cannot choose the points while a slot and the components are at hand"
    },
    {
     "c": "with no verbal, somatic or costly components",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no casting for points exists to cast silenced or bound (psionic-sorcery)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-bare",
+    "by": "src/lib/dm/ar-ws-points-cast.ts pointsPayFirst and bareFacts: a psionic spell whose words, gestures or material the caster cannot make is paid with the points and read with no component (cast-guard.ts castSpell)"
    }
   ]
  },
@@ -1870,8 +1924,9 @@
    },
    {
     "c": "and advantage on saves against being charmed or frightened",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psychic-saves"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psychic-saves",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts sorcerer::Psychic Defenses save_adv against charmed, frightened"
    }
   ]
  },
@@ -1895,9 +1950,9 @@
    },
    {
     "c": "you see any invisible creature within 60 feet that isn't behind total cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an attack on an invisible creature under \"revelation in flesh (see)\" was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-revelation.ts revelationSightTiles and unveilsAt, read by attack-light.ts characterSenses and sensesReaching (the one sight rule: attack rolls, 'a creature you can see', opportunity attacks, Counterspell, the Hand's edges). Total cover is no clear line on the board's walls",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-see"
    },
    {
     "c": "you gain a flying speed equal to your walking speed and can hover",
@@ -1907,14 +1962,15 @@
    },
    {
     "c": "you gain a swimming speed of twice your walking speed and breathe water",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-swim"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-swim",
+    "by": "src/lib/srd/authored-effects-data4.ts sorcerer::Revelation in Flesh move swim double_walk (authored-effects.ts authoredSpeeds)"
    },
    {
     "c": "or you can squeeze through a space as narrow as an inch and spend 5 feet of movement to escape nonmagical restraints or a grapple",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an escape from a grapple under \"revelation in flesh (squeeze)\" was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-squeeze.ts squeezeSlip at take_action escape (action-tools.ts handleTakeAction) and the Hand's Escape card (ar-ws-revelation.ts squeezeSlips). Rulings: the 5 feet are measured against the speed once the hold is gone; a spell's restraint or no movement left gets the ordinary escape (the action and its check), not the slip; squeezing through an inch-wide space is the GM's to narrate, the board has no such space",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-squeeze"
    }
   ]
  },
@@ -1926,8 +1982,9 @@
   "clauses": [
    {
     "c": "As an action, teleport up to 120 feet to an unoccupied space you can see; each creature within 30 feet of the space you left makes a Strength save against your spell save DC, taking 3d10 force damage and being pulled toward that space on a failure, or half damage on a success.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_warping_implosion#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_warping_implosion#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_warping_implosion: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
@@ -1937,8 +1994,9 @@
    },
    {
     "c": "or by spending 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: implosion-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: implosion-points",
+    "by": "src/lib/srd/authored-resources.json sub_warping_implosion fallbackPool (5 sorcery points), src/lib/dm/resource-tools.ts payForUse"
    }
   ]
  },
@@ -1946,7 +2004,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Clockwork Soul",
   "level": 1,
-  "sha": "a46066742848",
+  "sha": "3061f83f251d",
   "clauses": [
    {
     "c": "A set of order-themed spells always known that do not count against your spells known",
@@ -1955,10 +2013,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-spells"
    },
    {
-    "c": "swappable for abjuration and transmutation spells as you level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap was not walked"
+    "c": "swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list",
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor. The text now states the level and the lists",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-swap"
    }
   ]
  },
@@ -1970,8 +2028,9 @@
   "clauses": [
    {
     "c": "A reaction cancels advantage or disadvantage on a roll within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_restore_balance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: balance-cancel",
+    "by": "src/lib/dm/arcane-triggered.ts restoreBalance (the hit record's first die)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -1989,8 +2048,9 @@
   "clauses": [
    {
     "c": "Spend 1 to 5 sorcery points to give a creature that many d8s to spend reducing damage, until your next long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door",
+    "by": "authored spend Bastion of Law (does damage_ward, 1 to 5 sorcery points in amount, an action, within 30 feet): src/lib/dm/ar-ws-bastion.ts layWard lays the condition bastion of law (Nd8) until the next long rest, ending an earlier ward; spendWardDice (mutations.ts use_resource, variant reduce, the dice in amount) rolls the dice off the heaviest attack or fall damage on record against the warded creature for no reaction, each blow once. Ruling: damage with no hit record (a failed save) cannot be given back and is refused with the dice kept"
    }
   ]
  },
@@ -2008,13 +2068,15 @@
    },
    {
     "c": "attacks against you cannot have advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-advantage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-advantage",
+    "by": "src/lib/dm/enemy-swing-odds.ts (the trance of order condition strikes advantage, as Elusive)"
    },
    {
     "c": "and you treat any d20 of 9 or lower as a 10 on attacks, checks and saves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor",
+    "by": "src/lib/dm/ar-ws-trance-floor.ts tranceFloored (the dice grammar floor f10 under the leading d20, so faces entered from physical dice are floored too), called by rolls.ts resolveRollExpression (checks, saves, initiative, death saves), character-roll.ts rollCharacterD20 (attacks other tools throw) and pc-attack-resolve.ts strikeToHit (pc_attack). Ruling: a natural 1 counted as a 10 is no automatic miss"
    },
    {
     "c": "once per long rest",
@@ -2024,8 +2086,9 @@
    },
    {
     "c": "or for 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-points",
+    "by": "src/lib/srd/authored-resources.json sub_trance_of_order fallbackPool (5 sorcery points), src/lib/dm/resource-tools.ts payForUse"
    }
   ]
  },
@@ -2037,8 +2100,9 @@
   "clauses": [
    {
     "c": "A 30-foot cube heals 100 hit points among creatures in it, ends spells of 6th level or lower, and repairs damaged objects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_clockwork_cavalcade#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_clockwork_cavalcade#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_clockwork_cavalcade: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per long rest",
@@ -2048,8 +2112,9 @@
    },
    {
     "c": "or for 7 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: cavalcade-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: cavalcade-points",
+    "by": "src/lib/srd/authored-resources.json sub_clockwork_cavalcade fallbackPool (7 sorcery points), paid through src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -2073,8 +2138,9 @@
    },
    {
     "c": "until your next long rest you can cast its 1st-level spell once without a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_free_cast#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_free_cast#SPENT_FOR_NOTHING",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_lunar_free_cast: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2106,8 +2172,9 @@
   "clauses": [
    {
     "c": "When you use Metamagic on a spell of your current phase's schools (Full Moon: abjuration and divination; New Moon: enchantment and necromancy; Crescent Moon: illusion and transmutation), it costs 1 sorcery point less (minimum 0)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons",
+    "by": "src/lib/dm/ar-ws-lunar-boons.ts metamagicPaid (resource-tools.ts computeUseResource, every Metamagic option) and boonAtCast (cast-guard.ts castSpell). Ruling: the Metamagic spend names no spell, so the option paid marks the sorcerer and the next spell cast, if of the phase schools, gives 1 point back and spends a boon; in a fight a phase spell cast first lowers a Metamagic option paid later that turn; a bare spend of the counter is refused"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2125,13 +2192,15 @@
   "clauses": [
    {
     "c": "As a bonus action you can spend 1 sorcery point to change your current phase",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: waxing-change"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: waxing-change",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts Change Phase (alias Waxing and Waning): a bonus action, 1 sorcery point, Lunar Embodiment's phase renamed (choose feature)"
    },
    {
     "c": "and you can cast the 1st-level spell of each phase once without a spell slot, regaining those castings on a long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_waxing_and_waning#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_waxing_and_waning#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_waxing_and_waning: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2147,9 +2216,9 @@
    },
    {
     "c": "Full Moon: a bonus action sheds bright light in 10 feet and dim light 10 feet beyond (or douses it)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves the light to the GM (\"Only within the bright light the sorcerer sheds; the GM keeps to that.\"); no light was looked for on the board"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-light",
+    "by": "authored spend Lunar Empowerment (does light, a bonus action, gate Full Moon): src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight lays the condition moonlight and sets the sorcerer's own token light (bright 2 tiles, dim to 4), read by the board's light and carried with them (light-timers.ts carriedLight through ar-ws-moonlight-logic.ts); the same call douses it, and leaving the Full Moon ends it (moonlightEnds)"
    },
    {
     "c": "and you and creatures of your choice in that bright light have advantage on Intelligence (Investigation) and Wisdom (Perception) checks",
@@ -2165,9 +2234,9 @@
    },
    {
     "c": "and attack rolls against you have disadvantage while you are entirely in darkness",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"Attack rolls against them in total darkness are at disadvantage; the GM keeps to that.\"); an attack in darkness was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-dark",
+    "by": "authored effect attacked_disadv_dark, gate New Moon: src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil, read by authored-hooks.ts authoredIncomingAttack (enemy-swing-odds.ts). Ruling: entirely in darkness is the sorcerer's own square dark and unlit on the board (attack-light.ts standsInDarkness), whatever the attacker's senses; with no board, a dark place and no carried light"
    },
    {
     "c": "Crescent Moon: you resist necrotic and radiant damage",
@@ -2191,13 +2260,15 @@
    },
    {
     "c": "or for 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: phenomenon-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: phenomenon-points",
+    "by": "src/lib/srd/authored-resources.json sub_lunar_phenomenon fallbackPool (5 sorcery points), paid through src/lib/srd/counter-rules.ts otherPrice by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "you release your phase's power. Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn, and one creature of your choice there regains 3d8 hit points. New Moon: each creature of your choice within 30 feet makes a Dexterity save or takes 3d10 necrotic damage and has speed 0 until the end of its next turn, and you are invisible until the end of your next turn or until you attack or cast a spell. Crescent Moon: you teleport up to 60 feet with one willing creature within 5 feet of you, and each of you resists all damage until the start of your next turn.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_phenomenon#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_phenomenon#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_lunar_phenomenon: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2209,8 +2280,9 @@
   "clauses": [
    {
     "c": "An action charms or frightens every creature in a 10-foot cube that fails a Wisdom save until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fey_presence#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fey_presence#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_fey_presence: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "recharges on a short or long rest",
@@ -2228,8 +2300,9 @@
   "clauses": [
    {
     "c": "A reaction on taking damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_misty_escape#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_misty_escape#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_misty_escape: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "turns you invisible",
@@ -2239,8 +2312,9 @@
    },
    {
     "c": "and teleports you 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: misty-teleport"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: misty-teleport",
+    "by": "src/lib/srd/authored-resources.json sub_misty_escape fx teleportFeet 60 (src/lib/dm/reaction-tools.ts counterTeleport, src/lib/dm/map-tools.ts teleportSquareRefusal)"
    },
    {
     "c": "recharges on a short or long rest",
@@ -2264,8 +2338,9 @@
    },
    {
     "c": "and when another creature tries to charm you, a reaction makes it save on Wisdom against your spell save DC or be charmed by you for a minute or until it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:warlock::Beguiling Defenses::Beguiling Defenses#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:warlock::Beguiling Defenses::Beguiling Defenses#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-reactions.mjs row reaction:warlock::Beguiling Defenses::Beguiling Defenses: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2277,8 +2352,9 @@
   "clauses": [
    {
     "c": "As an action, a creature you can see within 60 feet makes a Wisdom save against your spell save DC or is charmed or frightened by you (your choice) for a minute or until your concentration breaks or it takes damage; it believes it is lost in a misty realm and can see and hear only itself, you and the illusion.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_dark_delirium#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_dark_delirium#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_dark_delirium: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per short or long rest",
@@ -2404,13 +2480,15 @@
    },
    {
     "c": "to heal a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-sight",
+    "by": "src/lib/srd/authored-resources.json sub_healing_light fx rangeFt 60, sight (src/lib/dm/resource-tools.ts reachRefusal)"
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: light-range",
+    "by": "src/lib/srd/authored-resources.json sub_healing_light fx rangeFt 60, sight (src/lib/dm/resource-tools.ts reachRefusal)"
    },
    {
     "c": "by the total rolled",
@@ -2440,8 +2518,9 @@
    },
    {
     "c": "to one radiant or fire damage roll of that spell against one of its targets",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: soul-one-target"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: soul-one-target",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Radiant Soul spell_rider oneTarget (src/lib/dm/aoe-spell.ts oneTarget, src/lib/dm/aoe-damage.ts blastFor)"
    }
   ]
  },
@@ -2504,13 +2583,15 @@
    },
    {
     "c": "curse a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "for a minute",
@@ -2526,8 +2607,9 @@
    },
    {
     "c": "or you are incapacitated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-incapacitated"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-incapacitated",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Hexblade's Curse endsIfIncapacitated (src/lib/dm/set-condition.ts endIncapacitationHeld)"
    },
    {
     "c": "you add your proficiency bonus to damage rolls against it",
@@ -2595,8 +2677,9 @@
   "clauses": [
    {
     "c": "When you slay a humanoid, its spirit rises as a specter under your command in an unoccupied space near the corpse: it has temporary hit points equal to half your warlock level, adds your Charisma modifier (minimum +0) to its attack rolls, and leaves at the end of your next long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_accursed_specter#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: specter-rises",
+    "by": "src/lib/dm/arcane-triggered.ts accursedSpecter (the death record; src/lib/dm/summon-arcane.ts)"
    },
    {
     "c": "Once per long rest",
@@ -2634,13 +2717,15 @@
   "clauses": [
    {
     "c": "When the creature cursed by your Hexblade's Curse dies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:warlock::Master of Hexes::Master of Hexes#TRIGGER_AS_CARD"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-move",
+    "by": "src/lib/dm/authored-spends.ts triggerRefusal on the death record (trigger-table.ts \"master of hexes\"); the card dealt by hand-react-triggers.ts"
    },
    {
     "c": "you can move the curse to another creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Master of Hexes/Master of Hexes"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Master of Hexes/Master of Hexes",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:warlock::Master of Hexes/Master of Hexes: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 30 feet of it",
@@ -2656,9 +2741,10 @@
    },
    {
     "c": "you don't regain hit points from the first creature's death when you do",
-    "is": "gap",
+    "is": "held",
     "read_only": true,
-    "why": "not run: the spend is a card played after the death (the spends sweep's TRIGGER_AS_CARD), so the healing has already been paid when it is played"
+    "by": "src/lib/dm/master-of-hexes.ts (noteCurseHeal, curseHealTakenBack)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-move"
    }
   ]
  },
@@ -2764,8 +2850,9 @@
   "clauses": [
    {
     "c": "Your tentacle reduces damage to you or a creature near it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: coil-near"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: coil-near",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Guardian Coil nearZone tentacle of the deeps 10 feet (src/lib/dm/zone-reach.ts feetFromOwnZone, src/lib/dm/authored-reactions.ts reduce)"
    },
    {
     "c": "by 1d8, rising to 2d8 at 10th level",
@@ -2789,9 +2876,10 @@
    },
    {
     "c": "and can cast it once per long rest without a spell slot",
-    "is": "gap",
+    "is": "held",
     "read_only": true,
-    "why": "not run: the counter sub_grasping_tentacles is spent by hand for nothing (the spends sweep's ruling counter:sub_grasping_tentacles#SPENT_FOR_NOTHING); whether the cast itself goes without a slot was not cast"
+    "by": "src/lib/srd/counter-casts.ts sub_grasping_tentacles (the cast guard pays it; authored-spells.ts castTempHp)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grasping-free"
    },
    {
     "c": "Casting it gives you temporary hit points equal to your warlock level, and damage can't break your concentration on it",
@@ -2840,8 +2928,9 @@
    },
    {
     "c": "Bottled Respite: as an action, vanish into it for up to twice your proficiency bonus in hours, leaving early as a bonus action; once per long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Genie's Wrath: once on each of your turns",
@@ -2851,8 +2940,9 @@
    },
    {
     "c": "a hit with an attack roll deals extra damage of your patron's type equal to your proficiency bonus",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wrath-spell-attack"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wrath-spell-attack",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Genie's Vessel rider when attack (src/lib/dm/attack-damage-riders.ts: a spell attack's hit carries it)"
    },
    {
     "c": "(bludgeoning for a dao, thunder for a djinni, fire for an efreeti, cold for a marid)",
@@ -2896,8 +2986,9 @@
   "clauses": [
    {
     "c": "When you enter your vessel through Bottled Respite, up to five willing creatures within 30 feet can come in with you.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Anyone who stays inside at least 10 minutes gains the benefit of a short rest, and anyone who spends Hit Dice in it adds your proficiency bonus to the hit points each die restores.",
@@ -2965,8 +3056,9 @@
    },
    {
     "c": "and once on each of your turns, when you hit a creature with an attack roll, you can make it save on Wisdom against your spell save DC or be frightened of you until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dread-fright"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dread-fright",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts warlock::Form of Dread hit_save (src/lib/dm/hit-save.ts, from authoredOnHit)"
    }
   ]
  },
@@ -3032,8 +3124,9 @@
    },
    {
     "c": "You can use the reaction again only after 1d4 long rests.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: husk-rests"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: husk-rests",
+    "by": "src/lib/dm/reaction-counters.ts Necrotic Husk (the 1d4 marker) and src/lib/dm/rest-logic.ts (each long rest counts it down)"
    }
   ]
  },
@@ -3057,8 +3150,9 @@
    },
    {
     "c": "(concentration)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-concentration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-concentration",
+    "by": "src/lib/srd/authored-resources.json sub_spirit_projection fx concentration (src/lib/dm/resource-tools.ts holdConcentration)"
    },
    {
     "c": "while the body lies unconscious",
@@ -3140,8 +3234,9 @@
    },
    {
     "c": "and an undead that succeeds, or that you target with an attack or harmful spell, is immune for 24 hours",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-immune"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-immune",
+    "by": "src/lib/dm/authored-hooks.ts authoredWardSave (WARD_WITHSTOOD: an undead that saved, or that the warlock struck, attacks without the save)"
    },
    {
     "c": "You have advantage on saving throws against disease.",
@@ -3314,8 +3409,9 @@
   "clauses": [
    {
     "c": "After performing for at least a minute, choose a number of humanoids within 60 feet who watched and listened to all of it equal to your Charisma modifier (minimum one); each makes a Wisdom save against your spell save DC or is charmed by you for an hour, idolizing you and hindering anyone who opposes you.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_enthralling_performance#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_enthralling_performance#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_enthralling_performance: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per short or long rest",
@@ -3345,8 +3441,9 @@
    },
    {
     "c": "(concentration)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-concentration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-concentration",
+    "by": "src/lib/srd/authored-resources.json sub_mantle_of_majesty fx concentration (src/lib/dm/resource-tools.ts holdConcentration)"
    },
    {
     "c": "On each of your turns while it lasts you can cast command again as a bonus action without a slot",
@@ -3382,8 +3479,9 @@
    },
    {
     "c": "an attacker must pass a Charisma save or lose the attack and be unable to target you that turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_unbreakable_majesty#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_unbreakable_majesty#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_unbreakable_majesty: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -3429,8 +3527,9 @@
   "clauses": [
    {
     "c": "Your speed rises by 10 feet on any turn you take the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: flourish-speed"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: flourish-speed",
+    "by": "src/lib/srd/authored-effects-data.ts bard::Blade Flourish attack_turn_speed 10 (src/lib/battlemap/view.ts pcMoveBudget)"
    },
    {
     "c": "and once per turn",
@@ -3468,8 +3567,9 @@
   "clauses": [
    {
     "c": "Roll a d6 for a flourish instead of spending a Bardic Inspiration die.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: masters-flourish"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: masters-flourish",
+    "by": "src/lib/srd/authored-effects-data.ts bard::Blade Flourish pool.freeDie Master's Flourish d6 (src/lib/dm/authored-spends.ts)"
    }
   ]
  },
@@ -3487,8 +3587,9 @@
    },
    {
     "c": "on a weapon hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: blades-no-hit"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: blades-no-hit",
+    "by": "src/lib/srd/authored-effects-data.ts bard::Psychic Blades afterWeaponHit (src/lib/dm/authored-spend-effects.ts die_damage reads the weapon-hit mark)"
    },
    {
     "c": "for extra psychic damage, 2d6 at 3rd level and rising with bard level",
@@ -3506,8 +3607,9 @@
   "clauses": [
    {
     "c": "A minute of private conversation frightens a humanoid of you or someone you name for an hour on a failed Wisdom save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_words_of_terror#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_words_of_terror#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_words_of_terror: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per short or long rest",
@@ -3525,8 +3627,9 @@
   "clauses": [
    {
     "c": "A reaction captures the shadow of a humanoid that just died, letting you wear their identity for an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_mantle_of_whispers#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_mantle_of_whispers#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_mantle_of_whispers: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per short or long rest",
@@ -3544,8 +3647,9 @@
   "clauses": [
    {
     "c": "Whisper a creature's darkest secret: on a failed Wisdom save it is charmed and obeys your requests for 8 hours",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_shadow_lore#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_shadow_lore#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_shadow_lore: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per long rest",
@@ -3610,8 +3714,9 @@
   "clauses": [
    {
     "c": "As an action, choose a number of creatures within 60 feet equal to your Charisma modifier (minimum one): for an hour they understand you, whatever language you speak.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_universal_speech#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_universal_speech#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_universal_speech: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
@@ -3621,8 +3726,9 @@
    },
    {
     "c": "or by expending a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: speech-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: speech-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3679,8 +3785,9 @@
   "clauses": [
    {
     "c": "Create a nonmagical item worth no more than 20 times your bard level as an action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_performance_of_creation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-item",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts bard::Performance of Creation (create_item: src/lib/dm/authored-spend-arcane.ts)"
    },
    {
     "c": "once per long rest",
@@ -3690,8 +3797,9 @@
    },
    {
     "c": "or with a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3703,8 +3811,9 @@
   "clauses": [
    {
     "c": "As an action, animate a Large or smaller nonmagical item within 30 feet as a Dancing Item for an hour. It acts on your initiative right after you, takes the Dodge action unless you command it with a bonus action, has AC 16 and 10 + five times your bard level hit points, attacks with Force-Empowered Slam (your spell attack modifier, reach 5 feet, 1d10 + your proficiency bonus force damage), and its Irrepressible Dance raises or lowers by 10 feet the speed of a creature that starts its turn within 10 feet of it.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_animating_performance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-item",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts bard::Animating Performance (summon: src/lib/dm/summon-arcane.ts summonDancingItem)"
    },
    {
     "c": "Once per long rest",
@@ -3714,8 +3823,9 @@
    },
    {
     "c": "or by expending a spell slot of 3rd level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot 3 (src/lib/dm/resource-tools.ts: a slot of 3rd level or higher buys a spent use)"
    }
   ]
  },
@@ -3756,7 +3866,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "College of Spirits",
   "level": 3,
-  "sha": "cfc57591499b",
+  "sha": "a7debc24d4c2",
   "clauses": [
    {
     "c": "A candle, a deck, a talking board or the like serves as your spellcasting focus",
@@ -3765,9 +3875,10 @@
     "why": "not run: the row's note leaves the focus to the GM (\"Cast through the spiritual focus; the GM keeps to that.\"); a casting without one was not staged"
    },
    {
-    "c": "and adds a die to the damage or healing of your bard spells at higher levels",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: focus-text"
+    "c": "and from 6th level a bard spell cast through it that deals damage or restores hit points adds a d6 to one of its damage or healing rolls",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: focus-text",
+    "by": "src/lib/srd/authored-effects-data4.ts bard::Spiritual Focus spell_rider 1d6 from 6th level, damage and healing (the words now name the die)"
    }
   ]
  },

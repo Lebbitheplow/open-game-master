@@ -34,6 +34,7 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   inspired_success `characterId` made a roll (`how`) succeed with the
 //                Bardic Inspiration die of `creatureId`, its bard
 //   moved_near   `creatureId` moved to within `feet` of `characterId`, from `fromFeet`
+//   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
 export type TriggerEventKind =
   | "hit"
   | "miss"
@@ -50,7 +51,8 @@ export type TriggerEventKind =
   | "steadied"
   | "echo_destroyed"
   | "inspired_success"
-  | "moved_near";
+  | "moved_near"
+  | "heal_roll";
 
 export type TriggerEvent = {
   id: string;
@@ -89,6 +91,7 @@ export type TriggerRecordView = {
   forcerId: string;
   forcer: string;
   success?: boolean;
+  dc?: number;
   against?: string;
   damage?: { amount: number; type: string; spell?: boolean };
   petName?: string;
@@ -184,7 +187,9 @@ export type TriggerOn =
   // the holder's Bardic Inspiration die (Infectious Inspiration).
   | { kind: "inspired_success"; rangeFt?: number }
   // A creature moved from beyond `rangeFt` of the holder to within it (Halo of Spores).
-  | { kind: "moved_near"; rangeFt: number };
+  | { kind: "moved_near"; rangeFt: number }
+  // A spell's healing dice rolled by the holder or a creature within the reach (Empowered Healing).
+  | { kind: "heal_roll"; rangeFt: number };
 
 export type TriggerSpec = {
   on: TriggerOn[];
@@ -242,6 +247,7 @@ const WRITTEN: Record<string, TriggerSpec> = {
   "duelist's flourish": { on: [{ kind: "missed", melee: true }], what: "a melee attack that has just missed them" , aimsAt: true },
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
+  "empowered healing": { on: [{ kind: "heal_roll", rangeFt: 5 }], what: "healing dice they or a creature within 5 feet of them rolled for a spell this turn" },
 };
 
 // Raging Storm's environments each wait for their own thing.
@@ -366,6 +372,8 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
         (event.feet ?? Infinity) <= on.rangeFt &&
         (event.fromFeet ?? Infinity) > on.rangeFt
       );
+    case "heal_roll":
+      return event.kind === "heal_roll" && reach(event.creatureId, on.rangeFt);
   }
 }
 

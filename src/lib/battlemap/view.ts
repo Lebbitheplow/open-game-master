@@ -58,7 +58,7 @@ import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/b
 import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
-import { standUpTiles } from "@/lib/srd/authored-effects-more";
+import { attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
 import { windStepOn } from "@/lib/dm/jump-reach";
 import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
@@ -159,8 +159,12 @@ export function pcMoveBudget(
     : flying ?? speedFor(sheet, {
         encumbrance: campaign?.gameSettings.variantRules.encumbrance ?? false,
       });
+  // A turn the character took the Attack action on walks farther (Blade
+  // Flourish's 10 feet): their own walk, not a mount's or a flight.
+  const ownTurn = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? encounter.turnBudget : null;
+  const attackTurn = !mount && flying === null && ownTurn && ownTurn.attacksMade > 0 ? attackTurnSpeed(sheet) : 0;
   // An active effect on their speed (set_effect) moves the base first.
-  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")));
+  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")) + attackTurn);
   // Dread Ambusher: "on your first turn 10 extra feet of speed", on the
   // ranger's own turn of the fight's first round (turn-extra-attacks-logic.ts).
   const ambush = encounter.kind !== "scene" && ownTurnOf(encounter, sheet.id) && ambushRound(sheet, encounter.round) ? 10 : 0;
@@ -288,7 +292,8 @@ export function buildPlayerMapView(
   // Spell areas stop sight (a fog cloud, magical darkness) and light it
   // (Daylight): src/lib/dm/zone-rules.ts.
   const vision = {
-    terrain: sheet ? sightTerrainFor(map, sheetSenses(sheet)) : map.terrain,
+    // `self`: a darkness its own caster sees through is no wall to them.
+    terrain: sheet ? sightTerrainFor(map, { ...sheetSenses(sheet), self: sheet.id }) : map.terrain,
     width: map.width,
     height: map.height,
     ambient,
@@ -319,7 +324,8 @@ export function buildPlayerMapView(
       truesightTiles: senses.truesight,
       devilsSightTiles: senses.devilsSight,
     };
-    visible = visibleTiles(vision, viewer, tokens, sources, lit);
+    // A darkness this character sees through is not there for them (zones.ts zoneLights).
+    visible = visibleTiles({ ...vision, zones: lightsWithZones(map, sheet.id) }, viewer, tokens, sources, lit);
     explored = mergeExplored(map.id, sheet.id, visible, tileCount);
   } else if (sheet) {
     explored = getExplored(map.id, sheet.id, tileCount);

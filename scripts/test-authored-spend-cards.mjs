@@ -20,6 +20,7 @@ const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { heldAuthored, gateHolds } = await import("../src/lib/srd/authored-effects.ts");
 const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { otherPrice } = await import("../src/lib/srd/counter-rules.ts");
 const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
 const { groupHand } = await import("../src/lib/battlemap/hand-groups.ts");
 const { splitHand } = await import("../src/lib/battlemap/hand-layout.ts");
@@ -111,7 +112,14 @@ await test("The card keeps its counter's id and uses line, so an arranged seat h
         assert.match(card.resource, /^Uses \d+\/\d+$/, label(build, spend));
       }
       const spent = { ...world.sheet(build.hero.id), resources: { ...world.sheet(build.hero.id).resources, [spend.pool.id]: { ...world.sheet(build.hero.id).resources[spend.pool.id], used: 99 } } };
+      // A counter whose text names another price the sheet can pay ("once
+      // per long rest or for 7 sorcery points") stays open with its uses spent.
+      const paysOtherwise = Boolean(otherPrice(resourceDef(spend.pool.id), spent));
       for (const card of deriveHand(spent, FRESH_TURN, {}).filter((entry) => entry.intent.card === "feature" && entry.intent.resourceId === spend.name)) {
+        if (paysOtherwise) {
+          assert.equal(card.disabled, null, `${label(build, spend)}: its other price pays, yet ${card.disabled}`);
+          continue;
+        }
         assert.ok(card.disabled && !card.disabled.includes(spend.pool.id.replace(/_/g, " ")), `${label(build, spend)}: ${card.disabled}`);
       }
     }
@@ -137,7 +145,9 @@ await test("A card played as the Hand sends it does what the spend says: a capst
       // clause suite's infectious-fury probe lands the claws first).
       // An Arcane Shot rides a bow's arrow and an option the archer chose
       // (the clause suite's arcane-shot probes fire the arrow first).
-      if (spend.name === "Arcane Jolt" || spend.name === "Arcane Shot" || spend.afterWeaponHit || spend.afterNaturalHit) continue;
+      // One that rides a wizard spell's damage waits for that (Power Surge:
+      // the wizard clause suite's surge-spend casts the spell first).
+      if (spend.name === "Arcane Jolt" || spend.name === "Arcane Shot" || spend.afterWeaponHit || spend.afterNaturalHit || spend.afterSpellDamage) continue;
       const enemy = await stage(build.hero);
       // Psionic Recovery brings energy back, and is refused at a full pool.
       if (spend.name === "Psionic Recovery") {

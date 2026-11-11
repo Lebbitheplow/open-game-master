@@ -47,6 +47,9 @@ import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divin
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
 import { AUTHORED_DATA_W2_MT_MR } from "@/lib/srd/authored-effects-w2-mt-mr";
 import { AUTHORED_DATA_W2_MT_FB } from "@/lib/srd/authored-effects-w2-mt-fb";
+import { AUTHORED_DATA_W2_ARCANE } from "@/lib/srd/authored-effects-w2-arcane";
+import { AUTHORED_DATA_W2_AR_WS } from "@/lib/srd/authored-effects-w2-ar-ws";
+import { AUTHORED_DATA_W2_AR_WS_SORCERER } from "@/lib/srd/authored-effects-w2-ar-ws-sorcerer";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -69,6 +72,9 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_W2_MARTIAL,
   ...AUTHORED_DATA_W2_MT_MR,
   ...AUTHORED_DATA_W2_MT_FB,
+  ...AUTHORED_DATA_W2_ARCANE,
+  ...AUTHORED_DATA_W2_AR_WS,
+  ...AUTHORED_DATA_W2_AR_WS_SORCERER,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -442,7 +448,7 @@ export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: n
     for (const mode of ["fly", "swim", "climb"] as const) {
       const value = effect[mode];
       if (value !== undefined) {
-        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value);
+        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value === "double_walk" ? 2 * walking : value);
       }
     }
   }

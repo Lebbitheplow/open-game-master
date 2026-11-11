@@ -66,6 +66,7 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -91,6 +92,7 @@ import {
   computeUseItem,
   computeUseResource,
   fontOfMagicDirection,
+  holdConcentration,
   payForUse,
   rollHealing,
 } from "@/lib/dm/resource-tools";
@@ -466,10 +468,17 @@ const argsSchema = z.object({
   // writes nothing (src/lib/dm/cast-guard.ts). Not in the tool schema.
   via: z.enum(["slot", "enemy", "buff", "aoe", "attack", "heal", "reaction"]).optional(),
   dryRun: z.boolean().optional(),
+  // use_spell_slot, internal: false when the cast tool found the casting
+  // outside a free grant's limits (Shapechanger's "only yourself, challenge
+  // rating 1 or lower"), so a slot pays instead (src/lib/dm/cast-guard.ts).
+  freeFits: z.boolean().optional(),
   // use_spell_slot, internal: how many of the casting's shares this call
   // resolves (Magic Missile's darts at one target).
   uses: z.coerce.number().int().min(1).max(700).optional(),
   units: z.coerce.number().int().min(1).max(100).optional(),
+  // use_spell_slot, internal: the damage type the cast tool was asked for
+  // (Awakened Spellbook's swap, src/lib/dm/ar-ws-awakened.ts).
+  swapType: z.string().max(30).optional(),
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
@@ -1408,6 +1417,12 @@ function dmMutation(
       if (srdSpend) {
         return { result: srdSpend };
       }
+      // A creature warded by Bastion of Law spends the ward's dice off a blow
+      // on record, for no reaction (src/lib/dm/ar-ws-bastion.ts).
+      const wardSpend = spendWardDice(campaign, turnId, sheet, resourceName, args, sheets, sheetsById);
+      if (wardSpend) {
+        return { result: wardSpend };
+      }
       // Authored subclass features the engine resolves (src/lib/dm/authored-spends.ts).
       const authoredSpend = authoredFeatureSpend(campaign, turnId, sheet, resourceName, args, reason);
       if (authoredSpend) {
@@ -1424,7 +1439,7 @@ function dmMutation(
       // checked before anything is spent, its effect applied after.
       const counter = matchResource(resourceName);
       const reacting = counter
-        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, sheets, sheetsById })
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, variant: args.variant, sheets, sheetsById })
         : null;
       if (reacting && "error" in reacting) {
         return { result: reacting };
@@ -1524,6 +1539,7 @@ function dmMutation(
       patchSheet(sheet.id, outcome.patch);
       // A Metamagic option paid rides the next spell cast (mt-srd-metamagic.ts).
       markPaidOption(campaign, sheet.id, args.variant, { points: typeof outcome.result.spent === "number" ? outcome.result.spent : undefined, pool: counter?.id });
+      Object.assign(outcome.result, holdConcentration(campaign, turnId, sheet.id, outcome));
       Object.assign(outcome.result, charge.commit());
       if (castMark) {
         Object.assign(outcome.result, castMark.apply());
@@ -1795,8 +1811,10 @@ function dmMutation(
             ...(args.concentration !== undefined ? { concentration: args.concentration } : {}),
             ...(args.via ? { via: args.via } : {}),
             ...(args.dryRun ? { dryRun: true } : {}),
+            ...(args.freeFits === false ? { freeFits: false } : {}),
             ...(args.uses ? { uses: args.uses } : {}),
             ...(args.units ? { units: args.units } : {}),
+            ...(args.swapType ? { swapType: args.swapType } : {}),
             ...zonePlacement(args),
           },
           {

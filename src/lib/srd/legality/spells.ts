@@ -40,6 +40,7 @@ import { type ClassGrants, type SpellFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
+import { withoutSwappedOut } from "@/lib/dm/ar-ws-spell-swap-record";
 
 type Casting = NonNullable<Spellcasting>;
 type CastingAbility = Casting["ability"];
@@ -313,7 +314,9 @@ export function judgeSpellcasting(input: SpellcastingInput): SpellcastingVerdict
   }
 
   const multiclass = input.classes.length > 1;
-  const sent: Casting = input.sent ?? {
+  // Less a subclass spell a level-up swapped out, which an edit's rebuilt
+  // lists carry back in (src/lib/dm/ar-ws-spell-swap-record.ts).
+  const sent: Casting = withoutSwappedOut(input.sent, input.features, input.held) ?? {
     ability: casting[0].ability,
     slots: {},
     prepared: [],

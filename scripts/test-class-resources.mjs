@@ -195,13 +195,17 @@ test("the passive defs are the ones something else spends", () => {
   // Sentinel at Death's Door is spent by its reaction, when a critical offers it.
   // Searing Vengeance is spent in place of a death save (searing-vengeance.ts).
   // Faithful Summons is spent by the incapacity watch as the druid falls (faithful-summons.ts).
+  // Lunar Boons is spent by a Metamagic option meeting its spell at the cast (ar-ws-lunar-boons.ts).
   // WAVE1 R10: a pool spent only through another tool refuses a bare spend
   // (sorcery points, Lucky's points, Hurl Through Hell, Psionic Energy, the
   // drake, the after-roll counters), and a counter whose use is a spell is
   // spent by the cast (src/lib/srd/counter-casts.ts, Mystic Arcanum).
   // WAVE2 D4: Superiority Dice too, spent by the maneuver that names it
   // (src/lib/dm/maneuver-die.ts) or by use_resource with the maneuver named.
-  assert.deepEqual(passive, ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_superiority_dice", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_blessing_of_the_forge", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_draconic_presence", "sub_glorious_defense", "sub_undying_sentinel", "art_restorative_reagents", "art_chemical_mastery_restoration", "art_chemical_mastery_heal", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // Arcane Abeyance is spent by the cast that fills its bead (use_spell_slot
+  // with storeIn, src/lib/dm/ar-ws-abeyance.ts); Master Scrivener by its
+  // authored spend, with the spell to copy as the variant.
+  assert.deepEqual(passive, ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_superiority_dice", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_blessing_of_the_forge", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_lunar_boons", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_arcane_abeyance", "sub_master_scrivener", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_draconic_presence", "sub_glorious_defense", "sub_undying_sentinel", "art_restorative_reagents", "art_chemical_mastery_restoration", "art_chemical_mastery_heal", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {

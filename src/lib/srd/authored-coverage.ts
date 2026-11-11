@@ -140,6 +140,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rest_temp_hp: { file: "src/lib/dm/rest-tools.ts", call: "authoredRestTempHp(" },
   rider: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   mark: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
+  hit_save: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
   guard_aura: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   pack_adv: { file: "src/lib/dm/pc-attack-situation.ts", call: "authoredAttackSituation(" },
   bonus_route: { file: "src/lib/dm/bonus-routes.ts", call: "authoredBonusRoute(" },
@@ -164,6 +165,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rapid_strike: { file: "src/lib/dm/pc-attack-plan.ts", call: "rapidStrike(" },
   oa_each_turn: { file: "src/lib/dm/opportunity.ts", call: "opportunityReactionKey(" },
   stand_cost: { file: "src/lib/battlemap/view.ts", call: "standUpTiles(" },
+  attack_turn_speed: { file: "src/lib/battlemap/view.ts", call: "attackTurnSpeed(" },
   mote: { file: "src/lib/dm/resource-tools.ts", call: "holdsMote(" },
   swarm_prone: { file: "src/lib/dm/authored-spend-more.ts", call: "swarmKnocksProne(" },
   // The last round's (src/lib/dm/arcane-ward.ts, summon-cast.ts, summon-defender.ts).
@@ -187,6 +189,13 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   indomitable_ally: { file: "src/lib/dm/feature-spends.ts", call: 'activeAuthored(sheet, "indomitable_ally")' },
   spend: { file: "src/lib/dm/mutations.ts", call: "authoredFeatureSpend(" },
   reaction: { file: "src/lib/dm/reaction-tools.ts", call: "authoredReaction(" },
+  spell_check_prof: { file: "src/lib/dm/ar-ws-spell-check.ts", call: 'activeAuthored(sheet, "spell_check_prof")' },
+  max_hp_fixed: { file: "src/lib/dm/ar-ws-inured-logic.ts", call: 'activeAuthored(sheet, "max_hp_fixed")' },
+  summon_extra: { file: "src/lib/dm/summon-cast.ts", call: "thrallSpell(" },
+  summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
+  attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
+  cast_burst: { file: "src/lib/dm/ar-ws-heart-storm.ts", call: 'activeAuthored(caster, "cast_burst")' },
+  attacked_disadv_dark: { file: "src/lib/dm/ar-ws-lunar-empowerment.ts", call: 'activeAuthored(target, "attacked_disadv_dark")' },
 };
 
 export function authoredEffectKinds(): string[] {

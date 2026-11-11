@@ -28,6 +28,7 @@ import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import { applyDmMutation, canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castDamageType } from "@/lib/dm/ar-ws-awakened";
 import { spellReachProblem } from "@/lib/dm/cast-reach";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -55,6 +56,9 @@ export type AoeSpellPlan = {
   flat: number;
   // Added once to a two-type spell's second type (Elemental Affinity's cold).
   flatSecond: number;
+  // Added to the first creature's damage alone, to the first type or the
+  // second (Radiant Soul: "against one of its targets"), before its save halves.
+  oneTarget: { first: number; second: number };
   // A two-type spell's dice by type, each with the riders' dice it earned,
   // or null for a spell of one type.
   damageParts: [string, string] | null;
@@ -248,6 +252,8 @@ export function planAoeSpell(
       characterId: caster.id,
       spell: input.spell,
       ...(input.level ? { level: input.level } : {}),
+      // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
+      ...(input.type ? { swapType: input.type } : {}),
       via: "aoe",
       reason: (input.reason ?? "").slice(0, 200),
     }),
@@ -286,7 +292,7 @@ export function planAoeSpell(
     }
     halfOnSave = Boolean(mech.halfOnSave);
     if (mech.damageType) {
-      type = mech.damageType;
+      type = castDamageType(caster, cast, { name, asked: input.type, own: mech.damageType, second: mech.secondType, level: facts?.level ?? null, authors });
     }
   }
   // Multiclass: the DC follows the class whose list carries the spell.
@@ -309,7 +315,9 @@ export function planAoeSpell(
         level: spellLevel,
         classes: facts?.classes,
       })
-    : { flat: 0, flatSecond: 0, dice: [] as string[], diceSecond: [] as string[], potentCantrip: false, notes: [] as string[] };
+    : { flat: 0, flatSecond: 0, dice: [] as string[], diceSecond: [] as string[], oneTarget: { first: 0, second: 0 }, potentCantrip: false, notes: [] as string[] };
+  // A bonus for one target leaves what every creature shares (Radiant Soul).
+  const oneTarget = riders.oneTarget;
   // A spell of two types rolls each type's dice on its own (aoe-damage.ts).
   // Split here, before a rider's die joins: appended to the whole, Enhanced
   // Bond's d8 read as the second type's dice and Ice Storm's cold as hail.
@@ -345,8 +353,9 @@ export function planAoeSpell(
     ...(runsAs ? { runsAs } : {}),
     mech,
     damage,
-    flat: riders.flat,
-    flatSecond: riders.flatSecond,
+    flat: riders.flat - oneTarget.first,
+    flatSecond: riders.flatSecond - oneTarget.second,
+    oneTarget,
     damageParts,
     saveAbility,
     dc,

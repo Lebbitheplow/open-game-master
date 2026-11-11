@@ -35,9 +35,11 @@ import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { mrSensesOver } from "@/lib/srd/mt-mr-senses";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
-import { tilesApart } from "@/lib/dm/board-reach";
+import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
+import { revelationSightTiles, unveilsAt, type UnveilingSense } from "@/lib/dm/ar-ws-revelation";
+import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 
-export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[]; wildShape?: CharacterSheet["wildShape"] }): Senses {
+export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[]; wildShape?: CharacterSheet["wildShape"] }): Senses & UnveilingSense {
   // A worn form sees by its own senses alone (mt-srd-form-senses.ts); True
   // Seeing is a spell on the creature, whatever its shape.
   const worn = formSenses(sheet);
@@ -51,8 +53,10 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   const named = Math.max(senses.darkvision, darkvisionTilesFromText(texts));
   // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night).
   const authored = Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
+  // Revelation in Flesh's sight of the invisible (ar-ws-revelation.ts).
+  const unveils = revelationSightTiles(sheet.conditions);
   // A monk subclass's blindsight and Astral Sight (mt-mr-senses.ts).
-  return mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) });
+  return { ...mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) }), ...(unveils ? { unveils } : {}) };
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {
@@ -79,9 +83,12 @@ export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?
 // `at` puts a creature on a tile other than its token's: an opportunity
 // attack happens as the mover leaves the reach, before the token reaches the
 // square it lands on, so the tile it left is where it is seen (or not).
-export function sensesReaching(encounterId: string | null, viewer: Placed & { senses: Senses }, seen: Placed): PastSight {
+export function sensesReaching(encounterId: string | null, viewer: Placed & { senses: Senses & UnveilingSense }, seen: Placed): PastSight {
   const { blindsight, truesight } = viewer.senses;
-  if (!blindsight && !truesight) {
+  // A sense that shows the invisible alone (Revelation in Flesh): its reach,
+  // and no total cover between the two (ar-ws-revelation.ts).
+  const unveils = viewer.senses.unveils ?? 0;
+  if (!blindsight && !truesight && !unveils) {
     return { blindsight: false, truesight: false };
   }
   const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
@@ -89,7 +96,12 @@ export function sensesReaching(encounterId: string | null, viewer: Placed & { se
   const to = map ? placedToken(map.id, seen) : null;
   const apart = from && to ? tilesApart(from, to) : null;
   const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
-  return { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+  const past: PastSight = { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+  if (!unveils) {
+    return past;
+  }
+  const clear = !map || !from || !to || hasLineOfSightBetween(map.terrain, map.width, spaceOf(from), spaceOf(to));
+  return { ...past, invisible: unveilsAt(unveils, apart, clear) };
 }
 
 // A creature by its token, or by the tile `at` names for it (see
@@ -160,7 +172,12 @@ function sightByLight(input: {
   );
   // A spell area on the sight line (a fog cloud, magical darkness, an opaque
   // wall) blinds as darkness does, and Daylight lights: zone-rules.ts.
-  const veiled = { attacker: zoneHidesFrom(map, from, to, input.attacker.senses), target: zoneHidesFrom(map, to, from, input.target.senses) };
+  // `self`: an area its own caster sees through (a Darkness paid for through
+  // Eyes of the Dark, zones.ts seenThroughBy) is not there for that creature.
+  const veiled = {
+    attacker: zoneHidesFrom(map, from, to, { ...input.attacker.senses, self: input.attacker.refId }),
+    target: zoneHidesFrom(map, to, from, { ...input.target.senses, self: input.target.refId }),
+  };
   const patches = lightsWithZones(map);
   if (ambient !== "dark" && !patches.length) {
     // Bright or dim everywhere (weather only dims a bright tile): everyone
@@ -185,7 +202,7 @@ function sightByLight(input: {
     const sheet = getSheetById(refId);
     return Boolean(sheet && holdsFeature(sheet, "Umbral Sight"));
   };
-  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken, unseenByDarkvision = false): boolean => {
+  const sees = (viewer: BattleToken, senses: Senses, subject: BattleToken, self: string, unseenByDarkvision = false): boolean => {
     const distance = chebyshev(viewer.x, viewer.y, subject.x, subject.y);
     if (distance <= senses.blindsight) {
       return true;
@@ -193,7 +210,8 @@ function sightByLight(input: {
     if (distance <= senses.tremorsense && subject.movement !== "fly") {
       return true;
     }
-    const zones = vision.zones ?? [];
+    // A darkness this viewer sees through is not there for them (zones.ts zoneLights).
+    const zones = lightsWithZones(map, self);
     if (zones.length && magicalDarknessAt(zones, subject.x, subject.y)) {
       return distance <= senses.truesight || distance <= senses.devilsSight;
     }
@@ -209,9 +227,33 @@ function sightByLight(input: {
     );
   };
   return {
-    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to, umbral(input.target.refId)),
-    targetSees: !veiled.target && sees(to, input.target.senses, from, umbral(input.attacker.refId)),
+    attackerSees: !veiled.attacker && sees(from, input.attacker.senses, to, input.attacker.refId, umbral(input.target.refId)),
+    targetSees: !veiled.target && sees(to, input.target.senses, from, input.target.refId, umbral(input.attacker.refId)),
   };
+}
+
+// Whether a creature's own square lies in darkness on the board: dark there
+// (the ambient light, or magical darkness laid over it) with no lamp or
+// carried light reaching it, whoever looks. Lunar Empowerment's New Moon reads
+// it ("while you are entirely in darkness", ar-ws-lunar-empowerment.ts). Null
+// with no board, or for a creature not on it.
+export function standsInDarkness(campaignId: string, encounterId: string, refId: string): boolean | null {
+  const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
+  const at = map ? getTokenByRef(map.id, refId) : null;
+  if (!map || !at) {
+    return null;
+  }
+  const clock = getClock(campaignId);
+  const ambient = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
+  const zones = lightsWithZones(map);
+  if (zones.length && magicalDarknessAt(zones, at.x, at.y)) {
+    return true;
+  }
+  if ((zones.length ? ambientAt(zones, at.x, at.y, ambient) : ambient) !== "dark") {
+    return false;
+  }
+  const vision = { terrain: map.terrain, width: map.width, height: map.height, ambient, zones, obscureBeyond: map.outdoors ? weatherObscurementTiles(clock.weather) : Infinity, id: map.id };
+  return !cachedLitTiles(vision, listTokens(map.id), lightSourcesWithZones(map)).has(tileIndex(map.width, at.x, at.y));
 }
 
 // The advantage sources and notes one attack takes from the light.

@@ -96,3 +96,33 @@ export function ridesWeaponHit(sheet: AuthoredSheet & { resources?: Record<strin
   }
   return Object.keys(sheet.resources ?? {}).some((id) => resourceDef(id)?.effect.kind === "hit_damage");
 }
+
+// What pays for a use when the counter has none left: the pool its row
+// names (Breath of the Dragon's 2 ki, five sorcery points)
+// or the lowest unspent spell slot of the row's level or higher ("or by
+// expending a spell slot of 3rd level or higher"); null
+// when neither can. use_resource pays it (src/lib/dm/resource-tools.ts
+// payForUse) and the Hand's card stays open on it (hand-spells.ts), so a
+// new price goes on the row and is read here, never at one door.
+export type OtherPrice = { pool: { id: string; amount: number } } | { slot: number };
+
+export function otherPrice(
+  def: Pick<ResourceDef, "fallbackPool" | "fallbackSlot">,
+  sheet: { resources?: Record<string, { max: number; used: number }>; spellcasting?: { slots?: Record<string, { max: number; used: number }> } | null },
+): OtherPrice | null {
+  const pool = def.fallbackPool;
+  const state = pool ? sheet.resources?.[pool.id] : undefined;
+  if (pool && state && state.max - state.used >= pool.amount) {
+    return { pool };
+  }
+  if (def.fallbackSlot) {
+    const open = Object.entries(sheet.spellcasting?.slots ?? {})
+      .map(([level, slot]) => ({ level: Number(level), slot }))
+      .filter(({ level, slot }) => level >= def.fallbackSlot!.minLevel && slot.used < slot.max)
+      .sort((one, two) => one.level - two.level);
+    if (open.length) {
+      return { slot: open[0].level };
+    }
+  }
+  return null;
+}

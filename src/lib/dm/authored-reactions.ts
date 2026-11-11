@@ -16,7 +16,11 @@ import { SOUL_TRINKET, gainTrinket } from "@/lib/dm/mt-mr-trinkets";
 import { rollSurge } from "@/lib/dm/mt-fb-wild-surge";
 import { beastFormRefusal, growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
+import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
+import { deflectionAftermath, deflectionFirst } from "@/lib/dm/ar-ws-deflection";
+import { pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
@@ -399,7 +403,9 @@ export function authoredReaction(given: Ctx): ToolResult | null {
   answerTriggers({ ...ask, targetEnemyId: ctx.args.targetEnemyId });
   paid?.();
   spendReaction(ctx);
-  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome };
+  // What Arcane Deflection leaves behind, whichever half was used (ar-ws-deflection.ts).
+  const after = reaction.does.kind === "ac_vs_hit" && reaction.does.cantripsOnly ? deflectionAftermath(ctx, holder) : {};
+  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome, ...after };
 }
 
 // The creature a trigger-shaped reaction acts on, when the call names none:
@@ -431,6 +437,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // "An ally you can see" (Spirit Shield): a blinded holder shields nobody.
       const hidden = unseenTarget(ctx, found, target);
       if (hidden) return hidden;
+      if (does.nearZone && encounter) {
+        const feet = feetFromOwnZone(encounter, ctx.sheet.id, does.nearZone.spell, target.id);
+        if (feet !== null && feet > does.nearZone.feet) {
+          return { error: `${target.name} stands ${feet} feet from ${ctx.sheet.name}'s ${does.nearZone.spell}, beyond the ${does.nearZone.feet} feet ${reaction.name} reaches. Nothing was spent.`, refused: "rules" };
+        }
+      }
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -475,6 +487,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return rolled ?? { error: `${ctx.sheet.name} has no Wild Surge to roll again while not raging. Nothing was spent.`, refused: "rules" };
     }
     case "ac_vs_hit": {
+      // Arcane Deflection (ar-ws-deflection.ts): its shroud's named creatures are
+      // held to its reach, and its other half answers a save just failed.
+      const saved = does.orSave === undefined ? null : deflectionFirst(ctx, found.variant, reaction.name, does.orSave, label);
+      if (saved) return saved;
       let bonus: number;
       let spentDie: string | null = null;
       if (does.amount === "bardic") {
@@ -827,6 +843,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         if (!save.success && does.save.onFail) {
           out.onFail = `${enemy.displayName} ${does.save.onFail}.`;
         }
+        if (!save.success && does.save.pushFeet) {
+          out.pushed = pushStraightAway(ctx.campaign, encounter.id, holder, enemy, does.save.pushFeet);
+        }
       }
       if (amount > 0) {
         Object.assign(out, applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, ctx.sheets, ctx.sheetsById, type, { magical: true }));
@@ -951,7 +970,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.` };
     }
     case "redirect": {
-      const hit = lastHitOn(ctx, ctx.sheet, label);
+      const landed = lastHitOn(ctx, ctx.sheet, label);
+      // Instinctive Charm answers the attack roll, hit or miss
+      // (ar-ws-charm-miss.ts): with no hit open, an attack that missed.
+      const hit = "error" in landed && does.save ? (missedAttackOn(ctx.campaign.id, ctx.sheet.id, label) ?? landed) : landed;
       if ("error" in hit) return hit;
       if (!encounter) {
         return { error: `${reaction.name} turns an attack in a fight; there is no active encounter. Nothing was spent.`, refused: "rules" };
@@ -975,6 +997,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, attacker.id, does.rangeFt)) {
           return { error: `${attacker.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
         }
+        // "When a creature you can see": the attacker in the holder's sight.
+        const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter.id, ctx.sheet, { id: attacker.id, name: attacker.displayName }, reaction.name) : null;
+        if (unseen) return unseen;
         if (immuneToCondition(attacker, "charmed")) {
           return { error: `${attacker.displayName} cannot be charmed, so ${reaction.name} cannot sway it. Nothing was spent.`, refused: "rules" };
         }
@@ -991,6 +1016,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         const closest = takerOf(ctx, encounter, hit.record, reaction.name, true);
         if ("error" in closest) return closest;
         charmed = closest;
+        const dry = hit.record.swings[hit.index].hit ? null : turnedMissRefusal(ctx.campaign.id, hit.record, hit.index, closest, reaction.name);
+        if (dry) return dry;
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, attacker, does.save.ability, dc, {
           magical: true,
@@ -1012,6 +1039,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const target = taker ?? charmed;
       if (!target) return { error: `${reaction.name} found no creature to turn the attack onto. Nothing was spent.`, refused: "rules" };
       const swing = hit.record.swings[hit.index];
+      if (!swing.hit) return landTurnedMiss(ctx, encounter, hit, target, reaction.name, label);
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       // The attack now targets that creature: its roll meets their AC.
       const meets = blowLandsOn(ctx.campaign.id, target, swing);
@@ -1028,7 +1056,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     }
     case "force_miss": {
       const target = allyOf(ctx) ?? ctx.sheet;
-      const hit = lastHitOn(ctx, target, label);
+      // Convergent Future reaches a roll made within 60 feet: a hit open from
+      // an attacker beyond them is not one it can answer.
+      const inReach = (record: LastHit) => () => {
+        const foe = attackerFoeId(record);
+        return !does.rangeFt || !encounter || !foe || withinFeet(encounter.id, ctx.sheet.id, foe, does.rangeFt);
+      };
+      const hit = lastHitOn(ctx, target, label, does.rangeFt ? inReach : undefined);
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       if (!does.exhaustion) {

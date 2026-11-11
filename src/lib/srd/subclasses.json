@@ -475,7 +475,7 @@
             },
             {
               "n": "Spiritual Focus",
-              "d": "A candle, a deck, a talking board or the like serves as your spellcasting focus and adds a die to the damage or healing of your bard spells at higher levels."
+              "d": "A candle, a deck, a talking board or the like serves as your spellcasting focus, and from 6th level a bard spell cast through it that deals damage or restores hit points adds a d6 to one of its damage or healing rolls."
             },
             {
               "n": "Tales from Beyond",
@@ -3715,7 +3715,7 @@
           "1": [
             {
               "n": "Psionic Spells",
-              "d": "A set of psionic spells always known that do not count against your spells known, swappable for divination and enchantment spells as you level."
+              "d": "A set of psionic spells always known that do not count against your spells known, swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list."
             },
             {
               "n": "Telepathic Speech",
@@ -3725,7 +3725,7 @@
           "6": [
             {
               "n": "Psionic Sorcery",
-              "d": "Cast your psionic spells by spending sorcery points instead of a slot, with no verbal, somatic or costly components."
+              "d": "Cast your psionic spells by spending sorcery points equal to the spell's level instead of a slot, with no verbal, somatic or costly components."
             },
             {
               "n": "Psychic Defenses",
@@ -3780,7 +3780,7 @@
           "1": [
             {
               "n": "Clockwork Magic",
-              "d": "A set of order-themed spells always known that do not count against your spells known, swappable for abjuration and transmutation spells as you level."
+              "d": "A set of order-themed spells always known that do not count against your spells known, swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list."
             },
             {
               "n": "Restore Balance",
@@ -4677,7 +4677,7 @@
           "6": [
             {
               "n": "Undead Thralls",
-              "d": "You learn animate dead, raise one extra corpse per casting, and your undead gain extra hit points and add your proficiency bonus to weapon damage."
+              "d": "You learn animate dead, raise one extra corpse per casting, and undead you create with a necromancy spell gain your wizard level in extra hit points and add your proficiency bonus to weapon damage."
             }
           ],
           "10": [
@@ -4691,6 +4691,11 @@
               "n": "Command Undead",
               "d": "As an action, an undead you can see within 60 feet makes a Charisma save against your spell save DC (with advantage if its Intelligence is 8 or higher) or becomes friendly and obeys your commands until you use this again. An undead with an Intelligence of 12 or higher that failed repeats the save at the end of every hour, breaking free on a success."
             }
+          ]
+        },
+        "spells": {
+          "6": [
+            "Animate Dead"
           ]
         }
       },
@@ -4730,6 +4735,11 @@
               "n": "Master Transmuter",
               "d": "Destroy your Transmuter's Stone to transform an object, remove all curses and disease from a creature, restore a creature's youth, or raise the dead."
             }
+          ]
+        },
+        "spells": {
+          "10": [
+            "Polymorph"
           ]
         }
       },
@@ -4788,7 +4798,7 @@
             },
             {
               "n": "Bladesong",
-              "d": "A bonus action for a minute grants +Intelligence to AC, 10 feet of speed, advantage on Acrobatics and a concentration-save bonus; a proficiency-bonus number of times per long rest."
+              "d": "A bonus action for a minute grants +Intelligence to AC, 10 feet of speed, advantage on Acrobatics and your Intelligence modifier (at least +1) on Constitution saves to keep concentration; a proficiency-bonus number of times per long rest."
             }
           ],
           "6": [
@@ -4839,7 +4849,7 @@
           "10": [
             {
               "n": "Arcane Abeyance",
-              "d": "Store a spell of 4th level or lower in a bead that anyone can break to cast it; recharges on a short or long rest."
+              "d": "Store a spell of 4th level or lower for an hour in a bead that anyone can break to cast it with your spell save DC and spell attack bonus; recharges on a short or long rest."
             }
           ],
           "14": [

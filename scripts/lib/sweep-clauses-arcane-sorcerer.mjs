@@ -6,12 +6,13 @@ import assert from "node:assert/strict";
 import { MOD, prof } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
-const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother, movesSomething } = shared;
+  const { friend, drain, uses, rests, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
+  rig.outfit("sorcerer", "Divine Soul", { spells: ["Cure Wounds"] });
+  rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
   rig.outfit("sorcerer", "Aberrant Mind", { spells: ["Dissonant Whispers"] });
   rig.outfit("sorcerer", "Shadow Magic", { spells: ["Darkness"] });
   rig.outfit("sorcerer", "Lunar Sorcery", { spells: ["Sacred Flame"], cantrips: ["Sacred Flame"] });
@@ -27,7 +28,9 @@ export function probes(rig, shared) {
   const phase = async (name) => {
     await kit.endFight();
     const out = await spend(lunar(), "Lunar Phase", { variant: name });
-    assert.equal(out.ok, true, out.error);
+    // The phase already held stands: choosing an option again changes nothing
+    // and is refused with nothing spent (authored-spend-effects.ts, choose).
+    assert.ok(out.ok || / already; choosing it again changes nothing/.test(out.error ?? ""), out.error);
   };
   // The dummy has hit `target` for 6 (13 against AC 12) on the friend's turn.
   async function hit(who, target = who) {
@@ -69,10 +72,112 @@ export function probes(rig, shared) {
       const out = await react(wild(), "Bend Luck", { targetCharacterId: friend().id, variant: "add" }, [4]);
       assert.equal(out.ok, true, `to add 1d4 to an ally's save that failed by one: ${String(out.error).slice(0, 170)}`);
     },
-    "bombardment-door": hasDoor(["sorcerer", "Wild Magic"], "Spell Bombardment", (foes) => ({ targetEnemyId: foes[0].id })),
+    // Every door a spell's damage is rolled at (src/lib/dm/ar-ws-bombardment.ts):
+    // a die showing its highest number is rolled again and added, once a turn.
+    // Each case reads the dice the engine threw and what the creature lost.
+    "bombardment-door": async () => {
+      const who = wild();
+      const thrown = (out, sides) => out.rolled.filter((die) => die.sides === sides).map((die) => die.face);
+      const through = async (enemy, name, args, faces) => {
+        const before = foe(enemy).currentHp;
+        const out = await call(name, args, faces);
+        assert.equal(out.ok, true, out.error);
+        return { out, lost: before - foe(enemy).currentHp };
+      };
+      // cast_at_enemy: Poison Spray is 4d12 at 20th level, the save failed on a 1.
+      let [enemy] = await stage(who);
+      const spray = (caster, faces) => through(enemy, "cast_at_enemy", { characterId: caster.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, faces);
+      const first = await spray(who, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(first.out, 12), first.lost], [[12, 2, 3, 4, 5], 26], "a 12 on a d12 is rolled again and added");
+      assert.match(String(first.out.result.spellBombardment), /Spell Bombardment/);
+      // A second spell that turn: two dice at their highest, none rolled again.
+      kit.freshTurn();
+      const second = await spray(who, [1, 12, 12, 3, 4, 9]);
+      assert.deepEqual([thrown(second.out, 12), second.lost, second.out.unused], [[12, 12, 3, 4], 31, 1], "once per turn");
+      // No die at its highest number adds nothing, and leaves the turn's use.
+      [enemy] = await stage(who);
+      const none = await spray(who, [1, 11, 2, 3, 4, 9]);
+      assert.deepEqual([thrown(none.out, 12), none.lost, none.out.unused], [[11, 2, 3, 4], 20, 1], "no die at its highest number");
+      kit.freshTurn();
+      const late = await spray(who, [1, 2, 3, 12, 4, 6]);
+      assert.deepEqual([thrown(late.out, 12), late.lost], [[2, 3, 12, 4, 6], 27], "the use was still there for the next spell of the turn");
+      // Below 18th level there is no such feature.
+      const young = S("Wild Magic", 17);
+      [enemy] = await stage(young);
+      const plain = await spray(young, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(plain.out, 12), plain.lost], [[12, 2, 3, 4], 21], "a 17th-level wild sorcerer");
+      // aoe_damage: Burning Hands, 3d6 rolled before the save.
+      [enemy] = await stage(who);
+      const hands = await through(enemy, "aoe_damage", { casterCharacterId: who.id, spell: "Burning Hands", enemyIds: [enemy.id] }, [6, 1, 1, 4, 1]);
+      assert.deepEqual([thrown(hands.out, 6), hands.lost], [[6, 1, 1, 4], 12], "an area spell's die");
+      // pc_attack: Fire Bolt, 4d10 on a hit, at a creature 20 feet off.
+      [enemy] = await stage(who);
+      kit.place(enemy.id, 9, 5);
+      const bolt = await through(enemy, "pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [15, 10, 1, 1, 1, 7]);
+      assert.deepEqual([thrown(bolt.out, 10), bolt.lost], [[10, 1, 1, 1, 7], 20], "a spell attack's die");
+    },
     // ---- Divine Soul
     "favored-rest": rests(["sorcerer", "Divine Soul"], "sub_favored_by_the_gods", "short"),
-    "empowered-healing-door": hasDoor(["sorcerer", "Divine Soul"], "Empowered Healing", () => ({ targetCharacterId: friend().id })),
+    // The healing dice of a spell cast this turn, rolled again for 1 sorcery
+    // point (src/lib/dm/ar-ws-empowered-healing.ts). Cure Wounds heals 1d8 a
+    // slot level plus the Charisma modifier.
+    "empowered-healing-door": async () => {
+      const who = soul();
+      const points = () => left(who, "sorcery_points");
+      const cure = async (caster, target, faces, level) => {
+        const out = await call("heal", { characterId: target.id, casterId: caster.id, spell: "Cure Wounds", ...(level ? { level } : {}) }, faces);
+        assert.equal(out.ok, true, out.error);
+      };
+      const hurtFriend = (hpNow) => world.patch(friend().id, { currentHp: hpNow });
+      // No healing roll on record: refused, the point kept, and no card dealt.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      const early = await spend(who, "Empowered Healing");
+      assert.equal(early.ok, false, "with no healing rolled this turn");
+      assert.equal(points(), 20, "nothing spent");
+      assert.equal(rig.table.offered(who, "Empowered Healing").length, 0, "no card with no roll to answer");
+      // 3d8 + 4 on a 2, a 7 and a 3: 16. The 2 and the 3 are rolled again (an 8 and a 1): 20.
+      await cure(who, friend(), [2, 7, 3], 3);
+      assert.equal(sheet(friend()).currentHp, 26);
+      assert.deepEqual(rig.table.offered(who, "Empowered Healing").map((card) => card.disabled), [null], "one card, open, while the roll is on record");
+      const again = await spend(who, "Empowered Healing", {}, [8, 1]);
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([again.rolled.map((die) => [die.sides, die.face]), sheet(friend()).currentHp, points()], [[[8, 8], [8, 1]], 30, 19], "[dice rolled again, the friend's hit points, sorcery points]");
+      // Once a turn: a second healing spell that turn is not rolled again.
+      kit.freshTurn();
+      await cure(who, friend(), [1], 1);
+      const twice = await spend(who, "Empowered Healing", {}, [8]);
+      assert.equal(twice.ok, false, "a second use that turn");
+      assert.deepEqual([sheet(friend()).currentHp, points()], [35, 19], "nothing rolled, nothing spent");
+      // The new roll stands when it is lower: 4 + 4 becomes 1 + 4.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [4], 1);
+      const lower = await spend(who, "Empowered Healing", {}, [1]);
+      assert.equal(lower.ok, true, lower.error);
+      assert.equal(sheet(friend()).currentHp, 15, "10 + 5: the reroll is kept");
+      // A die above half is left alone unless the call says how many to roll again.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [5], 1);
+      const high = await spend(who, "Empowered Healing");
+      assert.equal(high.ok, false, "a 5 on a d8, no number given");
+      assert.equal(points(), 20, "nothing spent");
+      const named = await spend(who, "Empowered Healing", { amount: 1 }, [8]);
+      assert.equal(named.ok, true, named.error);
+      assert.deepEqual([sheet(friend()).currentHp, points()], [22, 19], "10 + 8 + 4, for a point");
+      // An ally's roll: within 5 feet of the sorcerer, on the ally's own turn; not from 20 feet.
+      const ally = S("Divine Soul", 6);
+      for (const [x, expected] of [[4, { ok: true, hp: 20, points: 19 }], [1, { ok: false, hp: 16, points: 20 }]]) {
+        await stage(who, { others: [ally], first: ally });
+        kit.place(ally.id, x, 5);
+        world.patch(ally.id, { currentHp: 10 });
+        await cure(ally, ally, [2], 1);
+        const out = await spend(who, "Empowered Healing", {}, [6]);
+        assert.deepEqual({ ok: out.ok, hp: sheet(ally).currentHp, points: points() }, expected, `an ally ${(5 - x) * 5} feet from the sorcerer rolled Cure Wounds: ${String(out.error ?? "").slice(0, 120)}`);
+      }
+      await kit.endFight();
+    },
     wings: async () => {
       await stage(soul());
       assert.deepEqual(rig.speeds(soul()), {});
@@ -110,10 +215,29 @@ export function probes(rig, shared) {
     },
     "eyes-points": async () => {
       await stage(shadow());
-      const now = sheet(shadow());
-      world.patch(shadow().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      const spendSlots = () => {
+        const now = sheet(shadow());
+        world.patch(shadow().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      };
+      spendSlots();
+      const points = left(shadow(), "sorcery_points");
       const out = await call("use_spell_slot", { characterId: shadow().id, level: 2, spell: "Darkness" });
-      assert.equal(out.ok, true, `with every slot spent and ${left(shadow(), "sorcery_points")} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(out.ok, true, `with every slot spent and ${points} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(points - left(shadow(), "sorcery_points"), 2, "sorcery points Darkness costs through Eyes of the Dark");
+      assert.equal(sheet(shadow()).concentratingOn, "Darkness");
+      // One point is not two: refused, the point kept.
+      await stage(shadow());
+      spendSlots();
+      drain(shadow(), "sorcery_points");
+      world.patch(shadow().id, { resources: { ...sheet(shadow()).resources, sorcery_points: { ...counter(shadow(), "sorcery_points"), used: counter(shadow(), "sorcery_points").max - 1 } } });
+      const short = await call("use_spell_slot", { characterId: shadow().id, level: 2, spell: "Darkness" });
+      assert.equal(short.ok, false, "with one sorcery point and no slot");
+      assert.equal(left(shadow(), "sorcery_points"), 1, "nothing spent");
+      // Below 3rd level the sorcerer does not know the spell this way.
+      const young = S("Shadow Magic", 2);
+      await stage(young);
+      const early = await call("use_spell_slot", { characterId: young.id, spell: "Darkness" });
+      assert.equal(early.ok, false, "a 2nd-level shadow sorcerer casts Darkness");
     },
     "grave-save": async () => {
       await kit.endFight();
@@ -147,7 +271,42 @@ export function probes(rig, shared) {
       assert.equal(points - left(shadow(), "sorcery_points"), 3);
       assert.ok(foe(enemy).conditions.includes("hound of ill omen"));
     },
-    "hound-wolf": movesSomethingBut("hound of ill omen"),
+    // The hound itself: a dire wolf on the sorcerer's side with temporary hit
+    // points equal to half the sorcerer level, bound to the creature named
+    // (src/lib/dm/ar-ws-hound.ts, ar-ws-hound-quarry.ts).
+    "hound-wolf": async () => {
+      const hounds = () => world.sheets().filter((entry) => entry.name.startsWith("Hound of Ill Omen"));
+      const [quarry, other] = await stage(shadow(), { count: 2, others: [friend()] });
+      rig.endCurrent();
+      kit.giveTurn(shadow().id);
+      kit.freshTurn();
+      assert.deepEqual(hounds().map((entry) => entry.name), [], "a hound of an earlier fight is gone once its fight is over and a turn has moved on");
+      const out = await spend(shadow(), "Hound of Ill Omen", { targetEnemyId: quarry.id });
+      if (!out.ok) throw new Error(out.error);
+      assert.ok(foe(quarry).conditions.includes("hound of ill omen"), "the quarry carries the mark");
+      const [hound] = hounds();
+      assert.ok(hound, `no creature joined the table for the hound: ${show(out).slice(0, 200)}`);
+      assert.deepEqual([hound.maxHp, hound.tempHp, hound.ac], [37, 10, 14], "[hit points, temporary hit points, AC]: a dire wolf's block, and half a 20th-level sorcerer's level");
+      assert.equal(hound.conditionMeta["hunting its quarry"]?.quarry, quarry.id, "bound to the creature named");
+      assert.ok(world.encounter().order.some((entry) => entry.characterId === hound.id), "it has its own place in the initiative order");
+      // It attacks its quarry and no other creature.
+      kit.giveTurn(hound.id);
+      kit.freshTurn();
+      kit.place(hound.id, 6, 6);
+      const off = await call("pc_attack", { characterId: hound.id, targetEnemyId: other.id, weapon: "Bite" }, [15, 3, 3]);
+      assert.equal(off.ok, false, "a bite at a creature that is not its quarry");
+      assert.match(off.error, /is not its quarry/);
+      const before = foe(quarry).currentHp;
+      const bite = await call("pc_attack", { characterId: hound.id, targetEnemyId: quarry.id, weapon: "Bite" }, [15, 3, 3]);
+      assert.equal(bite.ok, true, bite.error);
+      assert.equal(before - foe(quarry).currentHp, 3 + 3 + 3, "a dire wolf's bite, 2d6 + 3");
+      // The quarry falls: the hound is gone when the turn moves on.
+      kit.setEnemy(quarry.id, { currentHp: 1 });
+      const felled = await call("apply_damage", { enemyId: quarry.id, amount: 5, type: "force" });
+      assert.equal(felled.ok, true, felled.error);
+      rig.endCurrent();
+      assert.deepEqual(hounds().map((entry) => entry.name), [], "the hound outlived its quarry");
+    },
     "shadow-walk": async () => {
       await stage(shadow());
       const out = await spend(shadow(), "Shadow Walk");
@@ -175,39 +334,136 @@ export function probes(rig, shared) {
       assert.deepEqual(grant.spec.fixedLanguages, ["Primordial"]);
     },
     tempest: async () => {
-      await stage(S("Storm Sorcery", 6));
+      const [enemy] = await stage(S("Storm Sorcery", 6));
+      // The flight follows a spell of 1st level or higher cast this turn
+      // (tempest-trigger): Shatter first, with the action.
+      const cast = await call("aoe_damage", { casterCharacterId: S("Storm Sorcery", 6).id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+      assert.equal(cast.ok, true, cast.error);
       const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
       assert.equal(out.ok, true, out.error);
       assert.equal(budget().bonusUsed, true);
       assert.match(out.result.teleport, /up to 10 feet, flying, without provoking opportunity attacks/);
     },
+    // In a fight the flight is open once the turn has seen a spell of 1st
+    // level or higher cast (src/lib/dm/ar-ws-tempest-logic.ts has the ruling on
+    // "before"): [the spend's answer, the bonus action spent].
     "tempest-trigger": async () => {
-      await stage(S("Storm Sorcery", 6));
-      const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
-      assert.equal(out.ok, false, "on a turn with no spell cast, the flight is taken");
+      const who = S("Storm Sorcery", 6);
+      const casting = sheet(who).spellcasting;
+      world.patch(who.id, { spellcasting: { ...casting, cantrips: [...new Set([...(casting.cantrips ?? []), "Poison Spray"])] } });
+      const shatter = async (enemy) => {
+        const cast = await call("aoe_damage", { casterCharacterId: who.id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      };
+      const flight = async (before) => {
+        const [enemy] = await stage(who);
+        await before(enemy);
+        const out = await spend(who, "Tempestuous Magic");
+        return { out, seen: [out.ok, budget()?.bonusUsed ?? false] };
+      };
+      const bare = await flight(async () => {});
+      assert.deepEqual(bare.seen, [false, false], "on a turn with no spell cast");
+      assert.match(bare.out.error, /spell of 1st level or higher.*Nothing was spent\.$/);
+      const cantrip = await flight(async (enemy) => {
+        const cast = await call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, [20, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      });
+      assert.deepEqual(cantrip.seen, [false, false], "after a cantrip, which is no spell of 1st level or higher");
+      assert.deepEqual((await flight(shatter)).seen, [true, true], "after Shatter, a 2nd-level spell cast with the action");
+      // The next turn has seen no casting of its own.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Tempestuous Magic")).ok, false, "on the turn after the one Shatter was cast in");
+      // Out of a fight no turn is kept, and the spend is open as it was.
+      await kit.endFight();
+      const idle = await spend(who, "Tempestuous Magic");
+      assert.equal(idle.ok, true, `out of a fight: ${idle.error}`);
     },
     "heart-resist": async () => {
       await kit.endFight();
       const who = S("Storm Sorcery", 6);
       assert.deepEqual([await hurt(who, 10, "lightning"), await hurt(who, 10, "thunder"), await hurt(who, 10, "fire")], [5, 5, 10]);
     },
+    // What each dummy lost, [5 feet, 10 feet, 15 feet, 35 feet] east of the
+    // sorcerer, after one call; an ally stands 5 feet west. Every die is a 1
+    // unless a case says otherwise, so a save fails and a spell's own damage
+    // is its number of dice.
     "heart-burst": async () => {
-      const who = S("Storm Sorcery", 6);
-      const [near, far] = await stage(who, { count: 2 });
-      kit.place(far.id, 12, 5);
-      const before = foe(near).currentHp;
-      const out = await call("aoe_damage", { casterCharacterId: who.id, spell: "Shatter", enemyIds: [far.id] }, [20, 1, 1, 1]);
-      if (!out.ok) throw new Error(out.error);
-      assert.equal(before - foe(near).currentHp, 3, "damage to the creature 5 feet from a 6th-level storm sorcerer who cast Shatter (thunder) at another");
+      const six = S("Storm Sorcery", 6);
+      const same = (lost, expected, label) => assert.deepEqual(lost, expected, `${label}: the dummies lost ${JSON.stringify(lost)}`);
+      const learn = (who, spells, cantrips) => {
+        const casting = sheet(who).spellcasting;
+        world.patch(who.id, { spellcasting: { ...casting, prepared: [...new Set([...casting.prepared, ...spells])], known: [...new Set([...casting.known, ...spells])], cantrips: [...new Set([...(casting.cantrips ?? []), ...cantrips])] } });
+      };
+      learn(six, ["Witch Bolt", "Magic Missile"], ["Shocking Grasp"]);
+      const cast = async (who, name, args, arrange = () => {}, faces = [1, 1, 1, 1, 1, 1]) => {
+        const foes = await stage(who, { count: 4, others: [friend()] });
+        kit.place(foes[3].id, 12, 5);
+        arrange(foes);
+        const ally = hp(friend());
+        const out = await call(name, args(foes), faces);
+        if (!out.ok) throw new Error(`${name}: ${out.error}`);
+        assert.equal(hp(friend()), ally, "an ally within 10 feet is never chosen");
+        return { lost: foes.map((enemy) => 300 - (foe(enemy)?.currentHp ?? 300)), said: String(out.result.castBurst ?? "") };
+      };
+      const shatterAt = (who, at) => (foes) => ({ casterCharacterId: who.id, spell: "Shatter", enemyIds: [foes[at].id] });
+      // Shatter (thunder, 3d8) at the creature 35 feet off: half of 6 to each creature within 10 feet.
+      const far = await cast(six, "aoe_damage", shatterAt(six, 3));
+      same(far.lost, [3, 3, 0, 3], "a 6th-level storm sorcerer's Shatter at the far creature");
+      assert.match(far.said, /^Heart of the Storm: .*3 thunder damage/);
+      // The spell's own target, beside the sorcerer, takes the spell and the burst both.
+      same((await cast(six, "aoe_damage", shatterAt(six, 0))).lost, [3 + 3, 3, 0, 0], "Shatter at the creature 5 feet off");
+      // The same door from pc_attack: Witch Bolt (lightning, 1d12) at the creature 15 feet off.
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[2].id, spell: "Witch Bolt" }), undefined, [15, 15, 1])).lost, [3, 3, 1, 0], "Witch Bolt, a ranged spell attack (at disadvantage beside a foe: 15 and 15)");
+      // And from cast_at_enemy, a creature of the area per call.
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[3].id, spell: "Shatter" }))).lost, [3, 3, 0, 3], "Shatter through cast_at_enemy");
+      // Each tool's own target beside the sorcerer keeps both: the burst lands
+      // once the spell's damage has (src/lib/dm/ar-ws-after-call.ts).
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Shatter" }))).lost, [3 + 3, 3, 0, 0], "Shatter through cast_at_enemy at the creature 5 feet off");
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Witch Bolt" }), undefined, [15, 15, 1])).lost, [1 + 3, 3, 0, 0], "Witch Bolt at the creature 5 feet off");
+      // Once per casting: a second creature of the same Shatter, named in a
+      // second call, is no second casting.
+      const twice = await stage(six, { count: 4, others: [friend()] });
+      kit.place(twice[3].id, 12, 5);
+      kit.place(twice[2].id, 13, 5);
+      for (const at of [3, 2]) {
+        const out = await call("cast_at_enemy", { characterId: six.id, targetEnemyId: twice[at].id, spell: "Shatter" }, [1, 1, 1, 1]);
+        if (!out.ok) throw new Error(`Shatter's creature ${at}: ${out.error}`);
+      }
+      same(twice.map((enemy) => 300 - foe(enemy).currentHp), [3, 3, 3, 3], "one Shatter resolved a creature per call, two calls");
+      // A cantrip of the type is no spell of 1st level or higher, and a spell of another type sets nothing off.
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Shocking Grasp" }), undefined, [15, 1, 1])).lost, [2, 0, 0, 0], "Shocking Grasp, a lightning cantrip (2d8 at 6th level)");
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[3].id, spell: "Magic Missile" }))).lost, [0, 0, 0, 6], "Magic Missile, three darts of force");
+      // "that you can see": an invisible creature beside the sorcerer is not struck.
+      same((await cast(six, "aoe_damage", shatterAt(six, 3), (foes) => kit.setEnemy(foes[0].id, { conditions: ["invisible"] }))).lost, [0, 3, 0, 3], "with the nearest creature invisible");
+      // Half the sorcerer level: 10 at 20th.
+      same((await cast(storm(), "aoe_damage", shatterAt(storm(), 3))).lost, [10, 10, 0, 3], "a 20th-level storm sorcerer's Shatter");
     },
     "fury-push": async () => {
-      const foes = await hit(storm());
-      const at = kit.token(foes[0].id);
-      // The creature fails its Strength save on a 1.
-      const out = await react(storm(), "Storm's Fury", {}, [1]);
-      assert.equal(out.ok, true, out.error);
-      const now = kit.token(foes[0].id);
-      assert.notDeepEqual([now.x, now.y], [at.x, at.y], `the creature failed its save and stands where it stood: ${show(out).slice(0, 170)}`);
+      const dc = 8 + prof(20) + MOD.cha;
+      // The dummy (Strength save +1) has hit the sorcerer from the east and
+      // rolls `face`; `arrange` moves the pieces before the reaction.
+      const pushed = async (face, arrange = () => {}) => {
+        const [enemy] = await hit(storm());
+        arrange(enemy);
+        const from = kit.token(enemy.id);
+        const out = await react(storm(), "Storm's Fury", {}, [face]);
+        assert.equal(out.ok, true, out.error);
+        const now = kit.token(enemy.id);
+        return { moved: [now.x - from.x, now.y - from.y], save: out.result.save, lightning: 300 - foe(enemy).currentHp, reacted: rig.reacted(storm()), said: show(out).slice(0, 200) };
+      };
+      // A 1 fails: 20 feet, four squares straight away from the sorcerer.
+      const failed = await pushed(1);
+      assert.deepEqual([failed.moved, failed.save, failed.lightning, failed.reacted], [[4, 0], `2 vs DC ${dc}`, 20, true], `[squares moved, the Strength save, lightning taken, reaction spent] on a failed save: ${failed.said}`);
+      // A 20 saves: the lightning lands all the same and the creature stands.
+      const saved = await pushed(20);
+      assert.deepEqual([saved.moved, saved.save, saved.lightning], [[0, 0], `21 vs DC ${dc}`, 20], "on a save made");
+      // A wall two squares behind it: it stops against the wall after 5 feet.
+      assert.deepEqual((await pushed(1, () => kit.openField([[8, 5, "#"]]))).moved, [1, 0], "with a wall 10 feet behind it");
+      // Diagonally: straight away is the same diagonal.
+      assert.deepEqual((await pushed(1, (enemy) => kit.place(enemy.id, 6, 6))).moved, [4, 4], "struck from the south-east");
+      // The map's edge: one square of board behind it is all it goes.
+      const edge = kit.map().width - 1;
+      assert.deepEqual((await pushed(1, (enemy) => { kit.place(storm().id, edge - 2, 9); kit.place(enemy.id, edge - 1, 9); })).moved, [1, 0], "with the map's edge 5 feet behind it");
     },
     "windsoul-immune": async () => {
       await kit.endFight();
@@ -230,11 +486,29 @@ export function probes(rig, shared) {
       assert.ok(spellsAt("Aberrant Mind", 9).includes("Telekinesis"));
     },
     "psionic-sorcery": async () => {
+      const spendSlots = () => {
+        const now = sheet(mind());
+        world.patch(mind().id, { spellcasting: { ...now.spellcasting, prepared: [...new Set([...now.spellcasting.prepared, "Magic Missile"])], known: [...new Set([...now.spellcasting.known, "Magic Missile"])], slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      };
       const [enemy] = await stage(mind());
-      const now = sheet(mind());
-      world.patch(mind().id, { spellcasting: { ...now.spellcasting, slots: Object.fromEntries(Object.entries(now.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: slot.max }])) } });
+      // With a slot at hand, the slot pays.
+      const points = left(mind(), "sorcery_points");
+      const slotted = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
+      assert.equal(slotted.ok, true, slotted.error);
+      assert.deepEqual([points - left(mind(), "sorcery_points"), sheet(mind()).spellcasting.slots[1].used], [0, 1], "[sorcery points, 1st-level slots] spent with slots at hand");
+      kit.freshTurn();
+      spendSlots();
       const out = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
       assert.equal(out.ok, true, `Dissonant Whispers with every slot spent and ${left(mind(), "sorcery_points")} sorcery points: ${String(out.error).slice(0, 150)}`);
+      assert.equal(points - left(mind(), "sorcery_points"), 1, "sorcery points a 1st-level psionic spell costs: its level");
+      // A spell that is not one of the psionic spells finds no points to pay it.
+      kit.freshTurn();
+      const other = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Magic Missile" }, [1, 1, 1]);
+      assert.equal(other.ok, false, "Magic Missile with every slot spent");
+      // With no point left the psionic spell is refused too.
+      drain(mind(), "sorcery_points");
+      const broke = await call("cast_at_enemy", { characterId: mind().id, targetEnemyId: enemy.id, spell: "Dissonant Whispers" }, [1, 3, 3, 3]);
+      assert.equal(broke.ok, false, "with no slot and no sorcery point");
     },
     "psychic-resist": async () => {
       await kit.endFight();
@@ -275,19 +549,97 @@ export function probes(rig, shared) {
       assert.deepEqual(spellsAt("Clockwork Soul", 1), ["Alarm", "Protection from Evil and Good"]);
       assert.ok(spellsAt("Clockwork Soul", 9).includes("Wall of Force"));
     },
+    "balance-cancel": async () => {
+      const [enemy] = await stage(clock(), { others: [friend()], first: friend() });
+      const before = hp(clock());
+      const out = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: clock().id, advantage: "advantage", advantageReason: "the sorcerer is flanked" }, [2, 19, 4]);
+      assert.equal(out.ok, true, out.error);
+      assert.ok(hp(clock()) < before, "the 19 kept by advantage hits");
+      const cancel = await spend(clock(), "Restore Balance");
+      assert.equal(cancel.ok, true, cancel.error);
+      assert.equal(hp(clock()), before, `on its first die alone, a 2, the attack misses: ${show(cancel).slice(0, 160)}`);
+    },
     "balance-uses": async () => {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();
       await balanceRest();
     },
-    "bastion-door": hasDoor(["sorcerer", "Clockwork Soul"], "Bastion of Law", () => ({ targetCharacterId: friend().id, amount: 2 })),
+    // The ward and its dice (src/lib/dm/ar-ws-bastion.ts): laid for 1 to 5
+    // sorcery points as an action on a creature within 30 feet, spent by the
+    // warded creature off a blow on record for no reaction, gone at a long rest.
+    "bastion-door": async () => {
+      const who = clock();
+      const points = () => left(who, "sorcery_points");
+      const ward = (carrier) => sheet(carrier).conditions.filter((entry) => entry.startsWith("bastion of law"));
+      const dice = (carrier, args, faces) => spend(carrier, "Bastion of Law", { variant: "reduce", ...args }, faces);
+      const [enemy] = await stage(who, { others: [friend()] });
+      kit.place(enemy.id, 4, 4);
+      // Six points are more than it takes; 35 feet is farther than it reaches.
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 6 })).ok, false, "6 sorcery points");
+      kit.place(friend().id, 12, 5);
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 })).ok, false, "a creature 35 feet away");
+      assert.deepEqual([points(), budget()?.actionUsed ?? false, ward(friend())], [20, false, []], "nothing spent on a refusal");
+      kit.place(friend().id, 4, 5);
+      const laid = await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 });
+      assert.equal(laid.ok, true, laid.error);
+      assert.deepEqual([points(), budget().actionUsed, ward(friend())], [17, true, ["bastion of law (3d8)"]], "[sorcery points, the action, the friend's ward]");
+      // With no blow on record the dice are kept.
+      assert.equal((await dice(friend(), { amount: 2 }, [3, 1])).ok, false, "no damage to reduce");
+      assert.deepEqual(ward(friend()), ["bastion of law (3d8)"]);
+      assert.equal(rig.table.offered(friend(), "Bastion of Law").length, 0, "no card with no blow open");
+      // The dummy's club lands for 6; two dice (a 3 and a 1) give 4 back.
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal(sheet(friend()).currentHp, 44);
+      assert.deepEqual(rig.table.offered(friend(), "Bastion of Law").map((card) => [card.disabled, card.intent.variant]), [[null, "reduce"]], "the warded creature's card");
+      const cut = await dice(friend(), { amount: 2 }, [3, 1]);
+      assert.equal(cut.ok, true, cut.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend()), rig.reacted(friend())], [48, ["bastion of law (1d8)"], false], "[hit points, the ward left, a reaction spent]");
+      // One blow is answered once; a new blow takes no more dice than the ward holds.
+      assert.equal((await dice(friend(), {}, [8])).ok, false, "the same blow again");
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal((await dice(friend(), { amount: 2 }, [8, 8])).ok, false, "two dice of a ward of one");
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [42, ["bastion of law (1d8)"]], "nothing rolled, nothing spent");
+      const last = await dice(friend(), {}, [8]);
+      assert.equal(last.ok, true, last.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [48, []], "an 8 takes the whole 6 off, and the ward is spent");
+      // Laid again, the earlier ward ends: on the sorcerer first, then on the friend.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { amount: 1 })).ok, true);
+      assert.deepEqual([ward(who), points()], [["bastion of law (1d8)"], 16]);
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 2 })).ok, true);
+      assert.deepEqual([ward(who), ward(friend()), points()], [[], ["bastion of law (2d8)"], 14], "one ward at a time");
+      // "until your next long rest". The clock is put back after it, so the
+      // probes that follow fight at the hour they would have.
+      const clocks = await import("../../src/lib/db/clock.ts");
+      const hour = clocks.getClock(world.campaignId);
+      await rig.rest("long");
+      clocks.setClock(world.campaignId, hour);
+      assert.deepEqual(ward(friend()), [], "after a long rest");
+    },
     "trance-on": async () => {
       await tranced();
       assert.equal(sheet(clock()).conditionMeta["trance of order"].rounds, 10);
     },
+    // The three rolls the text names, each with the trance and without: a
+    // save and a check through request_roll, an attack through pc_attack. A
+    // 10 or higher on the die is left as it fell, and a natural 1 on an
+    // attack, counted as a 10, is no automatic miss.
     "trance-floor": async () => {
-      await tranced();
-      const rolled = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
-      assert.equal(rolled.out.result.total, 10 + MOD.dex, "a Dexterity save with a 3 on the die");
+      const totals = async (enemy) => {
+        const save = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
+        const check = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [9]);
+        const high = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [14]);
+        const swing = await kit.swing(clock().id, enemy.id, [1, 4]);
+        assert.equal(swing.ok, true, swing.error);
+        return { save: save.total, check: check.total, high: high.total, attack: swing.toHit.total, hit: swing.result.hit === true };
+      };
+      const [bare] = await stage(clock());
+      const without = await totals(bare);
+      const [enemy] = await tranced();
+      const within = await totals(enemy);
+      const toHit = without.attack - 1;
+      assert.deepEqual(without, { save: 3 + MOD.dex, check: without.check, high: without.high, attack: 1 + toHit, hit: false }, "with no trance the dice count as they fall");
+      assert.deepEqual(within, { save: 10 + MOD.dex, check: without.check + 1, high: without.high, attack: 10 + toHit, hit: 10 + toHit >= foe(enemy).stats.ac }, "in the trance: a Dexterity save on a 3, an Arcana check on a 9 and on a 14, an attack roll on a natural 1");
     },
     "trance-advantage": async () => {
       const [enemy] = await tranced();
@@ -336,7 +688,67 @@ export function probes(rig, shared) {
       const apart = await call("cast_at_enemy", { characterId: lunar().id, targetEnemyId: one.id, secondTargetEnemyId: two.id, spell: "Sacred Flame" }, [1, 1, 3, 3, 3, 3]);
       assert.equal(apart.ok, false, "40 feet apart");
     },
-    "lunar-boons": movesSomething(["sorcerer", "Lunar Sorcery"], "Lunar Boons"),
+    // A Metamagic spend names no spell, so the boon meets it at the cast
+    // (src/lib/dm/ar-ws-lunar-boons.ts): the option paid, then the spell.
+    // Each case is [sorcery points, boons] the two calls cost together.
+    "lunar-boons": async () => {
+      const who = lunar();
+      const state = () => [left(who, "sorcery_points"), left(who, "sub_lunar_boons")];
+      const meta = (option, amount = 1) => spend(who, "Sorcery Points", { variant: option, amount });
+      const cast = (spell) => call("use_spell_slot", { characterId: who.id, spell });
+      const paid = async (steps, { boons = true } = {}) => {
+        rig.refill(who);
+        if (!boons) drain(who, "sub_lunar_boons");
+        const before = state();
+        for (const step of steps) {
+          const out = await step();
+          assert.equal(out.ok, true, out.error);
+        }
+        return [before[0] - state()[0], before[1] - state()[1]];
+      };
+      await phase("Crescent Moon");
+      world.patch(who.id, { features: [...sheet(who).features.filter((feature) => !feature.name.startsWith("Metamagic: ")), ...["Extended Spell", "Twinned Spell", "Empowered Spell"].map((name) => ({ name: `Metamagic: ${name}`, source: "class", description: "" }))] });
+      // Crescent Moon: illusion and transmutation. Alter Self is transmutation,
+      // Lesser Restoration abjuration (the Full Moon's).
+      assert.deepEqual(await paid([() => cast("Alter Self")]), [0, 0], "a spell of the phase's schools with no Metamagic on it");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [0, 1], "Extended Spell (1 point) on Alter Self in the Crescent Moon phase");
+      // Darkvision, a transmutation on one creature touched: Twinned Spell takes
+      // no spell with a range of self (mt-srd-metamagic-logic.ts twinPlan gives
+      // Alter Self's points back), so the 2 points are read on a spell it takes.
+      const casting = sheet(who).spellcasting;
+      world.patch(who.id, { spellcasting: { ...casting, known: [...new Set([...(casting.known ?? []), "Darkvision"])] } });
+      assert.deepEqual(await paid([() => meta("Twinned Spell", 2), () => cast("Darkvision")]), [1, 1], "Twinned Spell on a 2nd-level spell (2 points)");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [1, 0], "on a spell of another phase's school");
+      assert.ok(!sheet(who).conditions.includes("lunar boon"), "the Metamagic rode that spell: the mark is gone");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration"), () => cast("Alter Self")]), [1, 0], "a later spell of the phase's schools takes nothing back");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")], { boons: false }), [1, 0], "with no boon left");
+      // The counter is spent by the cast, never by a call of its own.
+      rig.refill(who);
+      const bare = await spend(who, "Lunar Boons");
+      assert.equal(bare.ok, false, "a bare spend of the counter");
+      assert.equal(left(who, "sub_lunar_boons"), prof(20), "nothing spent");
+      // The phase decides the schools.
+      await phase("Full Moon");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [0, 1], "abjuration in the Full Moon phase");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [1, 0], "transmutation in the Full Moon phase");
+      // In a fight the spell may come first: a Metamagic option paid later that
+      // turn costs 1 less there and then, once.
+      await stage(who);
+      const before = state();
+      for (const step of [() => cast("Lesser Restoration"), () => meta("Extended Spell")]) {
+        const out = await step();
+        assert.equal(out.ok, true, out.error);
+      }
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [0, 1], "the spell, then Extended Spell, on one turn");
+      // One option a spell, and Empowered Spell alone goes with another
+      // (mt-srd-metamagic-logic.ts secondOptionProblem): the second option of
+      // the turn is that one. A second Extended Spell was paid here before
+      // the one-option rule was built.
+      const again = await meta("Empowered Spell");
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [1, 1], "a second option that turn pays its price until its own spell is cast");
+      rig.refill(who);
+    },
     "boons-uses": async () => {
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_boons", { 6: prof(6), 20: prof(20) })();
       await boonsRest();
@@ -362,7 +774,11 @@ export function probes(rig, shared) {
       assert.deepEqual([await hurt(lunar(), 10, "necrotic"), await hurt(lunar(), 10, "radiant"), await hurt(lunar(), 10, "fire")], [5, 5, 10]);
     },
     "phenomenon-cost": async () => {
+      // "you release your phase's power": the phase is Lunar Embodiment's.
+      await phase("Crescent Moon");
       await stage(lunar());
+      const other = await spend(lunar(), "Lunar Phenomenon", { variant: "full moon" });
+      assert.equal(other.ok, false, "in the Crescent Moon phase, the Full Moon's power was released");
       // A bare spend is refused: the use names its phase's variant (WAVE1 R10,
       // a pool spent only through a named option). Crescent Moon asks no creature.
       const out = await spend(lunar(), "Lunar Phenomenon", { variant: "crescent moon" });
@@ -371,7 +787,10 @@ export function probes(rig, shared) {
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", { 18: 1 })();
       await phenomenonRest();
     },
-    "phenomenon-points": buysAnother(["sorcerer", "Lunar Sorcery"], "Lunar Phenomenon", "sub_lunar_phenomenon", "sorcery point"),
+    "phenomenon-points": async () => {
+      await phase("Crescent Moon");
+      await buysAnother(["sorcerer", "Lunar Sorcery"], "Lunar Phenomenon", "sub_lunar_phenomenon", "sorcery point")();
+    },
   };
   const implosionRest = rests(["sorcerer", "Aberrant Mind"], "sub_warping_implosion", "long");
   const balanceRest = rests(["sorcerer", "Clockwork Soul"], "sub_restore_balance", "long");
@@ -380,40 +799,9 @@ export function probes(rig, shared) {
   const boonsRest = rests(["sorcerer", "Lunar Sorcery"], "sub_lunar_boons", "long");
   const phenomenonRest = rests(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", "long");
 
-  // The hound: spent, and beyond the mark on its quarry nothing joins the fight.
-  function movesSomethingBut(mark) {
-    return async () => {
-      const [enemy] = await stage(shadow(), { others: [friend()] });
-      const before = [world.sheets().length, world.enemies().length];
-      const out = await spend(shadow(), "Hound of Ill Omen", { targetEnemyId: enemy.id });
-      if (!out.ok) throw new Error(out.error);
-      assert.ok(foe(enemy).conditions.includes(mark));
-      assert.notDeepEqual([world.sheets().length, world.enemies().length], before, "no creature joined the table for the hound: it is a mark on its quarry, and never bites");
-    };
-  }
-
   const KNOWN = {
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
-    "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
-    "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "eyes-points": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Eyes of the Dark (note: "Darkness for 2 sorcery points ... is the cast tools' with the points spent"); src/lib/dm/cast-guard.ts has no such price`, note: "The note names a door the cast tools do not have.", fix: "Let Darkness be paid with 2 sorcery points by a holder." },
-    "hound-wolf": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Hound of Ill Omen (buff on the enemy; no summon)`, note: "The hound is a dire wolf that attacks its quarry every round; three sorcery points buy the disadvantage on saves only.", fix: "A summon of the hound (dire wolf, half the sorcerer level in temporary hit points) bound to its quarry." },
-    "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
-    "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
-    "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
-    "psionic-sorcery": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Psionic Sorcery (narrated: "the cast tools with the points spent by use_resource"); the cast tools refuse a caster with no slot`, note: "The narrated door does not exist: with no slot left the cast is refused, so the points cannot stand in for one.", fix: "Let a psionic spell be paid with sorcery points equal to its level." },
-    "psychic-saves": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Psychic Defenses (resistance only; no save_adv against charmed and frightened)", note: "A passive defence a player never sees missing. No written reason.", fix: "An authored effect save_adv against charmed and frightened." },
-    "revelation-swim": { severity: "low", kind: "rule-wrong", where: `${DATA} sorcerer::Revelation in Flesh (move swim "walk"; its own note says "The swimming speed is twice the walking speed")`, note: "", fix: "A swim value of twice the walking speed." },
-    "implosion-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_warping_implosion (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
-    "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
-    "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
-    "trance-advantage": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/enemy-swing-odds.ts (the trance is not read)", note: "", fix: "Strike advantage from attacks against a creature in the trance." },
-    "trance-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_trance_of_order (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
-    "cavalcade-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_clockwork_cavalcade (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 7 sorcery points instead." },
-    "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },
-    "waxing-change": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Lunar Embodiment (the phase spend is fight: "out" and free); ${RES} sub_waxing_and_waning`, note: "Out of a fight the phase changes for nothing; in one it cannot change at all.", fix: "From 6th level let the phase change in a fight for a bonus action and 1 sorcery point." },
-    "phenomenon-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_phenomenon (its guidance says "Again for 5 sorcery points"; no such purchase)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
   };
   return { PROBES, KNOWN };
 }

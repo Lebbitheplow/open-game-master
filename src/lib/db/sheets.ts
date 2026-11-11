@@ -6,6 +6,7 @@ import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
 import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -928,6 +929,8 @@ export function patchSheet(
   // raises the current hit points with it (SRD 5.1, Aid).
   if (patch.conditions !== undefined || patch.conditionMeta !== undefined) {
     const before = maxHpRiders(existing.conditions, existing.conditionMeta as ConditionMetaMap);
+    // Inured to Undeath: no drain lands on a holder (src/lib/dm/ar-ws-inured.ts).
+    Object.assign(next, keptFromDrain(existing, next));
     const after = maxHpRiders(next.conditions, next.conditionMeta as ConditionMetaMap);
     const bonusDelta = after.bonus - before.bonus;
     const drainDelta = after.drain - before.drain;

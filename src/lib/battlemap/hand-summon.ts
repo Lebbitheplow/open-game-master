@@ -27,6 +27,7 @@
 import type { SummonCatalogue } from "@/lib/srd/summon-spells";
 import { lowestSlot, type HandCard, type HandChoice, type HandSummon, type SpellFact } from "@/lib/battlemap/hand-core";
 import { casterStateProblem, componentProblem, focusProblem, materialPlan } from "@/lib/dm/cast-rules";
+import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { castingOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { textKey } from "@/lib/language/text-logic";
@@ -270,7 +271,7 @@ export type SummonDoorRow = {
 function castBlocked(sheet: CharacterSheet, spell: string, inFight: boolean, slotLevel: number, fetched: SpellFact | undefined): string | null {
   const facts = fetched?.facts ?? bundledSpellFacts(spell);
   const material = materialPlan(sheet, facts, { inFight, slotLevel });
-  return (casterStateProblem(sheet) ?? componentProblem(sheet, facts) ?? focusProblem(sheet, facts) ?? ("error" in material ? material : null))?.error ?? null;
+  return (casterStateProblem(sheet) ?? deflectionCastProblem(sheet, facts?.name ?? spell, facts?.level) ?? componentProblem(sheet, facts) ?? focusProblem(sheet, facts) ?? ("error" in material ? material : null))?.error ?? null;
 }
 
 export function summonDoorRows(

@@ -8,6 +8,8 @@ import { refillResources } from "@/lib/srd/resource-refills";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isMulticlass, slotTableFor } from "@/lib/srd/multiclass";
 import { settlePreparation } from "@/lib/srd/spell-prep";
+import { restVanished } from "@/lib/srd/ar-ws-spellbook";
+import { withoutConjuredAtLongRest } from "@/lib/srd/ar-ws-conjured";
 import { attunementProblem } from "@/lib/srd/magic-items";
 import type { CharacterSheet, FullPatchSheetInput, HitDicePool } from "@/lib/schemas/sheet";
 
@@ -81,6 +83,12 @@ export function longRestPatch(
       spent: Math.max(0, sheet.hitDice.spent - recovered),
     };
   }
+  // A Master Scrivener's scroll "vanishes ... when you finish a long rest",
+  // and no Arcane Abeyance bead outlasts the night (src/lib/srd/ar-ws-conjured.ts).
+  const lasting = withoutConjuredAtLongRest(sheet.equipment);
+  if (lasting) {
+    patch.equipment = lasting;
+  }
   // Bound creatures rest with their owner: a night restores a downed
   // companion or drake to full (a vanished familiar is already gone).
   if ((sheet.pets ?? []).some((pet) => pet.hp < pet.maxHp)) {
@@ -113,7 +121,9 @@ export function longRestPatch(
     // The night is also when a prepared caster's new choices take hold:
     // spells waiting in `pending` become prepared (spell-prep.ts).
     patch.spellcasting = {
-      ...settlePreparation(sheet.spellcasting),
+      // One with the Word: a spell gone from the book waits one rest fewer,
+      // and comes back after its last (src/lib/srd/ar-ws-spellbook.ts).
+      ...restVanished(settlePreparation(sheet.spellcasting)),
       slots: Object.fromEntries(rested.filter(([, slot]) => slot.max > 0)),
       // Pact Magic comes back with the night too.
       ...(sheet.spellcasting.pact

@@ -34,6 +34,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
+import { noteHealingRoll } from "@/lib/dm/ar-ws-empowered-healing";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
@@ -268,6 +269,8 @@ export function castHealingSpell(
       result: outcome,
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+    // The dice Empowered Healing may roll again (ar-ws-empowered-healing.ts).
+    noteHealingRoll(campaign, { roll, caster, target, spell: name });
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns

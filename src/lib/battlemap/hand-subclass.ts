@@ -13,10 +13,13 @@ import { heldFlames } from "@/lib/dm/cauterizing-flames";
 import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
 import { pendingSurge, surgeOf } from "@/lib/srd/mt-fb-surge-state";
 import { BOW_HIT, NO_ROLL, shotsKnown } from "@/lib/srd/mt-fb-arcane-shot";
+import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { castFirstReason, levelledCastThisTurn } from "@/lib/dm/ar-ws-tempest-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-resources";
+import { otherPrice } from "@/lib/srd/counter-rules";
 import type { SpendAction } from "@/lib/srd/authored-effects-types";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
@@ -39,6 +42,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
 import { TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
+import { dealtByTrigger } from "@/lib/battlemap/hand-react-triggers";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -50,7 +54,7 @@ export const pickLabel = (value: string) => value.replace(/^./, (c) => c.toUpper
 function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "buff") {
     // A quarry (Hexblade's Curse) marks a creature, and the engine asks which.
-    return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" ? "ally" : "self";
+    return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" || does.target === "creature" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
   // The creatures of the player's choice: aimed at one, the others added.
@@ -75,6 +79,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "read_thoughts") return "enemy";
   // A monk's or a rogue's own spend says who it is aimed at.
   if (does.kind === "mr") return does.aims ?? "none";
+  // The creature warded (Bastion of Law), the holder or an ally in reach.
+  if (does.kind === "damage_ward") return "ally";
   return "none";
 }
 
@@ -209,7 +215,8 @@ export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: s
 // burns a creature or heals one (Arcane Jolt: "either deal an extra 2d6 force
 // damage to the target, or ... restores a number of hit points equal to 2d6"),
 // one at an enemy and one at an ally, so each posts the target it needs.
-type Aim = { variant?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
+// `key`: what tells two aims of one spend apart on the card's id when no variant does.
+type Aim = { variant?: string; key?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
 
 function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Aim[] {
   if (does.kind === "flames") {
@@ -243,6 +250,12 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
     }
   }
   const lines = linesOf(does);
+  // A creature of either side (Adjust Density, src/lib/dm/ar-ws-buff-aim.ts):
+  // one card at an ally or the holder, one at a foe, so each posts the target
+  // the engine reads for it.
+  if (does.kind === "buff" && does.target === "creature") {
+    return [{ target: "ally", dice: lines.dice, heals: false }, { key: "foe", label: "foe", target: "enemy", dice: lines.dice, heals: false }];
+  }
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
 }
 
@@ -253,7 +266,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   // variants price themselves, stays a bonus action.
   const counter = ownCounter(spend);
   const action = spendAction(spend);
-  if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  // A spend that answers a record (Master of Hexes after the cursed creature's
+  // death) is dealt by the trigger cards when it is open (hand-react-triggers.ts).
+  if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held) || dealtByTrigger(spend.name)) return [];
   // A spend whose counter waits on a trigger (Call the Hunt's rage just
   // entered) is dealt when the trigger opens (hand-react-triggers.ts), never
   // on the holder's own turn: the engine refuses it until then.
@@ -266,7 +281,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   const perUnit = Boolean(pool?.perUnit);
   const need = pool?.optional ? 0 : pool?.amount ?? 1;
   const poolGate: Gate =
-    state && left !== null && left < need && !perUnit
+    // The other price the counter's row names still pays (counter-rules.ts
+    // otherPrice), as authored-spends.ts charges it.
+    state && left !== null && left < need && !perUnit && !(pool && ownOtherPrice(pool.id, sheet))
       ? {
           // A counter of the spend's own name is its uses, not a raw id.
           reason: counter
@@ -275,11 +292,13 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           spent: true,
         }
       : null;
-  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods);
+  // A variant a chosen option fixes (Lunar Phenomenon's phase) is the one card.
+  const fixed = spend.variantFrom ? (heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null) : null;
+  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods).filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed));
   return aims.map((aim) => {
     const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
     const card: HandCard = {
-      id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
+      id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${(aim.variant ?? aim.key) && aims.length > 1 ? `:${aim.variant ?? aim.key}` : ""}`,
       type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),
@@ -307,7 +326,8 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       spent: false,
       // A spend by amount (Sharpen the Blade, Touch of the Long Death): the
       // player says how much in the box.
-      compose: perUnit,
+      // Performance of Creation: the player names the item in the box.
+      compose: perUnit || does.kind === "create_item",
       ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
       ...(pool ? { pool: pool.id } : {}),
       intent:
@@ -408,9 +428,18 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       aimDoes(does, aim.variant).kind === "action_attack" && (!turn.myTurn || turn.attacksMade <= 0 || turn.castThisAction === true)
         ? { reason: `${spend.name} adds an attack to the Attack action: make its first attack first.`, spent: false }
         : null,
+      // Power Surge: after a wizard spell of this turn hurt a creature.
+      spend.afterSpellDamage && turn.myTurn && !spellHurt(turn.marks).length
+        ? { reason: `${spend.name} rides a wizard spell's damage: hurt a creature with one this turn first.`, spent: false }
+        : null,
+      // Tempestuous Magic: in a fight, after a spell of 1st level or higher
+      // cast this turn (out of one no turn is kept, and the engine takes it).
+      spend.afterLevelledCast && inFightOf(turn) === true && turn.myTurn && !levelledCastThisTurn(turn.marks)
+        ? { reason: castFirstReason(spend.name, sheet.name), spent: false }
+        : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.
-      inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
+      inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || spend.afterSpellDamage || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
         ? { reason: `${spend.name} is used in a fight, on a creature in it.`, spent: false }
         : null,
       // "A creature you can see": none while the holder is blinded.
@@ -488,4 +517,9 @@ export function featureChoices(sheet: CharacterSheet): FeatureChoice[] {
     }
   }
   return out;
+}
+
+function ownOtherPrice(counterId: string, sheet: CharacterSheet): boolean {
+  const def = resourceDef(counterId);
+  return Boolean(def && otherPrice(def, sheet));
 }

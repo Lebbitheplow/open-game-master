@@ -22,7 +22,7 @@ import { chosenOptions } from "@/lib/srd/options";
 import { innateSpellsFor, racialCantripAbility } from "@/lib/srd/racial-grants";
 import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 import { asciiSlugOf, textKey } from "@/lib/language/text-logic";
-import { counterCastsHeld } from "@/lib/srd/counter-casts";
+import { counterCastsHeld, type FreeLimit } from "@/lib/srd/counter-casts";
 import { kiCantripsHeld, kiCastsHeld } from "@/lib/srd/mt-mr-casts";
 import { featureCastsHeld } from "@/lib/srd/mt-fb-casts";
 
@@ -54,6 +54,8 @@ export type GrantedCast = {
   selfOnly?: boolean;
   // No material component is needed.
   noMaterial?: boolean;
+  // What the free use is held to (src/lib/srd/counter-casts.ts freeLimit).
+  freeLimit?: FreeLimit;
   // What the GM still holds of the grant.
   note?: string;
   // Cast as a ritual and no other way (Spirit Seeker: "Ritual casting of
@@ -152,6 +154,7 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       ...(row.selfOnly ? { selfOnly: true } : {}),
       ...(row.noMaterial ? { noMaterial: true } : {}),
       ...(row.ability ? { ability: row.ability } : {}),
+      ...(row.freeLimit ? { freeLimit: row.freeLimit } : {}),
       ...(row.note ? { note: row.note } : {}),
     });
   }

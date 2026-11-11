@@ -12,6 +12,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { casterStateProblem, componentProblem, focusProblem } from "@/lib/dm/cast-rules";
+import { beforeFailedSave, deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
 import { dealtByTrigger, triggerCards } from "@/lib/battlemap/hand-react-triggers";
+import { wardCards } from "@/lib/battlemap/hand-ar-ws-ward";
 import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
@@ -141,6 +143,8 @@ function spellReaction(
     card,
     fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
     problem(casterStateProblem(sheet)),
+    // Arcane Deflection's price bars a reaction spell too (ar-ws-deflection-mark.ts).
+    problem(deflectionCastProblem(sheet, spell, facts?.level)),
     problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
     free?.free || slot ? null : { reason: free?.spent ?? `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
     costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),
@@ -501,9 +505,34 @@ export function reactionCards(
     const rebuke = spellReaction(sheet, turn, "Hellish Rebuke", prompt, (level) => `${save.forcer} makes a DEX save against ${level + 1}d10 fire.`, "enemy", hurt, `~${save.id}`);
     if (rebuke) cards.push(rebuke);
   }
+  // A reaction that may instead add to a save just failed (Arcane Deflection's
+  // +4: src/lib/dm/ar-ws-deflection.ts), dealt for each failed save a creature
+  // forced on them this turn, from the records the engine keeps.
+  for (const held of heldAuthored(sheet)) {
+    for (const reaction of held.entry.reactions ?? []) {
+      const does = reaction.does;
+      if (does.kind !== "ac_vs_hit" || does.orSave === undefined || (reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      const key = `${textKey(reaction.name)}@${sheet.id}`;
+      for (const save of saves.filter((entry) => (entry.kind ?? "save") === "save" && entry.characterId === sheet.id && entry.success === false && !(entry.answered ?? []).includes(key))) {
+        const card = base(
+          `${textKey(reaction.name).replace(/\s+/g, "-")}:save~${save.id}`,
+          reaction.name,
+          `${self} failed a save${save.forcer ? ` against ${save.forcer}` : ""}`,
+          "none",
+          { card: "reaction", feature: reaction.name, variant: "save" },
+          { rules: `+${does.orSave} on the save just failed.${does.cantripsOnly ? " Only cantrips until the end of your next turn." : ""}` },
+        );
+        // Judged as they stood before the failure, as the engine judges it.
+        const stood = beforeFailedSave(sheet, save.ability, save.dc);
+        cards.push(gated(card, standingGate(stood, turn, "reaction"), costGate("reaction", turn, stood, reaction.name)));
+      }
+    }
+  }
   // The reactions and triggered uses whose trigger is not a hit: a death, a
   // turn's end, a save forced, damage, a cast (hand-react-triggers.ts).
   cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach), unseen));
+  // A ward of Bastion of Law the character carries, spent off an open blow (hand-ar-ws-ward.ts).
+  cards.push(...wardCards(sheet, turn, hits));
   return cards;
 }
 
@@ -619,7 +648,7 @@ function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
     case "ac_vs_hit":
       return does.strikeOnMiss
         ? "Raise the AC against the attack that hit: a swing it beats misses, and you attack the attacker."
-        : "Raise the AC against the attack that hit: a swing it beats misses.";
+        : `Raise the AC against the attack that hit: a swing it beats misses.${does.cantripsOnly ? " Only cantrips until the end of your next turn." : ""}`;
     case "disadv_vs_hit":
       return "The attack that hit is rolled again at disadvantage.";
     case "reroll_hit":

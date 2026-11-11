@@ -28,6 +28,10 @@ import type { underwaterSwing } from "@/lib/dm/underwater";
 import { conditionsOf, PRONE, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { holdsFeat } from "@/lib/srd/feat-effects";
+
+// The Clockwork Soul's trance (authored-resources.json sub_trance_of_order).
+const TRANCE_OF_ORDER = "trance of order";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -82,7 +86,10 @@ export function enemySwingOdds(input: {
   // Blindsight or truesight past an invisible or blinded side (attack-light.ts).
   const senses = attackSenses(encounterId, { refId: standing.id, senses: enemySenses(standing) }, { refId: target.id, senses: characterSenses(target) });
   const upright = input.standingTarget ? live.conditions.filter((entry) => !isConditionNamed(entry, UNCONSCIOUS) && !isConditionNamed(entry, PRONE)) : null;
+  // Alert: an attacker the character cannot see gains nothing by it.
+  const alert = holdsFeat(live, "Alert");
   const conditionContext = attackContext({
+    targetAlert: alert,
     ...senses,
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounterId, standing.id, standing.conditions, standing.conditionMeta),
@@ -113,7 +120,9 @@ export function enemySwingOdds(input: {
   const worn = enemyExhaustion(standing.conditions) >= 3;
   // Sunlight Sensitivity: disadvantage in direct sunlight (sunlight.ts).
   const sunlit = hasTrait(standing.stats, "sunlightSensitivity") && inDirectSunlight(campaign.id);
-  const light = lightOnAttack(sight, { attacker: standing.displayName, target: target.name });
+  const lit = lightOnAttack(sight, { attacker: standing.displayName, target: target.name });
+  // The light's advantage is the target not seeing the attacker: none for Alert.
+  const light = alert && sight?.targetSees === false ? { ...lit, sources: lit.sources.filter((source) => source !== "advantage") } : lit;
   // Chill Touch: an undead the caster struck attacks the caster at
   // disadvantage until the end of the caster's next turn (CHILL_TOUCH_DREAD,
   // src/lib/dm/spell-attack-riders.ts; an older row carries only the spell).
@@ -126,7 +135,9 @@ export function enemySwingOdds(input: {
   // Elusive (rogue 18): no attack roll against them has advantage while
   // they are not incapacitated.
   const liveTarget = live;
-  const elusive = hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions);
+  // Trance of Order (Clockwork Soul): "attacks against you cannot have
+  // advantage" while the trance holds, as Elusive's.
+  const elusive = (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) || liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER));
   // Authored subclass features (Among the Dead, Fungal Body, a guardian's mark): authored-hooks.ts.
   const authored = authoredIncomingAttack({ campaignId: campaign.id, encounterId, attacker: standing, target: liveTarget });
   const sources: Advantage[] = [

@@ -59,6 +59,9 @@ const conditionInstanceSchema = z.object({
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),
+    // Ends once the creature can neither see nor hear its source (Hypnotic
+    // Gaze: src/lib/dm/ar-ws-senses-logic.ts).
+    endsUnsensed: z.boolean().optional(),
     saveOnDamage: z
       .object({
         ability: z.enum(ABILITIES),
@@ -93,6 +96,9 @@ const conditionInstanceSchema = z.object({
     whileRagingOf: z.string().trim().min(1).max(80).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
+    // The clock instant (in-world minutes) a commanding charm's running hour
+    // began at (Command Undead's hourly save, src/lib/dm/ar-ws-command-hours.ts).
+    hourFrom: z.number().int().min(0).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),

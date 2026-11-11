@@ -420,7 +420,7 @@ export function rollCharacterSave(
   // (Vigilant Rebuke a success, Slayer's Counter the forcing, Hellish Rebuke
   // the damage through it: src/lib/dm/last-save.ts).
   if (from) {
-    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against);
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against, dc);
   }
   return {
     success: outcome.total >= dc,

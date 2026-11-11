@@ -147,10 +147,14 @@ export function authoredSpellDice(
   sheet: AuthoredSheet & { level?: number },
   spell: { damageType?: string | null; secondType?: string | null; healing?: boolean; level?: number },
   mods: Record<string, number> = {},
-): { dice: string[]; diceSecond: string[]; notes: string[] } {
+): { dice: string[]; diceSecond: string[]; notes: string[]; oneTarget: Array<{ amount: number; second: boolean }> } {
   const dice: string[] = [];
   const diceSecond: string[] = [];
   const notes: string[] = [];
+  // The riders that land on one target only, as numbers (Radiant Soul's
+  // Charisma modifier): spell-damage-riders.ts adds them to the flat bonus,
+  // which an area spell gives its first creature alone.
+  const oneTarget: Array<{ amount: number; second: boolean }> = [];
   for (const { effect, held } of activeAuthored(sheet, "spell_rider")) {
     // Potent Spellcasting: cantrips only.
     if (effect.cantrips && spell.level !== 0) {
@@ -173,10 +177,17 @@ export function authoredSpellDice(
       continue;
     }
     const rolled = resolveFormula(effect.dice, held.level, mods);
-    (bySecond ? diceSecond : dice).push(rolled);
-    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}`);
+    const amount = Number(rolled);
+    if (effect.oneTarget && Number.isFinite(amount)) {
+      if (amount > 0) {
+        oneTarget.push({ amount, second: bySecond });
+      }
+    } else {
+      (bySecond ? diceSecond : dice).push(rolled);
+    }
+    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}${effect.oneTarget ? " (one target)" : ""}`);
   }
-  return { dice, diceSecond, notes };
+  return { dice, diceSecond, notes, oneTarget };
 }
 
 // Grasping Tentacles: the spell whose concentration damage cannot break, and
@@ -205,15 +216,17 @@ export function authoredConcentrationGuard(
 
 // Whether this spell may strike a second creature within 5 feet of the first:
 // Improved Reaper (a 1st to 5th level necromancy spell), Reaper (a
-// necromancy cantrip), Moon Fire (sacred flame).
+// necromancy cantrip), Moon Fire (sacred flame). `anywhere`: the second creature
+// need not stand by the first (Split Enchantment, an enchantment spell of 1st
+// level or higher: "can target a second", with no distance between them).
 export function authoredTwinSpell(
   sheet: AuthoredSheet,
   spell: { name?: string | null; school?: string | null; level: number },
-): { feature: string } | null {
+): { feature: string; anywhere: boolean } | null {
   for (const { effect, held } of activeAuthored(sheet, "twin_spell")) {
     const named = !effect.spells || effect.spells.some((entry) => textKey(entry) === textKey(spell.name ?? ""));
     if (named && textKey(spell.school ?? "") === textKey(effect.school) && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
-      return { feature: held.feature };
+      return { feature: held.feature, anywhere: Boolean(effect.anywhere) };
     }
   }
   return null;
@@ -243,6 +256,13 @@ export function standUpTiles(sheet: AuthoredSheet, speedTiles: number): number {
     return 1;
   }
   return found ? Math.max(0, Math.round(found.effect.feet / 5)) : Math.floor(speedTiles / 2);
+}
+
+// The feet a turn with the Attack action adds to the holder's walking speed
+// (Blade Flourish: "Whenever you take the Attack action on your turn, your
+// walking speed increases by 10 feet until the end of the turn").
+export function attackTurnSpeed(sheet: AuthoredSheet): number {
+  return activeAuthored(sheet, "attack_turn_speed").reduce((sum, found) => sum + found.effect.feet, 0);
 }
 
 export function holdsMote(sheet: AuthoredSheet): string | null {

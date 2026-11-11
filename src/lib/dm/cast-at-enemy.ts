@@ -49,6 +49,7 @@ import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castDamageType } from "@/lib/dm/ar-ws-awakened";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { landSpellDamage } from "@/lib/dm/cast-at-enemy-damage";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
@@ -259,7 +260,7 @@ export function handleCastAtEnemy(
         : "A successful save means no effect (the pack says so).",
     );
   }
-  const damageType = mech?.damageType ?? args.damageType;
+  let damageType = mech?.damageType ?? args.damageType;
   const spellName = resolvedMech?.name ?? facts?.name ?? args.spell;
   const spellLevel = resolvedMech?.spellLevel ?? facts?.level ?? 1;
   // What the spell rolls from the slot the caller named; checked here so a
@@ -392,6 +393,8 @@ export function handleCastAtEnemy(
       ...(args.level ? { level: args.level } : {}),
       // Magic Missile: the darts named, or every dart the casting holds.
       ...(mech?.darts ? { uses: args.darts ?? 20 } : {}),
+      // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
+      ...(args.damageType ? { swapType: args.damageType } : {}),
       via,
       reason: (args.reason ?? "").slice(0, 200),
     }),
@@ -404,6 +407,7 @@ export function handleCastAtEnemy(
   if (beam) {
     noteBeamAction(campaign.id, sheet.id);
   }
+  damageType = castDamageType(sheet, cast, { name: spellName, asked: args.damageType, own: mech?.damageType, second: mech?.secondType, level: facts?.level ?? null, authors });
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : undefined;
   // The darts this call throws: what the casting still held, in a fight.
   const darts = mech?.darts && typeof cast.uses === "number" ? cast.uses : args.darts;
@@ -552,6 +556,7 @@ export function handleCastAtEnemy(
         damageExpression,
         damageType,
         spellLevel,
+        slotLevel,
         halfOnSave,
         saved,
         base,

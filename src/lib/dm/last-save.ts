@@ -46,7 +46,8 @@ export type TriggerKind =
   | "weapon_hit"
   | "surge"
   | "wind_step"
-  | "rage_entered";
+  | "rage_entered"
+  | "heal_roll";
 
 // One trigger. `characterId` is the character it befell (who saved, whose pet
 // was hurt, who surged); `forcer` the creature that did it (forced the save,
@@ -59,6 +60,9 @@ export type LastSave = {
   forcer: Ref;
   // A save's outcome; absent on records written before failures were kept.
   success?: boolean;
+  // The DC it was rolled against, for what tells this save's own conditions
+  // from older ones (ar-ws-deflection-mark.ts beforeFailedSave).
+  dc?: number;
   // What the save resisted ("charmed", "frightened"), when the engine knew.
   against?: string;
   // Damage the forcer dealt through the save (a spell's, with `spell`), or to the pet.
@@ -81,6 +85,10 @@ export type LastSave = {
   // move and at its nearest along the way, in feet.
   fromFeet?: number;
   feet?: number;
+  // A healing spell's dice (kind heal_roll, ar-ws-empowered-healing.ts): the
+  // roll's own row, and the hit points the healed creature had before it.
+  rollId?: string;
+  hpBefore?: number;
   // The reactions that answered it, by answer key (last-hit.ts answerKey).
   answered?: string[];
   encounterId: string;
@@ -154,6 +162,18 @@ export function openTriggers(campaignId: string): LastSave[] {
   return rows.filter((record) => (kindOf(record) === "turn_end" ? record === lastEnd && endOpen : record.turn === key));
 }
 
+// When the turn now running began: the moment the pointer left the one before
+// it (a turn's end is kept under the ending turn's key). Null before any turn
+// of this fight has ended. Arcane Deflection reads it to tell a save failed
+// this turn from an older one on the roll record (ar-ws-deflection.ts).
+export function turnBeganAt(campaignId: string): string | null {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter) {
+    return null;
+  }
+  return readRow(campaignId).filter((record) => record.encounterId === encounter.id && kindOf(record) === "turn_end").at(-1)?.at ?? null;
+}
+
 // The saves still open (made or failed), this fight, this turn.
 export function openSaves(campaignId: string): LastSave[] {
   return openTriggers(campaignId).filter((record) => kindOf(record) === "save");
@@ -172,11 +192,11 @@ function append(campaignId: string, record: Omit<LastSave, "id" | "encounterId" 
 
 // A save in a fight forced by a creature (forced-save.ts rollCharacterSave),
 // made or failed. One with no forcer answers nothing and is not kept.
-export function recordSave(campaignId: string, characterId: string, ability: SaveAbility, forcer: Ref | null, success = true, against?: string) {
+export function recordSave(campaignId: string, characterId: string, ability: SaveAbility, forcer: Ref | null, success = true, against?: string, dc?: number) {
   if (!forcer) {
     return;
   }
-  append(campaignId, { kind: "save", characterId, ability, forcer, success, ...(against ? { against } : {}) });
+  append(campaignId, { kind: "save", characterId, ability, forcer, success, ...(against ? { against } : {}), ...(dc !== undefined ? { dc } : {}) });
 }
 
 // A save the GM asked a player to roll (request_roll, invoke-roll.ts), made
@@ -231,10 +251,12 @@ export function noteSaveDamage(campaignId: string, characterId: string, forcerId
 //                     Bardic Inspiration die (after-roll.ts)
 //   moved_near        `forcer` moved to within `feet` of `characterId` from
 //                     `fromFeet` (map-tools.ts move_token, recordMovesNear)
-export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near";
+//   heal_roll         `forcer` rolled a spell's healing dice for `characterId`
+//                     (heal-spell.ts; ar-ws-empowered-healing.ts)
+export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near" | "heal_roll";
 export function recordTrigger(
   campaignId: string,
-  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet">>,
+  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet" | "rollId" | "hpBefore">>,
   turn?: string,
 ): LastSave | null {
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);

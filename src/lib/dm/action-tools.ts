@@ -20,6 +20,7 @@ import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
+import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
 import { readyAction, searchAction, objectAction } from "@/lib/dm/object-actions";
@@ -370,6 +371,12 @@ export function handleTakeAction(
     return handleMountAction(campaign, sheet, args.action);
   }
   const encounter = getActiveEncounter(campaign.id);
+  // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5
+  // feet of movement, no action and no check (ar-ws-squeeze.ts).
+  const slip = args.action === "escape" ? squeezeSlip(campaign, sheet, encounter) : null;
+  if (slip && "done" in slip) {
+    return slip.done;
+  }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
   // A pin is never readied (it is not among the readiable actions).
@@ -577,5 +584,5 @@ export function handleTakeAction(
   }
   };
   const outcome = resolveAction();
-  return "error" in outcome ? outcome : { ...costs, ...outcome };
+  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
 }

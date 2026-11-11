@@ -57,6 +57,14 @@ export type ResourceEffect =
       target: "self" | "ally";
       variants?: string[];
       tempHp?: (level: number, abilityMods: Record<string, number>) => string;
+      // Held by the holder's concentration, as a spell is (Mantle of Majesty,
+      // Spirit Projection): the spend takes it, and a broken concentration
+      // ends the buff (src/lib/dm/resource-tools.ts holdConcentration).
+      concentration?: boolean;
+      // The holder also teleports up to this far (Misty Escape: "turn
+      // invisible and teleport up to 60 feet"): a teleport credit for
+      // move_token (src/lib/dm/feature-teleport.ts).
+      teleportFeet?: number;
     }
   // Hands a target a bonus die their next d20 roll consumes (Bardic
   // Inspiration). `othersOnly`: never the holder ("one creature other than
@@ -77,7 +85,9 @@ export type ResourceEffect =
   // Repositioning the server cannot fully own (maps are player-moved);
   // reported with the distance so move_token resolves it.
   // along: a willing creature within that many feet comes too (Misty Wanderer).
-  | { kind: "teleport"; feet: number; along?: number }
+  // `swap`: with a willing creature named, the two change places instead
+  // (Benign Transposition: src/lib/dm/ar-ws-transposition.ts).
+  | { kind: "teleport"; feet: number; along?: number; swap?: boolean }
   // Extra damage onto the creature a weapon hit landed on this turn
   // (Fury of the Small: the level, against a creature larger than the
   // holder), dealt by the spend (src/lib/dm/counter-saves.ts).
@@ -135,12 +145,14 @@ export type ResourceFx =
       target?: "self" | "ally";
       variants?: string[];
       tempHp?: DiceFormula;
+      concentration?: boolean;
+      teleportFeet?: number;
     }
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
   | ({ kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula } & SaveTerms)
   // along: a willing creature within that many feet comes too (Misty Wanderer).
-  | { kind: "teleport"; feet: number; along?: number }
+  | { kind: "teleport"; feet: number; along?: number; swap?: boolean }
   | { kind: "hit_damage"; dice: DiceFormula; larger?: boolean };
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
@@ -192,7 +204,15 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
     case "heal_pool":
       return { kind: "heal_pool" };
     case "heal_dice_pool":
-      return { kind: "heal_dice_pool", die: fx.die, ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}), ...(fx.rangeFt ? { rangeFt: fx.rangeFt } : {}), ...(fx.sight ? { sight: true } : {}) };
+      return {
+        kind: "heal_dice_pool",
+        die: fx.die,
+        ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}),
+        // "A creature you can see within 60 feet" (Healing Light): read by
+        // resource-tools.ts reachRefusal.
+        ...(fx.rangeFt ? { rangeFt: fx.rangeFt } : {}),
+        ...(fx.sight ? { sight: true } : {}),
+      };
     case "heal_target":
       return {
         kind: "heal_target",
@@ -209,6 +229,8 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
         rounds: fx.rounds,
         target: fx.target ?? "self",
         ...(fx.variants ? { variants: fx.variants } : {}),
+        ...(fx.concentration ? { concentration: true } : {}),
+        ...(fx.teleportFeet ? { teleportFeet: fx.teleportFeet } : {}),
         ...(fx.tempHp
           ? {
               tempHp: (level: number, mods: Record<string, number>) =>
@@ -236,7 +258,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
           : {}),
       };
     case "teleport":
-      return { kind: "teleport", feet: fx.feet, ...(fx.along ? { along: fx.along } : {}) };
+      return { kind: "teleport", feet: fx.feet, ...(fx.along ? { along: fx.along } : {}), ...(fx.swap ? { swap: true } : {}) };
     case "hit_damage":
       return { kind: "hit_damage", dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods), ...(fx.larger ? { larger: true } : {}) };
   }
@@ -306,6 +328,15 @@ export type ResourceDef = {
   rechargeFor?: (level: number) => Recharge;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
+  // What a rest leaves held, in place of a refill (Power Surge: "After a long
+  // rest you have one ... and you gain one at the end of a short rest if you
+  // have none"): src/lib/srd/resource-refills.ts.
+  restHolds?: { long?: number; shortIfNone?: number };
+  // Every spent use comes back when its holder casts a spell of this school
+  // and level or higher (Benign Transposition: "or when you cast a
+  // conjuration spell"): src/lib/dm/ar-ws-transposition.ts castRefills, called
+  // by the one door every casting passes (cast-guard.ts castSpell).
+  castRefill?: { school: string; minLevel: number };
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
@@ -317,6 +348,14 @@ export type ResourceDef = {
   // spends a swing (resource-turn.ts spendAttack), and the Hand gates the
   // card as an attack.
   replacesAttack?: boolean;
+  // With no use left (and no fallbackPool to pay), a spell slot of this
+  // level or higher pays for one instead, the lowest such slot unspent
+  // ("or by expending a spell slot of 3rd level or higher").
+  fallbackSlot?: { minLevel: number };
+  // Used at 0 hit points: the moment it answers happens there (Defy Death
+  // on a death save the warlock succeeds on, "when you succeed on a death
+  // saving throw"). Anything else at 0 is refused as unconscious.
+  atZeroHp?: boolean;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
   requires?: "below_half";
@@ -764,9 +803,13 @@ type SubclassResourceRow = {
   fallbackPool?: { id: string; amount: number };
   slotFallback?: number;
   replacesAttack?: boolean;
+  fallbackSlot?: { minLevel: number };
+  atZeroHp?: boolean;
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
+  restHolds?: { long?: number; shortIfNone?: number };
+  castRefill?: { school: string; minLevel: number };
 };
 
 function proficiencyBonus(level: number): number {
@@ -809,9 +852,13 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
   ...(row.slotFallback ? { slotFallback: row.slotFallback } : {}),
   ...(row.replacesAttack ? { replacesAttack: true } : {}),
+  ...(row.fallbackSlot ? { fallbackSlot: row.fallbackSlot } : {}),
+  ...(row.atZeroHp ? { atZeroHp: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),
+  ...(row.restHolds ? { restHolds: row.restHolds } : {}),
+  ...(row.castRefill ? { castRefill: row.castRefill } : {}),
 }));
 
 // One with Shadows (SRD 5.1, a warlock invocation): an action, as often as

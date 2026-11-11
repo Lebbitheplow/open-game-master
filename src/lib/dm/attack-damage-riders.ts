@@ -74,12 +74,13 @@ export function attackDamageRiders(input: {
       ? authoredDamageAbility(sheet, { melee: !profile.ranged }, Object.fromEntries(Object.entries(sheet.abilities).map(([key, score]) => [key, Math.floor((score - 10) / 2)])))
       : [];
   const onHit = withTargetDice(attackOnHitDice(sheet, kind, !profile.ranged, marked), input.enemy?.conditions ?? []);
-  // Feature damage riders ride weapon attacks only; once-per-turn ones are
-  // reconciled with the turn budget (pc-attack-damage.ts
-  // claimOncePerTurnRiders), as Sneak Attack is.
+  // Feature damage riders ride weapon attacks, and a rider "when: attack"
+  // any attack roll that hits, a spell's too (Genie's Wrath: "a hit with an
+  // attack roll"); once-per-turn ones are reconciled with the turn budget
+  // (pc-attack-damage.ts claimOncePerTurnRiders), as Sneak Attack is.
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
-      ? []
+      ? riders.damageRiders.filter((rider) => rider.when === "attack").map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }))
       : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised })]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {

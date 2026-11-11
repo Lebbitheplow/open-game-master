@@ -22,6 +22,7 @@ import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turn
 import { getBattleMap, getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, setEnemyConcentration, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -36,6 +37,7 @@ import { isQuake, quakeFissures, quakeShake } from "@/lib/dm/zone-quake";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { bramblesAfterMove } from "@/lib/dm/mt-fb-arrow-riders";
+import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { classLevelOf, saveDamageTaken } from "@/lib/srd/trait-rules";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -168,13 +170,18 @@ function strike(
     }
     let dealt = 0;
     if (dice && (failed || (trigger.half && !trigger.damageOnFail))) {
-      const rolled = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by).total;
+      const thrown = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by);
+      // Spell Bombardment on a character's standing spell (src/lib/dm/ar-ws-bombardment.ts).
+      const caster = zone.casterKind === "pc" ? getSheetById(zone.casterId) : null;
+      const rolled = ((caster ? spellBombardment({ campaign, turn: null, sheet: caster, outcome: thrown, spell: zone.spell }) : null)?.outcome ?? thrown).total;
       dealt = failed ? rolled : Math.floor(rolled / 2);
       if (dealt > 0) {
         const before = enemy.currentHp;
         // The area's caster is whose damage it is (acting-party.ts).
         lines.push(withActor({ kind: zone.casterKind === "pc" ? "sheet" : "enemy", ref: zone.casterId }, () => hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane)));
         dealt = Math.max(0, before - (getEnemy(enemy.id)?.currentHp ?? before));
+        // A character's area killed it (Grim Harvest, ar-ws-harvest.ts).
+        lines.push(...(zone.casterKind === "pc" && !row.mundane ? runningSpellKill(campaign, encounter, enemy, zone.casterId, { spell: zone.runsAs ?? zone.spell, slotLevel: zone.slotLevel }) : []));
       }
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;

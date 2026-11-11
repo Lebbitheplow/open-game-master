@@ -22,6 +22,7 @@
 // enemy-damage.ts, which reaches it.
 
 import { defenderDodging } from "@/lib/dm/defender-dodge";
+import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -45,6 +46,7 @@ import type { Advantage } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
+import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -54,6 +56,7 @@ import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
+import { noteCurseHeal } from "@/lib/dm/master-of-hexes";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -152,6 +155,12 @@ export function authoredIncomingAttack(input: {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
+  }
+  // Lunar Empowerment's New Moon: entirely in darkness (ar-ws-lunar-empowerment.ts).
+  const veil = darkVeil(input.campaignId, input.encounterId, target);
+  if (veil) {
+    sources.push("disadvantage");
+    notes.push(veil);
   }
   for (const name of GUARD_MARKS) {
     const condition = attacker.conditions.find((entry) => textKey(entry) === name);
@@ -338,7 +347,8 @@ export function authoredOnHit(
   campaign: Campaign,
   // `melee` unknown (a parked roll): read off the board. `weapon` false for
   // a spell attack, which lays no mark.
-  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean },
+  // `spell`: the spell a spell attack killed with (ar-ws-harvest.ts killingSpell).
+  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean; spell?: { level: number; school?: string | null } },
 ): string[] {
   const lines: string[] = [];
   const sheet = getSheetById(input.sheet.id) ?? input.sheet;
@@ -377,9 +387,13 @@ export function authoredOnHit(
       const melee = input.melee ?? withinFeet(encounter.id, sheet.id, enemy.id, 5);
       lines.push(...markEnemy(encounter, sheet, enemy, melee, input.weaponName));
     }
+    // Form of Dread's fright on a hit (src/lib/dm/hit-save.ts).
+    if (!input.dead) {
+      lines.push(...hitSavesOnHit(campaign, encounter, sheet, enemy));
+    }
   }
   if (input.dead) {
-    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false));
+    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false, input.spell));
   }
   return lines;
 }
@@ -521,6 +535,8 @@ export function authoredOnKill(
       const cleared = removeConditions(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, [condition]);
       patchSheet(holder.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
       publishSheet(campaign, holder.id);
+      // Master of Hexes may move the curse and give these back (master-of-hexes.ts).
+      noteCurseHeal(campaign, holder.id, given, enemy.id);
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }

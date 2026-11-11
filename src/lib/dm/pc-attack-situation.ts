@@ -284,6 +284,7 @@ export function attackSituation(input: {
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
         carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   if (load?.disadvantage && load.note) {

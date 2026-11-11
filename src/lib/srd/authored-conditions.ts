@@ -97,6 +97,14 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   },
   summaryOnly("tides_of_chaos_check", "tides of chaos (check)", "Tides of Chaos: advantage on the next ability check, which spends it."),
   summaryOnly("tides_of_chaos_save", "tides of chaos (save)", "Tides of Chaos: advantage on the next saving throw, which spends it."),
+  // Bastion of Law's ward, the dice left in its name (src/lib/dm/ar-ws-bastion.ts).
+  ...[1, 2, 3, 4, 5].map((dice) =>
+    summaryOnly(`bastion_of_law_${dice}`, `bastion of law (${dice}d8)`, `Bastion of Law: a ward of ${dice}d8. When they take damage they may spend any of the dice to reduce it by the total rolled, for no reaction; it lasts until a long rest.`),
+  ),
+  // Lunar Empowerment's light in the Full Moon phase (src/lib/dm/ar-ws-lunar-empowerment.ts).
+  summaryOnly("moonlight", "moonlight", "Lunar Empowerment (Full Moon): sheds bright light for 10 feet and dim light for 10 feet beyond; the same bonus action douses it."),
+  // Laid by a Metamagic spend, taken by the next casting (src/lib/dm/ar-ws-lunar-boons.ts).
+  summaryOnly("lunar_boon", "lunar boon", "Lunar Boons: a Metamagic option was just paid; if the next spell cast is of the current phase's schools, 1 sorcery point comes back and a boon is spent."),
   summaryOnly("surge_chance", "surge chance", "Wild Magic Surge: a sorcerer spell was just cast with Tides of Chaos spent; if the GM has the sorcerer roll on the wild magic table now, Tides of Chaos comes back."),
   ...(["1d8", "1d10"] as const).map(
     (dice): ConditionEffectRow => ({
@@ -162,6 +170,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     }),
   ),
   summaryOnly("hound_of_ill_omen", "hound of ill omen", "Hound of Ill Omen: a shadow hound hunts this creature; it saves at disadvantage against the sorcerer's spells."),
+  summaryOnly("hunting_its_quarry", "hunting its quarry", "Hound of Ill Omen: this hound hunts one creature. It attacks no other, and is gone when its quarry falls."),
   summaryOnly("eldritch_strike", "eldritch strike", "Eldritch Strike: disadvantage on the next save against the fighter's spell before the end of their next turn."),
   summaryOnly("distracted", "distracted", "Distracted by a mage hand: the rogue who distracted it has advantage on attacks against it this turn."),
   summaryOnly("ancestral_protectors", "ancestral protectors", "Ancestral Protectors: disadvantage on attacks against anyone but the barbarian, whose allies resist its damage, until the barbarian's next turn."),
@@ -411,6 +420,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
       { kind: "check", ability: "str" },
     ],
   },
+  summaryOnly("swift_ritual", "swift ritual", "Awakened Spellbook: the next ritual cast from the spellbook takes its own casting time, without the 10 extra minutes. Lasts until that ritual or a long rest."),
   summaryOnly("emissary_lapsed", "emissary lapsed", "Emissary of Redemption is set aside until a long rest: the paladin attacked or harmed a creature."),
   // Laid as an ally's turn starts beside a Glory paladin (src/lib/dm/divine-auras.ts
   // alacrityTurnStart); the end of that turn takes it.
@@ -473,4 +483,6 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   // brambles take 10 feet of speed, and a Shadow Arrow leaves 5 feet of sight.
   { id: "grasping_arrow", match: ["grasping arrow"], summary: "Grasping Arrow: brambles wrap the creature. Its speed is 10 feet lower, and the first time on each turn it moves it takes 2d6 slashing damage.", speedBonus: -10 },
   { id: "shadow_arrow", match: ["shadow arrow"], summary: "Shadow Arrow: the creature cannot see anything farther than 5 feet away.", sightFeet: 5 },
+  // Alter Memories: the hours are in the name ("memory stripped (5 hours)").
+  summaryOnly("memory_stripped", "memory stripped", "Alter Memories: the Enchantment wizard stripped this creature of the hours named of what it remembers of the time it was charmed; they cannot reach its memory again under this charm."),
 ];

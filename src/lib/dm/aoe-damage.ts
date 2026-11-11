@@ -59,6 +59,9 @@ import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -384,7 +387,7 @@ export function handleAoeDamage(
     plan = planned;
     // Prismatic Spray rolls a ray for each creature (prismatic.ts).
     if (isPrismaticSpray(planned.runsAs ?? planned.spell)) {
-      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
+      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, slotLevel: planned.slotLevel, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
       return { ok: true, spell: planned.spell, caster: planned.caster.name, dc: planned.dc, saveAbility: "dex", results, ...(planned.corrections.length ? { corrected: planned.corrections } : {}), ...(skippedDead.length ? { skippedDead } : {}) };
     }
     // Limited Magic Immunity (the rakshasa): the area washes over it.
@@ -489,6 +492,7 @@ export function handleAoeDamage(
   // creature it catches is not (the tracker's word for it).
   let wrathNote: string | null = null;
   let empoweredNote: string | null = null;
+  let bombardNote: string | null = null;
   const areaBy: RollAttacker | null = plan
     ? { kind: "sheet", id: plan.caster.id, name: plan.caster.name }
     : enemyUse
@@ -531,7 +535,12 @@ export function handleAoeDamage(
       empoweredNote = empoweredLine(empowered.empower);
     }
     for (const [index, { expression, type }] of parts.entries()) {
-      const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
+      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
+      // Spell Bombardment: a die at its highest number is rolled again, once
+      // a turn, on the roll's own card (src/lib/dm/ar-ws-bombardment.ts).
+      const burst = plan ? spellBombardment({ campaign, turn, sheet: plan.caster, outcome: thrown, spell: plan.spell, card: false }) : null;
+      const outcome = burst?.outcome ?? thrown;
+      bombardNote = burst?.note ?? bombardNote;
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -583,8 +592,16 @@ export function handleAoeDamage(
   const saveCover = (refId: string): number =>
     plan?.mech?.ignoresCover ? 0 : origin ? coverFromPoint(encounter.id, origin, refId) : originRef ? coverFor(encounter.id, originRef, refId) : 0;
 
+  // Radiant Soul's bonus rides the first creature's damage alone (aoe-spell.ts oneTarget).
+  const blastFor = (index: number): DamagePart[] => {
+    const one = index === 0 && args.damage !== undefined && args.damage !== 0 && args.damage !== "0" ? plan?.oneTarget : null;
+    if (!one || (!one.first && !one.second)) {
+      return blast;
+    }
+    return blast.map((part, at) => ({ ...part, amount: part.amount + (at === 0 ? one.first + (blast.length === 1 ? one.second : 0) : one.second) }));
+  };
   // Enemy saves roll silently from stat blocks; results ride the table.
-  for (const enemy of enemyTargets) {
+  for (const [index, enemy] of enemyTargets.entries()) {
     // The creature's conditions decide the save as a character's would.
     // Stinking Cloud cannot touch a creature immune to poison.
     const untouched = plan ? spellAutoSave(plan.mech, enemy) : null;
@@ -606,7 +623,7 @@ export function handleAoeDamage(
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });
     const success = untouched ? true : save ? save.success : false;
-    const taken = partsTaken(blast, success ? (halfOnSave ? "half" : "none") : "full");
+    const taken = partsTaken(blastFor(index), success ? (halfOnSave ? "half" : "none") : "full");
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: enemy.displayName,
@@ -681,6 +698,11 @@ export function handleAoeDamage(
     };
     const landing = taken.filter((entry) => entry.amount > 0);
     const [firstPart, secondPart] = landing;
+    // A character's spell that hurt the creature: Power Surge reads it
+    // (spell-damage-mark.ts).
+    if (plan && landing.length) {
+      markSpellDamage(campaign.id, plan.caster.id, enemy.id, plan.spell);
+    }
     const now = getEnemy(enemy.id) ?? enemy;
     if (firstPart && secondPart && now.status === "alive") {
       // Two types are one wound, each meeting its own resistance. Landed one
@@ -714,6 +736,12 @@ export function handleAoeDamage(
           plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistance: true } : {}) } : undefined,
         ),
       );
+    }
+    // A character's spell killed it: Grim Harvest and the features that answer
+    // any kill (ar-ws-harvest.ts).
+    const onKill = plan && row.dead ? spellKill(campaign, encounter, enemy, plan.caster.id, { spell: plan.spell, spellLevel: plan.spellLevel, slotLevel: plan.slotLevel }) : [];
+    if (onKill.length) {
+      row.subclassFeatures = onKill;
     }
     // What the failure cost, so legendary_resist can settle it as a success
     // (src/lib/dm/legendary-tools.ts): the conditions and the hit points a
@@ -869,6 +897,7 @@ export function handleAoeDamage(
     ...(plan ? { spell: plan.spell, caster: plan.caster.name } : {}),
     ...(wrathNote ? { destructiveWrath: wrathNote } : {}),
     ...(empoweredNote ? { empowered: empoweredNote } : {}),
+    ...(bombardNote ? { spellBombardment: bombardNote } : {}),
     ...(plan?.mech?.note ? { spellNote: plan.mech.note } : {}),
     ...(shaken.length ? { concentration: shaken } : {}),
     damageRolled: total,

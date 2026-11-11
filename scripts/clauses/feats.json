@@ -13,9 +13,9 @@
    },
    {
     "c": "Standing up from prone costs only 5 feet of movement",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the stand-up cost for a holder"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts standsCheaply, read by authored-effects-more.ts standUpTiles (src/lib/battlemap/view.ts pcMoveBudget)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.stand"
    },
    {
     "c": "climbing costs no extra movement",
@@ -51,9 +51,8 @@
    },
    {
     "c": "you can mimic the speech or sounds of a creature you have heard for at least 1 minute",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Insight contest against the mimicry"
+    "is": "left",
+    "why": "Mimicry is roleplay; the Insight contest a listener makes against it is the GM's request_roll, with no number of the feat's own."
    }
   ]
  },
@@ -65,9 +64,9 @@
   "clauses": [
    {
     "c": "After you Dash, you can use a bonus action to make one melee attack or to shove a creature.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the bonus attack after a Dash"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove after a Dash (src/lib/dm/action-price.ts); the bonus melee attack is featBonusAttack (pc-attack-options.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.charger.shove"
    },
    {
     "c": "If you moved at least 10 feet in a straight line first, the attack deals an extra 5 damage or the shove pushes 10 extra feet.",
@@ -91,15 +90,15 @@
    },
    {
     "c": "being within 5 feet of a hostile creature gives you no disadvantage on ranged attacks",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a crossbow shot with a foe adjacent (Gunner's same clause is held)"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-plan.ts (Crossbow Expert sets aside the crowded shot)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.crossbow-expert.adjacent"
    },
    {
     "c": "when you take the Attack action with a one-handed weapon you can use a bonus action to attack with a hand crossbow you are holding",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the hand crossbow's bonus attack"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusAttack (ONE_HANDED_ATTACKED), read by src/lib/dm/pc-attack-options.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.crossbow-expert.bonus"
    }
   ]
  },
@@ -115,9 +114,9 @@
    },
    {
     "c": "Dexterity 13 or higher",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Dexterity 13) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "When a creature hits you with a melee attack while you wield a finesse weapon you are proficient with, you can use your reaction to add your proficiency bonus to your AC against that attack, possibly turning it into a miss.",
@@ -135,12 +134,10 @@
   "clauses": [
    {
     "c": "You gain +1 AC while wielding a separate melee weapon in each hand",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.dual-wielder.ac",
-    "where": "src/lib/srd/index.ts deriveAc (no Dual Wielder term)",
-    "severity": "medium",
     "kind": "rule-missing",
-    "note": "A fighter with a shortsword in each hand has AC 12 with the feat and without it."
+    "by": "src/lib/srd/feat-ac.ts dualWielderAcBonus, read by src/lib/srd/index.ts acBreakdownFor"
    },
    {
     "c": "you can two-weapon fight with weapons that lack the light property",
@@ -176,9 +173,8 @@
    },
    {
     "c": "you can search for traps while travelling at a normal pace",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: travel pace"
+    "is": "left",
+    "why": "Travel pace is narrated: the app keeps no overland pace for a search to change."
    }
   ]
  },
@@ -196,9 +192,9 @@
    },
    {
     "c": "When you roll a Hit Die to regain hit points, the minimum you regain is twice your Constitution modifier.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hit die spent on a short rest with a low roll"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts hitDieHealingFloor (src/lib/dm/hit-dice.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.durable.floor"
    }
   ]
  },
@@ -214,9 +210,9 @@
    },
    {
     "c": "Elf or half-elf",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (elf or half-elf) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Increase your Dexterity, Intelligence, Wisdom, or Charisma by 1, to a maximum of 20.",
@@ -250,9 +246,9 @@
    },
    {
     "c": "The ability to cast at least one spell",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Choose acid, cold, fire, lightning or thunder.",
@@ -302,9 +298,9 @@
   "clauses": [
    {
     "c": "When you stabilize a creature with a healer's kit it also regains 1 hit point.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 1 hit point on a kit stabilize by a holder"
+    "is": "held",
+    "by": "src/lib/dm/stabilize.ts (Healer: the kit's stabilize gives 1 hit point)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.healer.stabilize"
    },
    {
     "c": "As an action you can spend a use of a healer's kit to restore 1d6 + 4 hit points plus the creature's Hit Dice to a creature, once each per rest.",
@@ -326,15 +322,15 @@
    },
    {
     "c": "Proficiency with medium armor",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (medium armor) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Increase your Strength by 1, to a maximum of 20, and gain proficiency with heavy armor.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the heavy armor proficiency the feat grants"
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec armor, applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.heavily-armored.proficiency"
    }
   ]
  },
@@ -350,9 +346,9 @@
    },
    {
     "c": "Proficiency with heavy armor",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (heavy armor) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Increase your Strength by 1, to a maximum of 20.",
@@ -362,12 +358,10 @@
    },
    {
     "c": "While you wear heavy armor, bludgeoning, piercing and slashing damage from nonmagical attacks is reduced by 3.",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.heavy-armor-master.reduce",
-    "where": "src/lib/srd/feat-effects.ts heavyArmorMasterReduction (defined, called from nowhere: no damage path reads it)",
-    "severity": "high",
     "kind": "rule-missing",
-    "note": "A nonmagical club hit of 6 on a fighter in plate (AC 18) with the feat takes all 6. grep finds heavyArmorMasterReduction only where it is defined."
+    "by": "src/lib/dm/pc-damage.ts blowDefenses reduceWeapon (heavyArmorMasterReduction) on an attack flagged by enemy-attack.ts"
    }
   ]
  },
@@ -383,9 +377,9 @@
    },
    {
     "c": "Charisma 13 or higher",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Charisma 13) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You can spend 10 minutes rallying up to six friendly creatures within 30 feet who can hear and understand you.",
@@ -415,9 +409,8 @@
    },
    {
     "c": "You always know which way is north and how many hours remain before sunrise or sunset, and you accurately recall anything you have seen or heard in the past month.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives; no written ruling names it"
+    "is": "left",
+    "why": "Information the GM gives (direction, the hours to sunrise, what was seen): nothing on a sheet or in a roll holds it."
    }
   ]
  },
@@ -545,9 +538,9 @@
    },
    {
     "c": "and you have advantage on saves against spells cast by creatures within 5 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a save against an adjacent caster's spell"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts spellSaveAdvantageReach (src/lib/dm/cast-at-player.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mage-slayer.save"
    }
   ]
  },
@@ -565,9 +558,9 @@
    },
    {
     "c": "and gain one superiority die of d6, which refills on a short or long rest",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the d6 counter and its short rest"
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts the feat's superiority die (1, d6, short rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.martial-adept.die"
    }
   ]
  },
@@ -583,9 +576,9 @@
    },
    {
     "c": "Proficiency with medium armor",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (medium armor) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Wearing medium armor does not impose disadvantage on Stealth checks",
@@ -639,15 +632,15 @@
    },
    {
     "c": "Proficiency with light armor",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (light armor) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with medium armor and shields.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the medium armor and shield proficiencies the feat grants"
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec armor, applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.moderately-armored.proficiency"
    }
   ]
  },
@@ -679,9 +672,8 @@
    },
    {
     "c": "You can read lips",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives"
+    "is": "left",
+    "why": "Reading lips is information the GM gives in a scene: no number, roll or sheet field holds it."
    },
    {
     "c": "and you gain a +5 bonus to your passive Perception and passive Investigation",
@@ -705,9 +697,9 @@
    },
    {
     "c": "You also get an opportunity attack when a creature enters your reach with such a weapon.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an enemy entering the polearm's reach"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts polearmReachOpportunity (src/lib/dm/opportunity.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.polearm-master.enter"
    }
   ]
  },
@@ -737,9 +729,9 @@
    },
    {
     "c": "Intelligence or Wisdom 13 or higher",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Intelligence or Wisdom 13) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You gain a ritual book holding two 1st-level ritual spells from a class you choose, and you can cast any ritual in it.",
@@ -749,9 +741,8 @@
    },
    {
     "c": "You can add further rituals of a level you can cast to the book by copying them.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "left",
+    "why": "Copying a ritual into the book is downtime the GM charges; the rituals the book holds are the sheet's spells, which the builder and the cast tools read."
    }
   ]
  },
@@ -789,15 +780,15 @@
   "clauses": [
    {
     "c": "Attacking at long range gives you no disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a shot at long range"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-plan.ts shotIgnoresLongRange",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sharpshooter.long-range"
    },
    {
     "c": "your ranged attacks ignore half and three-quarters cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts shotIgnoresCover (src/lib/dm/pc-attack-plan.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sharpshooter.cover"
    },
    {
     "c": "before a ranged attack with a weapon you are proficient with you can take a -5 penalty to the attack roll in exchange for +10 damage on a hit",
@@ -815,9 +806,9 @@
   "clauses": [
    {
     "c": "If you take the Attack action you can use a bonus action to shove a creature within 5 feet with your shield.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shield shove"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove (src/lib/dm/action-price.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shield-master.shove"
    },
    {
     "c": "You add your shield's AC bonus to Dexterity saves against effects that target only you, and you can use a reaction to take no damage on a successful Dexterity save.",
@@ -839,15 +830,15 @@
    },
    {
     "c": "Dexterity 13 or higher",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Dexterity 13) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You can hide when lightly obscured, missing with a ranged attack does not reveal your position, and dim light does not impose disadvantage on your Perception checks that rely on sight.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts hasSkulker (src/lib/dm/hide-traits.ts, pc-attack-plan.ts, rolls.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skulker.hide"
    }
   ]
  },
@@ -863,15 +854,15 @@
    },
    {
     "c": "The ability to cast at least one spell",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "The range of your attack-roll spells doubles, they ignore half and three-quarters cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a spell attack at twice its range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.spell-sniper.range",
+    "by": "src/lib/dm/cast-reach.ts (twice the range of an attack-roll spell) and pc-attack-plan.ts (half and three-quarters cover ignored)"
    },
    {
     "c": "and you learn one attack cantrip from the bard, cleric, druid, sorcerer, warlock or wizard list",
@@ -933,9 +924,9 @@
    },
    {
     "c": "The ability to cast at least one spell",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You have advantage on Constitution saves to maintain concentration",
@@ -965,9 +956,9 @@
   "clauses": [
    {
     "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with four weapons of your choice.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the four weapon picks"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.weapon-master.picks",
+    "by": "feat-grant-text.ts featGrantSpec (four weapons) and feat-effects.ts featAbilityIncrease (Strength or Dexterity, capped at 20)"
    }
   ]
  },
@@ -1005,9 +996,9 @@
    },
    {
     "c": "You learn invisibility and one 1st-level illusion or necromancy spell, each castable once per long rest without a slot as well as with slots.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Shadow Touched's own picks (Fey Touched's same shape is held)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shadow-touched.picks",
+    "by": "feat-grant-text.ts featGrantSpec taught (invisibility and one illusion or necromancy spell); the daily free cast is the feat-spells row Fey Touched's held clause runs"
    }
   ]
  },
@@ -1045,9 +1036,8 @@
    },
    {
     "c": "You can speak telepathically to any creature within 60 feet that shares a language with you",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: conversation"
+    "is": "left",
+    "why": "Telepathic speech is conversation at this table: nothing on a sheet changes."
    },
    {
     "c": "and you can cast detect thoughts once per long rest without a slot",
@@ -1069,9 +1059,9 @@
    },
    {
     "c": "Spellcasting or Pact Magic",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Spellcasting or Pact Magic) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You learn one Eldritch Invocation of your choice whose prerequisites you meet.",
@@ -1099,15 +1089,15 @@
    },
    {
     "c": "Spellcasting or Pact Magic",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Spellcasting or Pact Magic) refused at the builder for a sheet without it"
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
    },
    {
     "c": "You learn two Metamagic options from the sorcerer list and gain 2 sorcery points to spend on them, refilled on a long rest.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause; the options themselves do nothing but cost (clauses-srd-sorcerer-heightened-spell)"
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts the feat's sorcery_points (2, long rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.metamagic-adept.points"
    }
   ]
  },
@@ -1219,9 +1209,9 @@
   "clauses": [
    {
     "c": "You ignore resistance to poison damage",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a poison hit against a creature resisting poison"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts poisonerIgnoresResistance (src/lib/dm/pc-attack-damage.ts, attack-record.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.resistance"
    },
    {
     "c": "you can coat a weapon as a bonus action so its next hit forces a DC 14 Constitution save for 2d8 poison damage and the poisoned condition",
@@ -1231,9 +1221,9 @@
    },
    {
     "c": "and you gain proficiency with the poisoner's kit",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.kit",
+    "by": "feat-grant-text.ts featGrantSpec fixedTools (the poisoner's kit)"
    }
   ]
  },
@@ -1251,9 +1241,9 @@
    },
    {
     "c": "You gain proficiency with firearms, ignore their loading property",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.gunner.proficiency",
+    "by": "feat-grant-text.ts featGrantSpec fixedWeapons firearms; feat-combat.ts shootsFreelyInMelee (loading ignored)"
    },
    {
     "c": "and being within 5 feet of a hostile creature gives you no disadvantage on ranged attacks",
@@ -1287,9 +1277,9 @@
    },
    {
     "c": "and an attacker hidden from your sight gets no advantage against you merely because you cannot see it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an unseen attacker's roll against a holder"
+    "is": "held",
+    "by": "src/lib/dm/condition-logic.ts attackContext targetAlert and the light's advantage, from src/lib/dm/enemy-swing-odds.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.alert.unseen"
    }
   ]
  },
@@ -1307,9 +1297,9 @@
    },
    {
     "c": "This feat raises no ability score.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skilled.no-score",
+    "by": "feat-effects.ts featAbilityIncrease answers no score for Skilled"
    }
   ]
  },

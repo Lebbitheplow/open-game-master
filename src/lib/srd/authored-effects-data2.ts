@@ -441,7 +441,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         name: "Planar Warrior",
         action: "bonus",
-        does: { kind: "buff", condition: [[3, "planar warrior"], [11, "planar warrior (2d8)"]], rounds: 1 },
+        // "Choose one creature you can see": the mark names it (quarry), so the
+        // force rides the hit on that creature alone.
+        does: { kind: "buff", condition: [[3, "planar warrior"], [11, "planar warrior (2d8)"]], rounds: 1, quarry: true },
       },
     ],
   },

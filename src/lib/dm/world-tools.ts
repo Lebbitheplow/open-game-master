@@ -619,6 +619,8 @@ export function handlePassTime(
     ...(living.length ? { lifestyle: living } : {}),
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
+    // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.
+    ...(moved.hourSaves.length ? { hourlySaves: moved.hourSaves } : {}),
   };
 }
 

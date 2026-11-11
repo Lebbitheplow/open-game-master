@@ -5,6 +5,9 @@ import { cardMetamagic } from "@/lib/dm/mt-srd-metamagic-logic";
 import { takesTheDead } from "@/lib/srd/dead-targets";
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
+import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
+import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
@@ -28,7 +31,7 @@ import { waitsForTrigger } from "@/lib/battlemap/hand-react-triggers";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, bundledSpellSchool, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
-import { counterCost, counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
+import { counterCost, counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { inFightOf, polymorphChoice, wildShapeChoice } from "@/lib/battlemap/hand-counters";
 import { counterCastsHeld } from "@/lib/srd/counter-casts";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
@@ -397,6 +400,8 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
         ? { error: free.spent }
         : slotPlan(sheet, name, facts, fact.level)
       : null;
+  const asAttack = !stored && !beam && holdsCantripAttack(sheet);
+  if (asAttack && fact.level === 0 && cost === "action") notes.push("Extra Attack: this cantrip can take the place of one attack of your Attack action.");
   const charge = turnCharge({
     who: sheet.name,
     // Not a casting: charged as cast-repeat.ts charges it.
@@ -404,13 +409,23 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     spell: name,
     slotLevel: slotLevel ?? null,
     inFight: true,
-    budget: turn.myTurn ? budgetOf(turn, sheet) : null,
+    // A Bladesinger's cantrip is one attack of the Attack action, counted
+    // against the attacks it grants (src/lib/dm/ar-ws-cantrip-attack.ts).
+    budget: turn.myTurn ? budgetOf(turn, sheet, asAttack ? 1 + riders.extraAttacks : 1) : null,
     reactionSpent: turn.reactionUsed,
     // Mantle of Majesty, Elder Champion (the school is the pack's, so
     // Embodiment of the Law is the engine's to decide).
     bonusCast: bonusCastOf(sheet, facts, null),
+    attackCantrip: asAttack,
   });
   const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
+  // Sorcery points in place of the slot (Psionic Sorcery, Eyes of the Dark),
+  // as the cast guard pays them: a psionic spell is cast bare when a component
+  // cannot be made, and the points pay when no slot can
+  // (src/lib/dm/ar-ws-points-offer.ts).
+  const hushed = Boolean(options.board?.silence && components.facts?.verbal);
+  const byPoints = stored || beam ? null : pointsForCard(sheet, engine, facts, slotLevel, { components: Boolean(components.problem) || hushed || "error" in material, slot: Boolean(slotRefusal && "error" in slotRefusal) });
+  const bare = Boolean(byPoints?.bare);
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
   // The Metamagic paid for the next spell, as the cast will apply it: the
@@ -442,7 +457,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
+    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : byPoints ? `Sorcery points ${byPoints.points}` : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
     ...(stored ? { fromItem: stored.fromItem } : {}),
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
@@ -466,6 +481,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     compose: false,
     level: fact.level,
     ...(fact.concentration ? { concentration: true } : {}),
+    ...(asAttack && fact.level === 0 && cost === "action" ? { attackCantrip: true } : {}),
     // A reaction spell (Shield, Hellish Rebuke) is played as a reaction:
     // use_reaction resolves it, off the caster's turn too.
     intent:
@@ -527,14 +543,16 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     card,
     standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),
     problem(casterStateProblem(sheet)),
+    // Arcane Deflection's price, as the cast door asks it (ar-ws-deflection-mark.ts).
+    problem(deflectionCastProblem(sheet, facts?.name ?? name, fact.level)),
     // The components as this caster makes them (an Archdruid's druid spells
     // need neither voice nor hands), and the Silence the board says they
     // stand in, as the cast guard asks them (cast-rules.ts castComponents).
-    problem(components.problem ?? (options.board?.silence && components.facts?.verbal ? silenceRefusal(sheet.name, options.board.silence.by || null, components.facts.name) : null)),
+    bare ? null : problem(components.problem ?? (hushed ? silenceRefusal(sheet.name, options.board!.silence!.by || null, components.facts!.name) : null)),
     // A reaction spell needs a reaction to spend (slowed takes it away).
     cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
-    "error" in material ? { reason: material.error, spent: false } : null,
-    slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
+    !bare && "error" in material ? { reason: material.error, spent: false } : null,
+    !byPoints && slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
     chargeGate,
     // Last: what else would shut it says more (slowed, no slot).
     waits,
@@ -786,7 +804,9 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         // A use that replaces one attack is open while a swing of the Attack
         // action is (class-resources.ts replacesAttack).
         standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : def.replacesAttack ? "attack" : "action"),
-        left > 0 ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
+        // With no use left, the other price its text names still pays
+        // (counter-rules.ts otherPrice): sorcery points, or a spell slot.
+        left > 0 || otherPrice(def, sheet) ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
         // SRD 5.1 fighter, Action Surge: "only once on the same turn".
         id === "action_surge" && (turn.marks ?? []).includes(ACTION_SURGED)
           ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }

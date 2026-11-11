@@ -36,6 +36,7 @@ import { unknownRef, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
 import { authoredCheckSwap } from "@/lib/srd/authored-effects";
+import { tranceResolved } from "@/lib/dm/ar-ws-trance-floor";
 
 export { rollArgsSchema, rollDcFor, type RollArgs } from "@/lib/dm/roll-args";
 
@@ -315,7 +316,13 @@ export function rollAsksFromClaims(
 // advantage/disadvantage (poisoned checks, restrained DEX saves) and can
 // auto-fail outright (paralyzed STR/DEX saves); the model's situational
 // advantage claim merges in as one more source.
-export function resolveRollExpression(
+// Trance of Order floors the d20 of whatever this resolves
+// (src/lib/dm/ar-ws-trance-floor.ts), at the one place every branch returns through.
+export function resolveRollExpression(...input: Parameters<typeof resolveUnfloored>): ReturnType<typeof resolveUnfloored> {
+  return tranceResolved(input[1], input[0].kind, resolveUnfloored(...input));
+}
+
+function resolveUnfloored(
   args: RollArgs,
   sheet: CharacterSheet | null,
   // Context this pure module cannot read itself: an ally's aura covering
@@ -497,6 +504,7 @@ export function resolveRollExpression(
           coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
           // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
           carryFactor: authoredCarryFactor(sheet),
+          wearer: sheet,
         })
       : null;
   const overloaded =

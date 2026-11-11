@@ -21,7 +21,7 @@ export function authoredFeatureDefs(): Array<{
         kind: "weapon_damage_rider";
         dice: (level: number) => string;
         type: string;
-        when: "weapon" | "melee" | "ranged";
+        when: "weapon" | "melee" | "ranged" | "attack";
         oncePerTurn?: boolean;
         requiresCondition?: string;
         weapon?: string;

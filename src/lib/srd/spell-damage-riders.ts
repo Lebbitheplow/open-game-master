@@ -44,6 +44,9 @@ export type SpellDamageRiders = {
   // Dice only a two-type spell's second type earned (Enhanced Bond on a
   // spell whose fire is its second type): they deal that type.
   diceSecond: string[];
+  // The part of `flat` / `flatSecond` that lands on one target only (Radiant
+  // Soul): an area spell gives it to its first creature alone (aoe-spell.ts).
+  oneTarget: { first: number; second: number };
   // A successful save against this cantrip still takes half.
   potentCantrip: boolean;
   notes: string[];
@@ -61,7 +64,7 @@ export function spellDamageRiders(
     classes?: string[];
   },
 ): SpellDamageRiders {
-  const riders: SpellDamageRiders = { flat: 0, flatSecond: 0, dice: [], diceSecond: [], potentCantrip: false, notes: [] };
+  const riders: SpellDamageRiders = { flat: 0, flatSecond: 0, dice: [], diceSecond: [], oneTarget: { first: 0, second: 0 }, potentCantrip: false, notes: [] };
   const school = (spell.school ?? "").toLowerCase();
   const wizardSpell = !spell.classes?.length || spell.classes.includes("wizard");
   if (school === "evocation" && wizardSpell && holdsFeature(sheet, "empowered evocation")) {
@@ -97,6 +100,10 @@ export function spellDamageRiders(
   const authored = authoredSpellDice(sheet, { damageType: spell.damageType, secondType: spell.secondType, level: spell.level }, mods);
   riders.dice.push(...authored.dice);
   riders.diceSecond.push(...authored.diceSecond);
+  for (const one of authored.oneTarget) {
+    riders.oneTarget[one.second ? "second" : "first"] += one.amount;
+    riders[one.second ? "flatSecond" : "flat"] += one.amount;
+  }
   riders.notes.push(...authored.notes);
   return riders;
 }

@@ -121,9 +121,8 @@ async function step(rig, scene, name, notes) {
     refresh();
     return { ok: true };
   }
-  if (name.startsWith("mark: ")) {
-    // The mark a reaction asks for on the creature it answers.
-    const mark = name.slice("mark: ".length);
+  // The holder's own spend that lays a mark on a creature, laid on `enemyId`.
+  const layMark = async (mark, enemyId) => {
     const sheet = world.sheet(holder);
     const lays = mark === "vow of enmity"
       ? { name: "Channel Divinity", variant: "Vow of Enmity" }
@@ -132,9 +131,31 @@ async function step(rig, scene, name, notes) {
           const names = spend.does.kind !== "buff" ? [] : Array.isArray(spend.does.condition) ? spend.does.condition.map(([, value]) => value) : [spend.does.condition];
           return spend.does.kind === "buff" && (spend.does.mark === mark || names.some((value) => value === mark || value.startsWith(`${mark} (`)));
         });
-    const made = lays ? await world.invoke("use_resource", { characterId: holder, resource: lays.name, ...(lays.variant ? { variant: lays.variant } : {}), targetEnemyId: scene.near.id }) : null;
+    const made = lays ? await world.invoke("use_resource", { characterId: holder, resource: lays.name, ...(lays.variant ? { variant: lays.variant } : {}), targetEnemyId: enemyId }) : null;
     if (!made?.ok) notes.add(`the mark "${mark}" could not be laid${made ? `: ${String(made.error).slice(0, 120)}` : " (no spend of theirs lays it)"}`);
+    return made;
+  };
+  if (name.startsWith("mark: ")) {
+    // The mark a reaction asks for on the creature it answers.
+    await layMark(name.slice("mark: ".length), scene.near.id);
     refresh();
+    return { ok: true };
+  }
+  if (name.startsWith("the creature under ") && name.endsWith(" died")) {
+    // A death under the holder's mark (Master of Hexes answers it): the mark
+    // laid on the second foe, brought beside the holder (and 5 feet from the
+    // first), and that foe slain by the holder's own blow through pc_attack,
+    // so the death is the engine's record, not a word in the call.
+    const mark = name.slice("the creature under ".length, -" died".length);
+    kit.place(scene.far.id, 6, 6);
+    const made = await layMark(mark, scene.far.id);
+    if (!made?.ok) return { ok: false, error: `the mark "${mark}" could not be laid` };
+    refresh();
+    kit.setEnemy(scene.far.id, { currentHp: 1 });
+    world.dice(18, 5);
+    const out = await world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.far.id, weapon: "Longsword" });
+    if (!out.ok) return out;
+    if ((world.enemies().find((enemy) => enemy.id === scene.far.id)?.currentHp ?? 0) > 0) return { ok: false, error: "the marked creature did not die" };
     return { ok: true };
   }
   if (name.startsWith("pool down: ")) {
@@ -293,6 +314,65 @@ async function step(rig, scene, name, notes) {
       kit.place(scene.far.id, 4, 6);
       world.dice(18, ...new Array(12).fill(3));
       return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.far.id, weapon: "Dagger" });
+    }
+    case "the holder's spell hurt the foe": {
+      // A wizard spell's damage through the real cast path (cast_at_enemy
+      // marks the creature it hurt: src/lib/dm/spell-damage-mark.ts), for a
+      // spend that rides it (Power Surge). The holder is given the spell
+      // prepared and a slot to cast it with: what they prepared is the
+      // setting, not the thing under test.
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      const slots = { ...casting.slots, 1: { max: Math.max(1, casting.slots?.[1]?.max ?? 0), used: 0 } };
+      // The shield is lowered for the gestures and raised again after, so the
+      // holder's AC is the scene's.
+      const gear = world.sheet(holder).equipment;
+      const shield = (equipped) => gear.map((item) => (item.name === "Shield" ? { ...item, equipped } : item));
+      world.patch(holder, { equipment: shield(false), spellcasting: { ...casting, slots, prepared: [...new Set([...(casting.prepared ?? []), "Magic Missile"])], ...(casting.spellbook ? { spellbook: [...new Set([...casting.spellbook, "Magic Missile"])] } : {}) } });
+      world.dice(1, 1, 1);
+      const out = await world.invoke("cast_at_enemy", { characterId: holder, targetEnemyId: scene.near.id, spell: "Magic Missile" });
+      world.patch(holder, { equipment: shield(true) });
+      return out;
+    }
+    case "the holder cast a spell that opens the choice": {
+      // A 1st-level transmutation spell through the real cast path, for a
+      // choice that changes only when one is cast (Transmuter's Stone:
+      // src/lib/dm/ar-ws-stone.ts). The spell and its slot are the setting.
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      const slots = { ...casting.slots, 1: { max: Math.max(1, casting.slots?.[1]?.max ?? 0), used: 0 } };
+      // The shield is lowered for the spell's material and raised again after.
+      const gear = world.sheet(holder).equipment;
+      const shield = (equipped) => gear.map((item) => (item.name === "Shield" ? { ...item, equipped } : item));
+      world.patch(holder, { equipment: shield(false), spellcasting: { ...casting, slots, prepared: [...new Set([...(casting.prepared ?? []), "Longstrider"])], ...(casting.spellbook ? { spellbook: [...new Set([...casting.spellbook, "Longstrider"])] } : {}) } });
+      const out = await world.invoke("use_spell_slot", { characterId: holder, spell: "Longstrider" });
+      world.patch(holder, { equipment: shield(true) });
+      return out;
+    }
+    case "a spell in the holder's book": {
+      // A 1st-level spell cast with an action, written in the book and
+      // prepared, for a spend that copies one out of it (Master Scrivener).
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      world.patch(holder, { spellcasting: { ...casting, prepared: [...new Set([...(casting.prepared ?? []), "Magic Missile"])], ...(casting.spellbook ? { spellbook: [...new Set([...casting.spellbook, "Magic Missile"])] } : {}) } });
+      return { ok: true };
+    }
+    case "the holder's spell healed them": {
+      // A healing spell's dice through the real heal path (heal-spell.ts
+      // notes the roll: src/lib/dm/ar-ws-empowered-healing.ts), for a spend
+      // that rolls them again (Empowered Healing). The holder is hurt, and
+      // given Cure Wounds and a slot: the setting, not the thing under test.
+      // A 2 on the d8 is a die worth rolling again.
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      const slots = { ...casting.slots, 1: { max: Math.max(1, casting.slots?.[1]?.max ?? 0), used: 0 } };
+      const gear = world.sheet(holder).equipment;
+      const shield = (equipped) => gear.map((item) => (item.name === "Shield" ? { ...item, equipped } : item));
+      world.patch(holder, { currentHp: Math.max(1, world.sheet(holder).currentHp - 20), equipment: shield(false), spellcasting: { ...casting, slots, prepared: [...new Set([...(casting.prepared ?? []), "Cure Wounds"])], known: [...new Set([...(casting.known ?? []), "Cure Wounds"])] } });
+      world.dice(2);
+      const out = await world.invoke("heal", { characterId: holder, casterId: holder, spell: "Cure Wounds" });
+      world.patch(holder, { equipment: shield(true) });
+      return out;
     }
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });

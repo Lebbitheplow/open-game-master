@@ -16,6 +16,7 @@ import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { hurlThroughHell, HURL_THROUGH_HELL, openHandOnHit, poisonOnHit, spendFeatureUse } from "@/lib/dm/attack-onhit";
 import type { AttackRecord, DamageAsk } from "@/lib/dm/attack-record";
 import { attackStage, attackTurn, emitAttackFx, finishSwing, markAttackTurn, type SwingScene } from "@/lib/dm/attack-swing";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
@@ -23,6 +24,7 @@ import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { deathStrikeDoubles } from "@/lib/dm/death-strike";
+import { killingSpell } from "@/lib/dm/ar-ws-harvest";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
@@ -130,7 +132,13 @@ export function landSwingBlow(
     finishSwing(scene, record, { hit: !ask.half, damage: 0 });
     return { warning: `${scene.enemy.displayName} is no longer in the fight; the damage was NOT applied. Narrate around it.` };
   }
-  const damageOutcome = roll.breakdown;
+  // Spell Bombardment: a spell's die at its highest number is rolled again,
+  // once a turn (src/lib/dm/ar-ws-bombardment.ts).
+  const burst = record.spell ? spellBombardment({ campaign, turn: scene.turn, sheet, outcome: roll.breakdown, spell: record.spell }) : null;
+  if (burst) {
+    notes.push(burst.note);
+  }
+  const damageOutcome = burst?.outcome ?? roll.breakdown;
   const profile = { damageType: record.damageType ?? "", ...(record.material ? { material: record.material } : {}) };
   const blowFlags = {
     magical: record.magical === true,
@@ -224,7 +232,7 @@ export function landSwingBlow(
   // the blow found it.
   const live = getActiveEncounter(campaign.id) ?? encounter;
   const authored = live
-    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead })
+    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead, ...(dead && record.spell ? { spell: killingSpell(campaign, { spell: record.spell, slotLevel: record.spellSlot }) } : {}) })
     : [];
   // Mortal Bulwark: a hit that dealt damage asks an aberration, celestial,
   // elemental, fey or fiend for a Charisma save or banishes it

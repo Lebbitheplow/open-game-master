@@ -2270,7 +2270,7 @@
     "c": "that another creature just hit",
     "is": "held",
     "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (another creature's hit on record)",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:monk::Opportunist::Opportunist"
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:monk::Opportunist::Opportunist#TRIGGER_UNCHECKED"
    }
   ]
  },
@@ -3491,7 +3491,7 @@
     "c": "when an enemy ends its turn within 5 feet",
     "is": "held",
     "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a foe's turn ended beside the holder)",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:rogue::Skirmisher::Skirmisher"
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:rogue::Skirmisher::Skirmisher#TRIGGER_UNCHECKED"
    },
    {
     "c": "without provoking",
@@ -3624,7 +3624,7 @@
     "c": "When a creature you can see dies within 30 feet of you, a reaction forms a Tiny soul trinket in your free hand",
     "is": "held",
     "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a creature's death on record)",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:rogue::Tokens of the Departed::Tokens of the Departed"
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:rogue::Tokens of the Departed::Tokens of the Departed#TRIGGER_UNCHECKED"
    },
    {
     "c": "(you can hold up to your proficiency bonus of them)",
@@ -3720,7 +3720,7 @@
     "c": "as a bonus action you can regain one spent die, once per short or long rest",
     "is": "held",
     "by": "src/lib/dm/authored-spend-effects.ts (restore)",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs: spend:rogue::Psionic Power (Soulknife)::Psionic Recovery"
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:rogue::Psionic Power (Soulknife)::Psionic Recovery#DEAD"
    }
   ]
  },

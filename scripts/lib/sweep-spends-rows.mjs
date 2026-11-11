@@ -67,6 +67,9 @@ export async function tableRows(rig) {
   // (Slayer's Counter answers the creature under Slayer's Prey).
   const { triggerSpecFor } = await import(new URL("lib/srd/trigger-table.ts", SRC).href);
   const preyOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "save_on_self" && on.prey ? [on.prey] : [])) : []);
+  // A spend that answers the death of the creature under a mark (Master of
+  // Hexes): that death staged, through the holder's own blow.
+  const markedDeathOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "death" && on.marked ? [on.marked] : [])) : []);
   const authoredRows = rig.authored.authoredRows();
   const rows = [];
 
@@ -80,9 +83,18 @@ export async function tableRows(rig) {
       ...(does?.vsMark ? [`mark: ${does.vsMark}`] : []),
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
       ...preyOf(item).map((mark) => `mark: ${mark}`),
+      ...markedDeathOf(item).map((mark) => `the creature under ${mark} died`),
+      ...(item?.afterSpellDamage ? ["the holder's spell hurt the foe"] : []),
+      // Empowered Healing answers a healing spell's dice rolled this turn.
+      ...(does?.kind === "reroll_heal" ? ["the holder's spell healed them"] : []),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
       ...(gate.pet === "beast_companion" ? ["the holder's companion summoned"] : gate.pet === "drake" ? ["the holder's drake summoned"] : []),
-      ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
+      ...(does?.kind === "restore" || does?.kind === "wild_magic_surge" ? [`pool down: ${does.pool}`] : []),
+      ...(does?.kind === "scribe_scroll" ? ["a spell in the holder's book"] : []),
+      // A choice that changes only on a casting (Transmuter's Stone): the
+      // holder's own option chosen again changes nothing and is refused, so
+      // the change is opened by the casting its row names.
+      ...(does?.kind === "choose" && does.changeAfterCast ? ["the holder cast a spell that opens the choice"] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];
@@ -92,6 +104,10 @@ export async function tableRows(rig) {
       : does.kind === "choose" ? does.options
         : does.kind === "storm_aura" ? ["desert", "sea", "tundra"]
           : does.kind === "flames" && !does.healOnly ? ["burn", "heal"]
+          // Performance of Creation makes the item named: one the pack prices low.
+          : does.kind === "create_item" ? ["Hourglass"]
+          // Master Scrivener copies the spell named from the book (staged there).
+          : does.kind === "scribe_scroll" ? ["Magic Missile"]
           : does.variants ? [undefined, ...Object.keys(does.variants)]
             : does.typeFromVariant ? does.typeFromVariant
               : [undefined];

@@ -80,7 +80,8 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
   if (!from || !to || off(from) || off(to)) {
     return true;
   }
-  return hasLineOfSightBetween(sightTerrainFor(map), map.width, spaceOf(from), spaceOf(to));
+  // `self`: an area its own caster sees through does not stand in their way (zones.ts seenThroughBy).
+  return hasLineOfSightBetween(sightTerrainFor(map, { self: fromRef }), map.width, spaceOf(from), spaceOf(to));
 }
 
 // Why a character cannot see a creature for a feature whose text says "you

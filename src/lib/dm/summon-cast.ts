@@ -21,6 +21,7 @@ import { removeSummon, spawnSummons, summonsOf } from "@/lib/dm/summon-store";
 import { SUMMONED, summonRecord } from "@/lib/dm/summon-rules";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { thrallForm, thrallSpell } from "@/lib/dm/ar-ws-thralls";
 
 export type SummonCastArgs = {
   caster: CharacterSheet;
@@ -84,7 +85,9 @@ export function castSummon(
   args: SummonCastArgs,
   cast: (input: Record<string, unknown>) => Record<string, unknown>,
 ): Record<string, unknown> {
-  const { caster, spell } = args;
+  const { caster } = args;
+  // Undead Thralls: a necromancer's Animate Dead raises one more (ar-ws-thralls.ts).
+  const spell = thrallSpell(caster, args.spell);
   const castAs = args.castAs?.trim() || spell.name;
   const slotLevel = Math.max(spell.level, args.level ?? spell.level);
   // Animate Dead, Create Undead: a casting may reassert control over the
@@ -98,7 +101,13 @@ export function castSummon(
   if ("error" in planned) {
     return planned;
   }
-  const plans = (Array.isArray(planned) ? planned : [planned]).map((plan) => ({ ...plan, form: formFor(spell, plan.form, caster, slotLevel) }));
+  // Undead Thralls: the necromancer's undead are sturdier and hit harder.
+  const thralls: string[] = [];
+  const plans = (Array.isArray(planned) ? planned : [planned]).map((plan) => {
+    const thrall = thrallForm(caster, spell, formFor(spell, plan.form, caster, slotLevel));
+    thralls.push(...(thrall && !thralls.includes(thrall.note) ? [thrall.note] : []));
+    return { ...plan, form: thrall?.form ?? formFor(spell, plan.form, caster, slotLevel) };
+  });
 
   // Cast again while it still holds, the spell's first casting ends, and
   // the creatures it made with it.
@@ -179,6 +188,7 @@ export function castSummon(
     creature: plans.map(({ form, count }) => `${plans.length > 1 ? `${count} x ` : ""}${describe(form)}`).join(" "),
     ...(traits ? { traits } : {}),
     ...(durable ? { durableSummons: `Durable Summons: each arrives with ${durableHp} temporary hit points.` } : {}),
+    ...(thralls.length ? { undeadThralls: thralls.join(" ") } : {}),
     ...(replaced.length ? { replaced: `${replaced.join(", ")} ${replaced.length === 1 ? "is" : "are"} gone: ${spell.single ? "one at a time" : "the first casting ended"}.` } : {}),
     ...(spent.slot ? { slot: spent.slot } : {}),
     ...(spent.cost ? { cost: spent.cost } : {}),

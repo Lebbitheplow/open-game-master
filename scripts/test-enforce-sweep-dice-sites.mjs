@@ -494,6 +494,7 @@ const SITES = {
   "lib/dm/aoe-damage.ts#handleAoeDamage": "D area damage",
   "lib/dm/mt-mr-offers.ts#dieOf": "H the Psionic Energy die a choice on the after-the-roll card adds (Homing Strikes, Psi-Bolstered Knack)",
   "lib/dm/mt-mr-offers.ts#rerolled": "H a d20 thrown again from the after-the-roll card (Unerring Accuracy, Draconic Presence)",
+  "lib/dm/ar-ws-bombardment.ts#spellBombardment": "D a spell's exploded damage die (Spell Bombardment), where the area roll's own card carries it",
   "lib/dm/attack-blow.ts#throwDamage": "D an attack's damage on the server's dice",
   "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
   "lib/dm/between-io.ts#publicDie": "F a table die",

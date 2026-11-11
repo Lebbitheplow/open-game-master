@@ -14,6 +14,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellEngineName, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { characterSenses, sensesReaching } from "@/lib/dm/attack-light";
 import { enemyActedThisRound } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -39,6 +40,7 @@ import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import { openSaves } from "@/lib/dm/last-save";
+import { gainPowerSurge } from "@/lib/dm/spell-damage-mark";
 
 // ---- reaction spells ----
 
@@ -408,7 +410,9 @@ function checkCounterspell(ctx: Ctx): Counter | ToolError {
   if (sheet.conditions.some((entry) => entry.toLowerCase() === "blinded")) {
     return { error: `${sheet.name} is blinded: Counterspell needs a creature they can see. Nothing was spent.`, refused: "rules" };
   }
-  const unseen = enemy.conditions.some((entry) => entry.toLowerCase() === "invisible") && !seesInvisible(sheet);
+  // Revelation in Flesh shows the invisible within 60 feet (the one sight rule, attack-light.ts sensesReaching).
+  const unveiled = sensesReaching(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id }).invisible;
+  const unseen = enemy.conditions.some((entry) => entry.toLowerCase() === "invisible") && !seesInvisible(sheet) && !unveiled;
   if (unseen) {
     return { error: `${enemy.displayName} is invisible to ${sheet.name}: Counterspell needs a creature they can see. Nothing was spent.`, refused: "rules" };
   }
@@ -495,7 +499,7 @@ function finishCounterspell(
   if (!countered) {
     const dc = 10 + counter.level;
     const ability = counterspellAbility(ctx.sheet);
-    const rolled = rollCharacterCheck(ctx.campaign, ctx.sheet, { ability: ability as "int" }, `${ctx.sheet.name}: Counterspell against ${counter.spell}`);
+    const rolled = rollCharacterCheck(ctx.campaign, ctx.sheet, { ability: ability as "int", spell: "Counterspell" }, `${ctx.sheet.name}: Counterspell against ${counter.spell}`);
     if (rolled.rollId) {
       ctx.turn.rollIds.push(rolled.rollId);
     }
@@ -526,12 +530,14 @@ function finishCounterspell(
       saveEncounter(live);
     }
   }
+  const surge = countered ? gainPowerSurge(ctx.campaign.id, ctx.sheet.id) : null;
   const paid = counter.timing === "bonus" ? "its bonus action" : counter.timing === "reaction" ? "its reaction" : counter.timing === "legendary" ? "the legendary action that bought it" : "its action for the round";
   return {
     ok: true,
     reaction: "Counterspell",
     spent,
     ...(check ? { check } : {}),
+    ...(surge ? { powerSurge: surge } : {}),
     countered,
     applied: countered
       ? `${counter.enemy.displayName}'s ${counter.spell} fails: the ${counter.level ? `level-${counter.level} slot` : "casting"} and ${paid} are spent, and the server will refuse the cast. Do not resolve the spell.`

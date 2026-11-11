@@ -329,7 +329,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Guardian Coil",
         gate: { condition: "tentacle of the deep" },
-        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", rangeFt: 30 },
+        // "When you or a creature you can see takes damage while within 10
+        // feet of the tentacle": measured from the tentacle's zone.
+        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", nearZone: { spell: "tentacle of the deeps", feet: 10 } },
       },
     ],
   },
@@ -353,10 +355,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       kind: "rider" as const,
       dice: "prof",
       type,
-      when: "weapon" as const,
+      // "a hit with an attack roll": a weapon's or a spell's.
+      when: "attack" as const,
       oncePerTurn: true,
       gate: { choice: kind },
-      note: "Genie's Wrath rides any attack roll that hits, a spell attack too; the GM adds it to a spell's.",
     })),
   },
   "warlock::Elemental Gift": {
@@ -392,7 +394,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "warlock::Radiant Soul": {
     subclass: "The Celestial",
-    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], note: "One radiant or fire damage roll of the spell, against one of its targets." }],
+    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], oneTarget: true, note: "One radiant or fire damage roll of the spell, against one of its targets." }],
   },
   // Hexblade's Curse: the warlock's condition marks the cursed creature
   // (its meta's quarry): +proficiency damage and a critical hit on 19-20
@@ -405,12 +407,14 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Hexblade's Curse",
         pool: { id: "sub_hexblades_curse" },
         action: "bonus",
-        // "curse a creature you can see within 30 feet of you".
+        // "curse a creature you can see within 30 feet of you", "or until
+        // ... you are incapacitated".
         does: {
           kind: "buff",
           quarry: true,
           sight: true,
           rangeFt: 30,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -432,11 +436,13 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Master of Hexes",
         action: "none",
+        takesBackCurseHeal: true,
         // "to another creature you can see within 30 feet of it".
         does: {
           kind: "buff",
           quarry: true,
           sight: true,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -494,14 +500,23 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           rangeFt: 5,
           // "choose a creature that you can see within 5 feet of you".
           sight: true,
-          onFail: "is also incapacitated with speed 0 until the end of the wizard's next turn; the wizard's action extends it",
+          senses: "see_or_hear",
+          // "with speed 0 and incapacitated": an incapacitated creature takes
+          // no turn, so its speed is never spent.
+          alsoCondition: "incapacitated",
+          untilNextTurnEnds: true,
+          endsOnDamage: true,
+          leashFeet: 5,
+          oncePerCreature: true,
         },
       },
     ],
   },
   "wizard::Instinctive Charm": {
     subclass: "School of Enchantment",
-    reactions: [{ name: "Instinctive Charm", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
+    // "When a creature you can see within 30 feet of you makes an attack roll
+    // against you": the attacker in sight (sees).
+    reactions: [{ name: "Instinctive Charm", sees: "attacker", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
   },
   "wizard::Illusory Reality": {
     subclass: "School of Illusion",
@@ -553,7 +568,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "wizard::Convergent Future": {
     subclass: "Chronurgy Magic",
-    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1 } }],
+    // "a creature you can see within 60 feet": the attacker's roll, made within reach.
+    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1, rangeFt: 60 } }],
   },
   "wizard::Adjust Density": {
     subclass: "Graviturgy Magic",

@@ -15,16 +15,20 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { authoredSpendFor, gateHolds, hasCondition, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, gateHolds, hasCondition, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
-import { isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { holdsFeature, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
+import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { castFirstRefusal } from "@/lib/dm/ar-ws-tempest-logic";
+import { curseHealTakenBack } from "@/lib/dm/master-of-hexes";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
+import { choiceChange } from "@/lib/dm/ar-ws-stone";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -36,6 +40,7 @@ import { needRefusal } from "@/lib/dm/mt-mr-needs";
 import { destroyTrinket, trinketCount } from "@/lib/dm/mt-mr-trinkets";
 import { chargeRefusal, naturalHitRefusal } from "@/lib/dm/mt-fb-charge";
 import { holdsOn } from "@/lib/dm/vitals-logic";
+import { otherPrice, type OtherPrice } from "@/lib/srd/counter-rules";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -46,6 +51,9 @@ export type AuthoredSpendArgs = {
   // A square the feature moves its holder to (src/lib/dm/feature-move.ts).
   x?: number;
   y?: number;
+  // The square a teleport goes to (src/lib/dm/ar-ws-shadow-walk.ts).
+  atX?: number;
+  atY?: number;
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {
@@ -82,6 +90,7 @@ function prepareCost(
   label: string,
   onceKey: string | null,
   afterWeaponHit = false,
+  afterSpellDamage = false,
 ): ToolError | { commit: () => ToolResult; marks?: string[] } {
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
@@ -89,6 +98,9 @@ function prepareCost(
   // Jolt's healing was taken there with no hit, its card shut).
   if (afterWeaponHit && !inFight) {
     return { error: `${label} rides a weapon hit in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
+  }
+  if (afterSpellDamage && !inFight) {
+    return { error: `${label} rides a wizard spell's damage in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
   }
   if (!inFight || !encounter) {
     return { commit: () => ({}) };
@@ -101,6 +113,9 @@ function prepareCost(
   // the holder's turn (no budget of theirs) with no hit of this turn.
   if (afterWeaponHit && (!budget || !budget.oncePerTurn.some((mark) => mark.startsWith(WEAPON_HIT)))) {
     return { error: `${label} rides a weapon hit, and ${sheet.name} has landed none this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
+  }
+  if (afterSpellDamage && (!budget || !spellHurt(budget.oncePerTurn).length)) {
+    return { error: `${label} rides a wizard spell that deals damage, and no spell of ${sheet.name}'s has hurt a creature this turn: cast it first. Nothing was spent.`, refused: "rules" };
   }
   if (cost === "reaction") {
     return prepareReaction(encounter, sheet, label);
@@ -229,18 +244,41 @@ export function authoredFeatureSpend(
   if (unanswered) {
     return unanswered;
   }
+  // A spend whose text opens with a trigger (Master of Hexes: "When the
+  // creature cursed by your Hexblade's Curse dies") answers its record, never
+  // the call's word: refused with nothing spent when none is open
+  // (reaction-triggers.ts). Found by the spend's name, where the counter's
+  // trigger above is found by its pool.
+  const triggerAsk = { campaignId: campaign.id, reactor: sheet, name: spend.name, label: answerKey(textKey(spend.name), sheet.id) };
+  const unheard = triggerRefusal(triggerAsk);
+  if (unheard) {
+    return unheard;
+  }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
-  if (spend.fight === "out" && inFight) {
+  // Transmuter's Stone: a change of its benefit needs a transmutation spell
+  // just cast, and is then made in a fight too (ar-ws-stone.ts).
+  const change = choiceChange(sheet, spend, held, args.variant);
+  if (change && "error" in change) {
+    return change;
+  }
+  if (spend.fight === "out" && inFight && !change) {
     return { error: `${spend.name} is chosen outside a fight, when a rest ends, not in the middle of one.`, refused: "rules" };
   }
   if (spend.oncePer && sheet.conditions.some((entry) => textKey(entry) === textKey(spend.oncePer!.marker))) {
     return { error: `${spend.name} has been used already (${spend.oncePer.marker}). Nothing was spent.`, refused: "rules" };
   }
+  // The variant a feature's chosen option fixes (Lunar Phenomenon: the
+  // phase of Lunar Embodiment), never another one named.
+  const fixed = fixedVariant(sheet, spend, args.variant);
+  if (fixed && typeof fixed !== "string") {
+    return fixed;
+  }
+  const variant = fixed ?? args.variant;
   // A die that picks the option when none is named (Experimental Elixir's
   // d6): rolled below, once the use is sure to be paid.
-  const rollsOption = spend.does.kind === "variants" && Boolean(spend.does.roll) && !args.variant?.trim();
-  let picked = rollsOption ? { does: spend.does, action: spend.action, afterWeaponHit: spend.afterWeaponHit } : pickVariant(spend.does, args.variant, spend);
+  const rollsOption = spend.does.kind === "variants" && Boolean(spend.does.roll) && !variant?.trim();
+  let picked = rollsOption ? { does: spend.does, action: spend.action, afterWeaponHit: spend.afterWeaponHit } : pickVariant(spend.does, variant, spend);
   if ("error" in picked) {
     return picked;
   }
@@ -264,6 +302,11 @@ export function authoredFeatureSpend(
   let units = 0;
   let slotLevel: number | null = null;
   let byTrinket = false;
+  // What the pool is charged when another price pays (otherwise `units`),
+  // and the spell slot that paid instead of a use.
+  let paidUnits: number | null = null;
+  let slotPaid: number | null = null;
+  let freeDie: string | null = null;
   if (spend.pool && !swapping) {
     units = spend.pool.free && needRefusal(campaign, sheet, spend.name, spend.pool.free) === null
       ? 0
@@ -289,20 +332,35 @@ export function authoredFeatureSpend(
       byTrinket = true;
       units = 0;
     }
+    // Master's Flourish: with no use left, the feature's own die and nothing spent.
+    if (units > 0 && !poolId && spend.pool.freeDie && holdsFeature(sheet, spend.pool.freeDie.feature)) {
+      freeDie = spend.pool.freeDie.die;
+      units = 0;
+    }
     // "Or by expending a spell slot of 1st level or higher": with the
     // counter spent, the lowest slot left pays (dra-slot-fallback).
     slotLevel = units > 0 && !poolId && spend.pool.slot ? lowestSlotLeft(sheet) : null;
     // "Or by expending a 5th-level spell slot" (Living Legend): a slot of
     // exactly that level, when one is left.
-    const fixed = spend.pool.slotFallback;
-    const fixedSlot = fixed ? sheet.spellcasting?.slots?.[String(fixed)] : null;
-    if (units > 0 && !poolId && slotLevel === null && fixed && fixedSlot && fixedSlot.max - fixedSlot.used > 0) {
-      slotLevel = fixed;
+    const fixedLevel = spend.pool.slotFallback;
+    const fixedSlot = fixedLevel ? sheet.spellcasting?.slots?.[String(fixedLevel)] : null;
+    if (units > 0 && !poolId && slotLevel === null && fixedLevel && fixedSlot && fixedSlot.max - fixedSlot.used > 0) {
+      slotLevel = fixedLevel;
     }
     if (slotLevel !== null && rollsOption) {
       return { error: `${spend.name} bought with a spell slot is brewed by choice: name its effect in variant (${spend.does.kind === "variants" ? Object.keys(spend.does.options).join(", ") : ""}). Nothing was spent.`, retry: true };
     }
-    if (units > 0 && !poolId && slotLevel === null) {
+    // With no use left, the other price the counter's row names pays
+    // (src/lib/srd/counter-rules.ts otherPrice): so many sorcery points, or
+    // a spell slot of the level the row names.
+    const other = units > 0 && !poolId && slotLevel === null ? otherPriceOf(spend.pool.id, sheet) : null;
+    if (other && "pool" in other) {
+      poolId = other.pool.id;
+      paidUnits = other.pool.amount;
+    } else if (other) {
+      slotPaid = other.slot;
+    }
+    if (units > 0 && !poolId && slotLevel === null && slotPaid === null) {
       const state = sheet.resources?.[spend.pool.id];
       return {
         error: state
@@ -313,8 +371,13 @@ export function authoredFeatureSpend(
       };
     }
   }
+  // Tempestuous Magic: in a fight, once a levelled spell is cast this turn.
+  const uncast = spend.afterLevelledCast ? castFirstRefusal(spend.name, sheet, inFight ? encounter : null) : null;
+  if (uncast) {
+    return uncast;
+  }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : swapping ? `authored:${textKey(spend.name)} swap` : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
+  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);
   if ("error" in charge) {
     return charge;
   }
@@ -332,6 +395,7 @@ export function authoredFeatureSpend(
     mods: computeSheetDerived(sheet).abilityMods,
     reason,
     ...("marks" in charge && charge.marks ? { marks: charge.marks } : {}),
+    ...(freeDie ? { freeDie } : {}),
   };
   if (rollsOption && spend.does.kind === "variants") {
     const rolled = rollOption(ctx, spend.does);
@@ -360,13 +424,25 @@ export function authoredFeatureSpend(
     // "1 die back" and returned none).
     const resources = patch.resources ?? now.resources;
     const state = resources[poolId] ?? now.resources[poolId];
-    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + units } };
+    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + (paidUnits ?? units) } };
+  }
+  if (slotPaid !== null) {
+    const casting = patch.spellcasting ?? now.spellcasting;
+    const slot = casting?.slots?.[String(slotPaid)];
+    if (casting && slot) {
+      patch.spellcasting = { ...casting, slots: { ...casting.slots, [String(slotPaid)]: { ...slot, used: slot.used + 1 } } };
+    }
   }
   if (spend.oncePer) {
     const conditions = patch.conditions ?? now.conditions;
     const meta = patch.conditionMeta ?? now.conditionMeta;
     patch.conditions = [...conditions, spend.oncePer.marker];
     patch.conditionMeta = { ...meta, [spend.oncePer.marker]: { rounds: spend.oncePer.rounds } };
+  }
+  // Master of Hexes: the moved curse gives back the first death's healing.
+  const takenBack = spend.takesBackCurseHeal ? curseHealTakenBack(sheet, { ...now, ...patch } as CharacterSheet) : null;
+  if (takenBack) {
+    Object.assign(patch, takenBack.patch);
   }
   if (Object.keys(patch).length) {
     patchSheet(sheet.id, patch);
@@ -379,17 +455,45 @@ export function authoredFeatureSpend(
   if (trigger) {
     answerTriggers(trigger);
   }
+  // The record it answered is answered (no second use of one death).
+  answerTriggers(triggerAsk);
   const trinketsLeft = byTrinket ? destroyTrinket(campaign, sheet.id) : null;
   const left = poolId ? getSheetById(sheet.id)?.resources?.[poolId] : null;
   return {
     ok: true,
     resource: spend.name,
-    ...(poolId && units > 0 ? { spent: units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
+    ...(poolId && units > 0 ? { spent: paidUnits !== null ? `${paidUnits} ${counterName(poolId)} (no use was left)` : units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
     ...(slotLevel !== null ? { spent: `a level ${slotLevel} spell slot (no use was left)` } : {}),
+    ...(slotPaid !== null ? { spent: `a level ${slotPaid} spell slot (no use was left)` } : {}),
     ...(rollsOption ? { rolled: ctx.args.variant } : {}),
     ...outcome.result,
     ...(drunk ? { tempHp: drunk } : {}),
     ...(byTrinket ? { trinket: `A soul trinket is destroyed for it, no use spent (${trinketsLeft ?? 0} left).` } : {}),
+    ...(takenBack ? { curseHealing: takenBack.line } : {}),
     ...charge.commit(),
   };
+}
+
+// The other price of a spend's own counter, when its row names one.
+function otherPriceOf(counterId: string, sheet: CharacterSheet): OtherPrice | null {
+  const def = resourceDef(counterId);
+  return def ? otherPrice(def, sheet) : null;
+}
+
+// The option the spend's variantFrom feature holds, the refusal when none is
+// chosen or another was named, or null for a spend without one.
+export function fixedVariant(sheet: CharacterSheet, spend: AuthoredSpend, named: string | undefined): string | ToolError | null {
+  if (!spend.variantFrom) {
+    return null;
+  }
+  // With nothing chosen yet (a sheet from before the choice was kept), the
+  // option is the call's, as it was.
+  const choice = heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null;
+  if (!choice) {
+    return null;
+  }
+  if (named?.trim() && textKey(named) !== textKey(choice)) {
+    return { error: `${spend.name} releases ${sheet.name}'s current ${spend.variantFrom} option, ${choice}, not ${named.trim()}. Nothing was spent.`, refused: "rules" };
+  }
+  return choice;
 }

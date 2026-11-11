@@ -82,7 +82,8 @@ export type AuthoredEffect = Base &
     | { kind: "carry_factor"; factor: number }
     | { kind: "jump_feet"; feet: number }
     // Other movement modes: a number of feet, or "walk" for the walking speed.
-    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk"; climb?: number | "walk" }
+    // "double_walk": twice the walking speed (Revelation in Flesh's swim).
+    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk" | "double_walk"; climb?: number | "walk" }
     | { kind: "init_adv" }
     | { kind: "init_ability"; ability: Ability }
     // Advantage on checks: named skills, or checks of an ability about one
@@ -98,6 +99,10 @@ export type AuthoredEffect = Base &
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     | { kind: "attacked_disadv"; from: string[] }
+    // Attack rolls against the holder are at disadvantage while the holder
+    // stands entirely in darkness (Lunar Empowerment's New Moon:
+    // src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil).
+    | { kind: "attacked_disadv_dark" }
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).
@@ -170,7 +175,7 @@ export type AuthoredEffect = Base &
         kind: "rider";
         dice: Formula;
         type: string;
-        when: "weapon" | "melee" | "ranged";
+        when: "weapon" | "melee" | "ranged" | "attack";
         oncePerTurn?: boolean;
         requiresCondition?: string;
         // Only the weapon of this name (the Infiltrator's lightning launcher).
@@ -219,6 +224,10 @@ export type AuthoredEffect = Base &
     // `damageTypes`: only against a spell that deals one of these (Corona of
     // Light: fire or radiant).
     | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean; damageTypes?: string[]; channel?: boolean }
+    // Once on each of the holder's turns, a creature their attack hits saves
+    // against their spell save DC or takes `condition` until the end of the
+    // holder's next turn (Form of Dread: src/lib/dm/hit-save.ts).
+    | { kind: "hit_save"; save: Ability; condition: string }
     // Allies in range (and the holder) resist: spell damage, or the damage
     // type the holder's own condition names.
     | {
@@ -286,6 +295,10 @@ export type AuthoredEffect = Base &
         // names alone (Alchemical Savant: alchemist's supplies, which the
         // gear table tags only as tools).
         itemNames?: string[];
+        // Against one of the spell's targets only (Radiant Soul: "one radiant
+        // or fire damage roll of that spell against one of its targets"): an
+        // area spell adds it to its first creature alone (aoe-damage.ts).
+        oneTarget?: boolean;
       }
     // Casting the spell gives temporary hit points, and damage never breaks
     // the concentration on it (Grasping Tentacles).
@@ -294,15 +307,24 @@ export type AuthoredEffect = Base &
     // A single-target spell of the school and level range strikes a second
     // creature within 5 feet of the first (Improved Reaper: 1st to 5th level
     // necromancy; Reaper: a necromancy cantrip; Moon Fire: sacred flame).
-    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[] }
+    // `anywhere`: the text sets no distance between the two, and the second
+    // creature need only be in the spell's own range (Split Enchantment).
+    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[]; anywhere?: boolean }
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }
+    // One attack of the holder's Attack action may be a cantrip with a
+    // casting time of one action (the Bladesinger's Extra Attack:
+    // src/lib/dm/ar-ws-cantrip-attack.ts, through cast-rules.ts turnCharge).
+    | { kind: "attack_cantrip" }
     // An opportunity attack on every other creature's turn, each with its own
     // reaction (Vigilant Defender).
     | { kind: "oa_each_turn" }
     // Standing up from prone costs this many feet of movement (Tipsy Sway).
     | { kind: "stand_cost"; feet: number }
+    // Walking speed added on a turn the holder took the Attack action, to
+    // the turn's end (Blade Flourish: src/lib/battlemap/view.ts pcMoveBudget).
+    | { kind: "attack_turn_speed"; feet: number }
     // The holder's Bardic Inspiration die carries a mote that bursts when the
     // die is spent (Mote of Potential).
     | { kind: "mote" }
@@ -321,6 +343,17 @@ export type AuthoredEffect = Base &
     // What the holder summons with a spell, of these creature types, gains
     // this many hit points per Hit Die (Mighty Summoner: 2, beasts and fey).
     | { kind: "summon_hp_per_hd"; amount: number; types: string[] }
+    // The holder's hit point maximum cannot be reduced, by a drain, an effect
+    // or exhaustion (Inured to Undeath, src/lib/dm/ar-ws-inured-logic.ts).
+    | { kind: "max_hp_fixed" }
+    // A casting of this spell makes this many more creatures (Undead Thralls:
+    // Animate Dead, one; src/lib/dm/ar-ws-thralls.ts).
+    | { kind: "summon_extra"; spell: string; amount: number }
+    // What the holder makes with a spell of this school, of these creature
+    // types, has its hit point maximum raised by the holder's level in the
+    // class and adds the holder's proficiency bonus to its weapon damage
+    // (Undead Thralls: necromancy, undead; src/lib/dm/ar-ws-thralls.ts).
+    | { kind: "summon_thrall"; school: string; types: string[] }
     // The attacks of the holder's companion of these kinds count as magical
     // (Exceptional Training: the beast companion).
     | { kind: "pet_magical"; pets: Array<"familiar" | "beast_companion" | "drake" | "other"> }
@@ -330,6 +363,15 @@ export type AuthoredEffect = Base &
     // The steel defender grows sturdier: its armor class rises by this much
     // (Improved Defender, src/lib/dm/summon-defender.ts).
     | { kind: "defender_upgrade"; ac: number }
+    // The proficiency bonus added to an ability check made as part of a spell
+    // of this school (Improved Abjuration: the checks of Counterspell and
+    // Dispel Magic; src/lib/dm/ar-ws-spell-check.ts, through contest-roll.ts).
+    | { kind: "spell_check_prof"; school: string }
+    // Casting a spell of 1st level or higher that deals one of these damage
+    // types deals `amount` of one of them to the hostile creatures within
+    // `feet` the holder can see (Heart of the Storm: src/lib/dm/ar-ws-heart-storm.ts,
+    // from the cast door).
+    | { kind: "cast_burst"; types: string[]; feet: number; amount: Formula }
   );
 
 export type NaturalWeapon = {
@@ -370,9 +412,19 @@ export type SpendDoes =
   // "{units}" (what the call spent), or step with the class level.
   | {
       kind: "buff";
+      // The named creature's mark comes with the Hound of Ill Omen itself, a
+      // creature on the holder's side bound to it (src/lib/dm/ar-ws-hound.ts).
+      hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
-      target?: "self" | "ally" | "enemy" | "allies";
+      // "creature": a creature of either side (Adjust Density: "a creature's
+      // ... weight"): the enemy named in targetEnemyId, else the ally named in
+      // targetCharacterId, else the holder.
+      target?: "self" | "ally" | "enemy" | "allies" | "creature";
+      // The mark lasts until the holder's long rest, not a count of rounds
+      // (Awakened Spellbook's ritual at its normal casting time, kept until
+      // a ritual uses it: src/lib/dm/ar-ws-swift-ritual.ts).
+      untilLongRest?: boolean;
       // An ally other than the holder ("a willing creature other than
       // yourself": Blessing of the Trickster): the holder is no target.
       othersOnly?: boolean;
@@ -391,6 +443,9 @@ export type SpendDoes =
       // creature"); with the spend's afterWeaponHit, the creature is the one
       // a melee weapon attack hit this turn (src/lib/dm/mt-fb-spend.ts).
       maxSize?: string;
+      // The holder's condition ends when they are incapacitated (Hexblade's
+      // Curse), read by set-condition.ts with concentration.
+      endsIfIncapacitated?: boolean;
       // The spend's own burst (Arms of the Astral Self, Avenging Angel).
       // `mark`: a second condition each creature that failed carries
       // (Avenging Angel: "menaced", which gives every attacker advantage).
@@ -421,7 +476,13 @@ export type SpendDoes =
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
-  | { kind: "choose"; options: string[] }
+  // `feature`: the feature whose option is renamed, when it is another one
+  // than the spend's own (Waxing and Waning changes Lunar Embodiment's phase).
+  // `changeAfterCast`: the first choice follows the spend's own rules; a
+  // change needs a spell of this school and level just cast by the holder,
+  // in a fight or out, and each casting opens one (Transmuter's Stone,
+  // src/lib/dm/ar-ws-stone.ts).
+  | { kind: "choose"; options: string[]; feature?: string; changeAfterCast?: { school: string; minLevel: number } }
   // One enemy saves or suffers: damage (per unit spent when `perUnit`),
   // a condition, or a note on movement the DM makes on the board.
   | {
@@ -470,6 +531,25 @@ export type SpendDoes =
       // side while the condition lasts, and the holder's next use lets the
       // last creature go (src/lib/dm/command-undead.ts).
       commands?: boolean;
+      // A creature that failed, with this ability at `atLeast` or more,
+      // repeats the save at the end of every hour and breaks free on a
+      // success (Command Undead: Intelligence 12; rolled as the clock moves,
+      // src/lib/dm/ar-ws-command-hours.ts).
+      hourlySaveAt?: { ability: Ability; atLeast: number };
+      // A second condition laid with it, ending with it (Hypnotic Gaze:
+      // incapacitated beside charmed); both end on any damage, or once the
+      // holder is more than `leashFeet` away (src/lib/dm/condition-leash.ts).
+      alsoCondition?: string;
+      endsOnDamage?: boolean;
+      leashFeet?: number;
+      // Until the end of the holder's next turn, not a count of rounds.
+      untilNextTurnEnds?: boolean;
+      // Refused when the creature can neither see nor hear the holder.
+      senses?: "see_or_hear";
+      // Once used on a creature, whatever the result, not on it again until
+      // the holder's long rest; a use while it still holds renews it
+      // (src/lib/dm/authored-save-effect-extras.ts).
+      oncePerCreature?: boolean;
     }
   // Every foe in reach that the holder can see saves or suffers, with one roll
   // of damage shared among them. `types` keeps it to creatures of those types;
@@ -519,8 +599,15 @@ export type SpendDoes =
       mark?: string;
     }
   | { kind: "reroll_save" }
+  // The healing dice of a spell cast this turn rolled again, the new roll
+  // standing (Empowered Healing: src/lib/dm/ar-ws-empowered-healing.ts).
+  | { kind: "reroll_heal" }
   // Temporary hit points: to the holder, or to allies in range.
   | { kind: "temp_hp"; formula: Formula; allies?: { rangeFt: number; count: Formula } }
+  // A ward of dice on a creature in reach, one die for each unit spent, which
+  // the creature spends off damage it takes until its next long rest (Bastion
+  // of Law: src/lib/dm/ar-ws-bastion.ts).
+  | { kind: "damage_ward"; die: string; rangeFt: number; condition: string }
   // Hit points to the characters in reach (Turn the Tide, Balm of Peace), at
   // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
   // healing the holder deals as they walk past. `belowHalf`: only those at or
@@ -541,7 +628,9 @@ export type SpendDoes =
   // `rangeFt`: how far from the holder a creature named may stand.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string; noHalf?: boolean; rangeFt?: number }
   // `touched`: a willing creature the holder touches is the one moved.
-  | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
+  // `shadows`: only from dim light or darkness to dim light or darkness
+  // (Shadow Walk: src/lib/dm/ar-ws-shadow-light.ts).
+  | { kind: "teleport"; feet: number; note?: string; touched?: boolean; shadows?: boolean }
   // Dice of damage onto the creature the holder just hit.
   // `afterSneak`: it answers the turn's Sneak Attack hit (action-budget.ts
   // SNEAK_HIT) and lands on a second creature within `rangeFt` of the one the
@@ -577,6 +666,15 @@ export type SpendDoes =
   | { kind: "summon"; form: string }
   // One option of an Arcane Archer's Arcane Shot (src/lib/dm/mt-fb-arcane-shot.ts).
   | { kind: "arcane_shot"; option: "banishing" | "beguiling" | "bursting" | "enfeebling" | "grasping" | "piercing" | "seeking" | "shadow" }
+  // A nonmagical item the player names (in the variant) put in the holder's
+  // pack, worth no more than `gpPerLevel` times the class level (Performance
+  // of Creation: src/lib/dm/authored-spend-arcane.ts).
+  | { kind: "create_item"; gpPerLevel: number }
+  // A light the holder sheds and carries, lit by one call and doused by the
+  // next: bright for `brightFt`, dim for `dimFt` beyond, the condition the
+  // sheet carries while it is lit (Lunar Empowerment's Full Moon:
+  // src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight).
+  | { kind: "light"; brightFt: number; dimFt: number; condition: string }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
@@ -599,6 +697,19 @@ export type SpendDoes =
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A scroll of a spell from the holder's book, named in the variant, of
+  // these levels and cast with an action, written onto their pack (Master
+  // Scrivener: src/lib/dm/ar-ws-scrivener.ts).
+  | { kind: "scribe_scroll"; minLevel: number; maxLevel: number }
+  // The GM's surge (a sorcerer's; the barbarian's Wild Surge is `wild_surge` below): with the pool's use spent it rolls on the wild magic
+  // table and gives the use back; otherwise the holder's d20 is rolled and a 1
+  // rolls on the table. `clears`: the mark the spend's gate asked for (Wild
+  // Magic Surge: src/lib/dm/ar-ws-wild-surge.ts).
+  | { kind: "wild_magic_surge"; pool: string; clears: string }
+  // A creature the holder charmed saves or loses hours of memory, as many as
+  // the call's amount, at most the ability modifier plus one; the mark it
+  // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).
+  | { kind: "strip_memory"; save: Ability; dcAbility: Ability | "spell"; hoursAbility: Ability; condition: string }
   // Ends these conditions on the holder; refused, with nothing spent, when
   // they carry none of them (Guarded Mind: src/lib/dm/mt-fb-spend.ts).
   | { kind: "cleanse"; conditions: string[] }
@@ -680,7 +791,10 @@ export type AuthoredSpend = {
   // amount (Rend Mind: three Psionic Energy dice for its one use).
   // `orTrinket`: with none left in the pool, a Phantom's soul trinket is
   // destroyed in its place (src/lib/dm/mt-mr-trinkets.ts).
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; slot?: boolean; slotFallback?: number; fallbackAmount?: number; free?: SpendNeed; orTrinket?: boolean; min?: number };
+  // `freeDie`: with no use left, a holder of that feature rolls the die in
+  // place of the pool's and spends nothing (Master's Flourish: "you can roll
+  // a d6 and use it instead of expending a Bardic Inspiration die").
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; slot?: boolean; slotFallback?: number; fallbackAmount?: number; free?: SpendNeed; orTrinket?: boolean; min?: number; freeDie?: { feature: string; die: string } };
   action?: SpendAction;
   gate?: Gate;
   // Asked after the gate and before anything is spent; unmet, the refusal
@@ -705,6 +819,16 @@ export type AuthoredSpend = {
   // Rides a hit of one of the holder's natural weapons this turn, on the
   // creature named (Infectious Fury; src/lib/dm/mt-fb-charge.ts naturalHitRefusal).
   afterNaturalHit?: boolean;
+  // Rides a wizard spell's damage of the holder's own turn (Power Surge): one
+  // must have hurt a creature this turn, and the spend lands on a creature it
+  // hurt (src/lib/dm/spell-damage-mark.ts).
+  afterSpellDamage?: boolean;
+  // Follows a spell of 1st level or higher the holder cast this turn
+  // (Tempestuous Magic: src/lib/dm/ar-ws-tempest-logic.ts has the ruling).
+  afterLevelledCast?: boolean;
+  // Master of Hexes: moving the curse takes back the hit points its first
+  // creature's death gave (src/lib/dm/master-of-hexes.ts).
+  takesBackCurseHeal?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
@@ -722,6 +846,10 @@ export type AuthoredSpend = {
   // also gains these temporary hit points while the holder holds `feature`
   // (Restorative Reagents on an Experimental Elixir drunk).
   drinker?: { feature: string; tempHp: Formula };
+  // The option chosen for this feature is the variant, and no other may be
+  // named (Lunar Phenomenon releases the power of the current phase, the
+  // choice of Lunar Embodiment).
+  variantFrom?: string;
   does: SpendDoes;
 };
 
@@ -731,14 +859,21 @@ export type ReactionDoes =
   // "ward": the holder's Arcane Ward takes what it can (Projected Ward).
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
+  // `nearZone`: the creature it covers, the holder too, must stand within
+  // `feet` of the holder's zone of that spell (Guardian Coil's tentacle:
+  // src/lib/dm/zone-reach.ts), in place of a reach from the holder.
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string } }
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
   // `amount.die`: a die rolled as the reaction is taken. `attackerWithinFt`:
   // only against a creature that near. `beastForm`: it is that natural weapon
   // of Form of the Beast (the tail: src/lib/dm/mt-fb-beast.ts).
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha" | { die: string }; rangeFt?: number; strikeOnMiss?: boolean; attackerWithinFt?: number; beastForm?: string }
+  // `cantripsOnly`: every use leaves the holder casting only cantrips until
+  // the end of their next turn (Arcane Deflection: src/lib/dm/ar-ws-deflection.ts).
+  // `orSave`: the same reaction instead adds this much to a saving throw the
+  // holder has just failed (Arcane Deflection's other half).
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha" | { die: string }; rangeFt?: number; strikeOnMiss?: boolean; attackerWithinFt?: number; beastForm?: string; cantripsOnly?: boolean; orSave?: number }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within
@@ -779,7 +914,9 @@ export type ReactionDoes =
       orType?: string;
       melee?: boolean;
       rangeFt?: number;
-      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
+      // `pushFeet`: on a failed save the creature is moved that far straight
+      // away from the holder, on the board (Storm's Fury: src/lib/dm/ar-ws-storm-fury.ts).
+      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean; pushFeet?: number };
     }
   // The damage a hit dealt another creature, back at whoever dealt it, on a
   // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.
@@ -806,7 +943,8 @@ export type ReactionDoes =
   // against a creature the holder marked with this condition.
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
-  | { kind: "force_miss"; exhaustion: number }
+  // `rangeFt`: the attacker made its roll within this many feet of the holder.
+  | { kind: "force_miss"; exhaustion: number; rangeFt?: number }
   // A critical hit on the holder or a creature in range becomes a normal hit:
   // the same dice without the critical's, and a death-save failure for one blow
   // at 0 rather than two (Sentinel at Death's Door).

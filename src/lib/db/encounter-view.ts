@@ -490,6 +490,7 @@ function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbe
           forcer: save.forcer.name,
           ...(save.kind ? { kind: save.kind } : {}),
           ...(save.success !== undefined ? { success: save.success } : {}),
+          ...(save.dc !== undefined ? { dc: save.dc } : {}),
           ...(save.against ? { against: save.against } : {}),
           ...(save.damage ? { damage: save.damage } : {}),
           ...(save.petName ? { petName: save.petName } : {}),

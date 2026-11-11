@@ -43,10 +43,11 @@ import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag, itemRow, type TaggedItem } from "@/lib/srd/item-tags";
 import { findSpellByName } from "@/lib/content";
 import { matchGear } from "@/lib/srd/adventuring-gear";
+import { scrollCastLevel } from "@/lib/srd/ar-ws-conjured";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 
 // A carried scroll and the spell it holds (the inventory entry's `spell`).
-type ScrollItem = TaggedItem & { spell?: string };
+type ScrollItem = TaggedItem & { spell?: string; conjured?: EquipmentItem["conjured"] };
 
 // The SRD's antitoxin row, every spelling of it (src/lib/srd/adventuring-gear.ts).
 const ANTITOXIN = matchGear("Antitoxin (vial)");
@@ -263,11 +264,14 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
 // can cast needs a check against DC 10 + its level first.
 function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, spell: string, scroll: ScrollItem): Record<string, unknown> {
   const known = checklistSpell(spell);
-  const level = known?.level ?? 1;
+  const own = known?.level ?? 1;
+  // A Master Scrivener's scroll is cast one level higher, with the table's
+  // numbers for that level (src/lib/srd/ar-ws-conjured.ts).
+  const level = scrollCastLevel(scroll, own);
   const numbers = scrollNumbers(level);
   const name = known?.name ?? spell;
-  if (level > highestSlotLevel(reader) && reader.spellcasting) {
-    const dc = 10 + level;
+  if (own > highestSlotLevel(reader) && reader.spellcasting) {
+    const dc = 10 + own;
     const resolved = resolveRollExpression(
       { kind: "ability_check", ability: reader.spellcasting.ability, dc } as unknown as RollArgs,
       reader,

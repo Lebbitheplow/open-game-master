@@ -3,6 +3,7 @@ import { subclassSpellsFor } from "@/lib/srd/features";
 import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
+import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
 import backgroundsJson from "@/lib/srd/backgrounds.json";
 import classesJson from "@/lib/srd/classes.json";
 import racesJson from "@/lib/srd/races.json";
@@ -241,8 +242,10 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
     !armored && !resolved.shieldName ? magic.acUnarmoredBonus : 0;
   // The authored subclass features' own (Soul of the Forge, Durable Magic).
   const authored = authoredAcBonus(source);
+  // Dual Wielder's +1 with a melee weapon in each hand (feat-ac.ts).
+  const featAc = dualWielderAcBonus(source);
   const bonus =
-    featureBonus + magic.acBonus + unarmoredBonus + conditionAc.bonus + authored.bonus + (source.bonus ?? 0);
+    featureBonus + magic.acBonus + unarmoredBonus + conditionAc.bonus + authored.bonus + featAc + (source.bonus ?? 0);
   let final = bonus ? computeArmorClass({ ...chosenInput, bonus }) : resolved;
   // Barkskin: the AC never sits below the floor while the condition holds.
   if (conditionAc.floor && final.ac < conditionAc.floor) {
