@@ -78,6 +78,11 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("plague_doctor", "Master of the Black Ledger", "dark_fantasy_master_of_the_black_ledger", {
     spends: [{ name: "Master of the Black Ledger", pool: { id: "dark_fantasy_master_of_the_black_ledger" }, action: "action", does: { kind: "dark_fantasy", play: "black_ledger" } }],
   }),
+  // "1/long rest, for 1 minute all your attacks against fiends, undead, and
+  // cursed creatures deal maximum weapon dice" (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  counted("witch_hunter", "Final Verdict", "dark_fantasy_final_verdict", {
+    spends: [{ name: "Final Verdict", pool: { id: "dark_fantasy_final_verdict" }, action: "none", does: { kind: "buff", condition: "final verdict", rounds: 10 } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

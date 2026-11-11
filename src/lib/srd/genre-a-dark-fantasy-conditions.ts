@@ -63,6 +63,7 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
     onHitDice: { dice: String(at + 1), type: "" },
     consumedBy: "attack",
   })),
+  { id: "final_verdict", match: ["final verdict"], summary: "Final Verdict: for a minute the witch hunter's weapon attacks against fiends, undead and cursed creatures deal their weapon dice at maximum." },
   { id: "the_last_rose", match: [LAST_ROSE], summary: "The Last Rose: the grave knight's next attack is a critical hit if it hits." },
   { id: "threnody", match: [THRENODY], summary: "Threnody: its next attack that lands deals half damage." },
   { id: "judged", match: [JUDGED], summary: "Judged (The Flame That Judges): +1d8 radiant on attacks against this branded creature, until it dies or the hunter rests.", onHitDice: { dice: "1d8", type: "radiant" }, marksTarget: true },

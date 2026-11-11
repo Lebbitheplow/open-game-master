@@ -433,11 +433,9 @@
      "k": "spend_moves",
      "id": "dark_fantasy_final_verdict"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Final Verdict#1",
-    "observed": "spending dark_fantasy_final_verdict moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute all your attacks against fiends, undead, and cursed creatures deal maximum weapon dice.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Final Verdict buff of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts and finalVerdictDice of src/lib/dm/genre-a-dark-fantasy-hits.ts (read by attack-swing.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Final Verdict#1"
    }
   ]
  },

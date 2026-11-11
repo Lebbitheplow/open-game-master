@@ -313,5 +313,19 @@ await test("Master of the Black Ledger: life restores every hit point of the tou
   assert.equal(far.ok, false, "a foe 70 feet off is beyond a touch");
 });
 
+await test("Final Verdict: for a minute the weapon's dice are dealt at their maximum on an undead, and rolled on anything else", async () => {
+  const scene = await t.stage({ classId: "witch_hunter", level: 20 });
+  must(await spend(scene, "dark_fantasy_final_verdict"), "Final Verdict");
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, type: "undead" } });
+  let before = t.foeHp(scene.near.id);
+  must(await swing(scene, scene.near, [15, 1, 1, 1, 1]), "the swing on the undead");
+  assert.equal(before - t.foeHp(scene.near.id), 8 + 4, "a longsword's d8 at 8");
+  t.kit.giveTurn(scene.holder.id);
+  t.kit.place(scene.far.id, 4, 6);
+  before = t.foeHp(scene.far.id);
+  must(await swing(scene, scene.far, [15, 1, 1, 1, 1]), "the swing on the goblin");
+  assert.equal(before - t.foeHp(scene.far.id), 1 + 4);
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

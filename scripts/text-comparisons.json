@@ -16,6 +16,7 @@
   "sites": {
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],
     "lib/dm/genre-a-heals.ts#str-eq": [["key",1,"condition names the healers end or lay (engine vocabulary)"]],
+    "lib/dm/genre-a-dark-fantasy-hits.ts#str-list": [["key",1,"the condition names the engine lays for a curse (engine vocabulary)"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#str-eq": [["key",1,"Master of the Black Ledger's own option key, resolved by namedOption"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#str-list": [["key",1,"Master of the Black Ledger's two option keys, offered to namedOption"]],
     "lib/dm/genre-a-heals.ts#str-list": [["key",3,"condition names the healers end (engine vocabulary)"]],
