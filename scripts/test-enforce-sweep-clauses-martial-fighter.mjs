@@ -793,9 +793,15 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     await kit.endFight();
     assert.equal((await roll(envoy, { kind: "skill_check", skill: "persuasion", dc: 10 })).total, 10 + 3 + 2 * prof(7));
   });
+  // The grant as it falls on a fighter already proficient in Persuasion
+  // (grantsForHeldTraining, which the builder and the level-up both read): a
+  // pick of one of the four in its place.
   await probe("royal-envoy-already-proficient", () => {
-    const spec = training.subclassGrants([{ id: "fighter", level: 7, subclass: "Banneret" }]).find((grant) => grant.name === "Royal Envoy")?.spec;
-    assert.match(JSON.stringify(spec), /animal_handling/, "Royal Envoy's training lists no skill to take in place of a Persuasion already held");
+    const grants = training.subclassGrants([{ id: "fighter", level: 7, subclass: "Banneret" }]);
+    const fresh = training.grantsForHeldTraining(grants, { skills: [] }).find((grant) => grant.name === "Royal Envoy").spec;
+    assert.deepEqual([fresh.fixedSkills, fresh.skills], [["persuasion"], 0], "with no Persuasion yet: Persuasion, no pick");
+    const held = training.grantsForHeldTraining(grants, { skills: ["persuasion"] }).find((grant) => grant.name === "Royal Envoy").spec;
+    assert.deepEqual([held.fixedSkills, held.skills, [...held.skillsFrom].sort()], [[], 1, ["animal_handling", "insight", "intimidation", "performance"]], "Royal Envoy's training lists no skill to take in place of a Persuasion already held");
   });
 
   await probe("inspiring-surge-60-feet", async () => {

@@ -179,7 +179,18 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "natural_weapon",
         gate: RAGING,
         weapon: { name: "Tail", dice: "1d8", type: "piercing", reach: true },
-        note: "The tail's reaction (1d8 to AC against one attack) and keeping to one form per rage are the GM's to hold.",
+      },
+    ],
+    // "when a creature you can see within 10 feet hits you, a reaction adds
+    // 1d8 to your AC against that attack": the tail's, so it is the weapon
+    // this rage grew (or grows now).
+    reactions: [
+      {
+        name: "Form of the Beast",
+        aliases: ["Tail", "Tail Swipe"],
+        gate: RAGING,
+        sees: "attacker",
+        does: { kind: "ac_vs_hit", amount: { die: "1d8" }, attackerWithinFt: 10, beastForm: "Tail" },
       },
     ],
   },

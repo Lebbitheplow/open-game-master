@@ -28,13 +28,6 @@ export const KNOWN = {
     fix: "Rows for the six runes: passive effects (check_adv, save_adv, resist, darkvision) and an invoke spend each with a per-rest counter (two uses with Master of Runes).",
     files: ["src/lib/srd/options.json", "src/lib/srd/authored-effects-data-b.ts", "src/lib/srd/authored-resources.json"],
   },
-  "royal-envoy-already-proficient": {
-    severity: "low", kind: "rule-missing",
-    where: "src/lib/srd/subclass-training.ts (Royal Envoy: fixedSkills persuasion, fixedExpertise persuasion, no other list)",
-    note: "A fighter already proficient in Persuasion gains no pick of Animal Handling, Insight, Intimidation or Performance.",
-    fix: "A skill pick from the four when Persuasion is already held, as a held language becomes a pick of another.",
-    files: ["src/lib/srd/subclass-training.ts"],
-  },
 
 };
 

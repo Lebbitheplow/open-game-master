@@ -618,6 +618,13 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const claws = await swing(beast, enemy, [15, 4], { weapon: "Claws" });
     const bite = await swing(beast, enemy, [15, 4], { weapon: "Bite" });
     assert.deepEqual([claws.ok, bite.ok], [true, false], "in one rage the barbarian clawed and then bit");
+    assert.equal((await swing(beast, enemy, [15, 4], { weapon: "Claws" })).ok, true, "the weapon grown is theirs for the rage");
+    // The rage over, the next one grows anew.
+    await world.invoke("clear_condition", { characterId: beast.id, condition: "raging" });
+    r.endTurn();
+    const [again] = await stage(beast);
+    rage(beast);
+    assert.equal((await swing(beast, again, [15, 4], { weapon: "Bite" })).ok, true, "a new rage, a new weapon");
   });
   await probe("form-of-the-beast-tail-reaction", async () => {
     const [enemy] = await stage(beast);
@@ -627,6 +634,22 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const before = sheet(beast).currentHp;
     const out = await react(beast, "Form of the Beast", {}, [8]);
     assert.ok(out.ok && sheet(beast).currentHp > before, `the tail's 1d8 (an 8) on AC 13 against a 20 turned nothing: ${show(out)}`);
+    // The tail is the weapon this rage grew: the claws are not.
+    kit.giveTurn(beast.id);
+    assert.equal((await swing(beast, enemy, [15, 4], { weapon: "Claws" })).ok, false, "claws in the rage that grew the tail");
+    // A 1 on the die: 20 against AC 14 still hits.
+    const [other] = await stage(beast);
+    rage(beast);
+    world.patch(beast.id, { ac: 13, acOverride: true });
+    await enemyHits(other, beast, [16, 4]);
+    const hurt = sheet(beast).currentHp;
+    await react(beast, "Form of the Beast", {}, [1]);
+    assert.equal(sheet(beast).currentHp, hurt, "a 1 on the d8 turns nothing");
+    // Beyond 10 feet, and while calm, there is no tail to raise.
+    const [far] = await stage(beast);
+    world.patch(beast.id, { ac: 13, acOverride: true });
+    await enemyHits(far, beast, [16, 4]);
+    assert.equal((await react(beast, "Form of the Beast", {}, [8])).ok, false, "not while calm");
   });
 
   const lostTo = async (weapon) => {
@@ -677,6 +700,15 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     await kit.endFight();
     const out = await spend(beast, "Bestial Soul", { variant: "swim" });
     assert.equal(out.ok, true, `no way to take the swim, climb or jump option: ${show(out)}`);
+    const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+    // The walking speed the derived speeds are read from (src/lib/srd/index.ts otherSpeeds).
+    const walking = sheet(beast).speed;
+    assert.equal(computeSheetDerived(sheet(beast)).speeds?.swim, walking, "a swimming speed equal to the walking speed");
+    assert.equal((await spend(beast, "Bestial Soul", { variant: "climb" })).ok, true, "changed after a rest");
+    assert.deepEqual([computeSheetDerived(sheet(beast)).speeds?.swim, computeSheetDerived(sheet(beast)).speeds?.climb], [undefined, walking], "climb in its place");
+    assert.equal((await spend(beast, "Bestial Soul", { variant: "jump" })).ok, true);
+    await stage(beast);
+    assert.equal((await spend(beast, "Bestial Soul", { variant: "swim" })).ok, false, "not in the middle of a fight");
   });
 
   await probe("call-the-hunt-allies", async () => {
@@ -729,8 +761,10 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const bolster = hero("barbarian", "Path of Wild Magic", 6);
     const friend = hero("fighter", "Champion", 5);
     const [enemy] = await stage(bolster, { cast: [[friend, 5, 6]] });
-    const out = await spend(bolster, "Bolstering Magic", { targetCharacterId: friend.id });
+    const out = await spend(bolster, "Bolstering Magic", { targetCharacterId: friend.id, variant: "bolster" });
     assert.equal(out.ok, true, out.error);
+    assert.equal(r.budget().actionUsed, true, "an action");
+    assert.equal(r.sheet(friend).conditionMeta["bolstering magic (d3)"]?.rounds, 100, "10 minutes");
     r.kit.giveTurn(friend.id);
     r.kit.place(enemy.id, 6, 6);
     const swung = await r.swing(friend, enemy, [15, 2, 4]);
@@ -738,6 +772,32 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     // "d3" by chance.
     const expression = String(swung.toHit?.breakdown?.expression ?? swung.toHit?.expression ?? "");
     assert.match(expression, /\bd3\b|\dd3\b/, `the touched ally's attack adds no d3: ${expression.slice(0, 200)}; the spend said ${r.show(out)}`);
+    // "And ability checks", every one of the 10 minutes, not one.
+    for (const turn of [1, 2]) {
+      const check = await r.roll(friend, { kind: "ability_check", ability: "str", dc: 10 }, [10, 2]);
+      assert.equal(check.dice?.some((term) => term.sides === 3), true, `ability check ${turn} adds no d3: ${JSON.stringify(check.dice).slice(0, 200)}`);
+    }
+    const save = await r.roll(friend, { kind: "saving_throw", ability: "str", dc: 10 }, [10, 2]);
+    assert.equal(save.dice?.some((term) => term.sides === 3), false, "not saving throws");
+  });
+  // "Or it rolls a d3 and regains one expended spell slot of that level or
+  // lower (a creature can take the slot only once per long rest)."
+  await probe("bolstering-magic-slot", async () => {
+    const bolster = hero("barbarian", "Path of Wild Magic", 6);
+    const mage = hero("wizard", "School of Evocation", 5, { spellcasting: { ability: "int", slots: { 1: { max: 4, used: 2 }, 2: { max: 3, used: 2 }, 3: { max: 2, used: 2 } }, prepared: [], known: [], cantrips: [] } });
+    await stage(bolster, { cast: [[mage, 5, 6]] });
+    const slots = () => Object.values(r.sheet(mage).spellcasting.slots).map((slot) => slot.used);
+    const out = await spend(bolster, "Bolstering Magic", { targetCharacterId: mage.id, variant: "slot" }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual(slots(), [2, 1, 2], `a 2 on the d3: one 2nd-level slot back (${r.show(out)})`);
+    r.kit.freshTurn();
+    const again = await spend(bolster, "Bolstering Magic", { targetCharacterId: mage.id, variant: "slot" }, 2);
+    assert.equal(again.ok, false, "the same creature takes the slot only once per long rest");
+    assert.deepEqual(slots(), [2, 1, 2]);
+    assert.equal(r.used(bolster, "sub_bolstering_magic"), 1, "the refusal spends nothing");
+    await r.kit.endFight();
+    assert.equal((await world.invoke("take_rest", { kind: "long" })).ok, true);
+    assert.ok(!r.has(mage, "bolstered slot"), "a long rest, and the creature may take one again");
   });
 
   await probe("unstable-backlash-rerolls-nothing", async () => {

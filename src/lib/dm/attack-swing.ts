@@ -31,6 +31,7 @@ import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { chargedBudget } from "@/lib/dm/mt-fb-charge";
+import { growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { NATURAL_HIT } from "@/lib/srd/mt-fb-run";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
@@ -101,6 +102,8 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
   if (turn && record.melee) {
     storeBudget(turn.encounter, chargedBudget(turn.encounter, turn.budget, record.targetEnemyId));
   }
+  // The natural weapon a rage grows is the first one it attacks with (mt-fb-beast.ts).
+  growBeastForm(campaign.id, scene.sheet.id, authoredNaturalWeapon(scene.sheet, record.weapon));
   const foeSlayer = turn && !turn.budget.oncePerTurn.includes(FOE_SLAYER) ? (record.extras?.foeSlayer ?? 0) : 0;
   const metTotal = totalAReactionMeets({ total: toHit.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1, foeSlayer });
   const encounter = getActiveEncounter(campaign.id);

@@ -31,6 +31,7 @@ import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { authoredNaturalWeapon, authoredReachBonus, naturalWeaponGated } from "@/lib/srd/authored-effects-more";
 import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
+import { beastFormRefusal } from "@/lib/dm/mt-fb-beast";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
@@ -321,6 +322,11 @@ export function buildAttackProfile(
     // its kind, with no item behind it (src/lib/srd/authored-effects-more.ts).
     if (!natural) {
       return { error: `${sheet.name}'s ${args.weapon} exists only while raging (${naturalWeaponGated(sheet, weaponName)}). They rage first (use_resource Rage), or attack with a weapon they carry.`, refused: "rules" };
+    }
+    // One natural weapon a rage (Form of the Beast: mt-fb-beast.ts).
+    const otherForm = beastFormRefusal(sheet, natural);
+    if (otherForm) {
+      return otherForm;
     }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;

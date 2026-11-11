@@ -11,6 +11,7 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { beastFormRefusal, growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -477,8 +478,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         bonus = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: ${reaction.name}`, `1${die}`, null).total;
       } else if (typeof does.amount === "number") {
         bonus = does.amount;
+      } else if (typeof does.amount === "object") {
+        // Rolled below, once the hit it answers is found.
+        bonus = 0;
       } else {
         bonus = Math.max(1, modsOf(holder).cha ?? 0);
+      }
+      const tail = does.beastForm ? { feature: found.held.feature, weapon: { name: does.beastForm } } : null;
+      const otherForm = tail ? beastFormRefusal(ctx.sheet, tail) : null;
+      if (otherForm) {
+        return { ...otherForm, error: otherForm.error.replace("Nothing was rolled.", "Nothing was spent.") };
       }
       const covered = does.rangeFt ? (allyOf(ctx) ?? ctx.sheet) : ctx.sheet;
       if (does.rangeFt && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
@@ -489,6 +498,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
+      // "A creature you can see within 10 feet" (the tail of Form of the Beast).
+      const striker = attackerFoeId(hit.record);
+      if (does.attackerWithinFt && encounter && striker && !withinFeet(encounter.id, ctx.sheet.id, striker, does.attackerWithinFt)) {
+        return { error: `${hit.record.attacker.name} is beyond ${does.attackerWithinFt} feet of ${ctx.sheet.name}; ${reaction.name} reaches no further. Nothing was spent.`, refused: "rules" };
+      }
+      const unseenStriker = does.attackerWithinFt && reaction.sees === "attacker" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
+      if (unseenStriker) return unseenStriker;
+      if (typeof does.amount === "object") {
+        bonus = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: ${reaction.name}`, does.amount.die, null).total;
+      }
+      growBeastForm(ctx.campaign.id, ctx.sheet.id, tail);
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
         const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta, [spentDie]);

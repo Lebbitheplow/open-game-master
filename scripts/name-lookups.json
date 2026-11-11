@@ -2793,6 +2793,10 @@
     "lib/srd/mt-fb-casts.ts#whole": [["identity",2,"a cantrip and a feature by whole name, textKey on both sides"]],
     "lib/dm/mt-fb-surge.ts#partial": [["key",1,"the turn's own marks: a key the engine wrote, by its prefix"]],
     "lib/dm/authored-reactions.ts#fallback": [["search",1,"which holder of a party reaction serves: the one whose turn it is, else the first at the table"]],
-    "lib/dm/authored-reactions.ts#number": [["key",1,"a resolved formula's count of allies"]]
+    "lib/dm/authored-reactions.ts#number": [["key",1,"a resolved formula's count of allies"]],
+    "lib/srd/mt-fb-training.ts#whole": [["identity",2,"a class id and a subclass by whole name, textKey on both sides"]],
+    "lib/srd/mt-fb-training.ts#partial": [["identity",1,"a feature with its option by whole name: a Set of the sheet's feature names, textKey on both sides"]],
+    "lib/dm/mt-fb-beast.ts#partial": [["parse",1,"the \"(weapon)\" note of the engine's own beast form condition"]],
+    "lib/dm/mt-fb-beast.ts#whole-single": [["identity",1,"a natural weapon by whole name, textKey on both sides"]]
   }
 }

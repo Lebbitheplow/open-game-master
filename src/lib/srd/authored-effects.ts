@@ -400,10 +400,10 @@ export function authoredAcBonus(sheet: AuthoredSheet): { bonus: number; parts: s
   return { bonus, parts };
 }
 
-export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number } {
-  const out: { fly?: number; swim?: number } = {};
+export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number; climb?: number } {
+  const out: { fly?: number; swim?: number; climb?: number } = {};
   for (const { effect } of activeAuthored(sheet, "move")) {
-    for (const mode of ["fly", "swim"] as const) {
+    for (const mode of ["fly", "swim", "climb"] as const) {
       const value = effect[mode];
       if (value !== undefined) {
         out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value);

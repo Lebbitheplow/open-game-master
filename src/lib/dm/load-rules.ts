@@ -15,6 +15,7 @@
 // the item rows, the content pack by name, and the SRD armor table; an item
 // nothing can weigh is not counted, so the refusal errs toward allowing.
 
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { itemWeightByName } from "@/lib/content";
 import { carryMultiplier, encumbranceFor, type CarriedItem } from "@/lib/srd/encumbrance";
 import { sizeForRace } from "@/lib/srd";
@@ -69,6 +70,8 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
-  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined);
+  // Aspect of the Beast (Bear): "Bear doubles your carrying capacity".
+  const bear = holdsFeature(sheet as { features?: Array<{ name: string }> }, "Aspect of the Beast (Bear)") ? 2 : 1;
+  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined) * bear;
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

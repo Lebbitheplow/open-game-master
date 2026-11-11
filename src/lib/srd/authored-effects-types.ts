@@ -63,7 +63,7 @@ export type AuthoredEffect = Base &
     // Walking speed, through feature-effects' speed_bonus.
     | { kind: "speed"; amount: number }
     // Other movement modes: a number of feet, or "walk" for the walking speed.
-    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk" }
+    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk"; climb?: number | "walk" }
     | { kind: "init_adv" }
     | { kind: "init_ability"; ability: Ability }
     // Advantage on checks: named skills, or checks of an ability about one
@@ -547,7 +547,10 @@ export type ReactionDoes =
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
+  // `amount.die`: a die rolled as the reaction is taken. `attackerWithinFt`:
+  // only against a creature that near. `beastForm`: it is that natural weapon
+  // of Form of the Beast (the tail: src/lib/dm/mt-fb-beast.ts).
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha" | { die: string }; rangeFt?: number; strikeOnMiss?: boolean; attackerWithinFt?: number; beastForm?: string }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within

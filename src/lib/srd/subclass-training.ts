@@ -21,6 +21,7 @@
 // (FeatChoicesFields): the picks are stored in featChoices under the
 // feature's name. Saving throws are the one kind a feat's spec has no
 // place for, and are applied here. Pure.
+import { optionTraining } from "@/lib/srd/mt-fb-training";
 import type { Ability, Proficiencies } from "@/lib/schemas/sheet";
 import { classFeaturesFor, subclassFeatureDescription } from "@/lib/srd/features";
 import { applyFeatGrants, type FeatChoices, type FeatGrantVerdict } from "@/lib/srd/feat-grants";
@@ -392,6 +393,11 @@ export function subclassGrants(
         grants.push({ name, classId: entry.id, subclass, level, spec });
       }
     }
+  }
+  // An authored feature's option that trains (Aspect of the Beast's Tiger:
+  // src/lib/srd/mt-fb-training.ts), owed once the option is chosen.
+  for (const pick of features ? optionTraining(classes, features) : []) {
+    grants.push({ name: pick.name, classId: pick.classId, subclass: pick.subclass, level: pick.level, spec: specOf({ pickSkills: pick.pickSkills, skillsFrom: pick.skillsFrom }), optional: true });
   }
   const entries = classes.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
   for (const pick of features ? subclassChoiceTraining(entries, features, extras) : []) {

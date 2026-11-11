@@ -9,6 +9,10 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+
+// The mark of a slot taken from Bolstering Magic, until a long rest.
+export const SLOT_TAKEN = "bolstered slot";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -18,6 +22,11 @@ export function regainSlot(ctx: SpendContext, does: Extract<SpendDoes, { kind: "
   const target = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : ctx.sheet;
   if (!target || target.campaignId !== ctx.campaign.id) {
     return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  // "A creature can take the slot only once per long rest": the mark the
+  // slot leaves on it lasts until then.
+  if (target.conditions.some((entry) => isConditionNamed(entry, SLOT_TAKEN))) {
+    return { error: `${target.name} has taken a spell slot from ${ctx.spend.name} since their last long rest, and takes one only once until the next. Nothing was spent.`, refused: "rules" };
   }
   const slots = target.spellcasting?.slots ?? {};
   if (!Object.values(slots).some((slot) => slot.used > 0)) {
@@ -30,10 +39,14 @@ export function regainSlot(ctx: SpendContext, does: Extract<SpendDoes, { kind: "
   }
   const slot = slots[String(level)];
   const spellcasting = { ...target.spellcasting, slots: { ...slots, [String(level)]: { ...slot, used: slot.used - 1 } } };
+  const taken = {
+    conditions: [...target.conditions, SLOT_TAKEN],
+    conditionMeta: { ...target.conditionMeta, [SLOT_TAKEN]: { source: ctx.sheet.id, untilLongRest: true } },
+  };
   if (target.id === ctx.sheet.id) {
-    return { patch: { spellcasting }, result: { regained: `${target.name} regains a level ${level} spell slot (rolled ${rolled}).` } };
+    return { patch: { spellcasting, ...taken }, result: { regained: `${target.name} regains a level ${level} spell slot (rolled ${rolled}).` } };
   }
-  const updated = patchSheet(target.id, { spellcasting });
+  const updated = patchSheet(target.id, { spellcasting, ...taken });
   if (updated) {
     publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
   }

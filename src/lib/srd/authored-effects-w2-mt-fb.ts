@@ -46,6 +46,18 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "you can adapt to swim, climb or jump after each rest": chosen out of a
+  // fight. Swim and climb are a speed equal to the walking speed; the jump's
+  // Athletics check that lengthens a leap is rolled with request_roll when
+  // the barbarian jumps.
+  "barbarian::Bestial Soul": {
+    subclass: "Path of the Beast",
+    spends: [{ name: "Bestial Soul", aliases: ["Bestial Soul Adaptation"], fight: "out", does: { kind: "choose", options: ["Swim", "Climb", "Jump"] } }],
+    effects: [
+      { kind: "move", swim: "walk", gate: { choice: "swim" } },
+      { kind: "move", climb: "walk", gate: { choice: "climb" } },
+    ],
+  },
   "fighter::Guarded Mind": {
     subclass: "Psi Warrior",
     spends: [{ name: "Guarded Mind", pool: { id: "sub_psionic_energy" }, action: "none", does: { kind: "cleanse", conditions: ["charmed", "frightened"] } }],

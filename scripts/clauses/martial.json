@@ -1173,8 +1173,9 @@
    },
    {
     "c": "if you already have it, in your choice of Animal Handling, Insight, Intimidation or Performance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: royal-envoy-already-proficient"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: royal-envoy-already-proficient",
+    "by": "src/lib/srd/subclass-training.ts grantsForHeldTraining (skillOtherwise)"
    },
    {
     "c": "your proficiency bonus is doubled for any Persuasion check you make",
@@ -1315,8 +1316,9 @@
    },
    {
     "c": "Bear doubles your carrying capacity",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-bear-carrying"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-bear-carrying",
+    "by": "src/lib/dm/load-rules.ts liftLimits (Aspect of the Beast (Bear))"
    },
    {
     "c": "gives advantage on Strength checks to push, pull, lift or break",
@@ -1344,8 +1346,9 @@
    },
    {
     "c": "Tiger makes you proficient in two of Athletics, Acrobatics, Stealth and Survival",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-tiger-skills"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-tiger-skills",
+    "by": "src/lib/srd/mt-fb-training.ts optionTraining (two picks from the four, owed once Tiger is chosen)"
    },
    {
     "c": "Wolf lets you track at a fast pace and move stealthily at a normal pace",
@@ -1806,8 +1809,9 @@
   "clauses": [
    {
     "c": "When you enter your rage, grow one natural weapon",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-one-weapon"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-one-weapon",
+    "by": "src/lib/dm/mt-fb-beast.ts beastFormRefusal and growBeastForm (the first weapon the rage uses)"
    },
    {
     "c": "until it ends",
@@ -1841,8 +1845,9 @@
    },
    {
     "c": "when a creature you can see within 10 feet hits you, a reaction adds 1d8 to your AC against that attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-tail-reaction"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-tail-reaction",
+    "by": "src/lib/srd/authored-effects-data.ts barbarian::Form of the Beast reaction (ac_vs_hit, a d8, within 10 feet, the tail)"
    }
   ]
  },
@@ -1866,8 +1871,9 @@
    },
    {
     "c": "you can adapt to swim, climb or jump after each rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-adapt"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-adapt",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Bestial Soul (choose; swim and climb speeds)"
    }
   ]
  },
@@ -1969,14 +1975,15 @@
    },
    {
     "c": "touch a creature and choose: for 10 minutes it adds a d3 to its attack rolls and ability checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-d3"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-d3",
+    "by": "src/lib/srd/condition-effects-tail.ts bolstering_magic (attackDie, checkDie 1d3) laid by the bolster variant"
    },
    {
     "c": "or it rolls a d3 and regains one expended spell slot of that level or lower (a creature can take the slot only once per long rest)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no caster ally staged with a spent slot"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-counters.ts regainSlot (SLOT_TAKEN until a long rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-slot"
    }
   ]
  },
