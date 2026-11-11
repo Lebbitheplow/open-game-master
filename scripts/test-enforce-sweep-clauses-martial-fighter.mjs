@@ -537,7 +537,7 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
 // ---- Echo Knight ----
 {
   const r = await openRig();
-  const { world, kit, hero, stage, spend, sheet, budget, show } = r;
+  const { world, kit, hero, stage, spend, swing, sheet, budget, show } = r;
   const echo = hero("fighter", "Echo Knight", 18);
 
   await probe("manifest-echo-no-door", async () => {
@@ -582,6 +582,122 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(budget().attacksAllowed, allowed + 1, "one more attack in the action");
     const twice = await spend(echo, "Unleash Incarnation");
     assert.equal(twice.ok, false, `a second in the same action: ${show(twice)}`);
+  });
+
+  // ---- the echo on the board (src/lib/dm/mt-fb-echo.ts) ----
+  const third = hero("fighter", "Echo Knight", 3);
+  const { getTokenByRef } = await import("../src/lib/db/battle-maps.ts");
+  const echoOf = (who, ref = "echo") => getTokenByRef(kit.map().id, `${ref}:${who.id}`);
+  const echoName = (who) => `${sheet(who).name}'s echo`;
+  const feet = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) * 5;
+  const at = (token) => (token ? [token.x, token.y] : null);
+  const manifested = async (who) => {
+    const out = await spend(who, "Manifest Echo");
+    assert.equal(out.ok, true, `Manifest Echo was refused: ${show(out)}`);
+    assert.ok(echoOf(who) || echoOf(who, "echo2"), `no echo stands on the board: ${show(out)}`);
+    return echoOf(who);
+  };
+  const moveEcho = (who, x, y) => world.invoke("move_token", { token: echoName(who), x, y });
+  const aside = (enemy) => kit.place(enemy.id, kit.map().width - 2, kit.map().height - 1);
+
+  // "It has AC 14 + your proficiency bonus, 1 hit point": the dummy's +4
+  // misses AC 16 on an 11 and destroys the echo on a 12. "Destroyed if it ends
+  // your turn more than 30 feet from you", and gone when the knight is
+  // incapacitated.
+  await probe("manifest-echo-one-hit-point-and-leash", async () => {
+    const [enemy] = await stage(third);
+    const token = await manifested(third);
+    assert.ok(feet(token, kit.token(third.id)) <= 15, "the echo was manifested more than 15 feet away");
+    assert.equal(token.kind, "prop", "a token no condition or targeted effect can land on");
+    const strike = async (face) => {
+      kit.freshRound();
+      return r.forced([face, 4], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: echoName(third) }));
+    };
+    const miss = await strike(11);
+    assert.deepEqual([miss.ok, miss.result?.hit, Boolean(echoOf(third))], [true, false, true], `a 15 against AC 16: ${show(miss)}`);
+    const hit = await strike(12);
+    assert.deepEqual([hit.ok, hit.result?.hit, echoOf(third)], [true, true, null], `a 16 against AC 16, 1 hit point: ${show(hit)}`);
+    assert.ok(!r.has(third, "echo manifested"), "the mark outlived the echo");
+    // The leash: 30 feet at the turn's end holds it, 35 does not.
+    const [other] = await stage(third);
+    aside(other);
+    assert.deepEqual(at(await manifested(third)), [4, 4]);
+    assert.equal((await moveEcho(third, 10, 4)).ok, true);
+    assert.equal(await r.walk(third, 4, 5), 200);
+    r.endTurn();
+    assert.ok(echoOf(third), "an echo 30 feet off as the turn ended was destroyed");
+    r.untilTurnOf(third);
+    assert.equal(await r.walk(third, 3, 5), 200);
+    r.endTurn();
+    assert.equal(echoOf(third), null, "an echo 35 feet off as the turn ended still stands");
+    assert.ok(!r.has(third, "echo manifested"));
+    // Incapacitated: the echo goes at the next settle point.
+    const [last] = await stage(third);
+    aside(last);
+    await manifested(third);
+    r.give(third, "stunned");
+    r.endTurn();
+    assert.equal(echoOf(third), null, "a stunned knight's echo still stands");
+  });
+
+  // "Command it to move up to 30 feet without an action, swap places with it
+  // as a bonus action for 15 feet of your movement, and make any attack of
+  // the Attack action from its space."
+  await probe("manifest-echo-move-swap-attack", async () => {
+    const [enemy] = await stage(third);
+    kit.place(enemy.id, 11, 5);
+    await manifested(third);
+    const early = await swing(third, enemy, [15, 4]);
+    assert.equal(early.ok, false, "a creature 30 feet from the knight and farther from the echo was struck");
+    assert.equal((await moveEcho(third, 11, 4)).ok, false, "35 feet in one turn");
+    const moved = await moveEcho(third, 10, 4);
+    assert.equal(moved.ok, true, show(moved));
+    assert.equal((await moveEcho(third, 10, 5)).ok, false, "5 feet more after the 30");
+    const hit = await swing(third, enemy, [15, 4]);
+    assert.equal(hit.ok, true, `the attack was not made from the echo's space: ${String(hit.error).slice(0, 160)}`);
+    kit.freshTurn();
+    const before = r.moveTiles(third);
+    const swapped = await spend(third, "Manifest Echo", { variant: "swap" });
+    assert.equal(swapped.ok, true, show(swapped));
+    assert.deepEqual([at(kit.token(third.id)), at(echoOf(third))], [[10, 4], [5, 5]], "the two traded places");
+    assert.equal(before - r.moveTiles(third), 3, "15 feet of the knight's movement");
+    assert.equal(budget().bonusUsed, true, "a bonus action");
+  });
+
+  // "When a creature you can see within 5 feet of it moves at least 5 feet
+  // away from it, a reaction makes an opportunity attack as if you stood
+  // there": the creature walks off from beside the echo, 25 feet from the knight.
+  await probe("manifest-echo-opportunity-attack", async () => {
+    const [enemy] = await stage(third);
+    kit.place(enemy.id, 11, 5);
+    await manifested(third);
+    assert.equal((await moveEcho(third, 10, 4)).ok, true);
+    const encounter = world.encounter();
+    kit.saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => !entry.characterId), turnBudget: null });
+    const moved = await r.forced([15, 4, 4], () => world.invoke("move_token", { token: enemy.id, x: 13, y: 5 }));
+    assert.equal(moved.ok, true, moved.error);
+    assert.ok(300 - r.foe(enemy).currentHp > 0, `a creature leaving the echo's side was not struck: ${show(moved)}`);
+    assert.ok(world.encounter().reactionsUsed.includes(third.id), "it is the knight's reaction");
+  });
+
+  // "Manifest two echoes at once" at 18th level; before it, another replaces
+  // the one out.
+  await probe("legion-of-one-two-echoes", async () => {
+    await stage(third);
+    await manifested(third);
+    kit.freshTurn();
+    await manifested(third);
+    assert.equal(echoOf(third, "echo2"), null, "a 3rd-level knight has two echoes out");
+    await stage(echo);
+    await manifested(echo);
+    kit.freshTurn();
+    await manifested(echo);
+    const pair = [echoOf(echo), echoOf(echo, "echo2")];
+    assert.ok(pair[0] && pair[1], "an 18th-level knight's second echo took the first's place");
+    assert.notDeepEqual(at(pair[0]), at(pair[1]), "two echoes in one square");
+    kit.freshTurn();
+    await manifested(echo);
+    assert.ok(echoOf(echo) && echoOf(echo, "echo2"), "a third leaves two standing");
   });
 
   // "When you roll initiative with no Unleash Incarnation uses left, you

@@ -10,6 +10,7 @@ import { alliesJoin } from "@/lib/dm/allies-join";
 import { attacksAllowedFor, budgetFor, grantActionAttack, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { unleashRefusal } from "@/lib/dm/mt-fb-echo";
 
 export type MartialDoes = Extract<SpendDoes, { kind: "allies_join" | "action_attack" }>;
 
@@ -18,6 +19,9 @@ export function martialSpend(ctx: SpendContext, does: MartialDoes): ToolError | 
     case "allies_join":
       return alliesJoin(ctx, does);
     case "action_attack": {
+      // From the echo's space: someone must stand in reach of it (mt-fb-echo.ts).
+      const unreached = does.fromEcho ? unleashRefusal(ctx) : null;
+      if (unreached) return unreached;
       const encounter = getActiveEncounter(ctx.campaign.id);
       const budget = encounter ? budgetFor(encounter, ctx.sheet.id, attacksAllowedFor(ctx.sheet), conditionTurnShape(ctx.sheet.conditions)) : null;
       const granted = grantActionAttack(budget, ctx.sheet.name, ctx.spend.name);

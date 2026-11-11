@@ -42,6 +42,7 @@ import { textKey, words } from "@/lib/language/text-logic";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { arcaneShot } from "@/lib/dm/mt-fb-arcane-shot";
+import { echoSpend } from "@/lib/dm/mt-fb-echo";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
@@ -586,6 +587,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return cleanse(ctx, does.conditions);
     case "arcane_shot":
       return arcaneShot(ctx, does.option);
+    case "echo":
+      return echoSpend(ctx);
     case "wild_surge":
       return surgeSpend({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: ctx.args }, does, ctx.spend.name);
   }

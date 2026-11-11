@@ -687,21 +687,23 @@
    },
    {
     "c": "1 hit point and immunity to all conditions, uses your saving throw bonuses, and is destroyed if it ends your turn more than 30 feet from you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts (a prop token: enemyStrikesEcho rolls against AC 14 + proficiency and a hit destroys it; echoTurnEnd at turn-end.ts; endLostEchoes at the settle points)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-one-hit-point-and-leash",
+    "note": "A prop takes no condition and no area effect reaches it, so no save is ever asked of the echo: \"uses your saving throw bonuses\" has nothing to roll. A GM who catches it in an area takes it off with Manifest Echo variant dismiss."
    },
    {
     "c": "On your turn you can command it to move up to 30 feet without an action, swap places with it as a bonus action for 15 feet of your movement, and make any attack of the Attack action from its space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts moveEcho (map-tools.ts move_token), echoSpend variant swap, echoStrikeFrom (map-tools.ts checkPcAttackRange, pcAttackSpatials)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-move-swap-attack",
+    "note": "A melee attack is made from the nearer of the knight and the echo; a ranged attack stays the knight's."
    },
    {
     "c": "when a creature you can see within 5 feet of it moves at least 5 feet away from it, a reaction makes an opportunity attack as if you stood there",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (mt-fb-echo.ts echoTokens)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-opportunity-attack"
    }
   ]
  },
@@ -799,9 +801,9 @@
    },
    {
     "c": "manifest two echoes at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts manifest (a second token, echo2)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: legion-of-one-two-echoes"
    }
   ]
  },

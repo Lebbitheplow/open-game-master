@@ -494,7 +494,12 @@ export type SpendDoes =
   // One more attack in the Attack action being taken (Unleash Incarnation):
   // src/lib/dm/turn-budget.ts grantActionAttack. `note`: what the attack is
   // held to that the engine leaves to the GM (melee, from the echo's space).
-  | { kind: "action_attack"; note: string }
+  // `fromEcho`: the attack is made from the holder's echo, so a creature must
+  // stand in reach of it (Unleash Incarnation; src/lib/dm/mt-fb-echo.ts).
+  | { kind: "action_attack"; note: string; fromEcho?: boolean }
+  // Manifest Echo: the echo placed on the board, swapped with or dismissed
+  // (src/lib/dm/mt-fb-echo.ts echoSpend).
+  | { kind: "echo" }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }

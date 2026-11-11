@@ -208,14 +208,14 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     // action is owed to that creature (authored-attacks.ts rapidStrikeOwed).
     effects: [{ kind: "rapid_strike" }],
   },
-  // The echo is kept as a mark on the knight while it lasts (a bonus action
-  // manifests it), so what needs it out can ask: Shadow Martyr sends it into a
-  // hit only while it is out, and the hit that destroys it takes the mark off
-  // (authored-reactions.ts echo_takes_hit). Its square on the board and the 30
-  // feet it may stray are the GM's to place (pull request handoff).
+  // The echo is a token on the board and a mark on the knight while it lasts
+  // (src/lib/dm/mt-fb-echo.ts): the mark is what needs it out asks (Shadow
+  // Martyr sends it into a hit only while it is out, and the hit that destroys
+  // it takes the mark off, authored-reactions.ts echo_takes_hit), the token is
+  // its square, the 30 feet it may stray and where its attacks reach from.
   "fighter::Manifest Echo": {
     subclass: "Echo Knight",
-    spends: [{ name: "Manifest Echo", action: "bonus", does: { kind: "buff", condition: ECHO_OUT, rounds: 600 } }],
+    spends: [{ name: "Manifest Echo", action: "bonus", does: { kind: "echo" } }],
   },
   "fighter::Shadow Martyr": {
     subclass: "Echo Knight",

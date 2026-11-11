@@ -29,18 +29,13 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, limitsTable } from "./lib/sweep-limits-world.mjs";
 
-// rowId -> { where, severity, note }: what fails today.
-const TRIGGER_ON_TRUST = {
-  where: "src/lib/dm/authored-reactions.ts case \"attack\" (refuses only the holder's own turn; on any other turn nothing asks whether the move, hit, save or spell the text names happened)",
-  severity: "medium",
-  note: "A weapon attack with the reaction on any turn but the holder's own, for whoever names the feature. The code's comment says so (\"unless the engine has seen the trigger itself\"); no ruling in docs/rules-enforcement-audit.md. No card deals it, so the door is the GM's or the model's use_reaction.",
-};
-const KNOWN = {
-  "trigger:fighter/Cavalier/Hold the Line": TRIGGER_ON_TRUST,
-};
+// Hold the Line's row is gone with its reaction: the engine strikes when the
+// creature moves (src/lib/dm/opportunity.ts), and the fighter clause suite's
+// hold-the-line-moves-within-reach holds it.
+const KNOWN = {};
 // rowId -> why the generator cannot stage this row.
 const SKIP = {
-  "reach:fighter/Echo Knight/Shadow Martyr[echo manifested]": "the reach is to the fighter's echo, which is kept as a mark on the fighter (Manifest Echo) and has no square on the board; the row names no reach to measure. Recorded as finding L787-echo (its board place is handed off).",
+  "reach:fighter/Echo Knight/Shadow Martyr[echo manifested]": "the reach is to the fighter's echo, and the feature's text states no distance between the echo and the creature attacked: the row names no reach to measure. The echo stands on the board since src/lib/dm/mt-fb-echo.ts (finding L787-echo).",
 };
 
 const { row, finish } = limitsSuite("test-enforce-sweep-limits-reach", { KNOWN, SKIP });

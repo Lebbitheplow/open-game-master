@@ -84,6 +84,7 @@ import { flightOf, markSqueezing } from "@/lib/dm/token-state";
 import { livePurchase } from "@/lib/dm/legendary-logic";
 import { swallowRowWalk } from "@/lib/dm/swallow";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { echoStrikeFrom, moveEcho } from "@/lib/dm/mt-fb-echo";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 
 export { landTheFlightless } from "@/lib/dm/token-state";
@@ -545,6 +546,11 @@ export function handleMoveToken(
   } catch (error) {
     return badArguments("Invalid arguments: move_token needs token, x, and y.", error, rawArguments);
   }
+  // An Echo Knight's echo is no combatant: it moves by its own rule (mt-fb-echo.ts).
+  const echoMoved = moveEcho(campaign, encounter, map, args);
+  if (echoMoved) {
+    return echoMoved;
+  }
   const resolved = resolveMoveTarget(map, encounter.id, args.token, sheets, sheetsById);
   if (!resolved) {
     return unknownCombatant(map, args.token);
@@ -979,8 +985,11 @@ export function pcAttackSpatials(
     return none;
   }
   const own = getTokenByRef(map.id, characterId);
-  const attacker = own && from ? { ...own, x: from.x, y: from.y } : own;
   const target = getTokenByRef(map.id, enemyId);
+  // An Echo Knight's melee attack is made from their echo's square when it is
+  // the nearer (mt-fb-echo.ts echoStrikeFrom, as checkPcAttackRange reads it).
+  from ??= own && target && !options.ranged ? (echoStrikeFrom(map.id, characterId, target) ?? undefined) : undefined;
+  const attacker = own && from ? { ...own, x: from.x, y: from.y } : own;
   if (!attacker || !target) {
     return none;
   }
@@ -1019,11 +1028,16 @@ export function checkPcAttackRange(
   if (!encounter || !map) {
     return null;
   }
-  const attacker = getTokenByRef(map.id, characterId);
+  const own = getTokenByRef(map.id, characterId);
   const target = getTokenByRef(map.id, enemyId);
-  if (!attacker || !target) {
+  if (!own || !target) {
     return null;
   }
+  // "Make any attack of the Attack action from its space": an Echo Knight's
+  // melee attack is measured from their echo's square when it is the nearer
+  // (mt-fb-echo.ts echoStrikeFrom).
+  const echoAt = options.ranged ? null : echoStrikeFrom(map.id, characterId, target);
+  const attacker = echoAt ? { ...own, ...echoAt } : own;
   const distance = tilesApart(attacker, target);
   const maxTiles = longRangeTilesOf(options);
   const sighted = hasLineOfSightBetween(map.terrain, map.width, spaceOf(attacker), spaceOf(target));
