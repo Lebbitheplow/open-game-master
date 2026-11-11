@@ -43,6 +43,7 @@ import { countercharm } from "@/lib/dm/mt-srd-bard";
 import { asksToEndRage, endRage } from "@/lib/dm/mt-srd-barbarian";
 import { asksForCure, cleansingTouch, layOnHandsCure } from "@/lib/dm/mt-srd-paladin";
 import { strokeOfLuckCheck } from "@/lib/dm/mt-srd-rogue";
+import { bookOfShadows, pactOfTheBlade } from "@/lib/dm/mt-srd-warlock";
 
 export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string };
 
@@ -65,6 +66,8 @@ export function srdFeatureSpend(
     if (luck) return luck;
   }
   if (name === "countercharm") return countercharm(campaign, sheet, args.variant);
+  if (name === "pact of the blade" || name === "pact weapon") return pactOfTheBlade(campaign, turnId, sheet, args.variant);
+  if (name === "book of shadows" || name === "pact of the tome") return bookOfShadows(campaign, turnId, sheet);
   if (name === "peerless skill") return peerlessSkill(campaign, sheet);
   if (name === "quivering palm") return quiveringPalm(campaign, turnId, sheet, args.targetEnemyId, args.variant);
   if (name === "draconic presence") return draconicPresence(campaign, turnId, sheet, args.variant);

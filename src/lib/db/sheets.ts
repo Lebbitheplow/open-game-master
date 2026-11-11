@@ -2,6 +2,7 @@ import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layou
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
 import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
@@ -956,6 +957,9 @@ export function patchSheet(
     next.conditions = suspended.conditions;
     next.conditionMeta = suspended.conditionMeta as typeof next.conditionMeta;
   }
+  // A warlock's pact weapon out of their hands, and what a death takes with
+  // it (mt-srd-pact.ts).
+  const pactStrays = settlePact(sheetId, existing, next);
   // A flyer knocked prone, or held or exhausted to a speed of 0, falls
   // (flight-watch.ts).
   noteGrounding(existing.campaignId, existing, next);
@@ -1063,6 +1067,11 @@ export function patchSheet(
       sheetId,
     );
   touchCampaign(existing.campaignId);
+  // The minute apart ran out, or the warlock died: the pact weapon is gone
+  // from wherever it lies (mt-srd-pact.ts).
+  if (pactStrays) {
+    vanishStrays(existing.campaignId, sheetId);
+  }
 
   return getSheetById(sheetId);
 }

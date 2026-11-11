@@ -209,6 +209,13 @@ export const equipmentItemSchema = z.object({
   // against the three attunements while it waits. Absent on every row
   // written before it.
   attuning: z.boolean().optional(),
+  // A warlock's pact weapon (SRD 5.1, Pact of the Blade): "conjured:<the
+  // warlock's sheet id>" for the weapon the pact made, which exists only
+  // while the pact holds it there; "bonded" for a magic weapon the ritual
+  // bound, "stowed" while that weapon is in its extradimensional space
+  // (src/lib/srd/pact-weapon.ts, src/lib/dm/mt-srd-pact.ts). Absent on every
+  // other row.
+  pact: z.string().trim().max(60).optional(),
   // Charges left on a charged magic item (a wand, a staff). Absent means
   // full: a row written before charges were kept starts with all of them
   // (src/lib/dm/item-charges.ts).

@@ -7844,27 +7844,27 @@
       },
       {
         "c": "Additionally, when you take the Attack action, you can forgo one of your own attacks to allow your familiar to make one attack with its reaction.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the familiar's attack for a forgone attack"
+        "is": "held",
+        "by": "a Pact of the Chain familiar attacks with its reaction, once a turn, in place of one of the warlock's attacks of the Attack action (src/lib/dm/pet-attack-cost.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-chain.familiar-attack"
       },
       {
         "c": "You can use your action to create a pact weapon in your empty hand.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "You can choose the form that this melee weapon takes each time you create it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "You are proficient with it while you wield it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "This weapon counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.",
@@ -7874,51 +7874,50 @@
       },
       {
         "c": "Your pact weapon disappears if it is more than 5 feet away from you for 1 minute or more.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "the weapon the pact made is gone when its warlock makes another, dismisses it (no action) or dies, and a minute after it leaves their equipment: the minute is a condition on the clock, forgotten when the weapon is taken back, and its end removes the row from the ground and from whoever holds it (src/lib/dm/mt-srd-pact.ts settlePact and vanishStrays, in patchSheet). The 5 feet is read as the weapon being out of the warlock's keeping: a row has no square of its own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.vanish"
       },
       {
         "c": "It also disappears if you use this feature again, if you dismiss the weapon (no action required), or if you die.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "the weapon the pact made is gone when its warlock makes another, dismisses it (no action) or dies, and a minute after it leaves their equipment: the minute is a condition on the clock, forgotten when the weapon is taken back, and its end removes the row from the ground and from whoever holds it (src/lib/dm/mt-srd-pact.ts settlePact and vanishStrays, in patchSheet). The 5 feet is read as the weapon being out of the warlock's keeping: a row has no square of its own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.vanish"
       },
       {
         "c": "You can transform one magic weapon into your pact weapon by performing a special ritual while you hold the weapon.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You perform the ritual over the course of 1 hour, which can be done during a short rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You can then dismiss the weapon, shunting it into an extradimensional space, and it appears whenever you create your pact weapon thereafter.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You can't affect an artifact or a sentient weapon in this way.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "left",
+        "why": "the GM's: no SRD 5.1 weapon is an artifact or sentient, and no field of an equipment row says a homebrew one is, so the ritual (use_resource Pact of the Blade, variant 'bond <weapon>') binds any magic weapon in hand and the GM withholds it from such a weapon by hand"
       },
       {
         "c": "The weapon ceases being your pact weapon if you die, if you perform the 1-hour ritual on a different weapon, or if you use a 1-hour ritual to break your bond to it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "The weapon appears at your feet if it is in the extradimensional space when the bond breaks.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "Your patron gives you a grimoire called a Book of Shadows.",
@@ -7950,21 +7949,21 @@
       },
       {
         "c": "If you lose your Book of Shadows, you can perform a 1-hour ceremony to receive a replacement from your patron.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       },
       {
         "c": "This ceremony can be performed during a short or long rest, and it destroys the previous book.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       },
       {
         "c": "The book turns to ash when you die.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       }
     ]
   },
