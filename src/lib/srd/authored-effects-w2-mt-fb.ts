@@ -123,7 +123,7 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
                 save: "wis",
                 dcAbility: "con",
                 strikes: true,
-                onFail: "must use its reaction to make a melee attack against another creature of the barbarian's choice that the barbarian can see. None was named on the call (targetEnemyIds), so the GM makes that attack for it now",
+                onFail: "must use its reaction to make a melee attack against another creature of the barbarian's choice that the barbarian can see",
               },
             },
           },

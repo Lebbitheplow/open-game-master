@@ -16,6 +16,7 @@
 import { z } from "zod";
 import { HAND_GEAR_ACTIONS, HAND_INTENT_ACTIONS, describeHandExtras, handExtraArgs, handIntentExtras } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
+import { BEAD_SLOT, isBeadSlot } from "@/lib/srd/ar-ws-conjured";
 import { PART_LISTS } from "@/lib/dm/action-parts-logic";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
@@ -76,7 +77,8 @@ export function intentTools(intent: MessageIntent): string[] {
     case "spell":
       return SPELL_TOOLS;
     case "feature":
-      return ["use_resource"];
+      // Arcane Abeyance's bead is filled by a casting (directCardCall).
+      return intent.resourceId && isBeadSlot(intent.resourceId) ? ["use_spell_slot"] : ["use_resource"];
     case "basic":
       return intent.action === "end-turn"
         ? ["end_turn"]
@@ -167,6 +169,13 @@ function blastLaid(intent: MessageIntent, blast: DirectContext["blast"]): boolea
     default:
       return false;
   }
+}
+
+// The square a reaction's move goes to (Mantle of Inspiration's stride,
+// picked on the board as a point: hand-area.ts HandArea.move), under
+// use_reaction's own x and y.
+function moveSquare(intent: MessageIntent): Record<string, number> {
+  return intent.atX !== undefined && intent.atY !== undefined ? { x: intent.atX, y: intent.atY } : {};
 }
 
 // The target arguments most tools read: an enemy under targetEnemyId, a
@@ -286,6 +295,12 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     case "feature":
       // A feature spent by amount (Lay on Hands) is finished in the composer
       // and posts no card, so a card here carries every choice.
+      // Arcane Abeyance's card names the spell for the bead: the casting that
+      // fills it is use_spell_slot's, so the cast guard prices it as any
+      // casting (src/lib/dm/ar-ws-abeyance.ts).
+      if (intent.resourceId && isBeadSlot(intent.resourceId)) {
+        return intent.variant ? { name: "use_spell_slot", args: { characterId, spell: intent.variant, storeIn: BEAD_SLOT } } : null;
+      }
       return intent.resourceId ? { name: "use_resource", args: { characterId, resource: intent.resourceId, ...variant, ...targetArgs(intent) } } : null;
     case "basic": {
       const bonus = intent.bonus ? { bonus: true } : {};
@@ -342,7 +357,7 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     }
     case "reaction":
       return intent.feature
-        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...variant, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}) } }
+        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...variant, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}), ...moveSquare(intent) } }
         : null;
     case "gear": {
       if (!intent.item) {

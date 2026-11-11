@@ -33,6 +33,7 @@ import {
   type HandBoardFacts,
   type HandCard,
   type HandCost,
+  type HandShares,
   type HandTarget,
   type HandTurn,
   failedSaveGate,
@@ -85,11 +86,20 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "mr") return does.aims ?? "none";
   // The creature warded (Bastion of Law), the holder or an ally in reach.
   if (does.kind === "damage_ward") return "ally";
+  // The charmed creature whose memory Alter Memories reaches (ar-ws-alter-memories.ts).
+  if (does.kind === "strip_memory") return "enemy";
   return "none";
 }
 
+// A save whose failure makes the creature attack another of the holder's
+// choice (Infectious Fury: src/lib/dm/mt-fb-spend.ts forcedStrikePlan): the
+// card is aimed at the creature that saves and takes the one it attacks as
+// a second creature, sent with it in targetEnemyIds.
+const forcedVictim = (does: SpendDoes) => does.kind === "save_effect" && Boolean(does.strikes);
+const VICTIM: HandShares = { count: 2, unit: "creature", stack: false, min: 2 };
+
 // The kinds the engine resolves only on a creature in a fight.
-const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest", "reveal_defenses"]);
+const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest", "reveal_defenses", "strip_memory"]);
 
 // The option an aim plays, or the spend's own.
 function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
@@ -249,7 +259,9 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
       });
     }
     const targets = new Set(options.map(([, option]) => targetOf(option.does)));
-    if (targets.size > 1) {
+    // An option whose creature then attacks another (Infectious Fury) is its
+    // own card, which takes that second creature as a pick (forcedVictim).
+    if (targets.size > 1 || options.some(([, option]) => forcedVictim(option.does))) {
       return options.map(([variant, option]) => ({ variant, label: pickLabel(variant), target: targetOf(option.does), dice: linesOf(option.does).dice, heals: false, afterWeaponHit: option.afterWeaponHit, action: option.action, reach: reachOf(option.does) }));
     }
   }
@@ -306,6 +318,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),
+      ...(forcedVictim(aimDoes(does, aim.variant)) ? { shares: VICTIM } : {}),
       cost: aimCost,
       range: aim.reach || reachOf(does) || (aim.target === "self" || aim.target === "none" ? "Self" : ""),
       // A reaction's fire is the whole of it, not a rider's extra damage.
@@ -340,6 +353,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           : { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
       ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
       ...sightOf(aimDoes(does, aim.variant), aim.target),
+      // Alter Memories reaches a creature the wizard has charmed: the aim bar
+      // offers the charmed alone, and the engine judges whose charm it is.
+      ...(does.kind === "strip_memory" ? { aimHolds: "charmed" } : {}),
     };
     // Soul of Artifice readies one of the items attuned.
     if (does.kind === "soul_ready") {

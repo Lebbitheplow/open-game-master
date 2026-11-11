@@ -828,10 +828,15 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     kit.place(other.id, 7, 5);
     rage(beast);
     await swing(beast, cursed, [15, 4], { weapon: "Claws" });
-    // With no creature named (the Hand's card names none) the line asks the GM.
+    // With no creature named the call is refused before the save, nothing
+    // spent: the Hand's card takes that creature as its second pick
+    // (hand-subclass.ts forcedVictim), so no attack is left to a GM's line.
+    const usedBefore = r.used(beast, "sub_infectious_fury");
     const unnamed = await fury(cursed, "attack", 2);
-    assert.match(String(unnamed.result?.onFail), /melee attack against another creature/, `with no creature named: ${show(unnamed)}`);
-    assert.ok(!world.encounter().reactionsUsed.includes(cursed.id), "no attack was made, and its reaction is gone");
+    assert.equal(unnamed.ok, false, `with no creature named: ${show(unnamed)}`);
+    assert.match(String(unnamed.error), /targetEnemyIds/, show(unnamed));
+    assert.equal(r.used(beast, "sub_infectious_fury"), usedBefore, "a refusal spends nothing");
+    assert.ok(!world.encounter().reactionsUsed.includes(cursed.id), "no attack was made, and its reaction is kept");
     kit.freshTurn();
     await swing(beast, cursed, [15, 4], { weapon: "Claws" });
     const spentBefore = r.used(beast, "sub_infectious_fury");

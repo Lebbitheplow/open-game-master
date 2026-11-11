@@ -48,6 +48,7 @@ import { featureCards, spellCards, spellNames } from "@/lib/battlemap/hand-spell
 import { itemSpellCards, itemSpellNames } from "@/lib/battlemap/hand-items";
 import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
+import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-doors";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
 import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
@@ -529,7 +530,9 @@ function darkBound(card: HandCard, board: HandOptions["board"]): HandCard {
 export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}): HandCard[] {
   const riders = combatRiders(sheet);
   const spells = spellCards(sheet, turn, riders, options);
-  const features = featureCards(sheet, turn).map((card) => darkBound(card, options.board));
+  // Arcane Abeyance's and Master Scrivener's counters are the door cards'
+  // (hand-feature-doors.ts), which name the spell their engines need.
+  const features = featureCards(sheet, turn).filter((card) => !card.pool || !DOOR_COUNTERS.includes(card.pool)).map((card) => darkBound(card, options.board));
   // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
   const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
@@ -542,6 +545,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
     ...subclassSpendCards(sheet, turn, taken, options.board),
+    ...featureDoorCards(sheet, turn, spells),
     ...kiCards(sheet, turn),
     ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
     ...gearCards(sheet, turn, options.gear),

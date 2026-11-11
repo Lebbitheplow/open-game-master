@@ -699,7 +699,13 @@ export function cardIntents(scene, card) {
           ? { targetId: scene.holder.id, targetKind: "self" }
           : {};
   const picks = card.choice?.options?.length ? card.choice.options.slice(0, 3).map((option) => ({ [card.choice.arg]: option.value })) : [{}];
-  return picks.map((pick) => ({ ...card.intent, ...aim, ...pick }));
+  // A card that waits for a second creature (HandShares.min: Infectious
+  // Fury's attack names the creature struck) goes with one, as the Hand
+  // sends it only then (hand-play.ts handReady).
+  const shares = (card.shares?.min ?? 0) > 1 && aim.targetId && scene.far
+    ? { shares: [{ id: aim.targetId, name: aim.targetName, count: 1 }, { id: scene.far.id, name: scene.far.name, count: 1 }] }
+    : {};
+  return picks.map((pick) => ({ ...card.intent, ...aim, ...shares, ...pick }));
 }
 
 // One card played the way the Hand sends it: its own call.

@@ -7,6 +7,7 @@
 // speed, no opportunity attacks, the creature's reaction. "Immediately" is
 // the bard's turn: the mark ends with it.
 import type { Campaign } from "@/lib/db/campaigns";
+import { MANTLE_STRIDE } from "@/lib/battlemap/hand-feature-doors";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { reactionMove } from "@/lib/dm/authored-reactions-more";
@@ -16,7 +17,8 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export const MANTLE_STRIDE = "mantle's stride";
+// The mark is named where the Hand deals the stride (hand-feature-doors.ts).
+export { MANTLE_STRIDE } from "@/lib/battlemap/hand-feature-doors";
 const FEATURE = "Mantle of Inspiration";
 
 // The creatures the mantle chose may move: called by the spend that gave the

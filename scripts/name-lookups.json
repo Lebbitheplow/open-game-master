@@ -9,6 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/battlemap/hand-feature-doors.ts#first": [["key", 1, "a spell card's own spell name (intent.spell) against the names gathered from those cards: the Hand's own values, no record's name"]],
+    "lib/battlemap/hand-feature-doors.ts#whole": [["key", 2, "a spell card's own spell name (intent.spell) against the names gathered from those cards: the Hand's own values, no record's name"]],
     "app/campaigns/[campaignId]/LevelUpChangePick.tsx#keyed": [["identity", 1, "a pick's printed label, keyed by the held name the offer itself wrote"]],
     "lib/srd/level-up-changes.ts#partial": [["identity", 1, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
     "lib/srd/level-up-changes.ts#whole": [["identity", 7, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
@@ -87,7 +89,7 @@
     "lib/dm/ar-wbf-feat-doors-logic.ts#whole": [["key",1,"a spell's own key (textKey) held against Mage Hand's, the one spell Telekinetic's text names"]],
     "lib/dm/ar-wbf-feat-turn.ts#number": [["key",1,"ODM's own turn mark \"charger:ran-straight:<heading>:<squares>\" and the feature name the action's price already resolved (engine vocabulary)"]],
     "lib/dm/ar-wbf-feat-turn.ts#partial": [["key",2,"ODM's own turn mark \"charger:ran-straight:<heading>:<squares>\" and the feature name the action's price already resolved (engine vocabulary)"]],
-    "lib/dm/ar-wbf-feat-warcaster-logic.ts#partial": [["key",2,"ODM's own condition label \"opportunity spell (<spell>)\", read for the spell it carries (engine vocabulary)"]],
+    "lib/dm/ar-wbf-feat-warcaster-rule.ts#partial": [["key",2,"ODM's own condition label \"opportunity spell (<spell>)\", read for the spell it carries (engine vocabulary)"]],
     "lib/dm/ar-wbf-feat-warcaster.ts#keyed": [["key",1,"the call's own words for going back to the weapon (weapon, none, off), by textKey: a choice of the tool's, no record's name"]],
     "lib/dm/ar-wbf-feat-warcaster.ts#whole": [["key",1,"the encounter's own list of spent reactions asked for a reaction key (a sheet id, or ODM's vigilant key): ids, no record's name"]],
     "lib/dm/ar-wbf-warlock-grave-logic.ts#partial": [["pattern",1,"a fixed pattern over a damage expression's dice notation (the attack's own die): it reads no record's name"]],

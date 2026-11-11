@@ -34,13 +34,12 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
   // "you can strip up to your Charisma modifier plus one hour of memory on a
   // failed save": an action, the charmed creature's Intelligence save against
   // the wizard's spell save DC (src/lib/dm/ar-ws-alter-memories.ts). That the
-  // creature forgets it was charmed is the GM's to play. No card in the Hand
-  // (gm): the Hand knows no creature's conditions, so its card would stand
-  // open on creatures the wizard has not charmed and be refused; the player
-  // says it and the GM calls it on the charmed creature.
+  // creature forgets it was charmed is the GM's to play. Its Hand card is aimed
+  // at the charmed creatures alone (HandCard.aimHolds, read from the board's
+  // chips), so it no longer stands open on a creature the engine refuses.
   "wizard::Alter Memories": {
     subclass: "School of Enchantment",
-    spends: [{ name: "Alter Memories", action: "action", gm: true, does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
+    spends: [{ name: "Alter Memories", action: "action", does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
   },
   // "You learn animate dead, raise one extra corpse per casting, and undead
   // you create with a necromancy spell gain your wizard level in extra hit

@@ -157,6 +157,10 @@ export type HandCard = {
   // the board says the holder cannot see, or, for "seesHolder", one that
   // cannot see the holder (hand-play.ts aimUnseen).
   sight?: true | "seesHolder";
+  // A card that reaches only a creature holding this condition (Alter
+  // Memories' "charmed"): the aim bar leaves out the chips of the others
+  // (hand-play.ts aimLacks).
+  aimHolds?: string;
   // The class options this attack may carry, each already judged by the
   // engine's checkAttackOptions (Reckless Attack, Stunning Strike, knock out).
   options?: HandAttackOption[];
@@ -218,7 +222,9 @@ export type HandCard = {
   pickWithin?: number;
 };
 
-export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };
+// `min`: how many the card must name before it can go (Infectious Fury's
+// cursed creature and the one it attacks); absent, the aim alone will do.
+export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean; min?: number };
 
 // "Each creature of your choice" within an area feature's reach: the player
 // aims at one and adds the others (Order's Demand, Champion Challenge,

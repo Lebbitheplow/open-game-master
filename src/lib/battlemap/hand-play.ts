@@ -23,6 +23,7 @@ import {
 import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@/lib/battlemap/hand-area";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { grantedRideMark } from "@/lib/battlemap/hand-granted";
 import { summonIntent, summonReady, summonWords, type SummonChoices } from "@/lib/battlemap/hand-summon";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
@@ -123,13 +124,27 @@ export function aimUnseen(card: HandCard, aim: Pick<HandAim, "kind" | "sight"> |
 
 // The chips a raised card offers among those given: a sight-bound card leaves
 // out the creatures its holder cannot see (aimUnseen).
-export function seenChips<T extends Pick<HandAim, "kind" | "sight">>(card: HandCard, chips: T[]): T[] {
-  return card.sight ? chips.filter((chip) => !aimUnseen(card, chip)) : chips;
+export function seenChips<T extends Pick<HandAim, "kind" | "sight" | "conditions">>(card: HandCard, chips: T[]): T[] {
+  return card.sight || card.aimHolds ? chips.filter((chip) => !aimUnseen(card, chip) && !aimLacks(card, chip)) : chips;
+}
+
+// Why a card that reaches only a creature holding a condition (HandCard.
+// aimHolds: Alter Memories' charmed creature) cannot be aimed at this one,
+// or null. The engine judges whose charm it is; the aim bar offers only the
+// creatures the board shows holding the condition at all.
+export function aimLacks(card: HandCard, aim: Pick<HandAim, "kind" | "conditions"> | null): string | null {
+  if (!card.aimHolds || aim?.kind !== "enemy") return null;
+  return (aim.conditions ?? []).some((entry) => isConditionNamed(entry, card.aimHolds!)) ? null : `${card.name} reaches only a creature that is ${card.aimHolds}.`;
 }
 
 export function handReady(card: HandCard, aim: HandAim | null, choices: HandChoices = {}): boolean {
   return (!(card.target === "enemy" || card.target === "ally") || aim !== null || hasPick(card.area, choices.area ?? {}))
+    // A move goes nowhere until its square is picked.
+    && (!card.area?.move || hasPick(card.area, choices.area ?? {}))
+    // A card that needs a second creature named (HandShares.min) waits for it.
+    && (!card.shares?.min || shareList(card, aim, choices).length >= card.shares.min)
     && !aimUnseen(card, aim)
+    && !aimLacks(card, aim)
     && (card.asks !== "trigger" || Boolean(choices.trigger?.trim()))
     // A summoning card goes with its creature picked (hand-summon.ts).
     && (!card.summon || summonReady(card, summonChoicesOf(card, choices)));

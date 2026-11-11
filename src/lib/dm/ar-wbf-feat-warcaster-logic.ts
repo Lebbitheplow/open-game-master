@@ -12,39 +12,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeat } from "@/lib/srd/feat-use";
-import type { SpellMech } from "@/lib/srd/spell-mech-types";
+import { opportunitySpellOf } from "@/lib/dm/ar-wbf-feat-warcaster-rule";
 
-const MARK = /^opportunity spell \((.+)\)$/i;
-
-export const opportunityMark = (spell: string) => `opportunity spell (${spell.trim()})`;
-export const isOpportunityMark = (condition: string) => MARK.test(condition.trim());
-
-// The spell a War Caster's opportunity attacks cast, or null for the weapon.
-export function opportunitySpellOf(sheet: Pick<CharacterSheet, "feats" | "conditions">): string | null {
-  if (!holdsFeat(sheet, "War Caster")) {
-    return null;
-  }
-  for (const entry of sheet.conditions) {
-    const hit = MARK.exec(entry.trim());
-    if (hit) {
-      return hit[1];
-    }
-  }
-  return null;
-}
-
-// "The spell must have a casting time of 1 action and must target only that
-// creature": a spell attack, a save one creature makes, or one that strikes
-// with no roll, and nothing with an area. The sentence that refuses, or null.
-export function opportunitySpellProblem(name: string, castingTime: unknown, mech: Pick<SpellMech, "resolution" | "area"> | null): string | null {
-  if (castingTime !== "action") {
-    return `${name} does not have a casting time of 1 action, and War Caster's spell must.`;
-  }
-  if (!mech || mech.area || !(mech.resolution === "attack" || mech.resolution === "save" || mech.resolution === "auto")) {
-    return `${name} is not a spell aimed at one creature alone (a spell attack, or a save that one creature makes), and War Caster's spell must target only the creature that provoked.`;
-  }
-  return null;
-}
+export { isOpportunityMark, opportunityMark, opportunitySpellOf, opportunitySpellProblem } from "@/lib/dm/ar-wbf-feat-warcaster-rule";
 
 // The character whose opportunity spell is being cast: the cast guard prices
 // that casting as a reaction, not as the action its casting time names.

@@ -150,14 +150,18 @@ export type StrikePlan = { attacker: EncounterEnemy; victim: EncounterEnemy; att
 // targetEnemyIds, a melee attack of the cursed creature's that reaches it
 // from where it stands (a reaction walks nowhere), and a reaction to make it
 // with. Settled before the save, so a call that cannot end in the attack
-// spends nothing. Null when the call names no creature: the Hand's card has
-// no second pick to name one with, so the save is rolled and the row's line
-// asks the GM for the attack, as it did before the engine made it.
+// spends nothing. A call that names no creature is refused with nothing
+// spent: the Hand's card takes the creature as its second pick
+// (hand-subclass.ts forcedVictim), and the GM's call names it, so no save is
+// rolled with the attack left to a line for the GM. Null out of a fight.
 export function forcedStrikePlan(ctx: SpendContext, attacker: EncounterEnemy): StrikePlan | ToolError | null {
   const encounter = getActiveEncounter(ctx.campaign.id);
-  const ref = (ctx.args.targetEnemyIds ?? []).find((id) => id && id !== attacker.id);
-  if (!encounter || !ref) {
+  if (!encounter) {
     return null;
+  }
+  const ref = (ctx.args.targetEnemyIds ?? []).find((id) => id && id !== attacker.id);
+  if (!ref) {
+    return { error: `${ctx.spend.name}'s attack makes ${attacker.displayName} attack another creature of ${ctx.sheet.name}'s choice: name it in targetEnemyIds (with ${attacker.displayName} in targetEnemyId), or choose the psychic damage (variant "damage"). Nothing was spent.`, retry: true };
   }
   const victim = resolveEnemyRef(encounter.id, ref);
   if (!victim || victim.id === attacker.id || victim.status !== "alive") {
