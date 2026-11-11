@@ -664,9 +664,9 @@
    },
    {
     "c": "your mount takes no damage on a successful Dexterity save and half on a failure",
-    "is": "gap",
-    "read_only": true,
-    "why": "not built here: no door deals a mount damage through a saving throw (an area or a spell reaches the rider alone; only enemy_attack's targetMount reaches a mount, src/lib/dm/mount-combat.ts strikeMount), so there is no damage for the feat to remove or halve. It needs areas to reach mounts first (w2-ar-wbf-handoff.jsonl)"
+    "is": "held",
+    "by": "src/lib/dm/mount-area.ts areaOnMount, asked by aoe-characters.ts: an area that catches the rider catches the mount, which makes its own Dexterity save; with the feat a made save takes none and a failed one half",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mounted-combatant.mount-save"
    }
   ]
  },

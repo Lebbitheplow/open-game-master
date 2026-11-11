@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/mount-area.ts#str-key": [["key", 1, "a mount's stored ref, an SRD mount id (engine vocabulary)"]],
     "lib/dm/casting-answered.ts#str-indexOf": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
     "lib/dm/casting-answered.ts#re-word": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
     "lib/dm/casting-answered.ts#str-includes": [["english-source", 1, "reference: SRD spell, condition and feature names"]],

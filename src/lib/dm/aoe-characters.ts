@@ -21,6 +21,7 @@ import type { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { defenseRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { areaOnMount } from "@/lib/dm/mount-area";
 
 export function aoeOnCharacters(input: {
   campaign: Campaign;
@@ -197,6 +198,11 @@ export function aoeOnCharacters(input: {
       if (effects.length) {
         row.effects = effects;
       }
+    }
+    // The mount under them stands in the same square (mount-area.ts).
+    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), reason, sheets, sheetsById });
+    if (ridden) {
+      row.mount = ridden;
     }
     results.push(row);
   }

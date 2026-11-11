@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/mount-area.ts#keyed": [["identity", 1, "a mount's stored ref, an SRD mount id, into its Dexterity table"]],
     "lib/dm/casting-answered.ts#partial": [["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/casting-answered.ts#whole": [["identity", 1, "an innate spell by whole name"]],
     "lib/srd/authored-effects-more.ts#bypass": [["identity", 1, "a carried line's own name, textKey'd, against the focus a feature names (Alchemical Savant's alchemist's supplies): the line itself, by its whole name"]],

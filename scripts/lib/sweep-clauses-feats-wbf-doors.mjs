@@ -131,6 +131,34 @@ export function doorProbes(rig, P) {
   // An attack aimed at the warhorse (AC 11, 19 hit points): the Mounted
   // Combatant takes it (their AC, their hit points) until they say to let it
   // land, and whenever they cannot act.
+  // "If your mount is subjected to an effect that allows it to make a
+  // Dexterity saving throw to take only half damage, it instead takes no
+  // damage if it succeeds on the saving throw, and only half damage if it
+  // fails": an area that catches the rider catches the warhorse under them
+  // (Dexterity +1), which saves for itself (src/lib/dm/mount-area.ts).
+  P["feat.mounted-combatant.mount-save"] = async () => {
+    const { getMounts } = await import("../../src/lib/db/mounts.ts");
+    const seen = await each("Mounted Combatant", {}, async (t, hero) => {
+      const [foe] = await t.fight([hero]);
+      const up = await t.invoke("mount_up", { characterId: hero.id, mount: "warhorse" });
+      assert.equal(up.ok, true, up.error);
+      const horse = () => getMounts(t.world.campaignId)[hero.id]?.hp;
+      // A 20-foot blast of 12 fire on the rider's square, DC 12: the rider's
+      // d20, the 12, then the horse's d20.
+      const blast = async (horseFace) => {
+        t.foesTurn(foe);
+        const before = horse();
+        const at = t.kit.token(hero.id);
+        const out = await t.invoke("aoe_damage", { characterIds: [hero.id], saveAbility: "dex", dc: 12, damage: "2d6", damageType: "fire", halfOnSave: true, reason: "a burst of flame", x: at.x, y: at.y }, [10, 6, 6, horseFace]);
+        assert.equal(out.ok, true, out.error);
+        return before - horse();
+      };
+      return { failed: await blast(5), saved: await blast(15) };
+    });
+    assert.deepEqual(seen.plain, { failed: 12, saved: 6 }, `with no feat the horse takes all of it or half: ${JSON.stringify(seen)}`);
+    assert.deepEqual(seen.holder, { failed: 6, saved: 0 }, `a Mounted Combatant's horse takes half or none: ${JSON.stringify(seen)}`);
+  };
+
   P["feat.mounted-combatant.redirect"] = async () => {
     const { getMounts } = await import("../../src/lib/db/mounts.ts");
     const seen = await each("Mounted Combatant", {}, async (t, hero, label) => {
