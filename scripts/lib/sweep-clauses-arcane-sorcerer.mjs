@@ -207,6 +207,26 @@ export function probes(rig, shared) {
       assert.equal(second.ok, false, "the same roll rolled again twice");
       assert.equal(points(), before - 1, "nothing spent");
     },
+    // "Whenever you roll on the Wild Magic Surge table, you can roll twice
+    // and use either number": both rolls wait on the sorcerer's pick, which
+    // the GM's line held before (src/lib/dm/ar-ws-wild-surge.ts pickChaos).
+    "controlled-chaos": async () => {
+      const who = S("Wild Magic", 14);
+      await stage(who);
+      const tides = sheet(who).resources.sub_tides_of_chaos;
+      world.patch(who.id, { conditions: ["surge chance"], conditionMeta: { "surge chance": { rounds: 1 } }, resources: { ...sheet(who).resources, sub_tides_of_chaos: { ...tides, used: tides.max } } });
+      const body = (out) => out.result ?? out;
+      const surge = await spend(who, "Wild Magic Surge", {}, [1, 2]);
+      assert.equal(surge.ok, true, surge.error);
+      assert.deepEqual((body(surge).choices ?? []).map((choice) => choice.roll), [1, 2], "two rolls on the table");
+      assert.ok(sheet(who).conditions.includes("controlled chaos"), "the two rolls wait on the pick");
+      const wrong = await spend(who, "Controlled Chaos", { variant: "5" });
+      assert.equal(wrong.ok, false, "a number not rolled");
+      const picked = await spend(who, "Controlled Chaos", { variant: "2" });
+      assert.equal(picked.ok, true, picked.error);
+      assert.equal(body(picked).surge?.roll, 2, "the second roll is the surge");
+      assert.ok(!sheet(who).conditions.includes("controlled chaos"), "the pick is spent");
+    },
     wings: async () => {
       await stage(soul());
       assert.deepEqual(rig.speeds(soul()), {});

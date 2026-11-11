@@ -39,7 +39,10 @@ export function probes(rig, shared) {
     // higher. The table is the app's own (src/lib/srd/ar-ws-wild-surge-table.ts);
     // each case forces the d20, the table's die and the entry's dice.
     "surge-roll": async () => {
-      const who = wild();
+      // Below 14th level: from 14th, Controlled Chaos rolls the table twice
+      // for a pick ("roll twice and use either number"), probed in
+      // sweep-clauses-arcane-sorcerer.mjs controlled-chaos.
+      const who = holder("sorcerer", "Wild Magic", 13);
       const table = (await surges()).WILD_SURGE_TABLE;
       const at = (name) => table.findIndex((entry) => entry.name === name) + 1;
       const surge = (faces) => spend(who, "Wild Magic Surge", {}, faces);
@@ -71,7 +74,7 @@ export function probes(rig, shared) {
       // On a 1 the table is rolled: Second Skin is 1d8 + the sorcerer level in temporary hit points.
       await cast();
       const skin = await surge([1, at("Second Skin"), 3]);
-      assert.deepEqual([skin.result.surge?.name, thrown(skin), sheet(who).tempHp], ["Second Skin", [[20, 1], [10, at("Second Skin")], [8, 3]], 23], "a 1, then the table");
+      assert.deepEqual([skin.result.surge?.name, thrown(skin), sheet(who).tempHp], ["Second Skin", [[20, 1], [10, at("Second Skin")], [8, 3]], 3 + 13], "a 1, then the table");
       // Thunderclap Hiccup: 2d8 thunder to the creature 5 feet away, which fails its save on a 1.
       await cast();
       const hp = foe(enemy).currentHp;

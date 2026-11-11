@@ -1462,8 +1462,9 @@
   "clauses": [
    {
     "c": "Roll twice on the wild magic table and pick either result.",
-    "is": "left",
-    "why": "the authored table (src/lib/srd/authored-effects*.ts, sorcerer::Controlled Chaos) writes: \"Rolling the wild magic table twice and choosing is the GM's roll on that narrated table.\""
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: controlled-chaos",
+    "by": "src/lib/dm/ar-ws-wild-surge.ts wildSurge (a holder's surge rolls the table twice and keeps both on the condition controlled chaos) and pickChaos (use_resource Controlled Chaos with the roll as variant applies that entry); the Hand's card picks it (hand-subclass.ts chaos_pick)"
    }
   ]
  },

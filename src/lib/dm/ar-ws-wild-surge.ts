@@ -36,7 +36,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { computeSheetDerived } from "@/lib/srd";
 import { opensSurgeChance } from "@/lib/srd/authored-effects-more";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
-import { WILD_SURGE_TABLE, type SurgeEntry } from "@/lib/srd/ar-ws-wild-surge-table";
+import { CHAOS_PICK, chaosFaces, WILD_SURGE_TABLE, type SurgeEntry } from "@/lib/srd/ar-ws-wild-surge-table";
 import { resourceName } from "@/lib/srd/class-resources";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
@@ -169,9 +169,18 @@ export function wildSurge(ctx: SpendContext, does: Does): Resolution {
   }
   const applied: string[] = [];
   let write: (now: CharacterSheet) => FullPatchSheetInput = () => ({});
-  if (surges) {
-    const face = dice(ctx, "the wild magic table", `1d${WILD_SURGE_TABLE.length}`);
-    const entry = WILD_SURGE_TABLE[Math.max(1, Math.min(WILD_SURGE_TABLE.length, face)) - 1];
+  // Controlled Chaos: "you can roll twice and use either number". Two
+  // different rolls wait on the sorcerer's pick (pickChaos); the same number
+  // twice is that entry.
+  const chaos = surges && holdsFeature(sheet, CONTROLLED_CHAOS);
+  const faces = surges ? Array.from({ length: chaos ? 2 : 1 }, () => entryAt(dice(ctx, "the wild magic table", `1d${WILD_SURGE_TABLE.length}`))) : [];
+  if (faces.length === 2 && faces[0] !== faces[1]) {
+    result.choices = faces.map((face) => ({ roll: face, name: WILD_SURGE_TABLE[face - 1].name, text: WILD_SURGE_TABLE[face - 1].text }));
+    applied.push(`${WILD_MAGIC_SURGE}, Controlled Chaos: ${faces.map((face) => `${face} (${WILD_SURGE_TABLE[face - 1].name})`).join(" or ")}. ${sheet.name} picks one: use_resource "${CONTROLLED_CHAOS}" with variant the number.`);
+    write = (now) => ({ conditions: [...now.conditions, CHAOS_PICK], conditionMeta: { ...(now.conditionMeta as ConditionMetaMap), [CHAOS_PICK]: { faces } } as FullPatchSheetInput["conditionMeta"] });
+  } else if (faces.length) {
+    const face = faces[0];
+    const entry = WILD_SURGE_TABLE[face - 1];
     const done = applyEntry(ctx, entry);
     write = done.patch;
     result.surge = { roll: face, of: WILD_SURGE_TABLE.length, name: entry.name, text: entry.text };
@@ -191,4 +200,27 @@ export function wildSurge(ctx: SpendContext, does: Does): Resolution {
     result.restored = `1 ${resourceName(does.pool)} back (${tides.max - tides.used + 1}/${tides.max}).`;
   }
   return { patch, result: { ...result, applied } };
+}
+
+const CONTROLLED_CHAOS = "Controlled Chaos";
+const entryAt = (face: number) => Math.max(1, Math.min(WILD_SURGE_TABLE.length, face));
+
+// use_resource "Controlled Chaos": the roll named in variant, one of the two
+// the surge left (CHAOS_PICK), is the entry applied; the other is dropped.
+export function pickChaos(ctx: SpendContext): Resolution {
+  const sheet = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+  const faces = chaosFaces(sheet);
+  const asked = Number((ctx.args.variant ?? "").trim());
+  if (!faces.includes(asked)) {
+    return { error: `${CONTROLLED_CHAOS} uses one of the two wild magic rolls the surge made: variant ${faces.join(" or ")}. Nothing was spent.`, retry: true };
+  }
+  const entry = WILD_SURGE_TABLE[asked - 1];
+  const done = applyEntry(ctx, entry);
+  const now = getSheetById(sheet.id) ?? sheet;
+  const cleared = removeConditions(now.conditions, now.conditionMeta as ConditionMetaMap, [CHAOS_PICK]);
+  const clean = { ...now, conditions: cleared.conditions, conditionMeta: cleared.meta } as CharacterSheet;
+  return {
+    patch: { conditions: cleared.conditions, conditionMeta: cleared.meta, ...done.patch(clean) },
+    result: { surge: { roll: asked, of: WILD_SURGE_TABLE.length, name: entry.name, text: entry.text }, applied: [`${CONTROLLED_CHAOS}: ${asked} on the table, ${entry.name}. ${entry.text}`, ...done.lines] },
+  };
 }

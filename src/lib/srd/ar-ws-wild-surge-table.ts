@@ -36,6 +36,17 @@ export type SurgeEffect =
 
 export type SurgeEntry = { name: string; text: string; effect: SurgeEffect };
 
+// The two rolls a Controlled Chaos sorcerer's surge left to pick from, kept
+// on this condition's meta as `faces` (src/lib/dm/ar-ws-wild-surge.ts).
+export const CHAOS_PICK = "controlled chaos";
+
+// The rolls waiting on the pick, or none.
+export function chaosFaces(sheet: { conditionMeta?: unknown }): number[] {
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { faces?: unknown } | undefined>;
+  const faces = meta[CHAOS_PICK]?.faces;
+  return Array.isArray(faces) ? faces.filter((face): face is number => typeof face === "number") : [];
+}
+
 export const WILD_SURGE_TABLE: SurgeEntry[] = [
   { name: "Guttered Candle", text: "The light goes out behind your eyes: you are blinded until the end of your next turn.", effect: { kind: "condition", condition: "blinded", untilNextTurnEnds: true } },
   { name: "Loose Change", text: "Stray magic settles back into you: you regain 1d4 spent sorcery points.", effect: { kind: "regain_points", dice: "1d4" } },

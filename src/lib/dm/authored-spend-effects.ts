@@ -7,7 +7,7 @@ import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim
 import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
 import { layWard } from "@/lib/dm/ar-ws-bastion";
 import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
-import { wildSurge } from "@/lib/dm/ar-ws-wild-surge";
+import { pickChaos, wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
@@ -774,6 +774,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return toggleLight(ctx, does);
     case "wild_magic_surge":
       return wildSurge(ctx, does);
+    case "chaos_pick":
+      return pickChaos(ctx);
     case "damage_ward":
       return layWard(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).

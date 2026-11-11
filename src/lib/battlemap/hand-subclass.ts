@@ -15,6 +15,7 @@ import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
 import { pendingSurge, surgeOf } from "@/lib/srd/mt-fb-surge-state";
 import { BOW_HIT, NO_ROLL, shotsKnown } from "@/lib/srd/mt-fb-arcane-shot";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { chaosFaces, WILD_SURGE_TABLE } from "@/lib/srd/ar-ws-wild-surge-table";
 import { castFirstReason, levelledCastThisTurn } from "@/lib/dm/ar-ws-tempest-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
@@ -357,6 +358,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       // offers the charmed alone, and the engine judges whose charm it is.
       ...(does.kind === "strip_memory" ? { aimHolds: "charmed" } : {}),
     };
+    // Controlled Chaos picks one of the two wild magic rolls the surge left.
+    if (does.kind === "chaos_pick") {
+      card.choice = { arg: "variant", label: "Surge", options: chaosFaces(sheet).map((face) => ({ value: String(face), label: `${face}: ${WILD_SURGE_TABLE[face - 1]?.name ?? "?"}` })) };
+    }
     // Soul of Artifice readies one of the items attuned.
     if (does.kind === "soul_ready") {
       card.choice = { arg: "variant", label: "Attunement to end", options: attunedItems(sheet).map((name) => ({ value: name, label: name })) };
@@ -391,6 +396,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
         : null,
       // Cauterizing Flames answers a creature in one of the druid's flames.
+      does.kind === "chaos_pick" && !chaosFaces(sheet).length
+        ? { reason: `${spend.name} picks between two wild magic rolls a surge has just made, and none is waiting.`, spent: false }
+        : null,
       does.kind === "soul_ready" && !attunedItems(sheet).length
         ? { reason: `${spend.name} ends an attunement, and ${sheet.name} is attuned to nothing.`, spent: false }
         : null,

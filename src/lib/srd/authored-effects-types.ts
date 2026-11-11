@@ -746,6 +746,8 @@ export type SpendDoes =
   // rolls on the table. `clears`: the mark the spend's gate asked for (Wild
   // Magic Surge: src/lib/dm/ar-ws-wild-surge.ts).
   | { kind: "wild_magic_surge"; pool: string; clears: string }
+  // Controlled Chaos: one of the two wild magic rolls the surge left (src/lib/dm/ar-ws-wild-surge.ts pickChaos).
+  | { kind: "chaos_pick" }
   // A creature the holder charmed saves or loses hours of memory, as many as
   // the call's amount, at most the ability modifier plus one; the mark it
   // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).
