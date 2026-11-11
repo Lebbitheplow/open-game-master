@@ -241,6 +241,10 @@ function HandCardFaceInner({
             <span className="hand-preview-name">{aimName ? `${card.name} · ${aimName}` : card.name}</span>
           </span>
           <HandPreviewRows rows={rows} />
+          {/* The card's own rules line runs out of room on every card size
+              but the largest (a laptop's card has one line for it), so the
+              whole line is written here, at a size that reads. */}
+          {card.rules ? <span className="hand-preview-rules">{card.rules}</span> : null}
         </span>
       )}
     </div>

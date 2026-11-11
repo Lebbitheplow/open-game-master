@@ -76,6 +76,9 @@
 .hand-slot:has(~ .hand-slot > .hand-card:is(:hover, :focus-visible)) { --spread: -18px; }
 .hand-slot:has(> .hand-card:is(:hover, :focus-visible)) ~ .hand-slot { --spread: 18px; }
 .hand-slot:has(> .hand-card:is(:hover, :focus-visible)) { z-index: 9; }
+/* Its details rise over an open group's level tabs (z-index 1 each), which
+   painted over their last rows on the staged board. */
+.hand-fan:has(> .hand-slot > .hand-card:is(:hover, :focus-visible)) { z-index: 2; }
 .hand-slot:has(> .hand-card[data-picked="true"]) { z-index: 8; }
 
 @keyframes hand-fan-in {
@@ -357,6 +360,18 @@
   color: var(--chip-tone, #f4d47a);
 }
 .hand-preview-name { min-width: 0; font-family: var(--font-display); font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hand-panel-ink); }
+/* The card's rules line in full: on the card it has 0 to 3 lines at 9 to
+   10px, cut off without a mark. */
+.hand-preview-rules {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hand-panel-rule);
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--hand-panel-ink);
+}
 
 /* ---- the "more" spine ---- */
 
@@ -493,6 +508,9 @@
     padding: 8px 9px;
     transform: translateY(6px);
   }
+  /* Details the size of the card have no room for the rules too; a picked
+     card's aim bar writes them. */
+  .hand-fan > .hand-slot > .hand-preview .hand-preview-rules { display: none; }
   /* The card's own lift (--lift above), so the details stay on it. */
   .hand-fan > .hand-slot:has(> .hand-card:is(:hover, :focus-visible)) > .hand-preview { transform: translateY(-40px); }
   .hand-fan > .hand-slot:has(> .hand-card[aria-disabled="true"]:is(:hover, :focus-visible)) > .hand-preview { transform: translateY(-16px); }
