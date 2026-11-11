@@ -2904,6 +2904,9 @@
     "lib/dm/mt-srd-barbarian.ts#str-list": [["key",1,"the words a call ends a rage with (the tool's own vocabulary), read through textKey"]],
     "lib/dm/mt-srd-paladin.ts#\\b": [["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"],["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"]],
     "lib/dm/mt-srd-paladin.ts#re-word": [["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"],["key",2,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"]],
-    "lib/dm/mt-srd-bard.ts#str-list": [["key",1,"the words a call ends a Countercharm with (the tool's own vocabulary), read through textKey"]]
+    "lib/dm/mt-srd-bard.ts#str-list": [["key",1,"the words a call ends a Countercharm with (the tool's own vocabulary), read through textKey"]],
+    "lib/dm/mt-srd-druid.ts#\\b": [["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"],["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]],
+    "lib/dm/mt-srd-druid.ts#re-word": [["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]],
+    "lib/dm/mt-srd-ranger.ts#str-eq": [["key",1,"a favored terrain against the land a call names: one fixed vocabulary (NATURAL_TERRAINS)"]]
   }
 }

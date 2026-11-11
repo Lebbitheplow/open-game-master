@@ -82,6 +82,12 @@ export function favoredEnemies(sheet: TraitSheet): string[] {
 // fit (traitCheckRiders), and a model's call that leaves one of those fields
 // unnamed is asked for it from the same list.
 export type CheckTrait = RollKey & { gives: "advantage" | "double"; note: (input: CheckInput) => string };
+// The terrains Natural Explorer names on the sheet (its improvements too).
+export function favoredTerrains(sheet: TraitSheet): NaturalTerrain[] {
+  const explored = namedPicks(sheet, /^natural explorer(?: improvement)?\s*[:(]\s*([^)]*)\)?$/i);
+  return NATURAL_TERRAINS.filter((terrain) => explored.some((pick) => sameRulesKey(terrain, pick)));
+}
+
 export function heldCheckTraits(sheet: TraitSheet & { race?: string }): CheckTrait[] {
   // A bundled species by its id, whichever list spelled it, else a trait the
   // sheet or the species carries (src/lib/srd/race-id.ts).
@@ -95,8 +101,7 @@ export function heldCheckTraits(sheet: TraitSheet & { race?: string }): CheckTra
     out.push({ roll: "check", skills: ["survival"], about: "tracking", creatures: favored, gives: "advantage", note });
     out.push({ roll: "check", abilities: ["int"], creatures: favored, gives: "advantage", note });
   }
-  const explored = namedPicks(sheet, /^natural explorer(?: improvement)?\s*[:(]\s*([^)]*)\)?$/i);
-  const terrains = NATURAL_TERRAINS.filter((terrain) => explored.some((pick) => sameRulesKey(terrain, pick)));
+  const terrains = favoredTerrains(sheet);
   if (terrains.length) {
     out.push({ roll: "check", abilities: ["int", "wis"], proficient: true, terrains, gives: "double", note: (input) => `Natural Explorer: double proficiency in the ${input.terrain}` });
   }

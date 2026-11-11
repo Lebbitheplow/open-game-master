@@ -2367,27 +2367,23 @@
     "clauses": [
       {
         "c": "You know Druidic, the secret language of druids.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Druidic language on the sheet"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "You can speak the language and use it to leave hidden messages.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Druidic language on the sheet"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "You and others who know this language automatically spot such a message.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hidden message and its DC 15 Perception check"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "Others spot the message's presence with a successful DC 15 Wisdom (Perception) check but can't decipher it without magic.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hidden message and its DC 15 Perception check"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       }
     ]
   },
@@ -2787,9 +2783,8 @@
       },
       {
         "c": "For every 10 years that pass, your body ages only 1 year.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: aging has no clock a sheet carries"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       }
     ]
   },
@@ -2808,9 +2803,9 @@
       },
       {
         "c": "You can perform the somatic and verbal components of a druid spell while in a beast shape, but you aren't able to provide material components.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the material component refused in a beast shape"
+        "is": "held",
+        "by": "a spell that still asks its caster for a material is refused in a beast shape, at the cast guard and on the Hand's card (src/lib/dm/mt-srd-druid.ts beastShapeMaterialProblem, in cast-rules.ts castComponents)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.beast-spells.material"
       }
     ]
   },
@@ -2829,15 +2824,15 @@
       },
       {
         "c": "Additionally, you can ignore the verbal and somatic components of your druid spells, as well as any material components that lack a cost and aren't consumed by a spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "recorded by the hand sweep as hand-archdruid-components (scripts/test-enforce-sweep-hand-druid*.mjs): the component waiver is not run here"
+        "is": "held",
+        "by": "cast-rules.ts componentsAsCast: no verbal, somatic or costless material for an Archdruid's druid spells, in either shape; a priced material is still asked for",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.archdruid.components"
       },
       {
         "c": "You gain this benefit in both your normal shape and your beast shape from Wild Shape.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+        "is": "held",
+        "by": "cast-rules.ts componentsAsCast: no verbal, somatic or costless material for an Archdruid's druid spells, in either shape; a priced material is still asked for",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.archdruid.components"
       }
     ]
   },
@@ -2850,9 +2845,9 @@
     "clauses": [
       {
         "c": "When you choose this circle at 2nd level, you learn one additional druid cantrip of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the extra cantrip in the Land druid's count"
+        "is": "held",
+        "by": "a Land druid's cantrip count is one more from 2nd level (src/lib/srd/class-spell-grants.ts classSpellGrants extraCantrips)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.land-bonus-cantrip"
       }
     ]
   },
@@ -2924,15 +2919,15 @@
       },
       {
         "c": "Once you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: always prepared, outside the prepared count, and a druid spell for the druid"
+        "is": "held",
+        "by": "the terrain's spells are castable with the prepared list full and take no place on it (src/lib/srd/features.ts subclassSpellsFor), one off the druid list included",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.circle-spells-ready"
       },
       {
         "c": "If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: always prepared, outside the prepared count, and a druid spell for the druid"
+        "is": "held",
+        "by": "the terrain's spells are castable with the prepared list full and take no place on it (src/lib/srd/features.ts subclassSpellsFor), one off the druid list included",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.circle-spells-ready"
       },
       {
         "c": "**Table- Arctic Circle Spells**",
@@ -3203,15 +3198,15 @@
       },
       {
         "c": "You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "the board's plants are its nonmagical difficult ground (undergrowth), which Land's Stride crosses at no extra cost (src/lib/battlemap/types.ts moveTraitsFrom landStride); no nonmagical plant on the board deals damage, so there is none to take",
+        "probe": "scripts/test-enforce-monster-traits.mjs: Land's Stride: nonmagical difficult terrain costs a druid or ranger no extra movement"
       },
       {
         "c": "In addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the *entangle* spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "a save the engine rolls against Entangle, Wall of Thorns or Grasping Vine is rolled with advantage (src/lib/dm/mt-srd-druid.ts landsStrideClaim, at forced-save.ts rollCharacterSave)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.lands-stride.entangle"
       }
     ]
   },
@@ -5781,45 +5776,41 @@
       },
       {
         "c": "While traveling for an hour or more in your favored terrain, you gain the following benefits:",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "travel takes the land crossed (`land`): on a leg of an hour or more in a traveller's favored terrain, difficult ground does not halve the group's distance (src/lib/dm/mt-srd-ranger.ts naturalExplorerGuide)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "Difficult terrain doesn't slow your group's travel.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "travel takes the land crossed (`land`): on a leg of an hour or more in a traveller's favored terrain, difficult ground does not halve the group's distance (src/lib/dm/mt-srd-ranger.ts naturalExplorerGuide)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "Your group can't become lost except by magical means.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "docs/rules-coverage.md: \"Foraging and navigation | narrated by design | DMG rules, not SRD 5.1\": the SRD 5.1 has no rule for getting lost or for what foraging finds, so there is no number for the feature to change"
       },
       {
         "c": "Even when you are engaged in another activity while traveling (such as foraging, navigating, or tracking), you remain alert to danger.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "the SRD 5.1 has no travel activities that take a traveller's attention off danger: every traveller's passive Perception counts whatever they are doing (check_notice), so there is no alertness lost for the feature to keep (docs/rules-coverage.md)"
       },
       {
         "c": "If you are traveling alone, you can move stealthily at a normal pace.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "a Stealth check in the favored terrain is not refused at a normal pace when the last stretch marched was the ranger's alone (mt-srd-ranger.ts stealthyAlone, at roll-gates.ts marchStealthProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "When you forage, you find twice as much food as you normally would.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "docs/rules-coverage.md: \"Foraging and navigation | narrated by design | DMG rules, not SRD 5.1\": the SRD 5.1 has no rule for getting lost or for what foraging finds, so there is no number for the feature to change"
       },
       {
         "c": "While tracking other creatures, you also learn their exact number, their sizes, and how long ago they passed through the area.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "what a trail tells is the GM's answer to the Survival check (request_roll about 'tracking'); the number, sizes and age of what passed are narration, not state the table holds"
       },
       {
         "c": "You choose additional favored terrain types at 6th and 10th level.",
@@ -6021,15 +6012,15 @@
       },
       {
         "c": "For 1 minute per level of the spell slot you expend, you can sense whether the following types of creatures are present within 1 mile of you (or within up to 6 miles if you are in your favored terrain): aberrations, celestials, dragons, elementals, fey, fiends, and undead.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the minutes per slot level, the mile (six in favored terrain) and the creature types sensed"
+        "is": "held",
+        "by": "the slot named is spent and the awareness is a condition on the clock for a minute a level of it; the answer names the seven kinds, the mile (six in favored terrain) and that it tells neither number nor place (src/lib/dm/srd-feature-spends.ts primevalAwareness)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.primeval-awareness.minutes"
       },
       {
         "c": "This feature doesn't reveal the creatures' location or number.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the minutes per slot level, the mile (six in favored terrain) and the creature types sensed"
+        "is": "held",
+        "by": "the slot named is spent and the awareness is a condition on the clock for a minute a level of it; the answer names the seven kinds, the mile (six in favored terrain) and that it tells neither number nor place (src/lib/dm/srd-feature-spends.ts primevalAwareness)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.primeval-awareness.minutes"
       }
     ]
   },
@@ -6095,15 +6086,15 @@
       },
       {
         "c": "You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "the board's plants are its nonmagical difficult ground (undergrowth), which Land's Stride crosses at no extra cost (src/lib/battlemap/types.ts moveTraitsFrom landStride); no nonmagical plant on the board deals damage, so there is none to take",
+        "probe": "scripts/test-enforce-monster-traits.mjs: Land's Stride: nonmagical difficult terrain costs a druid or ranger no extra movement"
       },
       {
         "c": "In addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the *entangle* spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "a save the engine rolls against Entangle, Wall of Thorns or Grasping Vine is rolled with advantage (src/lib/dm/mt-srd-druid.ts landsStrideClaim, at forced-save.ts rollCharacterSave)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.lands-stride.entangle"
       }
     ]
   },
@@ -6193,9 +6184,8 @@
       },
       {
         "c": "Also, you can't be tracked by nonmagical means, unless you choose to leave a trail.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: tracking has no roll against the ranger's trail on the board"
+        "is": "left",
+        "why": "no creature tracks a character by a roll the engine makes: a pursuer finding the ranger's trail is the GM's story, so there is no check for the feature to refuse"
       }
     ]
   },
@@ -6218,9 +6208,9 @@
       },
       {
         "c": "You are also aware of the location of any invisible creature within 30 feet of you, provided that the creature isn't hidden from you and you aren't blinded or deafened.",
-        "is": "gap",
-        "read_only": true,
-        "why": "recorded by the hand sweep as hand-preview-unseen for the card; the 30-foot awareness itself not run"
+        "is": "held",
+        "by": "ODM never makes anyone guess a square: an invisible creature's token stays where it stands for every attacker, so the ranger knows where it is (the Blindsense clause's own ground), and attacks it with no disadvantage",
+        "probe": "scripts/test-enforce-tail-attacks.mjs: Feral Senses: a ranger attacking an invisible creature rolls without disadvantage."
       }
     ]
   },

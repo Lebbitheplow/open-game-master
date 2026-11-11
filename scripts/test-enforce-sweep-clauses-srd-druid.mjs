@@ -3,7 +3,7 @@
 // this file holds how each clause that names it is staged.
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
-import { assert, clauseRig, TRAINED } from "./lib/sweep-clauses-srd-rig.mjs";
+import { assert, clauseRig, slots, TRAINED } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
 const druid = (t, level, extra = {}) => t.hero({ class: "druid", level, ...extra, abilities: { wis: 16, ...(extra.abilities ?? {}) } });
@@ -294,6 +294,48 @@ P["druid.natures-sanctuary.day"] = async () => {
   const second = await t.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: who.id }, [1, 4]);
   assert.equal(second.ok, true, `a beast that saved within the day was turned away: ${second.error}`);
   assert.equal(second.rolled.filter((die) => die.sides === 20).length, 1, "a second save was rolled within the 24 hours");
+};
+
+// ---- Beast Spells, Archdruid ----
+
+const READY = (prepared) => ({ ability: "wis", slots: slots(4, 3, 3, 3, 3, 2, 2, 1, 1), prepared, known: [], cantrips: [] });
+const buff = (t, who, spell) => t.invoke("cast_buff", { characterId: who.id, spell, targetCharacterIds: [who.id] });
+
+P["druid.beast-spells.material"] = async () => {
+  const t = await rig.table();
+  const who = druid(t, 18, { spellcasting: READY(["Barkskin", "Detect Magic"]), equipment: [{ name: "Component pouch", qty: 1 }] });
+  const own = await buff(t, who, "Barkskin");
+  assert.equal(own.ok, true, `the staging: Barkskin in the druid's own shape: ${own.error}`);
+  await shape(t, who);
+  const bark = await buff(t, who, "Barkskin");
+  assert.match(String(bark.error), /material component/, "Barkskin (a handful of oak bark) was cast in a beast shape");
+  const used = t.sheet(who).spellcasting.slots["2"].used;
+  // The words and the gestures a beast shape can make.
+  assert.equal(t.sheet(who).spellcasting.slots["2"].used, used, "the refused cast spent a slot");
+  const plain = await t.invoke("use_spell_slot", { characterId: who.id, level: 1, spell: "Detect Magic" });
+  assert.equal(plain.ok, true, `a spell of words and gestures in a beast shape: ${plain.error}`);
+  const slotted = await t.invoke("use_spell_slot", { characterId: who.id, level: 2, spell: "Barkskin" });
+  assert.match(String(slotted.error), /material component/, "the slot's own door let the material through");
+};
+
+P["druid.archdruid.components"] = async () => {
+  const t = await rig.table();
+  // No pouch, no focus, and no voice.
+  const who = druid(t, 20, { spellcasting: READY(["Barkskin", "Longstrider", "Stoneskin"]), equipment: [] });
+  t.patch(who, { conditions: ["silenced"] });
+  const bark = await buff(t, who, "Barkskin");
+  assert.equal(bark.ok, true, `a silenced Archdruid with no pouch casts Barkskin: ${bark.error}`);
+  // A material with a price is still asked for (100 gp of diamond dust).
+  const stone = await buff(t, who, "Stoneskin");
+  assert.match(String(stone.error), /diamond|material/i, "Stoneskin was cast with no diamond dust");
+  // "In both your normal shape and your beast shape."
+  t.patch(who, { conditions: [] });
+  await shape(t, who);
+  t.patch(who, { conditions: [...t.sheet(who).conditions, "silenced"] });
+  const stride = await buff(t, who, "Longstrider");
+  assert.equal(stride.ok, true, `the same in a beast shape: ${stride.error}`);
+  const priced = await buff(t, who, "Stoneskin");
+  assert.match(String(priced.error), /material/i, "a priced material was provided in a beast shape");
 };
 
 await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-druid.mjs", P);

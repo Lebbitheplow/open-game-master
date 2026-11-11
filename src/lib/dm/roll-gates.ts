@@ -23,6 +23,7 @@ import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
+import { stealthyAlone } from "@/lib/dm/mt-srd-ranger";
 import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -63,12 +64,22 @@ const skillId = (text: string | undefined) => (text ?? "").trim().toLowerCase().
 
 // Whether the party's march forbids stealth right now: a normal or fast
 // pace on the clock, and no fight running. The refusal sentence, or null.
-export function marchStealthProblem(campaignId: string, skill: string | undefined): ToolError | null {
+export function marchStealthProblem(
+  campaignId: string,
+  skill: string | undefined,
+  // The one rolling and the land the check names, for a ranger travelling
+  // alone in their favored terrain (mt-srd-ranger.ts, Natural Explorer).
+  alone?: { roller: { id?: string; name: string; features?: ReadonlyArray<{ name: string }> } | null; terrain?: string },
+): ToolError | null {
   if (skillId(skill) !== "stealth") {
     return null;
   }
-  const pace = getClock(campaignId).travelPace;
+  const clock = getClock(campaignId);
+  const pace = clock.travelPace;
   if (!pace || pace === "slow" || getActiveEncounter(campaignId)) {
+    return null;
+  }
+  if (pace === "normal" && alone && stealthyAlone(alone.roller, alone.terrain, clock.marched ?? [])) {
     return null;
   }
   return { error: `The party is marching at a ${pace} pace, which leaves no room for stealth (SRD 5.1, Travel Pace). Travel at a slow pace to move stealthily, or let the march end (pass_time or a rest) before the Stealth check.`, refused: "rules" };
@@ -205,15 +216,16 @@ export function applyRollGates<A extends {
   againstEnemyId?: string;
   againstMonster?: string;
   contestSkill?: string;
+  terrain?: string;
 }>(
   campaign: Campaign,
   turn: DmTurn | null,
   args: A,
   // The character rolling, for the charm the opponent may hold over them.
-  roller: Charmable | null = null,
+  roller: (Charmable & { id?: string; features?: ReadonlyArray<{ name: string }> }) | null = null,
 ): { args: A; contest?: ContestRoll } | ToolError {
   if (args.kind === "skill_check") {
-    const marching = marchStealthProblem(campaign.id, args.skill);
+    const marching = marchStealthProblem(campaign.id, args.skill, { roller, terrain: args.terrain });
     if (marching) {
       return marching;
     }

@@ -251,6 +251,8 @@ function primevalAwareness(campaign: Campaign, sheet: CharacterSheet, amount: nu
   if (updated) {
     publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
   }
+  // The minutes it lasts are on the clock: one a level of the slot.
+  addCondition(campaign, updated ?? sheet, "primeval awareness", { rounds: level * 10 });
   return {
     ok: true,
     resource: "Primeval Awareness",

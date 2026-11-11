@@ -2783,6 +2783,7 @@
     "lib/dm/mt-srd-unconscious.ts#bypass": [["identity",1,"the weapon a Sacred Weapon's meta names, found among the sheet's rows by its whole name through textKey"]],
     "lib/dm/mt-srd-monk.ts#partial": [["parse",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text), and the rows a monk's hands hold asked what they are"]],
     "lib/dm/mt-srd-ranger.ts#whole": [["key",1,"the turn budget's own marks, built from an enemy id and a weapon's textKey"],["key",1,"the turn budget's own marks, built from an enemy id and a weapon's textKey"]],
+    "lib/dm/mt-srd-ranger.ts#first": [["key",1,"the turn budget's own marks, built from an enemy id and a weapon's textKey"]],
     "lib/dm/mt-srd-reach.ts#partial": [["pattern",1,"undead or construct read in the creature type a sheet's own record carries (engine vocabulary)"],["pattern",1,"undead or construct read in the creature type a sheet's own record carries (engine vocabulary)"]],
     "lib/dm/mt-srd-barbarian.ts#keyed": [["key",1,"the words a call ends a rage with and the turn-end meta of a condition by its key (engine vocabulary)"],["key",1,"the words a call ends a rage with and the turn-end meta of a condition by its key (engine vocabulary)"]],
     "lib/srd/mt-srd-spells-on.ts#keyed": [["key",1,"a condition's meta read by the key it was written under, and the spell each instance names"]],
@@ -2792,6 +2793,7 @@
     "lib/dm/mt-srd-paladin.ts#whole": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"],["identity",2,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
     "lib/dm/mt-srd-paladin.ts#whole-single": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
     "lib/dm/mt-srd-paladin.ts#keyed": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
-    "lib/dm/mt-srd-bard.ts#keyed": [["key",1,"the words a call ends a Countercharm with and a condition's meta read by the key it was written under (engine vocabulary)"]]
+    "lib/dm/mt-srd-bard.ts#keyed": [["key",1,"the words a call ends a Countercharm with and a condition's meta read by the key it was written under (engine vocabulary)"]],
+    "lib/dm/mt-srd-druid.ts#partial": [["pattern",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]]
   }
 }

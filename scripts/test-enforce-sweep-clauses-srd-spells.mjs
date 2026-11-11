@@ -175,4 +175,39 @@ P["spells.druid.prepares-from-list"] = async () => {
   assert.equal(second.status, 200, JSON.stringify(second.body).slice(0, 200));
 };
 
+// ---- the Circle of the Land ----
+
+P["spells.druid.land-bonus-cantrip"] = async () => {
+  const cantrips = listOf("druid", 0);
+  const before = view("druid", 1, { cantrips: cantrips.slice(0, 2), prepared: [listOf("druid", 1)[0]] });
+  const land = levelUp("druid", 2, before, { kind: "picks", spells: [cantrips[2]] }, { subclass: "Circle of the Land" });
+  assert.ok(!("error" in land), `the circle's additional cantrip at 2nd level: ${land.error}`);
+  assert.equal(land.view.cantrips.length, 3);
+  const two = levelUp("druid", 2, before, { kind: "picks", spells: [cantrips[2], cantrips[3]] }, { subclass: "Circle of the Land" });
+  assert.ok("error" in two, "the circle taught two additional cantrips");
+  const plain = levelUp("druid", 2, before, { kind: "picks", spells: [cantrips[2]] });
+  assert.ok("error" in plain, "a druid of no circle learned a third cantrip at 2nd level");
+};
+
+P["spells.druid.circle-spells-ready"] = async () => {
+  const t = await rig.table();
+  const six = listOf("druid", 1).slice(0, 6);
+  const who = t.hero({ class: "druid", level: 3, subclass: "Circle of the Land", abilities: { wis: 16 }, equipment: [{ name: "Component pouch", qty: 1 }], spellcasting: { ability: "wis", slots: slots(4, 2), prepared: six, known: [], cantrips: [] } });
+  t.patch(who, { features: [...t.sheet(who).features, { name: "Circle Spells (Coast)", source: "choice" }] });
+  assert.ok(!classesOf("Mirror Image").includes("druid"), "the staging: Mirror Image is not on the druid list");
+  // Ready without a place on the list, which is already full (3 + WIS 3).
+  const cast = await t.invoke("cast_buff", { characterId: who.id, spell: "Mirror Image", targetCharacterIds: [who.id] });
+  assert.equal(cast.ok, true, `a Coast druid casts Mirror Image, never prepared: ${cast.error}`);
+  assert.equal(t.sheet(who).spellcasting.slots["2"].used, 1, "the circle spell took a druid's 2nd-level slot");
+  assert.equal(t.sheet(who).spellcasting.prepared.length, 6, "the circle spell took a place on the prepared list");
+  const full = await prepare(t, who, "prepare", listOf("druid", 1)[6]);
+  assert.equal(full.status, 400, "a seventh spell was prepared");
+  // A druid of the forest has no Mirror Image.
+  const t2 = await rig.table();
+  const other = t2.hero({ class: "druid", level: 3, subclass: "Circle of the Land", abilities: { wis: 16 }, equipment: [{ name: "Component pouch", qty: 1 }], spellcasting: { ability: "wis", slots: slots(4, 2), prepared: six, known: [], cantrips: [] } });
+  t2.patch(other, { features: [...t2.sheet(other).features, { name: "Circle Spells (Forest)", source: "choice" }] });
+  const none = await t2.invoke("cast_buff", { characterId: other.id, spell: "Mirror Image", targetCharacterIds: [other.id] });
+  assert.ok(none.error, "a Forest druid cast the Coast's Mirror Image");
+};
+
 await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-spells.mjs", P);

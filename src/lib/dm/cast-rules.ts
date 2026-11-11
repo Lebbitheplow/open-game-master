@@ -23,6 +23,7 @@ import { spendAction, spendCastAttack, type TurnBudget } from "@/lib/dm/action-b
 import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { beastShapeMaterialProblem } from "@/lib/dm/mt-srd-druid";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
@@ -373,7 +374,8 @@ export function componentProblem(sheet: Caster, facts: SpellFacts | null): ToolE
 // level 20 druid with both hands full though Archdruid casts them.
 export function castComponents(sheet: Caster, facts: SpellFacts | null, grant: GrantedCast | null, extras?: SubclassExtras): { facts: SpellFacts | null; problem: ToolError | null } {
   const cast = componentsAsCast(sheet, facts, grant, extras);
-  return { facts: cast, problem: componentProblem(sheet, cast) ?? focusRefusal(sheet, cast) };
+  // A beast's body provides no material (mt-srd-druid.ts, Beast Spells).
+  return { facts: cast, problem: beastShapeMaterialProblem(sheet, cast) ?? componentProblem(sheet, cast) ?? focusRefusal(sheet, cast) };
 }
 
 // Silence around a caster (SRD 5.1: "Casting a spell that includes a verbal

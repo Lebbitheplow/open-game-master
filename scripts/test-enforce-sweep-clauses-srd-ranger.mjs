@@ -329,4 +329,64 @@ P["ranger.hide-in-plain-sight.lost"] = async () => {
   assert.equal(t3.has(walker, "camouflaged"), false, "the ranger moved and is still camouflaged");
 };
 
+// ---- Natural Explorer on the road, Primeval Awareness, Land's Stride ----
+
+const explorer = (t, level, land = "forest") => {
+  const who = t.hero({ class: "ranger", level, abilities: { dex: 16, wis: 14 }, spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 2: { max: 2, used: 0 } }, prepared: [], known: [], cantrips: [] } });
+  t.patch(who, { features: [...t.sheet(who).features, { name: `Natural Explorer: ${land}`, source: "choice" }] });
+  return who;
+};
+
+P["ranger.natural-explorer.travel"] = async () => {
+  const t = await rig.table();
+  const who = explorer(t, 1);
+  const friend = t.hero({ class: "fighter", level: 1 });
+  const all = [who.id, friend.id];
+  const swamp = await t.invoke("travel", { hours: 4, terrain: "difficult", land: "swamp", characterIds: all });
+  assert.equal(swamp.ok, true, swamp.error);
+  const forest = await t.invoke("travel", { hours: 4, terrain: "difficult", land: "forest", characterIds: all });
+  assert.equal(forest.ok, true, forest.error);
+  assert.equal(forest.result.miles, swamp.result.miles * 2, `difficult ground in the favored terrain: ${forest.result.miles} miles against ${swamp.result.miles} outside it`);
+  // The group is not alone: a normal pace leaves no room for stealth.
+  const group = await t.invoke("request_roll", { characterId: who.id, kind: "skill_check", skill: "stealth", dc: 10, terrain: "forest" }, [12]);
+  assert.match(String(group.error), /pace/, "a ranger in a group moved stealthily at a normal pace");
+  // Alone, in the favored terrain, they do; out of it they do not.
+  const alone = await t.invoke("travel", { hours: 1, land: "forest", characterIds: [who.id] });
+  assert.equal(alone.ok, true, alone.error);
+  const other = await t.invoke("request_roll", { characterId: who.id, kind: "skill_check", skill: "stealth", dc: 10, terrain: "swamp" }, [12]);
+  assert.match(String(other.error), /pace/, "stealth at a normal pace outside the favored terrain");
+  const quiet = await t.invoke("request_roll", { characterId: who.id, kind: "skill_check", skill: "stealth", dc: 10, terrain: "forest" }, [12]);
+  assert.ok(!quiet.error, `a ranger alone in the forest moves stealthily at a normal pace: ${quiet.error}`);
+};
+
+P["ranger.primeval-awareness.minutes"] = async () => {
+  const t = await rig.table();
+  const who = explorer(t, 5);
+  const out = await t.use(who, "primeval awareness", { amount: 2 });
+  assert.equal(out.ok, true, out.error);
+  const sheet = t.sheet(who);
+  assert.equal(sheet.spellcasting.slots["2"].used, 1, "the slot named was spent");
+  // A minute a level of the slot, on the clock.
+  assert.equal(sheet.conditionMeta["primeval awareness"]?.rounds, 20, "two minutes for a 2nd-level slot");
+  for (const kind of ["aberrations", "celestials", "dragons", "elementals", "fey", "fiends", "undead"]) {
+    assert.ok(out.result.applied.includes(kind), `the answer leaves out ${kind}`);
+  }
+  assert.match(out.result.applied, /For 2 minutes/);
+  assert.match(out.result.applied, /within 1 mile \(6 in their favored terrain\)/);
+  assert.match(out.result.applied, /not their number or place/);
+};
+
+P["ranger.lands-stride.entangle"] = async () => {
+  const d20s = async (classId, source) => {
+    const t = await rig.table();
+    const who = t.hero({ class: classId, level: 8, abilities: { str: 10 } });
+    const out = await t.invoke("cast_at_player", { characterId: who.id, saveAbility: "str", dc: 15, condition: "restrained", source }, [4, 5]);
+    assert.ok(!out.error, out.error);
+    return out.rolled.filter((die) => die.sides === 20).length;
+  };
+  assert.equal(await d20s("ranger", "Entangle"), 2, "a ranger's save against Entangle");
+  assert.equal(await d20s("ranger", "Web"), 1, "Web is no plant");
+  assert.equal(await d20s("fighter", "Entangle"), 1, "the staging: a fighter's save against Entangle");
+};
+
 await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-ranger.mjs", P);
