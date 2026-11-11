@@ -34,6 +34,7 @@ import { sightRotPenalty } from "@/lib/srd/afflictions";
 import { unknownRef, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
+import { authoredCheckSwap } from "@/lib/srd/authored-effects";
 
 export { rollArgsSchema, rollDcFor, type RollArgs } from "@/lib/dm/roll-args";
 
@@ -597,7 +598,7 @@ export function resolveRollExpression(
     const checkAbility = args.ability ?? skill.ability;
     const abilitySwap =
       checkAbility !== skill.ability
-        ? (derived.abilityMods[checkAbility] ?? 0) - (derived.abilityMods[skill.ability] ?? 0)
+        ? (derived.abilityMods[checkAbility] ?? 0) + authoredCheckSwap(sheet, checkAbility, derived.abilityMods) - (derived.abilityMods[skill.ability] ?? 0) - authoredCheckSwap(sheet, skill.ability as typeof checkAbility, derived.abilityMods)
         : 0;
     // Sight rot: its penalty rides the checks that rely on sight.
     const sightRot = skill.id === "perception" || skill.id === "investigation" ? sightRotPenalty(sheet.conditions) : 0;
@@ -697,7 +698,7 @@ export function resolveRollExpression(
     const modifier =
       (args.kind === "saving_throw"
         ? derived.saves[args.ability]
-        : derived.abilityMods[args.ability]) +
+        : derived.abilityMods[args.ability] + authoredCheckSwap(sheet, args.ability, derived.abilityMods)) +
       (args.kind === "saving_throw" ? halfBonus : checkBonus) +
       auraBonus +
       effectBonus;

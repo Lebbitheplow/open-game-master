@@ -146,7 +146,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     // Strength save uses Wisdom when it is higher.
     effects: [
       { kind: "reach", tiles: 1, unarmed: true, gate: { condition: "arms of the astral self" } },
-      { kind: "save_swap", save: "str", use: "wis", gate: { condition: "arms of the astral self" } },
+      { kind: "save_swap", save: "str", use: "wis", checks: true, gate: { condition: "arms of the astral self" } },
     ],
     spends: [
       {

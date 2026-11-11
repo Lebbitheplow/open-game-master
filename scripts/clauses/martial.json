@@ -2742,7 +2742,8 @@
    },
    {
     "c": "While they last you can use Wisdom for Strength checks and saves",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts authoredCheckSwap (the row's save_swap with checks)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-strength-checks"
    },
    {
@@ -2753,7 +2754,8 @@
    },
    {
     "c": "and those strikes can use Wisdom for attack and damage rolls and deal force damage",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-unarmed.ts unarmedForm (attack-logic.ts AttackStance.unarmedForm)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-wisdom"
    }
   ]
@@ -2848,9 +2850,9 @@
    },
    {
     "c": "Draconic Strike: your unarmed strikes can deal acid, cold, fire, lightning or poison damage instead of bludgeoning.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Draconic Disciple: \"Changing an unarmed strike's damage type ... are the GM's\"): a damage type against resistance is a number, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-unarmed.ts draconicStrikeType (the row's choose spend)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: draconic-strike-type"
    },
    {
     "c": "Tongue of Dragons: you learn Draconic, or another language if you know it.",

@@ -4,20 +4,6 @@ const ROWS2 = "src/lib/srd/authored-effects-data2.ts";
 const ROWS4 = "src/lib/srd/authored-effects-data4.ts";
 
 export const KNOWN = {
-  "arms-of-the-astral-self-wisdom": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/dm/pc-attack-profile.ts (the unarmed strike's ability: the better of Strength and Dexterity only)",
-    note: "Under the arms, a monk with Wisdom 18 and Dexterity 16 strikes at +9 (Dexterity), not +10.",
-    fix: "Offer Wisdom for unarmed strikes, and force damage, while the arms' condition holds.",
-    files: ["src/lib/dm/pc-attack-profile.ts"],
-  },
-  "arms-of-the-astral-self-strength-checks": {
-    severity: "low", kind: "rule-missing",
-    where: "src/lib/srd/index.ts computeSheetDerived / src/lib/dm/roll-tools.ts (Strength checks and saves read Strength only)",
-    note: "A Strength check and save under the arms add Strength 8's -1, not Wisdom 18's +4.",
-    fix: "An ability_swap effect (str -> wis for checks and saves) gated on the arms.",
-    files: ["src/lib/srd/index.ts"],
-  },
   "deflect-energy": {
     severity: "low", kind: "rule-wrong",
     where: "src/lib/dm/authored-reactions.ts (case \"reduce\": answers only an attack that hit this turn)",

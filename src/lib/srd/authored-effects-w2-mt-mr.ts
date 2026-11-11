@@ -5,6 +5,10 @@
 
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
+// As src/lib/srd/mt-mr-unarmed.ts reads them (that module imports the table,
+// so the words are written here).
+const DRACONIC_CHOICES = ["Acid", "Cold", "Fire", "Lightning", "Poison", "Bludgeoning"];
+
 export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   // ---- monk ----
   // An action, as the published feature: invisible while the monk's square is
@@ -47,6 +51,16 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   "monk::Flurry of Healing and Harm": {
     subclass: "Way of Mercy",
     heldBy: { file: "src/lib/dm/mt-mr-needs.ts", call: 'holdsRow(sheet, "monk::Flurry of Healing and Harm")' },
+  },
+  // Draconic Strike: the type the unarmed strikes deal in place of
+  // bludgeoning is a standing choice, changed at will with no action
+  // (use_resource "Draconic Strike", the type as its variant; "Bludgeoning"
+  // goes back). The attack profile reads it (src/lib/srd/mt-mr-unarmed.ts),
+  // and so do the wyrm's ward and Explosive Fury (src/lib/dm/mt-mr-dragon.ts).
+  // The language is the sheet's training.
+  "monk::Draconic Disciple": {
+    subclass: "Way of the Ascendant Dragon",
+    spends: [{ name: "Draconic Strike", aliases: ["Draconic Disciple"], action: "none", does: { kind: "choose", options: DRACONIC_CHOICES } }],
   },
   // "When you use Step of the Wind" is the counter's trigger
   // (trigger-table.ts); the wings last to the end of the turn.

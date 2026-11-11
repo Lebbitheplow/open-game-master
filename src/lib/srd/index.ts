@@ -12,7 +12,7 @@ import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
-import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { purseCoins } from "@/lib/srd/currency";
@@ -517,6 +517,8 @@ export function computeSheetDerived(
         skill.id,
         keepMeaningful([
           { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
+          // Arms of the Astral Self: Wisdom for Strength checks (authored-effects.ts).
+          { label: "subclass features", value: authoredCheckSwap(sheet, skill.ability as Ability, abilityMods) },
           trained,
         ]),
       ];

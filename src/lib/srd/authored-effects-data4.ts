@@ -308,10 +308,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
       },
     ],
   },
-  "monk::Draconic Disciple": {
-    subclass: "Way of the Ascendant Dragon",
-    narrated: "Changing an unarmed strike's damage type and rerolling a failed Intimidation or Persuasion check are the GM's; the language is the sheet's training.",
-  },
 
   // ---- paladin ----
   "paladin::Scornful Rebuke": {

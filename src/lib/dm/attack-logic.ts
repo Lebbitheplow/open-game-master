@@ -355,6 +355,10 @@ export type AttackStance = {
   // by name key, and whether they count as magical (One with the Blade;
   // src/lib/srd/mt-mr-kensei.ts kenseiStance).
   kensei?: { weapons: string[]; magical: boolean };
+  // What a monk's subclass makes of the unarmed strike: another ability's
+  // modifier when it is higher, and the damage dealt in place of bludgeoning
+  // (Arms of the Astral Self, Draconic Strike; src/lib/srd/mt-mr-unarmed.ts).
+  unarmedForm?: { mod?: number; ability?: string; damageType?: string; source: string };
 };
 
 // SRD 5.1 monk weapons: shortswords and any simple melee weapon that has
@@ -433,7 +437,10 @@ export function weaponAttackProfile(
     // their own die, and DEX when it beats Strength.
     const martial = resolved.unarmed ? martialArtsDie : null;
     const useDex = Boolean(martial) && derived.abilityMods.dex > derived.abilityMods.str;
-    const mod = useDex ? derived.abilityMods.dex : derived.abilityMods.str;
+    const ownMod = useDex ? derived.abilityMods.dex : derived.abilityMods.str;
+    const shaped = resolved.unarmed ? stance.unarmedForm : undefined;
+    const swapped = shaped?.mod !== undefined && shaped.mod > ownMod;
+    const mod = swapped && shaped?.mod !== undefined ? shaped.mod : ownMod;
     // A worn item's bonus to unarmed strikes (Demon Armor's gauntlets, a
     // homebrew pair of wraps). This branch once answered 0 whatever was worn,
     // so no item could reach a fist.
@@ -458,7 +465,10 @@ export function weaponAttackProfile(
     // A thrown melee weapon keeps its own type (a longsword's edge still
     // cuts); a bow or a crossbow swung in melee is a club.
     const from = resolved.improvisedFrom;
-    const damageType = form?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
+    const damageType = form?.damageType ?? shaped?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
+    if (shaped && (swapped || (shaped.damageType && damageType === shaped.damageType))) {
+      notes.push(`${shaped.source}: ${[swapped ? `with ${shaped.ability ?? "another ability"}` : "", damageType === shaped.damageType ? `${shaped.damageType} damage` : ""].filter(Boolean).join(", ")}`);
+    }
     return {
       weapon: resolved.displayName,
       toHit: mod + fist.attack + (resolved.unarmed ? derived.proficiencyBonus : 0),

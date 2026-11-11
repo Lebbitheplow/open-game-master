@@ -563,7 +563,17 @@ await test("the Hand reads the light on its square only from a host that offers 
     await spend(astral, "Arms of the Astral Self", {}, 2);
     const check = await roll(astral, { kind: "ability_check", ability: "str", dc: 10 }, [10]);
     const save = await roll(astral, { kind: "saving_throw", ability: "str", dc: 10 }, [10]);
-    assert.deepEqual([check.total, save.total], [10 + 4, 10 + 4], "a Strength check and save with Wisdom 18 under the arms (Strength 8)");
+    // A monk is proficient in Strength saves (SRD 5.1, Monk: "Saving Throws:
+    // Strength, Dexterity"), so the save adds the proficiency bonus to the
+    // Wisdom it borrows; the bare check adds Wisdom alone.
+    assert.deepEqual([check.total, save.total], [10 + 4, 10 + 4 + prof(17)], "a Strength check and save with Wisdom 18 under the arms (Strength 8)");
+    const athletics = await roll(astral, { kind: "skill_check", skill: "athletics", dc: 10 }, [10]);
+    const untrained = !sheet(astral).proficiencies.skills.includes("athletics");
+    assert.equal(athletics.total, 10 + 4 + (untrained ? 0 : prof(17)), "Strength (Athletics) borrows Wisdom too");
+    kit.freshTurn();
+    const bare = hero("monk", "Way of the Astral Self", 17, { ...BARE, abilities: { str: 8, wis: 18 } });
+    await stage(bare);
+    assert.equal((await roll(bare, { kind: "ability_check", ability: "str", dc: 10 }, [10])).total, 10 - 1, "the staging: with no arms summoned the check reads Strength");
   });
 
   await probe("deflect-energy", async () => {
@@ -680,6 +690,24 @@ await test("the Hand reads the light on its square only from a host that offers 
     world.patch(friend.id, { currentHp: 60 });
     await world.invoke("apply_damage", { characterId: friend.id, amount: 20, type: "fire" });
     assert.equal(sheet(friend).currentHp, 50, `an ally 5 feet off takes half of 20 fire: ${show(out)}`);
+  });
+
+  // Draconic Strike: the chosen type against a creature that resists it, and
+  // bludgeoning again once the monk goes back to it.
+  await probe("draconic-strike-type", async () => {
+    const struck = async (type) => {
+      await r.choose(dragon, "Draconic Strike", type);
+      const [enemy] = await stage(dragon);
+      kit.setEnemy(enemy.id, { stats: { resist: "fire" } });
+      const hit = await r.swing(dragon, enemy, [15, 4], UNARMED);
+      assert.equal(hit.result.hit, true, hit.error);
+      return { lost: 300 - r.foe(enemy).currentHp, hit };
+    };
+    const fire = await struck("fire");
+    assert.equal(fire.lost, Math.floor((4 + MOD) / 2), `a fire strike (a 4 + Dexterity) on a creature that resists fire: ${JSON.stringify(fire.hit.result).slice(0, 200)}`);
+    assert.match(JSON.stringify(fire.hit.result), /fire/i, "the strike's damage is fire");
+    const plain = await struck("bludgeoning");
+    assert.equal(plain.lost, 4 + MOD, "back to bludgeoning, the same blow lands whole");
   });
 
   // "Once per long rest or for 3 ki."

@@ -58,7 +58,9 @@ export type AuthoredEffect = Base &
     | { kind: "save_prof"; abilities: Ability[] }
     | { kind: "save_bonus"; amount: number }
     // A save of one ability uses another ability's modifier when higher.
-    | { kind: "save_swap"; save: Ability; use: Ability }
+    // `checks`: ability checks of that ability too (Arms of the Astral Self:
+    // "Wisdom for Strength checks and saves").
+    | { kind: "save_swap"; save: Ability; use: Ability; checks?: true }
     | { kind: "ac"; amount: number }
     // Walking speed, through feature-effects' speed_bonus.
     | { kind: "speed"; amount: number }

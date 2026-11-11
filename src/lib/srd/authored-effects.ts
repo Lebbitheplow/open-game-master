@@ -378,6 +378,20 @@ export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mod
   return total;
 }
 
+// What a swapped ability adds to a check of `ability` (a skill's or a raw
+// one): the other ability's modifier where it is higher, for a swap that
+// covers checks. computeSheetDerived adds it to the skills of that ability,
+// and request_roll to an ability check with no skill (src/lib/dm/rolls.ts).
+export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
+  let best = 0;
+  for (const { effect } of activeAuthored(sheet, "save_swap")) {
+    if (effect.checks && effect.save === ability) {
+      best = Math.max(best, (mods[effect.use] ?? 0) - (mods[effect.save] ?? 0));
+    }
+  }
+  return best;
+}
+
 // ---- AC, speed, movement ----
 
 export function authoredAcBonus(sheet: AuthoredSheet): { bonus: number; parts: string[] } {
