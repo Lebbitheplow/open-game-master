@@ -24,6 +24,7 @@ import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaign
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
+import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
 import { groupHand, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
@@ -258,7 +259,11 @@ function HandInner({
   );
   // The board measures from the viewer's own acting character, so its distances
   // say nothing of a companion or dominated hero the GM seat plays.
-  const ownFeet = sheet?.userId === meUserId ? feet : undefined;
+  // The feet from an area the character keeps are read only from a host that
+  // says it sends them (src/lib/capabilities.ts ownZoneFeet).
+  const zoneFeet = hostOffers(capabilities, "ownZoneFeet");
+  const hostFeet = useMemo(() => feetForHost(feet, zoneFeet), [feet, zoneFeet]);
+  const ownFeet = sheet?.userId === meUserId ? hostFeet : undefined;
   // Everyone a redirect may turn a blow onto, friend or foe (Misdirection).
   const creatures = useMemo(
     () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides),
@@ -266,8 +271,8 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures, unseen],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", hostFeet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, hostFeet, encounter.lastSaves, ownFeet, creatures, unseen],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each

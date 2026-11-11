@@ -35,7 +35,7 @@ export const AUTHORED_DATA_W2_DIVINE_CLR: Record<string, AuthoredEntry> = {
   // cleric's equipment. Out of a fight only: it takes an hour.
   "cleric::Channel Divinity: Artisan's Blessing": {
     subclass: "Forge Domain",
-    spends: [{ name: "Artisan's Blessing", pool: CHANNEL, fight: "out", does: { kind: "forge_item" } }],
+    spends: [{ name: "Artisan's Blessing", pool: CHANNEL, fight: "out", outOfFightWhy: "is an hour-long ritual, not something done in a fight", does: { kind: "forge_item" } }],
   },
   // "Detect undead within 60 feet": each undead within 60 feet, not behind
   // total cover, is found (its hiding ends), a Wisdom-modifier number of

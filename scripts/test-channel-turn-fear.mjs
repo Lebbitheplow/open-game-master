@@ -95,9 +95,13 @@ await test("Arcane Abjuration takes one creature, named, and leaves the other fi
   assert.equal(used(arcana), 0);
   const out = await channel(arcana, "arcane abjuration", [2], { targetEnemyId: one.id });
   assert.equal(out.ok, true, out.error);
-  assert.ok(foe(one.id).conditions.includes("turned"));
-  assert.equal(foe(other.id).conditions.includes("turned"), false);
-  assert.match(out.result.also, /banished/);
+  // From 5th level a creature that fails and whose challenge rating is at or
+  // under the cleric's limit "is banished for a minute instead" of turned
+  // (src/lib/dm/feature-spends.ts): the staged fiend is CR 1/4.
+  assert.deepEqual(foe(one.id).conditions.filter((entry) => ["turned", "banished"].includes(entry)), ["banished"], JSON.stringify(out.result));
+  assert.equal(foe(one.id).conditionMeta.banished.rounds, 10);
+  assert.equal(foe(other.id).conditions.some((entry) => ["turned", "banished"].includes(entry)), false);
+  assert.match(out.result.turnUndead.join(" "), /banished for a minute/);
 });
 
 await test("Conquering Presence frightens everyone in reach, with a save each turn.", async () => {
@@ -204,7 +208,8 @@ await test("The cards play these: the aimed and chosen ones ask for a creature, 
     world.clearDice();
     assert.equal(out.ok, true, `${name}: ${out.error}`);
     assert.equal(used(who), 1, name);
-    assert.ok(foe(first.id).conditions.some((entry) => ["turned", "frightened"].includes(entry)), name);
+    // Banished is what Arcane Abjuration does to a creature under its limit.
+    assert.ok(foe(first.id).conditions.some((entry) => ["turned", "frightened", "banished"].includes(entry)), name);
   }
 });
 

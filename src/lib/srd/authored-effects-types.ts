@@ -833,6 +833,10 @@ export type AuthoredSpend = {
   takesBackCurseHeal?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
+  // Why an out-of-fight spend is refused in one, where its reason is not a
+  // choice made when a rest ends (Artisan's Blessing is an hour's ritual):
+  // the words after the spend's name.
+  outOfFightWhy?: string;
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
   // which the GM may have the sorcerer roll).
   gm?: boolean;

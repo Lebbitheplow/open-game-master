@@ -157,7 +157,7 @@ function applySurge(scene: Scene, n: number, first: boolean): Lines {
       const temp = d(scene, "Wild Surge, temporary hit points", "1d12");
       const now = getSheetById(sheet.id) ?? sheet;
       if (temp > now.tempHp) {
-        patchSheetAudited(campaign.id, sheet.id, { tempHp: temp }, { kind: "set_temp_hp", reason: "Wild Surge: shadowy tendrils", delta: { tempHp: temp } });
+        patchSheetAudited(campaign.id, sheet.id, { tempHp: temp }, { kind: "grant_temp_hp", reason: "Wild Surge: shadowy tendrils", delta: { tempHp: temp } });
       }
       publishEncounter(campaign.id);
       return { surge: `1, shadowy tendrils: 1d12 necrotic (${damage}) to each creature within 30 feet that fails a Constitution save (DC ${dc}), and ${temp} temporary hit points to ${sheet.name}.`, tendrils: lines.length ? lines : "no creature within 30 feet" };

@@ -261,7 +261,7 @@ export function authoredFeatureSpend(
     return change;
   }
   if (spend.fight === "out" && inFight && !change) {
-    return { error: `${spend.name} is chosen outside a fight, when a rest ends, not in the middle of one.`, refused: "rules" };
+    return { error: `${spend.name} ${spend.outOfFightWhy ?? "is chosen outside a fight, when a rest ends, not in the middle of one"}.`, refused: "rules" };
   }
   if (spend.oncePer && sheet.conditions.some((entry) => textKey(entry) === textKey(spend.oncePer!.marker))) {
     return { error: `${spend.name} has been used already (${spend.oncePer.marker}). Nothing was spent.`, refused: "rules" };

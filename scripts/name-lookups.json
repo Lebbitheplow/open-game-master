@@ -1004,6 +1004,7 @@
     "lib/battlemap/zones-walls.ts#whole": [["identity",1,"a wall by whole spell name"]],
     "lib/battlemap/zones.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/battlemap/zones.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/battlemap/zone-feet.ts#partial": [["key",2,"ODM's own key for the feet from an area (zoneFeetKey's zone: prefix), told apart from a creature id by that prefix as stored: no name is looked up"]],
     "lib/battlemap/zones.ts#partial": [["key",2,"terrain codes"]],
     "lib/bestiary/attack-parse.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/bestiary/attack-parse.ts#partial": [["parse",1,"dice"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],

@@ -245,6 +245,20 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       if (typeof delta.equipped !== "boolean") return `${name} changes what they wear`;
       return `${name} ${delta.equipped ? "puts on" : "takes off"} ${item}`;
     }
+    // Pact of the Blade (src/lib/dm/mt-srd-warlock.ts): the weapon made,
+    // bonded, sent away, or its bond broken.
+    case "pact_weapon": {
+      const created = word(delta.created);
+      const bonded = word(delta.bonded);
+      const unbonded = word(delta.unbonded);
+      if (created) return `${name} creates a pact weapon: ${created}`;
+      if (bonded) return `${name} bonds with ${bonded} as a pact weapon`;
+      if (unbonded) return `${name} breaks the pact bond with ${unbonded}`;
+      return `${name} dismisses ${word(delta.dismissed) ?? "the pact weapon"}`;
+    }
+    // Pact of the Tome: a new book, the old one gone with it.
+    case "book_of_shadows":
+      return delta.replaced === true ? `${name} makes a new Book of Shadows, and the old one is gone` : `${name} makes a Book of Shadows`;
     case "hand_item": {
       const to = word(delta.to);
       const from = word(delta.from);
