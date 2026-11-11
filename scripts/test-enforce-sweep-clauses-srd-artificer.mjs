@@ -104,6 +104,12 @@ P["artificer.spell-storing-item.casts"] = async () => {
   const t = await rig.table();
   const who = artificer(t, 11, { equipment: [{ name: "Dagger", qty: 1, equipped: true }] });
   const dagger = (holder) => t.sheet(holder).equipment.find((item) => item.name === "Dagger") ?? null;
+  // The Hand's card offers the list as the spell use_resource reads.
+  const { featureCards } = await import("../src/lib/battlemap/hand-spells.ts");
+  const card = featureCards(t.sheet(who), { myTurn: true, actionUsed: false, bonusUsed: false, reactionUsed: false, attacksMade: 0, table: null })
+    .find((entry) => entry.intent?.resourceId === "art_spell_storing_item");
+  assert.equal(card?.choice?.arg, "variant", `the card names the spell it stores: ${JSON.stringify(card?.choice ?? null).slice(0, 160)}`);
+  assert.ok(card.choice.options.some((option) => option.value === "Cure Wounds"), "Cure Wounds is among the card's spells");
   assert.equal((await t.use(who, "Spell-Storing Item", { variant: "Fireball" })).ok, false, "a 3rd level spell off the artificer's list");
   const out = await t.use(who, "Spell-Storing Item", { variant: "Cure Wounds" });
   assert.equal(out.ok, true, out.error);

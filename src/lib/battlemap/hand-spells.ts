@@ -644,6 +644,17 @@ function featureCost(def: ResourceDef, sheet: CharacterSheet): HandCost {
   return !action || action === "none" ? "free" : action;
 }
 
+// A counter whose use names what it takes, listed on its authored row (a
+// Spell-Storing Item's spell, authored-effects-w2-arcane.ts): the card offers
+// that list as the variant use_resource reads. It sent none, and every play
+// was asked for the spell.
+function counterPick(def: ResourceDef, sheet: CharacterSheet): HandChoice | null {
+  const found = authoredSpendFor(sheet, def.displayName);
+  const does = found?.spend.does;
+  if (!does || does.kind !== "choose" || found?.spend.pool?.id !== def.id) return null;
+  return { arg: "variant", label: "Choose", options: does.options.map((value) => ({ value, label: pickLabel(value) })) };
+}
+
 export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const cards: HandCard[] = [];
@@ -750,6 +761,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       dice = `+${damage}`;
       target = "enemy";
     }
+    const picked = counterPick(def, sheet);
     const card: HandCard = {
       id: `feature:${id}`,
       type,
@@ -794,6 +806,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         ? { choice: { arg: "variant" as const, label: "Type", options: breathChoices(sheet, def.id, effect.typeFromVariant).map((value) => ({ value, label: pickLabel(value) })) } }
         : {}),
       ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet) } : {}),
+      ...(picked ? { choice: picked } : {}),
       // "one creature other than yourself" (Bardic Inspiration): no "(you)" chip.
       ...(effect.kind === "inspire" && effect.othersOnly ? { othersOnly: true } : {}),
       // Hand of Ultimate Mercy returns the dead (src/lib/srd/dead-targets.ts).
