@@ -1,6 +1,7 @@
 import { expireBurntLights } from "@/lib/db/battle-maps";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { withMoonlight } from "@/lib/dm/ar-ws-moonlight-logic";
 import { publishFx } from "@/lib/dm/fx";
 import { publishEphemeral } from "@/lib/events";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -60,9 +61,10 @@ function burningSource(equipment: EquipmentItem[]): { source: Source; burns: Equ
   return null;
 }
 
-export function carriedLight(sheet: Pick<CharacterSheet, "equipment">): CarriedLight {
+export function carriedLight(sheet: Pick<CharacterSheet, "equipment"> & { conditions?: readonly string[] }): CarriedLight {
   const found = burningSource(sheet.equipment);
-  return found ? { radius: found.source.radius, dim: found.source.dim, minutes: found.source.minutes } : { radius: 0, dim: 0, minutes: 0 };
+  // A Lunar sorcerer's moonlight is carried too (ar-ws-moonlight-logic.ts).
+  return withMoonlight(sheet, found ? { radius: found.source.radius, dim: found.source.dim, minutes: found.source.minutes } : { radius: 0, dim: 0, minutes: 0 });
 }
 
 // A light that burned down takes one of what it burned from the pack.

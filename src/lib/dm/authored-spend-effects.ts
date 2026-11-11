@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
+import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -220,7 +221,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const features = sheet.features.map((feature) =>
         feature.name === owner.name ? { ...feature, name: `${owner.feature} (${option})` } : feature,
       );
-      return { patch: { features }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
+      // Leaving the Full Moon ends its light (ar-ws-lunar-empowerment.ts).
+      return { patch: { features, ...moonlightEnds(ctx, owner.feature, option) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
       const condition = conditionName(ctx, does);
@@ -599,6 +601,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return textKey(does.form) === textKey(DANCING_ITEM) ? summonDancingItem(ctx.campaign, sheet, ctx.held.level) : summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
     case "create_item":
       return createItem(ctx, does);
+    case "light":
+      return toggleLight(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

@@ -167,6 +167,30 @@ export function attackSight(input: {
   };
 }
 
+// Whether a creature's own square lies in darkness on the board: dark there
+// (the ambient light, or magical darkness laid over it) with no lamp or
+// carried light reaching it, whoever looks. Lunar Empowerment's New Moon reads
+// it ("while you are entirely in darkness", ar-ws-lunar-empowerment.ts). Null
+// with no board, or for a creature not on it.
+export function standsInDarkness(campaignId: string, encounterId: string, refId: string): boolean | null {
+  const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
+  const at = map ? getTokenByRef(map.id, refId) : null;
+  if (!map || !at) {
+    return null;
+  }
+  const clock = getClock(campaignId);
+  const ambient = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
+  const zones = lightsWithZones(map);
+  if (zones.length && magicalDarknessAt(zones, at.x, at.y)) {
+    return true;
+  }
+  if ((zones.length ? ambientAt(zones, at.x, at.y, ambient) : ambient) !== "dark") {
+    return false;
+  }
+  const vision = { terrain: map.terrain, width: map.width, height: map.height, ambient, zones, obscureBeyond: map.outdoors ? weatherObscurementTiles(clock.weather) : Infinity, id: map.id };
+  return !cachedLitTiles(vision, listTokens(map.id), lightSourcesWithZones(map)).has(tileIndex(map.width, at.x, at.y));
+}
+
 // The advantage sources and notes one attack takes from the light.
 export function lightOnAttack(
   sight: Sight | null,

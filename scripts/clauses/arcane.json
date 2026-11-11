@@ -2195,9 +2195,9 @@
    },
    {
     "c": "Full Moon: a bonus action sheds bright light in 10 feet and dim light 10 feet beyond (or douses it)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves the light to the GM (\"Only within the bright light the sorcerer sheds; the GM keeps to that.\"); no light was looked for on the board"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-light",
+    "by": "authored spend Lunar Empowerment (does light, a bonus action, gate Full Moon): src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight lays the condition moonlight and sets the sorcerer's own token light (bright 2 tiles, dim to 4), read by the board's light and carried with them (light-timers.ts carriedLight through ar-ws-moonlight-logic.ts); the same call douses it, and leaving the Full Moon ends it (moonlightEnds)"
    },
    {
     "c": "and you and creatures of your choice in that bright light have advantage on Intelligence (Investigation) and Wisdom (Perception) checks",
@@ -2213,9 +2213,9 @@
    },
    {
     "c": "and attack rolls against you have disadvantage while you are entirely in darkness",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"Attack rolls against them in total darkness are at disadvantage; the GM keeps to that.\"); an attack in darkness was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-dark",
+    "by": "authored effect attacked_disadv_dark, gate New Moon: src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil, read by authored-hooks.ts authoredIncomingAttack (enemy-swing-odds.ts). Ruling: entirely in darkness is the sorcerer's own square dark and unlit on the board (attack-light.ts standsInDarkness), whatever the attacker's senses; with no board, a dark place and no carried light"
    },
    {
     "c": "Crescent Moon: you resist necrotic and radiant damage",

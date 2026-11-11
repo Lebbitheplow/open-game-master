@@ -74,6 +74,10 @@ export type AuthoredEffect = Base &
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     | { kind: "attacked_disadv"; from: string[] }
+    // Attack rolls against the holder are at disadvantage while the holder
+    // stands entirely in darkness (Lunar Empowerment's New Moon:
+    // src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil).
+    | { kind: "attacked_disadv_dark" }
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).
@@ -486,6 +490,11 @@ export type SpendDoes =
   // pack, worth no more than `gpPerLevel` times the class level (Performance
   // of Creation: src/lib/dm/authored-spend-arcane.ts).
   | { kind: "create_item"; gpPerLevel: number }
+  // A light the holder sheds and carries, lit by one call and doused by the
+  // next: bright for `brightFt`, dim for `dimFt` beyond, the condition the
+  // sheet carries while it is lit (Lunar Empowerment's Full Moon:
+  // src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight).
+  | { kind: "light"; brightFt: number; dimFt: number; condition: string }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }

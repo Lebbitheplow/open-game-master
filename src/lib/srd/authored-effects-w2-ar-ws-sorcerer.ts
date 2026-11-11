@@ -14,6 +14,9 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 // (src/lib/dm/ar-ws-points-cast.ts says when the points pay).
 const POINTS_CAST = { file: "src/lib/dm/cast-guard.ts", call: "pointsOfferFor(sheet, engine, facts, input.level)" };
 
+const FULL_MOON = { feature: "Lunar Embodiment", value: "full moon" };
+const NEW_MOON = { feature: "Lunar Embodiment", value: "new moon" };
+
 export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "You have darkvision out to 120 feet" (the effect, as authored-effects-data4.ts
   // had it). "From 3rd level you know darkness ... you can cast it with 2
@@ -47,5 +50,21 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Once per turn, the highest damage die you roll for a spell explodes: roll
   // it again and add it": at every door a character's spell damage is rolled
   // (src/lib/dm/ar-ws-bombardment.ts names them), with no call of its own.
+  // The row authored-effects-data3.ts had (the Full Moon's checks, the New
+  // Moon's Stealth, the Crescent Moon's resistances), with the two halves it
+  // left to the GM: "Full Moon: a bonus action sheds bright light in 10 feet
+  // and dim light 10 feet beyond (or douses it)" is the spend, and "attack
+  // rolls against you have disadvantage while you are entirely in darkness"
+  // the New Moon's second effect (src/lib/dm/ar-ws-lunar-empowerment.ts).
+  "sorcerer::Lunar Empowerment": {
+    subclass: "Lunar Sorcery",
+    effects: [
+      { kind: "check_adv", skills: ["investigation", "perception"], gate: { choiceOf: FULL_MOON }, note: "Only within the bright light the sorcerer sheds; the GM keeps to that." },
+      { kind: "check_adv", skills: ["stealth"], gate: { choiceOf: NEW_MOON } },
+      { kind: "attacked_disadv_dark", gate: { choiceOf: NEW_MOON } },
+      { kind: "resist", types: ["necrotic", "radiant"], gate: { choiceOf: { feature: "Lunar Embodiment", value: "crescent moon" } } },
+    ],
+    spends: [{ name: "Lunar Empowerment", aliases: ["Moonlight"], action: "bonus", gate: { choiceOf: FULL_MOON }, does: { kind: "light", brightFt: 10, dimFt: 10, condition: "moonlight" } }],
+  },
   "sorcerer::Spell Bombardment": { subclass: "Wild Magic", heldBy: { file: "src/lib/dm/ar-ws-bombardment.ts", call: "holdsFeature(sheet, SPELL_BOMBARDMENT)" } },
 };
