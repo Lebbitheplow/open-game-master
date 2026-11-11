@@ -31,68 +31,21 @@
 // casting the points pay because no slot is left reads the material as the
 // slot would (the caster had it, and nothing is used up).
 //
-// Pure but for the silence and material checks it borrows. Must not import
-// cast-guard.ts (which imports it).
+// The offer itself is pure and lives in ar-ws-points-offer.ts, so the Hand's
+// spell card can ask it without the database (hand-spells.ts). This module
+// borrows the silence and material checks. Must not import cast-guard.ts
+// (which imports it).
 
 import { materialPlan } from "@/lib/dm/cast-materials";
 import type { SlotPlan } from "@/lib/dm/cast-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { silenceProblem } from "@/lib/dm/zone-rules";
-import { textKey } from "@/lib/language/text-logic";
+import { pointsLeft, POOL, type PointsOffer } from "@/lib/dm/ar-ws-points-offer";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
-import { holdsFeature } from "@/lib/srd/feature-names";
-import { subclassSpellsFor } from "@/lib/srd/features";
-import { classLevelFor } from "@/lib/srd/multiclass";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 
-const POOL = "sorcery_points";
-
-export type PointsOffer = {
-  feature: string;
-  points: number;
-  // The level the spell is cast at: its own.
-  level: number;
-  // Cast with no verbal, somatic or material component (Psionic Sorcery).
-  bare: boolean;
-  // Its caster sees through the area it lays (Eyes of the Dark).
-  seesThrough: boolean;
-  // The points pay even while a slot could (see the header).
-  first: boolean;
-};
-
-function pointsLeft(sheet: Pick<CharacterSheet, "resources">): number {
-  const state = sheet.resources?.[POOL];
-  return state ? state.max - state.used : 0;
-}
-
-// What a casting of this spell may be paid with in points, or null: the
-// caster holds no such feature, the spell is not the feature's, or a higher
-// slot level was named (the points cast it at its own level).
-export function pointsOfferFor(sheet: CharacterSheet, engine: string, facts: SpellFacts | null, named: number | undefined): PointsOffer | null {
-  if (!facts || facts.level < 1 || !sheet.resources?.[POOL]) {
-    return null;
-  }
-  if (named !== undefined && named > 0 && named !== facts.level) {
-    return null;
-  }
-  const level = classLevelFor(sheet, "sorcerer") || sheet.level;
-  if (textKey(engine) === "darkness" && level >= 3 && holdsFeature(sheet, "Eyes of the Dark")) {
-    return { feature: "Eyes of the Dark", points: 2, level: facts.level, bare: false, seesThrough: true, first: named === undefined };
-  }
-  if (holdsFeature(sheet, "Psionic Sorcery")) {
-    const psionic = subclassSpellsFor("sorcerer", "Aberrant Mind", level).map(textKey);
-    if (psionic.includes(textKey(engine)) || psionic.includes(textKey(facts.name))) {
-      return { feature: "Psionic Sorcery", points: facts.level, level: facts.level, bare: true, seesThrough: false, first: false };
-    }
-  }
-  return null;
-}
-
-// The spell with no component to make: nothing to say, no gesture, no
-// material to hold or pay for.
-export function bareFacts(facts: SpellFacts | null): SpellFacts | null {
-  return facts ? { ...facts, verbal: false, somatic: false, material: false, materialCostGp: null, materialConsumed: false, materialText: "" } : facts;
-}
+// The pure half (what a casting may be paid with), which the Hand reads too.
+export { bareFacts, pointsOfferFor, type PointsOffer } from "@/lib/dm/ar-ws-points-offer";
 
 // Whether the points pay before any slot is asked for: the offer says so and
 // the points are there, or the spell is cast bare and the caster cannot make

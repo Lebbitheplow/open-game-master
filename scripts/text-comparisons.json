@@ -1291,6 +1291,7 @@
     "lib/dm/cast-buff.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cast-buff.ts#toLowerCase": [["key",3,"buff variant (tool argument) against the engine's variant list; condition label (engine vocabulary)"]],
     "lib/dm/cast-guard.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/ar-ws-points-offer.ts#str-eq": [["key",1,"the SRD spell Darkness by the key of its whole name"]],
     "lib/dm/cast-guard.ts#str-eq": [["key",6,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"the 2024-only spell's printed name as revisedOnlySpell returns it"]],
     "lib/dm/cast-materials.ts#[a-z]": [["table-language",1,"meaning reader: a material line (pack rows, homebrew spells' free text) and inventory item names compared word by word, in English"]],
     "lib/dm/cast-materials.ts#re-affix": [["table-language",1,"reference lookup: an English plural \"s\" taken off material and item words before they are compared"]],
