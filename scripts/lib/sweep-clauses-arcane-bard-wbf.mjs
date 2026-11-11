@@ -110,6 +110,36 @@ export function probes(rig, shared) {
       const other = await guide(B("College of Valor", 20, { spells: ["Guidance"], cantrips: ["Guidance"] }, "guide"), 5, 7);
       assert.equal(other.ok, false, "a Valor bard's Guidance reached 10 feet");
     },
+    // The friend stands at (4,5) with a dummy beside them: the mantle lets
+    // them walk their whole 30 feet away with their reaction, and the dummy
+    // does not swing. Nobody else may, and the leave ends with the bard's turn.
+    "mantle-move": async () => {
+      const who = B("College of Glamour");
+      const stride = (x, y) => call("use_reaction", { characterId: friend().id, feature: "Mantle of Inspiration", x, y }, [15, 4]);
+      const [enemy] = await stage(who, { others: [friend()] });
+      kit.place(enemy.id, 3, 5);
+      const early = await stride(4, 11);
+      assert.equal(early.ok, false, "the move with no mantle laid");
+      const out = await call("use_resource", { characterId: who.id, resource: "Mantle of Inspiration", targetCharacterIds: [friend().id] });
+      assert.equal(out.ok, true, out.error);
+      assert.ok(has(friend(), "mantle's stride"), JSON.stringify(sheet(friend()).conditions));
+      const far = await stride(4, 12);
+      assert.equal(far.ok, false, "35 feet on 30 feet of speed");
+      const moved = await stride(4, 11);
+      assert.equal(moved.ok, true, moved.error);
+      const at = kit.token(friend().id);
+      assert.deepEqual([at.x, at.y, d(moved, 20)], [4, 11, 0], "the whole speed, and no opportunity attack from the dummy beside them");
+      assert.ok(world.encounter().reactionsUsed.includes(friend().id), "the move is their reaction");
+      assert.ok(!has(friend(), "mantle's stride"), "the leave is spent with the move");
+      assert.equal((await stride(4, 5)).ok, false, "a second move");
+      // Unused, it ends with the bard's turn.
+      await stage(who, { others: [friend()] });
+      const again = await call("use_resource", { characterId: who.id, resource: "Mantle of Inspiration", targetCharacterIds: [friend().id] });
+      assert.equal(again.ok, true, again.error);
+      assert.ok(has(friend(), "mantle's stride"));
+      rig.endCurrent();
+      assert.ok(!has(friend(), "mantle's stride"), `after the bard's turn: ${JSON.stringify(sheet(friend()).conditions)}`);
+    },
   };
 
   const KNOWN = {};

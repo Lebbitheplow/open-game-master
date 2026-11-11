@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -449,7 +450,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const count = Number(formula(ctx, does.allies.count)) || 1;
       const given: string[] = [];
-      for (const ally of alliesInReach(ctx, does.allies.rangeFt, false).slice(0, count)) {
+      const chosen = alliesInReach(ctx, does.allies.rangeFt, false).slice(0, count);
+      // Mantle of Inspiration: each may move with its reaction (ar-wbf-bard-mantle.ts).
+      markMantleStride(campaign, sheet, ctx.spend.name, chosen);
+      for (const ally of chosen) {
         if (amount > ally.tempHp) {
           const updated = patchSheet(ally.id, { tempHp: amount });
           if (updated) {

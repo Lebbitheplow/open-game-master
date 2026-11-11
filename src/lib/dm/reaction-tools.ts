@@ -44,6 +44,7 @@ import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHi
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
+import { mantleMove } from "@/lib/dm/ar-wbf-bard-mantle";
 import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
 import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
@@ -691,6 +692,12 @@ function useReaction(
 
   if (isNamed(feature, "opportunity attack", "attack of opportunity")) {
     return opportunity(ctx);
+  }
+  // Mantle of Inspiration's move, taken by a creature the mantle chose
+  // (src/lib/dm/ar-wbf-bard-mantle.ts).
+  const stride = mantleMove(ctx);
+  if (stride) {
+    return stride;
   }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.

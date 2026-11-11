@@ -3365,9 +3365,9 @@
    },
    {
     "c": "and can use a reaction to move up to their speed without provoking opportunity attacks",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no reaction of the name is in the tables; a creature's move after the mantle was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-mantle.ts: the spend marks each creature it chose (authored-spend-effects.ts temp_hp) until the end of the bard's turn, and use_reaction \"Mantle of Inspiration\" with the square moves the creature its whole speed with no opportunity attacks, for its reaction (authored-reactions-more.ts reactionMove)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: mantle-move"
    }
   ]
  },
