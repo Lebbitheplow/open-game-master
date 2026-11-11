@@ -1043,20 +1043,19 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const before = sheet(carver).currentHp;
     await world.invoke("apply_damage", { characterId: carver.id, amount: 10, type: "poison" });
     const lost = before - sheet(carver).currentHp;
-    // Invoked as a reaction at a creature within 30 feet: a Wisdom save (the
-    // dummy rolls a 2) or it is charmed. Once a short rest at 7th level, twice
-    // at 15th (Master of Runes).
+    // Invoked: the Hill Rune's bonus action, once a short rest at 7th level,
+    // twice at 15th (Master of Runes).
     const [enemy] = await stage(carver);
-    const invoked = await spend(carver, "Stone Rune", { targetEnemyId: enemy.id });
-    kit.freshRound();
-    const again = await spend(carver, "Stone Rune", { targetEnemyId: enemy.id });
+    const invoked = await spend(carver, "Hill Rune");
+    kit.freshTurn();
+    const again = await spend(carver, "Hill Rune");
     const master = hero("fighter", "Rune Knight", 15);
-    world.patch(master.id, { features: [...sheet(master).features, { name: options.optionFeatureName("rune", "Stone Rune"), source: "class" }] });
-    const got = { insight, poison, lost, invoked: invoked.ok, charmed: kit.enemy(enemy.id).conditions.includes("charmed"), again: again.ok, uses: [sheet(carver).resources.sub_stone_rune?.max, sheet(master).resources.sub_stone_rune?.max] };
+    world.patch(master.id, { features: [...sheet(master).features, { name: options.optionFeatureName("rune", "Hill Rune"), source: "class" }] });
+    const got = { insight, poison, lost, invoked: invoked.ok, resisting: sheet(carver).conditions.includes("hill rune"), again: again.ok, uses: [sheet(carver).resources.sub_hill_rune?.max, sheet(master).resources.sub_hill_rune?.max], foe: Boolean(enemy) };
     assert.deepEqual(
       got,
-      { insight: 2, poison: 2, lost: 5, invoked: true, charmed: true, again: false, uses: [1, 2] },
-      `${JSON.stringify(got)}: Stone Rune (advantage on Insight; invoked as a reaction) and Hill Rune (advantage on saves against poison, resistance to poison damage) on a knight who carries both`,
+      { insight: 2, poison: 2, lost: 5, invoked: true, resisting: true, again: false, uses: [1, 2], foe: true },
+      `${JSON.stringify(got)}: Stone Rune (advantage on Insight) and Hill Rune (advantage on saves against poison, resistance to poison damage, invoked for resistance to blows) on a knight who carries both`,
     );
   });
 

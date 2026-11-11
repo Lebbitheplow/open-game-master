@@ -90,6 +90,7 @@ const SAMPLE = {
   levelUpSkill: "athletics",
   levelUpSpells: ["Shield"],
   levelUpForget: "Shield",
+  levelUpChanges: [{ from: "Storm Aura (Desert)", to: "Storm Aura (Sea)" }],
   asiChoices: [{ mode: "plus2", ability: "str" }],
   // The picks a feat taken this level leaves open: a level-up's, like the
   // improvement it comes with (issue #125).

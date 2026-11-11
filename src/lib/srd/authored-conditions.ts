@@ -494,7 +494,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   // and the resistances are the rows' gated effects.
   summaryOnly("frost_rune", "frost rune", "Frost Rune: +2 to ability checks and saving throws that use Strength or Constitution, for 10 minutes."),
   summaryOnly("hill_rune", "hill rune", "Hill Rune: resistance to bludgeoning, piercing and slashing damage, for 1 minute."),
-  summaryOnly("prophetic_state", "prophetic state", "Prophetic State: for 1 minute the Rune Knight's reaction can turn an attack roll against them or a creature within 60 feet to disadvantage."),
+  summaryOnly("prophetic_state", "prophetic state", "Prophetic State: for 1 minute the Rune Knight's reaction can turn an attack roll against them to disadvantage."),
   // Goading Attack and Panache (src/lib/dm/goaded.ts).
   summaryOnly("goaded", "goaded", "Goaded: disadvantage on attack rolls against anyone but the creature who goaded it; a Swashbuckler's goad also bars its opportunity attacks against anyone else."),
   summaryOnly("memory_stripped", "memory stripped", "Alter Memories: the Enchantment wizard stripped this creature of the hours named of what it remembers of the time it was charmed; they cannot reach its memory again under this charm."),

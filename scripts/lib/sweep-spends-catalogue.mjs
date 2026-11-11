@@ -3,7 +3,12 @@
 // authored reaction first arrives, the text each feature ships, and where the
 // engine names a counter outside the table that declares it.
 import fs from "node:fs";
-import { ABILITIES, readJson, SRC } from "./sweep-spends.mjs";
+import { ABILITIES, optionPicks, readJson, SRC } from "./sweep-spends.mjs";
+
+const withPicks = (build, level) => {
+  const picks = optionPicks(build, level);
+  return picks.length ? { ...build, level, features: [...(build.features ?? []), ...picks] } : { ...build, level };
+};
 
 // Every class and subclass the tables hold, each as { classId, subclass }.
 export function allBuilds(rig) {
@@ -28,7 +33,7 @@ const MODS = Object.fromEntries(Object.entries(ABILITIES).map(([key, score]) => 
 // The features and counters a build holds at a level, by the functions
 // createSheet itself calls (src/lib/db/sheets.ts).
 export function heldAt(rig, build, level) {
-  const held = rig.features.populateFeaturesForClasses([], [{ id: build.classId, subclass: build.subclass ?? "", level }], build.race ?? "human", build.feats ?? []);
+  const held = [...rig.features.populateFeaturesForClasses([], [{ id: build.classId, subclass: build.subclass ?? "", level }], build.race ?? "human", build.feats ?? []), ...optionPicks(build, level)];
   const counters = rig.resources.populateResources(held, level, MODS, undefined, undefined, build.feats ?? [], undefined, { race: build.race ?? "human" });
   return { features: held, counters };
 }
@@ -43,13 +48,13 @@ export function arrivals(rig) {
   const note = (build, level, ids) => {
     for (const id of ids) {
       holders.set(id, (holders.get(id) ?? new Set()).add(`${build.classId}/${build.subclass ?? ""}`));
-      if (!counters.has(id)) counters.set(id, { ...build, level });
+      if (!counters.has(id)) counters.set(id, withPicks(build, level));
     }
   };
   for (const build of allBuilds(rig)) {
     const seen = new Set();
     for (let level = 1; level <= 20; level += 1) {
-      const held = rig.features.populateFeaturesForClasses([], [{ id: build.classId, subclass: build.subclass ?? "", level }], "human", []);
+      const held = [...rig.features.populateFeaturesForClasses([], [{ id: build.classId, subclass: build.subclass ?? "", level }], "human", []), ...optionPicks(build, level)];
       // What this level adds. A counter is held when one feature of its
       // name is, so the new features alone say which counters arrive here
       // (populateResources over a whole sheet, 3,000 times, took 20 seconds).
@@ -63,12 +68,12 @@ export function arrivals(rig) {
         for (const spend of row.entry.spends ?? []) {
           const key = `${row.key}::${spend.name}`;
           const open = !spend.gate?.level || row.level >= spend.gate.level;
-          if (open && !spends.has(key)) spends.set(key, { ...build, level, row, spend });
+          if (open && !spends.has(key)) spends.set(key, { ...withPicks(build, level), row, spend });
         }
         for (const reaction of row.entry.reactions ?? []) {
           const key = `${row.key}::${reaction.name}`;
           const open = !reaction.gate?.level || row.level >= reaction.gate.level;
-          if (open && !reactions.has(key)) reactions.set(key, { ...build, level, row, reaction });
+          if (open && !reactions.has(key)) reactions.set(key, { ...withPicks(build, level), row, reaction });
         }
       }
     }

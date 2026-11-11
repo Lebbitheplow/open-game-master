@@ -129,7 +129,7 @@ export async function tableRows(rig) {
       kind: "counter",
       name: def.displayName,
       def,
-      build: arrived ? { ...(backing ? { classId: backing.classId, subclass: backing.subclass, kind: arrived.kind, level: Math.max(arrived.level, backing.level) } : arrived), ...(pick ? { pick } : {}) } : null,
+      build: arrived ? { ...(backing ? { classId: backing.classId, subclass: backing.subclass, kind: arrived.kind, level: Math.max(arrived.level, backing.level), ...(arrived.features ? { features: arrived.features } : {}) } : arrived), ...(pick ? { pick } : {}) } : null,
       family: arrived?.kind ?? (/^(?:cyberpunk|dark_fantasy|horror|mystery|post_apocalyptic|steampunk)_/.test(def.id) ? "genre" : "srd"),
       typed: backing ? `authored ${backing.spend ? "spend" : "reaction"} "${item.does.kind}"` : def.effect.kind === "narrative" ? null : `counter effect "${def.effect.kind}"`,
       reaction: def.action === "reaction" || Boolean(backing?.reaction) || item?.action === "reaction",
@@ -164,7 +164,10 @@ export async function tableRows(rig) {
       name: item.name,
       item,
       authored: row,
-      build: { classId, subclass, kind: "authored", level, ...(pick ? { pick } : {}) },
+      // The row's own feature rides along: an option pick ("Rune: Fire Rune")
+      // no class table grants is held as the player who picked it holds it
+      // (a feature the sheet already has is not added twice, sweep-spends.mjs).
+      build: { classId, subclass, kind: "authored", level, features: [{ name: row.feature, source: "class", classId }], ...(pick ? { pick } : {}) },
       family: row.key.startsWith("genre::") ? "genre" : "srd",
       typed: does.kind === "note" ? null : `authored ${kind} "${does.kind}"`,
       reaction: kind === "reaction" || item.action === "reaction",

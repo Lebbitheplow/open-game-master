@@ -279,7 +279,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   // Each rune's counter holds two uses from 15th level ([15, 2]).
   "fighter::Master of Runes": {
     subclass: "Rune Knight",
-    heldBy: { file: "src/lib/srd/authored-resources.json", call: "\"sub_stone_rune\"" },
+    heldBy: { file: "src/lib/srd/authored-resources.json", call: "\"sub_hill_rune\"" },
   },
   "fighter::Rallying Cry": {
     subclass: "Banneret",

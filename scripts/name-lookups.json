@@ -12,7 +12,7 @@
     "app/campaigns/[campaignId]/LevelUpChangePick.tsx#keyed": [["identity", 1, "a pick's printed label, keyed by the held name the offer itself wrote"]],
     "lib/srd/level-up-changes.ts#partial": [["identity", 1, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
     "lib/srd/level-up-changes.ts#whole": [["identity", 7, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
-    "lib/dm/soul-of-artifice.ts#first": [["identity", 1, "an attuned item and the readied mark by whole name (textKey on both sides)"]],
+    "lib/dm/soul-of-artifice.ts#first": [["identity", 2, "an attuned item and the readied mark by whole name (textKey on both sides)"]],
     "lib/dm/soul-of-artifice.ts#whole": [["identity", 3, "an attuned item and the readied mark by whole name (textKey on both sides)"]],
     "lib/dm/authored-turns.ts#whole": [["identity", 1, "a condition the holder laid, by its whole name (textKey on both sides)"]],
     "lib/dm/authored-spend-effects.ts#fallback": [["key", 1, "a Hand pick that names the variant's condition, else the call's own variant word (both checked by namedOption)"]],

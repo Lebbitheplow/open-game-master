@@ -31,6 +31,15 @@ import fs from "node:fs";
 import { openWorld, seedDice } from "./enforce-world.mjs";
 import { combatKit, TRAINED } from "./enforce-combat.mjs";
 
+const { optionGrantFeatures } = await import("../../src/lib/srd/options.ts");
+const { AUTHORED_TABLE } = await import("../../src/lib/srd/authored-effects.ts");
+// An option pick that carries its own authored row (a Rune Knight's runes,
+// "fighter::Rune: Stone Rune"): held from the grant's first level, as a
+// player who picked it holds it.
+const OPTION_ROWS = optionGrantFeatures().filter((pick) => AUTHORED_TABLE[`${pick.classId}::${pick.name}`]);
+export const optionPicks = (build, level) =>
+  OPTION_ROWS.filter((pick) => pick.classId === build.classId && (!pick.subclass || pick.subclass === build.subclass) && level >= pick.level).map((pick) => ({ name: pick.name, source: "choice", classId: pick.classId }));
+
 const SRC = new URL("../../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
 const readJson = (file) => JSON.parse(fs.readFileSync(new URL(file, SRC), "utf8"));
@@ -250,7 +259,11 @@ export async function openSpendsRig() {
       if (choose && !held.choice) picks.set(textKey(held.name), choose.does.options[0]);
     }
     if (build.pick) picks.set(textKey(build.pick.feature), build.pick.value);
-    const extra = EXTRA_FEATURES[build.subclass ?? ""] ?? [];
+    // An option pick the build carries (a Rune Knight's rune) that the new
+    // sheet did not keep: written as the sheet's patch writes it, so its
+    // counter is counted.
+    const kept = new Set(sheet.features.map((feature) => textKey(feature.name)));
+    const extra = [...(EXTRA_FEATURES[build.subclass ?? ""] ?? []), ...[...(build.features ?? []), ...optionPicks(build, build.level)].map((feature) => feature.name).filter((name, at, all) => !kept.has(textKey(name)) && all.findIndex((other) => textKey(other) === textKey(name)) === at)];
     if (picks.size || extra.length) {
       world.patch(hero.id, {
         features: [

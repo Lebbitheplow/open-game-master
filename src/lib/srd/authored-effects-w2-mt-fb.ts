@@ -11,13 +11,12 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
   // a passive benefit and an invocation that spends its own counter, once a
   // short or long rest, twice from 15th level (Master of Runes). A rune's
   // save DC is 8 + proficiency + Constitution (dcAbility "con").
+  // Cloud Rune's invocation (turning a hit on someone within 30 feet onto
+  // another creature) is a reaction with no trigger window of its own yet:
+  // the passive holds, the invocation is the GM's.
   "fighter::Rune: Cloud Rune": {
     subclass: "Rune Knight",
-    counter: "sub_cloud_rune",
     effects: [{ kind: "check_adv", skills: ["sleight_of_hand", "deception"] }],
-    // "When you or a creature you can see within 30 feet of you is hit by an
-    // attack roll": the hit goes to another creature within 30 feet.
-    reactions: [{ name: "Cloud Rune", pool: { id: "sub_cloud_rune" }, sees: "target", does: { kind: "redirect", rangeFt: 30 } }],
   },
   "fighter::Rune: Fire Rune": {
     subclass: "Rune Knight",
@@ -59,23 +58,13 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
     ],
     spends: [{ name: "Hill Rune", pool: { id: "sub_hill_rune" }, action: "bonus", does: { kind: "buff", condition: "hill rune", rounds: 10 } }],
   },
+  // Stone Rune's invocation (a reaction as a creature ends its turn within
+  // 30 feet) has no trigger window of its own yet: the passives hold.
   "fighter::Rune: Stone Rune": {
     subclass: "Rune Knight",
-    counter: "sub_stone_rune",
     effects: [
       { kind: "check_adv", skills: ["insight"] },
       { kind: "darkvision", feet: 120 },
-    ],
-    // "When a creature you can see ends its turn within 30 feet of you": a
-    // Wisdom save or it is charmed for a minute, incapacitated with it (its
-    // speed 0 in a dreamy stupor).
-    spends: [
-      {
-        name: "Stone Rune",
-        pool: { id: "sub_stone_rune" },
-        action: "reaction",
-        does: { kind: "save_effect", save: "wis", dcAbility: "con", condition: "charmed", alsoCondition: "incapacitated", rounds: 10, rangeFt: 30, sight: true },
-      },
     ],
   },
   "fighter::Rune: Storm Rune": {
@@ -83,10 +72,11 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
     counter: "sub_storm_rune",
     // Cannot be surprised while conscious: encounter-open.ts hasAlert.
     effects: [{ kind: "check_adv", skills: ["arcana"] }],
-    // A minute of prophetic state, in which a reaction turns a roll against
-    // the knight or a creature within 60 feet to disadvantage.
+    // A minute of prophetic state, in which a reaction turns an attack roll
+    // against the knight to disadvantage (an ally's within 60 feet waits on
+    // the Hand dealing it for an ally's hit, as Warding Flare's does).
     spends: [{ name: "Storm Rune", pool: { id: "sub_storm_rune" }, action: "bonus", does: { kind: "buff", condition: "prophetic state", rounds: 10 } }],
-    reactions: [{ name: "Prophetic State", gate: { condition: "prophetic state" }, sees: "attacker", does: { kind: "disadv_vs_hit", allyWith: "rune: storm rune", rangeFt: 60 } }],
+    reactions: [{ name: "Prophetic State", gate: { condition: "prophetic state" }, sees: "attacker", does: { kind: "disadv_vs_hit" } }],
   },
   // What the action senses is told to the barbarian from the board's spells,
   // creatures and items (src/lib/dm/sense-magic.ts).

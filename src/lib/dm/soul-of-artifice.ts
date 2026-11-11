@@ -34,7 +34,8 @@ export function soulItem(sheet: Sheetish): string | null {
 // The mark a readying lays: the item named, while it is attuned.
 export function readySoul(sheet: Sheetish, named: string | undefined): { patch: FullPatchSheetInput; item: string } | { error: string } {
   const attuned = attunedItems(sheet);
-  const item = named ? attuned.find((name) => textKey(name) === textKey(named)) : undefined;
+  // With one attunement there is nothing to choose between.
+  const item = named ? attuned.find((name) => textKey(name) === textKey(named)) : attuned.length === 1 ? attuned[0] : undefined;
   if (!item) {
     return { error: attuned.length ? `Name the attunement Soul of Artifice would end as the variant: ${attuned.join(", ")}.` : "No item is attuned, so Soul of Artifice has nothing to end." };
   }

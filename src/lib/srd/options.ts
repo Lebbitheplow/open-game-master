@@ -389,6 +389,16 @@ export function optionFeatureKeys(): string[] {
   return GRANTS.flatMap((grant) => optionsOfKind(grant.kind).map((option) => `${grant.classId}::${optionFeatureName(grant.kind, option.n)}`));
 }
 
+// Every option a grant hands out, held as a feature, with the class (and
+// subclass) and the first level the grant opens at: the sweeps build holders
+// of the picks that carry their own authored row from it.
+export function optionGrantFeatures(): Array<{ classId: string; subclass?: string; level: number; name: string }> {
+  return GRANTS.flatMap((grant) => {
+    const level = Math.min(...grant.steps.map(([atLevel]) => atLevel));
+    return optionsOfKind(grant.kind).map((option) => ({ classId: grant.classId, ...(grant.subclass ? { subclass: grant.subclass } : {}), level, name: optionFeatureName(grant.kind, option.n) }));
+  });
+}
+
 // The pick-lists a subclass feature of this name opens in a class, by their
 // labels: the workshop's subclass editor says so beside a borrowed Combat
 // Superiority.
