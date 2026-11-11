@@ -721,6 +721,9 @@ export type SpendDoes =
   // told to them (src/lib/dm/sense-magic.ts).
   | { kind: "sense"; what: "magic" | "deceit" }
   | { kind: "release_tale" }
+  // Soul of Artifice: the attunement its hold at 1 hit point would end, named
+  // as the variant (src/lib/dm/soul-of-artifice.ts).
+  | { kind: "soul_ready" }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }

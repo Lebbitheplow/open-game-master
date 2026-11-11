@@ -60,6 +60,7 @@ import { arcaneShot } from "@/lib/dm/mt-fb-arcane-shot";
 import { echoSpend } from "@/lib/dm/mt-fb-echo";
 import { mindSpend } from "@/lib/dm/scribe-mind";
 import { SPIRIT_TALES, drawTale, heldTale, tellTale } from "@/lib/dm/spirit-tales";
+import { readySoul } from "@/lib/dm/soul-of-artifice";
 import { magicAwareness, unerringEye } from "@/lib/dm/sense-magic";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -811,6 +812,13 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return mindSpend(ctx);
     case "tell_tale":
       return tellTale(ctx);
+    case "soul_ready": {
+      const readied = readySoul(sheet, ctx.args.variant);
+      if ("error" in readied) {
+        return { error: `${readied.error} Nothing was spent.`, retry: true };
+      }
+      return { result: { readied: `If ${sheet.name} drops to 0 hit points, Soul of Artifice ends the attunement to ${readied.item} with their reaction and keeps them at 1.` }, patch: readied.patch };
+    }
     case "sense":
       return does.what === "magic" ? magicAwareness(ctx) : unerringEye(ctx);
     case "release_tale": {

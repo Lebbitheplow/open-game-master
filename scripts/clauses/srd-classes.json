@@ -184,9 +184,9 @@
       },
       {
         "c": "and you can end one attunement as a reaction to drop to 1 hit point instead of 0.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not built: the reaction is a choice (which attunement ends), so it needs a card on the drop to 0 that names the item and undoes the drop (hand-react.ts, reaction-refund.ts); the engine holds a character at 1 hit point only by itself (Relentless Endurance, Death Ward), and ending an attunement the player did not choose is no default. In w2-mt-srd-handoff.jsonl"
+        "is": "held",
+        "by": "src/lib/dm/soul-of-artifice.ts soulHold in pc-damage.ts, before the death engine sees the drop; the Hand card readies which attunement ends",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.soul-of-artifice.reaction"
       }
     ]
   },

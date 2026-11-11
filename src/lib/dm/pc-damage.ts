@@ -19,6 +19,9 @@ import { immersedResistance } from "@/lib/dm/underwater";
 import { deathWardPatch } from "@/lib/dm/spell-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { soulHold } from "@/lib/dm/soul-of-artifice";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
@@ -476,6 +479,23 @@ export function applyPcDamage(
     publishSheet(campaign, sheet.id);
     return tookIt({ ok: true, hp: `1/${effectiveMaxHp(now)}`, masteryOfDeath: `${sheet.name} should have fallen, but Mastery of Death spends 1 ki to keep them at 1 hit point.` });
   }
+  // Soul of Artifice: the artificer's reaction ends a readied attunement and
+  // keeps them at 1 hit point (src/lib/dm/soul-of-artifice.ts).
+  const soulSheet = getSheetById(sheet.id) ?? sheet;
+  const encounterNow = getActiveEncounter(campaign.id);
+  const soul = soulHold(soulSheet, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(soulSheet)), !encounterNow?.reactionsUsed.includes(sheet.id));
+  let soulInfo: Record<string, unknown> = {};
+  if (soul && "patch" in soul) {
+    patchSheet(sheet.id, soul.patch);
+    if (encounterNow) {
+      markReactionUsed(encounterNow, sheet.id);
+    }
+    audit(campaign, turnId, soulSheet, "apply_damage", { soulOfArtifice: soul.item }, reason, soul.patch);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(soulSheet)}`, soulOfArtifice: `${sheet.name} should have fallen, but Soul of Artifice ends the attunement to ${soul.item} with their reaction and keeps them at 1 hit point.` });
+  } else if (soul) {
+    soulInfo = { soulOfArtifice: soul.why };
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
@@ -517,6 +537,7 @@ export function applyPcDamage(
   return {
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
+    ...soulInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,

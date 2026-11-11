@@ -2396,7 +2396,7 @@
     "lib/srd/authored-conditions.ts#str-list": [["english-source",3,"ODM's authored condition rows (bundled data: damage types, condition and spell names)"]],
     "lib/srd/authored-coverage.ts#\\b": [["english-source",7,"an audit pattern over ODM's authored rules lines (bundled data)"]],
     "lib/srd/authored-coverage.ts#re-word": [["english-source",2,"an audit pattern over ODM's authored rules lines (bundled data)"]],
-    "lib/srd/authored-coverage.ts#toLowerCase": [["key", 5, "authored-table keys"]],
+    "lib/srd/authored-coverage.ts#toLowerCase": [["key", 6, "authored-table keys"]],
     "lib/srd/authored-effects-data-b.ts#str-list": [["english-source", 5, "ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-channel.ts#str-list": [["english-source",3,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data.ts#str-key": [["english-source",1,"ODM's authored effect rows (bundled data)"]],

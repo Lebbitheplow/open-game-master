@@ -7,6 +7,7 @@
 // offered for a spend use_resource would refuse for want of the feature.
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
+import { attunedItems } from "@/lib/dm/soul-of-artifice";
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 import { heldFlames } from "@/lib/dm/cauterizing-flames-logic";
@@ -340,6 +341,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
       ...sightOf(aimDoes(does, aim.variant), aim.target),
     };
+    // Soul of Artifice readies one of the items attuned.
+    if (does.kind === "soul_ready") {
+      card.choice = { arg: "variant", label: "Attunement to end", options: attunedItems(sheet).map((name) => ({ value: name, label: name })) };
+    }
     if (does.kind === "buff" && does.variants) {
       // One pick per outcome: Adjust Density's "halve" is another word for "lighter".
       const seen = new Set<string>();
@@ -370,6 +375,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
         : null,
       // Cauterizing Flames answers a creature in one of the druid's flames.
+      does.kind === "soul_ready" && !attunedItems(sheet).length
+        ? { reason: `${spend.name} ends an attunement, and ${sheet.name} is attuned to nothing.`, spent: false }
+        : null,
       aimDoes(does, aim.variant).kind === "cauterizing" && !heldFlames(sheet).length
         ? { reason: `${spend.name} answers a creature entering a spectral flame, and none burns for ${sheet.name} now.`, spent: false }
         : null,

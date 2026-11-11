@@ -10,6 +10,13 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 const LUNAR_PHASES = ["Full Moon", "New Moon", "Crescent Moon"];
 
 export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
+  // A core artificer feature (20th). Its hold at 1 hit point is pc-damage.ts's
+  // (src/lib/dm/soul-of-artifice.ts); this card readies which attunement it
+  // ends, picked from the items attuned.
+  "artificer::Soul of Artifice": {
+    subclass: "Artificer",
+    spends: [{ name: "Soul of Artifice", action: "none", does: { kind: "soul_ready" } }],
+  },
   // "Once per turn when you deal damage to a creature or object with a wizard
   // spell, you can spend one to deal extra force damage equal to half your
   // wizard level": after a wizard spell of this turn hurt the creature

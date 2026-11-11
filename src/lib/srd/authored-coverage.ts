@@ -95,7 +95,11 @@ export function authoredCoverage(): AuthoredCoverage {
   }
   // The SRD subclasses' features (class-features.json) may carry a hook too
   // (the Land druid's terrain); they are named, not counted.
-  for (const [classId, table] of Object.entries((classFeaturesJson as unknown as { classes: Record<string, { subclasses: Array<{ levels: Record<string, string[]> }> }> }).classes)) {
+  for (const [classId, table] of Object.entries((classFeaturesJson as unknown as { classes: Record<string, { levels?: Record<string, string[]>; subclasses: Array<{ levels: Record<string, string[]> }> }> }).classes)) {
+    // A core class feature may carry a row too (Soul of Artifice's readying).
+    for (const name of Object.values(table.levels ?? {}).flat()) {
+      seen.add(`${classId}::${name}`.toLowerCase());
+    }
     for (const subclass of table.subclasses) {
       for (const name of Object.values(subclass.levels).flat()) {
         seen.add(`${classId}::${name}`.toLowerCase());

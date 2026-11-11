@@ -109,6 +109,8 @@ const conditionInstanceSchema = z.object({
     // so the next roll of that turn goes without it (Emboldening Bond's d4,
     // src/lib/dm/emboldening-bond-logic.ts).
     usedTurn: z.string().trim().min(1).max(160).optional(),
+    // The attuned item a readied Soul of Artifice would end (soul-of-artifice.ts).
+    item: z.string().trim().min(1).max(80).optional(),
     // How many of the effect stand on the table (Invoke Duplicity's
     // illusions: one, four with Improved Duplicity).
     count: z.number().int().min(1).max(20).optional(),

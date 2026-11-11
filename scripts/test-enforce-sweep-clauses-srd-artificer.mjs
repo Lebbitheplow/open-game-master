@@ -117,6 +117,27 @@ P["artificer.magic-item-savant.requirements"] = async () => {
 };
 
 // "You gain +1 to every saving throw per attuned magic item"
+// "you can end one attunement as a reaction to drop to 1 hit point instead
+// of 0": the readied item's attunement ends and the artificer stands at 1;
+// with several attuned and none readied, the drop lands.
+P["artificer.soul-of-artifice.reaction"] = async () => {
+  const t = await rig.table();
+  const gear = [
+    { name: "Cloak of Elvenkind", qty: 1, equipped: true, attuned: true },
+    { name: "Winged Boots", qty: 1, equipped: false, attuned: true },
+  ];
+  const who = artificer(t, 20, { equipment: gear });
+  const unready = await t.invoke("apply_damage", { characterId: who.id, amount: t.sheet(who).currentHp, type: "slashing" });
+  assert.equal(t.sheet(who).currentHp, 0, `with two attuned and none readied the drop lands: ${JSON.stringify(unready)}`);
+  t.patch(who, { currentHp: 20, deathSaves: { successes: 0, failures: 0 }, conditions: [] });
+  const ready = await t.invoke("use_resource", { characterId: who.id, resource: "Soul of Artifice", variant: "winged boots" });
+  assert.equal(ready.ok, true, ready.error);
+  const held = await t.invoke("apply_damage", { characterId: who.id, amount: 25, type: "slashing" });
+  assert.equal(held.ok, true, held.error);
+  assert.equal(t.sheet(who).currentHp, 1, `held at 1 hit point: ${JSON.stringify(held)}`);
+  assert.deepEqual(t.sheet(who).equipment.filter((item) => item.attuned).map((item) => item.name), ["Cloak of Elvenkind"], "the readied attunement ended");
+};
+
 P["artificer.soul-of-artifice.saves"] = async () => {
   const t = await rig.table();
   const gear = [
