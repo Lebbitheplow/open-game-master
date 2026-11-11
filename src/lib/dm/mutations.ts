@@ -471,6 +471,9 @@ const argsSchema = z.object({
   // resolves (Magic Missile's darts at one target).
   uses: z.coerce.number().int().min(1).max(700).optional(),
   units: z.coerce.number().int().min(1).max(100).optional(),
+  // use_spell_slot, internal: the damage type the cast tool was asked for
+  // (Awakened Spellbook's swap, src/lib/dm/ar-ws-awakened.ts).
+  swapType: z.string().max(30).optional(),
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
@@ -1406,7 +1409,7 @@ function dmMutation(
       // checked before anything is spent, its effect applied after.
       const counter = matchResource(resourceName);
       const reacting = counter
-        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, sheets, sheetsById })
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, variant: args.variant, sheets, sheetsById })
         : null;
       if (reacting && "error" in reacting) {
         return { result: reacting };
@@ -1760,6 +1763,7 @@ function dmMutation(
             ...(args.freeFits === false ? { freeFits: false } : {}),
             ...(args.uses ? { uses: args.uses } : {}),
             ...(args.units ? { units: args.units } : {}),
+            ...(args.swapType ? { swapType: args.swapType } : {}),
             ...zonePlacement(args),
           },
           {

@@ -2,6 +2,7 @@ import { tickEffectMinutes } from "@/lib/db/active-effects";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
+import { fadeBeads } from "@/lib/dm/ar-ws-bead-store";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
@@ -129,6 +130,8 @@ export function advanceClock(
   // The same clock burns torches down and brings the calendar's days round
   // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
   gutterBurntLights(campaignId, moved.instant);
+  // And ends the hour of an Arcane Abeyance bead (ar-ws-bead-store.ts).
+  fadeBeads(campaignId, moved.instant);
   // Every dawn crossed refills the wands and staffs that regain at dawn,
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);

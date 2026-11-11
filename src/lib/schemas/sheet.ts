@@ -276,6 +276,11 @@ export const equipmentItemSchema = z.object({
   // The spell a spell scroll holds, by the name the spell lists use; what
   // reading it casts (src/lib/dm/consumables.ts).
   spell: z.string().trim().min(1).max(80).optional(),
+  // A thing a wizard's feature made that holds one spell and does not last
+  // (src/lib/srd/ar-ws-conjured.ts): an Arcane Abeyance bead, gone when the
+  // campaign clock reaches `until` (its minute); a Master Scrivener's scroll,
+  // gone at its holder's long rest. Absent on every other row.
+  conjured: z.object({ kind: z.enum(["bead", "scroll"]), until: z.number().int().min(0).optional() }).optional(),
   // A homebrew item's mechanics, snapshotted from the entry so the armour,
   // attack and magic-item engines read it exactly as they read SRD gear
   // (src/lib/homebrew/gear.ts). Refreshed on every sheet read; absent for
@@ -361,6 +366,19 @@ export const spellcastingSchema = z
     // A wizard's spellbook: every spell written in it, prepared or not. The
     // prepared list is drawn from it. Other classes leave it absent.
     spellbook: z.array(z.string().trim().min(1).max(80)).max(120).optional(),
+    // Spells gone from a wizard's book for a while (One with the Word,
+    // src/lib/srd/ar-ws-spellbook.ts): each with the lists it left and the
+    // long rests still to pass before it is written back.
+    vanished: z
+      .array(
+        z.object({
+          spell: z.string().trim().min(1).max(80),
+          from: z.array(z.enum(["spellbook", "prepared", "pending", "known"])).max(4),
+          rests: z.number().int().min(1).max(6),
+        }),
+      )
+      .max(120)
+      .optional(),
     // Per-class casting for multiclassed characters: each caster class
     // keeps its own ability and lists while `slots` becomes the SHARED
     // multiclass pool. Absent = single-class; the legacy fields above stay

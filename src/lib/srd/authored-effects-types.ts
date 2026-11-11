@@ -329,7 +329,14 @@ export type SpendDoes =
       hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
-      target?: "self" | "ally" | "enemy" | "allies";
+      // "creature": a creature of either side (Adjust Density: "a creature's
+      // ... weight"): the enemy named in targetEnemyId, else the ally named in
+      // targetCharacterId, else the holder.
+      target?: "self" | "ally" | "enemy" | "allies" | "creature";
+      // The mark lasts until the holder's long rest, not a count of rounds
+      // (Awakened Spellbook's ritual at its normal casting time, kept until
+      // a ritual uses it: src/lib/dm/ar-ws-swift-ritual.ts).
+      untilLongRest?: boolean;
       // An ally other than the holder ("a willing creature other than
       // yourself": Blessing of the Trickster): the holder is no target.
       othersOnly?: boolean;
@@ -516,6 +523,10 @@ export type SpendDoes =
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A scroll of a spell from the holder's book, named in the variant, of
+  // these levels and cast with an action, written onto their pack (Master
+  // Scrivener: src/lib/dm/ar-ws-scrivener.ts).
+  | { kind: "scribe_scroll"; minLevel: number; maxLevel: number }
   // A creature the holder charmed saves or loses hours of memory, as many as
   // the call's amount, at most the ability modifier plus one; the mark it
   // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).

@@ -20,6 +20,7 @@ import { rowName } from "@/lib/srd/item-row";
 import { matchWeapon, SRD_WEAPON_WEIGHT_LB } from "@/lib/srd/weapons";
 import { ammoCount, ammoKindForItem, AMMO_WEIGHT_LB } from "@/lib/srd/ammunition";
 import { itemAbilityScore, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
+import { densityCarryFactor } from "@/lib/srd/ar-ws-density";
 
 // 50 coins weigh a pound, whatever the metal.
 export const COINS_PER_POUND = 50;
@@ -204,7 +205,8 @@ export function encumbranceFor(input: {
 }): Encumbrance {
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const strength = Math.max(1, itemAbilityScore("str", Math.floor(input.strength || 1), input.equipment ?? [], input.wearer));
-  const multiplier = carryMultiplier(input.size);
+  // Adjust Density doubles or halves what its creature carries (ar-ws-density.ts).
+  const multiplier = carryMultiplier(input.size) * densityCarryFactor(input.wearer?.conditions);
   const { pounds, unweighed } = carriedWeight(input.equipment ?? [], input.coins ?? 0);
   const encumberedAtLb = round2(strength * 5 * multiplier);
   const heavilyEncumberedAtLb = round2(strength * 10 * multiplier);

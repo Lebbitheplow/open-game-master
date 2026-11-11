@@ -93,6 +93,7 @@ import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
+import { awakenedDamageType, spendSwiftRitual, swiftRitual } from "@/lib/dm/ar-ws-awakened";
 import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";
 import { casterNumbers, equipmentWithoutRunning, putInRing, storeRefusal } from "@/lib/dm/ring-store";
@@ -138,6 +139,9 @@ export type CastInput = {
   // Cast into a Ring of Spell Storing (src/lib/dm/spell-storing.ts): paid for
   // as any casting, with no effect now. Set by the store, not by the model.
   storing?: CastStoring;
+  // The damage type the cast tool was asked for: a swap for a holder of
+  // Awakened Spellbook (src/lib/dm/ar-ws-awakened.ts), nothing to anyone else.
+  swapType?: string;
 };
 
 export type CastStoring = { ring: string; holderId: string };
@@ -368,7 +372,9 @@ export function castSpell(
   const inFight = inRunningFight(encounter);
   // SRD 5.1, Longer Casting Times: in a fight a spell of a minute or more,
   // or one cast as a ritual, is begun now and held across the caster's turns.
-  const holdRounds = inFight && !completing ? castingRoundsOf(facts, Boolean(input.ritual)) : null;
+  // Awakened Spellbook's ritual at its normal casting time (ar-ws-awakened.ts).
+  const swift = !completing && swiftRitual(sheet, facts, Boolean(input.ritual));
+  const holdRounds = inFight && !completing ? castingRoundsOf(facts, Boolean(input.ritual) && !swift) : null;
   const reactionTime = !input.storing && (facts?.castingTime === "reaction" || via === "reaction");
   // A summoning spell's creatures come through cast_buff (summon-cast.ts),
   // once its casting is done when that takes a minute in a fight.
@@ -651,18 +657,30 @@ export function castSpell(
       return noRoom;
     }
   }
+  // Awakened Spellbook: the damage type asked for, when the book allows it.
+  const swapped = awakenedDamageType(sheet, { spell: name, asked: input.swapType, own: mech?.damageType, second: mech?.secondType, level: facts?.level ?? null, slotLevel, slotPaid: slot.kind !== "none", authors });
+  if (swapped && "error" in swapped) {
+    return swapped;
+  }
   if (input.dryRun) {
-    return { ok: true, dryRun: true, spell: name, slotLevel };
+    return { ok: true, dryRun: true, spell: name, slotLevel, ...(swapped ? { damageType: swapped.type } : {}) };
   }
   // The casting begins with this turn's action and nothing else is spent
   // (long-casting.ts holds it from here).
   if (holdRounds !== null && encounter) {
+    if (swift) {
+      spendSwiftRitual(campaign, sheet.id);
+    }
     const spent = turn.kind === "budget" ? { budget: turn.budget, ...(turn.note ? { note: turn.note } : {}) } : null;
     return beginHeldCasting(campaign, turnId, sheet, encounter, spent, { name, facts, slotLevel, ritual: Boolean(input.ritual), rounds: holdRounds, ...(input.storing ? { storing: input.storing } : {}) });
   }
 
   // ---- the spend: nothing below refuses ----
   const result: CastResult = { ok: true, spell: name, slotLevel, slot: slotLine(slot) };
+  if (swapped) {
+    result.damageType = swapped.type;
+    result.awakenedSpellbook = `${name} deals ${swapped.type} damage in place of ${mech?.damageType}: the type of ${swapped.from}, a spell of the slot's level in the book.`;
+  }
   // What the server leaves to the DM of this spell (src/lib/srd/spell-support.ts).
   const manual = input.storing ? null : spellSupportLine(name);
   if (manual) {
@@ -823,10 +841,15 @@ export function castSpell(
 
   // A completing casting's time went by in the fight's rounds, not on the clock.
   if (input.ritual && !completing) {
-    // Ten minutes longer than the spell's own casting time.
-    const minutes = 10 + (typeof facts?.castingTime === "number" ? facts.castingTime : 0);
-    advanceClock(campaign.id, minutes, "minutes");
-    result.note = `${name} cast as a ritual: ${minutes} minutes of casting, no slot spent. The clock moved on.`;
+    // Ten minutes longer than the spell's own casting time, unless Awakened
+    // Spellbook's use of the day sped it.
+    const minutes = (swift ? 0 : 10) + (typeof facts?.castingTime === "number" ? facts.castingTime : 0);
+    if (minutes > 0) {
+      advanceClock(campaign.id, minutes, "minutes");
+    }
+    result.note = swift
+      ? `${name} cast as a ritual: no slot spent. ${spendSwiftRitual(campaign, sheet.id)}${minutes > 0 ? ` ${minutes} minutes of casting; the clock moved on.` : ""}`
+      : `${name} cast as a ritual: ${minutes} minutes of casting, no slot spent. The clock moved on.`;
   } else if (typeof facts?.castingTime === "number" && !completing) {
     advanceClock(campaign.id, facts.castingTime, "minutes");
     result.castingTime = `${describeCastingTime(facts.castingTime)} of casting; the clock moved on.`;

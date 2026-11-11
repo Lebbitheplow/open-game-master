@@ -7,7 +7,8 @@
 //   Stone's Endurance (VGtM goliath): the damage less 1d12 + Constitution.
 //   Swarming Dispersal (Swarmkeeper 15): resistance to that damage.
 //   One with the Word (Order of Scribes 14): none of it, while the Manifest
-//     Mind is out; 3d6 spell levels leave the book until 1d6 long rests pass.
+//     Mind is out; 3d6 spell levels leave the book until 1d6 long rests pass
+//     (taken and counted back by the server: ar-ws-word.ts).
 //   Warding Maneuver (Cavalier 3): 1d8 on the AC of the one hit (the
 //     fighter, or a creature within 5 feet), and resistance if it still hits.
 //   Necrotic Husk (Undead warlock 10): 1 hit point instead of 0, 2d10 + the
@@ -44,6 +45,7 @@ import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
 import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
+import { payTheWord } from "@/lib/dm/ar-ws-word";
 
 export const MANIFEST_MIND = "manifest mind";
 // The marker a use that recharges over several long rests leaves, with the
@@ -60,6 +62,9 @@ type Input = {
   // The creature the call names, for a use that answers one (a caster, the
   // creature a hit landed on).
   targetEnemyId?: string;
+  // The call's variant, for a use whose price the player has a say in (One
+  // with the Word: the spells to lose first).
+  variant?: string;
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
 };
@@ -180,9 +185,10 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
           const cleared = removeConditions(now.conditions, now.conditionMeta, [MANIFEST_MIND]);
           patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
           publishSheet(campaign, sheet.id);
+          // The price, taken from the book (src/lib/dm/ar-ws-word.ts).
           return {
             applied: `All of that damage is prevented: ${settled.given} hit points come back. HP ${settled.hp}. The Manifest Mind is dismissed.`,
-            spellbook: `Spells of ${sheet.name}'s choice with ${levels} or more spell levels between them vanish from the book until 1d6 long rests pass, and cannot be cast meanwhile. The player names them; the lead takes them off the sheet's book.`,
+            ...payTheWord(campaign, turn, sheet, levels, input.variant),
           };
         },
       };

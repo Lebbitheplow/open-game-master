@@ -1117,12 +1117,13 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Chronurgy Magic",
   "level": 10,
-  "sha": "24a38ff4a2fc",
+  "sha": "e453bdf4b922",
   "clauses": [
    {
-    "c": "Store a spell of 4th level or lower in a bead that anyone can break to cast it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: abeyance"
+    "c": "Store a spell of 4th level or lower for an hour in a bead that anyone can break to cast it with your spell save DC and spell attack bonus",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: abeyance",
+    "by": "src/lib/dm/ar-ws-abeyance.ts storeInBead, through use_spell_slot storeIn (src/lib/dm/spell-storing.ts storeSpell) and the store door of the cast guard (src/lib/dm/ring-store.ts storeRefusal and putInRing, src/lib/dm/ar-ws-bead-store.ts); the bead is a spell storer (src/lib/srd/spell-storing.ts isSpellStorer, src/lib/srd/ar-ws-conjured.ts), cast from with use_item, gone as its spell is cast (ring-store.ts takeFromRing) or when the clock ends its hour (src/lib/db/clock.ts advanceClock). The hour and the wizard's numbers were written into the stored text."
    },
    {
     "c": "recharges on a short or long rest",
@@ -1171,8 +1172,9 @@
   "clauses": [
    {
     "c": "Halve or double a creature's or object's weight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy",
+    "by": "src/lib/dm/ar-ws-buff-aim.ts buffAim and strayBuffTarget, through src/lib/dm/authored-spend-effects.ts (buff); row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Adjust Density (target creature). A creature of either side: the enemy named, else the ally named, else the wizard; a target a buff cannot use is refused with nothing spent. An object's weight is the GM's to narrate: no object stands on the board."
    },
    {
     "c": "for a minute",
@@ -1188,9 +1190,9 @@
    },
    {
     "c": "carrying capacity",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: encumbrance was not weighed under the condition"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-carry",
+    "by": "src/lib/srd/ar-ws-density.ts densityCarryFactor, read by src/lib/srd/encumbrance.ts encumbranceFor and src/lib/dm/load-rules.ts liftLimits. Ruling: the text says the capacity changes and not which way, so it goes the way the Strength checks do: doubled with the weight doubled, halved with it halved."
    },
    {
     "c": "and Strength checks",
@@ -1284,15 +1286,15 @@
    },
    {
     "c": "When you cast a wizard spell with a slot you can change its damage type to one found in another spell in your book of the slot's level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves it to the GM (narrated); whether the cast tools take a damageType the book allows, and refuse one it does not, was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: awakened-type",
+    "by": "src/lib/dm/ar-ws-awakened.ts awakenedDamageType, asked by the one cast guard (src/lib/dm/cast-guard.ts castSpell, swapType) for the type cast_at_enemy (damageType) and aoe_damage (type) were given; the tools deal the type it answers (castDamageType). A type no other spell of the slot's level in the book deals is refused with nothing spent."
    },
    {
     "c": "once per long rest you can cast a ritual spell from the book at its normal casting time rather than adding 10 minutes",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves it to the GM (narrated); no counter holds the once a day, and a ritual's clock was not timed"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: awakened-ritual",
+    "by": "src/lib/srd/authored-resources.json sub_awakened_spellbook (uses 1, recharge long) and row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Awakened Spellbook (the use lays the mark swift ritual until a long rest); src/lib/dm/ar-ws-awakened.ts swiftRitual and spendSwiftRitual, read by src/lib/dm/cast-guard.ts castSpell where a ritual's 10 minutes are charged."
    },
    {
     "c": "and over a short rest your quill can turn a blank book into a new home for its mind",
@@ -1351,8 +1353,9 @@
   "clauses": [
    {
     "c": "After a long rest you can create a magic scroll of a 1st- or 2nd-level wizard spell from your book with a casting time of an action; it is cast as if one level higher, and it vanishes once cast or when you finish a long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: scrivener"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: scrivener",
+    "by": "src/lib/dm/ar-ws-scrivener.ts scribeScroll (row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Master Scrivener, counter sub_master_scrivener); the scroll is a spell scroll read through src/lib/dm/consumables.ts readScroll, which casts it one level higher (src/lib/srd/ar-ws-conjured.ts scrollCastLevel) and uses it up; src/lib/dm/rest-logic.ts longRestPatch takes an unread one away. Ruling: it is a spell scroll, so it carries the Spell Scroll table's save DC and attack bonus for the level it is cast at."
    }
   ]
  },
@@ -1376,8 +1379,9 @@
    },
    {
     "c": "then roll 3d6, and spells in your book with a combined level at least that total vanish from it until you finish 1d6 long rests (if there aren't enough, you drop to 0 hit points)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish",
+    "by": "src/lib/dm/ar-ws-word.ts payTheWord, called by src/lib/dm/reaction-counters.ts (One with the Word); the spells and their long rests are kept on the sheet (spellcasting.vanished, src/lib/srd/ar-ws-spellbook.ts) and counted back by src/lib/dm/rest-logic.ts longRestPatch. Rulings: the spells are the wizard's choice in the source, so the call may name the ones to lose first (variant) and the server takes unprepared spells before prepared ones beyond those; a book that cannot pay keeps its spells and the wizard drops to 0 hit points."
    },
    {
     "c": "Once per long rest",

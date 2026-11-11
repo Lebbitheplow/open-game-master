@@ -28,6 +28,7 @@ import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import { applyDmMutation, canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castDamageType } from "@/lib/dm/ar-ws-awakened";
 import { spellReachProblem } from "@/lib/dm/cast-reach";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -246,6 +247,8 @@ export function planAoeSpell(
       characterId: caster.id,
       spell: input.spell,
       ...(input.level ? { level: input.level } : {}),
+      // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
+      ...(input.type ? { swapType: input.type } : {}),
       via: "aoe",
       reason: (input.reason ?? "").slice(0, 200),
     }),
@@ -281,7 +284,7 @@ export function planAoeSpell(
     }
     halfOnSave = Boolean(mech.halfOnSave);
     if (mech.damageType) {
-      type = mech.damageType;
+      type = castDamageType(caster, cast, { name, asked: input.type, own: mech.damageType, second: mech.secondType, level: facts?.level ?? null, authors });
     }
   }
   // Multiclass: the DC follows the class whose list carries the spell.

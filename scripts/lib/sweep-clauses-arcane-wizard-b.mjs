@@ -2,16 +2,20 @@
 // Graviturgy Magic and Order of Scribes (scripts/clauses/arcane.json; run by
 // test-enforce-sweep-clauses-arcane-wizard.mjs).
 import assert from "node:assert/strict";
-import { MOD, prof } from "./sweep-clauses-arcane.mjs";
+import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
+export const SCRIBE_BOOK = ["Magic Missile", "Shield", "Detect Magic", "Scorching Ray", "Fireball", "Lightning Bolt", "Fly", "Ice Storm", "Cone of Cold", "Chain Lightning"];
 const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, roll, stage } = rig;
-  const { friend, mage, drain, uses, rests, movesSomething, buysAnother } = shared;
+  const { friend, mage, drain, uses, rests, buysAnother } = shared;
   rig.outfit("wizard", "War Magic", { spells: ["Fire Bolt", "Magic Missile", "Hold Person", "Counterspell"], cantrips: ["Fire Bolt"], acOverride: false });
   rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Acid Splash", "Hold Person"], cantrips: ["Fire Bolt", "Acid Splash"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
+  // A scribe's book: 29 spell levels, more than One with the Word's 3d6 can ask.
+  rig.outfit("wizard", "Order of Scribes", { spells: SCRIBE_BOOK });
+  rig.outfit("wizard", "Chronurgy Magic", { spells: ["Hold Person", "Magic Missile", "Fireball", "Cone of Cold"], cantrips: ["Fire Bolt"] });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
   const chr = () => holder("wizard", "Chronurgy Magic");
@@ -370,7 +374,68 @@ export function probes(rig, shared) {
       await uses(["wizard", "Chronurgy Magic"], "sub_momentary_stasis", { 6: Math.max(1, MOD.int) })();
       await stasisRest();
     },
-    abeyance: movesSomething(["wizard", "Chronurgy Magic"], "Arcane Abeyance"),
+    // The wizard casts the spell into a bead (use_spell_slot with storeIn):
+    // the slot, the action and the use of Arcane Abeyance are paid, the spell
+    // does nothing now, and the bead is on the pack of the creature named,
+    // holding the spell at the slot's level with the wizard's save DC and
+    // attack bonus for an hour. Whoever holds it casts from it with no slot of
+    // their own, and it is gone once cast or when the hour is over. A slot
+    // above 4th level, a cantrip, a second bead with the use spent, a bare
+    // use_resource and a wizard without the feature are refused, nothing spent.
+    abeyance: async () => {
+      const { getClock } = await import("../../src/lib/db/clock.ts");
+      const who = chr();
+      const [enemy] = await stage(who, { others: [friend()] });
+      const beads = (holds) => sheet(holds).equipment.filter((item) => item.conjured?.kind === "bead");
+      const paid = () => [sheet(who).spellcasting.slots[2].used, sheet(who).spellcasting.slots[5].used, counter(who, "sub_arcane_abeyance").used, budget()?.actionUsed ?? false, beads(who).length + beads(friend()).length];
+      const store = (args) => call("use_spell_slot", { characterId: who.id, storeIn: "Arcane Abeyance", ...args });
+      for (const [why, args] of [["a slot of 5th level", { spell: "Fireball", level: 5 }], ["a spell of 5th level", { spell: "Cone of Cold" }], ["a cantrip", { spell: "Fire Bolt" }]]) {
+        const out = await store(args);
+        assert.equal(out.ok, false, `${why} goes into a bead: ${show(out).slice(0, 120)}`);
+        assert.match(out.error, /Nothing was spent/, why);
+      }
+      const bare = await spend(who, "Arcane Abeyance");
+      assert.equal(bare.ok, false, "a bare use_resource spends the use and stores nothing");
+      assert.deepEqual(paid(), [0, 0, 0, false, 0], "[2nd-level slots, 5th-level slots, uses, action, beads] after the refusals");
+      // Hold Person from a 3rd-level slot would be level 3; from its own, level 2.
+      const out = await store({ spell: "Hold Person", storeInCharacterId: friend().id });
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(paid(), [1, 0, 1, true, 1], "[2nd-level slots, 5th-level slots, uses, action, beads] once it is stored");
+      const [bead] = beads(friend());
+      const dc = spellDc("wizard", 20);
+      assert.deepEqual(bead.storedSpells, [{ spell: "Hold Person", level: 2, saveDc: dc, attackBonus: dc - 8, abilityMod: MOD.int, by: sheet(who).name }], "the spell at its slot's level, with the wizard's numbers");
+      assert.equal(bead.conjured.until - getClock(world.campaignId).instant, 60, "the minutes the bead has left");
+      assert.deepEqual([foe(enemy).conditions.includes("paralyzed"), sheet(who).concentratingOn ?? null], [false, null], "[the foe held, the wizard concentrating]: the spell has no effect now");
+      kit.freshTurn();
+      const again = await store({ spell: "Magic Missile" });
+      assert.equal(again.ok, false, "a second bead with the use spent");
+      assert.equal(sheet(who).spellcasting.slots[1].used, 0, "the refused second bead spent a slot");
+      // The fighter breaks it on their own turn: no slot of theirs, the wizard's DC.
+      kit.giveTurn(friend().id);
+      kit.freshTurn();
+      const broken = await call("use_item", { characterId: friend().id, item: bead.name });
+      assert.equal(broken.ok, true, broken.error);
+      assert.deepEqual([broken.result.spellCast, broken.result.spellLevel, broken.result.saveDc], ["Hold Person", 2, dc], "[spell, level, save DC] read from the bead");
+      const held = await call("cast_at_enemy", { characterId: friend().id, targetEnemyId: enemy.id, spell: "Hold Person" }, [1]);
+      assert.equal(held.ok, true, held.error);
+      assert.ok(foe(enemy).conditions.includes("paralyzed"), `the foe failed the save against the bead's Hold Person: ${show(held).slice(0, 160)}`);
+      assert.equal(beads(friend()).length, 0, "the bead is gone once its spell is cast");
+      // Its hour: there at 59 minutes, gone at 60.
+      await kit.endFight();
+      world.patch(friend().id, { concentratingOn: null });
+      rig.refill(who);
+      assert.equal((await store({ spell: "Magic Missile" })).ok, true, "a bead out of a fight");
+      assert.equal(beads(who).length, 1);
+      assert.equal((await call("pass_time", { amount: 59, unit: "minutes" })).ok, true);
+      assert.equal(beads(who).length, 1, "the bead at 59 minutes");
+      assert.equal((await call("pass_time", { amount: 1, unit: "minutes" })).ok, true);
+      assert.equal(beads(who).length, 0, "the bead when its hour is over");
+      // A wizard of another school has no bead to fill.
+      const other = await call("use_spell_slot", { characterId: war().id, spell: "Magic Missile", storeIn: "Arcane Abeyance" });
+      assert.equal(other.ok, false, "a war mage stores a spell in a bead");
+      assert.equal(sheet(war()).spellcasting.slots[1].used, 0);
+      rig.refill(who);
+    },
     "abeyance-rest": rests(["wizard", "Chronurgy Magic"], "sub_arcane_abeyance", "short"),
     "convergent-miss": async () => {
       await hit(chr());
@@ -425,11 +490,53 @@ export function probes(rig, shared) {
       assert.equal(await keep("adjusted density (heavier)"), "highest", "doubled weight: advantage on Strength checks");
       assert.equal(await keep("adjusted density (lighter)"), "lowest", "halved weight: disadvantage");
     },
+    // A creature of either side: the foe named carries it for the minute and
+    // walks 10 feet slower or faster, the wizard nothing; with no creature
+    // named it is the wizard's own; and a target the buff cannot use is
+    // refused with the action unspent, for this buff and for any other.
     "density-enemy": async () => {
+      const { enemySpeedTiles } = await import("../../src/lib/dm/enemy-speed.ts");
       const [enemy] = await stage(gra(), { others: [friend()] });
+      const density = (list) => list.filter((name) => name.startsWith("adjusted density"));
+      const walks = enemySpeedTiles(foe(enemy));
       const out = await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, variant: "heavier" });
       if (!out.ok) throw new Error(out.error);
-      assert.ok(foe(enemy).conditions.some((name) => name.startsWith("adjusted density")), `aimed at a creature of the other side, it lands elsewhere: ${show(out).slice(0, 150)}`);
+      assert.deepEqual(density(foe(enemy).conditions), ["adjusted density (heavier)"], `aimed at a creature of the other side: ${show(out).slice(0, 150)}`);
+      assert.equal(foe(enemy).conditionMeta["adjusted density (heavier)"].rounds, 10, "a minute");
+      assert.deepEqual(density(sheet(gra()).conditions), [], "nothing lands on the wizard");
+      assert.equal(budget().actionUsed, true, "the action");
+      assert.equal(enemySpeedTiles(foe(enemy)), walks - 2, "doubled weight: 10 feet slower");
+      // Halved on the next turn: the doubling goes as the halving lands.
+      kit.freshTurn();
+      assert.equal((await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, variant: "halve" })).ok, true);
+      assert.deepEqual(density(foe(enemy).conditions), ["adjusted density (lighter)"], "halved, no longer doubled");
+      assert.equal(enemySpeedTiles(foe(enemy)), walks + 2, "halved weight: 10 feet faster");
+      // Two creatures named, and a creature that is not there: nothing spent.
+      kit.freshTurn();
+      const before = JSON.stringify([foe(enemy).conditions, sheet(friend()).conditions, sheet(gra()).conditions]);
+      const both = await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, targetCharacterId: friend().id, variant: "heavier" });
+      assert.equal(both.ok, false, "a foe and an ally named together");
+      assert.match(both.error, /Nothing was spent/);
+      assert.equal((await spend(gra(), "Adjust Density", { targetEnemyId: "nobody-here", variant: "heavier" })).ok, false, "a creature that is not in the fight");
+      assert.equal(JSON.stringify([foe(enemy).conditions, sheet(friend()).conditions, sheet(gra()).conditions]), before, "a refusal lays nothing");
+      assert.equal(budget()?.actionUsed ?? false, false, "a refusal spends no action");
+      // No creature named: the wizard's own weight.
+      assert.equal((await spend(gra(), "Adjust Density", { variant: "double" })).ok, true);
+      assert.deepEqual(density(sheet(gra()).conditions), ["adjusted density (heavier)"]);
+      world.patch(gra().id, { conditions: [], conditionMeta: {} });
+      // Any buff: a sorcerer's own wings named for a foe, or for a friend, were
+      // laid on the sorcerer; now refused, the bonus action unspent.
+      const soul = holder("sorcerer", "Divine Soul");
+      await stage(soul, { others: [friend()] });
+      const [other] = world.enemies().filter((entry) => entry.status === "alive");
+      for (const stray of [{ targetEnemyId: other.id }, { targetCharacterId: friend().id }]) {
+        const wings = await spend(soul, "Otherworldly Wings", stray);
+        assert.equal(wings.ok, false, `Otherworldly Wings with ${Object.keys(stray)[0]}: ${show(wings).slice(0, 120)}`);
+        assert.match(wings.error, /Nothing was spent/);
+        assert.deepEqual([sheet(soul).conditions.includes("otherworldly wings"), budget()?.bonusUsed ?? false], [false, false], "[winged, bonus action spent] after the refusal");
+      }
+      assert.equal((await spend(soul, "Otherworldly Wings")).ok, true, "with no target it is theirs");
+      world.patch(soul.id, { conditions: [], conditionMeta: {} });
     },
     "attraction-hit": async () => {
       const [enemy] = await stage(gra(), { others: [friend()], first: friend() });
@@ -471,7 +578,64 @@ export function probes(rig, shared) {
       await mindRest();
     },
     "mind-slot": buysAnother(["wizard", "Order of Scribes"], "Manifest Mind", "sub_manifest_mind", "spell slot"),
-    scrivener: movesSomething(["wizard", "Order of Scribes"], "Master Scrivener"),
+    // The spend writes a scroll of the spell named onto the pack; reading it
+    // casts the spell one level higher (Scorching Ray's fourth ray at 3rd
+    // level, the Spell Scroll table's +7 for that level) and uses it up; one
+    // left unread is gone after a long rest. A spell above 2nd level, one not
+    // in the book, one cast with a reaction, no spell named, a second scroll
+    // with the use spent, and a scroll in the middle of a fight are refused.
+    scrivener: async () => {
+      const who = scr();
+      const { vanished: _old, ...casting } = sheet(who).spellcasting;
+      void _old;
+      world.patch(who.id, { spellcasting: { ...casting, prepared: SCRIBE_BOOK, known: SCRIBE_BOOK } });
+      const scrolls = () => sheet(who).equipment.filter((item) => item.conjured?.kind === "scroll");
+      const uses = () => counter(who, "sub_master_scrivener").used;
+      const write = (variant) => spend(who, "Master Scrivener", variant ? { variant } : {});
+      const [enemy] = await stage(who);
+      const fighting = await write("Magic Missile");
+      assert.equal(fighting.ok, false, "a scroll written in the middle of a fight");
+      await kit.endFight();
+      rig.refill(who);
+      for (const [why, variant] of [["a 3rd-level spell", "Fireball"], ["a spell not in the book", "Burning Hands"], ["a spell cast with a reaction", "Shield"], ["no spell named", ""]]) {
+        const out = await write(variant);
+        assert.equal(out.ok, false, `${why}: ${show(out).slice(0, 120)}`);
+        assert.match(out.error, /Nothing was spent/, why);
+      }
+      assert.deepEqual([uses(), scrolls().length], [0, 0], "[uses spent, scrolls] after the refusals");
+      const out = await write("Scorching Ray");
+      assert.equal(out.ok, true, out.error);
+      const [scroll] = scrolls();
+      assert.deepEqual([uses(), scroll?.spell, scroll?.tags], [1, "Scorching Ray", ["scroll"]], "[uses spent, the scroll's spell, its tags]");
+      assert.equal((await write("Magic Missile")).ok, false, "a second scroll before the next long rest");
+      // Read in a fight: an action, no slot, cast at 3rd level.
+      const [foe2] = await stage(who);
+      const slots = JSON.stringify(sheet(who).spellcasting.slots);
+      const read = await call("use_item", { characterId: who.id, item: scroll.name });
+      assert.equal(read.ok, true, read.error);
+      assert.deepEqual([read.result.spellCast, read.result.spellLevel, read.result.attackBonus, budget().actionUsed], ["Scorching Ray", 3, 7, true], "[spell, level it is cast at, the scroll's attack bonus, the action]");
+      assert.equal(scrolls().length, 0, "the scroll is used up as it is read");
+      // Four rays at 3rd level, where its own 2nd gives three.
+      let rays = 0;
+      for (let ray = 0; ray < 5; ray += 1) {
+        const shot = await call("pc_attack", { characterId: who.id, targetEnemyId: foe2.id, spell: "Scorching Ray" }, [15, 3, 3]);
+        if (!shot.ok) break;
+        rays += 1;
+      }
+      assert.equal(rays, 4, "rays of a Scorching Ray read from the scrivener's scroll");
+      assert.equal(JSON.stringify(sheet(who).spellcasting.slots), slots, "no spell slot of the reader's is spent");
+      void enemy;
+      // A scroll left unread vanishes when the wizard finishes a long rest.
+      await kit.endFight();
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await rig.rest("long");
+      assert.equal((await write("Magic Missile")).ok, true, "a new scroll after the long rest");
+      assert.equal(scrolls().length, 1);
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await rig.rest("long");
+      assert.equal(scrolls().length, 0, "the unread scroll after the next long rest");
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+    },
     "word-arcana": async () => {
       await kit.endFight();
       assert.equal((await roll(scr(), { kind: "skill_check", skill: "arcana", dc: 10 })).d20s, 2, "d20s thrown for a 14th-level scribe's Arcana check");
@@ -485,13 +649,59 @@ export function probes(rig, shared) {
       assert.equal(hp(scr()), before + 6, "all of the damage is prevented");
       assert.ok(!sheet(scr()).conditions.includes("manifest mind"), "the mind is dismissed");
     },
+    // The price is taken from the book: spells of the 3d6's total in levels
+    // leave it (prepared and known alike), held on the sheet with the 1d6 long
+    // rests rolled then; they cannot be cast meanwhile; each long rest counts
+    // one off and the last writes them back; the wizard may name the spells
+    // that go first; and a book that cannot pay keeps its spells and drops
+    // the wizard to 0 hit points.
     "word-vanish": async () => {
-      await hit(scr());
-      world.patch(scr().id, { conditions: ["manifest mind"], spellcasting: { ...sheet(scr()).spellcasting, prepared: ["Fireball", "Fly", "Shield"], known: ["Fireball", "Fly", "Shield"] } });
-      // 3d6 of 1 each: spells of 3 levels together leave the book.
-      await react(scr(), "One with the Word", {}, [1, 1, 1]);
-      const book = sheet(scr()).spellcasting;
-      assert.ok(book.known.length + book.prepared.length < 6, "every spell is still in the book after the 3d6");
+      const book = () => {
+        const now = sheet(scr()).spellcasting;
+        return { prepared: now.prepared, known: now.known, gone: (now.vanished ?? []).map((entry) => `${entry.spell} for ${entry.rests}`) };
+      };
+      const staged = async (spells) => {
+        await hit(scr());
+        const { vanished: _old, ...casting } = sheet(scr()).spellcasting;
+        void _old;
+        world.patch(scr().id, { conditions: ["manifest mind"], spellcasting: { ...casting, prepared: spells, known: spells } });
+      };
+      // 3d6 of 1 each (3 levels), then a 2 on the d6: Fireball (3rd) pays alone.
+      await staged(["Fireball", "Fly", "Shield"]);
+      const out = await react(scr(), "One with the Word", {}, [1, 1, 1, 2]);
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(book(), { prepared: ["Fly", "Shield"], known: ["Fly", "Shield"], gone: ["Fireball for 2"] }, `the book after a 3 on the 3d6 and a 2 on the d6: ${show(out).slice(0, 200)}`);
+      kit.giveTurn(scr().id);
+      kit.freshTurn();
+      const cast = await call("use_spell_slot", { characterId: scr().id, spell: "Fireball" });
+      assert.equal(cast.ok, false, "a vanished spell is cast");
+      // One long rest: still gone, one rest left. A day on, the second: back.
+      // (A long rest counts once in 24 hours, so a day passes before each.)
+      const day = async () => assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await kit.endFight();
+      await day();
+      await rig.rest("long");
+      assert.deepEqual(book().gone, ["Fireball for 1"], "after one of its two long rests");
+      assert.ok(!book().prepared.includes("Fireball"), "back a rest early");
+      await day();
+      await rig.rest("long");
+      await day();
+      assert.deepEqual(book(), { prepared: ["Fly", "Shield", "Fireball"], known: ["Fly", "Shield", "Fireball"], gone: [] }, "after the second long rest it is written back");
+      // The spells named go first: a 4 (1 + 1 + 2) takes Shield (1st) and Fly (3rd).
+      await staged(["Fireball", "Fly", "Shield"]);
+      const named = await react(scr(), "One with the Word", { variant: "Shield, Fly" }, [1, 1, 2, 3]);
+      assert.equal(named.ok, true, named.error);
+      assert.deepEqual(book(), { prepared: ["Fireball"], known: ["Fireball"], gone: ["Shield for 3", "Fly for 3"] }, "the spells the wizard named");
+      // A book of one 1st-level spell cannot pay a 3: it keeps the spell, and
+      // the wizard, whose damage was prevented, drops to 0 hit points.
+      await staged(["Shield"]);
+      const short = await react(scr(), "One with the Word", {}, [1, 1, 1, 6]);
+      assert.equal(short.ok, true, short.error);
+      assert.deepEqual([sheet(scr()).currentHp, sheet(scr()).conditions.includes("unconscious"), book().prepared, book().gone], [0, true, ["Shield"], []], `[hit points, unconscious, the book, gone] when the book cannot pay: ${show(short).slice(0, 200)}`);
+      const { vanished: _gone, ...casting } = sheet(scr()).spellcasting;
+      void _gone;
+      world.patch(scr().id, { conditions: [], conditionMeta: {}, deathSaves: null, spellcasting: { ...casting, prepared: SCRIBE_BOOK, known: SCRIBE_BOOK } });
+      rig.refill(scr());
     },
     "word-uses": async () => {
       await uses(["wizard", "Order of Scribes"], "sub_one_with_the_word", { 14: 1 })();
@@ -507,12 +717,8 @@ export function probes(rig, shared) {
   const wordRest = rests(["wizard", "Order of Scribes"], "sub_one_with_the_word", "long");
 
   const KNOWN = {
-    abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
-    "density-enemy": { severity: "medium", kind: "rule-wrong", where: `${DATA} wizard::Adjust Density (buff target "ally"), src/lib/dm/authored-spend-effects.ts (a targetEnemyId the buff cannot use falls back to the holder)`, note: "The wizard meant to slow a foe and is told they have slowed themselves; the action is spent.", fix: "Let the buff take a creature of either side, and refuse a target it cannot use instead of falling back to the holder." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
-    scrivener: { severity: "low", kind: "rule-missing", where: `${RES} sub_master_scrivener (a counter with guidance)`, note: "No scroll is made; the +1 level casting has nothing to ride.", fix: "Write a scroll onto the sheet that the cast tools read one level higher and a long rest removes." },
-    "word-vanish": { severity: "low", kind: "rule-missing", where: "src/lib/dm/reaction-counters.ts One with the Word (the price is told, not taken)", note: "The reaction prevents the damage for free.", fix: "Roll the 3d6 and mark spells of that many levels as gone until 1d6 long rests pass." },
   };
   return { PROBES, KNOWN };
 }

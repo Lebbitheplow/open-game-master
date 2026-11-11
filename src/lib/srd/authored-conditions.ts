@@ -360,6 +360,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
       { kind: "check", ability: "str" },
     ],
   },
+  summaryOnly("swift_ritual", "swift ritual", "Awakened Spellbook: the next ritual cast from the spellbook takes its own casting time, without the 10 extra minutes. Lasts until that ritual or a long rest."),
   summaryOnly("emissary_lapsed", "emissary lapsed", "Emissary of Redemption is set aside until a long rest: the paladin attacked or harmed a creature."),
   summaryOnly("spurned_by_redemption", "spurned by redemption", "The Redemption paladin attacked this creature: their Emissary of Redemption holds nothing against it until their long rest."),
   summaryOnly("withstood_among_the_dead", "withstood among the dead", "This undead made its save against the Undying warlock's Among the Dead and may attack them for 24 hours."),

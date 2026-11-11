@@ -31,6 +31,7 @@ import { itemSpellsOfRow, type ItemSpell } from "@/lib/srd/item-spells";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { scrollCheckDc, scrollNumbers, scrollSpell, scrollUnreadable } from "@/lib/srd/scrolls";
 import { isSpellStorer } from "@/lib/srd/spell-storing";
+import { scrollCastLevel } from "@/lib/srd/ar-ws-conjured";
 import { beadRefusal, beadsOf, isPrayerNecklace } from "@/lib/srd/prayer-beads";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
@@ -58,7 +59,8 @@ export function itemCastRows(sheet: Pick<CharacterSheet, "equipment">): ItemCast
       if (seen.has(key)) return [];
       seen.add(key);
       const known = checklistSpell(held);
-      const level = known?.level ?? 1;
+      // One higher from a Master Scrivener's scroll, as it is read (consumables.ts).
+      const level = scrollCastLevel(item, known?.level ?? 1);
       const numbers = scrollNumbers(level);
       return [{ item, scroll: true, entry: { spell: known?.name ?? held, charges: 0, level, dc: numbers.saveDc, attackBonus: numbers.attackBonus } }];
     }

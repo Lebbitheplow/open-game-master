@@ -126,4 +126,49 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "War Magic",
     heldBy: { file: "src/lib/dm/ar-ws-deflection.ts", call: "deflectingShroud(" },
   },
+  // "Halve or double a creature's or object's weight for a minute": a creature
+  // of either side (src/lib/dm/ar-ws-buff-aim.ts). The earlier row took an ally
+  // only, and a foe named for it was dropped for the wizard. The condition's
+  // speed and Strength rolls are in authored-conditions.ts, its carrying
+  // capacity in src/lib/srd/ar-ws-density.ts.
+  "wizard::Adjust Density": {
+    subclass: "Graviturgy Magic",
+    spends: [
+      {
+        name: "Adjust Density",
+        action: "action",
+        does: {
+          kind: "buff",
+          target: "creature",
+          condition: "adjusted density (lighter)",
+          variants: { lighter: "adjusted density (lighter)", halve: "adjusted density (lighter)", heavier: "adjusted density (heavier)", double: "adjusted density (heavier)" },
+          rounds: 10,
+        },
+      },
+    ],
+  },
+  // "After a long rest you can create a magic scroll of a 1st- or 2nd-level
+  // wizard spell from your book with a casting time of an action": the spell
+  // is the variant, the scroll a row on the pack (src/lib/dm/ar-ws-scrivener.ts).
+  // Written out of a fight, when a rest ends, and by name: the Hand has no
+  // card that names a spell from the book, so the player says it and the GM
+  // calls it; the scroll itself is a card (hand-items.ts).
+  "wizard::Master Scrivener": {
+    subclass: "Order of Scribes",
+    counter: "sub_master_scrivener",
+    spends: [{ name: "Master Scrivener", pool: { id: "sub_master_scrivener" }, action: "none", fight: "out", does: { kind: "scribe_scroll", minLevel: 1, maxLevel: 2 } }],
+  },
+  // "once per long rest you can cast a ritual spell from the book at its
+  // normal casting time rather than adding 10 minutes": the use lays a mark
+  // the next ritual from the book spends (src/lib/dm/ar-ws-awakened.ts, read by
+  // the one cast guard). "you can change its damage type to one found in
+  // another spell in your book of the slot's level": the same module, asked by
+  // the guard for the type the cast tools were given. The earlier row left
+  // both to the GM.
+  "wizard::Awakened Spellbook": {
+    subclass: "Order of Scribes",
+    counter: "sub_awakened_spellbook",
+    heldBy: { file: "src/lib/dm/cast-guard.ts", call: "awakenedDamageType(" },
+    spends: [{ name: "Awakened Spellbook", pool: { id: "sub_awakened_spellbook" }, action: "none", does: { kind: "buff", condition: "swift ritual", rounds: 4800, untilLongRest: true } }],
+  },
 };

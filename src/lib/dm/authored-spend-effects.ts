@@ -3,6 +3,8 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
+import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim";
+import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -148,26 +150,29 @@ function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, t
 
 // Whether it landed: not on a creature immune to it, stone's poison
 // included (damage-logic.ts immuneToCondition).
-function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>): boolean {
+// `replaces`: the buff's other outcomes, taken off as this one is laid.
+function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>, replaces: string[] = []): boolean {
   const fresh = getEnemy(enemy.id) ?? enemy;
   if (immuneToCondition(fresh, condition)) {
     return false;
   }
-  const kept = fresh.conditions.filter((entry) => textKey(entry) !== textKey(condition));
+  const cleared = removeConditions(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, replaces);
+  const kept = cleared.conditions.filter((entry) => textKey(entry) !== textKey(condition));
   patchEnemyConditions(fresh.id, [...kept, condition], {
-    ...(fresh.conditionMeta as ConditionMetaMap),
+    ...cleared.meta,
     [condition]: { source: ctx.sheet.id, ...meta },
   } as typeof fresh.conditionMeta);
   publishEncounter(ctx.campaign.id);
   return true;
 }
 
-function sheetCondition(campaign: Campaign, target: CharacterSheet, condition: string, rounds: number, extra: FullPatchSheetInput = {}) {
+function sheetCondition(campaign: Campaign, target: CharacterSheet, condition: string, rounds: number, extra: FullPatchSheetInput = {}, replaces: string[] = []) {
   const fresh = getSheetById(target.id) ?? target;
-  const kept = fresh.conditions.filter((entry) => textKey(entry) !== textKey(condition));
+  const cleared = removeConditions(fresh.conditions, fresh.conditionMeta, replaces);
+  const kept = cleared.conditions.filter((entry) => textKey(entry) !== textKey(condition));
   const updated = patchSheet(fresh.id, {
     conditions: [...kept, condition],
-    conditionMeta: { ...fresh.conditionMeta, [condition]: { rounds } },
+    conditionMeta: { ...cleared.meta, [condition]: { rounds } },
     ...extra,
   });
   if (updated) {
@@ -230,14 +235,22 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         return condition;
       }
       const lines: string[] = [];
+      // A target the buff cannot use is refused, never dropped for the holder,
+      // and a buff for a creature of either side goes to the side the call
+      // names (src/lib/dm/ar-ws-buff-aim.ts).
+      const stray = strayBuffTarget(ctx.spend.name, sheet, does, ctx.args);
+      if (stray) {
+        return stray;
+      }
+      const aim = buffAim(does, ctx.args);
       // Aimed at a creature with no fight on: it is not on the board, so the
       // use is paid and the DM narrates it on the creature named (Hexblade's
       // Curse laid at a parley).
-      if ((does.target === "enemy" || does.quarry) && !getActiveEncounter(campaign.id)) {
+      if ((aim === "enemy" || does.quarry) && !getActiveEncounter(campaign.id)) {
         return { result: { applied: [`${ctx.spend.name}: ${condition}, on the creature the story names. There is no fight, so no creature on the board carries it.`] } };
       }
       const tempHp = does.tempHp ? Math.max(0, Number(rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: temporary hit points`, formula(ctx, does.tempHp), null).total)) : 0;
-      if (does.target === "enemy") {
+      if (aim === "enemy") {
         const enemy = targetEnemy(ctx);
         if ("error" in enemy) {
           return enemy;
@@ -246,12 +259,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
           return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
         }
-        const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
+        const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds }, otherOutcomes(does, condition));
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
         if (does.hound) {
           lines.push(summonHound(campaign, sheet, ctx.held.level, enemy));
         }
-      } else if (does.target === "allies") {
+      } else if (aim === "allies") {
         const count = does.count ? Number(formula(ctx, does.count)) : 5;
         // "Creatures you can see" (Watcher's Will): the conditions and the
         // board's line as every sight check reads them; an ally hides from
@@ -274,7 +287,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (left.length) {
           lines.push(`${left.map((entry) => entry.name).join(", ")}: not seen by ${sheet.name}, so left out.`);
         }
-      } else if (does.target === "ally") {
+      } else if (aim === "ally") {
         // "Other than yourself": named or not, the holder is refused before
         // the use is paid, where it once landed on them.
         if (does.othersOnly && (!ctx.args.targetCharacterId || ctx.args.targetCharacterId === sheet.id)) {
@@ -285,7 +298,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
           return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
         }
         if (ally.id !== sheet.id) {
-          sheetCondition(campaign, ally, condition, does.rounds, tempHp > ally.tempHp ? { tempHp } : {});
+          sheetCondition(campaign, ally, condition, does.rounds, tempHp > ally.tempHp ? { tempHp } : {}, otherOutcomes(does, condition));
           lines.push(`${ally.name} is ${condition} for ${does.rounds} rounds.`);
           return { result: { applied: lines } };
         }
@@ -312,14 +325,15 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // An ally other than the holder has returned above, so "ally" here is the
       // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
       // answered ok and landed nothing.
-      if (!does.target || does.target === "self" || does.target === "ally") {
-        const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
+      if (aim === "self" || aim === "ally") {
+        const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, otherOutcomes(does, condition));
+        const kept = cleared.conditions.filter((entry) => textKey(entry) !== textKey(condition));
         patch = {
           conditions: [...kept, condition],
           conditionMeta: {
-            ...sheet.conditionMeta,
+            ...cleared.meta,
             [condition]: {
-              ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }),
+              ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.untilLongRest ? { untilLongRest: true } : { rounds: does.rounds }),
               ...(quarry ? { quarry: quarry.id } : {}),
               ...(does.endsIfIncapacitated ? { endsIfIncapacitated: true } : {}),
             },
@@ -329,6 +343,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         lines.push(
           quarry
             ? `${sheet.name}'s ${condition} is on ${quarry.displayName}: their attacks against it carry it.`
+            : does.untilLongRest
+              ? `${sheet.name} is ${condition} until it is used or they finish a long rest.`
             : `${sheet.name} is ${condition} for ${does.rounds} rounds${tempHp ? `, with ${Math.max(tempHp, sheet.tempHp)} temporary hit points` : ""}.`,
         );
       }
@@ -601,6 +617,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return textKey(does.form) === textKey(DANCING_ITEM) ? summonDancingItem(ctx.campaign, sheet, ctx.held.level) : summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
     case "create_item":
       return createItem(ctx, does);
+    // Master Scrivener's scroll (src/lib/dm/ar-ws-scrivener.ts).
+    case "scribe_scroll":
+      return scribeScroll(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
