@@ -44,6 +44,7 @@ import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-traini
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { textKey } from "@/lib/language/text-logic";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
+import { originSpellNotes } from "@/lib/dm/ar-ws-origin-swap";
 
 export type LevelUpOptionsContext = {
   hpMethod: HpMethod;
@@ -397,6 +398,8 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
         schools
           ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
           : "",
+        // A sorcerer origin's other list, and its own spells replaced under their feature's rule (src/lib/dm/ar-ws-origin-swap.ts).
+        originSpellNotes({ classId: klass.id, subclass: subclassNow, level: classLevelAfter, extras: context.subclassExtras, features: sheet.features }),
       ]
         .filter(Boolean)
         .join(" "),

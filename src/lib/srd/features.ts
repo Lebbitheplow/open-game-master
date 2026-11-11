@@ -20,6 +20,7 @@ import {
 } from "@/lib/srd/subclass-choice-picks";
 import { thirdCasterProfileOf, type ThirdCasterProfile } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
+import { withSpellSwaps } from "@/lib/dm/ar-ws-spell-swap-record";
 
 export type SubclassTable = {
   name: string;
@@ -439,7 +440,10 @@ export function subclassSpellsFor(
   if (!chosen) {
     return [];
   }
-  return [
+  // A spell of these replaced at a level-up (a sorcerer origin's, by the
+  // sheet's record) gives way to the one that holds its place
+  // (src/lib/dm/ar-ws-spell-swap-record.ts).
+  return withSpellSwaps([
     ...new Set([
       ...spellsBy(chosen.spells, level),
       ...choiceSpellsBy(chosen, features, level, false),
@@ -447,7 +451,7 @@ export function subclassSpellsFor(
       // #833, a Storm bloodline's lightning spells).
       ...subclassChoiceSpells(classId, subclass, level, features, extras),
     ]),
-  ];
+  ], features);
 }
 
 // The spells a subclass adds to those its class may learn by `level`, not

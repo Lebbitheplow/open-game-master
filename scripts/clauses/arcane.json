@@ -1468,9 +1468,9 @@
   "clauses": [
    {
     "c": "You can learn cleric spells as sorcerer spells",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the builder's spell offer is the builder sweep's (scripts/test-enforce-sweep-builder-spell-offer.mjs); the subclass's spellLists was not walked here"
+    "is": "held",
+    "by": "subclasses.json spellLists read by src/lib/srd/spell-prep.ts spellOnCasterList (the builder's spell step, creation, the level-up, learn_spell) and said in the level-up's offer (src/lib/dm/ar-ws-origin-swap.ts originSpellNotes); cast with the sorcerer's Charisma",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-cleric-list"
    },
    {
     "c": "and you choose an affinity for your divine power that teaches you one more sorcerer spell, which doesn't count against your spells known: cure wounds (good), inflict wounds (evil), bless (law), bane (chaos) or protection from evil and good (neutrality)",
@@ -1480,9 +1480,9 @@
    },
    {
     "c": "If you replace that spell later, it must become a cleric spell.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap of the affinity spell was not walked"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor). Ruling: a cleric spell of any level the sorcerer has slots for",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-affinity-swap"
    }
   ]
  },
@@ -1840,7 +1840,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Aberrant Mind",
   "level": 1,
-  "sha": "845ecf5e948f",
+  "sha": "9c7ca3ec92e9",
   "clauses": [
    {
     "c": "A set of psionic spells always known that do not count against your spells known",
@@ -1849,10 +1849,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-spells"
    },
    {
-    "c": "swappable for divination and enchantment spells as you level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap was not walked"
+    "c": "swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list",
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts). The text now states the level and the lists",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-swap"
    }
   ]
  },
@@ -1983,7 +1983,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Clockwork Soul",
   "level": 1,
-  "sha": "a46066742848",
+  "sha": "3061f83f251d",
   "clauses": [
    {
     "c": "A set of order-themed spells always known that do not count against your spells known",
@@ -1992,10 +1992,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-spells"
    },
    {
-    "c": "swappable for abjuration and transmutation spells as you level",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the level-up swap was not walked"
+    "c": "swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list",
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor. The text now states the level and the lists",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-swap"
    }
   ]
  },
