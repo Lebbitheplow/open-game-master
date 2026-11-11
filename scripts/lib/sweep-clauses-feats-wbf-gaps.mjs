@@ -298,4 +298,69 @@ export function gapProbes(rig, P) {
     });
     assert.deepEqual(seen, { plain: 7, holder: 13 }, "a friend's Hit Die of 5 + 2, and the cook's d8 (a 6)");
   };
+
+  // Magic Initiate's 1st-level spell: once with no slot at its lowest level
+  // (three darts: 2 + 1 each), refused with the cast spent and no slot to pay,
+  // back after a long rest. Named at 2nd level, a slot pays and the free cast
+  // is kept.
+  P["feat.magic-initiate.free-cast"] = async () => {
+    const initiate = (t, extra = {}) => t.hero({
+      class: "fighter", level: 4, feats: ["Magic Initiate"],
+      featChoices: { "magic initiate": { list: "wizard", cantrips: ["Fire Bolt", "Light"], spells: ["Magic Missile"] } },
+      spellcasting: { ability: "int", slots: {}, known: ["Magic Missile"], prepared: [], cantrips: ["Fire Bolt", "Light"] },
+      features: [{ name: "Free cast: Magic Missile (Magic Initiate)", source: "story" }],
+      ...extra,
+    });
+    const free = (t, hero) => t.sheet(hero).resources.free_cast_magic_missile;
+    const t = await rig.table();
+    const hero = initiate(t);
+    assert.deepEqual(free(t, hero), { max: 1, used: 0 }, "the free cast's counter");
+    const [foe] = await t.fight([hero]);
+    const cast = (at, who, target, args = {}) => at.invoke("cast_at_enemy", { characterId: who.id, targetEnemyId: target.id, spell: "Magic Missile", ...args }, [2, 2, 2, 2]);
+    const before = t.enemy(foe).currentHp;
+    const first = await cast(t, hero, foe);
+    assert.equal(first.ok, true, first.error);
+    assert.equal(before - t.enemy(foe).currentHp, 9, "three darts: the spell's lowest level");
+    assert.equal(free(t, hero).used, 1, "the free cast is spent");
+    t.freshTurn();
+    const again = await cast(t, hero, foe);
+    assert.equal(again.ok, false, "a second casting with the free cast spent and no slot");
+    await t.kit.endFight();
+    await t.rest("short");
+    assert.equal(free(t, hero).used, 1, "a short rest gave the free cast back");
+    await t.rest("long");
+    assert.equal(free(t, hero).used, 0, "the long rest gives it back");
+    // With slots of their own: named at 2nd level a slot pays, and the free cast stays.
+    const t2 = await rig.table();
+    const caster = initiate(t2, { spellcasting: { ability: "int", slots: { 1: { max: 2, used: 0 }, 2: { max: 2, used: 0 } }, known: ["Magic Missile"], prepared: ["Magic Missile"], cantrips: ["Fire Bolt", "Light"] } });
+    const [other] = await t2.fight([caster]);
+    const up = await cast(t2, caster, other, { level: 2 });
+    assert.equal(up.ok, true, up.error);
+    assert.deepEqual([free(t2, caster).used, t2.sheet(caster).spellcasting.slots[2].used], [0, 1], "cast at 2nd level: [free cast used, 2nd-level slots used]");
+  };
+
+  // Eldritch Adept: one invocation whose prerequisites the character meets,
+  // taken on the sheet's owed pick (POST /sheet/owed), and no second.
+  P["feat.eldritch-adept.invocation"] = async () => {
+    const tried = {};
+    for (const [label, feats] of [["plain", []], ["holder", ["Eldritch Adept"]]]) {
+      const t = await rig.table();
+      const hero = t.hero({ class: "wizard", level: 4, feats, spells: ["Magic Missile"], cantrips: ["Fire Bolt"] });
+      const route = await t.world.route("campaigns/[campaignId]/sheet/owed");
+      const pick = async (name) => {
+        t.world.signIn({ id: t.sheet(hero).userId });
+        const res = await route.POST(
+          new Request("http://odm.test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ characterId: hero.id, features: [name] }) }),
+          { params: Promise.resolve({ campaignId: t.world.campaignId }) },
+        );
+        return res.status;
+      };
+      // Thirsting Blade asks for warlock level 5 and Pact of the Blade; Agonizing
+      // Blast for the Eldritch Blast cantrip: neither is met.
+      tried[label] = { blade: await pick("Invocation: Thirsting Blade"), blast: await pick("Invocation: Agonizing Blast"), sight: await pick("Invocation: Devil's Sight"), second: await pick("Invocation: Armor of Shadows") };
+      tried[label].held = t.sheet(hero).features.filter((feature) => feature.name.startsWith("Invocation:")).map((feature) => feature.name);
+    }
+    assert.deepEqual(tried.plain, { blade: 400, blast: 400, sight: 400, second: 400, held: [] }, "a wizard without the feat owes no invocation");
+    assert.deepEqual(tried.holder, { blade: 400, blast: 400, sight: 200, second: 400, held: ["Invocation: Devil's Sight"] }, "Eldritch Adept: one invocation, its prerequisites met");
+  };
 }

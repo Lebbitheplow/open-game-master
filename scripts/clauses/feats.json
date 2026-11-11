@@ -500,9 +500,9 @@
    },
    {
     "c": "Choose one 1st-level spell from the same list: you learn it and can cast it once without expending a spell slot, at its lowest level, and again after a long rest.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the free cast of the 1st-level spell and its long rest"
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts freeCastFeatures (the Free cast feature and its free_cast counter, 1 a long rest), spent by src/lib/dm/cast-guard.ts through caster-features.ts freeCastCounter: no slot at the spell's own level, a slot when a higher level is named",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.magic-initiate.free-cast"
    },
    {
     "c": "Your spellcasting ability for these spells depends on the class you chose:",
@@ -1065,9 +1065,9 @@
    },
    {
     "c": "You learn one Eldritch Invocation of your choice whose prerequisites you meet.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featOptionSlots (one invocation slot), read by src/lib/srd/options.ts; the owed pick route holds it to one invocation and to optionReqProblem's prerequisites",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.eldritch-adept.invocation"
    },
    {
     "c": "You can replace it when you gain a level.",
