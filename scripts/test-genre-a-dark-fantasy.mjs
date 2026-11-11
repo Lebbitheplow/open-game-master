@@ -327,5 +327,22 @@ await test("Final Verdict: for a minute the weapon's dice are dealt at their max
   assert.equal(before - t.foeHp(scene.far.id), 1 + 4);
 });
 
+await test("Flashfire Litany: answers a hit by an undead with 3d8 radiant (half on a save), and refuses a goblin's", async () => {
+  const scene = await t.stage({ classId: "witch_hunter", level: 7 });
+  await t.clubs(scene, scene.holder, 16, 4);
+  const goblin = await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "Flashfire Litany" });
+  assert.equal(goblin.ok, false, "a goblin is no fiend or undead");
+  assert.equal(sheet(scene.holder.id).resources.dark_fantasy_flashfire_litany.used, 0);
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, type: "undead" } });
+  await t.clubs(scene, scene.holder, 16, 4);
+  const before = t.foeHp(scene.near.id);
+  t.world.dice(4, 4, 4, 1);
+  must(await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "Flashfire Litany" }), "Flashfire Litany");
+  t.world.clearDice();
+  assert.equal(before - t.foeHp(scene.near.id), 12);
+  const bare = await spend(scene, "dark_fantasy_flashfire_litany");
+  assert.equal(bare.ok, false, "use_resource has no hit to answer");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

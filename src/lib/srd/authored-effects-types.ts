@@ -605,6 +605,9 @@ export type ReactionDoes =
       melee?: boolean;
       rangeFt?: number;
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
+      // Only a hit by a creature of these types (Flashfire Litany: "when a
+      // fiend or undead hits you").
+      vsTypes?: string[];
     }
   // The damage a hit dealt another creature, back at whoever dealt it, on a
   // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.

@@ -511,20 +511,23 @@
    },
    {
     "c": "when a fiend or undead hits you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): the open hit, by a fiend or undead",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-flashfire-litany"
    },
    {
     "c": "it takes 3d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#HANDS_BACK",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): 3d8 radiant",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-flashfire-litany"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#HANDS_BACK",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): a CON save against the spell save DC halves it",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-flashfire-litany"
    }
   ]

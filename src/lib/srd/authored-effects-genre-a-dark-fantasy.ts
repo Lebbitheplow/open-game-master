@@ -83,6 +83,11 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("witch_hunter", "Final Verdict", "dark_fantasy_final_verdict", {
     spends: [{ name: "Final Verdict", pool: { id: "dark_fantasy_final_verdict" }, action: "none", does: { kind: "buff", condition: "final verdict", rounds: 10 } }],
   }),
+  // "1/rest, when a fiend or undead hits you, it takes 3d8 radiant (CON save
+  // halves)": a reaction to that hit; the counter is passive to use_resource.
+  counted("witch_hunter", "Flashfire Litany", "dark_fantasy_flashfire_litany", {
+    reactions: [{ name: "Flashfire Litany", pool: { id: "dark_fantasy_flashfire_litany" }, does: { kind: "strike_back", amount: "3d8", type: "radiant", vsTypes: ["fiend", "undead"], save: { ability: "con", dcAbility: "spell", half: true } } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {
