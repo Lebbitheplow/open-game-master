@@ -246,6 +246,9 @@ export function opportunityReactionKey(sheet: AuthoredSheet, sheetId: string, mo
   return activeAuthored(sheet, "oa_each_turn").length ? `${VIGILANT_PREFIX}${sheetId}:${moverId}` : sheetId;
 }
 export const VIGILANT_PREFIX = "vigilant:";
+// A pet's own reaction ("pet-reaction:<owner id>:<pet>", summon-reactions.ts),
+// given back as its owner's turn starts.
+export const PET_REACTION_PREFIX = "pet-reaction:";
 
 // The squares standing up from prone costs: half the speed, or the feature's
 // own price (Tipsy Sway: 5 feet).

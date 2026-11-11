@@ -1315,12 +1315,9 @@
   "clauses": [
    {
     "c": "After a spell of 1st level or higher targets an ally",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:cleric::Voice of Authority::Voice of Authority#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-reaction-cleric-voice-of-authority-voice-of-authority]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-reaction-cleric-voice-of-authority-voice-of-authority)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:cleric::Voice of Authority::Voice of Authority#TRIGGER_UNCHECKED; scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Voice of Authority#attack",
+    "by": "src/lib/dm/last-save.ts recordCast (cast-buff.ts and heal write one cast record per target) and src/lib/srd/trigger-table.ts \"voice of authority\" (cast atHolder, byFeatureHolder, minLevel 1): the ally's reaction answers the cleric's spell on record, and is refused with nothing spent when there is none (the spends sweep walks the row clean)"
    },
    {
     "c": "that ally may use a reaction",
@@ -5067,11 +5064,9 @@
    },
    {
     "c": "an Infused Strikes reaction (when another creature within 30 feet of it that it can see hits with a weapon attack, that attack deals an extra 1d6 damage of its essence type)",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Drake Companion#infused-strikes",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "no reaction row for the drake's Infused Strikes"
+    "by": "src/lib/dm/summon-reactions.ts petReaction: use_reaction \"Infused Strikes\" through the ranger answers the running turn's weapon hit by another creature within 30 feet of the drake (measured from its owner's place, D2), adds 1d6 of the drake's essence to the creature hit and spends the drake's own reaction (pet-reaction key), never the ranger's"
    },
    {
     "c": "It acts on your initiative and takes the Dodge action",
@@ -5670,11 +5665,9 @@
    },
    {
     "c": "attacks with Force-Empowered Rend (a melee attack using your spell attack modifier for 1d8 + your proficiency bonus force damage), and its Deflect Attack reaction gives disadvantage to one attack against a creature other than itself within 5 feet of it",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Steel Defender#rend-deflect",
-    "severity": "medium",
-    "where": "src/lib/dm/summon-defender.ts: Force-Empowered Rend holds (spell attack, 1d8 + proficiency force), but Deflect Attack is trait text with no reaction row, so use_reaction does not know it",
-    "kind": "rule-missing"
+    "by": "src/lib/dm/summon-defender.ts (Force-Empowered Rend at the spell attack, 1d8 + proficiency force) and src/lib/dm/summon-reactions.ts summonReaction: the defender's use_reaction \"Deflect Attack\" rolls an open hit on a creature within 5 feet of it again at disadvantage (authored-reactions.ts rollHitAgainAtDisadvantage) and spends the defender's reaction"
    }
   ]
  },
@@ -5741,11 +5734,9 @@
    },
    {
     "c": "and its deflecting reaction also deals force damage to the attacker",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-extra.mjs :: ro::artificer::Improved Defender#deflect-force",
-    "severity": "medium",
-    "where": "src/lib/dm/summon-defender.ts: Deflect Attack (and its 1d4 + Intelligence force at 15th level) is trait text with no reaction row; use_reaction does not know it",
-    "kind": "rule-missing"
+    "by": "src/lib/dm/summon-reactions.ts summonReaction: with Improved Defender held by its artificer (defenderUpgrade), Deflect Attack also deals 1d4 + the artificer's Intelligence modifier force to the attacker"
    }
   ]
  }

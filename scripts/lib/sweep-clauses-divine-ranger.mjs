@@ -440,7 +440,15 @@ export const RANGER = {
     const bite = await scene.attack([18, 4, 4]);
     const rolls = rig.lastRolls(6).filter((entry) => entry.kind === "attack" || entry.kind === "damage").map((entry) => entry.expression);
     const cost = rig.budget();
-    const infused = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id });
+    // "When another creature within 30 feet of it that it can see hits with a
+    // weapon attack": the drake's own bite is no trigger, the ranger's
+    // longsword is, and the reaction spent is the drake's.
+    const ownBite = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id });
+    await rig.kit.swing(scene.who.id, scene.foe.id, [18, 4]);
+    const beforeInfusion = rig.enemy(scene.foe.id).currentHp;
+    const infused = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id }, [4]);
+    const infusion = { took: beforeInfusion - rig.enemy(scene.foe.id).currentHp, rangersReaction: rig.reacted(scene.who) };
+    const twice = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id }, [4]);
     await rig.kit.endFight();
     const slotsUsed = () => Object.values(rig.world.sheet(scene.who.id).spellcasting?.slots ?? {}).reduce((sum, slot) => sum + slot.used, 0);
     const slotsBefore = slotsUsed();
@@ -461,7 +469,12 @@ export const RANGER = {
       },
       "bonus-command": () => assert.ok(cost?.bonusUsed === true && cost?.actionUsed !== true, `commanding the drake cost ${brief(cost, 120)}`),
       "once-a-long-rest": () => assert.ok(counter?.used === 1 && (!second.ok || afterSecond?.used > 1 || slotPaid === 1), `summoning the drake left the feature's counter at ${brief(counter)}, and a second summoning the same day was ${second.ok ? "taken" : "refused"} (${brief(afterSecond)}): nothing holds it to once a long rest or a spell slot`),
-      "infused-strikes": () => assert.equal(infused.ok, true, `use_reaction "Infused Strikes": ${infused.error.slice(0, 200)}`),
+      "infused-strikes": () => {
+        assert.equal(ownBite.ok, false, "the drake infused its own bite");
+        assert.equal(infused.ok, true, `use_reaction "Infused Strikes": ${infused.error.slice(0, 200)}`);
+        assert.deepEqual(infusion, { took: 4, rangersReaction: false }, "1d6 (a 4) of the drake's essence on the creature the ranger hit, with the drake's reaction and not the ranger's");
+        assert.equal(twice.ok, false, "the drake took a second reaction in the round");
+      },
     };
   },
 

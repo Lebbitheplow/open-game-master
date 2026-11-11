@@ -84,7 +84,7 @@ export function summonSteelDefender(
       summoned: made ? { characterId: made.id, name: made.name, hp: `${made.currentHp}/${made.maxHp}`, ac: made.ac } : null,
       creature: `${form.name}: ${form.hp} HP, AC ${form.ac}, speed 40 ft. Force-Empowered Rend +${form.attacks[0].toHit} (${form.attacks[0].damage} force).`,
       ...(replaced.length ? { replaced: "The old defender is gone; one at a time." } : {}),
-      note: "The steel defender is an ally on the board, acting right after its artificer; it attacks with pc_attack under its own characterId.",
+      note: "The steel defender is an ally on the board, acting right after its artificer; it attacks with pc_attack under its own characterId, and its Deflect Attack is use_reaction under its own characterId with the creature attacked as targetCharacterId.",
     },
   };
 }

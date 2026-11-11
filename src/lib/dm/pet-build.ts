@@ -279,7 +279,7 @@ export function buildPet(
       ac: 14,
       speed: 40,
       attacks: [{ name: "Bite", toHit: 2 + pb, damage: `1d6+${pb}`, type: "piercing", ...(grown ? { riders: [{ dice: extra, type: essence }] } : {}) }],
-      notes: `Draconic Essence: ${essence}, which it is immune to; commanded as a bonus action. ${grown ? `${drakeSize(ranger)}, with a flying speed of 40 ft.; it can carry ${sheet.name} as a mount.` : "It grows wings at 7th level."}`,
+      notes: `Draconic Essence: ${essence}, which it is immune to; commanded as a bonus action. ${grown ? `${drakeSize(ranger)}, with a flying speed of 40 ft.; it can carry ${sheet.name} as a mount.` : "It grows wings at 7th level."} Its reaction: use_reaction "Infused Strikes".`,
       immune: essence,
       // Bond of Fang and Scale: "grows to Medium, grows wings (a flying speed
       // equal to its walking speed)".

@@ -180,6 +180,56 @@ function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit
   return { record, index };
 }
 
+// One open hit on `covered` rolled again at disadvantage, and settled: a miss
+// gives the hit points back, a hit that stands is answered all the same. What
+// goes through here: every reaction that lays disadvantage on an attack roll
+// already made (the authored disadv_vs_hit rows; the steel defender's Deflect
+// Attack, summon-reactions.ts), so the kept die, a critical that no longer is
+// one and the refund are worked out in one place.
+export function rollHitAgainAtDisadvantage(
+  ctx: Ctx,
+  covered: CharacterSheet,
+  name: string,
+  label: string,
+  options: { notVsAdvantage?: boolean; unseen?: (record: LastHit) => ToolError | null } = {},
+): { applied: string; missed: boolean; record: LastHit } | ToolError {
+  const hit = lastHitOn(ctx, covered, label);
+  if ("error" in hit) return hit;
+  const swing = hit.record.swings[hit.index];
+  if (swing.natural === null) {
+    return { error: `${name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
+  }
+  const unseen = options.unseen?.(hit.record) ?? null;
+  if (unseen) return unseen;
+  // Shadowy Dodge: only against an attack roll made without advantage.
+  if (options.notVsAdvantage && swing.advantage === "advantage") {
+    return { error: `${name} answers an attack roll made without advantage, and this one had advantage. Nothing was spent.`, refused: "rules" };
+  }
+  const kept =
+    swing.advantage === "disadvantage"
+      ? swing.natural
+      : swing.advantage === "advantage"
+        ? (swing.faces[0] ?? swing.natural)
+        : Math.min(swing.natural, rollCard(ctx.campaign, ctx.turn, null, "attack", rollAgainst(`${swing.attack ?? hit.record.attack} again, at disadvantage (${name})`, ctx.sheet.name), "1d20", rerollAttacker(hit.record)).total);
+  const total = swing.total - swing.natural + kept;
+  const missed = kept !== 20 && (kept === 1 || total < swing.vsAc);
+  if (!missed) {
+    // Answered all the same: the reaction is spent on it. A critical the
+    // kept die no longer makes lands as an ordinary hit (plainOfReroll).
+    const plain = plainOfReroll(swing, kept);
+    const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? plain : entry)), label);
+    return {
+      missed: false,
+      record: hit.record,
+      applied: plain === swing
+        ? `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits.`
+        : `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`,
+    };
+  }
+  const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
+  return { missed: true, record: hit.record, applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
+}
+
 function modsOf(sheet: CharacterSheet) {
   return computeSheetDerived(sheet).abilityMods;
 }
@@ -564,42 +614,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         const hidden = unseenTarget(ctx, found, covered);
         if (hidden) return hidden;
       }
-      const hit = lastHitOn(ctx, covered, label);
-      if ("error" in hit) return hit;
-      const swing = hit.record.swings[hit.index];
-      if (swing.natural === null) {
-        return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
-      }
       // Warding Flare: "a creature ... that you can see" attacks (with
       // Improved Flare the ally it attacks is seen too, asked above).
-      const unseen = reaction.sees === "attacker" || reaction.sees === "both" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
-      if (unseen) return unseen;
-      // Shadowy Dodge: only against an attack roll made without advantage.
-      if (does.notVsAdvantage && swing.advantage === "advantage") {
-        return { error: `${reaction.name} answers an attack roll made without advantage, and this one had advantage. Nothing was spent.`, refused: "rules" };
-      }
-      const kept =
-        swing.advantage === "disadvantage"
-          ? swing.natural
-          : swing.advantage === "advantage"
-            ? (swing.faces[0] ?? swing.natural)
-            : Math.min(swing.natural, rollCard(ctx.campaign, ctx.turn, null, "attack", rollAgainst(`${swing.attack ?? hit.record.attack} again, at disadvantage (${reaction.name})`, ctx.sheet.name), "1d20", rerollAttacker(hit.record)).total);
-      const total = swing.total - swing.natural + kept;
-      const missed = kept !== 20 && (kept === 1 || total < swing.vsAc);
-      if (!missed) {
-        // Answered all the same: the reaction is spent on it. A critical the
-        // kept die no longer makes lands as an ordinary hit (plainOfReroll).
-        const plain = plainOfReroll(swing, kept);
-        const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? plain : entry)), label);
-        return {
-          applied: plain === swing
-            ? `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits.`
-            : `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`,
-        };
-      }
-      const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      const edge = does.advantageOnMiss ? markEntropicEdge(ctx, hit.record) : null;
-      return { ...(edge ? { next: edge } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
+      const again = rollHitAgainAtDisadvantage(ctx, covered, reaction.name, label, {
+        notVsAdvantage: does.notVsAdvantage,
+        unseen: (record) => (reaction.sees === "attacker" || reaction.sees === "both" ? unseenRefusal(encounter?.id, ctx.sheet, record.attacker, reaction.name) : null),
+      });
+      if ("error" in again) return again;
+      const edge = again.missed && does.advantageOnMiss ? markEntropicEdge(ctx, again.record) : null;
+      return { ...(edge ? { next: edge } : {}), applied: again.applied };
     }
     case "reroll_hit": {
       // Unnamed, a reaction that answers the roller answers the hit on its holder.

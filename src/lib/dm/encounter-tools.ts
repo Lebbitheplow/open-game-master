@@ -151,7 +151,7 @@ import { settleLegendaryFollowUp } from "@/lib/dm/legendary-purchase";
 import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
 import { heldMoveLine, holdMoveForWatch } from "@/lib/dm/turn-hold";
@@ -1863,7 +1863,7 @@ function advancePointer(
   // back with the defender's own turn too.
   const startsNow = starting.filter((id) => id !== heldTurn);
   encounter.reactionsUsed = encounter.reactionsUsed.filter(
-    (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`)),
+    (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`) || id.startsWith(`${PET_REACTION_PREFIX}${owner}:`)),
   );
   startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
   if (heldTurn) {

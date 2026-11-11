@@ -41,6 +41,7 @@ import { addSheetCondition, rollCard } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { devotedGuard } from "@/lib/dm/devoted-guard";
+import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -676,6 +677,12 @@ function useReaction(
   if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
+  // A pet's own reaction (the drake's Infused Strikes) is judged by the pet,
+  // and leaves its owner's reaction theirs (summon-reactions.ts).
+  const pets = petReaction({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
+  if (pets) {
+    return pets;
+  }
   // Arcane Deflection's answer to a failed save is judged before that failure (ar-ws-deflection.ts).
   const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, sheet, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
@@ -711,6 +718,11 @@ function useReaction(
     return guarded;
   }
 
+  // A summoned creature's own reaction (the steel defender's Deflect Attack).
+  const summoned = summonReaction(ctx);
+  if (summoned) {
+    return summoned;
+  }
   if (isNamed(feature, "opportunity attack", "attack of opportunity")) {
     return opportunity(ctx);
   }
