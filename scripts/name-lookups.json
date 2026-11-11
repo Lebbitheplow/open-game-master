@@ -2034,7 +2034,7 @@
     "lib/dm/speech-prose.ts#partial": [["pattern",8,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",9,"speaker names in prose"]],
     "lib/dm/speech.ts#first": [["search",2,"speaker names in prose"],["parse",3,"the first sentence of a text"],["parse",1,"a regex match's text"],["parse",1,"the first word of a sentence, read for a capital"]],
     "lib/dm/speech.ts#keyed": [["key",1,"whether the story writes a word in lower case: the set of common words, not a record found by name"]],
-    "lib/dm/speech.ts#partial": [["pattern",14,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",10,"speakers and quotes in prose"]],
+    "lib/dm/speech.ts#partial": [["pattern",16,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",10,"speakers and quotes in prose"]],
     "lib/dm/spell-attack-riders.ts#partial": [["key",2,"SRD spell names and creature types"]],
     "lib/dm/spell-attack-riders.ts#whole": [["identity",1,"condition instances by whole name or key"]],
     "lib/dm/spell-aura.ts#keyed": [["key",6,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
