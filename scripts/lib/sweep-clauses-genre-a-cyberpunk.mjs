@@ -298,3 +298,21 @@ CYBER.program_save = async function programSave(t, run, feature) {
   const second = await splash();
   eq(`${first}/${second}`, `${3 + run.n}/3`, "damage of the first Acid Splash of the turn (its 1d6 and the rider) and of the second (the 1d6 alone)");
 };
+
+// A check the text gives advantage when it is about one thing (the GM's call
+// names it in request_roll's `about`): two d20s for it, one for the same
+// check about nothing listed.
+CYBER.check_about = async function checkAbout(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { proficiencies: { ...TRAINED, skills: [run.skill] } });
+  const d20s = async (about) => {
+    t.world.clearDice();
+    t.world.diceLog();
+    t.world.dice(10, 17, 3);
+    must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", ...(about ? { about } : {}) }), `the ${run.skill} check about ${about ?? "nothing listed"}`);
+    t.world.clearDice();
+    return t.world.diceLog().filter((die) => die.sides === 20).length;
+  };
+  eq(await d20s(run.about), 2, `d20s thrown for a ${run.skill} check about ${run.about}`);
+  eq(await d20s(null), 1, `d20s thrown for a ${run.skill} check about nothing listed`);
+};

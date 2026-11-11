@@ -105,3 +105,12 @@ GENRE_A_CYBERPUNK.push(
     spends: [{ name: "Grease the Wheels", pool: { id: "cyberpunk_grease_the_wheels" }, action: "none", does: { kind: "cyber_spend", what: "grease" } }],
   }),
 );
+
+// The fixer's checks that ride what the check is about, named by the GM's
+// call in request_roll's `about` (src/lib/dm/roll-about.ts CHECK_ABOUT).
+GENRE_A_CYBERPUNK.push(
+  // "Advantage on Investigation checks to gather information."
+  row("fixer", "Ear to the Ground", [{ kind: "check_adv", skills: ["investigation"], about: "gathering_information" }]),
+  // "Advantage on CHA checks against anyone whose secret you know."
+  row("fixer", "Blackmail Files", [{ kind: "check_adv", abilities: ["cha"], about: "known_secret" }]),
+);

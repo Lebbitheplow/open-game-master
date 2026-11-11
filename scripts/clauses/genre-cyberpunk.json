@@ -1851,15 +1851,13 @@
    {
     "c": "Advantage on Investigation checks to gather information",
     "run": {
-     "k": "check",
+     "k": "check_about",
      "skill": "investigation",
-     "want": "adv"
+     "about": "gathering_information"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Ear to the Ground#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the investigation check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts check_adv (investigation, about gathering_information), read by src/lib/srd/authored-effects.ts authoredCheckTraits; the GM's call names the circumstance in request_roll's about (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Ear to the Ground#0"
    }
   ]
  },
@@ -1872,15 +1870,13 @@
    {
     "c": "Advantage on CHA checks against anyone whose secret you know",
     "run": {
-     "k": "check",
+     "k": "check_about",
      "skill": "persuasion",
-     "want": "adv"
+     "about": "known_secret"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Blackmail Files#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the persuasion check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts check_adv (CHA checks, about known_secret), read by src/lib/srd/authored-effects.ts authoredCheckTraits; whether the fixer knows the creature's secret is the GM's to say, in request_roll's about",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Blackmail Files#0"
    }
   ]
  },

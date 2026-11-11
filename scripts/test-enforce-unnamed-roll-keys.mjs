@@ -28,6 +28,7 @@ const { describeSheet } = await import("../src/lib/dm/prompt.ts");
 const { heldCheckTraits } = await import("../src/lib/srd/check-traits.ts");
 const { heldFeatChecks } = await import("../src/lib/srd/feat-combat.ts");
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
+const { GENRE_AUTHORED } = await import("../src/lib/srd/authored-effects-genre.ts");
 
 // The model's call, through the turn loop's dispatch.
 async function ai(name, args, actor) {
@@ -178,7 +179,9 @@ await test("Every circumstance a check can be about is read by a trait's key, so
     feats: ["Actor", "Stalker", "Forest Denizen", "Floriographer", "Surgical Combatant", "Monster Hunter", "Crafting Expert", "Ace Driver"],
   };
   const read = new Set([...heldCheckTraits(everything), ...heldFeatChecks(everything)].map((key) => key.about));
-  for (const row of authoredRows()) {
+  // The genre classes' rows are trait keys too (Ear to the Ground, Blackmail
+  // Files): authoredRows() holds the SRD subclasses' alone.
+  for (const row of [...authoredRows(), ...GENRE_AUTHORED]) {
     for (const effect of row.entry.effects ?? []) {
       if (effect.kind === "check_adv" && effect.about) read.add(effect.about);
     }

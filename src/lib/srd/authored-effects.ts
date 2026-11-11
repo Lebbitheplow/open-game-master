@@ -384,7 +384,7 @@ export function authoredSaveTraits(sheet: AuthoredSheet): Array<RollKey & { note
 // ability and what the check is about.
 export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { note: string }> {
   return activeAuthored(sheet, "check_adv").flatMap(({ effect, held }) => [
-    ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills }] : []),
+    ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills, ...(effect.about ? { about: effect.about } : {}) }] : []),
     ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}) }] : []),
   ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
 }

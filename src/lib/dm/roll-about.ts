@@ -37,6 +37,10 @@ export const CHECK_ABOUT = [
   "vehicles",
   // The bear's Aspect of the Beast: pushing, pulling, lifting or breaking.
   "push_pull_lift_break",
+  // Ear to the Ground (fixer): asking around, gathering information.
+  "gathering_information",
+  // Blackmail Files (fixer): against someone whose secret the roller knows.
+  "known_secret",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 
