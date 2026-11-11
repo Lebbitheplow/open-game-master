@@ -124,7 +124,8 @@ import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
-import { actorOfCall, withActor } from "@/lib/dm/acting-party";
+import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
+import { openEffect } from "@/lib/dm/last-hit";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -870,20 +871,23 @@ function dmMutation(
       }
       // The 200 is the rail on what a caller may SEND. The engine's own
       // dice (a fall, a creature out of air) go to applyPcDamage directly.
-      return {
-        result: applyPcDamage(campaign, turnId, sheet, {
-          amount: Math.min(amount, 200),
-          type: args.type,
-          crit: args.crit === true,
-          magical: args.magical === true,
-          // A named spell's damage: Spell Resistance and Aura of Warding resist it.
-          spell: Boolean(args.spell),
-          // A creature's blow is enemy_attack or cast_at_player; this tool's
-          // harm names no creature, which Emissary of Redemption does not resist.
-          noCreature: true,
-          reason,
-        }),
-      };
+      // Called on its own (a hazard, harm the GM names), the damage is kept
+      // for a reaction to damage taken to answer (last-hit.ts openEffect).
+      const effect = calledOnItsOwn() ? openEffect(campaign.id, sheet.id) : null;
+      const landed = applyPcDamage(campaign, turnId, sheet, {
+        amount: Math.min(amount, 200),
+        type: args.type,
+        crit: args.crit === true,
+        magical: args.magical === true,
+        // A named spell's damage: Spell Resistance and Aura of Warding resist it.
+        spell: Boolean(args.spell),
+        // A creature's blow is enemy_attack or cast_at_player; this tool's
+        // harm names no creature, which Emissary of Redemption does not resist.
+        noCreature: true,
+        reason,
+      });
+      effect?.close({ raw: Math.min(amount, 200), type: args.type ?? "", name: args.spell?.trim() || reason || "the harm" });
+      return { result: landed };
     }
     case "heal": {
       const unasked = characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "casterId");

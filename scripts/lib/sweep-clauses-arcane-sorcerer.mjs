@@ -608,6 +608,13 @@ export function probes(rig, shared) {
       kit.freshTurn();
       assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 2 })).ok, true);
       assert.deepEqual([ward(who), ward(friend()), points()], [[], ["bastion of law (2d8)"], 14], "one ward at a time");
+      // "Reducing damage": harm from no attack (a hazard, a spell's save) is
+      // damage the ward reduces too (src/lib/dm/last-hit.ts openEffect).
+      const beforeHarm = sheet(friend()).currentHp;
+      await call("apply_damage", { characterId: friend().id, amount: 5, type: "fire" });
+      const offHarm = await dice(friend(), { amount: 1 }, [3]);
+      assert.equal(offHarm.ok, true, offHarm.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [beforeHarm - 2, ["bastion of law (1d8)"]], "a die (a 3) off 5 fire damage from no attack");
       // "until your next long rest". The clock is put back after it, so the
       // probes that follow fight at the hour they would have.
       const clocks = await import("../../src/lib/db/clock.ts");

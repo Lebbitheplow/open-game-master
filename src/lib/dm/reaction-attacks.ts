@@ -54,7 +54,7 @@ export function giantKillerOpen(
 
 // The attack it allowed has been made: the record is answered.
 export function spendGiantKiller(campaignId: string, sheetId: string, enemyId?: string) {
-  const record = freshLastHit(campaignId, sheetId, (hit) => !enemyId || hit.attacker.id === enemyId);
+  const record = freshLastHit(campaignId, sheetId, (hit) => hit.source !== "effect" && (!enemyId || hit.attacker.id === enemyId));
   if (record && !record.answered.includes(GIANT_KILLER)) {
     writeLastHit(campaignId, { ...record, answered: [...record.answered, GIANT_KILLER] });
   }

@@ -166,12 +166,14 @@ function unseenTarget(ctx: Ctx, found: Found, seen: CharacterSheet): ToolError |
   return unseenRefusal(ctx.encounter?.id, found.holder, seen, found.reaction.name);
 }
 
-function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit: LastHit) => (swing: SwingRecord) => boolean, what?: string): { record: LastHit; index: number } | ToolError {
+// `anyDamage`: damage from no attack too (a spell's save, a hazard: last-hit.ts
+// openEffect), for a reaction to damage taken whatever dealt it.
+function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit: LastHit) => (swing: SwingRecord) => boolean, what?: string, anyDamage = false): { record: LastHit; index: number } | ToolError {
   // Of several open hits, the heaviest blow it can still answer.
   const record = freshLastHit(
     ctx.campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && !answeredBy(hit, label) && heaviest(hit.swings, which?.(hit)) >= 0,
+    (hit) => (hit.source === "attack" || (anyDamage && hit.source === "effect")) && !answeredBy(hit, label) && heaviest(hit.swings, which?.(hit)) >= 0,
     (hit) => hit.swings[heaviest(hit.swings, which?.(hit))]?.raw ?? -1,
   );
   const index = record ? heaviest(record.swings, which?.(record)) : -1;
@@ -494,7 +496,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           return { error: `${target.name} stands ${feet} feet from ${ctx.sheet.name}'s ${does.nearZone.spell}, beyond the ${does.nearZone.feet} feet ${reaction.name} reaches. Nothing was spent.`, refused: "rules" };
         }
       }
-      const hit = lastHitOn(ctx, target, label);
+      // Deflect Energy: "reduces acid, cold, fire, force, lightning or thunder
+      // damage you take", whatever dealt it. A row with its own types on its
+      // holder alone answers damage of those types from no attack as well.
+      const anyDamage = Boolean(does.types) && does.who === "self";
+      const typed = anyDamage ? lastHitOn(ctx, target, label, (entry) => (swing) => does.types!.includes(textKey(swing.type ?? entry.type)), undefined, true) : null;
+      const hit = typed && !("error" in typed) ? typed : lastHitOn(ctx, target, label, undefined, anyDamage ? `${does.types!.join(", ")} damage they took` : undefined);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
       if (does.types && !does.types.includes(textKey(swing.type ?? hit.record.type))) {
@@ -819,7 +826,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // The open hit by the creature named, when one is.
       const record = does.afterSave
         ? null
-        : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
+        : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => hit.source !== "effect" && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
       const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
@@ -965,7 +972,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { attack: result };
     }
     case "save_condition": {
-      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
+      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => hit.source !== "effect" && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
       const enemy = enemyTarget(ctx, attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} answers a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };

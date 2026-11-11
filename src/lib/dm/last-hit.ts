@@ -219,7 +219,11 @@ export type LastHit = {
   // missiles that hit without a roll (Magic Missile, which Shield answers:
   // SRD 5.1, "when you are hit by an attack or targeted by the magic missile
   // spell").
-  source: "attack" | "fall" | "missile";
+  // "effect": damage from no attack and no fall (a spell's save, a hazard,
+  // harm the GM applies by name), kept so a reaction to damage taken answers
+  // it (openEffect). Only a reader that asks for it by source, or for any
+  // damage, takes one: it is nobody's attack.
+  source: "attack" | "fall" | "missile" | "effect";
   swings: SwingRecord[];
   before: VitalsSnapshot;
   // Where the hit left them. `track` and `ward` are absent on records
@@ -449,7 +453,8 @@ function attackedSince(campaignId: string, record: LastHit): boolean {
     .all(campaignId, record.at) as Array<{ payload_json: string }>;
   return later.some((row) =>
     hitsIn(row.payload_json).some(
-      (other) => hitIdOf(other) !== id && other.at > record.at && (!record.dmTurn || other.dmTurn !== record.dmTurn),
+      // Damage from no attack (openEffect) is nobody's next attack: it closes nothing.
+      (other) => hitIdOf(other) !== id && other.source !== "effect" && other.at > record.at && (!record.dmTurn || other.dmTurn !== record.dmTurn),
     ),
   );
 }
@@ -580,12 +585,15 @@ function preferred(records: LastHit[], prefer: HitPreference): LastHit | null {
 export function freshLastHit(
   campaignId: string,
   characterId: string,
-  which: (record: LastHit) => boolean = () => true,
+  which?: (record: LastHit) => boolean,
   prefer: HitPreference = "latest",
 ): LastHit | null {
   const open = openHits(campaignId, characterId);
   const aimed = aimedAmong(open, aims.getStore() ?? "");
-  return preferred((aimed ?? open).filter(which), prefer);
+  // Asked for with no test of its own, "the last hit" is an attack or a fall,
+  // never an effect's damage (which a reader names by its source).
+  const fits = which ?? ((record: LastHit) => record.source !== "effect");
+  return preferred((aimed ?? open).filter(fits), prefer);
 }
 
 // The open hit an aim names on one character, or on anyone in the campaign,
@@ -903,6 +911,49 @@ export function recordFall(
     at: nowIso(),
     ...(openSeq !== undefined ? { seqs: { open: openSeq, close: latestSeq(campaignId) } } : {}),
   });
+}
+
+// Damage that came from no attack and no fall, kept the way a fall is so a
+// reaction to damage taken can answer it (Deflect Energy, Stone's Endurance,
+// Absorb Elements, Bastion of Law): one "swing" that always hits for the
+// damage as dealt, of its type, made by nobody. Opened before the damage
+// lands and closed after, by the door that deals it: apply_damage called on
+// its own (mutations.ts) and a spell's save damage (cast-at-player.ts). A
+// door inside an attack's own record must not open one: the attack keeps it.
+export function openEffect(campaignId: string, characterId: string) {
+  const sheet = getSheetById(characterId);
+  const before = sheet ? snapshotVitals(campaignId, sheet) : null;
+  const startedAt = nowIso();
+  const openSeq = latestSeq(campaignId);
+  return {
+    close(what: { raw: number; type: string; name: string }) {
+      const now = getSheetById(characterId);
+      if (!before || !now || what.raw <= 0) {
+        return;
+      }
+      const encounter = getActiveEncounter(campaignId);
+      writeLastHit(campaignId, {
+        id: newHitId(),
+        characterId,
+        encounterId: encounter?.id ?? null,
+        turn: encounter ? turnKey(encounter) : "",
+        ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+        ...rollingTurn(),
+        attacker: { kind: "hazard", id: null, name: what.name },
+        attack: "damage",
+        type: what.type,
+        ranged: false,
+        source: "effect",
+        swings: [{ total: 0, faces: [], natural: null, advantage: "none", vsAc: 0, hit: true, crit: false, raw: what.raw, type: what.type }],
+        before,
+        after: afterOf(now),
+        answered: [],
+        startedAt,
+        at: nowIso(),
+        seqs: { open: openSeq, close: latestSeq(campaignId) },
+      });
+    },
+  };
 }
 
 // Opened before a fall's damage lands and closed after, by the falling

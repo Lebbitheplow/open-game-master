@@ -145,7 +145,7 @@ export function spendWardDice(
   const record = freshLastHit(campaign.id, sheet.id, (hit) => !answeredBy(hit, label) && heaviest(hit) >= 0, (hit) => hit.swings[heaviest(hit)]?.raw ?? -1);
   const index = record ? heaviest(record) : -1;
   if (!record || index < 0) {
-    return { error: `${BASTION_OF_LAW}'s ward takes its dice off damage an attack or a fall has just dealt ${sheet.name}, and the server has none on record against them this turn. The ward keeps its ${ward.dice}${WARD_DIE}. Nothing was spent.`, refused: "rules" };
+    return { error: `${BASTION_OF_LAW}'s ward takes its dice off damage ${sheet.name} has just taken, and the server has none on record against them this turn. The ward keeps its ${ward.dice}${WARD_DIE}. Nothing was spent.`, refused: "rules" };
   }
   const blow = record.swings[index];
   const rolled = Math.max(0, rollCard(campaign, getDmTurn(turnId), sheet.id, "custom", `${sheet.name}: ${BASTION_OF_LAW} (${dice}${WARD_DIE})`, `${dice}${WARD_DIE}`, null).total);

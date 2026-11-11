@@ -561,6 +561,8 @@ function openHitsForState(campaignId: string, encounter: Encounter, sheets: Char
               hitId: hitIdOf(hit),
               what: hit.source === "fall"
                 ? `a fall, ${damage} damage`
+                : hit.source === "effect"
+                  ? `${damage} ${hit.type} damage from ${hit.attacker.name}`
                 : `${hit.attacker.name}'s ${hit.attack}${landed.length ? `, ${damage} ${hit.type}` : ", a miss"}`,
             };
           }),

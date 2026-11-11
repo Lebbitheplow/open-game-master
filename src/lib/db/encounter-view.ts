@@ -225,7 +225,7 @@ export type PublicLastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  source: "attack" | "fall" | "missile";
+  source: "attack" | "fall" | "missile" | "effect";
   // Whether any swing hit, and how many did.
   hit: boolean;
   hits: number;
@@ -328,7 +328,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     // the arrow it named.
     ranged: answered?.ranged ?? record.ranged,
     source: record.source,
-    hit: record.source === "fall" || record.swings.some((swing) => swing.hit),
+    hit: record.source === "fall" || record.source === "effect" || record.swings.some((swing) => swing.hit),
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     ...(critical ? { crit: { attack: critical.attack ?? record.attack, damage: critical.raw } } : {}),

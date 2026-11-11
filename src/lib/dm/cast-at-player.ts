@@ -23,6 +23,7 @@ import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
 import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
+import { openEffect } from "@/lib/dm/last-hit";
 import { rollCard } from "@/lib/dm/action-common";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -560,6 +561,9 @@ export function handleCastAtPlayer(
       const spared = saved ? 0 : Math.max(0, dealt - (trapWard ? Math.floor(onSuccess / 2) : onSuccess));
       if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell), spared);
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
+      // Kept for a reaction to damage taken (last-hit.ts openEffect): a save's
+      // damage is no attack's, so until now Deflect Energy had nothing to answer.
+      const effect = openEffect(campaign.id, sheet.id);
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
         : typedParts
@@ -585,6 +589,7 @@ export function handleCastAtPlayer(
             sheets,
             sheetsById,
           ).result;
+      effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
       Object.assign(base, { damage: dealt, ...applied });
     } else {
       base.damage = 0;

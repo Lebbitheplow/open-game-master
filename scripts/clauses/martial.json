@@ -2866,8 +2866,9 @@
    },
    {
     "c": "Deflect Energy (a reaction reduces acid, cold, fire, force, lightning or thunder damage you take by 1d10 + your Wisdom modifier)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy",
+    "by": "src/lib/dm/authored-reactions.ts case reduce (a self row with its own types answers damage of those types from no attack too) over src/lib/dm/last-hit.ts openEffect: apply_damage called on its own and a spell's save damage (cast-at-player.ts) keep a record a reaction to damage taken answers"
    },
    {
     "c": "Empowered Arms (once on each of your turns, when you hit with the arms, add one roll of your martial arts die to the damage)",
