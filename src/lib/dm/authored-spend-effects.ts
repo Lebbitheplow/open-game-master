@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -597,6 +598,16 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    // Alter Memories (src/lib/dm/ar-ws-alter-memories.ts): the charmed
+    // creature of a fight, else the numbers for the GM's roll.
+    case "strip_memory": {
+      const dc = saveDc(ctx, does.dcAbility);
+      if (!getActiveEncounter(campaign.id)) {
+        return memoryOffBoard(ctx, does, dc);
+      }
+      const enemy = targetEnemy(ctx);
+      return "error" in enemy ? enemy : stripMemory(ctx, does, enemy, dc);
+    }
   }
 }
 

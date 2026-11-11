@@ -210,15 +210,17 @@ export function authoredConcentrationGuard(
 
 // Whether this spell may strike a second creature within 5 feet of the first:
 // Improved Reaper (a 1st to 5th level necromancy spell), Reaper (a
-// necromancy cantrip), Moon Fire (sacred flame).
+// necromancy cantrip), Moon Fire (sacred flame). `anywhere`: the second creature
+// need not stand by the first (Split Enchantment, an enchantment spell of 1st
+// level or higher: "can target a second", with no distance between them).
 export function authoredTwinSpell(
   sheet: AuthoredSheet,
   spell: { name?: string | null; school?: string | null; level: number },
-): { feature: string } | null {
+): { feature: string; anywhere: boolean } | null {
   for (const { effect, held } of activeAuthored(sheet, "twin_spell")) {
     const named = !effect.spells || effect.spells.some((entry) => textKey(entry) === textKey(spell.name ?? ""));
     if (named && textKey(spell.school ?? "") === textKey(effect.school) && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
-      return { feature: held.feature };
+      return { feature: held.feature, anywhere: Boolean(effect.anywhere) };
     }
   }
   return null;

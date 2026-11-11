@@ -228,7 +228,9 @@ export type AuthoredEffect = Base &
     // A single-target spell of the school and level range strikes a second
     // creature within 5 feet of the first (Improved Reaper: 1st to 5th level
     // necromancy; Reaper: a necromancy cantrip; Moon Fire: sacred flame).
-    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[] }
+    // `anywhere`: the text sets no distance between the two, and the second
+    // creature need only be in the spell's own range (Split Enchantment).
+    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[]; anywhere?: boolean }
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }
@@ -486,7 +488,11 @@ export type SpendDoes =
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A creature the holder charmed saves or loses hours of memory, as many as
+  // the call's amount, at most the ability modifier plus one; the mark it
+  // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).
+  | { kind: "strip_memory"; save: Ability; dcAbility: Ability | "spell"; hoursAbility: Ability; condition: string };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

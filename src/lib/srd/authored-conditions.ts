@@ -400,4 +400,6 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("slayers_prey_marked", "slayer's prey (marked)", "The Monster Slayer's prey: the ranger adds 1d6 to saves against its effects (Supernatural Defense)."),
   summaryOnly("struck_as_it_fled", "struck as it fled", "Relentless Avenger: the paladin's opportunity attack hit; they may move up to half their speed with use_reaction, drawing no opportunity attacks."),
   summaryOnly("echo_manifested", "echo manifested", "Manifest Echo: the Echo Knight's echo is out (AC 14 + proficiency bonus, 1 hit point); Shadow Martyr can send it into an attack that hit another creature, and a hit that destroys it ends it."),
+  // Alter Memories: the hours are in the name ("memory stripped (5 hours)").
+  summaryOnly("memory_stripped", "memory stripped", "Alter Memories: the Enchantment wizard stripped this creature of the hours named of what it remembers of the time it was charmed; they cannot reach its memory again under this charm."),
 ];

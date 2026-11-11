@@ -19,4 +19,23 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "School of Abjuration",
     effects: [{ kind: "spell_check_prof", school: "abjuration" }],
   },
+  // "An enchantment spell of 1st level or higher that targets one creature
+  // can target a second": the text sets no distance between the two, so each
+  // need only be in the spell's own range (src/lib/dm/authored-reaper.ts). The
+  // earlier row held the second creature to Reaper's 5 feet of the first.
+  "wizard::Split Enchantment": {
+    subclass: "School of Enchantment",
+    effects: [{ kind: "twin_spell", school: "enchantment", minLevel: 1, maxLevel: 9, anywhere: true }],
+  },
+  // "you can strip up to your Charisma modifier plus one hour of memory on a
+  // failed save": an action, the charmed creature's Intelligence save against
+  // the wizard's spell save DC (src/lib/dm/ar-ws-alter-memories.ts). That the
+  // creature forgets it was charmed is the GM's to play. No card in the Hand
+  // (gm): the Hand knows no creature's conditions, so its card would stand
+  // open on creatures the wizard has not charmed and be refused; the player
+  // says it and the GM calls it on the charmed creature.
+  "wizard::Alter Memories": {
+    subclass: "School of Enchantment",
+    spends: [{ name: "Alter Memories", action: "action", gm: true, does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
+  },
 };

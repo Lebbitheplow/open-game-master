@@ -8,7 +8,7 @@ const DATA = "src/lib/srd/authored-effects-data*.ts";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, mage, drain, freeReactions, uses, rests, movesSomething, hasDoor } = shared;
+  const { friend, mage, drain, freeReactions, uses, rests } = shared;
   const DC = spellDc("wizard", 20);
   const conds = (enemy) => foe(enemy).conditions;
   const slotsUsed = (who) => Object.values(sheet(who).spellcasting.slots).map((slot) => slot.used).join("");
@@ -373,12 +373,34 @@ export function probes(rig, shared) {
       world.patch(enc().id, { conditions: [] });
       assert.equal(out.ok, false, `a blinded wizard sways an attacker they cannot see: ${show(out).slice(0, 140)}`);
     },
+    // The reaction answers the attack roll, whichever way it went: the server
+    // resolves an attack in one step, so a miss on record is taken as a hit is
+    // (src/lib/dm/ar-ws-charm-miss.ts).
     "charm-before-hit": async () => {
+      const ac = sheet(friend()).ac;
       const [enemy] = await stage(enc(), { others: [friend()], first: friend() });
-      // The attack misses (a 2 on the die): the wizard chose before knowing.
+      // The attack misses (a 2 on the die is 6 against AC 12): the wizard chose before knowing.
       await rig.table.strike(enemy, enc(), [2]);
-      const out = await react(enc(), "Instinctive Charm", {}, [1]);
+      world.patch(friend().id, { ac: 5 });
+      const before = [hp(enc()), hp(friend())];
+      // The attacker fails its save on a 1; its 6 hits AC 5, and its 1d6+2 is rolled now.
+      const out = await react(enc(), "Instinctive Charm", {}, [1, 4]);
+      world.patch(friend().id, { ac });
       assert.equal(out.ok, true, `against an attack roll that has not hit: ${String(out.error).slice(0, 160)}`);
+      assert.deepEqual([hp(enc()), hp(friend())], [before[0], before[1] - 6], `[the wizard, the creature closest to the attacker] after the missed roll turned onto AC 5: ${show(out).slice(0, 200)}`);
+      assert.equal(rig.reacted(enc()), true, "the reaction is spent on a miss as on a hit");
+      // Turned onto a creature the roll misses too, nothing lands.
+      const [other] = await stage(enc(), { others: [friend()], first: friend() });
+      await rig.table.strike(other, enc(), [2]);
+      const held = hp(friend());
+      const turned = await react(enc(), "Instinctive Charm", {}, [1, 4]);
+      assert.equal(turned.ok, true, turned.error);
+      assert.equal(hp(friend()), held, "a 6 against the friend's AC 12");
+      assert.match(turned.result.applied, /misses them too \(6 against AC 12\)/);
+      // With no attack roll on record at all, there is nothing to answer.
+      await stage(enc(), { others: [friend()], first: friend() });
+      const none = await react(enc(), "Instinctive Charm", {}, [1]);
+      assert.equal(none.ok, false, "with no attack made on the wizard");
     },
     "split-level": async () => {
       const [one, two] = await stage(enc(), { count: 2 });
@@ -397,8 +419,52 @@ export function probes(rig, shared) {
       kit.place(two.id, 14, 5);
       const out = await call("cast_at_enemy", { characterId: enc().id, targetEnemyId: one.id, secondTargetEnemyId: two.id, spell: "Hold Person" }, [1, 1]);
       assert.equal(out.ok, true, `a second creature 40 feet from the first, well inside Hold Person's 60: ${String(out.error).slice(0, 170)}`);
+      assert.deepEqual([conds(one).includes("paralyzed"), conds(two).includes("paralyzed")], [true, true], "both are held");
+      // Each is a target of the spell: a second creature past Hold Person's
+      // own 60 feet is refused before the slot is spent on the first.
+      const [near, far] = await stage(enc(), { count: 2 });
+      kit.place(far.id, 18, 5);
+      const beyond = await call("cast_at_enemy", { characterId: enc().id, targetEnemyId: near.id, secondTargetEnemyId: far.id, spell: "Hold Person" }, [1, 1]);
+      assert.equal(beyond.ok, false, "a second creature 65 feet from the wizard");
+      assert.deepEqual([sheet(enc()).spellcasting.slots[2].used, conds(near).includes("paralyzed")], [0, false], "[2nd-level slots spent, the first creature held] after the refusal");
     },
-    "alter-memories-door": hasDoor(["wizard", "School of Enchantment"], "Alter Memories", (foes) => ({ targetEnemyId: foes[0].id })),
+    // The charmed creature's Intelligence save against the spell save DC, and
+    // the hours: the Charisma modifier plus one, or fewer when asked.
+    "alter-memories-door": async () => {
+      const stripped = (enemy) => conds(enemy).filter((name) => name.startsWith("memory stripped"));
+      const [enemy] = await gazed();
+      kit.freshTurn();
+      // The dummy's Intelligence save is +0: one under the DC fails.
+      const out = await spend(enc(), "Alter Memories", { targetEnemyId: enemy.id }, [DC - 1]);
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual([out.result.dc, out.result.saved, out.result.hours], [DC, false, MOD.cha + 1], "[the DC, saved, hours lost] on a save one under the DC");
+      assert.equal(out.rolled.filter((die) => die.sides === 20).length, 1, "one save rolled");
+      assert.deepEqual(stripped(enemy), [`memory stripped (${MOD.cha + 1} hours)`]);
+      assert.equal(budget().actionUsed, true, "an action");
+      kit.freshTurn();
+      assert.equal((await spend(enc(), "Alter Memories", { targetEnemyId: enemy.id }, [1])).ok, false, "a second reach into the same creature's memory under one charm");
+      // A save that meets the DC keeps the memory.
+      const [other] = await gazed();
+      kit.freshTurn();
+      const kept = await spend(enc(), "Alter Memories", { targetEnemyId: other.id, amount: 2 }, [DC]);
+      assert.equal(kept.ok, true, kept.error);
+      assert.deepEqual([kept.result.saved, stripped(other)], [true, []], "[saved, the mark] on a save that meets the DC");
+      // Fewer hours asked, and never more than the Charisma modifier plus one.
+      const [third] = await gazed();
+      kit.freshTurn();
+      const many = await spend(enc(), "Alter Memories", { targetEnemyId: third.id, amount: MOD.cha + 2 }, [1]);
+      assert.equal(many.ok, false, `${MOD.cha + 2} hours asked of a wizard whose Charisma modifier is +${MOD.cha}`);
+      assert.equal(budget()?.actionUsed ?? false, false, "the refusal spent the action");
+      const few = await spend(enc(), "Alter Memories", { targetEnemyId: third.id, amount: 2 }, [1]);
+      assert.equal(few.ok, true, few.error);
+      assert.deepEqual(stripped(third), ["memory stripped (2 hours)"]);
+      // A creature that is not charmed is refused with nothing spent.
+      const [plain] = await stage(enc());
+      const none = await spend(enc(), "Alter Memories", { targetEnemyId: plain.id }, [1]);
+      assert.equal(none.ok, false, "a creature that is not charmed");
+      assert.match(none.error, /not charmed/);
+      assert.equal(budget()?.actionUsed ?? false, false, "nothing spent");
+    },
     // ---- Illusion
     "illusion-cantrip": async () => {
       assert.ok(rig.features.subclassSpellsFor("wizard", "School of Illusion", 2).includes("Minor Illusion"));
@@ -558,9 +624,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "charm-before-hit": { severity: "low", kind: "timing-window", where: "src/lib/dm/reaction-tools.ts (a reaction answers a hit on record; an attack roll that missed leaves none)", note: "The engine's shape favours the wizard: they decide knowing the attack hit, and never spend the reaction on a miss.", fix: "A ruling: write that Instinctive Charm answers a hit, or offer it at the roll." },
-    "split-distance": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-reaper.ts authoredTwinSpell (the 5 feet between the two targets is Reaper's and Moon Fire's rule, applied to every twin_spell row)", note: "Split Enchantment's text sets no distance between the two creatures; each must only be in the spell's own range.", fix: "Let a twin_spell row say whether the second target must stand within 5 feet of the first; Split Enchantment's does not." },
-    "alter-memories-door": { severity: "low", kind: "rule-missing", where: `${DATA} wizard::Alter Memories (narrated: "the GM rolls its save and narrates what it loses")`, note: "The save is an Intelligence save against the wizard's DC, and nothing rolls it or holds the hours.", fix: "A spend that rolls the creature's save, or a ruling that the save is the GM's." },
     "harvest-upcast": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-hooks.ts authoredOnKill (reads the spell's own level, not the slot it was cast with)", note: "A spell cast with a higher slot is of that level (SRD 5.1, Casting a Spell at a Higher Level).", fix: "Pass the slot level to the harvest." },
     "harvest-paths": { severity: "medium", kind: "path-parity", where: "src/lib/dm/aoe-damage.ts and src/lib/dm/pc-attack*.ts (a spell's kill there never reaches authoredOnKill; only cast_at_enemy does)", note: "Fireball, the necromancer's commonest kill, and every attack-roll spell restore nothing.", fix: "Call the kill hook with the spell from aoe_damage and from pc_attack's spell attacks." },
     "thralls-extra": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (Animate Dead raises one creature whoever casts it)", note: `The row is narrated ("the GM writes those onto their stat blocks"), yet the server makes the skeleton itself.`, fix: "Raise one more for a holder of Undead Thralls." },

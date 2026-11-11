@@ -15,14 +15,14 @@
 // Pure.
 
 import { instancesOf, removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // The conditions and their meta with every endsUnsensed instance taken off,
 // when the creature holding them is blinded and deafened; null when nothing
 // ends.
 export function endUnsensed(conditions: string[], meta: ConditionMetaMap | undefined): { conditions: string[]; meta: ConditionMetaMap } | null {
-  const held = conditions.map((entry) => textKey(entry));
-  if (!meta || !held.includes("blinded") || !held.includes("deafened")) {
+  const holds = (name: string) => conditions.some((entry) => isConditionNamed(entry, name));
+  if (!meta || !holds("blinded") || !holds("deafened")) {
     return null;
   }
   let next = { conditions, meta };

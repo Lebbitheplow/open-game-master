@@ -447,8 +447,9 @@
    },
    {
     "c": "deciding before you know whether the attack hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-before-hit"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-before-hit",
+    "by": "ruling (round 5): the server resolves an attack in one step and cannot hold the roll back, so the reaction answers the attack roll on record whichever way it went; a missed attack is taken as a hit is, the attacker saves, and on a failure the same roll meets the Armor Class of the creature closest to it, the attacker's damage rolled then (src/lib/dm/ar-ws-charm-miss.ts, from authored-reactions.ts redirect). The table still sees the roll before the wizard speaks"
    },
    {
     "c": "If it succeeds, you can't use this on it again until you finish a long rest",
@@ -484,8 +485,9 @@
    },
    {
     "c": "can target a second",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: split-distance"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: split-distance",
+    "by": "authored effect twin_spell enchantment 1 to 9, anywhere (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/authored-reaper.ts handleReaperCast asks the 5 feet between the two only of a row that does not say anywhere, and holds the second creature to the spell's own range before the slot is spent (cast-reach.ts spellReachProblem)"
    }
   ]
  },
@@ -502,8 +504,9 @@
    },
    {
     "c": "and you can strip up to your Charisma modifier plus one hour of memory on a failed save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: alter-memories-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: alter-memories-door",
+    "by": "authored spend Alter Memories, strip_memory (src/lib/srd/authored-effects-w2-ar-ws.ts): an action, the charmed creature's Intelligence save against the spell save DC, and on a failure the mark memory stripped (N hours), N the amount asked, at most the Charisma modifier plus one (src/lib/dm/ar-ws-alter-memories.ts); out of a fight it answers with the DC and the hours for the GM's roll"
    }
   ]
  },

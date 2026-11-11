@@ -11,6 +11,7 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -894,7 +895,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.` };
     }
     case "redirect": {
-      const hit = lastHitOn(ctx, ctx.sheet, label);
+      const landed = lastHitOn(ctx, ctx.sheet, label);
+      // Instinctive Charm answers the attack roll, hit or miss
+      // (ar-ws-charm-miss.ts): with no hit open, an attack that missed.
+      const hit = "error" in landed && does.save ? (missedAttackOn(ctx.campaign.id, ctx.sheet.id, label) ?? landed) : landed;
       if ("error" in hit) return hit;
       if (!encounter) {
         return { error: `${reaction.name} turns an attack in a fight; there is no active encounter. Nothing was spent.`, refused: "rules" };
@@ -937,6 +941,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         const closest = takerOf(ctx, encounter, hit.record, reaction.name, true);
         if ("error" in closest) return closest;
         charmed = closest;
+        const dry = hit.record.swings[hit.index].hit ? null : turnedMissRefusal(ctx.campaign.id, hit.record, hit.index, closest, reaction.name);
+        if (dry) return dry;
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, attacker, does.save.ability, dc, {
           magical: true,
@@ -958,6 +964,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const target = taker ?? charmed;
       if (!target) return { error: `${reaction.name} found no creature to turn the attack onto. Nothing was spent.`, refused: "rules" };
       const swing = hit.record.swings[hit.index];
+      if (!swing.hit) return landTurnedMiss(ctx, encounter, hit, target, reaction.name, label);
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       // The attack now targets that creature: its roll meets their AC.
       const meets = blowLandsOn(ctx.campaign.id, target, swing);
