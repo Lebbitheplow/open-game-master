@@ -46,7 +46,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      hand-written rows (the Hand's rules helpers), and Armor of Agathys,
 //      Crown of Stars, Elemental Weapon, Flame Arrows, Gift of Alacrity, Holy
 //      Weapon and Intellect Fortress last the duration their line says.
-export const READER_REVISION = 9;
+//  10: the species traits read by the race reader changed with the gap sweep's
+//      second wave (a firbolg's and a genasi's magic are innate spells, and
+//      the lineage traits carry the numbers their lines state).
+export const READER_REVISION = 10;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 
