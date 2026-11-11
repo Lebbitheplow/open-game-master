@@ -24,6 +24,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -246,7 +247,9 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
   }
   // A Swords bard's wielded weapon, a Spirits bard's candle or deck
   // (ar-wbf-bard-casting-logic.ts).
-  if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch")) || subclassFocus(sheet)) {
+  // A Genie warlock's vessel is their focus ("and your spellcasting focus",
+  // genie-vessel.ts).
+  if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch")) || subclassFocus(sheet) || holdsFeature(sheet, "Genie's Vessel")) {
     return null;
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());

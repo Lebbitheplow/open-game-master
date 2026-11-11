@@ -1,3 +1,4 @@
+import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
@@ -184,6 +185,7 @@ export function handleTakeRest(
   rawArguments: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  vessel: VesselRest | null = null,
 ): ToolResult {
   if (getActiveEncounter(campaign.id)) {
     return { error: "The party cannot rest during combat. End the encounter first.", refused: "rules" };
@@ -200,6 +202,19 @@ export function handleTakeRest(
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;
+  // A short rest while a Genie's Sanctuary Vessel holds someone is the
+  // vessel's: ten minutes, for those inside (genie-vessel.ts).
+  if (args.kind === "short" && !vessel) {
+    const inVessel = sanctuaryShortRest(sheets);
+    if (inVessel) {
+      const inside = new Set(inVessel.inside);
+      const out = handleTakeRest(campaign, turnId, rawArguments, sheets.filter((sheet) => inside.has(sheet.id)), new Map([...sheetsById].filter(([id]) => inside.has(id))), inVessel);
+      return "error" in out ? out : {
+        ...out,
+        sanctuaryVessel: `Inside the genie's vessel ten minutes give the benefit of a short rest, and each Hit Die spent there restores the warlock's proficiency bonus more.${inVessel.outside.length ? ` ${inVessel.outside.join(", ")} stayed outside: they only waited, and rest once the vessel is left.` : ""}`,
+      };
+    }
+  }
 
   // Who gains from a long rest is decided from how they START it: alive, at
   // least 1 hit point, and no long rest ended in the 24 hours before this
@@ -248,7 +263,7 @@ export function handleTakeRest(
   // realism, five minutes and an hour under the heroic option. Those two
   // settings existed only as a line in the prompt until there was a clock to
   // count against (src/lib/dm/calendar.ts).
-  const restedMinutes = restMinutes(args.kind, variant);
+  const restedMinutes = vessel ? Math.min(vessel.minutes, restMinutes(args.kind, variant)) : restMinutes(args.kind, variant);
   // A party at rest is no longer on the march.
   setTravelPace(campaign.id, null);
   // A long rest charges the resters' lifestyle for its dawns (below), so
@@ -453,7 +468,7 @@ export function handleTakeRest(
 
   tableNote(
     campaign,
-    `The party takes a short rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.`,
+    `${vessel ? "Inside the genie's vessel, the party takes" : "The party takes"} a short rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.`,
     "rest-short",
   );
   return {

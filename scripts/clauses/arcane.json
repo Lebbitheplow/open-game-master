@@ -2928,10 +2928,16 @@
     "probe": "scripts/test-enforce-subclass-audit-474.mjs :: Spells gated on a choice come with the choice: a Land druid's terrain, a Divine Soul's affinity, a Genie's kind."
    },
    {
-    "c": "Your vessel is a Tiny object (AC equal to your spell save DC, hit points equal to your warlock level + your proficiency bonus) and your spellcasting focus.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no object stands for the vessel (no row field, no token); attacking it was not staged"
+    "c": "Your vessel is a Tiny object (AC equal to your spell save DC, hit points equal to your warlock level + your proficiency bonus)",
+    "is": "held",
+    "by": "src/lib/dm/genie-vessel.ts vesselObject, read by src/lib/dm/object-damage.ts damageObject (an object named as the vessel has its warlock's numbers, whatever the call sends)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: vessel-object"
+   },
+   {
+    "c": "and your spellcasting focus",
+    "is": "held",
+    "by": "src/lib/dm/cast-materials.ts focusProblem (Genie's Vessel stands for the focus)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: vessel-focus"
    },
    {
     "c": "Bottled Respite: as an action, vanish into it for up to twice your proficiency bonus in hours, leaving early as a bonus action; once per long rest.",
@@ -2994,14 +3000,20 @@
    {
     "c": "When you enter your vessel through Bottled Respite, up to five willing creatures within 30 feet can come in with you.",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
-    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts warlock::Sanctuary Vessel (Bottled Respite takes allies within 30 feet, five at most, inside under the warlock's name)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: sanctuary-party"
    },
    {
-    "c": "Anyone who stays inside at least 10 minutes gains the benefit of a short rest, and anyone who spends Hit Dice in it adds your proficiency bonus to the hit points each die restores.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a short rest's Hit Dice were not spent inside the vessel (no state says anyone is inside)"
+    "c": "Anyone who stays inside at least 10 minutes gains the benefit of a short rest",
+    "is": "held",
+    "by": "src/lib/dm/genie-vessel.ts sanctuaryShortRest, read by src/lib/dm/rest-tools.ts handleTakeRest (a short rest while the vessel holds anyone is ten minutes, for those inside)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: sanctuary-rest"
+   },
+   {
+    "c": "anyone who spends Hit Dice in it adds your proficiency bonus to the hit points each die restores",
+    "is": "held",
+    "by": "src/lib/dm/genie-vessel.ts sanctuaryDieBonus, read by src/lib/dm/hit-dice.ts spendHitDice (every Hit Die spent, the rest's and the player's own)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: sanctuary-dice"
    }
   ]
  },

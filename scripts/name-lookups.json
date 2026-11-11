@@ -9,6 +9,9 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/genie-vessel.ts#first": [["identity", 1, "the Genie warlock whose whole name the vessel's name carries ('<name>'s vessel'), never a word of it"]],
+    "lib/dm/genie-vessel.ts#whole": [["identity", 2, "the vessel's name read whole against '<warlock>'s vessel' and the vessel's own names"]],
+    "lib/dm/genie-vessel.ts#fallback": [["identity", 2, "the vessel's host read by the condition's source id (the holder's own when none), and the only Genie warlock when the vessel is named with nobody's name in it; two or more and none is guessed"]],
     "app/campaigns/[campaignId]/LevelUpChangePick.tsx#keyed": [["identity", 1, "a pick's printed label, keyed by the held name the offer itself wrote"]],
     "lib/srd/level-up-changes.ts#partial": [["identity", 1, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
     "lib/srd/level-up-changes.ts#whole": [["identity", 7, "a held choice, an offer's option and an invocation by whole name (textKey on both sides)"]],
