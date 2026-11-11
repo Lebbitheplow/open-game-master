@@ -11,6 +11,7 @@
 // own refusals (can-act, the cast guard's rules, the reaction budget).
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
+import { zoneFeetKey } from "@/lib/battlemap/zone-feet";
 import { casterStateProblem, componentProblem, focusProblem } from "@/lib/dm/cast-rules";
 import { beforeFailedSave, deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
@@ -729,6 +730,9 @@ function subclassReactions(
             does.kind === "echo_takes_hit" ||
             (does.kind === "resist_instance" && !does.bond && typed(does.types));
       if (!answers) continue;
+      // A reach measured from the holder's own area on the board (Guardian
+      // Coil's 10 feet from the tentacle): the creature hurt, the holder too.
+      if (does.kind === "reduce" && does.nearZone && !inReach(feet, zoneFeetKey(does.nearZone.spell, hit.characterId), does.nearZone.feet)) continue;
       // Within its reach: the ally it covers, or for Rebuke the Violent the
       // attacker ("an attacker within 30 feet of you"). Chronal Shift's reach
       // is to the attacker whoever it hit, the holder too.

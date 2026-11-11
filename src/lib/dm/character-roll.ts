@@ -87,7 +87,7 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
     // A hit's own choices (Touch of Death) ride a pc_attack's record; an
     // attack thrown by another tool asks only about a miss.
     const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(
-      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath",
+      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath" && option.id !== "combat_inspiration",
     );
     return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange })];
   }

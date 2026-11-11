@@ -25,6 +25,8 @@ import { swallowCoverBetween } from "@/lib/dm/swallow";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { getSheetById } from "@/lib/db/sheets";
+import { featureSpellReachFeet } from "@/lib/dm/ar-wbf-bard-casting-logic";
 
 const FEET_PER_TILE = 5;
 
@@ -66,14 +68,20 @@ export function spellReachProblem(input: {
   if (apart === null || input.casterId === input.targetId) {
     return null;
   }
+  // A feature's own reach for this caster and spell (a Spirits bard's
+  // Guidance at 60 feet): asked here, so every tool that names a target
+  // measures the same distance.
+  const featureFeet = featureSpellReachFeet(getSheetById(input.casterId), facts);
   const reach =
-    facts.range.kind === "self"
-      ? facts.range.areaFeet
-        ? Math.max(1, Math.floor(facts.range.areaFeet / FEET_PER_TILE))
-        : null
-      : spellReachTiles(facts);
+    featureFeet !== null
+      ? Math.floor(featureFeet / FEET_PER_TILE)
+      : facts.range.kind === "self"
+        ? facts.range.areaFeet
+          ? Math.max(1, Math.floor(facts.range.areaFeet / FEET_PER_TILE))
+          : null
+        : spellReachTiles(facts);
   if (reach !== null && apart > reach) {
-    return { error: facts.range.kind === "touch"
+    return { error: facts.range.kind === "touch" && featureFeet === null
       ? `${facts.name} is a touch spell and ${input.targetName} is ${apart * FEET_PER_TILE} ft from ${input.casterName}. They must move next to them first. Nothing was spent.`
       : `${input.targetName} is ${apart * FEET_PER_TILE} ft from ${input.casterName}, beyond ${facts.name}'s reach of ${facts.range.kind === "feet" ? facts.range.feet : reach * FEET_PER_TILE} ft. They must move closer or pick another target. Nothing was spent.`, retry: true };
   }

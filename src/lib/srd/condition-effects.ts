@@ -705,7 +705,15 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       // Conjured at a point within 60 feet, it strikes a creature within 10
       // feet of itself and moves 30 feet with each later strike (issue 659).
       from: { zone: "tentacle of the deeps", reachFeet: 10, moveFeet: 30, rangeFeet: 60 },
+      // "and the target's speed drops by 10 feet until the start of your next turn".
+      leaves: "slowed by the tentacle",
     },
+  },
+  {
+    id: "tentacle_slowed",
+    match: ["slowed by the tentacle"],
+    summary: "Slowed by the tentacle: speed reduced by 10 feet until the start of the warlock's next turn (Tentacle of the Deeps).",
+    speedBonus: -10,
   },
   {
     id: "form_of_dread",

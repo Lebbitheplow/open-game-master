@@ -56,6 +56,7 @@ import { exaltedAllyAdvantage } from "@/lib/dm/exalted-aura";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { preyEscapeDie } from "@/lib/dm/prey-escape";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
+import { unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
@@ -188,7 +189,10 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
     }
     const bard = held === heldBardicDie && sheet ? bardOfHeldDie(sheet) : null;
     settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
-    spendRollCarriers(campaignId, sheetId, die.condition);
+    // Unfailing Inspiration: a die that left the roll short is kept.
+    if (!sheet || !unfailingDieKept(sheet, die.condition, settled.total, dc)) {
+      spendRollCarriers(campaignId, sheetId, die.condition);
+    }
     // A Bardic Inspiration die that made the roll succeed (Infectious Inspiration).
     if (sheet && bard && settled.total >= dc) {
       recordInspiredSuccess(campaignId, { id: sheet.id, name: sheet.name }, bard, attack ? "attack" : "save or check");

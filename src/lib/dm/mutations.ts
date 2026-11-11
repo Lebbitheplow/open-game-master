@@ -54,6 +54,8 @@ import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { turnPayer } from "@/lib/dm/ar-wbf-feat-treats";
+import { wbfAfterSpend, wbfDoorSpend } from "@/lib/dm/ar-wbf-doors";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
@@ -1423,6 +1425,12 @@ function dmMutation(
       if (wardSpend) {
         return { result: wardSpend };
       }
+      // The feats with a door of their own (War Caster's spell, Telekinetic's
+      // shove...), Spirit Session and Limited Wish's spell (src/lib/dm/ar-wbf-doors.ts).
+      const featSpend = wbfDoorSpend(campaign, turnId, sheet, resourceName, args);
+      if (featSpend) {
+        return { result: featSpend };
+      }
       // Authored subclass features the engine resolves (src/lib/dm/authored-spends.ts).
       const authoredSpend = authoredFeatureSpend(campaign, turnId, sheet, resourceName, args, reason);
       if (authoredSpend) {
@@ -1510,7 +1518,8 @@ function dmMutation(
       }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
-      const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
+      // A Chef's treat is the eater's bonus action (ar-wbf-feat-treats.ts).
+      const charge = prepareResourceCharge(campaign, turnPayer(counter?.id, sheet, target), resourceName, optionCharge);
       if ("error" in charge) {
         return { result: charge };
       }
@@ -1565,6 +1574,8 @@ function dmMutation(
       if (counter) {
         Object.assign(outcome.result, afterCounterSpend({ campaign, turnId, sheet, defId: counter.id, args, reason }));
       }
+      // What the use bought beside its counter (Limited Wish's spell, ar-wbf-doors.ts).
+      Object.assign(outcome.result, wbfAfterSpend(campaign, sheet, counter?.id, args));
       // A feature that lands on someone else (Bardic Inspiration) patches
       // the second sheet the same audited way.
       if (outcome.patchTarget) {

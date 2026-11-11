@@ -21,7 +21,8 @@ import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/l
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
-import { moteBurst } from "@/lib/dm/authored-mote";
+import { moteBurst, withMoteRoll } from "@/lib/dm/authored-mote";
+import { spendCombatDie } from "@/lib/dm/ar-wbf-bard-dice";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { tryParry } from "@/lib/dm/enemy-reactions";
@@ -102,6 +103,10 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
   // A steel defender that attacks was commanded, and is not dodging until its
   // next turn (defender-dodge.ts).
   markDefenderCommanded(campaign.id, scene.sheet.id);
+  // The mote's burst deals what its die showed on this roll (authored-mote.ts).
+  if (record.mote) {
+    record.mote = withMoteRoll(record.mote, toHit);
+  }
   const targetAc = recordTargetAc(campaign.id, record);
   const natural1 = toHit.crit === "nat1";
   const judged = adjudicateHit(toHit.total, toHit.crit, targetAc, { natural: toHit.natural, critRange: record.critRange });
@@ -338,6 +343,13 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     expression = `${expression}+${record.touchOfDeath}`;
     riders.push({ dice: "", type: "necrotic", flat: record.touchOfDeath });
     notes.push(`Touch of Death: +${record.touchOfDeath} necrotic damage`);
+  }
+  // Combat Inspiration, chosen on the same card and paid the same way: the
+  // die the attacker holds joins the damage dice.
+  const combatDie = record.combatInspiration ? spendCombatDie(campaign.id, sheet.id) : null;
+  if (combatDie) {
+    expression = `${expression}+1${combatDie}`;
+    notes.push(`Combat Inspiration: +1${combatDie} damage`);
   }
   // Foe Slayer not needed on the roll rides the hit's damage.
   if (judged.rolledHit && (record.extras?.foeSlayer ?? 0) > 0 && markAttackTurn(campaign.id, record, FOE_SLAYER)) {

@@ -2,7 +2,8 @@
 // from the sheet alone: Rage, an ability a feature adds (Aura of Hate, Song
 // of Victory), the dice a held condition rides on a hit (Hex, Hunter's
 // Mark, Divine Favor), and the features' damage riders (Improved Divine
-// Smite, Divine Strike, Divine Fury, Colossus Slayer, Lifedrinker).
+// Smite, Divine Strike, Divine Fury, Colossus Slayer, Lifedrinker, Grave
+// Touched's die in Form of Dread).
 //
 // pc_attack folds these into the damage (pc-attack-damage.ts
 // foldDamageRiders), and the Hand's attack cards print them
@@ -27,6 +28,7 @@ import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
 import { textKey, words } from "@/lib/language/text-logic";
 import { CALL_THE_HUNT } from "@/lib/srd/authored-effects-w2-martial";
 import { lineageRiders } from "@/lib/srd/mt-species-traits";
+import { graveTouchedDie } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -80,8 +82,8 @@ export function attackDamageRiders(input: {
   // (pc-attack-damage.ts claimOncePerTurnRiders), as Sneak Attack is.
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
-      ? riders.damageRiders.filter((rider) => rider.when === "attack").map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }))
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised })]
+      ? [...riders.damageRiders.filter((rider) => rider.when === "attack"), ...graveTouchedDie(sheet, profile)].map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }))
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised }), ...graveTouchedDie(sheet, profile)]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {
             if (rider.when === "melee" && profile.ranged) {

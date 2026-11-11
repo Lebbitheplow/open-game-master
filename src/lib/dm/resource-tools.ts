@@ -13,6 +13,8 @@ import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
+import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
+import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -28,6 +30,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions, optionsOfKind } from "@/lib/srd/options";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { holdsMote } from "@/lib/srd/authored-effects-more";
+import { givenDieMarks } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
 import { isTableGearName } from "@/lib/db/homebrew";
@@ -709,6 +712,16 @@ export function computeUseResource(
       return outcome;
     }
     case "temp_hp": {
+      // Inspiring Leader reaches a creature once until it rests (ar-wbf-feat-rally.ts).
+      const rallied = rallyRefusal(def.id, target);
+      if (rallied) {
+        return rallied;
+      }
+      // Chef's treats keep 8 hours from the cook's long rest (ar-wbf-feat-treats.ts).
+      const spoiled = treatsRefusal(campaign.id, def.id, sheet);
+      if (spoiled) {
+        return spoiled;
+      }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
       const total = Math.max(
         1,
@@ -721,8 +734,9 @@ export function computeUseResource(
       }
       if (target.id === sheet.id) {
         outcome.patch.tempHp = total;
+        Object.assign(outcome.patch, rallyMark(def.id, target));
       } else {
-        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total } };
+        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total, ...rallyMark(def.id, target) } };
       }
       outcome.result.tempHp = `${total} temporary hit points to ${target.name}`;
       return outcome;
@@ -899,10 +913,11 @@ export function computeUseResource(
           conditionMeta: {
             ...target.conditionMeta,
             // Who gave it, and a Creation bard's mote with it
-            // (src/lib/dm/authored-mote.ts).
+            // (src/lib/dm/authored-mote.ts); what a Valor or an Eloquence
+            // bard's die may do (ar-wbf-bard-dice-logic.ts).
             // The bard is kept as the die's source: a roll it makes succeed is
             // recorded as theirs (Infectious Inspiration, last-save.ts).
-            [condition]: { rounds: INSPIRATION_ROUNDS, source: sheet.id, ...(holdsMote(sheet) ? { mote: true } : {}) },
+            [condition]: { rounds: INSPIRATION_ROUNDS, source: sheet.id, ...(holdsMote(sheet) ? { mote: true } : {}), ...givenDieMarks(sheet) },
           },
         },
       };

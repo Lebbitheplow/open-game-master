@@ -280,6 +280,12 @@ export const SERVER_FEATURES = {
   // of Shadows, Steps of Night, One with Shadows) while the square is bright. An older host sends no such
   // field, so the Hand deals those cards there as it always did.
   handSquareLight: true,
+  // The player's map view carries, in `feet`, how far each creature stands
+  // from an area the viewer's character keeps on the board
+  // (src/lib/battlemap/zone-feet.ts): the Hand withholds Guardian Coil's
+  // card beyond the tentacle's 10 feet. An older host sends none and the
+  // card is dealt as before, the engine judging the reach.
+  ownZoneFeet: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

@@ -26,6 +26,7 @@ import { risesWithVengeance, searingVengeance } from "@/lib/dm/searing-vengeance
 import { auraMenaceAsk } from "@/lib/dm/aura-menace";
 import { alacrityTurnStart } from "@/lib/dm/divine-auras";
 import { wyrmFrightens } from "@/lib/dm/mt-mr-dragon";
+import { passedOverLine, restAlliesChosen } from "@/lib/dm/ar-wbf-warlock-rest-logic";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -233,10 +234,17 @@ export function authoredRestTempHp(campaign: Campaign, restedIds: string[]): str
       }
       if (effect.allies) {
         const each = Number(resolveFormula(effect.allies.formula, held.level, mods)) || 0;
-        for (const ally of rested.filter((entry) => entry.id !== holder.id).slice(0, effect.allies.count)) {
+        // "up to five creatures of your choice": who, when more rested than
+        // the feature reaches, is the ruling in ar-wbf-warlock-rest-logic.ts.
+        const { chosen, passedOver } = restAlliesChosen(rested.filter((entry) => entry.id !== holder.id), effect.allies.count);
+        for (const ally of chosen) {
           if (setTempHp(campaign, getSheetById(ally.id) ?? ally, each)) {
             lines.push(`${held.feature}: ${ally.name} gains ${each} temporary hit points.`);
           }
+        }
+        const without = passedOverLine(held.feature, holder.name, effect.allies.count, chosen, passedOver);
+        if (without) {
+          lines.push(without);
         }
       }
     }

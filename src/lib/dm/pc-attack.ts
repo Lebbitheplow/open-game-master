@@ -109,7 +109,7 @@ export const pcAttackTool: ToolDef = {
                 type: "string",
                 description: "A homebrew spell attack only: its damage dice ('1d10', '4d6').",
               },
-              damageType: { type: "string", description: "Spell attacks only: the damage type." },
+              damageType: { type: "string", description: "Spell attacks: the damage type. Grave Touched: necrotic." },
               advantage: {
                 type: "string",
                 enum: ["none", "advantage", "disadvantage"],

@@ -23,8 +23,9 @@ import { textKey } from "@/lib/language/text-logic";
 import { holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { mrAttackOffers, mrCheckOffers, type MrCheck, type MrSwing } from "@/lib/dm/mt-mr-offers-logic";
+import { combatInspirationOption } from "@/lib/dm/ar-wbf-bard-dice-logic";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath"
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath" | "combat_inspiration"
   // The monk and rogue subclasses' (src/lib/dm/mt-mr-offers-logic.ts).
   | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence";
 
@@ -242,6 +243,8 @@ export function afterAttackOptions(
     return [
       ...(roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : []),
       ...(roll.wrathDice && !taken.has("destructive_wrath") ? destructiveWrathOption(sheet) : []),
+      // A Valor bard's die on the hit's damage (ar-wbf-bard-dice-logic.ts).
+      ...(!taken.has("combat_inspiration") ? combatInspirationOption(sheet) : []),
     ];
   }
   const options: AfterRollOption[] = [];

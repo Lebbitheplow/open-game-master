@@ -14,6 +14,7 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { counterSpend, kiSpend } from "@/lib/dm/bonus-actions";
 import { ACTIONS, priceAction, type Price } from "@/lib/dm/action-price";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
+import { chargerShove } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
@@ -522,7 +523,12 @@ export function handleTakeAction(
         return { error: `${sheet.name} is charmed by ${aimed?.displayName ?? "that creature"} and cannot attack it: a ${args.action} is a melee attack. Nothing was spent; pick another target.`, refused: "rules" };
       }
       if (price.feature !== "Grappling Strike") {
-        return contest(campaign, turn, sheet, encounter, args, spend, costs);
+        // Charger's shove after a 10-foot straight run pushes 10 feet more.
+        const charge = chargerShove(encounter, sheet.id, price.feature);
+        if (charge) {
+          costs.charger = charge.note;
+        }
+        return contest(campaign, turn, sheet, encounter, args, spend, costs, undefined, charge?.tiles ?? 0);
       }
       // The Superiority Die rides the Athletics check; it is paid with the
       // bonus action, once the contest's own checks pass.

@@ -63,9 +63,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     subclass: "College of Eloquence",
     effects: [{ kind: "check_floor", skills: ["persuasion", "deception"], floor: 10 }],
   },
+  // The die this bard gives is marked where it is given (resource-tools.ts)
+  // and is not spent by a roll it leaves short (after-roll.ts, forced-save.ts).
   "bard::Unfailing Inspiration": {
     subclass: "College of Eloquence",
-    narrated: "An inspiration die that changed nothing is handed back: the GM restores the Bardic Inspiration condition when the roll it rode still failed.",
+    heldBy: { file: "src/lib/dm/ar-wbf-bard-dice-logic.ts", call: "unfailingDieKept(" },
   },
   "bard::Creative Crescendo": {
     subclass: "College of Creation",
@@ -73,8 +75,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "bard::Guiding Whispers": {
     subclass: "College of Spirits",
+    // The cantrip is the spell table's; its 60 feet for this bard are
+    // cast-reach.ts spellReachProblem (ar-wbf-bard-casting-logic.ts).
     heldBy: SPELL_TABLE,
-    narrated: "Guidance at a 60-foot reach is the GM's to allow.",
   },
   "bard::Spiritual Focus": {
     subclass: "College of Spirits",
@@ -86,7 +89,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         damageTypes: ALL_DAMAGE,
         healing: true,
         gate: { level: 6 },
-        note: "Cast through the spiritual focus; the GM keeps to that.",
+        // The focus itself (a candle, a deck, a talking board carried) is
+        // cast-materials.ts focusProblem (ar-wbf-bard-casting-logic.ts).
+        note: "Cast through the spiritual focus: a candle, a deck or a talking board the bard carries.",
       },
     ],
   },
@@ -531,9 +536,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "warlock::Create Thrall": { subclass: "The Great Old One", narrated: "A charmed thrall in telepathic contact: set_condition charmed, held until a remove curse." },
   "warlock::Bonus Cantrips (Celestial)": { subclass: "The Celestial", heldBy: SPELL_TABLE },
+  // Once a turn: one more damage die in Form of Dread, and the hit's damage
+  // necrotic when pc_attack is asked for it (damageType "necrotic").
   "warlock::Grave Touched": {
     subclass: "The Undead",
-    narrated: "Changing a hit's damage to necrotic, with one more die in Form of Dread: the GM applies the type and the die.",
+    heldBy: { file: "src/lib/dm/ar-wbf-warlock-grave-logic.ts", call: "export function graveTouchedDie(" },
   },
   "warlock::Undying Nature": { subclass: "The Undying", narrated: "Needs no food, water, breath or sleep, and ages slowly: roleplay, nothing in a fight changes." },
 

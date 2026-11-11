@@ -26,6 +26,7 @@ import { planDoorFx } from "@/lib/battlemap/fx-plan";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { aggressiveRefusal } from "@/lib/dm/mt-species-board";
+import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
@@ -277,6 +278,7 @@ export async function POST(
     footprintOf: footprintLookup(enemiesById),
     enemySize: (refId) => enemiesById.get(refId)?.stats.size,
     sideOf: tokenSides(encounter),
+    anyGround: crossesAnyGround(encounter, sheet),
   }), map, "pc", sheet.id);
   const reach = reachableTiles(
     map.terrain,
@@ -417,6 +419,8 @@ export async function POST(
   if (!scene && !readied) {
     noteRun(campaignId, sheet, from);
   }
+  // A Charger's straight run is read off the walk (ar-wbf-feat-turn.ts).
+  noteStraightRun(scene ? null : encounter, sheet, from, path);
   // Moving ends One with Shadows' invisibility (src/lib/dm/one-with-shadows.ts).
   if (!scene) {
     endShadowInvisibility(campaignId, sheet.id, "moves");

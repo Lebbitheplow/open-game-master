@@ -6,6 +6,8 @@
 // opportunity attack is the server's own on a battle map; off the map it is
 // resolved here as one attack with the reaction.
 
+import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
+import { warCasterPointer } from "@/lib/dm/ar-wbf-feat-warcaster-logic";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import { getActiveEncounter, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -554,7 +556,7 @@ export function opportunity(ctx: Ctx): ToolResult {
   }
   if (getBattleMapForEncounter(encounter.id)) {
     return {
-      error: `On the battle map the server rolls opportunity attacks itself the moment an enemy leaves ${sheet.name}'s reach (and reports them on the move). Nothing was spent; do not call pc_attack for one either.`,
+      error: `On the battle map the server rolls opportunity attacks itself the moment an enemy leaves ${sheet.name}'s reach (and reports them on the move). Nothing was spent; do not call pc_attack for one either.${warCasterPointer(sheet)}`,
       retry: true,
     };
   }
@@ -563,6 +565,13 @@ export function opportunity(ctx: Ctx): ToolResult {
       error: "Off the battle map, an opportunity attack needs the enemy leaving the character's reach: pass its targetEnemyId. Nothing was spent.",
       retry: true,
     };
+  }
+  // War Caster: the spell they named, cast in the attack's place
+  // (src/lib/dm/ar-wbf-feat-warcaster.ts).
+  const foe = resolveTargetFoe(campaign.id, encounter, args.targetEnemyId);
+  const cast = foe ? warCasterOpportunity({ campaign, encounter, sheet, enemy: foe, at: null, reactionKey: sheet.id, turn: ctx.turn }) : null;
+  if (cast) {
+    return { ...cast.result, reaction: "Opportunity attack", warCaster: cast.note };
   }
   // One melee attack with the reaction, through pc_attack's own rules. The
   // readied mark is what lets the off-turn attack through; the attack

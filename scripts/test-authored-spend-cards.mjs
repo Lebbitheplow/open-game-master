@@ -134,6 +134,9 @@ await test("Hidden Paths stays a bonus action: its card is open once the action 
   assert.equal(card.disabled, null);
 });
 
+// What the Creation bard's player types in the card's box.
+const CREATED = "Crowbar";
+
 await test("A card played as the Hand sends it does what the spend says: a capstone's condition lands.", async () => {
   const capstones = ["Elder Champion", "Avenging Angel", "Invincible Conqueror", "Living Legend", "Mortal Bulwark", "Exalted Champion", "Dread Lord"];
   const played = [];
@@ -145,14 +148,24 @@ await test("A card played as the Hand sends it does what the spend says: a capst
       // clause suite's infectious-fury probe lands the claws first).
       // An Arcane Shot rides a bow's arrow and an option the archer chose
       // (the clause suite's arcane-shot probes fire the arrow first).
-      // One that rides a wizard spell's damage waits for that (Power Surge:
-      // the wizard clause suite's surge-spend casts the spell first).
-      if (spend.name === "Arcane Jolt" || spend.name === "Arcane Shot" || spend.afterWeaponHit || spend.afterNaturalHit || spend.afterSpellDamage) continue;
+      if (spend.name === "Arcane Jolt" || spend.name === "Arcane Shot" || spend.afterWeaponHit || spend.afterNaturalHit) continue;
       const enemy = await stage(build.hero);
       // Psionic Recovery brings energy back, and is refused at a full pool.
       if (spend.name === "Psionic Recovery") {
         const { resources } = world.sheet(build.hero.id);
         world.patch(build.hero.id, { resources: { ...resources, sub_psionic_energy: { ...resources.sub_psionic_energy, used: 1 } } });
+      }
+      // Power Surge: "Once per turn when you deal damage to a creature or
+      // object with a wizard spell". The wizard's Magic Missile hurts the
+      // creature first, as the spends sweep stages it (sweep-spends-walk.mjs).
+      if (spend.afterSpellDamage) {
+        // These heroes are made with no spells: the wizard is given the one.
+        world.patch(build.hero.id, {
+          equipment: [{ name: "Component pouch", qty: 1 }],
+          spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Magic Missile"], known: ["Magic Missile"], cantrips: [] },
+        });
+        const cast = await play(build.hero, "cast_at_enemy", { characterId: build.hero.id, targetEnemyId: enemy.id, spell: "Magic Missile" });
+        assert.equal(cast.ok, true, `${label(build, spend)}: the staging's Magic Missile: ${cast.error}`);
       }
       const card = deriveHand(world.sheet(build.hero.id), FRESH_TURN, {}).find((entry) => entry.name === spend.name);
       const intent = {
@@ -161,13 +174,28 @@ await test("A card played as the Hand sends it does what the spend says: a capst
         ...(card.target === "ally" ? { targetId: build.hero.id, targetKind: "ally" } : {}),
         // A card with a pick posts the player's pick.
         ...(card.choice ? { [card.choice.arg]: card.choice.options[0].value } : {}),
+        // Performance of Creation: "Create a nonmagical item worth no more than
+        // 20 times your bard level as an action". Which item is the player's to
+        // say, so its card opens the box (compose) and the name typed there is
+        // the spend's variant; with none the engine asks for it, spending nothing.
+        ...(spend.does.kind === "create_item" ? { variant: CREATED } : {}),
       };
+      if (spend.does.kind === "create_item") {
+        assert.equal(card.compose, true, `${label(build, spend)}: the card must let the player name the item`);
+        const bare = directCardCall(card.intent, build.hero.id, { inFight: true });
+        const refused = await play(build.hero, bare.name, bare.args);
+        assert.equal(refused.ok, false, `${label(build, spend)}: made an item nobody named`);
+        assert.equal(world.sheet(build.hero.id).resources[spend.pool.id].used, 0, `${label(build, spend)}: the unnamed item spent the use`);
+      }
       const call = directCardCall(intent, build.hero.id, { inFight: true });
       assert.ok(call, `${label(build, spend)}: the card makes no call`);
       const out = await play(build.hero, call.name, call.args);
       assert.equal(out.ok, true, `${label(build, spend)}: ${out.error}`);
       const pool = world.sheet(build.hero.id).resources[spend.pool.id];
       assert.ok(pool.used > 0, `${label(build, spend)}: nothing spent`);
+      if (spend.does.kind === "create_item") {
+        assert.ok(world.sheet(build.hero.id).equipment.some((item) => item.name === CREATED), `${label(build, spend)}: the named item is not in the pack`);
+      }
       // "as a bonus action you can regain one spent die": the die is back,
       // not only the recovery's own use spent (it answered "1 die back" and
       // returned none).

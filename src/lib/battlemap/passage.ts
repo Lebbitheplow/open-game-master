@@ -101,6 +101,9 @@ export function pcMoveTraits(input: {
   // What the board was drawn for (BattleMap.theme), for the traits that ask
   // what the difficult ground is made of (Earth Walk).
   theme?: string;
+  // Mobile on a turn its holder Dashed (src/lib/dm/ar-wbf-feat-turn.ts
+  // crossesAnyGround): difficult terrain costs no extra.
+  anyGround?: boolean;
 }): MoveTraits {
   const moverSize = sizeForRace(input.sheet.race);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
@@ -118,6 +121,7 @@ export function pcMoveTraits(input: {
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
     ...earthen,
+    ...(input.anyGround ? { anyGround: true } : {}),
     passable: passableTiles({
       width: input.width,
       tokens: input.tokens,

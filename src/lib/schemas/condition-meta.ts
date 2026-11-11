@@ -75,6 +75,10 @@ const conditionInstanceSchema = z.object({
     // A Creation bard's Bardic Inspiration die carries a mote
     // (src/lib/dm/authored-mote.ts).
     mote: z.boolean().optional(),
+    // A Valor bard's die may ride a damage roll, an Eloquence bard's is kept
+    // by a roll it could not save (src/lib/dm/ar-wbf-bard-dice-logic.ts).
+    combat: z.boolean().optional(),
+    unfailing: z.boolean().optional(),
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),

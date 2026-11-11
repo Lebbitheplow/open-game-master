@@ -9,6 +9,7 @@ import { layWard } from "@/lib/dm/ar-ws-bastion";
 import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
 import { wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
+import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -26,7 +27,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { hasCondition, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { incapacitatedBy, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healArea } from "@/lib/dm/authored-heal-area";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -344,6 +345,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
           return { result: { applied: lines } };
         }
       }
+      // A mark that ends the moment its holder is incapacitated is never
+      // laid by an incapacitated holder (Master of Hexes: "if you aren't
+      // incapacitated"). Its spend costs no action, so no turn check refused
+      // it and a stunned warlock moved the curse.
+      const stopped = does.endsIfIncapacitated ? incapacitatedBy(sheet.conditions) : null;
+      if (stopped) {
+        return { error: `${sheet.name} is ${stopped} and cannot use ${ctx.spend.name}. Nothing was spent.`, refused: "rules" };
+      }
       // A mark on one creature: the holder's condition names it (quarry).
       const quarry = does.quarry ? targetEnemy(ctx) : null;
       if (quarry && "error" in quarry) {
@@ -539,7 +548,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const count = Number(formula(ctx, does.allies.count)) || 1;
       const given: string[] = [];
-      for (const ally of alliesInReach(ctx, does.allies.rangeFt, false).slice(0, count)) {
+      const chosen = alliesInReach(ctx, does.allies.rangeFt, false).slice(0, count);
+      // Mantle of Inspiration: each may move with its reaction (ar-wbf-bard-mantle.ts).
+      markMantleStride(campaign, sheet, ctx.spend.name, chosen);
+      for (const ally of chosen) {
         if (amount > ally.tempHp) {
           const updated = patchSheet(ally.id, { tempHp: amount });
           if (updated) {

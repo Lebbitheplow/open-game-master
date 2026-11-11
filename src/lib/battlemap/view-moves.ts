@@ -14,8 +14,8 @@ import { dragCostFactor, grappledBy } from "@/lib/dm/drag";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import { sizeForRace } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
-import { RUN_UP_TILES } from "@/lib/srd/jump";
 import { jumpReach } from "@/lib/dm/jump-reach";
+import { runUpTiles } from "@/lib/srd/feat-moves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether a character's move is priced as standing up or crawling: prone,
@@ -52,7 +52,7 @@ export function viewerMoves(input: {
   const charged = cells
     .map((cell) => [cell, prone ? proneCharge(walks.get(cell), crawls.get(cell), stand, budget.fullTiles)?.cost : walks.get(cell)] as const)
     .filter((entry): entry is readonly [number, number] => entry[1] !== undefined);
-  const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  const runningStart = scene || token.movedThisRound >= runUpTiles(sheet);
   // The reach the jump door accepts (src/lib/dm/jump-move.ts asks the same
   // helper), Step of the Wind's doubling in it while its mark is on the turn.
   const reach = jumpReach(sheet, runningStart, !scene && Boolean(input.windStep));

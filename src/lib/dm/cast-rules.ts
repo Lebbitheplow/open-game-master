@@ -29,6 +29,9 @@ import { beastShapeMaterialProblem } from "@/lib/dm/mt-srd-druid";
 import { subtleSpellPaid } from "@/lib/dm/mt-srd-metamagic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
+import { wieldedWeaponFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { projectedComponents } from "@/lib/dm/ar-wbf-warlock-projection-logic";
+import { telekineticComponents } from "@/lib/dm/ar-wbf-feat-doors-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
 import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
@@ -244,7 +247,10 @@ export function componentsAsCast(sheet: Caster, facts: SpellFacts | null, grant:
   if (subtleSpellPaid(sheet)) {
     cast = { ...cast, verbal: false, somatic: false };
   }
-  return cast;
+  // Spirit Projection: conjuration and necromancy cast with no components
+  // but a costly material (ar-wbf-warlock-projection-logic.ts).
+  // Telekinetic: Mage Hand with no components (ar-wbf-feat-doors-logic.ts).
+  return telekineticComponents(sheet, projectedComponents(sheet, cast));
 }
 
 // The druid's own lists hold the spell (a druid spell of theirs).
@@ -381,7 +387,8 @@ export function componentProblem(sheet: Caster, facts: SpellFacts | null): ToolE
   const focusInHand = sheet.equipment.some(
     (item) => item.equipped === true && (hasItemTag(item, "staff") || hasItemTag(item, "rod") || hasItemTag(item, "wand")),
   );
-  if (emblem || focusInHand) {
+  // A Swords bard's weapon is their focus, in the hand that holds it.
+  if (emblem || focusInHand || wieldedWeaponFocus(sheet)) {
     return null;
   }
   return { error: `${facts.name} needs a free hand for its material component${facts.somatic ? " (the same hand makes the gestures)" : ""}, and both of ${sheet.name}'s hands are full${castsWithHandsFull(sheet) ? "; War Caster frees the gestures, not the material" : ""}. They must put a weapon away or lower the shield first (unequip it on the sheet).`, refused: "rules" };

@@ -2538,7 +2538,8 @@
    },
    {
     "c": "and up to five creatures of your choice you can see",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-rest-logic.ts restAlliesChosen, read by src/lib/dm/authored-turns.ts authoredRestTempHp. The ruling (maintainer's delegate): take_rest takes no list of creatures; with five or fewer others resting every one gains them, with more the five with the fewest hit points do (ties by rest order), and the rest's result (restTempHp) names who gained them and who went without, so the table can ask the GM to change it",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: resilience-choice"
    },
    {
@@ -2601,9 +2602,9 @@
    },
    {
     "c": "or until it or you die",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the warlock's death under a standing curse was not staged"
+    "is": "held",
+    "by": "the cursed creature's death ends the curse (src/lib/dm/authored-hooks.ts); the warlock's fall to 0 hit points, dead or dying, ends it with every mark held only while its holder can act (src/lib/dm/ar-wbf-warlock-marks.ts endIncapacitationHeld, called by src/lib/dm/pc-damage.ts applyPcDamage and set_condition)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-death"
    },
    {
     "c": "or you are incapacitated",
@@ -2663,9 +2664,9 @@
    },
    {
     "c": "With Pact of the Blade, this also holds for every pact weapon you conjure",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"With Pact of the Blade, every pact weapon too; the GM names it as the hex weapon.\"); a pact weapon other than the chosen one was not swung"
+    "is": "held",
+    "by": "the row's weapon_ability effect says pactWeapons (src/lib/srd/authored-effects-data3.ts); src/lib/dm/attack-features.ts hexWarriorSwing takes a Pact of the Blade warlock's melee weapon as the pact weapon (src/lib/srd/pact-weapon.ts) and swings it with Charisma",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexwarrior-pact"
    }
   ]
  },
@@ -2735,9 +2736,9 @@
    },
    {
     "c": "if you aren't incapacitated",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an incapacitated warlock's spend was not staged apart from the general blocking matrix (the doors sweep)"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts (a buff that endsIfIncapacitated is never laid by an incapacitated holder: refused with nothing spent, the death record left open)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-incapacitated"
    },
    {
     "c": "you don't regain hit points from the first creature's death when you do",
@@ -2774,9 +2775,9 @@
    },
    {
     "c": "When it appears, and as a bonus action on later turns",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the bonus action of a later turn's strike was not charged against a turn"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack (bonusAction, withActivation), charged by src/lib/dm/pc-attack-profile.ts: the strike that comes with the tentacle is free, a later turn's is the bonus action and a second one is refused",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-later"
    },
    {
     "c": "it can strike a creature within 10 feet of it with a melee spell attack",
@@ -2786,21 +2787,21 @@
    },
    {
     "c": "for 1d8 cold damage (2d8 from 10th level)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the granted attack's dice by level (condition-effects.ts diceByLevel) were read, not rolled"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack diceByLevel (src/lib/srd/granted-attacks.ts grantedAttackDice): pc_attack rolls 1d8 below 10th level and 2d8 from it, with no ability modifier",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-dice"
    },
    {
     "c": "and the target's speed drops by 10 feet until the start of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the struck creature's speed was not measured"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack leaves 'slowed by the tentacle' (speedBonus -10), laid on a hit by src/lib/dm/ar-wbf-warlock-strike.ts grantedStrikeMark (src/lib/dm/attack-blow.ts) until the start of the warlock's next turn",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-slow"
    },
    {
     "c": "you can move it up to 30 feet when you make that attack",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the tentacle's zone was not moved"
+    "is": "held",
+    "by": "src/lib/dm/conjured-strike.ts planConjuredStrike (grantedAttack.from: moveFeet 30, reachFeet 10): a later turn's strike moves the tentacle's area up to 30 feet to within 10 of its target, and a creature farther is refused with the bonus action kept",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-move"
    }
   ]
  },
@@ -3006,9 +3007,9 @@
   "clauses": [
    {
     "c": "As an action, you produce the effect of one spell of 6th level or lower, from any class's list, with a casting time of one action, ignoring its requirements and costly components.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the use is a counter; the spell it stands for goes through the cast tools, and a casting with no slot and no component was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-doors.ts: use_resource \"Limited Wish\" with the spell in variant is refused for a spell above 6th level or of another casting time, spending nothing; the use (its action, its 1d4 long rests) then writes the credit a spell cast from an item has (src/lib/srd/item-cast-credit.ts), so the spell's own tool casts it with no slot, no component and no need to know it",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wish-spell"
    },
    {
     "c": "You can use it again only after 1d4 long rests.",
@@ -3075,14 +3076,15 @@
    },
    {
     "c": "Once on each of your turns, when you hit a creature with an attack roll and roll damage, you can make that damage necrotic",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves the type to the GM (narrated: \"the GM applies the type and the die\"); pc_attack's damageType on a weapon was not sent"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-necrotic",
+    "by": "src/lib/dm/ar-wbf-warlock-grave-logic.ts graveTouchedType, called by pc-attack-plan.ts: pc_attack asked for damageType necrotic deals the hit's own damage as necrotic once on each of the holder's turns (the turn mark rider:grave touched, spent by the hit); a second hit keeps its type"
    },
    {
     "c": "and while in Form of Dread you roll one additional damage die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-die"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-die",
+    "by": "src/lib/dm/ar-wbf-warlock-grave-logic.ts graveTouchedDie, a once-a-turn damage rider of src/lib/dm/attack-damage-riders.ts (pc_attack and the Hand's attack card read it): one more of the attack's own damage die in Form of Dread"
    }
   ]
  },
@@ -3172,9 +3174,9 @@
    },
    {
     "c": "your conjuration and necromancy spells need no verbal or somatic components, nor material ones without a cost",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM; a silenced casting was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-projection-logic.ts projectedComponents, asked by src/lib/dm/cast-rules.ts componentsAsCast (the one place a cast reads its components): while the projection's condition runs, a conjuration or necromancy spell has no verbal or somatic component and no material without a cost; every other school keeps its own",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-components"
    },
    {
     "c": "you can fly at your walking speed and hover",
@@ -3216,9 +3218,9 @@
    },
    {
     "c": "or a harmful spell",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an undead's spell at the warlock (cast_at_player from a block that lists one) was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-ward.ts authoredWardSave, called by src/lib/dm/cast-at-player.ts for an undead's spell at the warlock alone: the Wisdom save first, and a failure loses the spell",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-spell"
    },
    {
     "c": "must first make a Wisdom save against your spell save DC or choose another target or lose the attack or spell",
@@ -3228,9 +3230,9 @@
    },
    {
     "c": "this doesn't protect you from area effects",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an undead's area at the warlock was not staged"
+    "is": "held",
+    "by": "src/lib/dm/cast-at-player.ts: a spell with an area (src/lib/dm/aoe-shape.ts spellAreaShape) asks no ward save, and the doors that take a list of creatures never call the ward",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-area"
    },
    {
     "c": "and an undead that succeeds, or that you target with an attack or harmful spell, is immune for 24 hours",
@@ -3330,7 +3332,8 @@
   "clauses": [
    {
     "c": "A creature holding your Bardic Inspiration die may add it to a damage roll",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-dice-logic.ts combatDie and combatInspirationOption: the die a Valor bard gives is marked (resource-tools.ts), its holder's hit waits on the after-the-roll card (after-roll-logic.ts afterAttackOptions) and the die joins the damage once the hit stands (attack-swing.ts, ar-wbf-bard-dice.ts spendCombatDie); the bard pays nothing more (the maintainer's ruling for wave 2)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: combat-damage"
    },
    {
@@ -3395,9 +3398,9 @@
    },
    {
     "c": "and can use a reaction to move up to their speed without provoking opportunity attacks",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no reaction of the name is in the tables; a creature's move after the mantle was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-mantle.ts: the spend marks each creature it chose (authored-spend-effects.ts temp_hp) until the end of the bard's turn, and use_reaction \"Mantle of Inspiration\" with the square moves the creature its whole speed with no opportunity attacks, for its reaction (authored-reactions-more.ts reactionMove)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: mantle-move"
    }
   ]
  },
@@ -3453,9 +3456,9 @@
    },
    {
     "c": "and a creature charmed by you automatically fails its save against it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a command at a creature the bard charmed was not cast"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts majestyFailsSave, asked by cast-at-enemy.ts before the save is rolled",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: majesty-charmed"
    },
    {
     "c": "Once per long rest",
@@ -3499,9 +3502,9 @@
    },
    {
     "c": "your weapon can serve as a spellcasting focus",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a casting with a weapon in hand and no focus or pouch was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts subclassFocus and wieldedWeaponFocus, read by cast-materials.ts focusProblem and cast-rules.ts componentProblem: a wielded weapon answers a costless material and its hand handles it",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: swords-focus"
    }
   ]
  },
@@ -3701,7 +3704,8 @@
   "clauses": [
    {
     "c": "An inspiration die that fails to change the outcome is not spent.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-dice-logic.ts unfailingDieKept: the die an Eloquence bard gives is marked (resource-tools.ts) and is not spent by a roll it leaves short, on the after-the-roll card (after-roll.ts spendAfterRoll) and on a roll the engine settles (forced-save.ts settleHeldDie)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: unfailing"
    }
   ]
@@ -3765,9 +3769,9 @@
    },
    {
     "c": "on an attack roll, the mote bursts and each creature of your choice within 5 feet of the target makes a Constitution save against your spell save DC or takes thunder damage equal to the die's roll",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the die spent on an attack roll (the after-roll card of the inspired creature) was not staged"
+    "is": "held",
+    "by": "src/lib/dm/authored-mote.ts moteBurst (attack-swing.ts finishSwing): the target and every foe within 5 feet of it save on Constitution against the bard's spell save DC or take thunder equal to what the die showed on the attack roll (withMoteRoll, from judgeSwing); the bard's choice is read as every foe and no friend",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: mote-burst"
    },
    {
     "c": "on a saving throw, it gains temporary hit points equal to the die's roll + your Charisma modifier (minimum 1)",
@@ -3856,9 +3860,9 @@
    },
    {
     "c": "and can cast it at 60 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves the reach to the GM (narrated: \"Guidance at a 60-foot reach is the GM's to allow.\"); a guidance at 60 feet was not cast"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts featureSpellReachFeet, read by cast-reach.ts spellReachProblem (every tool that names a spell's target)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: whispers-reach"
    }
   ]
  },
@@ -3870,9 +3874,9 @@
   "clauses": [
    {
     "c": "A candle, a deck, a talking board or the like serves as your spellcasting focus",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves the focus to the GM (\"Cast through the spiritual focus; the GM keeps to that.\"); a casting without one was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-casting-logic.ts subclassFocus, read by cast-materials.ts focusProblem: a candle, a deck or a talking board carried answers a costless material",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: spirits-focus"
    },
    {
     "c": "and from 6th level a bard spell cast through it that deals damage or restores hit points adds a d6 to one of its damage or healing rolls",
@@ -3903,7 +3907,8 @@
   "clauses": [
    {
     "c": "During a short or long rest you hold an hour-long ritual with up to your proficiency bonus in willing creatures (you included). At its end you learn one divination or necromancy spell from any class's list, of a level you can cast and no higher than the number of creatures who took part; it counts as a bard spell, doesn't count against your spells known, and stays until you start a long rest.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-doors.ts spiritSession (use_resource \"Spirit Session\", the spell in variant, the creatures who took part in amount): out of a fight, a divination or necromancy spell of a level the bard can cast and no higher than the creatures who took part (at most the proficiency bonus), put in the prepared list beside the spells known under a mark; the long rest takes both (ar-wbf-bard-session-logic.ts sessionForgotten, rest-logic.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: session"
    },
    {

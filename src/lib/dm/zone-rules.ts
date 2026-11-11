@@ -67,7 +67,7 @@ export function withZoneSteps(traits: MoveTraits, map: BattleMap, moverKind: str
   const mover = moverOf(map, moverKind, moverRef);
   const zones = zonesOf(map);
   const own = moverSpellTraits(mover);
-  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : zoneStepCost(zones, map.width, moverKind), barredCells(zones, mover)), zones, mover);
+  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : zoneStepCost(zones, map.width, moverKind, typeof traits === "object" && traits.anyGround === true), barredCells(zones, mover)), zones, mover);
   if (!step && !Object.keys(own).length) {
     return traits;
   }

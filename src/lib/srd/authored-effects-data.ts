@@ -269,6 +269,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
 
   // ---- bard ----
+  // The die on a damage roll is its holder's choice on the card their hit
+  // waits on (src/lib/dm/ar-wbf-bard-dice-logic.ts); the reaction is the AC.
   "bard::Combat Inspiration": {
     subclass: "College of Valor",
     reactions: [{ name: "Combat Inspiration", usedBy: "inspired", does: { kind: "ac_vs_hit", amount: "bardic" } }],

@@ -50,6 +50,7 @@ import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { inPlay } from "@/lib/dm/roster";
+import { combatDie, unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { swingFacts } from "@/lib/dm/mt-mr-offers";
 
@@ -167,7 +168,11 @@ export function spendAfterRoll(
   payer?: CharacterSheet,
   // Advantage on this attack throws a third d20 (attack-record.ts).
   elvenAccuracy = false,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean } | null {
+  // What the roll must reach (its Difficulty Class, an attack's Armor Class)
+  // when the caller knows it: an Eloquence bard's die that leaves the roll
+  // short of it is kept (ar-wbf-bard-dice-logic.ts).
+  target: number | null = null,
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "war_gods_blessing" || id === "flash_of_genius") {
     const giver = payer ?? sheet;
@@ -199,6 +204,10 @@ export function spendAfterRoll(
     // Paid by the hit itself, as Touch of Death is (attack-swing.ts hitSwing).
     const state = sheet.resources?.[CHANNEL_DIVINITY];
     return state && state.max - state.used > 0 ? { outcome, choosing: false, destructiveWrath: true } : null;
+  }
+  if (id === "combat_inspiration") {
+    // Paid by the hit itself too: the die leaves its holder once the hit stands.
+    return combatDie(sheet) ? { outcome, choosing: false, combatInspiration: true } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
@@ -247,8 +256,11 @@ export function spendAfterRoll(
     if (!held) {
       return null;
     }
-    spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
-    return { outcome: withBonusDie(outcome, die(sidesOf(held.die))), choosing: false };
+    const added = withBonusDie(outcome, die(sidesOf(held.die)));
+    if (!unfailingDieKept(sheet, held.condition, added.total, target)) {
+      spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
+    }
+    return { outcome: added, choosing: false };
   }
   const held = heldOwnLuckDie(sheet);
   const size = ownLuckDie(sheet);

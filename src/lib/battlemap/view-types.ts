@@ -141,7 +141,9 @@ export type PlayerMapView = {
   // see, in feet, keyed by the creature's id: the Hand offers a reaction with
   // a reach (Glorious Defense's 10 feet, Rebuke the Violent's 30) only when
   // the creature is inside it. Absent for the DM, a viewer with no token, and
-  // older hosts, which offer every reaction as before.
+  // older hosts, which offer every reaction as before. Beside them, under
+  // zoneFeetKey (zone-feet.ts), the feet from an area the character keeps on
+  // the board to each creature and to themselves (Guardian Coil's tentacle).
   feet?: Record<string, number>;
   // The creatures among those this viewer's own character has no line of
   // sight to on the board, by id: a reaction whose text needs its creature

@@ -239,75 +239,27 @@ P["feat.spell-sniper.range"] = async () => {
   assert.deepEqual(reached, { plain: false, sniper: true }, "Ray of Frost at 90 feet");
 };
 
-// ---- wave 2, round 4: feat clauses read where the engine reads them ----
-// Each probe reads the helper at the one door its engine site calls (named in
-// the ledger's "by"), with the feat and without it, so a helper that answers
-// yes for anyone fails too.
-const combat = await import("../src/lib/srd/feat-combat.ts");
-const { standUpTiles } = await import("../src/lib/srd/authored-effects-more.ts");
-const holder = (feat) => ({ feats: [feat], features: [] });
-const nobody = { feats: [], features: [] };
-
-P["feat.athlete.stand"] = async () => {
-  // Thirty feet of speed is 6 squares: standing costs half (3), an Athlete 1.
-  assert.deepEqual([standUpTiles(nobody, 6), standUpTiles(holder("Athlete"), 6)], [3, 1]);
-};
-
-P["feat.poisoner.resistance"] = async () => {
-  assert.deepEqual(
-    [combat.poisonerIgnoresResistance(holder("Poisoner"), "poison"), combat.poisonerIgnoresResistance(holder("Poisoner"), "fire"), combat.poisonerIgnoresResistance(nobody, "poison")],
-    [true, false, false],
-  );
-};
-
-P["feat.sharpshooter.cover"] = async () => {
-  assert.deepEqual([combat.shotIgnoresCover(holder("Sharpshooter")), combat.shotIgnoresCover(nobody)], [true, false]);
-};
-
-P["feat.mage-slayer.save"] = async () => {
-  assert.deepEqual(combat.spellSaveAdvantageReach(holder("Mage Slayer")), { feat: "Mage Slayer", tiles: 1 });
-  assert.equal(combat.spellSaveAdvantageReach(nobody), null);
-};
-
-P["feat.polearm-master.enter"] = async () => {
-  assert.deepEqual(
-    [combat.polearmReachOpportunity(holder("Polearm Master"), "Glaive"), combat.polearmReachOpportunity(holder("Polearm Master"), "Longsword"), combat.polearmReachOpportunity(nobody, "Glaive")],
-    [true, false, false],
-  );
-};
-
-P["feat.shield-master.shove"] = async () => {
-  const attacked = { oncePerTurn: [], attacksMade: 1, dashed: false };
-  assert.deepEqual(combat.featBonusRoute(holder("Shield Master"), "shove", attacked, true), { feature: "Shield Master", ki: 0 });
-  assert.equal(combat.featBonusRoute(holder("Shield Master"), "shove", { ...attacked, attacksMade: 0 }, true), null, "before the Attack action");
-  assert.equal(combat.featBonusRoute(holder("Shield Master"), "shove", attacked, false), null, "with no shield");
-};
-
-P["feat.charger.shove"] = async () => {
-  const dashed = { oncePerTurn: [], attacksMade: 0, dashed: true };
-  assert.deepEqual(combat.featBonusRoute(holder("Charger"), "shove", dashed, false), { feature: "Charger", ki: 0 });
-  assert.equal(combat.featBonusRoute(holder("Charger"), "shove", { ...dashed, dashed: false }, false), null, "with no Dash");
-  // The other choice: one melee attack (pc-attack-options.ts featBonusAttack).
-  const swing = { weaponAttack: true, melee: true, weapon: "Longsword" };
-  assert.equal(combat.featBonusAttack(holder("Charger"), { oncePerTurn: [], dashed: true }, swing), "Charger");
-  assert.equal(combat.featBonusAttack(holder("Charger"), { oncePerTurn: [], dashed: false }, swing), null, "with no Dash");
-};
-
-P["feat.crossbow-expert.bonus"] = async () => {
-  const shot = { weaponAttack: true, melee: false, weapon: "Hand Crossbow" };
-  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [combat.ONE_HANDED_ATTACKED], dashed: false }, shot), "Crossbow Expert");
-  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [], dashed: false }, shot), null, "before an Attack action with a one-handed weapon");
-  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [combat.ONE_HANDED_ATTACKED], dashed: false }, { ...shot, weapon: "Light Crossbow" }), null, "only the hand crossbow");
-};
-
-P["feat.durable.floor"] = async () => {
-  assert.deepEqual(combat.hitDieHealingFloor(holder("Durable"), 3), { feat: "Durable", floor: 6, extra: 0 });
-  assert.equal(combat.hitDieHealingFloor(holder("Durable"), 0).floor, 2, "at least 2");
-  assert.equal(combat.hitDieHealingFloor(nobody, 3), null);
-};
-
-P["feat.skulker.hide"] = async () => {
-  assert.deepEqual([combat.hasSkulker(holder("Skulker")), combat.hasSkulker(nobody)], [true, false]);
-};
+// ---- wave 2, part wbf: every helper-held clause at the table's own door,
+// and the clauses nobody had staged (the two modules say how each is run).
+const { tableProbes } = await import("./lib/sweep-clauses-feats-wbf-table.mjs");
+const { gapProbes } = await import("./lib/sweep-clauses-feats-wbf-gaps.mjs");
+const { doorProbes } = await import("./lib/sweep-clauses-feats-wbf-doors.mjs");
+tableProbes(rig, P);
+gapProbes(rig, P);
+doorProbes(rig, P);
+// The ids those modules answer for, written out because the ledger's own
+// check reads this file's text for a probe's name: a module that drops one
+// fails here before the ledger sends a clause to nothing.
+const WBF_PROBES = [
+  "feat.athlete.stand.table", "feat.poisoner.resistance.table", "feat.sharpshooter.cover.table", "feat.mage-slayer.save.table",
+  "feat.polearm-master.enter.table", "feat.shield-master.shove.table", "feat.charger.shove.table", "feat.durable.floor.table",
+  "feat.skulker.hide.table", "feat.crossbow-expert.bonus.table",
+  "feat.athlete.climb", "feat.athlete.jump", "feat.actor.disguise", "feat.charger.run", "feat.elemental-adept.twice", "feat.healer.kit",
+  "feat.inspiring-leader.rally", "feat.inspiring-leader.temp", "feat.lucky.attacked", "feat.mobile.dash-terrain", "feat.sentinel.stop",
+  "feat.sentinel.disengage", "feat.sentinel.guard", "feat.shield-master.save", "feat.chef.meal",
+  "feat.war-caster.opportunity", "feat.telekinetic.shove", "feat.telekinetic.hand", "feat.linguist.cipher",
+  "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect",
+];
+assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules no longer write");
 
 await runOrSurvey("scripts/test-enforce-sweep-clauses-feats.mjs", P);

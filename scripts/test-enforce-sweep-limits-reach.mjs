@@ -43,10 +43,13 @@ const world = await openWorld({ campaign: { maxPlayers: 400 } });
 const table = await limitsTable(world);
 const { kit } = table;
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
+const { placeSpellZone } = await import("../src/lib/dm/zone-cast.ts");
 const TEXT = authoredText();
 
 const reachOf = (does, level = 20) => {
-  const range = does.rangeFt;
+  // Measured from the holder, or from the holder's own area on the board
+  // (nearZone: Guardian Coil reaches a creature within 10 feet of the tentacle).
+  const range = does.rangeFt ?? does.nearZone?.feet;
   if (Array.isArray(range)) {
     return range.filter(([from]) => from <= level).at(-1)?.[1] ?? null;
   }
@@ -124,6 +127,10 @@ for (const item of reactions.filter((entry) => coversAlly(entry.reaction.does) &
       kit.place(friend.id, 1 + apart, 2);
       kit.place(enemy.id, 2 + apart, 2);
       armFor(enemy, item.reaction.does);
+      // The holder's area stands where they do, so its reach is the row's.
+      if (item.reaction.does.nearZone) {
+        placeSpellZone(world.campaign(), { spell: item.reaction.does.nearZone.spell, caster: { kind: "pc", id: who.id, name: world.sheet(who.id).name }, at: { x: 1, y: 2 } });
+      }
       await table.strike(enemy, friend, faces);
       return enemy;
     };

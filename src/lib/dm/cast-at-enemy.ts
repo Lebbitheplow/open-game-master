@@ -48,6 +48,7 @@ import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
+import { majestyFailsSave } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { castDamageType } from "@/lib/dm/ar-ws-awakened";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
@@ -493,11 +494,15 @@ export function handleCastAtEnemy(
   const noSave = autoHit || readFails || Boolean(mechCondition?.noInitialSave) || mechCondition?.hpAtMost !== undefined;
   // Stinking Cloud cannot touch a creature immune to poison.
   const untouched = spellAutoSave(mech, enemy);
+  // Mantle of Majesty: the creature the bard charmed rolls no save.
+  const majesty = majestyFailsSave(sheet, spellName, charmedBy(enemy.conditions, enemy.conditionMeta as Parameters<typeof charmedBy>[1], sheet.id));
   if (noSave) {
     base.autoHit = true;
   } else if (untouched) {
     saved = true;
     Object.assign(base, { saved: true, dc, note: untouched });
+  } else if (majesty) {
+    Object.assign(base, { autoFailed: majesty, dc, saved: false });
   } else {
     // A legendary creature spends a resistance on a failure that would bind
     // it, decided at the save so the damage follows the success too

@@ -144,6 +144,9 @@ export type MoveTraits =
   | {
       swims?: boolean;
       landStride?: boolean;
+      // Difficult terrain of any kind, the board's and a spell's, costs no
+      // extra: Mobile on a turn its holder Dashed (src/lib/srd/feat-moves.ts).
+      anyGround?: boolean;
       climbs?: boolean;
       passable?: Set<number>;
       squeeze?: boolean;
@@ -174,7 +177,7 @@ export function moveCost(ch: string, traits: MoveTraits = false): number {
   if (ch === TERRAIN.climb) {
     return typeof traits === "object" && traits.climbs ? 1 : 2;
   }
-  const stride = typeof traits === "object" && Boolean(traits.landStride);
+  const stride = typeof traits === "object" && Boolean(traits.landStride || traits.anyGround);
   return ch === TERRAIN.difficult && !stride ? 2 : 1;
 }
 

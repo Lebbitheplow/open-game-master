@@ -13,8 +13,9 @@ import { listEnemies } from "@/lib/db/encounters";
 import { publishPersisted } from "@/lib/events";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
-import { planLongJump, RUN_UP_TILES } from "@/lib/srd/jump";
+import { planLongJump } from "@/lib/srd/jump";
 import { jumpReach, windStepOn } from "@/lib/dm/jump-reach";
+import { runUpTiles } from "@/lib/srd/feat-moves";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -47,7 +48,7 @@ export function jumpMove(input: {
   const occupied = occupiedTiles(map, listTokens(map.id), token, footprintLookup(enemiesById));
   // A 10-foot run on foot this turn is the running start; out of a fight
   // there is all the room in the world to take one.
-  const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  const runningStart = scene || token.movedThisRound >= runUpTiles(sheet);
   // Strength, the features and the spells that change a jump, and Step of
   // the Wind's doubling for the turn: the reach the board view shows, from
   // the same helper (jump-reach.ts).

@@ -20,6 +20,7 @@ import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { describeDistances } from "@/lib/battlemap/serialize";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { budgetApplies } from "@/lib/dm/action-budget";
+import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -253,6 +254,7 @@ export function walkCharacter(
       footprintOf,
       enemySize: (refId) => enemiesById.get(refId)?.stats.size,
       sideOf: tokenSides(getActiveEncounter(campaign.id)),
+      anyGround: crossesAnyGround(encounter, sheet),
     }),
     map,
     "pc",
@@ -291,6 +293,8 @@ export function walkCharacter(
   if (!readied) {
     noteRun(campaign.id, sheet, origin);
   }
+  // A Charger's straight run is read off the walk (ar-wbf-feat-turn.ts).
+  noteStraightRun(encounter, sheet, origin, walkedSquares);
   // Moving ends One with Shadows' invisibility (one-with-shadows.ts).
   endShadowInvisibility(campaign.id, sheet.id, "moves");
   cloakIntoLight(campaign.id, sheet.id);

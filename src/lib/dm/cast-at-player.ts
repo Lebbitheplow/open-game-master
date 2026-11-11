@@ -45,6 +45,8 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
 // ability or by a hazard (SRD 5.1, Saving Throws). The mirror of
@@ -373,6 +375,14 @@ export function handleCastAtPlayer(
     // A Globe of Invulnerability or an Antimagic Field around the target: the
     // spell is cast, its use spent, and does nothing to them (zone-rules.ts).
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: sheet.id, targetName: sheet.name, facts: args.spell ? spellFactsFor(args.spell, spellAuthorsFor(campaign)) : null });
+    // Among the Dead: an undead's harmful spell at this warlock alone asks
+    // the save its attack does, and a failure loses the spell. "This doesn't
+    // protect you from area effects": a spell with an area asks none, even
+    // resolved on one character (ar-wbf-warlock-ward.ts).
+    const aimed = prepared.spell ?? args.spell;
+    if (!ward && aimed && !spellAreaShape(aimed, spellAuthorsFor(campaign))) {
+      ward = authoredWardSave(campaign, turn, prepared.enemy, sheet, "spell").lost;
+    }
     use = prepared;
   }
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:

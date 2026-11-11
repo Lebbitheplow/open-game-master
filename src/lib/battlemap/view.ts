@@ -14,6 +14,7 @@ import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { ownZoneFeet } from "@/lib/dm/zone-reach";
 import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
@@ -22,6 +23,7 @@ import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
 import { budgetApplies, dashCount } from "@/lib/dm/action-budget";
 import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
+import { crossesAnyGround } from "@/lib/dm/ar-wbf-feat-turn";
 import { listSheets } from "@/lib/db/sheets";
 import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
@@ -437,7 +439,7 @@ export function buildPlayerMapView(
     if (budgetLeft > 0) {
       const occupied = occupiedTiles(map, tokens, myToken, footprintLookup(enemiesById));
       // The same passage the move route allows (src/lib/battlemap/passage.ts).
-      const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter) }), map, "pc");
+      const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter), anyGround: crossesAnyGround(encounter, sheet) }), map, "pc");
       const reach = (limit: number, moveTraits: typeof traits) =>
         [...reachableTiles(map.terrain, map.width, map.height, occupied, myToken, limit, 1, myToken.movement === "fly", moveTraits).entries()];
       const costs = reach(budgetLeft, traits);
@@ -666,7 +668,9 @@ export function buildPlayerMapView(
             return Boolean(other && unseenByConditions(encounter.id, sheet, other, { hidden: false }));
           };
           return {
-            feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
+            // With them, the feet from an area the character keeps on the
+            // board to each creature and to themselves (zone-reach.ts).
+            feet: { ...Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])), ...ownZoneFeet(encounter, sheet, [sheet.id, ...others.map((token) => token.refId)]) },
             unseen: others
               .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
               .filter((token) => blocked(token) || !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))

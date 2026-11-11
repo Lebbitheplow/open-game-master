@@ -173,7 +173,7 @@ export function AfterRollCard({
               // An attack waits on a miss, or on a hit for Touch of Death or
               // Destructive Wrath (after-roll-logic.ts afterAttackOptions). With
               // nothing of their own to press, only the helpers can change a miss.
-              ? thrown.options.some((option) => option.id === "touch_of_death")
+              ? thrown.options.some((option) => option.id === "touch_of_death" || option.id === "combat_inspiration")
                 ? "The attack hits. You can add to its damage."
                 : thrown.options.some((option) => option.id === "destructive_wrath")
                   ? "The attack hits. You can deal its lightning and thunder at their maximum."

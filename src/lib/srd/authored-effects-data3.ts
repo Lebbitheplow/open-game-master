@@ -424,7 +424,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "warlock::Hex Warrior": {
     subclass: "The Hexblade",
     spends: [{ name: "Hex Warrior Weapon", aliases: ["Hex Warrior"], fight: "out", does: { kind: "choose", options: HEX_WEAPONS } }],
-    effects: [{ kind: "weapon_ability", ability: "cha", note: "With Pact of the Blade, every pact weapon too; the GM names it as the hex weapon." }],
+    effects: [{ kind: "weapon_ability", ability: "cha", pactWeapons: true }],
   },
   "warlock::Armor of Hexes": {
     subclass: "The Hexblade",
@@ -457,7 +457,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "The Undead",
     effects: [
       { kind: "resist", types: ["bludgeoning", "piercing", "slashing"], gate: { condition: "spirit projection" } },
-      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects, the healing in Form of Dread and the spells without components are the GM's to apply." },
+      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects and the healing in Form of Dread are the GM's to apply." },
     ],
   },
 

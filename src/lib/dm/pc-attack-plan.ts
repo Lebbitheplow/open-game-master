@@ -10,6 +10,7 @@ import { secondSneakKey } from "@/lib/dm/mt-mr-turn";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
+import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -27,6 +28,7 @@ import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { checkPcAttackRange } from "@/lib/dm/map-tools";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
+import { graveTouchedType } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 import {
   claimOncePerTurnRiders,
   foldDamageRiders,
@@ -50,6 +52,7 @@ import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
 import { textKey } from "@/lib/language/text-logic";
 import { acBreakdownFor } from "@/lib/srd";
 import { foeSlayerBonus } from "@/lib/dm/attack-features";
@@ -471,7 +474,9 @@ export function planPcAttack(input: {
     profile = { ...profile, damageExpression: polearmButtDamage(profile.damageExpression), damageType: "bludgeoning", heavy: false };
     featNotes.push("Polearm Master: the butt end, 1d4 bludgeoning, as the bonus action");
   } else if (options.bonusFeat === "Charger") {
-    if (args.charged) {
+    // The run is the caller's word, or the walk the board itself saw end in
+    // 10 feet on one heading (ar-wbf-feat-turn.ts).
+    if (args.charged || ranStraight(encounter, sheet.id)) {
       profile = { ...profile, damageExpression: `${profile.damageExpression}+5` };
       featNotes.push("Charger: +5 damage after a 10-foot straight charge");
     } else {
@@ -637,6 +642,13 @@ export function planPcAttack(input: {
     sources.push("advantage");
     context.notes.push(`${options.featureBonus.feature}: advantage on this attack`);
   }
+  // Mounted Combatant: advantage in melee against an unmounted creature
+  // smaller than the mount (src/lib/dm/ar-wbf-feat-doors.ts).
+  const ridden = mountedAdvantage(campaign.id, sheet, enemy, !profile.ranged);
+  if (ridden) {
+    sources.push("advantage");
+    context.notes.push(ridden);
+  }
   // Powerful Attacker's trade: the roll at disadvantage (feat-combat.ts).
   if (powerDisadvantage) {
     sources.push("disadvantage");
@@ -701,6 +713,10 @@ export function planPcAttack(input: {
     droppedRiders = claimed.droppedRiders;
     hitClaims = claimed.hitClaims;
   }
+  // Grave Touched: the hit's own damage made necrotic when asked, once a turn
+  // (ar-wbf-warlock-grave-logic.ts). The coat of poison below reads the blade.
+  const forged = profile.damageType;
+  ({ profile, hitClaims } = graveTouchedType({ sheet, profile, asked: args.damageType, budget: riderBudget, hitClaims, notes: context.notes }));
 
   return {
     conjured,
@@ -762,7 +778,7 @@ export function planPcAttack(input: {
       stunShot: args.stunShot === true && stunningSniperApplies(sheet, { weaponAttack, ranged: profile.ranged }),
       // Lucky's point on this roll, when one is left.
       luck: args.luck === true && luckPointsLeft(sheet.resources) > 0,
-      poison: carriesPoison(sheet, weaponAttack, profile.damageType),
+      poison: carriesPoison(sheet, weaponAttack, forged),
       giantKiller,
       reactionAttack: Boolean(input.reactionAttack),
       turnRiders,

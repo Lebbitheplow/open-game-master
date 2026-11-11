@@ -1,4 +1,5 @@
 import { evadesOpportunityAttacksAfterMelee, MOBILE_ATTACKED, polearmReachOpportunity } from "@/lib/srd/feat-combat";
+import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
 import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -50,6 +51,7 @@ import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
@@ -414,6 +416,10 @@ export function resolvePcOpportunityAttacks(
   from: XY,
   to: XY,
   path?: XY[],
+  // The walker Disengaged: its walk draws nobody's swing but a Sentinel's
+  // (src/lib/srd/feat-moves.ts). Every caller passes it rather than skipping
+  // this door, or the Sentinel is skipped with everyone else.
+  disengaged = false,
 ): string[] {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -440,6 +446,9 @@ export function resolvePcOpportunityAttacks(
 
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
+      continue;
+    }
+    if (disengaged && !strikesTheDisengaged(sheet)) {
       continue;
     }
     if (
@@ -500,6 +509,16 @@ export function resolvePcOpportunityAttacks(
     if (sight && !sight.attackerSees) {
       continue;
     }
+    // War Caster: the spell they named is cast in the swing's place, null
+    // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint), reactionKey });
+    if (cast) {
+      notes.push(cast.note);
+      if (cast.dropped) {
+        break;
+      }
+      continue;
+    }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactionKey];
     saveEncounter(encounter);
     // SRD 5.1, Rage: an attack on a hostile creature since the barbarian's
@@ -532,7 +551,7 @@ export function resolvePcOpportunityAttacks(
   }
   // A creature the party dominates walking away from its old allies: they
   // strike it as it goes (opportunity-sides.ts posts its own lines).
-  if (moverKind === "enemy") {
+  if (moverKind === "enemy" && !disengaged) {
     notes.push(...enemiesStrikeWalker(campaign.id, enemyId, steps, moverFootprint));
   }
   return notes;

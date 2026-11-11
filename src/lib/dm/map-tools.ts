@@ -855,13 +855,14 @@ export function handleMoveToken(
   // exactly as the reverse does when a player walks off. Forced movement
   // (a shove, a gust of wind) provokes nothing.
   const opportunity =
-    resolved.kind === "enemy" && !args.forced && !disengaged && (!allowance || allowance.provokes)
+    resolved.kind === "enemy" && !args.forced && (!allowance || allowance.provokes)
       ? resolvePcOpportunityAttacks(
           campaign,
           resolved.token.refId,
           origin,
           landing,
           walkedPart(path, landing),
+          Boolean(disengaged),
         )
       : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
@@ -898,7 +899,7 @@ export function handleMoveToken(
                 : `Speed limited the move: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
         }
       : {}),
-    ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks.` } : {}),
+    ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks${opportunity.length ? " but a Sentinel's" : ""}.` } : {}),
     ...(allowance ? { legendaryMove: `A legendary move: none of its own turn's movement spent${allowance.provokes ? "" : ", and no opportunity attacks"}.` } : {}),
     ...(walking && resolved.enemy && !allowance ? { movementLeft: movementLeft(campaign.id, resolved.enemy) } : {}),
   };
