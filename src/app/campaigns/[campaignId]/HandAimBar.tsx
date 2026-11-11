@@ -272,6 +272,11 @@ export function HandAimBar({
         <span className="ml-auto min-w-0 truncate text-xs text-stone-400">{hint}</span>
       </div>
 
+      {/* A phone has no hover, so the card's rules line, cut off on the
+          card, was nowhere to be read in full: picking a card is where it
+          is read, as nothing is sent until it is played. */}
+      {card.rules ? <p className="hand-aim-rules mt-1.5 font-serif text-sm leading-snug text-stone-300">{card.rules}</p> : null}
+
       {needsTarget ? (
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Targets">
           {targets.length ? (
