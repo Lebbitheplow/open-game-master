@@ -188,8 +188,11 @@ export function handleMountUp(
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
-    movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed),
-    note: `${sheet.name} now moves at ${checked.state.speed} ft. Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}${spent.charged ? ", taken from this turn's movement on the board" : ""}.`,
+    // Only what was taken is reported as spent: the console's mount off the
+    // rider's turn, or one with no board, charged nothing (ruling R9), and
+    // the result said it had.
+    ...(spent.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+    note: `${sheet.name} now moves at ${checked.state.speed} ft. ${spent.charged ? `Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}, taken from this turn's movement on the board.` : "No movement was charged: no turn of theirs is running on the board."}`,
   };
 }
 
@@ -233,6 +236,13 @@ function spendMountingMovement(
   if (!able.ok && able.reason !== "not_your_turn" && able.reason !== "no_initiative") {
     return toolError(able);
   }
+  // The console off the rider's own turn, a turn held for the enemies before
+  // it included, keeps its free hand and charges nothing (ruling R9). The
+  // held-turn check ran first and refused the console with the model's "play
+  // their turns first" line while the pointer rested on the rider.
+  if (turn?.actor === "human_dm" && !ownTurnOf(encounter, sheet.id)) {
+    return { charged: false };
+  }
   const held = heldTurnRefusal(encounter, sheet);
   if (held) {
     return held;
@@ -243,9 +253,6 @@ function spendMountingMovement(
     return { charged: false };
   }
   if (!ownTurnOf(encounter, sheet.id)) {
-    if (turn?.actor === "human_dm") {
-      return { charged: false };
-    }
     const current = encounter.order[encounter.turnIndex];
     return { error: `${sheet.name} mounts or dismounts during their own move only; it is ${current?.name ?? "another combatant"}'s turn. What they declared waits for their turn.`, refused: "rules" };
   }
@@ -300,11 +307,9 @@ export function handleDismount(
     return { error: `${sheet.name} is not mounted.`, refused: "rules" };
   }
   const cause = args.cause ?? "voluntary";
-  if (cause === "voluntary") {
-    const spent = spendMountingMovement(campaign, sheet, turn);
-    if ("error" in spent) {
-      return spent;
-    }
+  const spent = cause === "voluntary" ? spendMountingMovement(campaign, sheet, turn) : null;
+  if (spent && "error" in spent) {
+    return spent;
   }
   setMount(campaign.id, sheet.id, null);
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
@@ -317,8 +322,12 @@ export function handleDismount(
     return {
       ok: true,
       dismounted: current.name,
-      movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed),
-      note: holdsFeature(sheet, SADDLE) ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle) and needs no roll." : "A deliberate dismount costs half their movement and needs no roll.",
+      ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+      note: spent?.charged
+        ? holdsFeature(sheet, SADDLE)
+          ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
+          : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
+        : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
     };
   }
   // Thrown: the server rolls the DC 10 Dexterity save from the rider's sheet

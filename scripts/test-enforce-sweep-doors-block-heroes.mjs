@@ -41,10 +41,11 @@ const KNOWN = {};
 
 // The console's free hand off the rider's turn (WAVE1 ruling R9: "the
 // console may mount or dismount off turn (a person GM adjudicates), but never
-// charges movement to a turn that is not running"). The mount is recorded, so
-// these cells write; that no movement is charged is held by
+// charges movement to a turn that is not running"). A turn held for the
+// enemies before it has not begun, so it is off turn too. The mount is
+// recorded, so these cells write; that no movement is charged is held by
 // scripts/test-enforce-turn-movement-2.mjs.
-const ALLOWED = known(cellsOf("mount_up", ["not_turn"], ["console"]).concat(cellsOf("dismount", ["not_turn"], ["console"])), {
+const ALLOWED = known(cellsOf("mount_up", ["not_turn", "held"], ["console"]).concat(cellsOf("dismount", ["not_turn", "held"], ["console"])), {
   ruling: "ruling R9 (src/lib/dm/mount-tools.ts spendMountingMovement: a person at the console keeps a free hand)",
 });
 
