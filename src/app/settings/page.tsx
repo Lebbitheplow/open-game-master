@@ -90,9 +90,10 @@ export default function SettingsPage() {
     version: string;
     graceDays: number;
   } | null>(null);
-  // A world one of the apps hosts: guests never chose a password (the app
-  // minted one and renews their session with it), so offering to change it
-  // would lock them out of their own seat. The host keeps the option.
+  // A world one of the apps hosts: nobody there chose a password. The app
+  // made one up for the host and for each guest and renews their session
+  // with it, so changing it only locks the app out of its own seat, and
+  // the current password the form asks for is one nobody was ever shown.
   const [deviceWorld, setDeviceWorld] = useState(false);
   // Seeded from the Discord link redirect (?linked=1 / ?error=...).
   const [discordNotice] = useState(() => {
@@ -247,7 +248,7 @@ export default function SettingsPage() {
         {[
           { id: "settings-profile", label: "Profile", glyph: "tab-characters" },
           { id: "settings-dice", label: "Dice", glyph: "die-d20" },
-          ...(deviceWorld && !me.isAdmin ? [] : [{ id: "settings-signin", label: "Sign-in", glyph: "tab-admin" }]),
+          ...(deviceWorld ? [] : [{ id: "settings-signin", label: "Sign-in", glyph: "tab-admin" }]),
           { id: "settings-appearance", label: "Appearance", glyph: "tab-settings" },
           { id: "settings-dictation", label: "Dictation", glyph: "ui-speech" },
           { id: "settings-blocked", label: "Blocked", glyph: "ui-lock" },
@@ -320,7 +321,7 @@ export default function SettingsPage() {
         <DiceLookSummary />
       </PageSection>
 
-      {deviceWorld && !me.isAdmin ? null : (
+      {deviceWorld ? null : (
       <PageSection id="settings-signin" heading={me.hasPassword === false ? "Set a password" : "Password"} glyph="tab-admin">
         {me.hasPassword === false ? (
           <>
