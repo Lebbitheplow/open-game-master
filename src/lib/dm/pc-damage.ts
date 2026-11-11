@@ -13,6 +13,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 // Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
+import { ragesBeyondDeath } from "@/lib/dm/mt-fb-rage-death-logic";
 import "@/lib/dm/faithful-summons";
 import { immersedResistance } from "@/lib/dm/underwater";
 import { deathWardPatch } from "@/lib/dm/spell-effects";
@@ -454,7 +455,9 @@ export function applyPcDamage(
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
-  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING)) {
+  // Nor does a zealot raging beyond death (mt-fb-rage-death-logic.ts): 0 hit
+  // points does not knock them unconscious, so the rage goes on.
+  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING) && !ragesBeyondDeath(sheet)) {
     const now = getSheetById(sheet.id) ?? sheet;
     const cleared = removeConditions(now.conditions, now.conditionMeta, [RAGING]);
     const patch: FullPatchSheetInput = {

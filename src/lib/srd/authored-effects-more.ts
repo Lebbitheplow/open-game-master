@@ -96,7 +96,9 @@ export function naturalWeaponGated(sheet: AuthoredSheet, name: string): string |
 // ---- reach, Sneak Attack, saves ----
 
 export function authoredReachBonus(sheet: AuthoredSheet, unarmed = false): { tiles: number; feature: string } | null {
-  const found = activeAuthored(sheet, "reach").filter(({ effect }) => !effect.unarmed || unarmed)[0];
+  // The widest reach held, not the first: Demiurgic Colossus's 10 feet is
+  // Giant's Havoc's 5 grown, not a second 5 on top.
+  const found = activeAuthored(sheet, "reach").filter(({ effect }) => !effect.unarmed || unarmed).sort((a, b) => b.effect.tiles - a.effect.tiles)[0];
   return found ? { tiles: found.effect.tiles, feature: found.held.feature } : null;
 }
 

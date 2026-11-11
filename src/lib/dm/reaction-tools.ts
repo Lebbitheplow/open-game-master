@@ -14,6 +14,7 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
+import { heldAuthored } from "@/lib/srd/authored-effects";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
@@ -762,6 +763,13 @@ function useReaction(
   // A Channel Divinity option taken as a reaction (War God's Blessing) spends a
   // use like any other option: this path spent only the reaction, so a cleric
   // could bless every round. Rebuke the Violent pays through its own row.
+  // A feature the engine applies by itself when its moment comes (its authored
+  // row says where: Hold the Line's opportunity attack as a creature moves) is
+  // no reaction to take on the call's word.
+  const applied = heldAuthored(sheet).find((entry) => isNamed(held.name, entry.feature) && entry.entry.heldBy && !entry.entry.reactions?.length);
+  if (applied) {
+    return { error: `${held.name} is not a reaction taken by name: the server applies it when its moment comes. Nothing was spent.`, refused: "rules" };
+  }
   const option = choiceIn(held.name, "Channel Divinity");
   const isChannel = option !== null;
   // An option that is no reaction (Vow of Enmity, Turn Undead) does nothing here:

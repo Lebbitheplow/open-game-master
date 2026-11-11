@@ -96,6 +96,10 @@ export function checkAttackOptions(input: {
   besideEarlierTarget?: (earlierId: string) => boolean;
   creaturesBeside?: (earlierId: string) => string[];
   targetId?: string;
+  // The target's size, and how many feet it stands from another creature
+  // (null off the board): a run's bonus attack and Curving Shot's 60 feet.
+  targetSize?: string;
+  feetFrom?: (otherId: string) => number | null;
 }): { refused: ToolError } | { options: AttackOptions } {
   const { sheet, args, profile, kind, atRange, derived, budget } = input;
   const weaponAttack = kind === "weapon" || kind === "natural";
@@ -140,7 +144,7 @@ export function checkAttackOptions(input: {
       const featBonus = greatWeapon ? "Great Weapon Master" : featBonusAttack(sheet, budget, { weaponAttack, melee: meleeWeapon, weapon: profile.base });
       // Battle Magic, War Magic, Sudden Strike, Telekinetic Master...
       // (src/lib/srd/authored-effects.ts).
-      const authored = featBonus ? { ok: true } : authoredBonusAttackProblem(sheet, budget);
+      const authored = featBonus ? { ok: true } : authoredBonusAttackProblem(sheet, budget, { id: input.targetId, size: input.targetSize });
       // War Priest, Unwavering Mark, Hungry Jaws, Pistol and Blade
       // (src/lib/dm/feature-bonus-attacks.ts).
       const own = "refused" in authored ? featureBonusAttack({ sheet, budget, profile, melee: meleeWeapon, targetId: input.targetId, mods: derived.abilityMods }) : null;
@@ -161,6 +165,11 @@ export function checkAttackOptions(input: {
         const missed = budget.oncePerTurn.find((key) => key.startsWith(CURVING_SHOT))?.slice(CURVING_SHOT.length);
         if (missed && input.targetId === missed) {
           return { refused: { error: `${sheet.name}: Curving Shot sends the missed arrow at a different target, not the creature it missed.`, retry: true } };
+        }
+        // "a different target within 60 feet of the original target".
+        const apart = missed ? (input.feetFrom?.(missed) ?? null) : null;
+        if (apart !== null && apart > 60) {
+          return { refused: { error: `${sheet.name}: Curving Shot sends the missed arrow at a target within 60 feet of the creature it missed, and this one stands ${apart} feet from it.`, refused: "rules" } };
         }
         options.featureBonus = { feature: "Curving Shot", noAmmo: true };
       }

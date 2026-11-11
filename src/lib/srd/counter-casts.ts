@@ -27,6 +27,8 @@ export type CounterCast = {
   castAt?: number;
   selfOnly?: boolean;
   noMaterial?: boolean;
+  // The casting ability the feature names (Consult the Spirits: "using Wisdom").
+  ability?: "str" | "dex" | "con" | "int" | "wis" | "cha";
   note?: string;
 };
 
@@ -34,7 +36,7 @@ const LUNAR = { "full moon": "Shield", "new moon": "Ray of Sickness", "crescent 
 
 export const COUNTER_CASTS: CounterCast[] = [
   { counter: "sub_star_map", features: ["Star Map"], spells: ["Guiding Bolt"], rest: "long" },
-  { counter: "sub_consult_the_spirits", features: ["Consult the Spirits"], spells: ["Augury", "Clairvoyance"], rest: "short", noMaterial: true },
+  { counter: "sub_consult_the_spirits", features: ["Consult the Spirits"], spells: ["Augury", "Clairvoyance"], rest: "short", noMaterial: true, ability: "wis" },
   { counter: "art_restorative_reagents", features: ["Restorative Reagents"], spells: ["Lesser Restoration"], rest: "long" },
   // Chemical Mastery: "can cast greater restoration and heal once per long
   // rest each without a slot", one counter for each spell.

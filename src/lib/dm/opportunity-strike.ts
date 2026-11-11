@@ -13,6 +13,7 @@
 // keep their rolls and audit rows on one, so a short human-DM turn is
 // opened for the swing and closed with it.
 
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
@@ -215,6 +216,15 @@ export function pcOpportunitySwing(input: {
       if (fresh && !fresh.conditions.includes("stopped")) {
         patchEnemyConditions(fresh.id, [...fresh.conditions, "stopped"], { ...fresh.conditionMeta, stopped: { source: sheet.id, untilTurnEndOf: enemy.id } });
         notes.push("Sentinel: its speed is 0 for the rest of the turn");
+      }
+    }
+    // Hold the Line (Cavalier 10): "a creature you hit with an opportunity
+    // attack has its speed reduced to 0 until the end of the current turn".
+    if (holdsFeature(sheet, "Hold the Line")) {
+      const fresh = getFoe(enemy.id);
+      if (fresh && !fresh.conditions.includes("held in place")) {
+        patchEnemyConditions(fresh.id, [...fresh.conditions, "held in place"], { ...fresh.conditionMeta, "held in place": { source: sheet.id, rounds: 1 } });
+        notes.push("Hold the Line: its speed is 0 for the rest of the turn");
       }
     }
   }

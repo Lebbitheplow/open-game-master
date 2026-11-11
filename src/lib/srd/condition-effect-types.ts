@@ -199,6 +199,9 @@ export type ConditionEffectRow = {
   // has truesight this far (src/lib/srd/condition-effects-last.ts).
   seesInvisible?: boolean;
   truesightFeet?: number;
+  // The holder sees nothing farther away than this (Shadow Arrow: 5 feet),
+  // whatever the light (src/lib/dm/attack-light.ts attackSight).
+  sightFeet?: number;
   // The holder's jump distances are multiplied (Jump: tripled).
   jumpMultiplier?: number;
   // The holder's speed is this, whatever it was (Gaseous Form's 10-foot

@@ -126,6 +126,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   init_adv: { file: "src/lib/srd/trait-rules.ts", call: "authoredInitiativeAdvantage(" },
   init_ability: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_adv: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredRollRiders(" },
+  check_bonus: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredCheckBonus(" },
   crit_immune: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
@@ -153,6 +154,8 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   // The final round's hooks (src/lib/srd/authored-effects-more.ts).
   natural_weapon: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredNaturalWeapon(" },
   reach: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredReachBonus(" },
+  infuse: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredInfusion(" },
+  jump: { file: "src/lib/dm/jump-reach.ts", call: "authoredJump(" },
   sneak_bonus: { file: "src/lib/dm/pc-attack-damage.ts", call: "authoredSneakBonus(" },
   save_die_vs: { file: "src/lib/dm/forced-save.ts", call: "authoredSaveDieVs(" },
   spell_rider: { file: "src/lib/srd/spell-damage-riders.ts", call: "authoredSpellDice(" },

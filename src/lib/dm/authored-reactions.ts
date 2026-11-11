@@ -13,10 +13,13 @@
 
 import { bothBonded, teleportBeside } from "@/lib/dm/protective-bond";
 import { SOUL_TRINKET, gainTrinket } from "@/lib/dm/mt-mr-trinkets";
+import { rollSurge } from "@/lib/dm/mt-fb-wild-surge";
+import { beastFormRefusal, growBeastForm } from "@/lib/dm/mt-fb-beast";
+import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -102,12 +105,20 @@ function findReaction(ctx: Ctx): Found | null | ToolError {
     return { error: `${ctx.sheet.name} does not have ${named.reaction.name}; only its holder takes that reaction. Nothing was spent.`, refused: "rules" };
   }
   // A reaction the feature gives an ally: someone at the table holds it.
+  // Two at the table may hold it: the one whose turn this is did what the
+  // reaction answers (the banneret who surged), and the first was asked alone.
+  const acting = getActiveEncounter(ctx.campaign.id)?.turnBudget?.ownerId;
+  const holders: Found[] = [];
   for (const stale of listSheets(ctx.campaign.id)) {
     const holder = getSheetById(stale.id) ?? stale;
     const held = heldAuthored(holder).find((entry) => entry.key === named.row.key);
     if (held && !holder.deathSaves?.dead) {
-      return { reaction: named.reaction, held, holder, variant: "" };
+      holders.push({ reaction: named.reaction, held, holder, variant: "" });
     }
+  }
+  const serving = holders.find((entry) => entry.holder.id === acting) ?? holders[0];
+  if (serving) {
+    return serving;
   }
   return { error: `Nobody at the table has ${named.reaction.name}, so ${ctx.sheet.name} cannot answer with it. Nothing was spent.`, refused: "rules" };
 }
@@ -417,6 +428,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      // "An ally you can see" (Spirit Shield): a blinded holder shields nobody.
+      const hidden = unseenTarget(ctx, found, target);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -455,6 +469,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
     }
+    // Unstable Backlash: the Wild Surge rolled again (mt-fb-wild-surge.ts).
+    case "resurge": {
+      const rolled = rollSurge({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: { targetEnemyId: ctx.args.targetEnemyId } });
+      return rolled ?? { error: `${ctx.sheet.name} has no Wild Surge to roll again while not raging. Nothing was spent.`, refused: "rules" };
+    }
     case "ac_vs_hit": {
       let bonus: number;
       let spentDie: string | null = null;
@@ -467,8 +486,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         bonus = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: ${reaction.name}`, `1${die}`, null).total;
       } else if (typeof does.amount === "number") {
         bonus = does.amount;
+      } else if (typeof does.amount === "object") {
+        // Rolled below, once the hit it answers is found.
+        bonus = 0;
       } else {
         bonus = Math.max(1, modsOf(holder).cha ?? 0);
+      }
+      const tail = does.beastForm ? { feature: found.held.feature, weapon: { name: does.beastForm } } : null;
+      const otherForm = tail ? beastFormRefusal(ctx.sheet, tail) : null;
+      if (otherForm) {
+        return { ...otherForm, error: otherForm.error.replace("Nothing was rolled.", "Nothing was spent.") };
       }
       const covered = does.rangeFt ? (allyOf(ctx) ?? ctx.sheet) : ctx.sheet;
       if (does.rangeFt && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
@@ -479,6 +506,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
+      // "A creature you can see within 10 feet" (the tail of Form of the Beast).
+      const striker = attackerFoeId(hit.record);
+      if (does.attackerWithinFt && encounter && striker && !withinFeet(encounter.id, ctx.sheet.id, striker, does.attackerWithinFt)) {
+        return { error: `${hit.record.attacker.name} is beyond ${does.attackerWithinFt} feet of ${ctx.sheet.name}; ${reaction.name} reaches no further. Nothing was spent.`, refused: "rules" };
+      }
+      const unseenStriker = does.attackerWithinFt && reaction.sees === "attacker" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
+      if (unseenStriker) return unseenStriker;
+      if (typeof does.amount === "object") {
+        bonus = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: ${reaction.name}`, does.amount.die, null).total;
+      }
+      growBeastForm(ctx.campaign.id, ctx.sheet.id, tail);
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
         const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta, [spentDie]);
@@ -817,8 +855,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           return { error: `${reaction.name} answers ${enemy.displayName}'s attack, and the server has none on record. Nothing was spent.`, refused: "rules" };
         }
       }
-      if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
+      if (!does.weaponRange && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}; ${reaction.name} is a melee attack. Nothing was spent.`, refused: "rules" };
+      }
+      const crowded = does.answers ? answersRefusal(ctx.campaign.id, holder, reaction.name, Number(resolveFormula(does.answers, held.level))) : null;
+      if (crowded) {
+        return crowded;
       }
       // Each of these answers what another creature does (moves, attacks,
       // forces a save, is commanded) on that creature's turn or its holder's,
@@ -835,6 +877,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
       if (typeof result.error === "string") {
         return toolError(result);
+      }
+      if (does.answers) {
+        noteAnswer(ctx.campaign.id, holder, reaction.name, ctx.sheet.id);
       }
       if (does.onHitCondition && result.hit) {
         const fresh = getEnemy(enemy.id);

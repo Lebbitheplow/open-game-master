@@ -39,6 +39,7 @@ import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
 import { canEnemyAct, markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
+import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
 import { hasteActionOpen, slowedOut } from "@/lib/dm/enemy-actions";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
@@ -225,6 +226,12 @@ export function handleEnemyAttack(
   const commanded = heldTurnRefusal(found, "attack");
   if (commanded) {
     return { error: commanded, refused: "rules", stop: "commanded" };
+  }
+  // An Echo Knight's echo, named as the board names it, is no combatant: the
+  // swing is rolled against its own armor class (mt-fb-echo.ts).
+  const atEcho = cast ? null : enemyStrikesEcho(campaign, turn, encounter, found, args.targetCharacterId, args.attack);
+  if (atEcho) {
+    return atEcho;
   }
   // The target is any combatant (src/lib/dm/combatant.ts): a character on
   // either side, or an enemy fighting on the other one (a creature the party

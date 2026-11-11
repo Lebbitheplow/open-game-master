@@ -34,6 +34,8 @@ import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reacti
 import { answerKey } from "@/lib/dm/last-hit";
 import { needRefusal } from "@/lib/dm/mt-mr-needs";
 import { destroyTrinket, trinketCount } from "@/lib/dm/mt-mr-trinkets";
+import { chargeRefusal, naturalHitRefusal } from "@/lib/dm/mt-fb-charge";
+import { holdsOn } from "@/lib/dm/vitals-logic";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -109,7 +111,10 @@ function prepareCost(
       commit: () => {
         const live = getActiveEncounter(campaign.id);
         if (onceKey && live && budget) {
-          storeBudget(live, { ...budget, oncePerTurn: [...budget.oncePerTurn, onceKey] });
+          // Read again: the effect may have spent an attack of the turn itself
+          // (a Piercing Arrow, src/lib/dm/mt-fb-arcane-shot.ts).
+          const now = budgetFor(live, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) ?? budget;
+          storeBudget(live, { ...now, oncePerTurn: [...now.oncePerTurn, onceKey] });
         }
         return {};
       },
@@ -160,7 +165,9 @@ function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: s
   const pool = matchResource(resourceName);
   for (const option of [variant, nameChoice(resourceName)]) {
     const found = option && pool ? authoredSpendFor(sheet, option) : null;
-    if (found && found.spend.pool?.id === pool?.id) return found;
+    // The pool named pays for it, at once or once the option's own free use is
+    // gone (Telekinetic Movement, Bulwark of Force: `fallback`).
+    if (found && pool && (found.spend.pool?.id === pool.id || found.spend.pool?.fallback === pool.id)) return found;
   }
   return null;
 }
@@ -191,7 +198,7 @@ export function authoredFeatureSpend(
   if (!direct && args.variant && hasOwnChoice(spend.does) && isNamed(args.variant, spend.name)) {
     return { error: `${spend.name} has a choice of its own: call use_resource with resource "${spend.name}" and the choice in variant. Nothing was spent.`, retry: true };
   }
-  if (sheet.deathSaves?.dead || sheet.currentHp <= 0) {
+  if (sheet.deathSaves?.dead || (sheet.currentHp <= 0 && !holdsOn(sheet))) {
     return { error: `${sheet.name} is down and cannot use ${spend.name}.`, refused: "rules" };
   }
   if (!gateHolds(spend.gate, sheet, held)) {
@@ -243,6 +250,14 @@ export function authoredFeatureSpend(
   const swapping = Boolean(spend.swap && hasCondition(sheet, spend.swap.family) && sheet.features.some((feature) => isNamed(feature.name, spend.swap!.feature)));
   if (swapping) {
     picked = { ...picked, action: "none" };
+  }
+  const unrun = spend.chargeFeet && inFight ? chargeRefusal(campaign.id, sheet, spend.name, spend.chargeFeet, args.targetEnemyId) : null;
+  if (unrun) {
+    return unrun;
+  }
+  const unclawed = spend.afterNaturalHit ? naturalHitRefusal(campaign.id, sheet, spend.name, args.targetEnemyId) : null;
+  if (unclawed) {
+    return unclawed;
   }
   // The pool: how much, from which counter.
   let poolId: string | null = null;

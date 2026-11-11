@@ -14,6 +14,7 @@ import { computeSheetDerived, findSkill } from "@/lib/srd";
 import { authoredCheckTraits, authoredRollRiders } from "@/lib/srd/authored-effects";
 import { authoredCheckMod } from "@/lib/srd/authored-check-mod";
 import { authoredFloorKeys } from "@/lib/srd/authored-effects-more";
+import { authoredCheckBonus } from "@/lib/srd/authored-mt-fb";
 import { heldCheckTraits, traitCheckRiders } from "@/lib/srd/check-traits";
 import { heldFeatChecks } from "@/lib/srd/feat-combat";
 import { unnamedRollKeys, type RollGap, type RollKey } from "@/lib/srd/roll-keys";
@@ -176,6 +177,8 @@ export function rollFeatureRiders(
   // A modifier a feature adds to checks of one ability (Otherworldly
   // Glamour: Wisdom on Charisma checks; src/lib/srd/authored-check-mod.ts).
   const checkMod = sheet && checkDerived ? authoredCheckMod(sheet, derivationAbility, checkDerived.abilityMods) : { bonus: 0, notes: [] };
+  // An ability modifier a subclass feature adds to a skill (Elegant Courtier).
+  const authoredChecks = sheet && checkDerived ? authoredCheckBonus(sheet, checkSkill, checkDerived.abilityMods) : { bonus: 0, notes: [] };
   const peerless = sheet && checkKind ? sheet.conditions.find((entry) => /^peerless skill \(d\d{1,2}\)$/i.test(entry.trim())) : undefined;
   // Inspiration the DM awarded, spent for advantage when the roll asks.
   if (args.useInspiration && derivationKind && sheet && !heldInspiration(sheet)) {
@@ -220,7 +223,7 @@ export function rollFeatureRiders(
       ...(inspired ? ["advantage" as const] : []),
     ],
     dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}`,
-    checkBonus: itemChecks.bonus + traitChecks.bonus + checkMod.bonus,
+    checkBonus: itemChecks.bonus + traitChecks.bonus + checkMod.bonus + authoredChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,
     authoredSpent: authoredRolls.spent,
@@ -233,6 +236,7 @@ export function rollFeatureRiders(
       ...(cursedSave ? [cursedSave] : []),
       ...(feral ? [feral] : []),
       ...itemChecks.notes,
+      ...authoredChecks.notes,
       ...authoredRolls.advantage,
       ...traitChecks.advantage,
       ...traitChecks.notes,

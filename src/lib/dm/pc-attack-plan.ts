@@ -54,7 +54,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { acBreakdownFor } from "@/lib/srd";
 import { foeSlayerBonus } from "@/lib/dm/attack-features";
 import { carriesPoison, type OpenHandChoice } from "@/lib/dm/attack-onhit";
-import { rapidStrike, secondWeaponProblem } from "@/lib/dm/authored-attacks";
+import { rapidStrike, rapidStrikeOwed, secondWeaponProblem } from "@/lib/dm/authored-attacks";
 import { curseRider } from "@/lib/dm/spell-retort";
 import type { AmmoSpend } from "@/lib/srd/ammunition";
 import { spendAmmo } from "@/lib/srd/ammunition";
@@ -440,6 +440,11 @@ export function planPcAttack(input: {
     derived: built.derived,
     budget,
     targetId: enemy.id,
+    targetSize: enemy.stats.size,
+    feetFrom: (otherId) => {
+      const apart = tilesBetween(encounter.id, otherId, enemy.id);
+      return apart === null ? null : apart * 5;
+    },
     besideEarlierTarget: (earlierId) => {
       const apart = tilesBetween(encounter.id, earlierId, enemy.id);
       return apart === null || apart <= 1;
@@ -637,8 +642,16 @@ export function planPcAttack(input: {
     sources.push("disadvantage");
   }
   let advantage = mergeAdvantage(sources);
+  // The attack a Rapid Strike bought is owed to the creature it was traded on.
+  if (budget && weaponAttack && !(options.bonusAttack || args.offHand || grantedBonusAction)) {
+    const owed = rapidStrikeOwed(budget, enemy.id);
+    if ("refused" in owed) {
+      return { refused: owed.refused };
+    }
+    budget = owed.budget;
+  }
   if (args.rapidStrike) {
-    const traded = rapidStrike({ sheet, budget, advantage, weaponAttack, bonus: Boolean(options.bonusAttack || args.offHand || grantedBonusAction) });
+    const traded = rapidStrike({ sheet, budget, advantage, weaponAttack, targetId: enemy.id, bonus: Boolean(options.bonusAttack || args.offHand || grantedBonusAction) });
     if ("refused" in traded) {
       return { refused: traded.refused };
     }

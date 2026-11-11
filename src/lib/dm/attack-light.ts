@@ -17,7 +17,8 @@
 
 import { getClock } from "@/lib/db/clock";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
-import type { EncounterEnemy } from "@/lib/db/encounters";
+import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { getSheetById } from "@/lib/db/sheets";
 import { effectiveAmbient } from "@/lib/battlemap/daylight";
 import { cachedLitTiles } from "@/lib/battlemap/lit-cache";
 import { darkvisionTilesFromText, hasLineOfSight } from "@/lib/battlemap/los";
@@ -28,11 +29,10 @@ import { sensesFromBlock, sensesFromText, type Senses } from "@/lib/srd/senses";
 import { weatherObscurementTiles } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { lightSourcesWithZones, lightsWithZones, zoneHidesFrom } from "@/lib/dm/zone-rules";
-import { conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
+import { conditionSightFeet, conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
 import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { mrSensesOver } from "@/lib/srd/mt-mr-senses";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
-import { getSheetById } from "@/lib/db/sheets";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
 import { tilesApart } from "@/lib/dm/board-reach";
 
@@ -111,8 +111,28 @@ export type Sight = {
 
 // Null when there is no board or either creature is off it. Either side may
 // name the tile it stands on with `at` (an opportunity attack's mover, at the
-// tile it left: opportunity-strike.ts opportunitySight).
-export function attackSight(input: {
+// tile it left: opportunity-strike.ts opportunitySight). The light's
+// verdict, then what cuts a creature's own sight short: one that "can't see
+// anything farther than 5 feet away" (Shadow Arrow, a condition row's
+// sightFeet) sees no creature past that, whatever the light. Blindsight is
+// not sight and still reaches (sensesReaching).
+export function attackSight(input: Parameters<typeof sightByLight>[0]): Sight | null {
+  const sight = sightByLight(input);
+  const map = sight ? getBattleMapForEncounter(input.encounterId) : null;
+  const from = map ? placedToken(map.id, input.attacker) : null;
+  const to = map ? placedToken(map.id, input.target) : null;
+  if (!sight || !from || !to) {
+    return sight;
+  }
+  const feet = tilesApart(from, to) * 5;
+  const near = (refId: string) => {
+    const limit = conditionSightFeet(getEnemy(refId)?.conditions ?? getSheetById(refId)?.conditions ?? []);
+    return limit === null || feet <= limit;
+  };
+  return { attackerSees: sight.attackerSees && near(input.attacker.refId), targetSees: sight.targetSees && near(input.target.refId) };
+}
+
+function sightByLight(input: {
   campaignId: string;
   encounterId: string;
   attacker: Placed & { senses: Senses };

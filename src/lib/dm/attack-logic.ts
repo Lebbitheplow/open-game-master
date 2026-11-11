@@ -105,6 +105,9 @@ export type AttackProfile = {
   properties?: string[];
   // Human-readable notes for the tool result ("Archery: +2 to hit").
   riderNotes: string[];
+  // Thrown, it comes back to the hand: never spent from the sheet (Elemental
+  // Cleaver's infused weapon; a named one is gear-ground.ts returnsToHand).
+  returns?: boolean;
   // A magic weapon, bonus or not: its blows pass resistance to nonmagical
   // attacks.
   magicWeapon?: boolean;

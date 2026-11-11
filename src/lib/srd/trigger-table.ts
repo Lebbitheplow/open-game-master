@@ -156,7 +156,8 @@ export type TriggerOn =
   | { kind: "own_wind_step" }
   // A save a creature forced on the holder; `prey`: the creature under that
   // mark; `against`: a save against that condition.
-  | { kind: "save_on_self"; prey?: string; against?: string }
+  // `failed`: only one they failed (Unstable Backlash).
+  | { kind: "save_on_self"; prey?: string; against?: string; failed?: boolean }
   // A creature died: within the reach, of these types, slain by the holder, or the one under the mark.
   | { kind: "death"; rangeFt?: number; types?: string[]; byHolder?: boolean; marked?: string }
   // A creature (an enemy, with `enemy`) ended its turn within the reach.
@@ -213,7 +214,9 @@ const WRITTEN: Record<string, TriggerSpec> = {
   sub_magic_users_nemesis: { on: [{ kind: "cast", rangeFt: 60 }], what: "a creature casting a spell within 60 feet of them" , aimsAt: true },
   sub_spell_thief: { on: [{ kind: "cast", atHolder: true }], what: "a spell a creature has just cast at them" , aimsAt: true },
   hurl_through_hell: { on: [{ kind: "own_hit" }], what: "a creature they have hit with an attack this turn" , aimsAt: true },
-  sub_arcane_shot: { on: [{ kind: "own_hit" }], what: "an arrow of theirs that hit this turn" , aimsAt: true },
+  // Arcane Shot is no row here: its spend asks for the arrow itself (a bow's
+  // hit this turn, or one attack of the Attack action for the two options with
+  // no attack roll; src/lib/dm/mt-fb-arcane-shot.ts).
   sub_accursed_specter: { on: [{ kind: "death", byHolder: true, types: ["humanoid"] }], what: "a humanoid they have just slain" },
   sub_wings_unfurled: { on: [{ kind: "own_wind_step" }], what: "their Step of the Wind this turn" },
   sub_call_the_hunt: { on: [{ kind: "own_rage_entered" }], what: "the rage they have just entered" },
@@ -235,6 +238,7 @@ const WRITTEN: Record<string, TriggerSpec> = {
   "feedback loop": { on: [{ kind: "damaged" }], what: "damage a creature has just dealt them" , aimsAt: true },
   "the mark burns back": { on: [{ kind: "damaged", spell: true }], what: "damage a creature has just dealt them with a spell" , aimsAt: true },
   "voice of authority": { on: [{ kind: "cast", atHolder: true, byFeatureHolder: true, minLevel: 1 }], what: "a spell of 1st level or higher their cleric has just cast that targets them" },
+  "unstable backlash": { on: [{ kind: "damaged" }, { kind: "save_on_self", failed: true }], what: "damage they have just taken, or a save they have just failed" },
   "duelist's flourish": { on: [{ kind: "missed", melee: true }], what: "a melee attack that has just missed them" , aimsAt: true },
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
@@ -315,7 +319,7 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
     case "own_wind_step":
       return event.kind === "wind_step" && self(event.characterId);
     case "save_on_self":
-      return event.kind === "save" && self(event.characterId) && Boolean(event.creatureId) && (!on.prey || event.creatureId === ctx.quarry(on.prey)) && (!on.against || textKey(event.against ?? "") === textKey(on.against));
+      return event.kind === "save" && self(event.characterId) && Boolean(event.creatureId) && (!on.failed || event.success === false) && (!on.prey || event.creatureId === ctx.quarry(on.prey)) && (!on.against || textKey(event.against ?? "") === textKey(on.against));
     case "death":
       return (
         event.kind === "death" &&

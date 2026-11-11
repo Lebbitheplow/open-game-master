@@ -15,6 +15,10 @@ import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { instancesOf, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { RAGING } from "@/lib/srd/class-resources";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { endLostEchoes } from "@/lib/dm/mt-fb-echo";
+import { fallAsRageEnds } from "@/lib/dm/mt-fb-rage-death";
+import { SURGE, endSurgeTracesOf } from "@/lib/dm/mt-fb-wild-surge";
+import { RAGING_ON } from "@/lib/dm/vitals-logic";
 
 // The meta an instance laid until its source's rage ends carries.
 export function whileRaging(sourceId: string): Pick<ConditionMeta, "whileRagingOf" | "source"> {
@@ -47,6 +51,11 @@ export function endRageBound(campaignId: string): { lines: string[]; enemiesChan
       if (removed.ended) lines.push(`${sheet.name} is no longer under ${name}: the rage it rode has ended.`);
     }
     patchSheetAudited(campaignId, sheet.id, { conditions, conditionMeta: meta }, { kind: "condition_clock", reason: `${names.join(" and ")} ended with the rage`, delta: { ended: names } });
+    // A zealot the rage kept up at 0 hit points falls, or dies (mt-fb-rage-death.ts).
+    const fell = names.some((name) => isConditionNamed(name, RAGING_ON)) ? fallAsRageEnds(campaignId, sheet.id) : null;
+    if (fell) lines.push(fell);
+    // A wild surge's aura on the board goes with it (mt-fb-wild-surge.ts).
+    if (names.some((name) => isConditionNamed(name, SURGE))) endSurgeTracesOf(campaignId, sheet.id);
   }
   const encounter = getActiveEncounter(campaignId);
   for (const stale of encounter ? listEnemies(encounter.id) : []) {
@@ -64,5 +73,8 @@ export function endRageBound(campaignId: string): { lines: string[]; enemiesChan
     patchEnemyConditions(enemy.id, conditions, meta as typeof enemy.conditionMeta);
     enemiesChanged = true;
   }
+  // The same settle points take an echo off the board whose knight is
+  // incapacitated or let it go (mt-fb-echo.ts).
+  lines.push(...endLostEchoes(campaignId));
   return { lines, enemiesChanged };
 }

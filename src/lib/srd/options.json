@@ -9,6 +9,7 @@
     "pact_boon": { "label": "Pact Boon", "prefix": "Pact Boon: ", "grantedBy": "Pact Boon" },
     "infusion": { "label": "Infusion", "prefix": "Infusion: ", "grantedBy": "Infuse Item" },
     "rune": { "label": "Rune", "prefix": "Rune: ", "grantedBy": "Rune Carver" },
+    "arcane_shot": { "label": "Arcane Shot option", "prefix": "Arcane Shot: ", "grantedBy": "Arcane Shot" },
     "discipline": { "label": "Elemental Discipline", "prefix": "Discipline: ", "grantedBy": "Disciple of the Elements" },
     "hunters_prey": { "label": "Hunter's Prey", "prefix": "Hunter's Prey: ", "grantedBy": "Hunter's Prey" },
     "defensive_tactics": { "label": "Defensive Tactics", "prefix": "Defensive Tactics: ", "grantedBy": "Defensive Tactics" },
@@ -135,6 +136,15 @@
     { "k": "rune", "n": "Hill Rune", "d": "Advantage on saving throws against poison and resistance to poison damage. Invoke it to gain resistance to bludgeoning, piercing and slashing damage for a minute.", "req": "level 7" },
     { "k": "rune", "n": "Stone Rune", "d": "Advantage on Insight and darkvision to 120 feet. Invoke it as a reaction to charm a creature within 30 feet that fails a Wisdom save." },
     { "k": "rune", "n": "Storm Rune", "d": "Advantage on Arcana and you cannot be surprised while conscious. Invoke it to see glimpses of the future, granting advantage or imposing disadvantage on rolls near you.", "req": "level 7" },
+
+    { "k": "arcane_shot", "n": "Banishing Arrow", "d": "The creature your arrow hit makes a Charisma save or is banished to the Feywild until the end of its next turn. From 18th level the arrow also deals 2d6 force damage." },
+    { "k": "arcane_shot", "n": "Beguiling Arrow", "d": "The arrow deals 2d6 more psychic damage (4d6 from 18th level), and the creature makes a Wisdom save or is charmed by an ally of yours within 30 feet of it until the start of your next turn." },
+    { "k": "arcane_shot", "n": "Bursting Arrow", "d": "The arrow bursts: the creature hit and every other creature within 10 feet of it take 2d6 force damage (4d6 from 18th level)." },
+    { "k": "arcane_shot", "n": "Enfeebling Arrow", "d": "The arrow deals 2d6 more necrotic damage (4d6 from 18th level), and the creature makes a Constitution save or its weapon attacks deal half damage until the start of your next turn." },
+    { "k": "arcane_shot", "n": "Grasping Arrow", "d": "The arrow deals 2d6 more poison damage (4d6 from 18th level) and wraps the creature in brambles for a minute: its speed drops by 10 feet and it takes 2d6 slashing damage the first time it moves on each turn, until an Athletics check pulls them off." },
+    { "k": "arcane_shot", "n": "Piercing Arrow", "d": "No attack roll: the arrow flies in a line 30 feet long through everything. Each creature in it makes a Dexterity save, taking the arrow's damage plus 1d6 piercing (2d6 from 18th level), or half on a success." },
+    { "k": "arcane_shot", "n": "Seeking Arrow", "d": "No attack roll: name a creature you have seen in the past minute. The arrow finds it around corners; it makes a Dexterity save, taking the arrow's damage plus 1d6 force (2d6 from 18th level), or half on a success, and you learn where it is." },
+    { "k": "arcane_shot", "n": "Shadow Arrow", "d": "The arrow deals 2d6 more psychic damage (4d6 from 18th level), and the creature makes a Wisdom save or cannot see anything farther than 5 feet away until the start of your next turn." },
 
     { "k": "discipline", "n": "Breath of Winter", "d": "Spend 6 ki to cast cone of cold.", "req": "level 17" },
     { "k": "discipline", "n": "Clench of the North Wind", "d": "Spend 3 ki to cast hold person.", "req": "level 6" },

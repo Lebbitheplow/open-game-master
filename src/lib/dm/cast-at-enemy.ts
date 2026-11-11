@@ -46,6 +46,7 @@ import { planSpellFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { charmedBy } from "@/lib/dm/enemy-profile";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { landSpellDamage } from "@/lib/dm/cast-at-enemy-damage";
@@ -168,6 +169,9 @@ export function handleCastAtEnemy(
   if (charmedBy(sheet.conditions, sheet.conditionMeta, enemy.id)) {
     return { error: `${sheet.name} is charmed by ${enemy.displayName} and cannot target it with harmful magic. Nothing was spent; pick another target.`, refused: "rules" };
   }
+  // A Beguiling Arrow's charm ends when the ally it charmed the creature by
+  // casts at it: harm or a save either way (mt-fb-arrow-riders.ts).
+  beguilingBroken(campaign.id, sheet.id, enemy.id);
   // A caster Etherealness or Maze took away reaches nobody here (spell-planes.ts).
   const away = castingHold(sheet);
   if (away) {

@@ -253,6 +253,18 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     speedMultiplier: 0,
   },
   summaryOnly("storm_aura", "storm aura", "Storm Aura: the raging Storm Herald's 10-foot aura (desert, sea or tundra)."),
+  {
+    id: "wild_surge_ward",
+    match: ["wild surge ward"],
+    summary: "Wild Surge: +1 AC while the barbarian's rage lasts.",
+    acBonus: 1,
+  },
+  summaryOnly("wild_surge_pending", "wild surge pending", "Controlled Surge: two Wild Surge rolls wait on the barbarian's choice."),
+  summaryOnly("wild_surge_roll", "wild surge roll", "Controlled Surge: a number rolled on the wild magic table, one of the two to choose from."),
+  summaryOnly("wild_surge", "wild surge", "Wild Surge: the effect of the wild magic table in force for this rage."),
+  summaryOnly("bolstered_slot", "bolstered slot", "Bolstering Magic: has taken its spell slot, and takes another only after a long rest."),
+  summaryOnly("beast_form", "beast form", "Form of the Beast: the natural weapon this rage grew (bite, claws or tail)."),
+  summaryOnly("rage_beyond_death", "rage beyond death", "Rage Beyond Death: at 0 hit points and on their feet, dying, until the rage ends."),
   summaryOnly("fanatical_focus_spent", "fanatical focus spent", "Fanatical Focus is spent until this rage ends."),
   summaryOnly("elder_champion", "elder champion", "Elder Champion: 10 hit points at the start of each turn, and enemies within 10 feet save at disadvantage against the paladin."),
   summaryOnly("vow_of_enmity", "vow of enmity", "Vow of Enmity: advantage on attacks against the creature vowed against, for a minute."),
@@ -457,4 +469,8 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("echo_manifested", "echo manifested", "Manifest Echo: the Echo Knight's echo is out (AC 14 + proficiency bonus, 1 hit point); Shadow Martyr can send it into an attack that hit another creature, and a hit that destroys it ends it."),
   // The lineage traits' own (Shell Defense, Feline Agility, Shapechanger).
   ...MT_SPECIES_CONDITIONS,
+  // Arcane Shot's lasting options (src/lib/dm/mt-fb-arcane-shot.ts): the
+  // brambles take 10 feet of speed, and a Shadow Arrow leaves 5 feet of sight.
+  { id: "grasping_arrow", match: ["grasping arrow"], summary: "Grasping Arrow: brambles wrap the creature. Its speed is 10 feet lower, and the first time on each turn it moves it takes 2d6 slashing damage.", speedBonus: -10 },
+  { id: "shadow_arrow", match: ["shadow arrow"], summary: "Shadow Arrow: the creature cannot see anything farther than 5 feet away.", sightFeet: 5 },
 ];

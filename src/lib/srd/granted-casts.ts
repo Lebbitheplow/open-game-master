@@ -24,6 +24,7 @@ import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-ca
 import { asciiSlugOf, textKey } from "@/lib/language/text-logic";
 import { counterCastsHeld } from "@/lib/srd/counter-casts";
 import { kiCantripsHeld, kiCastsHeld } from "@/lib/srd/mt-mr-casts";
+import { featureCastsHeld } from "@/lib/srd/mt-fb-casts";
 
 export type GrantedCast = {
   // The invocation or trait that grants the cast.
@@ -55,6 +56,9 @@ export type GrantedCast = {
   noMaterial?: boolean;
   // What the GM still holds of the grant.
   note?: string;
+  // Cast as a ritual and no other way (Spirit Seeker: "Ritual casting of
+  // beast sense and speak with animals"; src/lib/srd/mt-fb-casts.ts).
+  ritualOnly?: boolean;
 };
 
 type InvocationSpell = Omit<GrantedCast, "source" | "counter"> & { invocation: string };
@@ -147,6 +151,7 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       ...(row.castAt ? { castAt: row.castAt } : {}),
       ...(row.selfOnly ? { selfOnly: true } : {}),
       ...(row.noMaterial ? { noMaterial: true } : {}),
+      ...(row.ability ? { ability: row.ability } : {}),
       ...(row.note ? { note: row.note } : {}),
     });
   }
@@ -158,6 +163,9 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
   for (const cantrip of kiCantripsHeld(sheet.features ?? [])) {
     out.push({ source: cantrip.source, spell: cantrip.spell, slot: "free", ability: "wis" });
   }
+  // A subclass feature's spells for a class with no Spellcasting of its own
+  // (a totem warrior's rituals, a giant's or an archer's cantrip).
+  out.push(...featureCastsHeld(sheet.features ?? []));
   const cantripAbility = racialCantripAbility(sheet.race);
   for (const cantrip of racialCantripsOf(sheet.racialChoices)) {
     out.push({ source: "the race's cantrip", spell: cantrip, slot: "free", ...(cantripAbility ? { ability: cantripAbility } : {}) });

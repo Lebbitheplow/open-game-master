@@ -30,6 +30,7 @@ import { blinkTurnEnd } from "@/lib/dm/spell-planes";
 import { endLeashes } from "@/lib/dm/condition-leash";
 import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { echoTurnEnd } from "@/lib/dm/mt-fb-echo";
 import {
   instancesOf,
   packInstances,
@@ -220,6 +221,8 @@ export function endTurns(
   const rageBound = endRageBound(campaign.id);
   lines.push(...rageBound.lines);
   enemiesChanged ||= rageBound.enemiesChanged;
+  // An echo more than 30 feet from its knight as their turn ends (mt-fb-echo.ts).
+  lines.push(...echoTurnEnd(campaign, combatantIds));
   // What an authored subclass feature does as a turn ends (Protective Spirit): authored-hooks.ts.
   lines.push(...authoredTurnEnd(campaign, combatantIds));
   // A spell area that strikes as a turn ends there (Grease, Wall of Fire): zone-triggers.ts.

@@ -36,6 +36,8 @@ export function viewerMoves(input: {
   scene: boolean;
   budget: { speed: number; fullTiles: number };
   enemies: EncounterEnemy[];
+  // Step of the Wind is on this turn (jump-reach.ts windStepOn).
+  windStep?: boolean;
 }): { reachable: number[]; reachableCost: number[]; moves: NonNullable<PlayerMapView["moves"]> } {
   const { costs, sheet, token, scene, budget } = input;
   // A prone character pays for standing or crawls, every square one extra:
@@ -52,13 +54,14 @@ export function viewerMoves(input: {
     .filter((entry): entry is readonly [number, number] => entry[1] !== undefined);
   const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
   // The reach the jump door accepts (src/lib/dm/jump-move.ts asks the same
-  // helper), less the turn's own Step of the Wind, which only the door knows.
-  const reach = jumpReach(sheet, runningStart);
+  // helper), Step of the Wind's doubling in it while its mark is on the turn.
+  const reach = jumpReach(sheet, runningStart, !scene && Boolean(input.windStep));
   const held = input.enemies.filter((enemy) => enemy.status === "alive" && grappledBy(enemy, sheet.id));
   return {
     reachable: charged.map(([cell]) => cell),
     reachableCost: charged.map(([, cost]) => cost),
     moves: {
+      // What the jump move will allow (src/lib/dm/jump-reach.ts).
       jumpFeet: reach.longFeet,
       highJumpFeet: reach.highFeet,
       runningStart,

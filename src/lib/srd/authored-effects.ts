@@ -46,6 +46,7 @@ import { AUTHORED_DATA_W2_DIVINE_DRA } from "@/lib/srd/authored-effects-w2-divin
 import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divine-rng";
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
 import { AUTHORED_DATA_W2_MT_MR } from "@/lib/srd/authored-effects-w2-mt-mr";
+import { AUTHORED_DATA_W2_MT_FB } from "@/lib/srd/authored-effects-w2-mt-fb";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -67,6 +68,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_W2_DIVINE_RNG,
   ...AUTHORED_DATA_W2_MARTIAL,
   ...AUTHORED_DATA_W2_MT_MR,
+  ...AUTHORED_DATA_W2_MT_FB,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -376,7 +378,20 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
 }
 
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
-  return [...new Set(activeAuthored(sheet, "save_prof").flatMap(({ effect }) => effect.abilities))];
+  // The saves the sheet itself records, where the caller's sheet carries them.
+  const own = new Set(((sheet as { proficiencies?: { saves?: string[] } }).proficiencies?.saves ?? []).map((save) => textKey(save)));
+  return [
+    ...new Set(
+      activeAuthored(sheet, "save_prof").flatMap(({ effect, held }) => {
+        // Already proficient in what the feature gives: the other save its
+        // option names is gained instead (Elegant Courtier).
+        if (!effect.elseOneOf || !effect.abilities.every((ability) => own.has(ability))) {
+          return effect.abilities;
+        }
+        return effect.elseOneOf.filter((ability) => textKey(held.choice ?? "").startsWith(ability)).slice(0, 1);
+      }),
+    ),
+  ];
 }
 
 // What the authored features add to one save's modifier: a flat bonus to
@@ -421,10 +436,10 @@ export function authoredAcBonus(sheet: AuthoredSheet): { bonus: number; parts: s
   return { bonus, parts };
 }
 
-export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number } {
-  const out: { fly?: number; swim?: number } = {};
+export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number; climb?: number } {
+  const out: { fly?: number; swim?: number; climb?: number } = {};
   for (const { effect } of activeAuthored(sheet, "move")) {
-    for (const mode of ["fly", "swim"] as const) {
+    for (const mode of ["fly", "swim", "climb"] as const) {
       const value = effect[mode];
       if (value !== undefined) {
         out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value);

@@ -55,7 +55,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -201,6 +201,70 @@ async function step(rig, scene, name, notes) {
       return save(scene.ally.id);
     case "the holder hit a foe":
       return swing([18, 5]);
+    // An arrow from a longbow in the near foe, which an Arcane Shot rides (and
+    // the bow its two options with no attack roll are loosed from). The holder
+    // is handed the bow; beside the foe it shoots at disadvantage, so both
+    // d20s are laid. The turn is kept: its mark is what the spend asks for.
+    case "the holder shot a foe with a longbow": {
+      const sheet = world.sheet(holder);
+      if (!sheet.equipment.some((item) => item.name === "Longbow")) {
+        world.patch(holder, { equipment: [...sheet.equipment.map((item) => ({ ...item, equipped: false })), { name: "Longbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] });
+      }
+      world.dice(18, 18, 5);
+      const out = await world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Longbow" });
+      world.clearDice();
+      return out;
+    }
+    // A run of two squares straight at the foe by the holder's own move, then
+    // the hit: what rides a charge (Ferocious Charger) asks the turn for both.
+    // The move is the player's own, through the board's route: the GM's
+    // move_token walks a character only for a move their player declared.
+    case "the holder ran at a foe and hit it": {
+      kit.place(holder, 5, 3);
+      const route = await world.route("campaigns/[campaignId]/battle-map/move");
+      world.signIn({ id: world.sheet(holder).userId });
+      const walked = await route.POST(
+        new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 5, y: 5 }) }),
+        { params: Promise.resolve({ campaignId: world.campaignId }) },
+      );
+      if (walked.status !== 200) return { ok: false, error: `the run was refused (${walked.status})` };
+      return swing([18, 5]);
+    }
+    // A natural weapon's hit in the rage that grows it (Infectious Fury rides one).
+    case "the holder clawed a foe while raging": {
+      if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
+      const raged = await world.invoke("use_resource", { characterId: holder, resource: "rage" });
+      if (!raged.ok) return raged;
+      world.dice(18, 5);
+      return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Claws" });
+    }
+    // A rage entered with the wild magic table's d8 forced (both dice, for a
+    // holder of Controlled Surge, who then chooses it): the surge in force is
+    // the effect whose bonus-action repeat is under test. The turn is given
+    // back, the rage having taken its bonus action.
+    case "the holder's wild surge is the teleport":
+    case "the holder's wild surge is the spirit":
+    case "the holder's wild surge is the bolt": {
+      const effect = name.endsWith("teleport") ? 2 : name.endsWith("spirit") ? 3 : 8;
+      if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
+      world.dice(effect, effect, 2, 2, 2, 2);
+      const raged = await world.invoke("use_resource", { characterId: holder, resource: "rage" });
+      if (!raged.ok) return raged;
+      if (world.sheet(holder).conditions.includes("wild surge pending")) {
+        world.dice(2, 2, 2, 2);
+        const chosen = await world.invoke("use_resource", { characterId: holder, resource: "Controlled Surge", variant: String(effect) });
+        if (!chosen.ok) return chosen;
+      }
+      world.clearDice();
+      refresh();
+      return { ok: true };
+    }
+    // A condition a spend ends (Guarded Mind: charmed or frightened).
+    case "the holder frightened": {
+      const now = world.sheet(holder);
+      world.patch(holder, { conditions: [...now.conditions.filter((entry) => entry !== "frightened"), "frightened"], conditionMeta: { ...now.conditionMeta, frightened: { rounds: 5 } } });
+      return { ok: true };
+    }
     case "the holder missed a foe":
       return swing([2]);
     case "the holder smote a foe":

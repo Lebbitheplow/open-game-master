@@ -71,6 +71,13 @@ export function conditionTruesightFeet(conditions: string[]): number {
   return activeConditionEffects(conditions).reduce((most, { row }) => Math.max(most, row.truesightFeet ?? 0), 0);
 }
 
+// How far the holder's sight reaches when an effect cuts it short (Shadow
+// Arrow), in feet; null when nothing does.
+export function conditionSightFeet(conditions: string[]): number | null {
+  const limits = activeConditionEffects(conditions).map(({ row }) => row.sightFeet).filter((feet): feet is number => feet !== undefined);
+  return limits.length ? Math.min(...limits) : null;
+}
+
 // What the holder's effects multiply its jump distances by (1 for none).
 export function conditionJumpMultiplier(conditions: string[]): number {
   return activeConditionEffects(conditions).reduce((most, { row }) => Math.max(most, row.jumpMultiplier ?? 1), 1);

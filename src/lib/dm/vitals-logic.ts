@@ -21,6 +21,10 @@ export const PRONE = "prone";
 // their feet for the extra turn the reaction gives; the fall comes when that
 // turn ends (src/lib/dm/reaction-counters.ts, turn-end.ts).
 export const HOLDING_ON = "strength before death";
+// Rage Beyond Death (Path of the Zealot 14): at 0 hit points and on their feet
+// while the rage lasts (src/lib/dm/mt-fb-rage-death-logic.ts lays it as they
+// drop; it ends with the rage, src/lib/dm/rage-bound.ts).
+export const RAGING_ON = "rage beyond death";
 // Written by the suffocation hazard on a creature that ran out of air, and
 // cleared (clear_condition) when it can breathe again. While it stands,
 // nothing heals or stabilizes the creature (SRD 5.1, Suffocating).
@@ -62,9 +66,10 @@ export function conditionsOf(sheet: {
   return downConditions({ conditions: sheet.conditions }).conditions;
 }
 
-// Up at 0 hit points for Strength before Death's extra turn.
+// Up at 0 hit points: for Strength before Death's extra turn, or raging on
+// under Rage Beyond Death.
 export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: boolean } | null }): boolean {
-  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => entry.trim().toLowerCase() === HOLDING_ON);
+  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON].includes(entry.trim().toLowerCase()));
 }
 
 // Hit points are back: the creature wakes and is still on the ground.

@@ -23,7 +23,7 @@ export const AUTHORED_DATA_W2_MARTIAL: Record<string, AuthoredEntry> = {
         pool: { id: "sub_unleash_incarnation" },
         action: "none",
         gate: { condition: ECHO_OUT, because: "needs the echo out: use_resource Manifest Echo first" },
-        does: { kind: "action_attack", note: "a melee attack made from the echo's space (its square is the GM's to read)." },
+        does: { kind: "action_attack", fromEcho: true, note: "a melee attack made from the echo's space: pc_attack reaches from the echo's square when it is the nearer." },
       },
     ],
   },

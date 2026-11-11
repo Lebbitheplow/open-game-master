@@ -28,6 +28,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       { kind: "bonus_route", action: "dash", gate: { ...RAGING, choice: "eagle" } },
       { kind: "oa_disadv", gate: { ...RAGING, choice: "eagle" } },
       { kind: "speed", amount: 15, gate: { ...RAGING, choice: "elk" } },
+      { kind: "jump", long: 10, high: 3, gate: { ...RAGING, choice: "tiger" } },
       { kind: "pack_adv", rangeFt: 5, gate: { ...RAGING, choice: "wolf" } },
     ],
   },
@@ -56,7 +57,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         aliases: ["Totemic Attunement Elk"],
         action: "bonus",
         gate: { ...RAGING, choice: "elk" },
-        does: { kind: "save_effect", save: "str", dcAbility: "str", dice: "1d12+str", type: "bludgeoning", condition: "prone", rangeFt: 5 },
+        does: { kind: "save_effect", save: "str", dcAbility: "str", dice: "1d12+str", type: "bludgeoning", condition: "prone", rangeFt: 5, maxSize: "Large" },
       },
       // Wolf: a bonus action after a melee weapon hit knocks a Large or
       // smaller creature prone.
@@ -65,9 +66,11 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         aliases: ["Totemic Attunement Wolf"],
         action: "bonus",
         gate: { ...RAGING, choice: "wolf" },
-        // The creature beside the barbarian is knocked prone, no save: it was
-        // a note the GM had to act on.
-        does: { kind: "buff", target: "enemy", condition: "prone", rounds: 10, rangeFt: 5 },
+        // "knock a Large or smaller creature prone as a bonus action when you
+        // hit it with a melee weapon attack": the creature a melee weapon
+        // attack hit this turn, no save.
+        afterWeaponHit: true,
+        does: { kind: "buff", target: "enemy", condition: "prone", rounds: 10, rangeFt: 5, maxSize: "Large" },
       },
     ],
     effects: [
@@ -77,7 +80,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "bonus_attack",
         after: "attack",
         gate: { ...RAGING, choice: "tiger" },
-        note: "Only after moving at least 20 feet straight toward a Large or smaller target; the GM keeps to that.",
+        run: { feet: 20, maxSize: "Large" },
       },
     ],
   },
@@ -93,6 +96,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Spirit Shield",
         gate: RAGING,
+        // "an ally you can see within 30 feet".
+        sees: "target",
         does: {
           kind: "reduce",
           amount: [[6, "2d6"], [10, "3d6"], [14, "4d6"]],
@@ -175,15 +180,22 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "natural_weapon",
         gate: RAGING,
         weapon: { name: "Tail", dice: "1d8", type: "piercing", reach: true },
-        note: "The tail's reaction (1d8 to AC against one attack) and keeping to one form per rage are the GM's to hold.",
+      },
+    ],
+    // "when a creature you can see within 10 feet hits you, a reaction adds
+    // 1d8 to your AC against that attack": the tail's, so it is the weapon
+    // this rage grew (or grows now).
+    reactions: [
+      {
+        name: "Form of the Beast",
+        aliases: ["Tail", "Tail Swipe"],
+        gate: RAGING,
+        sees: "attacker",
+        does: { kind: "ac_vs_hit", amount: { die: "1d8" }, attackerWithinFt: 10, beastForm: "Tail" },
       },
     ],
   },
-  "barbarian::Unstable Backlash": {
-    subclass: "Path of Wild Magic",
-    narrated:
-      "Rerolls the Wild Surge table, whose effects are narrated; use_reaction spends the reaction from the sheet's feature.",
-  },
+  // Unstable Backlash: src/lib/srd/authored-effects-w2-mt-fb.ts.
   // Bigby Presents: Giant's Power and Giant's Havoc at 3rd, Elemental Cleaver
   // at 6th, Mighty Impel at 10th, Demiurgic Colossus at 14th. Giant's Power's
   // cantrip is the option chosen; a barbarian keeps no spell list, so the
@@ -206,16 +218,22 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   "barbarian::Elemental Cleaver": {
     subclass: "Path of the Giant",
     // Chosen on entering the rage, and changed with a bonus action in it.
-    spends: [{ name: "Elemental Cleaver", does: { kind: "choose", options: ELEMENTS.map(([name]) => name) } }],
-    effects: ELEMENTS.map(([name, type]) => ({
-      kind: "rider" as const,
-      dice: [[6, "1d6"], [14, "2d6"]] as Array<[number, string]>,
-      type,
-      when: "weapon" as const,
-      requiresCondition: "raging",
-      gate: { choice: name },
-      note: "The infused weapon's own damage turns to the element too, and it gains thrown (20/60); a bonus action changes the element.",
-    })),
+    // "a bonus action changes the element": free at a rest, a bonus action in
+    // a fight.
+    spends: [{ name: "Elemental Cleaver", action: "bonus", does: { kind: "choose", options: ELEMENTS.map(([name]) => name) } }],
+    effects: ELEMENTS.flatMap(([name, type]) => [
+      {
+        kind: "rider" as const,
+        dice: [[6, "1d6"], [14, "2d6"]] as Array<[number, string]>,
+        type,
+        when: "weapon" as const,
+        requiresCondition: "raging",
+        gate: { choice: name },
+      },
+      // "its damage becomes that type ... and it gains the thrown property
+      // (20/60), returning to your hand after a throw".
+      { kind: "infuse" as const, type, rangeFt: 20, longRangeFt: 60, gate: { ...RAGING, choice: name } },
+    ]),
   },
   "barbarian::Mighty Impel": {
     subclass: "Path of the Giant",
@@ -229,8 +247,11 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
           save: "str",
           dcAbility: "str",
           rangeFt: 10,
-          onFail:
-            "is moved to an unoccupied space the barbarian can see within 30 feet of them: move its token with move_token (forced). It must be Medium or smaller (Large or smaller from 14th level), and one left in the air falls and lands prone",
+          // "Medium or smaller creature", Large or smaller from 14th level
+          // (Demiurgic Colossus), thrown "to an unoccupied space you can see
+          // within 30 feet of you": mt-fb-spend.ts throwFoe.
+          maxSize: [[10, "Medium"], [14, "Large"]],
+          throws: { feet: 30 },
         },
       },
     ],

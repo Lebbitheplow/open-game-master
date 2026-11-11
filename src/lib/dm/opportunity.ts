@@ -8,7 +8,8 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { enemiesStrikeWalker } from "@/lib/dm/opportunity-sides";
-import { entersReachAt, leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { echoTokens } from "@/lib/dm/mt-fb-echo";
+import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/opportunity-reach-logic";
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -472,9 +473,17 @@ export function resolvePcOpportunityAttacks(
     }
     // Polearm Master: a creature entering the polearm's reach provokes too.
     const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
+    // within the reach provokes too.
+    const within = holdsFeature(sheet, "Hold the Line") ? movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    // Manifest Echo: a creature that moves 5 feet or more away from the echo
+    // while within 5 feet of it provokes "as if you were in the echo's space"
+    // (mt-fb-echo.ts).
+    const fromEcho = echoTokens(map.id, sheet.id).map((echo) => leavesReachAt(steps, echo, 1, 1, moverFootprint)).find((left) => left !== null) ?? null;
     // Where the walker is as the swing is made: the tile it left the reach
-    // from, or the one it entered the polearm's reach at.
-    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering;
+    // from, the one it entered the polearm's reach at, the one it stepped to
+    // inside the reach, or the one it left the echo's side from.
+    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
     }

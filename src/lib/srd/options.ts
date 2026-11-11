@@ -29,6 +29,7 @@ export type OptionKind =
   | "pact_boon"
   | "infusion"
   | "rune"
+  | "arcane_shot"
   | "discipline"
   | "hunters_prey"
   | "defensive_tactics"
@@ -262,6 +263,21 @@ const GRANTS: Grant[] = [
     subclass: "Rune Knight",
     opens: ["Rune Carver"],
     steps: [
+      [15, 5],
+      [10, 4],
+      [7, 3],
+      [3, 2],
+    ],
+  },
+  // An Arcane Archer's Arcane Shot options (XGtE): two at 3rd level, another
+  // at 7th, 10th, 15th and 18th (src/lib/dm/mt-fb-arcane-shot.ts runs them).
+  {
+    kind: "arcane_shot",
+    classId: "fighter",
+    subclass: "Arcane Archer",
+    opens: ["Arcane Shot"],
+    steps: [
+      [18, 6],
       [15, 5],
       [10, 4],
       [7, 3],

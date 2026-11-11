@@ -476,7 +476,7 @@ function attackFrom(
 function throwsAway(plan: AttackPlan): boolean {
   return (
     plan.special === "net" ||
-    (plan.kind === "weapon" && plan.atRange && plan.profile.thrown && !plan.profile.gearWeapon?.spent && !returnsToHand(plan.profile.weapon))
+    (plan.kind === "weapon" && plan.atRange && plan.profile.thrown && !plan.profile.gearWeapon?.spent && !plan.profile.returns && !returnsToHand(plan.profile.weapon))
   );
 }
 

@@ -1,4 +1,5 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { noteRun } from "@/lib/dm/mt-fb-charge";
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
 import { cloakIntoLight } from "@/lib/dm/mt-mr-spends";
 import { tokenSides } from "@/lib/dm/combatant";
@@ -412,6 +413,10 @@ export async function POST(
     carried = placed;
   }
   moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend));
+  // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
+  if (!scene && !readied) {
+    noteRun(campaignId, sheet, from);
+  }
   // Moving ends One with Shadows' invisibility (src/lib/dm/one-with-shadows.ts).
   if (!scene) {
     endShadowInvisibility(campaignId, sheet.id, "moves");

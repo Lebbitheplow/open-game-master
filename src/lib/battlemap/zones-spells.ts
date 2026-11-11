@@ -7,6 +7,7 @@
 // The rows are read at use, never copied onto a stored zone, so a corrected
 // row corrects the areas already on a board. Pure data: no DB.
 
+import { MT_FB_ZONE_ROWS } from "@/lib/battlemap/zones-mt-fb";
 import { textKey } from "@/lib/language/text-logic";
 import { GEAR_ZONE_ROWS } from "@/lib/battlemap/zones-gear";
 import { FEATURE_ZONE_ROWS } from "@/lib/battlemap/zones-features";
@@ -537,7 +538,7 @@ export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
 };
 
 // A class feature's own area (Dread Lord's gloom) reads its row here too.
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS };
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

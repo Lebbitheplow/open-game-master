@@ -33,6 +33,8 @@ import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { authoredNaturalWeapon, authoredReachBonus, naturalWeaponGated } from "@/lib/srd/authored-effects-more";
 import { longLimbedFeet } from "@/lib/srd/mt-species-traits";
+import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
+import { beastFormRefusal } from "@/lib/dm/mt-fb-beast";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
@@ -327,6 +329,11 @@ export function buildAttackProfile(
     if (!natural) {
       return { error: `${sheet.name}'s ${args.weapon} exists only while raging (${naturalWeaponGated(sheet, weaponName)}). They rage first (use_resource Rage), or attack with a weapon they carry.`, refused: "rules" };
     }
+    // One natural weapon a rage (Form of the Beast: mt-fb-beast.ts).
+    const otherForm = beastFormRefusal(sheet, natural);
+    if (otherForm) {
+      return otherForm;
+    }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
     // A weapon whose feature names its ability (Armor Model: Intelligence)
@@ -468,6 +475,18 @@ export function buildAttackProfile(
   const limbs = !profile.ranged && profile.reachTiles >= 1 ? longLimbedFeet(sheet, target.ownTurn === true) : 0;
   if (limbs) {
     profile = { ...profile, reachTiles: profile.reachTiles + limbs / 5, riderNotes: [...profile.riderNotes, `Long-Limbed: ${limbs} more feet of reach on their own turn`] };
+  }
+  // Elemental Cleaver: the infused weapon deals the element, and can be
+  // thrown and comes back (authored-mt-fb.ts authoredInfusion).
+  const infusion = kind === "weapon" ? authoredInfusion(sheet) : null;
+  if (infusion) {
+    profile = {
+      ...profile,
+      damageType: infusion.type,
+      returns: true,
+      ...(profile.ranged ? {} : { thrown: true, rangeTiles: Math.max(profile.thrown ? profile.rangeTiles : 0, infusion.rangeFt / 5), longRangeTiles: Math.max(profile.thrown ? (profile.longRangeTiles ?? 0) : 0, infusion.longRangeFt / 5) }),
+      riderNotes: [...profile.riderNotes, `${infusion.feature}: ${infusion.type} damage, thrown ${infusion.rangeFt}/${infusion.longRangeFt} ft, returning to the hand`],
+    };
   }
   return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWholeAction: granted?.attack.wholeAction === true, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
 }

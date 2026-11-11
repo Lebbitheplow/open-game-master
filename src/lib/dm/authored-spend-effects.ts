@@ -41,6 +41,8 @@ import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey, words } from "@/lib/language/text-logic";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
+import { arcaneShot } from "@/lib/dm/mt-fb-arcane-shot";
+import { echoSpend } from "@/lib/dm/mt-fb-echo";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
@@ -51,9 +53,12 @@ import { rangerSpend } from "@/lib/dm/authored-spend-divine-rng";
 import { clericSpend } from "@/lib/dm/authored-spend-divine-clr";
 import { draSpend, joltReachRefusal } from "@/lib/dm/authored-spend-divine-dra";
 import { noteAuraAsked } from "@/lib/dm/aura-menace";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { surgeSpend } from "@/lib/dm/mt-fb-wild-surge";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { mrSpend } from "@/lib/dm/mt-mr-spends";
+import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -210,6 +215,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (typeof option !== "string") {
         return option;
       }
+      // The option already chosen changes nothing, and in a fight would take
+      // its bonus action for it (Elemental Cleaver).
+      if (ctx.held.choice && textKey(ctx.held.choice) === textKey(option)) {
+        return { error: `${ctx.held.feature} is ${option} already; choosing it again changes nothing. Nothing was spent.`, refused: "rules" };
+      }
       const features = sheet.features.map((feature) =>
         feature.name === ctx.held.name ? { ...feature, name: `${ctx.held.feature} (${option})` } : feature,
       );
@@ -236,6 +246,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const live = getActiveEncounter(campaign.id);
         if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
           return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
+        const barred = (does.maxSize ? sizeRefusal(ctx.spend.name, enemy, does.maxSize, ctx.held.level) : null) ?? (does.maxSize && ctx.spend.afterWeaponHit ? meleeHitRefusal(ctx, enemy) : null);
+        if (barred) {
+          return barred;
         }
         // "Until the end of your next turn" (Path to the Grave), or a count of rounds.
         const landed = enemyCondition(ctx, enemy, condition, does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds });
@@ -369,6 +383,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }
+      const tooBig = does.maxSize ? sizeRefusal(ctx.spend.name, enemy, does.maxSize, ctx.held.level) : null;
+      if (tooBig) {
+        return tooBig;
+      }
       // A damage type the caster chooses is named whole in the variant.
       const type = does.typeFromVariant ? namedOption(ctx.spend.name, ctx.args.variant, does.typeFromVariant) : (does.type ?? "");
       if (typeof type !== "string") {
@@ -378,6 +396,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // The creature picks the save it is likelier to pass (condition-logic.ts).
       const ability = does.orSave ? likelierSave(enemy.conditions, does.save, does.orSave, dc, (each) => saveModFor(enemy.stats, each)) : does.save;
       const other = does.orSave ? (ability === does.save ? does.orSave : does.save) : undefined;
+      // Who the creature strikes on a failed save, and that it can, is settled
+      // before anything is spent (mt-fb-spend.ts).
+      const strike = does.strikes ? forcedStrikePlan(ctx, enemy) : null;
+      if (strike && "error" in strike) {
+        return strike;
+      }
       const keen = does.advantageAt ? Number(enemy.stats.abilities?.[does.advantageAt.ability] ?? 10) >= does.advantageAt.atLeast : false;
       const save = rollEnemySave(campaign.id, enemy, ability, dc, {
         ...(keen ? { advantage: true } : {}),
@@ -409,8 +433,18 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       }
-      if (!save.success && does.onFail) {
+      // The line for the GM, unless the engine makes the attack it asks for.
+      if (!save.success && does.onFail && !strike) {
         result.onFail = `${enemy.displayName} ${does.onFail}.`;
+      }
+      if (!save.success && strike) {
+        Object.assign(result, forcedStrike(ctx, strike));
+      }
+      if (!save.success && does.pushes) {
+        Object.assign(result, pushFoe(ctx, getEnemy(enemy.id) ?? enemy, does.pushes.feet));
+      }
+      if (!save.success && does.throws) {
+        Object.assign(result, throwFoe(ctx, getEnemy(enemy.id) ?? enemy, does.throws.feet));
       }
       return { result };
     }
@@ -632,6 +666,15 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // The monk and rogue subclasses' own (src/lib/dm/mt-mr-spends.ts).
     case "mr":
       return mrSpend(ctx, does);
+    // The fighter and barbarian repair's own (src/lib/dm/mt-fb-spend.ts).
+    case "cleanse":
+      return cleanse(ctx, does.conditions);
+    case "arcane_shot":
+      return arcaneShot(ctx, does.option);
+    case "echo":
+      return echoSpend(ctx);
+    case "wild_surge":
+      return surgeSpend({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: ctx.args }, does, ctx.spend.name);
   }
 }
 
@@ -823,6 +866,17 @@ function stormAura(ctx: SpendContext): Resolution {
       if (enemy.status === "alive") {
         lines.push(hurtEnemy(ctx.campaign, encounter!, enemy, Number(amount), "fire", "Storm Aura"));
       }
+    }
+    // "Each other creature in it": an ally in the aura burns too. The aura is
+    // written first, so Shielding Storm's shelter (pc-damage.ts
+    // authoredAuraResistances reads the condition) already covers them.
+    const allies = alliesInReach(ctx, 10, false).filter((ally) => ally.currentHp > 0);
+    if (allies.length) {
+      patchSheet(ctx.sheet.id, patch);
+    }
+    for (const ally of allies) {
+      const burnt = applyPcDamage(ctx.campaign, ctx.turnId, getSheetById(ally.id) ?? ally, { amount: Number(amount), type: "fire", magical: true, reason: "Storm Aura" });
+      lines.push(`${ally.name}: ${burnt.damageApplied ?? 0} fire damage${burnt.resistance ? ` (${String(burnt.resistance)})` : ""}.`);
     }
     if (encounter) {
       publishEncounter(ctx.campaign.id);

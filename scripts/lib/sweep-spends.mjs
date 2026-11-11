@@ -189,7 +189,11 @@ const CASTING_ABILITY = {
   bard: "cha", cleric: "wis", druid: "wis", paladin: "cha", ranger: "wis", sorcerer: "cha", warlock: "cha", wizard: "int", artificer: "int",
 };
 // A pick the builder's owed choices write as a feature of its own.
-const EXTRA_FEATURES = { "Draconic Bloodline": ["Dragon Ancestor: Red"] };
+const EXTRA_FEATURES = {
+  "Draconic Bloodline": ["Dragon Ancestor: Red"],
+  // The Arcane Shot options a sheet knows are picks: every one, so each variant of the spend is walked.
+  "Arcane Archer": ["Banishing", "Beguiling", "Bursting", "Enfeebling", "Grasping", "Piercing", "Seeking", "Shadow"].map((name) => `Arcane Shot: ${name} Arrow`),
+};
 const slots = () => Object.fromEntries([1, 2, 3, 4, 5].map((level) => [String(level), { max: 3, used: 1 }]));
 
 export async function openSpendsRig() {
@@ -365,6 +369,16 @@ export function readChanges(scene, changes) {
       continue;
     }
     if (change.table === "encounters" && /^(?:turn_budget|reactions_used)/.test(change.column)) {
+      // The cost property counts what a spend takes away. An Attack action
+      // that holds one more attack than it did (Unleash Incarnation: "make one
+      // extra melee attack from your echo's space when you take the Attack
+      // action") was given something, so a rise in attacksAllowed is the
+      // spend's effect; only a fall is a cost (the maintainer's ruling,
+      // /tmp/odm-gapstudy/MT-SPLIT.md).
+      if (change.path === "attacksAllowed" && Number(change.after) > Number(change.before ?? 0)) {
+        out.effects.push(change);
+        continue;
+      }
       if (/^reactions_used/.test(change.column) || COST_KEYS.test(change.path) || change.path === "") {
         // A budget written whole (null before): its grants count as effects.
         if (change.path === "" && change.after && typeof change.after === "object" && !Array.isArray(change.after)) {

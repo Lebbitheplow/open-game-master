@@ -156,7 +156,11 @@ export function authoredIncomingAttack(input: {
   for (const name of GUARD_MARKS) {
     const condition = attacker.conditions.find((entry) => textKey(entry) === name);
     const meta = condition ? metaOf(attacker, condition) : undefined;
-    if (condition && meta?.source && meta.source !== target.id) {
+    // A mark that binds only near its marker (Unwavering Mark: "while it is
+    // within 5 feet of you") lets go of a creature that has stepped away.
+    const reach = (meta as { withinFeet?: number } | undefined)?.withinFeet;
+    const bound = !reach || !meta?.source || withinFeet(input.encounterId, meta.source, attacker.id, reach);
+    if (condition && meta?.source && meta.source !== target.id && bound) {
       sources.push("disadvantage");
       notes.push(`${condition}: it attacks anyone but its marker at disadvantage`);
       if ((meta as { halve?: boolean }).halve) {
@@ -417,7 +421,8 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
       [effect.condition]: {
         source: sheet.id,
         stamp,
-        ...(effect.effect === "save_disadv" ? { untilTurnEndOf: sheet.id } : { untilTurnOf: sheet.id }),
+        ...(effect.effect === "save_disadv" || effect.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { untilTurnOf: sheet.id }),
+        ...(effect.rangeFt ? { withinFeet: effect.rangeFt } : {}),
         ...(effect.halve ? { halve: true } : {}),
         // A mark a rage lays ends with the rage, not only at the next turn
         // (Ancestral Protectors: "or until your rage ends", rage-bound.ts).

@@ -53,6 +53,7 @@ export function rapidStrike(input: {
   advantage: Advantage;
   weaponAttack: boolean;
   bonus: boolean;
+  targetId: string;
 }): { refused: ToolError } | { budget: TurnBudget; note: string } {
   const { sheet, budget } = input;
   const feature = hasRapidStrike(sheet);
@@ -69,8 +70,37 @@ export function rapidStrike(input: {
     return { refused: { error: "Rapid Strike forgoes advantage on the attack, and this attack has none to forgo; attack without rapidStrike.", retry: true } };
   }
   return {
-    budget: { ...budget, attacksAllowed: budget.attacksAllowed + 1, oncePerTurn: [...budget.oncePerTurn, RAPID_STRIKE] },
+    budget: { ...budget, attacksAllowed: budget.attacksAllowed + 1, oncePerTurn: [...budget.oncePerTurn, RAPID_STRIKE, `${RAPID_STRIKE_OWED}${input.targetId}`] },
     note: `${feature}: the advantage is forgone for one more attack against this target`,
+  };
+}
+
+// The creature a Rapid Strike's extra attack is owed to, until it is made.
+const RAPID_STRIKE_OWED = "rapid strike owed:";
+
+// "One more attack against the same target": the attack Rapid Strike bought
+// goes to the creature it was traded on. An attack at that creature pays it;
+// any other attack of the action may go where the fighter likes while more
+// than the owed one is left, and the last one left is refused at anybody else.
+// Before this every attack left after the trade could go to another creature.
+export function rapidStrikeOwed(budget: TurnBudget, targetId: string): { refused: ToolError } | { budget: TurnBudget } {
+  const key = budget.oncePerTurn.find((entry) => entry.startsWith(RAPID_STRIKE_OWED));
+  if (!key) {
+    return { budget };
+  }
+  if (key.slice(RAPID_STRIKE_OWED.length) === targetId) {
+    return { budget: { ...budget, oncePerTurn: budget.oncePerTurn.filter((entry) => entry !== key) } };
+  }
+  // The budget already counts the attack being made (pc-attack-plan.ts spends
+  // it before the options are read): one more must be left after it.
+  if (budget.attacksAllowed - budget.attacksMade >= 1) {
+    return { budget };
+  }
+  return {
+    refused: {
+      error: "Rapid Strike's extra attack is made against the same creature the advantage was given up on, and it is the one attack left of this action: it goes to that creature, or is not made.",
+      refused: "rules",
+    },
   };
 }
 

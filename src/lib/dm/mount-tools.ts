@@ -33,6 +33,7 @@ import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -186,8 +187,8 @@ export function handleMountUp(
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
-    movementSpent: mountCost(sheet.speed),
-    note: `${sheet.name} now moves at ${checked.state.speed} ft. Mounting cost half their movement (${mountCost(sheet.speed)} ft)${spent.charged ? ", taken from this turn's movement on the board" : ""}.`,
+    movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed),
+    note: `${sheet.name} now moves at ${checked.state.speed} ft. Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}${spent.charged ? ", taken from this turn's movement on the board" : ""}.`,
   };
 }
 
@@ -210,6 +211,16 @@ export function handleMountUp(
 // The turn's once-a-move mark for mounting or dismounting (action-budget.ts
 // oncePerTurn).
 const MOUNTING_KEY = "mount_or_dismount";
+
+// What getting on or off a mount costs of the rider's movement: half their
+// speed (SRD 5.1, Mounting and Dismounting), or 5 feet for a Cavalier (Born to
+// the Saddle: "mounting costs only 5 feet of movement"; the published feature
+// reads "mounting or dismounting"). The board's charge and the tool's own
+// words both read this.
+const SADDLE = "born to the saddle";
+function mountingFeet(sheet: CharacterSheet): number {
+  return holdsFeature(sheet, SADDLE) ? 5 : Math.floor(speedToTiles(sheet.speed) / 2) * 5;
+}
 
 function spendMountingMovement(
   campaign: Campaign,
@@ -237,7 +248,7 @@ function spendMountingMovement(
     const current = encounter.order[encounter.turnIndex];
     return { error: `${sheet.name} mounts or dismounts during their own move only; it is ${current?.name ?? "another combatant"}'s turn. What they declared waits for their turn.`, refused: "rules" };
   }
-  const half = Math.floor(speedToTiles(sheet.speed) / 2);
+  const half = Math.floor(mountingFeet(sheet) / 5);
   const mounted = getMounts(campaign.id)[sheet.id];
   // "Once during your move, you can mount a creature that is within 5 feet
   // of you or dismount" (SRD 5.1, Mounting and Dismounting): one or the
@@ -253,7 +264,7 @@ function spendMountingMovement(
   const full = speedToTiles(mounted ? mounted.speed : sheet.speed);
   if (full - token.movedThisRound < half) {
     return {
-      error: `${sheet.name} has too little movement left this turn to ${mounted ? "dismount" : "mount"}: it costs half their speed (${half * 5} ft).`,
+      error: `${sheet.name} has too little movement left this turn to ${mounted ? "dismount" : "mount"}: it costs ${holdsFeature(sheet, SADDLE) ? "them" : "half their speed,"} ${half * 5} ft.`,
       refused: "rules",
     };
   }
@@ -305,8 +316,8 @@ export function handleDismount(
     return {
       ok: true,
       dismounted: current.name,
-      movementSpent: mountCost(sheet.speed),
-      note: "A deliberate dismount costs half their movement and needs no roll.",
+      movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed),
+      note: holdsFeature(sheet, SADDLE) ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle) and needs no roll." : "A deliberate dismount costs half their movement and needs no roll.",
     };
   }
   // Thrown: the server rolls the DC 10 Dexterity save from the rider's sheet

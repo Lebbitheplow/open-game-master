@@ -10,7 +10,7 @@
 //   passive  resist (Soul of the Forge), immune_damage (Saint of Forge and
 //            Fire), immune_condition + crit_immune (Fungal Body), save_adv
 //            (Unyielding Spirit), save_bonus + ac while concentrating
-//            (Durable Magic), save_swap (Elegant Courtier), speed (Superior
+//            (Durable Magic), save_prof (Elegant Courtier), speed (Superior
 //            Mobility), init_adv (Ambush Master), init_ability (Rakish
 //            Audacity), ward_vs (Among the Dead), attack_adv and
 //            auto_crit (Assassinate), rider (Gathered Swarm), mark (Ancestral
@@ -156,7 +156,11 @@ await test("Durable Magic: while concentrating, +2 AC and +2 on every saving thr
   assert.equal(focused - (await dexSave()), 2);
 });
 
-await test("Elegant Courtier: a Wisdom saving throw uses the Charisma modifier when it is the better one.", async () => {
+// This pinned a swap of Charisma in for Wisdom. The feature's text (src/lib/srd/
+// subclasses.json): "Add your Wisdom modifier to Persuasion checks and gain
+// proficiency in Wisdom saving throws (Intelligence or Charisma if you already
+// have it)": the samurai's Wisdom save carries the proficiency bonus.
+await test("Elegant Courtier: a Wisdom saving throw carries the proficiency bonus.", async () => {
   const samurai = hero({ class: "fighter", subclass: "Samurai", level: 7, abilities: { wis: 10, cha: 16 } });
   const plain = hero({ class: "fighter", subclass: "Champion", level: 7, abilities: { wis: 10, cha: 16 } });
   const wisSave = async (who) => {
@@ -166,7 +170,7 @@ await test("Elegant Courtier: a Wisdom saving throw uses the Charisma modifier w
     world.clearDice();
     return rolled.result.total;
   };
-  assert.equal((await wisSave(samurai)) - (await wisSave(plain)), abilityMod(16) - abilityMod(10));
+  assert.equal((await wisSave(samurai)) - (await wisSave(plain)), 3, "the proficiency bonus of a 7th-level character");
 });
 
 await test("Superior Mobility: +10 feet of walking speed.", async () => {

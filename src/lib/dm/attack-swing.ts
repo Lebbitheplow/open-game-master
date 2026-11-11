@@ -32,6 +32,12 @@ import { getFoe } from "@/lib/dm/sheet-foe";
 import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
+import { chargedBudget } from "@/lib/dm/mt-fb-charge";
+import { growBeastForm } from "@/lib/dm/mt-fb-beast";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
+import { NATURAL_HIT } from "@/lib/srd/mt-fb-run";
+import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -102,6 +108,16 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
   // Foe Slayer is once on each of the ranger's turns: an earlier part of the
   // attack may have spent it since.
   const turn = attackTurn(campaign.id, record);
+  // A melee attack ends the run that brought the attacker to this creature,
+  // and the turn keeps how far it ran (mt-fb-charge.ts).
+  if (turn && record.melee) {
+    storeBudget(turn.encounter, chargedBudget(turn.encounter, turn.budget, record.targetEnemyId));
+  }
+  // A Beguiling Arrow's charm ends when the ally it charmed the creature by
+  // attacks it (mt-fb-arrow-riders.ts).
+  beguilingBroken(campaign.id, scene.sheet.id, record.targetEnemyId);
+  // The natural weapon a rage grows is the first one it attacks with (mt-fb-beast.ts).
+  growBeastForm(campaign.id, scene.sheet.id, authoredNaturalWeapon(scene.sheet, record.weapon));
   const foeSlayer = turn && !turn.budget.oncePerTurn.includes(FOE_SLAYER) ? (record.extras?.foeSlayer ?? 0) : 0;
   const metTotal = totalAReactionMeets({ total: toHit.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1, foeSlayer });
   // The creature's reaction is decided once, against the best total the
@@ -174,6 +190,14 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // The hit that spent the turn's Sneak Attack names its creature, so a
     // feature that answers a Sneak Attack (Wails from the Grave) knows the
     // first creature, and that one landed at all.
+    // A natural weapon's hit is kept as one, for what rides it (Infectious Fury).
+    // An arrow from a shortbow or longbow, for an Arcane Shot to ride.
+    if (isBow(record.weapon)) {
+      markAttackTurn(campaign.id, record, `${BOW_HIT}${record.targetEnemyId}`);
+    }
+    if (authoredNaturalWeapon(scene.sheet, record.weapon)) {
+      markAttackTurn(campaign.id, record, `${NATURAL_HIT}${record.targetEnemyId}`);
+    }
     if (record.hitClaims?.includes("sneak_attack")) {
       markAttackTurn(campaign.id, record, `${SNEAK_HIT}${record.targetEnemyId}`);
     }
