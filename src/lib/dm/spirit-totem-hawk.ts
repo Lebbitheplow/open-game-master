@@ -9,9 +9,13 @@
 // reads and spends (authored-hooks.ts, as Entropic Ward's edge is read), gone
 // at the end of the attacker's turn if no attack is made. Before this
 // use_reaction took the druid's reaction and the attack rolled one d20.
+// The druid's Hand deals it as a card while the hawk stands
+// (src/lib/battlemap/hand-react.ts), naming the creature attacked: with no
+// attacker named it is the hero whose turn it is.
 
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { allyOf, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -37,7 +41,9 @@ export function hawkReaction(ctx: Ctx): ToolResult | null {
       refused: "rules",
     };
   }
-  const attacker = allyOf(ctx) ?? sheet;
+  // The attacker the call names, else the hero whose turn it is (the Hand's
+  // card names only the creature attacked), else the druid.
+  const attacker = allyOf(ctx) ?? ctx.sheets.find((entry) => ownTurnOf(encounter, entry.id)) ?? sheet;
   const target = encounter && ctx.args.targetEnemyId ? resolveTargetFoe(encounter.campaignId, encounter, ctx.args.targetEnemyId) : null;
   if (!encounter || !target || target.status !== "alive") {
     return { error: `${NAME} gives advantage to an attack roll against a creature in the aura: pass that creature as targetEnemyId, and the attacker as targetCharacterId. Nothing was spent.`, retry: true };

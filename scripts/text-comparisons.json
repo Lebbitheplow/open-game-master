@@ -931,7 +931,7 @@
     "lib/battlemap/hand-play.ts#str-includes": [["english-source",2,"reference: SRD weapon properties (fixed vocabulary of the SRD rows and the workshop's property picker)"]],
     "lib/battlemap/hand-play.ts#str-key": [["key",1,"bonus attack ids"]],
     "lib/battlemap/hand-react.ts#re-word": [["english-source",1,"the engine's own \"Maneuver:\" feature prefix and reaction amounts"]],
-    "lib/battlemap/hand-react.ts#str-eq": [["english-source",1,"the engine's own \"Maneuver:\" feature prefix and reaction amounts"],["display",1,"the prompt's own word for the character in their own hand"],["key",1,"a trigger record's kind (engine vocabulary)"]],
+    "lib/battlemap/hand-react.ts#str-eq": [["english-source", 1, "the engine's own \"Maneuver:\" feature prefix and reaction amounts"], ["display", 1, "the prompt's own word for the character in their own hand"], ["key", 1, "a trigger record's kind (engine vocabulary)"], ["key", 1, "the spirit a Spirit Totem condition names (engine vocabulary)"]],
     "lib/battlemap/hand-react.ts#toLowerCase": [["key",1,"answered reaction names, condition label"]],
     "lib/battlemap/hand-react.ts#toUpperCase": [["display",1,"ability abbreviation shown in a reaction card's prompt"]],
     "lib/battlemap/hand-spells.ts#\\b": [["table-language",1,"meaning reader: a spell's casting time (SRD rows, and homebrew spells' free-text casting time) read for bonus action, reaction or action"]],

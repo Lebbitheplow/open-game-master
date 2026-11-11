@@ -41,9 +41,11 @@ import { LUCK_POINTS, resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { choiceIn, holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 // A Battle Master maneuver's card wears its painting.
+// The Hawk spirit's card: its creature is the player's pick (reactionAim).
+const HAWK_CARD = "spirit-totem-hawk";
 const MANEUVER_ICON = (name: string): HandCard["icon"] => ({ kind: "option", key: `Maneuver: ${name}`, family: "option-maneuver" });
 
 function base(
@@ -488,6 +490,21 @@ export function reactionCards(
     cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, "Commander's Strike")));
   }
 
+  // The Hawk spirit stands (Circle of the Shepherd, Spirit Totem): "when a
+  // creature makes an attack roll against a target in the aura, a reaction
+  // gives it advantage". It answers no hit, so the card is out while the hawk
+  // is, on any turn: the druid picks the creature about to be attacked, and
+  // the engine gives the edge to the attacker whose turn it is
+  // (src/lib/dm/spirit-totem-hawk.ts), judging the aura itself.
+  if (sheet.conditions.some((entry) => textKey(choiceIn(entry, "spirit totem") ?? "") === "hawk")) {
+    const card = base(HAWK_CARD, "Spirit Totem (Hawk)", "The Hawk spirit watches its aura", "enemy", { card: "reaction", feature: "Spirit Totem (Hawk)" }, {
+      rules: "Your reaction gives advantage to the attack roll about to be made against the creature you pick, if it stands in the spirit's aura.",
+      range: "30 ft aura",
+      icon: { kind: "feature", key: "Spirit Totem", family: null },
+    });
+    cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, "Spirit Totem (Hawk)")));
+  }
+
   // An ally's hit: Cutting Words from a Lore bard, Protection from a
   // protector with a shield. The engine checks the reach and the holder.
   for (const hit of hits) {
@@ -830,7 +847,7 @@ export function reactionAim(
   // Commander's Strike's target is the player's pick, and so is the creature a
   // reaction with two aims is spent on (Cauterizing Flames answers no hit, so an
   // open hit's attacker would be the wrong creature).
-  if ((card.target === "enemy" && id === "reaction:commanders-strike") || (card.intent?.card === "reaction" && card.intent.variant)) {
+  if ((card.target === "enemy" && (id === "reaction:commanders-strike" || id === `reaction:${HAWK_CARD}`)) || (card.intent?.card === "reaction" && card.intent.variant)) {
     return null;
   }
   if (card.target === "enemy") {

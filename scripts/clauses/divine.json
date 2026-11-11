@@ -3639,7 +3639,7 @@
     "c": "when a creature makes an attack roll against a target in the aura, a reaction gives it advantage, and",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#hawk-reaction",
-    "by": "src/lib/dm/spirit-totem-hawk.ts hawkReaction: the druid's use_reaction \"Spirit Totem\" (Hawk), taken as the attack is declared with the attacker and the creature attacked named, checks the creature stands in the aura (spirit-totem.ts inSpiritAura) and lays a mark the attacker's next attack roll against it reads as advantage and spends (authored-hooks.ts)"
+    "by": "src/lib/dm/spirit-totem-hawk.ts hawkReaction: the druid's use_reaction \"Spirit Totem\" (Hawk), taken as the attack is declared with the attacker and the creature attacked named, checks the creature stands in the aura (spirit-totem.ts inSpiritAura) and lays a mark the attacker's next attack roll against it reads as advantage and spends (authored-hooks.ts); dealt as a Hand card while the hawk stands (src/lib/battlemap/hand-react.ts reactionCards), whose call names the creature attacked and gives the edge to the hero whose turn it is"
    },
    {
     "c": "you and your allies have advantage on Perception checks in it",

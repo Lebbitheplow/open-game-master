@@ -148,9 +148,17 @@ export const RO_DRUID_B = {
     const hawk = await raise("hawk");
     rig.kit.place(hawk.a.id, 6, 5);
     rig.kit.giveTurn(hawk.a.id);
+    // The Hand deals the reaction as a card while the hawk stands, and never
+    // under another spirit; its call names the creature attacked alone, and
+    // the attacker is the hero whose turn it is.
+    const { reactionCards } = await rig.load("lib/battlemap/hand-react.ts");
+    const { FRESH_TURN } = await rig.load("lib/battlemap/hand.ts");
+    const dealt = (who) => reactionCards(rig.world.sheet(who.id), FRESH_TURN, [], rig.world.sheets()).filter((entry) => entry.name === "Spirit Totem (Hawk)").map((entry) => [entry.target, entry.cost, entry.disabled]);
+    const hawkCard = dealt(hawk.who);
+    const otherCard = dealt(hawk.a);
     const tries = {};
-    for (const name of ["Spirit Totem", "Hawk Spirit", "Spirit Totem: Hawk", "Hawk"]) {
-      const out = await rig.react(hawk.who, name, { targetEnemyId: hawk.foe.id, targetCharacterId: hawk.a.id });
+    for (const name of ["Spirit Totem (Hawk)"]) {
+      const out = await rig.react(hawk.who, name, { targetEnemyId: hawk.foe.id });
       tries[name] = out.ok ? "ok" : out.error.slice(0, 120);
       if (out.ok) tries.result = brief(out.result, 300);
       if (out.ok) break;
@@ -184,6 +192,8 @@ export const RO_DRUID_B = {
         assert.ok(Object.values(tries).includes("ok"), `the druid's reaction for an ally's attack: ${brief(tries, 400)}`);
         assert.equal(reacted, true);
         assert.equal(hawkDice, 2, `the ally's attack after the hawk's reaction rolled ${hawkDice} d20`);
+        assert.deepEqual(hawkCard, [["enemy", "reaction", null]], `the druid's Hand under the hawk: ${JSON.stringify(hawkCard)}`);
+        assert.deepEqual(otherCard, [], "an ally with no totem was dealt the hawk's card");
       },
       "unicorn-detect": () => {
         assert.deepEqual(detect, [2, 2, 2, 1], "Perception of the druid and an ally, the ally's Investigation, and the ally's Athletics");
