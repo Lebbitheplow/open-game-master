@@ -26,6 +26,7 @@
 // mutations.ts (which imports it).
 
 import { boonAtCast } from "@/lib/dm/ar-ws-lunar-boons";
+import { surgeChanceAfter } from "@/lib/dm/ar-ws-wild-surge";
 import { castRefills } from "@/lib/dm/ar-ws-transposition";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
@@ -86,7 +87,7 @@ import { antimagicProblem, silenceProblem } from "@/lib/dm/zone-rules";
 import { placeSpellZone, placementReachProblem } from "@/lib/dm/zone-cast";
 import { spellSaveDcFor } from "@/lib/srd";
 import { castTempHp } from "@/lib/dm/authored-spells";
-import { authoredSlotRefund, opensSurgeChance } from "@/lib/srd/authored-effects-more";
+import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
 import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
@@ -718,11 +719,14 @@ export function castSpell(
   // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
   // have the sorcerer roll on the surge table, and a spent Tides of Chaos then
   // comes back. The mark lasts the round; the GM's use_resource spends it.
-  if (!input.storing && opensSurgeChance(sheet.resources, facts)) {
+  // The chance is every such casting's, Tides of Chaos spent or not
+  // (src/lib/dm/ar-ws-wild-surge.ts surgeChanceAfter says which).
+  const surgeLine = input.storing ? null : surgeChanceAfter(sheet, facts);
+  if (surgeLine) {
     const held = (patch.conditions ?? sheet.conditions).filter((entry) => !isConditionNamed(entry, SURGE_CHANCE));
     patch.conditions = [...held, SURGE_CHANCE];
     patch.conditionMeta = { ...((patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap), [SURGE_CHANCE]: { rounds: 1 } };
-    result.wildMagicSurge = `Tides of Chaos is spent: the GM may have ${sheet.name} roll on the wild magic table now, and if so use_resource "Wild Magic Surge" gives the use back.`;
+    result.wildMagicSurge = surgeLine;
   }
   // Cast from their own slots now: an item's numbers for it are over.
   const freed = input.storing ? null : equipmentWithoutRunning(patch.equipment ?? sheet.equipment, name);

@@ -28,7 +28,70 @@ export function probes(rig, shared) {
   const inDarkness = async (ref) => (await light()).standsInDarkness(world.campaignId, world.encounter().id, ref.id);
   const moonlit = (who) => sheet(who).conditions.includes("moonlight");
 
+  const wild = () => holder("sorcerer", "Wild Magic");
+  const surges = lazy(() => import("../../src/lib/srd/ar-ws-wild-surge-table.ts"));
+
   const PROBES = {
+    // "the GM may have you roll a d20; on a 1 you roll on the wild magic
+    // table": the GM's use_resource after a sorcerer spell of 1st level or
+    // higher. The table is the app's own (src/lib/srd/ar-ws-wild-surge-table.ts);
+    // each case forces the d20, the table's die and the entry's dice.
+    "surge-roll": async () => {
+      const who = wild();
+      const table = (await surges()).WILD_SURGE_TABLE;
+      const at = (name) => table.findIndex((entry) => entry.name === name) + 1;
+      const surge = (faces) => spend(who, "Wild Magic Surge", {}, faces);
+      const chance = () => sheet(who).conditions.includes("surge chance");
+      const thrown = (out) => out.rolled.map((die) => [die.sides, die.face]);
+      // A fresh sorcerer, whatever the case needs first, then Burning Hands.
+      const cast = async (before = () => {}, spell = "Burning Hands") => {
+        rig.refill(who);
+        before();
+        kit.freshTurn();
+        const out = await call("use_spell_slot", { characterId: who.id, spell });
+        assert.equal(out.ok, true, out.error);
+        return out;
+      };
+      const [enemy] = await stage(who, { others: [friend()] });
+      kit.place(friend().id, 1, 9);
+      assert.equal(table.length, 10, "a d10's worth of entries");
+      // With no spell just cast, and after a cantrip, there is nothing to roll.
+      assert.equal((await surge([1, 5, 3])).ok, false, "with no spell cast");
+      await cast(() => {}, "Poison Spray");
+      assert.deepEqual([chance(), (await surge([1, 5, 3])).ok], [false, false], "after a cantrip");
+      // A sorcerer spell of 1st level: the d20, and on a 7 nothing more.
+      const told = await cast();
+      assert.match(String(told.result.wildMagicSurge), /roll a d20/);
+      assert.equal(chance(), true);
+      const quiet = await surge([7, 5, 3]);
+      assert.deepEqual([quiet.ok, quiet.result.d20, quiet.result.surge ?? null, thrown(quiet), chance()], [true, 7, null, [[20, 7]], false], "a 7 on the d20");
+      assert.equal((await surge([1, 5, 3])).ok, false, "one casting, one roll");
+      // On a 1 the table is rolled: Second Skin is 1d8 + the sorcerer level in temporary hit points.
+      await cast();
+      const skin = await surge([1, at("Second Skin"), 3]);
+      assert.deepEqual([skin.result.surge?.name, thrown(skin), sheet(who).tempHp], ["Second Skin", [[20, 1], [10, at("Second Skin")], [8, 3]], 23], "a 1, then the table");
+      // Thunderclap Hiccup: 2d8 thunder to the creature 5 feet away, which fails its save on a 1.
+      await cast();
+      const hp = foe(enemy).currentHp;
+      const clap = await surge([1, at("Thunderclap Hiccup"), 6, 5, 1]);
+      assert.deepEqual([clap.ok, hp - foe(enemy).currentHp], [true, 11], clap.error);
+      // Loose Change: 1d4 of five spent sorcery points come back.
+      await cast(() => world.patch(who.id, { resources: { ...sheet(who).resources, sorcery_points: { max: 20, used: 5 } } }));
+      await surge([1, at("Loose Change"), 3]);
+      assert.equal(sheet(who).resources.sorcery_points.used, 2);
+      // Tides of Chaos spent: the surge is triggered outright, no d20, and the use comes back.
+      const spent = await cast(() => world.patch(who.id, { currentHp: 50, resources: { ...sheet(who).resources, sub_tides_of_chaos: { max: 1, used: 1 } } }));
+      assert.match(String(spent.result.wildMagicSurge), /Tides of Chaos is spent/);
+      const tide = await surge([at("Mended Seam"), 2, 5]);
+      assert.deepEqual([tide.result.d20 ?? null, tide.result.surge?.name, thrown(tide), sheet(who).currentHp, sheet(who).resources.sub_tides_of_chaos.used], [null, "Mended Seam", [[10, at("Mended Seam")], [6, 2], [6, 5]], 57, 0], "[d20, entry, dice, hit points, Tides of Chaos spent]");
+      // Every entry of the table is one the server applies.
+      for (const [index, entry] of table.entries()) {
+        await cast();
+        const out = await surge([1, index + 1, 3, 3, 3, 3]);
+        assert.deepEqual([out.ok, out.result?.surge?.name], [true, entry.name], `entry ${index + 1}: ${String(out.error ?? "")}`);
+      }
+      await kit.endFight();
+    },
     // "Full Moon: a bonus action sheds bright light in 10 feet and dim light
     // 10 feet beyond (or douses it)": a light on the sorcerer's own token, read
     // by the board's light, carried as they move, doused by the same call and

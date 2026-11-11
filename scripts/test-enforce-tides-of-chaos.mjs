@@ -142,12 +142,24 @@ await test("after a sorcerer spell of 1st level or higher the GM's Wild Magic Su
   assert.equal((await surge()).ok, false, "one casting gives one use back");
 });
 
-await test("a casting leaves no surge chance while Tides of Chaos still has its use", async () => {
+// "After casting a sorcerer spell of 1st level or higher, the GM may have you
+// roll a d20; on a 1 you roll on the wild magic table" (Wild Magic Surge,
+// src/lib/srd/subclasses.json): the GM's call is open after every such
+// casting, whether Tides of Chaos is spent or not. This test held that no
+// chance was left while Tides still had its use, from when the surge was only
+// the way to give that use back and rolled nothing
+// (src/lib/dm/ar-ws-wild-surge.ts).
+await test("a casting leaves the surge's chance while Tides of Chaos still has its use, and the surge then rolls the sorcerer's d20", async () => {
   await stage();
   world.patch(sorcerer.id, { spellcasting: { ...world.sheet(sorcerer.id).spellcasting, slots: { 1: { max: 4, used: 0 } } } });
   const out = await cast("Mage Armor", 1);
-  assert.equal(out.result.wildMagicSurge, undefined);
-  assert.equal(chance(), false);
+  assert.match(String(out.result.wildMagicSurge), /roll a d20/);
+  assert.equal(chance(), true);
+  world.dice(7);
+  const rolled = await surge();
+  world.clearDice();
+  assert.equal(rolled.ok, true, rolled.error);
+  assert.deepEqual([rolled.result.d20, rolled.result.surge ?? null, chance(), usedOf()], [7, null, false, 0], "[the d20, a surge, the chance left, Tides of Chaos spent]");
 });
 
 await finish();

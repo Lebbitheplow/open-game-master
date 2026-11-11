@@ -508,6 +508,11 @@ export type SpendDoes =
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // The GM's surge: with the pool's use spent it rolls on the wild magic
+  // table and gives the use back; otherwise the holder's d20 is rolled and a 1
+  // rolls on the table. `clears`: the mark the spend's gate asked for (Wild
+  // Magic Surge: src/lib/dm/ar-ws-wild-surge.ts).
+  | { kind: "wild_surge"; pool: string; clears: string }
   // A creature the holder charmed saves or loses hours of memory, as many as
   // the call's amount, at most the ability modifier plus one; the mark it
   // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).

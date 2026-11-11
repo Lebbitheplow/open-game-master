@@ -5,6 +5,7 @@
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { layWard } from "@/lib/dm/ar-ws-bastion";
 import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
+import { wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
@@ -607,6 +608,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return createItem(ctx, does);
     case "light":
       return toggleLight(ctx, does);
+    case "wild_surge":
+      return wildSurge(ctx, does);
     case "damage_ward":
       return layWard(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).

@@ -8,6 +8,7 @@
 // it, so nothing the earlier rounds built is dropped.
 //
 // Pure.
+import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 // A spell paid for with sorcery points in place of a slot is the cast guard's
@@ -65,6 +66,24 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
       { kind: "resist", types: ["necrotic", "radiant"], gate: { choiceOf: { feature: "Lunar Embodiment", value: "crescent moon" } } },
     ],
     spends: [{ name: "Lunar Empowerment", aliases: ["Moonlight"], action: "bonus", gate: { choiceOf: FULL_MOON }, does: { kind: "light", brightFt: 10, dimFt: 10, condition: "moonlight" } }],
+  },
+  // "After casting a sorcerer spell of 1st level or higher, the GM may have
+  // you roll a d20; on a 1 you roll on the wild magic table": the GM's call
+  // (no card), open for a round after every such casting. With Tides of Chaos
+  // spent it is the surge Tides names: the table is rolled and the use comes
+  // back (src/lib/dm/ar-ws-wild-surge.ts; the table is the app's own,
+  // src/lib/srd/ar-ws-wild-surge-table.ts).
+  "sorcerer::Wild Magic Surge": {
+    subclass: "Wild Magic",
+    spends: [
+      {
+        name: "Wild Magic Surge",
+        gm: true,
+        action: "none",
+        gate: { condition: SURGE_CHANCE, because: "is rolled only right after a sorcerer spell of 1st level or higher" },
+        does: { kind: "wild_surge", pool: "sub_tides_of_chaos", clears: SURGE_CHANCE },
+      },
+    ],
   },
   // "Spend 1 to 5 sorcery points to give a creature that many d8s to spend
   // reducing damage, until your next long rest": the points in amount, an

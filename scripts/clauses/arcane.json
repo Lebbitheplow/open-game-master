@@ -1389,9 +1389,9 @@
    },
    {
     "c": "the GM may have you roll a d20; on a 1 you roll on the wild magic table",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the engine holds no wild magic table (grep finds the words in the text and the cast guard only); what the d20 and the table do is the GM's narration, with no written reason on the row"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: surge-roll",
+    "by": "authored spend Wild Magic Surge (the GM call, does wild_surge, gate surge chance): src/lib/dm/ar-ws-wild-surge.ts wildSurge rolls the sorcerer d20 and on a 1 a die on the app own table (src/lib/srd/ar-ws-wild-surge-table.ts, an original table of ten entries, not the printed one) and applies the entry; surgeChanceAfter (cast-guard.ts castSpell) opens the chance after every sorcerer spell of 1st level or higher. Ruling: with Tides of Chaos spent the surge is triggered outright, no d20, and the use comes back"
    }
   ]
  },
