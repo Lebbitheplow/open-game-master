@@ -26,6 +26,7 @@ import { endSpellSummons } from "@/lib/dm/summon-store";
 import { authoredConcentrationGuard } from "@/lib/srd/authored-effects-more";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { textKey } from "@/lib/language/text-logic";
+import { mindSharpenerSave } from "@/lib/dm/infusion-charges";
 
 // Server-tracked concentration: casting a concentration spell sets it (and
 // breaks the previous one), taking damage forces the CON save server-side,
@@ -414,7 +415,10 @@ export function concentrationDamageHook(
     false,
     { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
   );
-  const held = save.success;
+  // An artificer's Mind Sharpener turns the failure into a success with a
+  // charge and the reaction (src/lib/dm/infusion-charges.ts).
+  const sharpened = save.success ? null : mindSharpenerSave(campaign, fresh);
+  const held = save.success || Boolean(sharpened);
   if (!held) {
     breakConcentration(campaign, turnId, fresh.id, `failed the DC ${dc} CON save`);
   }
@@ -426,6 +430,7 @@ export function concentrationDamageHook(
       held,
       ...(feat ? { [feat.advantage ? "warCaster" : "battleCaster"]: feat.advantage ? "advantage on the save" : `+${feat.die} on the save` } : {}),
       ...(song ? { bladesong: `+${song} on the save (Intelligence, while the Bladesong runs)` } : {}),
+      ...(sharpened ? { mindSharpener: sharpened } : {}),
       ...(save.notes.length ? { riders: save.notes } : {}),
     },
   };

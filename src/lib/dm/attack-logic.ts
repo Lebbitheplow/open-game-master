@@ -478,12 +478,14 @@ export function weaponAttackProfile(
       damageExpression: withModifier(dice, offHandModifier(mod, stance) + fist.damage),
       damageType,
       ranged: false,
-      thrown: !resolved.unarmed,
+      // A worn item's fist may be thrown (Arcane Propulsion Armor's
+      // gauntlets, 20/60, back on the hand at once).
+      thrown: !resolved.unarmed || Boolean(form?.thrown),
       reachTiles: 1,
-      rangeTiles: 4,
+      rangeTiles: form?.thrown ? Math.round(form.thrown.rangeFt / 5) : 4,
       // "An improvised thrown weapon has a normal range of 20 feet and a
       // long range of 60 feet."
-      ...(resolved.unarmed ? {} : { longRangeTiles: 12 }),
+      ...(form?.thrown ? { longRangeTiles: Math.round(form.thrown.longRangeFt / 5) } : resolved.unarmed ? {} : { longRangeTiles: 12 }),
       proficient: resolved.unarmed,
       improvised: !resolved.unarmed,
       ability: useDex ? "dex" : "str",

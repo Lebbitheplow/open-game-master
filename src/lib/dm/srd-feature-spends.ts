@@ -20,6 +20,7 @@
 // combat-features.ts's.
 
 import { spellStoringItemSpend } from "@/lib/dm/spell-storing-item";
+import { infuseItemSpend } from "@/lib/dm/infuse-item";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
@@ -46,8 +47,10 @@ import { asksToEndRage, endRage } from "@/lib/dm/mt-srd-barbarian";
 import { asksForCure, cleansingTouch, layOnHandsCure } from "@/lib/dm/mt-srd-paladin";
 import { strokeOfLuckCheck } from "@/lib/dm/mt-srd-rogue";
 import { bookOfShadows, pactOfTheBlade } from "@/lib/dm/mt-srd-warlock";
+import { radiantLight } from "@/lib/dm/infusion-charges";
+import { windingPath } from "@/lib/dm/infusion-servant";
 
-export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string; item?: string };
+export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string; item?: string; x?: number; y?: number };
 
 export function srdFeatureSpend(
   campaign: Campaign,
@@ -62,6 +65,13 @@ export function srdFeatureSpend(
   // An artificer's spell laid in an item (spell-storing-item.ts).
   const stored = spellStoringItemSpend(campaign, sheet, resourceName, args);
   if (stored) return stored;
+  // An artificer's infusion laid in an item (infuse-item.ts).
+  const infused = infuseItemSpend(campaign, sheet, resourceName, args);
+  if (infused) return infused;
+  // An infused Radiant Weapon's light (infusion-charges.ts).
+  if (name === "radiant weapon") return radiantLight(campaign, sheet, args.variant);
+  // Infused Boots of the Winding Path (infusion-servant.ts).
+  if (name === "boots of the winding path") return windingPath(campaign, sheet, args);
   if (name === "rage" && asksToEndRage(args.variant)) return endRage(campaign, sheet);
   if (name === "lay on hands" && asksForCure(args.variant)) return layOnHandsCure(campaign, sheet, args);
   if (name === "cleansing touch") return cleansingTouch(campaign, turnId, sheet, args);

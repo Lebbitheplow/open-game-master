@@ -68,6 +68,7 @@ import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { infusionWorn, makesOwnAmmunition } from "@/lib/srd/infusions";
 
 // A Battle Master maneuver riding the swing.
 export type ManeuverPick = {
@@ -249,8 +250,9 @@ export function planPcAttack(input: {
   // Ammunition, when the table asked for it: an empty quiver is a refused
   // attack, not a missed one. Only looked at here; the round leaves the
   // quiver in pc-attack.ts, once nothing else can refuse the shot.
+  // Repeating Shot makes its own ammunition (src/lib/srd/infusions.ts).
   const ammo =
-    campaign.gameSettings.variantRules.ammunition && profile.base
+    campaign.gameSettings.variantRules.ammunition && profile.base && !makesOwnAmmunition(sheet.equipment, profile.weapon)
       ? spendAmmo(sheet.equipment, { base: profile.base, name: profile.weapon }, sheet.name)
       : null;
   if (ammo && !ammo.ok) {
@@ -317,6 +319,13 @@ export function planPcAttack(input: {
   const ignoresCover = (weaponAttack && atRange && shotIgnoresCover(sheet)) || (kind === "spell" && spellIgnoresCover(sheet));
   if (ignoresCover && geometry.cover) {
     featNotes.push(`${kind === "spell" ? "Spell Sniper" : coverFeatName(sheet)}: ${enemy.displayName}'s ${geometry.cover === 2 ? "half" : "three-quarters"} cover does not count`);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
+  }
+  // An artificer's Enhanced Arcane Focus, held and attuned: "spells ignore
+  // half cover" (src/lib/srd/infusions.ts).
+  const focus = kind === "spell" && geometry.cover === 2 ? infusionWorn(sheet.equipment, "Enhanced Arcane Focus") : null;
+  if (focus) {
+    featNotes.push(`${focus.name} (Enhanced Arcane Focus): ${enemy.displayName}'s half cover does not count`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
   }
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {

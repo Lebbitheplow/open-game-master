@@ -37,6 +37,7 @@ import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 
 import type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 import { textKey } from "@/lib/language/text-logic";
+import { infusionWorn } from "@/lib/srd/infusions";
 
 export type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 
@@ -351,7 +352,10 @@ export function speedFor(
   // A feat whose name a class feature shares is read from sheet.feats alone
   // (feature-effects.ts FEAT_ONLY_SPEED: Level Up's Skirmisher).
   const featOnly = (source.feats ?? []).reduce((sum, feat) => sum + (FEAT_ONLY_SPEED[textKey(feat)] ?? 0), 0);
-  const bonus = [...bySource.values()].reduce((sum, amount) => sum + amount, 0) + featOnly;
+  // An artificer's Arcane Propulsion Armor, worn and attuned: 5 feet more
+  // (src/lib/srd/infusions.ts).
+  const propelled = infusionWorn(equipment as Parameters<typeof infusionWorn>[0], "Arcane Propulsion Armor") ? 5 : 0;
+  const bonus = [...bySource.values()].reduce((sum, amount) => sum + amount, 0) + featOnly + propelled;
   const carried = source.abilities
     ? encumbranceFor({
         strength: source.abilities.str,

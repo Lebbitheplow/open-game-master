@@ -62,6 +62,7 @@ import { unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
+import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -415,6 +416,12 @@ export function rollCharacterSave(
   if (helped) {
     outcome = helped.outcome;
   }
+  // A charge of an artificer's Armor of Magical Strength on a Strength save
+  // it would fail (src/lib/dm/infusion-charges.ts).
+  const strength = magicalStrengthSave(campaign, sheet, ability, outcome.total, dc);
+  if (strength) {
+    outcome = { ...outcome, total: outcome.total + strength.bonus };
+  }
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -447,6 +454,7 @@ export function rollCharacterSave(
       ...(shieldSave ? [`Shield Master: +${shieldSave} (the shield) on a Dexterity save against an effect that targets only them`] : []),
       ...coverNote(covered),
       ...(moteLine ? [moteLine] : []),
+      ...(strength ? [strength.note] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
       ...(helped ? [helped.line] : []),
     ],

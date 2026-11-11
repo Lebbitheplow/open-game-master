@@ -13,6 +13,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isWorkshopRow, rowName, type RowItem } from "@/lib/srd/item-row";
 import { armorSpellings, SRD_ARMOR } from "@/lib/srd/armor-table";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
+import { infusionGearDef, replicaOf } from "@/lib/srd/infusions";
 
 // Extra dice a magic weapon adds to a hit. `type` "weapon" is the weapon's
 // own damage type; `vs` limits it to those creature types, `notVs` keeps it
@@ -32,6 +33,9 @@ export type WeaponRiders = {
   properties?: string[];
   rangeFt?: number;
   longRangeFt?: number;
+  // Properties the magic takes away (Repeating Shot "ignores the loading
+  // property", src/lib/srd/infusions.ts).
+  dropProperties?: string[];
   extra?: GearDice[];
   critExtra?: GearDice[];
 };
@@ -193,6 +197,16 @@ export function compositeGearNamed(name: string): CompositeGear | null {
 // among other words is none: a "Longsword of Warning" the table does not
 // know stays a longsword.
 export function gearDefFor(item: RowItem): GearDef | null {
+  // An artificer's infusion makes the row what it says, whatever the row is
+  // named (src/lib/srd/infusions.ts): a replica is the replicated item's row.
+  const replica = replicaOf(item);
+  if (replica) {
+    return lookUp(replica, null);
+  }
+  const infused = infusionGearDef(item);
+  if (infused) {
+    return infused;
+  }
   // A workshop entry's line runs as its own block (gearDefOfRow), never as a
   // table row it shares a name with (isWorkshopRow).
   return isWorkshopRow(item) ? null : lookUp(rowName(item), item.slug);
@@ -224,6 +238,9 @@ type RowGear = { def?: Omit<GearDef, "name" | "match"> };
 
 export function gearDefOfRow(item: RowItem & { gear?: unknown }): GearDef | null {
   const own = (item.gear as RowGear | undefined)?.def;
+  if (item.infusion) {
+    return gearDefFor(item);
+  }
   if (own && typeof own === "object") {
     return { ...own, name: item.name, match: `homebrew ${textKey(item.name)}` };
   }

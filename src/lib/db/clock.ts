@@ -10,6 +10,7 @@ import { poisonClockTick } from "@/lib/dm/affliction-poisons";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
 import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
+import { settleInfusions } from "@/lib/dm/infuse-item";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -127,6 +128,11 @@ export function advanceClock(
   // Command Undead: a commanded undead of Intelligence 12 repeats its save
   // as each hour ends, in a fight or out (src/lib/dm/ar-ws-command-hours.ts).
   const hourSaves = commandedHourlySaves(campaignId, current.instant, moved.instant);
+  // An artificer's infusions outlast their death by days (infuse-item.ts).
+  const infusedIn = getCampaignById(campaignId);
+  if (infusedIn) {
+    settleInfusions(infusedIn, current.instant, moved.instant);
+  }
   // The same clock burns torches down and brings the calendar's days round
   // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
   gutterBurntLights(campaignId, moved.instant);

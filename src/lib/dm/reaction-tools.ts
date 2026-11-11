@@ -77,6 +77,7 @@ import { channelOptions } from "@/lib/dm/option-costs";
 import { grantCastsFree, grantedCastOf, spellHeldProblem, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { subclassNamed } from "@/lib/srd/subclass-name";
+import { infusionReaction } from "@/lib/dm/infusion-reactions";
 
 const useReactionSchema = z.object({
   characterId: z.string(),
@@ -755,6 +756,12 @@ function useReaction(
   const srd = srdFeatureReaction(ctx);
   if (srd) {
     return srd;
+  }
+  // An artificer's infused Radiant Weapon, Repulsion Shield and Armor of
+  // Magical Strength (src/lib/dm/infusion-reactions.ts).
+  const infused = infusionReaction(ctx);
+  if (infused) {
+    return infused;
   }
   // A reaction that is a spell is a cast: the caster must hold it and pay
   // its slot through the one guard (src/lib/dm/cast-guard.ts), which

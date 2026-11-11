@@ -224,6 +224,23 @@ export const equipmentItemSchema = z.object({
   // repaired (src/lib/dm/rock-gnome-tinker.ts): it works for 24 hours after.
   // Absent on every other row.
   madeAt: z.number().int().min(0).optional(),
+  // An artificer's infusion laid in the item (src/lib/srd/infusions.ts,
+  // src/lib/dm/infuse-item.ts): which, by whom, at what level and instant,
+  // the mundane weapon or suit it is built on, and its one choice (Resistant
+  // Armor's damage type, the item a replica is). `endsAt`: the instant it
+  // vanishes once its artificer is dead. Absent on every other row.
+  infusion: z
+    .object({
+      name: z.string().trim().min(1).max(60),
+      by: z.string().trim().min(1).max(80),
+      byName: z.string().trim().min(1).max(80),
+      level: z.number().int().min(1).max(30),
+      at: z.number().int().min(0),
+      base: z.object({ kind: z.enum(["weapon", "armor"]), name: z.string().trim().min(1).max(80) }).optional(),
+      choice: z.string().trim().min(1).max(80).optional(),
+      endsAt: z.number().int().min(0).optional(),
+    })
+    .optional(),
   // What a Ring of Spell Storing holds (src/lib/srd/spell-storing.ts): each
   // spell at the slot level it was cast from, with its caster's numbers.
   storedSpells: z

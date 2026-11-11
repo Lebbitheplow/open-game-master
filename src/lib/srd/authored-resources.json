@@ -2119,6 +2119,36 @@
    "guidance": "Elixirs brewed on a long rest (one, two from 6th level, three from 15th), each rolled on a d6: healing (2d4 + Intelligence), swiftness (+10 feet of speed for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 on attacks and saves for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self). A spell slot brews another of a chosen effect. From 9th level a drinker also gains 2d6 + Intelligence temporary hit points."
   },
   {
+   "id": "art_infuse_item",
+   "displayName": "Infuse Item",
+   "match": [
+    "infuse item"
+   ],
+   "uses": 2,
+   "ability": null,
+   "scale": [
+    [
+     18,
+     6
+    ],
+    [
+     14,
+     5
+    ],
+    [
+     10,
+     4
+    ],
+    [
+     6,
+     3
+    ]
+   ],
+   "recharge": "long",
+   "guidance": "At the end of a long rest, out of a fight, lay an infusion the artificer knows (variant: which, its choice after a colon: 'Resistant Armor: fire', 'Replicate Magic Item: Bag of Holding') in a nonmagical item they carry (item: which). One infusion an item, each infusion in one item; past the Infused Items limit the oldest ends. The server spends the use itself.",
+   "outOfFight": true
+  },
+  {
    "id": "art_spell_storing_item",
    "displayName": "Spell-Storing Item",
    "match": [

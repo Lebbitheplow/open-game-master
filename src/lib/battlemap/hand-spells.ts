@@ -72,6 +72,7 @@ import type { StoredSpell } from "@/lib/srd/spell-storing";
 import { compareNames, textKey } from "@/lib/language/text-logic";
 import { featureSpellReachFeet } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { forPlayers } from "@/lib/language/player-text";
+import { INFUSE_COUNTER, infusionPicks } from "@/lib/srd/infusion-picks";
 
 // ---- spells ----
 
@@ -649,6 +650,10 @@ function featureCost(def: ResourceDef, sheet: CharacterSheet): HandCost {
 // that list as the variant use_resource reads. It sent none, and every play
 // was asked for the spell.
 function counterPick(def: ResourceDef, sheet: CharacterSheet): HandChoice | null {
+  // Infuse Item offers the infusions the artificer knows (infuse-item.ts).
+  if (def.id === INFUSE_COUNTER) {
+    return { arg: "variant", label: "Infusion", options: infusionPicks(sheet).map((value) => ({ value, label: value })) };
+  }
   const found = authoredSpendFor(sheet, def.displayName);
   const does = found?.spend.does;
   if (!does || does.kind !== "choose" || found?.spend.pool?.id !== def.id) return null;
