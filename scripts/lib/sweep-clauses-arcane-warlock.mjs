@@ -111,11 +111,28 @@ export function probes(rig, shared) {
       await kit.endFight();
       assert.equal(await hurt(old(), 10, "psychic"), 5);
     },
+    // "Whenever a creature deals psychic damage to you, that creature takes
+    // the same amount of damage that you do": a creature's blow, a creature's
+    // spell, and nothing back from a hazard no creature dealt.
     "thought-reflect": async () => {
-      const [enemy] = await stage(old());
-      const before = foe(enemy).currentHp;
-      await hurt(old(), 10, "psychic", { sourceEnemyId: enemy.id });
-      assert.equal(before - foe(enemy).currentHp, 5, "psychic damage back to the creature that dealt the warlock 10 (5 after the resistance)");
+      const who = old();
+      const [enemy, caster] = await stage(who, { count: 2 });
+      kit.setEnemy(enemy.id, { maxHp: 200, currentHp: 200, stats: { ...foe(enemy).stats, attacks: [{ name: "Mind Lash", toHit: 20, damage: "2d6", type: "psychic" }] } });
+      let [mine, theirs] = [hp(who), foe(enemy).currentHp];
+      const blow = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: who.id }, [15, 5, 5]);
+      assert.equal(blow.ok, true, blow.error);
+      assert.equal(mine - hp(who), 5, "10 psychic, halved by the resistance");
+      assert.equal(theirs - foe(enemy).currentHp, 5, "the creature takes the 5 the warlock took");
+      [mine, theirs] = [hp(who), foe(caster).currentHp];
+      const spell = await call("cast_at_player", { characterId: who.id, source: "a mind spike", saveAbility: "wis", dc: 30, damage: "2d4", damageType: "psychic", casterEnemyId: caster.id }, [2, 4, 4]);
+      assert.equal(spell.ok, true, spell.error);
+      assert.equal(mine - hp(who), 4);
+      assert.equal(theirs - foe(caster).currentHp, 4, `a spell's psychic damage goes back to its caster: ${show(spell).slice(0, 200)}`);
+      theirs = foe(caster).currentHp;
+      const trap = await call("cast_at_player", { characterId: who.id, source: "a screaming rune", saveAbility: "wis", dc: 30, damage: "2d4", damageType: "psychic" }, [2, 4, 4]);
+      assert.equal(trap.ok, true, trap.error);
+      assert.equal(foe(caster).currentHp, theirs, "a hazard is no creature");
+      rig.refill(who);
     },
     // ---- The Celestial
     "celestial-cantrips": async () => {
@@ -575,7 +592,6 @@ export function probes(rig, shared) {
   const projectionRest = rests(["warlock", "The Undead"], "sub_spirit_projection", "long");
 
   const KNOWN = {
-    "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
   };
   return { PROBES, KNOWN };

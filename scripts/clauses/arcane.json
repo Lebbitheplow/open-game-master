@@ -2424,8 +2424,9 @@
    },
    {
     "c": "and psychic damage dealt to you is dealt back to the attacker",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: thought-reflect"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: thought-reflect",
+    "by": "src/lib/dm/thought-shield.ts thoughtShieldBack, called where a creature's blow (enemy-attack.ts) and a creature's spell (cast-at-player.ts) land on a character"
    }
   ]
  },

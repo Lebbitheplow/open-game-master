@@ -532,7 +532,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "warlock::Awakened Mind": { subclass: "The Great Old One", narrated: "Telepathic speech: conversation, nothing on a sheet changes." },
   "warlock::Thought Shield": {
     subclass: "The Great Old One",
-    effects: [{ kind: "resist", types: ["psychic"], note: "Psychic damage dealt to the warlock is dealt back to its source: the GM applies it." }],
+    effects: [{ kind: "resist", types: ["psychic"], note: "Psychic damage a creature deals the warlock is dealt back to it, the amount the warlock took (thought-shield.ts)." }],
   },
   "warlock::Create Thrall": { subclass: "The Great Old One", narrated: "A charmed thrall in telepathic contact: set_condition charmed, held until a remove curse." },
   "warlock::Bonus Cantrips (Celestial)": { subclass: "The Celestial", heldBy: SPELL_TABLE },

@@ -35,6 +35,7 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
@@ -590,7 +591,9 @@ export function handleCastAtPlayer(
             sheetsById,
           ).result;
       effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
-      Object.assign(base, { damage: dealt, ...applied });
+      // Thought Shield: the psychic damage a warlock took goes back to the caster.
+      const back = thoughtShieldBack(campaign, turn, sheet, use?.enemy.id, { amount: dealt, type: typedParts ? undefined : damageType, parts: typedParts ?? undefined, flags: { magical: use?.magical === true, spell: Boolean(use?.spell ?? args.spell) } }, sheets, sheetsById);
+      Object.assign(base, { damage: dealt, ...applied, ...back });
     } else {
       base.damage = 0;
     }

@@ -51,6 +51,7 @@ import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hateAuraDamage } from "@/lib/dm/divine-auras";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -813,6 +814,8 @@ export function handleEnemyAttack(
       ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
+    // Thought Shield: the psychic damage a warlock took goes back to the creature.
+    Object.assign(applied, thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById));
     totalDamage += dealt;
     takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     previousHit = true;
