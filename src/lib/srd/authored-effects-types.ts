@@ -273,6 +273,11 @@ export type AuthoredEffect = Base &
     // of this school (Improved Abjuration: the checks of Counterspell and
     // Dispel Magic; src/lib/dm/ar-ws-spell-check.ts, through contest-roll.ts).
     | { kind: "spell_check_prof"; school: string }
+    // Casting a spell of 1st level or higher that deals one of these damage
+    // types deals `amount` of one of them to the hostile creatures within
+    // `feet` the holder can see (Heart of the Storm: src/lib/dm/ar-ws-heart-storm.ts,
+    // from the cast door).
+    | { kind: "cast_burst"; types: string[]; feet: number; amount: Formula }
   );
 
 export type NaturalWeapon = {

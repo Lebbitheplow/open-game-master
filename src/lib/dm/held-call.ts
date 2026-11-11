@@ -42,6 +42,7 @@ import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { DiceTapeCursor, nextDecided } from "@/lib/dm/held-call-logic";
+import { settleAfterCall } from "@/lib/dm/ar-ws-after-call";
 import type { RollTag } from "@/lib/dice-script-logic";
 
 // What a roll that must wait asks for: the card it parks.
@@ -229,7 +230,8 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   try {
     getDatabase().transaction(() => {
       try {
-        result = run();
+        // And what the call left for its end (ar-ws-after-call.ts).
+        result = settleAfterCall(trial, run());
       } catch (error) {
         if (!(error instanceof HeldRollParked) || (!trial.park && !trial.watchStop)) {
           failed = { error };

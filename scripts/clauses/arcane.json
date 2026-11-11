@@ -1768,8 +1768,9 @@
    },
    {
     "c": "and casting a spell of those types deals half your sorcerer level in damage to creatures within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst",
+    "by": "src/lib/dm/ar-ws-heart-storm.ts eruptOnCast (authored effect cast_burst, called by cast-guard.ts castSpell, the one cast door; landed at the end of the tool call by ar-ws-after-call.ts). Rulings: a spell of 1st level or higher; the engine chooses every hostile creature within 10 feet the sorcerer can see and no ally; lightning or thunder, whichever gets through more; once per casting; off a board the GM lands it"
    }
   ]
  },

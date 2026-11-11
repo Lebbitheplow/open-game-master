@@ -54,6 +54,15 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
       { name: "Tempestuous Magic", action: "bonus", afterLevelledCast: true, does: { kind: "teleport", feet: 10, note: "flying, without provoking opportunity attacks" } },
     ],
   },
+  // "and casting a spell of those types deals half your sorcerer level in
+  // damage to creatures within 10 feet": the burst, from the cast door
+  // (src/lib/dm/ar-ws-heart-storm.ts). The resistance in the same sentence is
+  // read from the text as before (src/lib/srd/feature-effects.ts); no earlier
+  // table held a row for this feature.
+  "sorcerer::Heart of the Storm": {
+    subclass: "Storm Sorcery",
+    effects: [{ kind: "cast_burst", types: ["lightning", "thunder"], feet: 10, amount: (level) => Math.floor(level / 2) }],
+  },
   // "A reaction deals your sorcerer level in lightning damage to a melee
   // attacker and pushes it 20 feet on a failed Strength save": the damage as
   // authored-effects-data3.ts had it, and the push made in the reaction
