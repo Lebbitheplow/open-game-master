@@ -46,6 +46,7 @@ import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
 import { TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
 import { dealtByTrigger } from "@/lib/battlemap/hand-react-triggers";
+import { taleAimsAt } from "@/lib/srd/spirit-tales-table";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -60,8 +61,8 @@ function targetOf(does: SpendDoes): HandTarget {
     return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" || does.target === "creature" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
-  // A spirit tale is told at a creature; one that heals lands on the bard
-  // when the card names no ally (spirit-tales.ts).
+  // A spirit tale is told at a foe, or at a friend for one that heals: the
+  // tale held decides, read in spendCards (spirit-tales-table.ts taleAimsAt).
   if (does.kind === "release_tale") return "enemy";
   // The creatures of the player's choice: aimed at one, the others added.
   if (does.kind === "save_area" && does.chosen) return "enemy";
@@ -97,7 +98,7 @@ function targetOf(does: SpendDoes): HandTarget {
 // card is aimed at the creature that saves and takes the one it attacks as
 // a second creature, sent with it in targetEnemyIds.
 const forcedVictim = (does: SpendDoes) => does.kind === "save_effect" && Boolean(does.strikes);
-const VICTIM: HandShares = { count: 2, unit: "creature", stack: false, min: 2 };
+const VICTIM: HandShares = { count: 2, unit: "creature", stack: false, min: 2, attacks: true };
 
 // The kinds the engine resolves only on a creature in a fight.
 const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest", "reveal_defenses", "strip_memory"]);
@@ -311,7 +312,11 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       : null;
   // A variant a chosen option fixes (Lunar Phenomenon's phase) is the one card.
   const fixed = spend.variantFrom ? (heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null) : null;
-  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods).filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed));
+  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods)
+    .filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed))
+    // Release Tale aimed at a foe sent a healing tale's friend as the goblin,
+    // and the engine refused it: the tale held says which side it is told at.
+    .map((aim) => (does.kind === "release_tale" ? { ...aim, target: taleAimsAt(sheet) } : aim));
   return aims.map((aim) => {
     const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
     const card: HandCard = {

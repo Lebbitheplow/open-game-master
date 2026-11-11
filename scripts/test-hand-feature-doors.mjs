@@ -69,6 +69,7 @@ await test("Pact of the Blade: the card creates the weapon in the form picked, a
   assert.equal(dealt.disabled, null, dealt.disabled);
   assert.ok(dealt.choice.options.some((option) => option.label === "Rapier"));
   assert.ok(!dealt.choice.options.some((option) => option.label === "Longbow"), "a ranged form is offered");
+  assert.ok(!dealt.choice.options.some((option) => option.label === "Vibroknife" || option.label === "Censer Mace"), "a genre kit's blade is offered as an SRD form");
   const out = await play(lock, dealt, { choice: "Rapier" });
   assert.equal(out.ok, true, out.error);
   assert.ok(world.sheet(lock.id).equipment.some((item) => item.name === "Pact Rapier"), JSON.stringify(world.sheet(lock.id).equipment));
@@ -193,6 +194,7 @@ await test("Infectious Fury: the attack card takes the creature struck as a seco
   assert.ok(attack, `no attack card: ${cardsOf(beast).filter((entry) => entry.name.startsWith("Infectious")).map((entry) => entry.name).join(", ")}`);
   assert.ok(card(beast, "Infectious Fury (Damage)"), "the damage card is gone");
   assert.equal(attack.shares?.min, 2);
+  assert.equal(attack.shares?.attacks, true, "the second pick is asked as the creature it attacks, not one more target");
   assert.equal(card(beast, "Infectious Fury (Damage)").shares, undefined);
   const cursed = { id: "cursed", name: "Goblin 1", kind: "enemy" };
   assert.equal(handReady({ ...attack, disabled: null }, cursed, {}), false, "ready with no creature to strike");
@@ -202,6 +204,25 @@ await test("Infectious Fury: the attack card takes the creature struck as a seco
   const calls = directCardCalls({ ...body, targetId: cursed.id, targetKind: "enemy" }, beast.id, { inFight: true });
   assert.equal(calls.length, 1);
   assert.deepEqual([calls[0].args.variant, calls[0].args.targetEnemyId, calls[0].args.targetEnemyIds], ["attack", "cursed", ["cursed", "victim"]]);
+  // The aim bar and the board's menu ask handReady with the shares picked: read
+  // without them, the attack card's button never lit in the browser.
+  const fs = await import("node:fs");
+  for (const file of ["HandAimBar.tsx", "Hand.tsx"]) {
+    const source = fs.readFileSync(new URL(`../src/app/campaigns/[campaignId]/${file}`, import.meta.url), "utf8");
+    const asks = source.match(/handReady\((?:card|picked), aim, \{ trigger[^\n]*/g) ?? [];
+    assert.ok(asks.length > 0 && asks.every((call) => /\bshares\b/.test(call)), `${file} asks handReady without the shares: ${asks.join(" | ")}`);
+  }
+});
+
+// Release Tale's card was always aimed at a foe, so a tale that heals sent the
+// goblin as the creature healed and the engine refused it (seen in the browser).
+await test("Release Tale: the card is aimed at a friend for a tale that heals and at a foe for any other.", async () => {
+  const bard = hero({ class: "bard", subclass: "College of Spirits" });
+  await stage(bard);
+  world.patch(bard.id, { conditions: ["spirit tale"], conditionMeta: { "spirit tale": { untilRestEnds: true, tale: 3 } } });
+  assert.equal(card(bard, "Release Tale").target, "ally", "The Healer's Last Song is told at a friend");
+  world.patch(bard.id, { conditions: ["spirit tale"], conditionMeta: { "spirit tale": { untilRestEnds: true, tale: 1 } } });
+  assert.equal(card(bard, "Release Tale").target, "enemy", "The Burned Bridge is told at a foe");
 });
 
 finish();

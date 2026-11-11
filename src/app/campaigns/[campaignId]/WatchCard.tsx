@@ -128,6 +128,9 @@ export function WatchCard({
   const numbers = watcher ? [...new Set(foretoldLeft(watcher))] : [];
   const choice = asking && pick !== null ? { choice: pick } : {};
   const when = choices[pick ?? 0]?.when ?? "";
+  // The creature a Cloud Rune turns the hit onto, once one is picked: the
+  // button named the first of them while none was, and could be read as the pick.
+  const turnedOnto = pick !== null ? (choices[pick]?.name ?? null) : null;
   return (
     <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
       <p className="text-sm">{pending.reason}</p>
@@ -175,7 +178,7 @@ export function WatchCard({
                   power === "slayers_counter"
                     ? "Spend your reaction on one weapon attack against your prey before the save is rolled: if it hits, your save succeeds."
                     : power === "cloud_rune"
-                    ? `Spend your reaction and a use of the Cloud Rune: the attack targets ${choices[pick ?? 0]?.name ?? "the creature you pick"} instead, on the same roll, and its damage is rolled for them.`
+                    ? `Spend your reaction and a use of the Cloud Rune: the attack targets ${turnedOnto ?? "the creature you pick"} instead, on the same roll, and its damage is rolled for them.`
                     : power === "convergent_future"
                     ? "Use your reaction and gain a level of exhaustion only if the roll goes that way: the die is ignored, and the roll goes the other way by one."
                     : power === "bend_luck"
@@ -188,7 +191,7 @@ export function WatchCard({
                 }
                 className={NUMBER}
               >
-                {power === "slayers_counter" ? "Attack it first" : power === "cloud_rune" ? `Turn it onto ${choices[pick ?? 0]?.name ?? "them"}` : power === "convergent_future" ? `Decide it ${when}` : power === "bend_luck" ? `Bend it 1d4 ${when}` : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
+                {power === "slayers_counter" ? "Attack it first" : power === "cloud_rune" ? `Turn it onto ${turnedOnto ?? "them"}` : power === "convergent_future" ? `Decide it ${when}` : power === "bend_luck" ? `Bend it 1d4 ${when}` : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
               </button>
             )}
         <button

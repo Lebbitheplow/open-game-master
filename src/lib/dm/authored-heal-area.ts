@@ -97,8 +97,11 @@ export function healArea(ctx: SpendContext, does: HealArea): ToolError | { resul
   const named = does.chosen && ctx.args.targetCharacterId ? textKey(ctx.args.targetCharacterId) : null;
   const targets = named ? inReach.filter((entry) => entry.id === ctx.args.targetCharacterId || textKey(entry.name) === named) : inReach;
   if (named && !targets.length) {
-    const open = inReach.map((entry) => `${entry.name} (${entry.id})`).join(", ") || "nobody";
-    return { error: `${ctx.spend.name} cannot heal ${ctx.args.targetCharacterId}: of the characters it heals, only ${open} ${inReach.length === 1 ? "is" : "are"} within ${rangeFt} feet. Nothing was spent.`, retry: true };
+    // Said in words a player reads too (the Hand shows the refusal): "only
+    // nobody are" was the sentence when no one in reach was hurt.
+    const open = inReach.map((entry) => `${entry.name} (${entry.id})`).join(", ");
+    const within = open ? `of the characters it heals, only ${open} ${inReach.length === 1 ? "is" : "are"} within ${rangeFt} feet` : `nobody it heals is within ${rangeFt} feet`;
+    return { error: `${ctx.spend.name} cannot heal ${ctx.args.targetCharacterId}: ${within}. Nothing was spent.`, retry: true };
   }
   if (!targets.length) {
     const who = does.belowHalf ? "at or under half their hit points" : "hurt";

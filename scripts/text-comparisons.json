@@ -128,6 +128,7 @@
     "lib/srd/authored-effects-w2-arcane.ts#str-list": [["english-source", 2, "ODM's authored effect rows (bundled data)"]],
     "lib/srd/trigger-table.ts#str-eq": [["key",1,"trigger kinds and ids (engine vocabulary)"]],
     "lib/dm/deploy-opening-logic.ts#str-list": [["key",1,"start_encounter's own field names (tool argument names)"]],
+    "lib/dm/deploy-opening-logic.ts#str-eq": [["key",1,"start_encounter's own field name distanceFeet (a tool argument name)"]],
     "lib/dm/last-save.ts#str-list": [["key",1,"the six save ability codes a requested save is read as (str to cha)"]],
     "lib/srd/trigger-table.ts#str-list": [["key",1,"trigger kinds (engine vocabulary)"]],
     "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],

@@ -224,7 +224,9 @@ export type HandCard = {
 
 // `min`: how many the card must name before it can go (Infectious Fury's
 // cursed creature and the one it attacks); absent, the aim alone will do.
-export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean; min?: number };
+// `attacks`: the second creature is the one the aimed creature is made to
+// attack, not one more taken by the same effect, and the aim bar asks it so.
+export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean; min?: number; attacks?: boolean };
 
 // "Each creature of your choice" within an area feature's reach: the player
 // aims at one and adds the others (Order's Demand, Champion Challenge,

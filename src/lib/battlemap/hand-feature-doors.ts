@@ -37,7 +37,7 @@ import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { spellMechFor } from "@/lib/srd/spell-mechanics";
 import { bakedSpellMech } from "@/lib/content/baked-spells";
-import { SRD_WEAPONS } from "@/lib/srd/weapons";
+import { SRD_WEAPONS, SRD_WEAPON_WEIGHT_LB } from "@/lib/srd/weapons";
 
 // The mark a Glamour bard's mantle leaves on each creature it chose, which
 // the stride spends (ar-wbf-bard-mantle.ts markMantleStride).
@@ -103,8 +103,10 @@ function pactCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const conjured = sheet.equipment.find(conjuredBy(sheet)) ?? null;
   const bonded = sheet.equipment.find((item) => item.pact === "bonded" || item.pact === "stowed") ?? null;
   // A bonded weapon is the one the action brings back; any other is a form
-  // of a melee weapon of the table, picked on the card.
-  const forms = SRD_WEAPONS.filter((weapon) => weapon.kind === "melee" && weapon.category !== "firearm");
+  // of an SRD 5.1 melee weapon (the rows its Weapons table weighs), picked
+  // on the card. The genre kits' blades (a Vibroknife, a Censer Mace) are not
+  // the SRD's, and filled a fantasy warlock's card with them.
+  const forms = SRD_WEAPONS.filter((weapon) => weapon.kind === "melee" && weapon.name in SRD_WEAPON_WEIGHT_LB);
   const current = conjured?.srdName ?? null;
   const create = door(sheet, {
     id: "feature:pact-of-the-blade",

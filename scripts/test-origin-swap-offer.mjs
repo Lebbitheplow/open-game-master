@@ -18,6 +18,7 @@ const { swapsOf } = await import("../src/lib/dm/ar-ws-spell-swap-record.ts");
 const { levelUpSpells } = await import("../src/lib/srd/level-up-spells.ts");
 const { maxSpellLevelOf } = await import("../src/lib/srd/spell-prep.ts");
 const { textKey } = await import("../src/lib/language/text-logic.ts");
+const { levelUpChangeOffers } = await import("../src/lib/srd/level-up-changes.ts");
 
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
@@ -153,6 +154,16 @@ test("the dialog shows the pick only where the host takes it, and sends the swap
   const pick = read("src/app/campaigns/[campaignId]/LevelUpChangePick.tsx");
   assert.match(pick, /optionsFor\?\.\[change\.from\]/);
   assert.match(pick, /min-h-10/);
+});
+
+// The level-up dialog's other change pick, Storm Aura's environment: the
+// held one was shown as its key ("Keep desert") beside "Sea" and "Tundra".
+test("a held choice the level may change is shown as its option is written", () => {
+  const herald = { class: "barbarian", subclass: "Path of the Storm Herald", level: 4, classes: [], feats: [], conditions: [], features: [{ name: "Storm Aura (Desert)", source: "choice" }] };
+  const [offer] = levelUpChangeOffers(herald, "barbarian", { classLevel: () => 5, cantrips: [] });
+  assert.equal(offer?.kind, "choice", JSON.stringify(offer));
+  assert.equal(offer.shown[offer.from], "Desert");
+  assert.deepEqual(offer.options.map((name) => offer.shown[name]), ["Sea", "Tundra"]);
 });
 
 console.log(`${passed} origin swap offer checks passed.`);

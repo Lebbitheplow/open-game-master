@@ -36,12 +36,15 @@ export function levelUpChangeOffers(sheet: ChangeSheet, classId: string, facts: 
       if (does.kind !== "choose" || does.changeAt !== "level" || !held.choice) continue;
       const others = does.options.filter((option) => textKey(option) !== textKey(held.choice ?? ""));
       const named = (option: string) => `${held.feature} (${option})`;
+      // The held choice is read as a key ("desert"): it is shown as its option
+      // is written ("Desert"), beside the others it may become.
+      const kept = does.options.find((option) => textKey(option) === textKey(held.choice ?? "")) ?? held.choice;
       offers.push({
         kind: "choice",
         label: held.feature,
         from: held.name,
         options: others.map(named),
-        shown: Object.fromEntries([[held.name, held.choice], ...others.map((option) => [named(option), option])]),
+        shown: Object.fromEntries([[held.name, kept], ...others.map((option) => [named(option), option])]),
       });
     }
   }

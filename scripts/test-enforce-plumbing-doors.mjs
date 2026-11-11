@@ -48,6 +48,15 @@ test("the Deploy dialog asks Start a fight's own opening fields, and its body is
   assert.deepEqual(body, { absent: ["c1"], ambush: "enemies", building: { enemySide: "north", openings: 2 }, lair: true, from: "behind" });
   assert.equal(openingOptionsSchema.safeParse(body).success, true, "the deploy route takes the body");
   assert.deepEqual(openingBody({}), {}, "an empty form deploys the fight as prepared");
+  // The form as it opens (DmActionFields.tsx initialValue): a blank select or
+  // number is "", nobody away is [], an unticked box is false. Sent as they
+  // were, the route refused the first Deploy for "ambush" in the browser.
+  const untouched = { absent: [], ambush: "", surprised: "", scene: "", distanceFeet: "", buildingEnemySide: "", buildingOpenings: "", lair: false, from: "" };
+  assert.deepEqual(openingBody(untouched), {}, "an untouched form deploys the fight as prepared");
+  assert.equal(openingOptionsSchema.safeParse(openingBody(untouched)).success, true);
+  const some = openingBody({ ...untouched, absent: ["c1"], distanceFeet: "60" });
+  assert.deepEqual(some, { absent: ["c1"], distanceFeet: 60 }, "the distance typed is a number");
+  assert.equal(openingOptionsSchema.safeParse(some).success, true, "the deploy route takes it");
 });
 
 const world = await openWorld({ campaign: { maxPlayers: 6 } });
