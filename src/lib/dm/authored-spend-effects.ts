@@ -38,6 +38,7 @@ import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
 import { DANCING_ITEM, summonDancingItem } from "@/lib/dm/summon-arcane";
 import { createItem } from "@/lib/dm/authored-spend-arcane";
+import { summonHound } from "@/lib/dm/ar-ws-hound";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -244,6 +245,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         }
         const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
+        if (does.hound) {
+          lines.push(summonHound(campaign, sheet, ctx.held.level, enemy));
+        }
       } else if (does.target === "allies") {
         const count = does.count ? Number(formula(ctx, does.count)) : 5;
         // "Creatures you can see" (Watcher's Will): the conditions and the

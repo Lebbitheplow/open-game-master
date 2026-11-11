@@ -1640,8 +1640,9 @@
    },
    {
     "c": "to summon a shadow dire wolf that chases one creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: hound-wolf"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: hound-wolf",
+    "by": "authored spend Hound of Ill Omen, buff hound (src/lib/srd/authored-effects-w2-ar-ws-sorcerer.ts): src/lib/dm/ar-ws-hound.ts summonHound brings in the SRD dire wolf as a creature on the sorcerer's side with temporary hit points equal to half the sorcerer level and its own initiative; ar-ws-hound-quarry.ts binds it to the creature named (pc-attack-gate.ts refuses a bite at any other, summon-store.ts sweepSummons removes it when its quarry falls or the fight is over)"
    },
    {
     "c": "gives your spells advantage against it",

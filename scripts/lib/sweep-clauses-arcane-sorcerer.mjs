@@ -166,7 +166,42 @@ export function probes(rig, shared) {
       assert.equal(points - left(shadow(), "sorcery_points"), 3);
       assert.ok(foe(enemy).conditions.includes("hound of ill omen"));
     },
-    "hound-wolf": movesSomethingBut("hound of ill omen"),
+    // The hound itself: a dire wolf on the sorcerer's side with temporary hit
+    // points equal to half the sorcerer level, bound to the creature named
+    // (src/lib/dm/ar-ws-hound.ts, ar-ws-hound-quarry.ts).
+    "hound-wolf": async () => {
+      const hounds = () => world.sheets().filter((entry) => entry.name.startsWith("Hound of Ill Omen"));
+      const [quarry, other] = await stage(shadow(), { count: 2, others: [friend()] });
+      rig.endCurrent();
+      kit.giveTurn(shadow().id);
+      kit.freshTurn();
+      assert.deepEqual(hounds().map((entry) => entry.name), [], "a hound of an earlier fight is gone once its fight is over and a turn has moved on");
+      const out = await spend(shadow(), "Hound of Ill Omen", { targetEnemyId: quarry.id });
+      if (!out.ok) throw new Error(out.error);
+      assert.ok(foe(quarry).conditions.includes("hound of ill omen"), "the quarry carries the mark");
+      const [hound] = hounds();
+      assert.ok(hound, `no creature joined the table for the hound: ${show(out).slice(0, 200)}`);
+      assert.deepEqual([hound.maxHp, hound.tempHp, hound.ac], [37, 10, 14], "[hit points, temporary hit points, AC]: a dire wolf's block, and half a 20th-level sorcerer's level");
+      assert.equal(hound.conditionMeta["hunting its quarry"]?.quarry, quarry.id, "bound to the creature named");
+      assert.ok(world.encounter().order.some((entry) => entry.characterId === hound.id), "it has its own place in the initiative order");
+      // It attacks its quarry and no other creature.
+      kit.giveTurn(hound.id);
+      kit.freshTurn();
+      kit.place(hound.id, 6, 6);
+      const off = await call("pc_attack", { characterId: hound.id, targetEnemyId: other.id, weapon: "Bite" }, [15, 3, 3]);
+      assert.equal(off.ok, false, "a bite at a creature that is not its quarry");
+      assert.match(off.error, /is not its quarry/);
+      const before = foe(quarry).currentHp;
+      const bite = await call("pc_attack", { characterId: hound.id, targetEnemyId: quarry.id, weapon: "Bite" }, [15, 3, 3]);
+      assert.equal(bite.ok, true, bite.error);
+      assert.equal(before - foe(quarry).currentHp, 3 + 3 + 3, "a dire wolf's bite, 2d6 + 3");
+      // The quarry falls: the hound is gone when the turn moves on.
+      kit.setEnemy(quarry.id, { currentHp: 1 });
+      const felled = await call("apply_damage", { enemyId: quarry.id, amount: 5, type: "force" });
+      assert.equal(felled.ok, true, felled.error);
+      rig.endCurrent();
+      assert.deepEqual(hounds().map((entry) => entry.name), [], "the hound outlived its quarry");
+    },
     "shadow-walk": async () => {
       await stage(shadow());
       const out = await spend(shadow(), "Shadow Walk");
@@ -434,24 +469,11 @@ export function probes(rig, shared) {
   const boonsRest = rests(["sorcerer", "Lunar Sorcery"], "sub_lunar_boons", "long");
   const phenomenonRest = rests(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", "long");
 
-  // The hound: spent, and beyond the mark on its quarry nothing joins the fight.
-  function movesSomethingBut(mark) {
-    return async () => {
-      const [enemy] = await stage(shadow(), { others: [friend()] });
-      const before = [world.sheets().length, world.enemies().length];
-      const out = await spend(shadow(), "Hound of Ill Omen", { targetEnemyId: enemy.id });
-      if (!out.ok) throw new Error(out.error);
-      assert.ok(foe(enemy).conditions.includes(mark));
-      assert.notDeepEqual([world.sheets().length, world.enemies().length], before, "no creature joined the table for the hound: it is a mark on its quarry, and never bites");
-    };
-  }
-
   const KNOWN = {
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
     "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "hound-wolf": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Hound of Ill Omen (buff on the enemy; no summon)`, note: "The hound is a dire wolf that attacks its quarry every round; three sorcery points buy the disadvantage on saves only.", fix: "A summon of the hound (dire wolf, half the sorcerer level in temporary hit points) bound to its quarry." },
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
