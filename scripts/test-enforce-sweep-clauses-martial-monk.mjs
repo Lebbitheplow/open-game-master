@@ -539,6 +539,19 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
     assert.ok(foeHas(enemy, "frightened"), `a creature 5 feet off, its turn begun in the aura, is not frightened: ${show(out)}`);
   });
 
+  // "Once per long rest or for 3 ki."
+  await probe("aspect-of-the-wyrm-ki", async () => {
+    await stage(dragon);
+    r.setUsed(dragon, "sub_aspect_of_the_wyrm", 1);
+    const out = await spend(dragon, "Aspect of the Wyrm", { variant: "frighten" }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual([r.used(dragon, "sub_aspect_of_the_wyrm"), r.used(dragon, "ki")], [1, 3], "3 ki in the use's place");
+    await stage(dragon);
+    r.setUsed(dragon, "sub_aspect_of_the_wyrm", 1);
+    r.setUsed(dragon, "ki", r.max(dragon, "ki") - 2);
+    assert.equal((await spend(dragon, "Aspect of the Wyrm", { variant: "frighten" }, 2)).ok, false, "with 2 ki left");
+  });
+
   // "When you take the Attack action you can replace one attack": the breath
   // spends one swing of the Attack action (resource-turn.ts replacesAttack),
   // so a monk with Extra Attack still has the other, and none is left after.

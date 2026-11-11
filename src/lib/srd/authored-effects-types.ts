@@ -467,7 +467,7 @@ export type SpendDoes =
   // src/lib/dm/mt-mr-spends.ts. `aims`: who the Hand's card is aimed at.
   | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number };
 
-export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows";
+export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind";
 
 // A precondition of a spend that a gate's words cannot say: the light on the
 // holder's square, or a mark this turn left (src/lib/dm/mt-mr-needs.ts).
@@ -485,7 +485,11 @@ export type AuthoredSpend = {
   // lets a call spend none.
   // `free`: the spend takes nothing from the pool while this holds (Flurry of
   // Healing and Harm's Hand of Harm on a Flurry of Blows strike).
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; free?: SpendNeed };
+  // `fallbackAmount`: what the fallback pool pays when it is not the same
+  // amount (Rend Mind: three Psionic Energy dice for its one use).
+  // `orTrinket`: with none left in the pool, a Phantom's soul trinket is
+  // destroyed in its place (src/lib/dm/mt-mr-trinkets.ts).
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; fallbackAmount?: number; free?: SpendNeed; orTrinket?: boolean };
   action?: SpendAction;
   gate?: Gate;
   // Asked after the gate and before anything is spent; unmet, the refusal

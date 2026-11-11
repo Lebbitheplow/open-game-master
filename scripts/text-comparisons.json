@@ -1685,7 +1685,7 @@
     "lib/dm/action-parts-logic.ts#str-key": [["key",1,"tool names, read by the tool a call names (tool schema vocabulary)"]],
     "lib/dm/action-parts-logic.ts#str-list": [["key",14,"the SRD's attack feature names a part's feature takes, matched by textKey, and the names a refusal offers (tool schema vocabulary)"],["key",1,"tool names (the tools whose list the caller resolves entry by entry)"]],
     "lib/dm/pc-attack-parts.ts#str-eq": [["key",1,"a part's feature kind and condition labels (engine vocabulary)"]],
-    "lib/dm/pc-attack-spend.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/pc-attack-spend.ts#str-eq": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-spend.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-spend.ts#toLowerCase": [["key",2,"SRD feature names as once-per-turn keys"]],
     "lib/dm/pc-attack.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

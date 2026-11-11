@@ -39,6 +39,7 @@ import {
 } from "@/lib/dm/calendar";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
+import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -315,6 +316,8 @@ export function handleTakeRest(
     const resilience = authoredRestTempHp(campaign, resting);
     // Tranquility: an Open Hand monk wakes under Sanctuary (srd-defenses.ts).
     tranquilityAfterLongRest(campaign, resting);
+    // Death's Friend: a soul trinket in hand when none is carried (mt-mr-trinkets.ts).
+    soulTrinketAtRestEnd(campaign, resting);
     tableNote(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${

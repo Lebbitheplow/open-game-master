@@ -32,6 +32,7 @@ import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
 import { needRefusal } from "@/lib/dm/mt-mr-needs";
+import { destroyTrinket, trinketCount } from "@/lib/dm/mt-mr-trinkets";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -213,6 +214,7 @@ export function authoredFeatureSpend(
   // The pool: how much, from which counter.
   let poolId: string | null = null;
   let units = 0;
+  let byTrinket = false;
   if (spend.pool) {
     units = spend.pool.free && needRefusal(campaign, sheet, spend.name, spend.pool.free) === null
       ? 0
@@ -221,10 +223,20 @@ export function authoredFeatureSpend(
       return { error: `${spend.name} takes at most ${spend.pool.max}; ${units} is more than it can hold. Nothing was spent.`, retry: true };
     }
     const candidates = [spend.pool.id, ...(spend.pool.fallback ? [spend.pool.fallback] : [])];
+    const owed = (id: string) => (id !== spend.pool!.id && spend.pool!.fallbackAmount ? spend.pool!.fallbackAmount : units);
     poolId = candidates.find((id) => {
       const state = sheet.resources?.[id];
-      return state && state.max - state.used >= units;
+      return state && state.max - state.used >= owed(id);
     }) ?? null;
+    if (poolId) {
+      units = owed(poolId);
+    }
+    if (units > 0 && !poolId && spend.pool.orTrinket && trinketCount(sheet) > 0) {
+      // A soul trinket pays for it (mt-mr-trinkets.ts): destroyed below, once
+      // the effect has landed.
+      byTrinket = true;
+      units = 0;
+    }
     if (units > 0 && !poolId) {
       const state = sheet.resources?.[spend.pool.id];
       return {
@@ -288,12 +300,14 @@ export function authoredFeatureSpend(
   if (trigger) {
     answerTriggers(trigger);
   }
+  const trinketsLeft = byTrinket ? destroyTrinket(campaign, sheet.id) : null;
   const left = poolId ? getSheetById(sheet.id)?.resources?.[poolId] : null;
   return {
     ok: true,
     resource: spend.name,
     ...(poolId && units > 0 ? { spent: units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
     ...outcome.result,
+    ...(byTrinket ? { trinket: `A soul trinket is destroyed for it, no use spent (${trinketsLeft ?? 0} left).` } : {}),
     ...charge.commit(),
   };
 }

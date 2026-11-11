@@ -1608,6 +1608,10 @@
     "kind": "buff",
     "condition": "invisible",
     "rounds": 600
+   },
+   "fallbackPool": {
+    "id": "sub_psionic_energy",
+    "amount": 1
    }
   },
   {
@@ -1619,16 +1623,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "A sneak attack with Psychic Blades stuns a creature for 1 minute on a failed Wisdom save. Three Psionic Energy dice buy extra uses.",
-   "fx": {
-    "kind": "enemy_save",
-    "save": "wis",
-    "condition": "stunned",
-    "dcAbility": "dex",
-    "rounds": 10,
-    "most": 1,
-    "magical": true
-   }
+   "guidance": "A sneak attack with Psychic Blades stuns a creature for 1 minute on a failed Wisdom save (use_resource 'Rend Mind' with targetEnemyId, after the hit). Three Psionic Energy dice buy extra uses; the server spends them."
   },
   {
    "id": "sub_spell_thief",
@@ -1769,6 +1764,10 @@
      "aspect of the wyrm: frighten",
      "aspect of the wyrm: ward"
     ]
+   },
+   "fallbackPool": {
+    "id": "ki",
+    "amount": 3
    }
   },
   {

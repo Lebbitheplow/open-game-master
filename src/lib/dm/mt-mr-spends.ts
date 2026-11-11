@@ -6,14 +6,19 @@
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
+import { rollEnemySave } from "@/lib/dm/forced-save";
+import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
+import { computeSheetDerived } from "@/lib/srd";
 import { damageDice, damageEnemy, enemyCondition, targetEnemy, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { shadowLightProblem } from "@/lib/dm/one-with-shadows";
-import { FLURRY_HEALED, holdsRow } from "@/lib/dm/mt-mr-turn";
+import { BLADE_AT, FLURRY_HEALED, holdsRow } from "@/lib/dm/mt-mr-turn";
+import { destroyTrinket } from "@/lib/dm/mt-mr-trinkets";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { rollCard } from "@/lib/dm/roll-card";
+import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { textKey } from "@/lib/language/text-logic";
@@ -196,8 +201,72 @@ export function featureLandingRefusal(campaignId: string, sheet: Pick<CharacterS
   return { error: `(${at.x},${at.y}) is in bright light, and Shadow Step lands only in dim light or darkness. Pick a square in shadow.`, retry: true };
 }
 
+// "As an action you can destroy one to ask its spirit a question" (Tokens of
+// the Departed): the trinket goes, and the answer is the GM's to give.
+function questionSpirit(ctx: SpendContext): Resolution {
+  const left = destroyTrinket(ctx.campaign, ctx.sheet.id);
+  if (left === null) {
+    return { error: `${ctx.sheet.name} carries no soul trinket to destroy. Nothing was spent.`, refused: "rules" };
+  }
+  return { result: { applied: `${ctx.sheet.name} destroys a soul trinket (${left} left) and asks its spirit one question: it appears and answers in a language it knew, briefly or cryptically, with what it knew in life, then is gone.` } };
+}
+
+// A Psionic Energy die by the level of the class that holds it: "d6s, d8s
+// from 5th level, d10s from 11th, d12s from 17th".
+export const psionicEnergyDie = (level: number) => (level >= 17 ? "d12" : level >= 11 ? "d10" : level >= 5 ? "d8" : "d6");
+
+// Soul Blades' Psychic Teleportation: "throws a blade to teleport yourself up
+// to 10 times your die roll in feet". The die is rolled here and the step is
+// credited for move_token (feature-teleport.ts), as Shadow Step's is.
+function psychicTeleport(ctx: SpendContext): Resolution {
+  const die = `1${psionicEnergyDie(ctx.held.level)}`;
+  const rolled = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.spend.name}: distance`, die, null).total;
+  const feet = rolled * 10;
+  creditFeatureTeleport(ctx.sheet.id, ctx.spend.name, feet);
+  return {
+    result: {
+      rolled: `${die}: ${rolled}`,
+      teleport: `${ctx.sheet.name} throws a psychic blade and may teleport up to ${feet} feet to an unoccupied space they can see: if a battle map is live, move their token with move_token, teleport true, spell "${ctx.spend.name}" and casterCharacterId ${ctx.sheet.id}.`,
+    },
+  };
+}
+
+// Rend Mind: "a sneak attack with Psychic Blades can stun a creature for a
+// minute on a failed Wisdom save". It answers the turn's Sneak Attack on the
+// creature named, made with a psychic blade; the DC is 8 + proficiency +
+// Dexterity, as the published feature's.
+function rendMind(ctx: SpendContext): Resolution {
+  const enemy = targetEnemy(ctx);
+  if ("error" in enemy) {
+    return enemy;
+  }
+  const marks = ctx.marks ?? [];
+  if (!marks.includes(`${SNEAK_HIT}${enemy.id}`) || !marks.includes(`${BLADE_AT}${enemy.id}`)) {
+    return { error: `${ctx.spend.name} answers a Sneak Attack made with a psychic blade, and ${ctx.sheet.name} has landed none on ${enemy.displayName} this turn: pc_attack with weapon "psychic blade" first. Nothing was spent.`, refused: "rules" };
+  }
+  const derived = computeSheetDerived(ctx.sheet);
+  const dc = 8 + derived.proficiencyBonus + derived.abilityMods.dex;
+  const save = rollEnemySave(ctx.campaign.id, enemy, "wis", dc, {
+    resist: bindsWorthResisting(["stunned"]),
+    against: "stunned",
+    origin: { ref: ctx.sheet.id },
+    record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: WIS save against ${ctx.spend.name}` },
+  });
+  if (save.success) {
+    return { result: { save: `${enemy.displayName} resists (WIS ${save.total} vs DC ${dc}).` } };
+  }
+  const landed = enemyCondition(ctx, enemy, "stunned", { rounds: 10 });
+  return { result: { save: `WIS ${save.total} vs DC ${dc}: failed.`, applied: landed ? `${enemy.displayName} is stunned for a minute.` : `${enemy.displayName} cannot be stunned.` } };
+}
+
 export function mrSpend(ctx: SpendContext, does: MrDoes): Resolution {
   switch (does.id) {
+    case "rend_mind":
+      return rendMind(ctx);
+    case "psychic_teleport":
+      return psychicTeleport(ctx);
+    case "question_spirit":
+      return questionSpirit(ctx);
     case "cloak_of_shadows":
       return cloakOfShadows(ctx);
     case "hand_of_healing":

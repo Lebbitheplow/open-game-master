@@ -394,31 +394,17 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "rogue::Insightful Manipulator": { subclass: "Mastermind", narrated: "Information the GM gives after a minute of watching." },
   "rogue::Soul of Deceit": { subclass: "Mastermind", narrated: "Thoughts that cannot be read and lies that read as true: the GM keeps to that." },
-  "rogue::Fancy Footwork": {
-    subclass: "Swashbuckler",
-    narrated: "A creature the rogue attacked in melee this turn makes no opportunity attack against them: the GM withholds it.",
-  },
   "rogue::Panache": { subclass: "Swashbuckler", narrated: "A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition." },
   "rogue::Ear for Deceit": {
     subclass: "Inquisitive",
     effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, note: "Only on an Insight check to tell whether a creature lies; the GM keeps to that." }],
   },
   "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
-  "rogue::Death's Friend": {
-    subclass: "Phantom",
-    // The damage on the first creature is Wails from the Grave's own spend
-    // (authored-effects-sweep-counters.ts, afterSneak.firstToo).
-    narrated: "Wails from the Grave's necrotic lands on the first creature too (the spend does it), and a soul trinket appears at a long rest's end if none is carried: the GM gives the trinket.",
-  },
   "rogue::Psi-Bolstered Knack": {
     subclass: "Soulknife",
     narrated: "A Psionic Energy die added to a failed proficient check: the GM rolls it, and the die is the counter's.",
   },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },
-  "rogue::Soul Blades": {
-    subclass: "Soulknife",
-    narrated: "Homing Strikes' die on a missed Psychic Blade and Psychic Teleportation's move: the GM rolls the die (the counter's) and moves the token.",
-  },
 
   // ---- sorcerer ----
   // The d20 and the wild magic table are the GM's to roll and narrate; the

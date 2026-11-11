@@ -50,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -271,6 +271,18 @@ async function step(rig, scene, name, notes) {
       const swung = await swing([18, 5]);
       if (!swung.ok) return swung;
       return world.invoke("use_resource", { characterId: holder, resource: "Ki", variant: "flurry of blows" });
+    }
+    // A Soulknife's own blade at the foe beside the holder, prone so the hit
+    // carries Sneak Attack (Rend Mind answers it).
+    case "the holder sneak attacked a foe with a psychic blade":
+      kit.setEnemy(scene.near.id, { conditions: ["prone"] });
+      world.dice(18, 18, ...new Array(14).fill(3));
+      return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "psychic blade" });
+    // A Phantom's soul trinket in hand, for what destroys one.
+    case "the holder carries a soul trinket": {
+      const held = world.sheet(holder);
+      world.patch(holder, { conditions: [...held.conditions, "soul trinket"], conditionMeta: { ...held.conditionMeta, "soul trinket": { rounds: 14400 } } });
+      return { ok: true };
     }
     case "the holder used Action Surge":
       if (!world.sheet(holder).resources.action_surge) return { ok: false, error: "no Action Surge to use" };

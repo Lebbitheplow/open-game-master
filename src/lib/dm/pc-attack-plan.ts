@@ -6,6 +6,7 @@
 // the quiver is only counted, the maneuver's pool and the smite's slot are
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
+import { secondSneakKey } from "@/lib/dm/mt-mr-turn";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
@@ -664,6 +665,7 @@ export function planPcAttack(input: {
       sneak: sneak.sneak,
       sneakAttackDice: sneak.dice,
       featureRiders: folded.featureRiders,
+      secondSneak: secondSneakKey(sheet, riderBudget, enemy.id),
     });
     profile = claimed.profile;
     context.notes = claimed.notes;

@@ -2207,9 +2207,9 @@
    },
    {
     "c": "that another creature just hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:monk::Opportunist::Opportunist#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-monk-opportunist-opportunist"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (another creature's hit on record)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:monk::Opportunist::Opportunist"
    }
   ]
  },
@@ -2938,9 +2938,9 @@
    },
    {
     "c": "or for 3 ki",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ki fallback was not staged"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm fallbackPool",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-ki"
    }
   ]
  },
@@ -3162,9 +3162,9 @@
    },
    {
     "c": "at up to 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; src/lib/srd/authored-effects-data2.ts rogue::Master of Tactics note: \"Helping at up to 30 feet is the GM's to allow.\" A range is a number: a gap of kind rule-missing, not staged"
+    "is": "held",
+    "by": "src/lib/dm/combat-actions.ts (Help's reach, holdsRow rogue::Master of Tactics)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: master-of-tactics-30-feet"
    }
   ]
  },
@@ -3222,7 +3222,8 @@
   "clauses": [
    {
     "c": "A creature you attack in melee cannot make opportunity attacks against you for the rest of your turn.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-spend.ts (the MOBILE_ATTACKED mark for a holder); src/lib/dm/opportunity.ts",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: fancy-footwork"
    }
   ]
@@ -3342,9 +3343,9 @@
    },
    {
     "c": "for a minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the mark's ten rounds were not walked"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts rogue::Insightful Fighting (rounds 10)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: insightful-fighting-minute"
    },
    {
     "c": "without needing advantage or an ally",
@@ -3421,9 +3422,9 @@
    },
    {
     "c": "when an enemy ends its turn within 5 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:rogue::Skirmisher::Skirmisher#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-rogue-skirmisher-skirmisher"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a foe's turn ended beside the holder)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:rogue::Skirmisher::Skirmisher"
    },
    {
     "c": "without provoking",
@@ -3500,7 +3501,8 @@
    },
    {
     "c": "and you can sneak attack twice per turn as long as it is against different targets",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts secondSneakKey (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: sudden-strike-second-sneak"
    }
   ]
@@ -3553,15 +3555,15 @@
   "clauses": [
    {
     "c": "When a creature you can see dies within 30 feet of you, a reaction forms a Tiny soul trinket in your free hand",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:rogue::Tokens of the Departed::Tokens of the Departed#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-rogue-tokens-of-the-departed-tokens-of-the-departed"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a creature's death on record)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs: reaction:rogue::Tokens of the Departed::Tokens of the Departed"
    },
    {
     "c": "(you can hold up to your proficiency bonus of them)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the trinket is one condition, so a count of trinkets has no place to live; not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-trinkets.ts gainTrinket",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: soul-trinkets-count"
    },
    {
     "c": "While you carry one you have advantage on death saving throws and Constitution saving throws.",
@@ -3571,9 +3573,9 @@
    },
    {
     "c": "When you deal Sneak Attack damage you can destroy one to use Wails from the Grave without spending a use, and as an action you can destroy one to ask its spirit a question.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe destroys a trinket for a free Wails from the Grave use or asks its spirit a question"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts (pool.orTrinket); src/lib/dm/mt-mr-spends.ts questionSpirit",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: soul-trinket-spent"
    }
   ]
  },
@@ -3597,9 +3599,9 @@
    },
    {
     "c": "otherwise costs a soul trinket",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts (pool.orTrinket, src/lib/dm/mt-mr-trinkets.ts destroyTrinket)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ghost-walk-trinket"
    }
   ]
  },
@@ -3617,7 +3619,8 @@
    },
    {
     "c": "at the end of a long rest a soul trinket appears in your hand if you have none.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-trinkets.ts soulTrinketAtRestEnd (src/lib/dm/rest-tools.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-trinket-at-rest"
    }
   ]
@@ -3636,9 +3639,9 @@
    },
    {
     "c": "(d6s, d8s from 5th level, d10s from 11th, d12s from 17th)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run for the Soulknife: the die size is read where a die is rolled, and no Soulknife spend rolls one (Psi-Bolstered Knack and Soul Blades are narrated)"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts psionicEnergyDie (Psychic Teleportation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psionic-energy-die"
    },
    {
     "c": "all regained on a long rest",
@@ -3648,9 +3651,9 @@
    },
    {
     "c": "as a bonus action you can regain one spent die, once per short or long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:rogue::Psionic Power (Soulknife)::Psionic Recovery#REPORTED_ONLY",
-    "recorded_by": "spends-reported-only-spend-rogue-psionic-power-soulknife-psionic-recovery"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts (restore)",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs: spend:rogue::Psionic Power (Soulknife)::Psionic Recovery"
    }
   ]
  },
@@ -3701,9 +3704,9 @@
    },
    {
     "c": "The blades keep these dice at every level.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run at a higher level than the final-engine test's"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts rogue::Psychic Blades (natural_weapon 1d6, second 1d4)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psychic-blades-dice-at-17"
    }
   ]
  },
@@ -3741,9 +3744,9 @@
    },
    {
     "c": "and otherwise for a die",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_psychic_veil fallbackPool",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psychic-veil-die"
    },
    {
     "c": "it ends if you deal damage or force a save",
@@ -3761,9 +3764,9 @@
   "clauses": [
    {
     "c": "A sneak attack with Psychic Blades can stun a creature for a minute on a failed Wisdom save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_rend_mind#HANDS_BACK",
-    "recorded_by": "spends-hands-back-counter-sub-rend-mind"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts rendMind",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: rend-mind"
    },
    {
     "c": "free once per long rest",
@@ -3773,9 +3776,9 @@
    },
    {
     "c": "and otherwise for three dice",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-mr.ts rogue::Rend Mind (pool fallback sub_psionic_energy, 3)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: rend-mind-three-dice"
    }
   ]
  }

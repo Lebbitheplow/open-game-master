@@ -8,9 +8,11 @@
 // Pure.
 
 import type { Gate, HandBoardFacts, HandTurn } from "@/lib/battlemap/hand-core";
-import { UNARMED_IN_ACTION } from "@/lib/dm/mt-mr-turn";
+import { SNEAK_HIT } from "@/lib/dm/action-budget";
+import { BLADE_AT, UNARMED_IN_ACTION } from "@/lib/dm/mt-mr-turn";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { AuthoredSpend } from "@/lib/srd/authored-effects-types";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { kenseiHeld } from "@/lib/srd/mt-mr-kensei";
 
 const shut = (reason: string): Gate => ({ reason, spent: false });
@@ -34,6 +36,12 @@ export function mrCardGate(sheet: CharacterSheet, turn: HandTurn, spend: Authore
   }
   if (does.id === "flurry_healing" && !(turn.myTurn && (turn.flurryStrikes ?? 0) > 0)) {
     return shut(`${spend.name} takes the place of a Flurry of Blows strike: buy the flurry after the Attack action first.`);
+  }
+  if (does.id === "rend_mind" && !(marks.some((mark) => mark.startsWith(SNEAK_HIT)) && marks.some((mark) => mark.startsWith(BLADE_AT)))) {
+    return shut(`${spend.name} answers a Sneak Attack made with a psychic blade: land one this turn first.`);
+  }
+  if (does.id === "question_spirit" && !sheet.conditions.some((entry) => isConditionNamed(entry, "soul trinket"))) {
+    return shut(`${spend.name} destroys a soul trinket, and ${sheet.name} carries none.`);
   }
   if (does.id === "deft_strike" && !kenseiHeld(sheet).length) {
     return shut(`${spend.name} rides a hit with a kensei weapon, and ${sheet.name} holds none.`);

@@ -99,6 +99,20 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(budget().bonusUsed, true, "the bonus action");
     assert.equal(budget().actionUsed ?? false, false, "and not the action");
   });
+  // "At up to 30 feet": the foe named for the ally's attack, 30 feet from the
+  // mastermind, and not 35.
+  await probe("master-of-tactics-30-feet", async () => {
+    const [enemy] = await stage(mastermind, { cast: [[ally, 12, 5]] });
+    kit.place(enemy.id, 11, 5);
+    const out = await act(mastermind, "help", { bonus: true, targetCharacterId: ally.id, targetEnemyId: enemy.id });
+    assert.equal(out.ok, true, `Help on an attack against a creature 30 feet off: ${show(out)}`);
+    const [far] = await stage(mastermind, { cast: [[ally, 13, 5]] });
+    kit.place(far.id, 12, 5);
+    assert.equal((await act(mastermind, "help", { bonus: true, targetCharacterId: ally.id, targetEnemyId: far.id })).ok, false, "35 feet off");
+    const [near] = await stage(ally, { cast: [[mastermind, 4, 5]] });
+    kit.place(near.id, 11, 5);
+    assert.equal((await act(ally, "help", { targetCharacterId: mastermind.id, targetEnemyId: near.id })).ok, false, "the staging: a fighter's Help reaches 5 feet");
+  });
   await probe("misdirection-within-5-feet", async () => {
     const [enemy] = await stage(mastermind, { cast: [[ally, 5, 9]] });
     await enemyHits(enemy, mastermind, [16, 4]);
@@ -160,6 +174,18 @@ const sneakDice = (level) => Math.ceil(level / 2);
     kit.freshTurn();
     const hit = await swing(inquisitive, enemy, [15, 4, 4, 4, 4, 4, 4]);
     assert.match(expr(hit), new RegExp(`${sneakDice(9)}d6`), `alone, no advantage, the hit after Insightful Fighting: ${expr(hit)}`);
+  });
+  // "For a minute": ten rounds of the mark.
+  await probe("insightful-fighting-minute", async () => {
+    const [enemy] = await stage(inquisitive);
+    assert.equal((await spend(inquisitive, "Insightful Fighting", { targetEnemyId: enemy.id }, [20, 1])).ok, true);
+    const marked = () => r.foeHas(enemy, "insightful fighting");
+    assert.ok(marked(), "the staging: the creature is read");
+    for (let round = 0; round < 9; round += 1) r.untilTurnOf(inquisitive);
+    assert.ok(marked(), "nine rounds on the mark holds");
+    r.untilTurnOf(inquisitive);
+    r.untilTurnOf(inquisitive);
+    assert.ok(!marked(), "eleven rounds on it still holds");
   });
   await probe("steady-eye-advantage", async () => {
     await stage(inquisitive);
@@ -261,6 +287,59 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(out.ok, true, out.error);
     assert.ok(sheet(friend).conditions.includes("soul trinket"), "a long rest's end with no trinket carried leaves none in the rogue's hand");
   });
+  // "You can hold up to your proficiency bonus of them": 4 at 9th level.
+  await probe("soul-trinkets-count", async () => {
+    const dies = async (held) => {
+      // Two creatures, so the fight goes on once one has died.
+      const [enemy] = await stage(phantom, { enemies: 2 });
+      if (held) give(phantom, held, { rounds: 14400 });
+      kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 1 });
+      await swing(phantom, enemy, [15, 4]);
+      return r.react(phantom, "Tokens of the Departed");
+    };
+    const first = await dies(null);
+    assert.equal(first.ok, true, first.error);
+    assert.ok(sheet(phantom).conditions.includes("soul trinket"), `one trinket: ${sheet(phantom).conditions.join(", ")}`);
+    assert.equal((await dies("soul trinket (3)")).ok, true, "a fourth");
+    assert.ok(sheet(phantom).conditions.includes("soul trinket (4)"), `four trinkets: ${sheet(phantom).conditions.join(", ")}`);
+    const fifth = await dies("soul trinket (4)");
+    assert.equal(fifth.ok, false, `a fifth trinket at proficiency bonus 4: ${show(fifth)}`);
+  });
+  // "Destroy one to use Wails from the Grave without spending a use, and as
+  // an action you can destroy one to ask its spirit a question."
+  await probe("soul-trinket-spent", async () => {
+    const [first, second] = await stage(phantom, { enemies: 2, cast: [] });
+    give(phantom, "soul trinket (2)", { rounds: 14400 });
+    r.setUsed(phantom, "sub_wails_from_the_grave", r.max(phantom, "sub_wails_from_the_grave"));
+    kit.setEnemy(first.id, { conditions: ["prone"] });
+    await swing(phantom, first, [15, 15, ...new Array(12).fill(2)]);
+    const before = foe(second).currentHp;
+    const wail = await spend(phantom, "Wails from the Grave", { targetEnemyId: second.id }, 2);
+    assert.equal(wail.ok, true, wail.error);
+    assert.ok(before > foe(second).currentHp, "the wail landed");
+    assert.ok(sheet(phantom).conditions.includes("soul trinket"), `one trinket of two destroyed: ${sheet(phantom).conditions.join(", ")}`);
+    kit.freshTurn();
+    const asked = await spend(phantom, "Question a Spirit");
+    assert.equal(asked.ok, true, asked.error);
+    assert.equal(r.budget().actionUsed, true, "the action");
+    assert.ok(!r.has(phantom, "soul trinket"), "the trinket asked is destroyed");
+    kit.freshTurn();
+    assert.equal((await spend(phantom, "Question a Spirit")).ok, false, "with no trinket left");
+  });
+  // Ghost Walk: "free once per long rest, otherwise costs a soul trinket".
+  await probe("ghost-walk-trinket", async () => {
+    const ghost = hero("rogue", "Phantom", 13, RAPIER);
+    await stage(ghost);
+    assert.equal((await spend(ghost, "Ghost Walk")).ok, true, "the free use");
+    kit.freshTurn();
+    const none = await spend(ghost, "Ghost Walk");
+    assert.equal(none.ok, false, `a second walk with no trinket: ${show(none)}`);
+    give(ghost, "soul trinket", { rounds: 14400 });
+    const paid = await spend(ghost, "Ghost Walk");
+    assert.equal(paid.ok, true, paid.error);
+    assert.ok(!r.has(ghost, "soul trinket"), "the trinket paid for it");
+    assert.equal(r.used(ghost, "sub_ghost_walk"), 1, "and no use beyond the one");
+  });
   await probe("tokens-save-advantage", async () => {
     await kit.endFight();
     give(phantom, "soul trinket", { rounds: 14400 });
@@ -280,6 +359,73 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.ok(has(knife, "invisible"), "invisible");
     assert.equal(budget().actionUsed, true, "the action");
     assert.equal(sheet(knife).conditionMeta.invisible?.rounds, 600, "an hour");
+  });
+  // "Free once per long rest and otherwise for a die."
+  await probe("psychic-veil-die", async () => {
+    await stage(knife);
+    r.setUsed(knife, "sub_psychic_veil", 1);
+    const out = await spend(knife, "Psychic Veil");
+    assert.equal(out.ok, true, out.error);
+    assert.ok(has(knife, "invisible"), "invisible");
+    assert.deepEqual([r.used(knife, "sub_psychic_veil"), r.used(knife, "sub_psionic_energy")], [1, 1], "one Psionic Energy die in the use's place");
+    await stage(knife);
+    r.setUsed(knife, "sub_psychic_veil", 1);
+    r.setUsed(knife, "sub_psionic_energy", r.max(knife, "sub_psionic_energy"));
+    assert.equal((await spend(knife, "Psychic Veil")).ok, false, "with no die left either");
+  });
+  // The Psionic Energy die where one is rolled: Psychic Teleportation's
+  // distance, ten times the roll, a d8 at 9th level and a d12 at 17th.
+  await probe("psionic-energy-die", async () => {
+    for (const [level, sides] of [[9, 8], [11, 10], [17, 12]]) {
+      const blade = hero("rogue", "Soulknife", level, RAPIER);
+      await stage(blade);
+      world.diceLog();
+      const out = await spend(blade, "Psychic Teleportation", {}, [sides]);
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(world.diceLog().map((die) => die.sides), [sides], `a d${sides} at level ${level}`);
+      assert.match(JSON.stringify(out.result), new RegExp(`${sides * 10} feet`), `ten times the roll: ${show(out)}`);
+      assert.equal(budget().bonusUsed, true, "the bonus action");
+      assert.equal(r.used(blade, "sub_psionic_energy"), 1, "one die");
+    }
+  });
+  // "The blades keep these dice at every level."
+  await probe("psychic-blades-dice-at-17", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    const hit = await swing(master, enemy, [15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.match(expr(hit), /^1d6/, `the blade at 17th level: ${expr(hit)}`);
+    const second = await swing(master, enemy, [15, ...new Array(12).fill(2)], { weapon: "psychic blade", feature: "two-weapon fighting" });
+    assert.equal(second.ok, true, second.error);
+    assert.match(expr(second), /^1d4/, `the second blade at 17th level: ${expr(second)}`);
+  });
+  // Rend Mind: a Sneak Attack with a psychic blade, a Wisdom save or stunned
+  // for a minute; free once, then three Psionic Energy dice.
+  await probe("rend-mind", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    const cold = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(cold.ok, false, `with no Sneak Attack landed: ${show(cold)}`);
+    assert.equal(r.used(master, "sub_rend_mind"), 0, "and the refusal spent nothing");
+    kit.setEnemy(enemy.id, { conditions: ["prone"] });
+    const hit = await swing(master, enemy, [15, 15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    assert.match(expr(hit), /9d6/, `the staging: a Sneak Attack with the blade (${expr(hit)})`);
+    const out = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(r.foeHas(enemy, "stunned"), `a failed Wisdom save (a 2): ${show(out)}`);
+    assert.equal(foe(enemy).conditionMeta.stunned?.rounds, 10, "for a minute");
+    assert.equal(r.used(master, "sub_rend_mind"), 1, "the free use");
+  });
+  await probe("rend-mind-three-dice", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    r.setUsed(master, "sub_rend_mind", 1);
+    kit.setEnemy(enemy.id, { conditions: ["prone"] });
+    await swing(master, enemy, [15, 15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    const out = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(r.used(master, "sub_psionic_energy"), 3, "three Psionic Energy dice in the use's place");
+    assert.ok(r.foeHas(enemy, "stunned"), "and the creature is stunned");
   });
   await probe("psychic-veil-ends-on-damage", async () => {
     const [enemy] = await stage(knife);

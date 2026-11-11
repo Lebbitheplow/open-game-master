@@ -48,4 +48,47 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
     subclass: "Way of Mercy",
     heldBy: { file: "src/lib/dm/mt-mr-needs.ts", call: 'holdsRow(sheet, "monk::Flurry of Healing and Harm")' },
   },
+
+  // ---- rogue ----
+  // "A creature you attack in melee cannot make opportunity attacks against
+  // you for the rest of your turn": the mark Mobile leaves, for a holder.
+  "rogue::Fancy Footwork": {
+    subclass: "Swashbuckler",
+    heldBy: { file: "src/lib/dm/pc-attack-spend.ts", call: 'holdsRow(sheet, "rogue::Fancy Footwork")' },
+  },
+  // The necrotic on the first creature is Wails from the Grave's own spend
+  // (authored-effects-sweep-counters.ts, afterSneak.firstToo); the trinket at
+  // a long rest's end is the rest's.
+  // Psychic Teleportation is the engine's: a die rolled, ten times its roll
+  // in feet. Homing Strikes still waits on an offer after a missed attack.
+  "rogue::Soul Blades": {
+    subclass: "Soulknife",
+    spends: [
+      {
+        name: "Psychic Teleportation",
+        pool: { id: "sub_psionic_energy", amount: 1 },
+        action: "bonus",
+        does: { kind: "mr", id: "psychic_teleport" },
+      },
+    ],
+    narrated: "Homing Strikes' die on a missed Psychic Blade: the GM rolls the die (the counter's) and adds it to the attack roll.",
+  },
+  // The counter's free use, or three Psionic Energy dice with it spent.
+  "rogue::Rend Mind": {
+    subclass: "Soulknife",
+    counter: "sub_rend_mind",
+    spends: [
+      {
+        name: "Rend Mind",
+        pool: { id: "sub_rend_mind", fallback: "sub_psionic_energy", fallbackAmount: 3 },
+        action: "none",
+        fight: "in",
+        does: { kind: "mr", id: "rend_mind", aims: "enemy" },
+      },
+    ],
+  },
+  "rogue::Death's Friend": {
+    subclass: "Phantom",
+    heldBy: { file: "src/lib/dm/rest-tools.ts", call: "soulTrinketAtRestEnd(" },
+  },
 };

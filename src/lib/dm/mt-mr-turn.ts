@@ -10,7 +10,7 @@
 //
 // Pure: no database, so the board's view may import it.
 
-import { budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
+import { SNEAK_HIT, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { heldAuthored, type AuthoredSheet, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -26,9 +26,22 @@ export const FLURRY_HEALED = "mr:flurry-healed";
 // The creature the turn's last unarmed hit landed on while a Flurry of Blows
 // strike made it (Flurry of Healing and Harm's free Hand of Harm).
 export const FLURRY_SWUNG = "mr:flurry-swung";
-// The creatures a rogue's Sneak Attack has struck this turn (Sudden Strike's
-// second, against a different creature).
-export const SNEAK_AT = "mr:sneak-at:";
+// A creature a Soulknife's psychic blade was swung at this turn (Rend Mind
+// answers a Sneak Attack made with one).
+export const BLADE_AT = "mr:psychic-blade-at:";
+// Sudden Strike's second Sneak Attack of a turn.
+export const SECOND_SNEAK = "sneak_attack:second";
+
+// "You can sneak attack twice per turn as long as it is against different
+// targets" (Sudden Strike): the key a second Sneak Attack claims, when the
+// turn's first struck another creature. Null for anyone else.
+export function secondSneakKey(sheet: AuthoredSheet, budget: TurnBudget, enemyId: string): string | null {
+  if (!holdsRow(sheet, "rogue::Sudden Strike")) {
+    return null;
+  }
+  const struck = budget.oncePerTurn.filter((mark) => mark.startsWith(SNEAK_HIT)).map((mark) => mark.slice(SNEAK_HIT.length));
+  return struck.length === 1 && struck[0] !== enemyId ? SECOND_SNEAK : null;
+}
 
 // The row of the authored table a sheet holds, by its key ("monk::Drunken
 // Technique"), with the level of the class that granted it.
@@ -50,13 +63,16 @@ export function turnBonusTiles(budget: TurnBudget | null | undefined, ownerId: s
   return budget && budgetApplies(budget, ownerId, round) && budget.oncePerTurn.includes(DRUNKEN_FEET) ? 2 : 0;
 }
 
-export type SwingFacts = { unarmed: boolean; inAttackAction: boolean; flurryStrike: boolean; enemyId: string };
+export type SwingFacts = { unarmed: boolean; inAttackAction: boolean; flurryStrike: boolean; enemyId: string; psychicBlade?: boolean };
 
 // The marks one swing leaves.
 export function swingMarks(budget: TurnBudget, swing: SwingFacts): TurnBudget {
   const marks = [...budget.oncePerTurn];
   if (swing.flurryStrike) {
     marks.push(`${FLURRY_AT}${swing.enemyId}`);
+  }
+  if (swing.psychicBlade && !marks.includes(`${BLADE_AT}${swing.enemyId}`)) {
+    marks.push(`${BLADE_AT}${swing.enemyId}`);
   }
   if (swing.unarmed && swing.inAttackAction && !marks.includes(UNARMED_IN_ACTION)) {
     marks.push(UNARMED_IN_ACTION);
