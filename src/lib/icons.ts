@@ -115,6 +115,8 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/war-caster": { kind: "feat", slug: "battle-caster" },
   "feature/telekinetic": { kind: "feature", slug: "telekinetic-adept" },
   "feature/alter-memories": { kind: "spell", slug: "modify-memory" },
+  // Controlled Chaos's pick of two surges wears its kin's: Tides of Chaos.
+  "feature/controlled-chaos": { kind: "feature", slug: "tides-of-chaos" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {
