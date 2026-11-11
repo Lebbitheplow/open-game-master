@@ -34,7 +34,7 @@ import { ownTurnOf } from "@/lib/dm/held-turn";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
@@ -328,7 +328,12 @@ export function enemyStrikesEcho(
   if (!map || !echo || !knight) {
     return null;
   }
-  const attack = (attackName ? attackNamed(enemy.stats.attacks, attackName) : null) ?? enemy.stats.attacks[0];
+  const named = attackName ? attackNamed(enemy.stats.attacks, attackName) : null;
+  if (attackName && !named) {
+    return noneNamed(`${enemy.displayName} has no attack called`, attackName, enemy.stats.attacks.map((entry) => entry.name));
+  }
+  // The call named none: its first, as the creature's turn picks one.
+  const attack = named ?? enemy.stats.attacks[0];
   if (!attack) {
     return { error: `${enemy.displayName} has no attack on its block to make at ${echo.name}.`, retry: true };
   }

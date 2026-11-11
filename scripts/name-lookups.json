@@ -2214,8 +2214,8 @@
     "lib/srd/authored-effects.ts#fallback": [["key",1,"the one borrowed row an id keys"]],
     "lib/srd/authored-effects.ts#first": [["key",1,"the one borrowed row an id keys"],["key",2,"an authored effect by its kind"]],
     "lib/srd/authored-effects.ts#keyed": [["identity",1,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
-    "lib/srd/authored-effects.ts#partial": [["identity",2,"an authored feature by its whole name, its \"(choice)\" note stripped"],["identity",2,"a held condition by its whole name, a \"(note)\" or \": note\" stripped (documented strips)"],["key",2,"the authored index's keys"],["parse",1,"the option chosen for a feature read as an ability by its first three letters (\"intelligence\" to int)"]],
-    "lib/srd/authored-effects.ts#whole": [["key",1,"class ids by textKey"],["identity",1,"an authored feature or condition by its whole name"],["key",1,"damage types"],["identity",2,"a class id and conditions by whole name"]],
+    "lib/srd/authored-effects.ts#partial": [["identity",2,"an authored feature by its whole name, its \"(choice)\" note stripped"],["key",2,"the authored index's keys"],["parse",1,"the option chosen for a feature read as an ability by its first three letters (\"intelligence\" to int)"]],
+    "lib/srd/authored-effects.ts#whole": [["key",1,"class ids by textKey"],["identity",2,"an authored feature or condition by its whole name, and a held condition by its whole name before its bracket or family is read"],["key",1,"damage types"],["identity",2,"a class id and conditions by whole name"]],
     "lib/srd/authored-effects.ts#whole-single": [["identity",2,"gate choices, feat twins, third-caster subclasses by textKey; dice parts"]],
     "lib/srd/check-traits.ts#partial": [["key",1,"ODM's own feature-name format"],["key",1,"the picks ODM writes into a feature's name (\"Favored Enemy: undead\"): keys of its English rules vocabulary"]],
     "lib/srd/class-resources.ts#fallback": [["identity",2,"a resource by id then display name, features by whole name (an uses note stripped)"]],
@@ -2804,6 +2804,10 @@
     "lib/dm/mt-fb-wild-surge.ts#whole": [["key",1,"the surge's own area on the board, by its zone key on both sides"]],
     "lib/srd/mt-fb-arcane-shot.ts#partial": [["identity",2,"an SRD weapon (shortbow, longbow) by a whole word of the name it is carried under, textKey"],["key",1,"the turn's own marks: a key the engine wrote, by its prefix"]],
     "lib/dm/mt-fb-arcane-shot.ts#bypass": [["identity",1,"a carried weapon's own name asked whether it is a shortbow or longbow (the line itself)"]],
-    "lib/dm/mt-fb-arcane-shot.ts#first": [["search",1,"the first ally within 30 feet of the creature, when the player named none"]]
+    "lib/dm/mt-fb-arcane-shot.ts#first": [["search",1,"the first ally within 30 feet of the creature, when the player named none"]],
+    "lib/dm/mt-fb-echo.ts#partial": [["key",3,"an echo token's own ref, written by the engine: read by its prefix, and the prefix read back off it"]],
+    "lib/dm/mt-fb-echo.ts#first": [["key",3,"the knight's own echo: the one out, or the farther of two by distance (no text names it)"],["key",1,"the creature's first attack when the call names none (a name that matches none is refused)"]],
+    "lib/dm/mt-fb-echo.ts#whole": [["identity",2,"an echo token by its whole name, textKey on both sides (or by its id or ref)"]],
+    "lib/dm/mt-fb-echo.ts#fallback": [["key",1,"the creature's first attack when the call names none (a name that matches none is refused)"]]
   }
 }

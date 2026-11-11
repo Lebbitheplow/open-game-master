@@ -1965,7 +1965,7 @@
     "lib/dm/zone-rules.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#RegExp i": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/zone-triggers.ts#str-eq": [["key",7,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/zone-triggers.ts#str-eq": [["key",8,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary); a zone's spell name against the engine's held-spell names"]],
     "lib/dm/zone-triggers.ts#toUpperCase": [["display",4,"ability abbreviation shown"]],
     "lib/dm/zone-walls.ts#\\b": [["display",1,"an SRD spell name title-cased"]],
