@@ -465,7 +465,7 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
     "steampunk_vitriol_ampoule",
     "sub_call_the_hunt", "sub_searing_vengeance",
     "sub_accursed_specter", "sub_genies_vessel", "sub_favored_by_the_gods",
-    "sub_violent_attraction", "sub_magic_users_nemesis",
+    "sub_violent_attraction",
     // 10d10 psychic after a hit: damage_enemy carries it (no save to roll).
     "hurl_through_hell",
     // Its 2d12 per spell level is rolled by the cast itself, not by a

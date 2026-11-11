@@ -87,6 +87,18 @@ function standsWithin(map: BattleMap, refId: string, point: XY, feet: number): b
   return Boolean(token && chebyshev(token.x, token.y, point.x, point.y) * TILE <= feet);
 }
 
+// Whether a creature of either side stands in this druid's aura (the Hawk's
+// reaction asks it of the creature attacked, spirit-totem-hawk.ts). With no
+// board nothing is measured and it does.
+export function inSpiritAura(campaignId: string, druid: CharacterSheet, refId: string): boolean {
+  const map = boardMap(campaignId);
+  if (!map) {
+    return true;
+  }
+  const point = totemPoint(campaignId, map, druid);
+  return Boolean(point && standsWithin(map, refId, point, AURA_FEET));
+}
+
 // The druid's side: the table's characters and their summons (every sheet),
 // never a creature of the fight.
 function isAllySheet(sheet: CharacterSheet | null | undefined): sheet is CharacterSheet {

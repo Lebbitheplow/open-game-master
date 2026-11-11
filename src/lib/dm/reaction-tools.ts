@@ -42,6 +42,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
+import { hawkReaction } from "@/lib/dm/spirit-totem-hawk";
 import { openFailedSave, standingBeforeSave } from "@/lib/dm/save-turned";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
@@ -725,6 +726,11 @@ function useReaction(
     return guarded;
   }
 
+  // The Hawk spirit's reaction, taken before an attack roll (spirit-totem-hawk.ts).
+  const hawk = hawkReaction(ctx);
+  if (hawk) {
+    return hawk;
+  }
   // A summoned creature's own reaction (the steel defender's Deflect Attack).
   const summoned = summonReaction(ctx);
   if (summoned) {

@@ -1486,7 +1486,7 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction forcing a caster or teleporter within 60 feet to make a Wisdom save or lose the spell and the action."
+   "guidance": "A reaction forcing a creature that casts a spell within 60 feet to make a Wisdom save against the ranger's spell save DC or lose the spell. Spend it right after the creature's spell (targetEnemyId for the caster when several cast): the server rolls the save and, on a failure, undoes the spell on every character it was cast at (its damage comes back, its conditions end). With no casting on record it is refused. A creature's teleport keeps no record: rule that one at the table."
   },
   {
    "id": "sub_ethereal_step",

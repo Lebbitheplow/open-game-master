@@ -51,7 +51,7 @@ import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMa
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
+import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
@@ -316,6 +316,12 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Entropic Ward: advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
+  }
+  // The Hawk spirit's reaction: this attack roll, against the creature named.
+  if (edgeQuarry(sheet, HAWK_EDGE) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Spirit Totem (Hawk): advantage, spent by this attack");
+    spent.push(sheet.conditions.find((entry) => textKey(entry) === HAWK_EDGE)!);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {

@@ -124,7 +124,6 @@ export const RULINGS = {
   "counter:steampunk_the_great_work_walks": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:steampunk_vitriol_ampoule": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_breath_of_the_dragon": { TRIGGER_AS_CARD: "/tmp/odm-gapstudy/MT-SPLIT.md, the maintainer's ruling on \"When you take the Attack action you can replace one attack with a 20-foot cone or a 30-foot line\": the breath replaces one attack of the Attack action and may be its first, so spending it starts the Attack action if it has not begun. It is an attack cost (src/lib/dm/resource-turn.ts replacesAttack), not a trigger, and its card is rightly open on the holder's own turn" },
-  "counter:sub_magic_users_nemesis": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
 };
 
 const INTO = "pours into another counter (ResourceDef.into): no sheet holds a counter under this id, and its uses are walked as that counter's";

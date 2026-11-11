@@ -275,7 +275,33 @@ export const RANGER = {
 
   "ranger::Magic-User's Nemesis": async (rig) => {
     const facts = await rig.counterFacts("ranger", "Monster Slayer", 11, "sub_magic_users_nemesis");
-    return { rest: () => assert.deepEqual([facts.max, facts.afterShort, facts.afterLong], [1, 0, 0]) };
+    // A creature casts Sacred Flame at an ally, who fails and takes 6; the
+    // ranger's reaction makes the caster save (Wisdom, the ranger's spell DC)
+    // or lose the spell. `face`: the caster's d20.
+    const answer = async (face) => {
+      rig.reset();
+      const who = rig.hero("ranger", "Monster Slayer", 11);
+      const ally = rig.hero("cleric", "Life Domain", 11);
+      const [foe] = await rig.fight(who);
+      rig.kit.place(ally.id, 4, 6);
+      rig.kit.setEnemy(foe.id, { stats: { spells: ["Sacred Flame"] } });
+      rig.foesTurn(foe);
+      const before = await rig.spend(who, "Magic-User's Nemesis", { targetEnemyId: foe.id });
+      const cast = await rig.call("cast_at_player", { characterId: ally.id, spell: "Sacred Flame", saveAbility: "dex", dc: 25, damage: "1d8", damageType: "radiant", casterEnemyId: foe.id }, [2, 6]);
+      const hurt = rig.hp(ally);
+      const out = await rig.spend(who, "Magic-User's Nemesis", { targetEnemyId: foe.id }, [face]);
+      return { before: before.ok, cast: cast.ok || cast.error, hurt, ok: out.ok || out.error, hp: rig.hp(ally), used: rig.res(who, "sub_magic_users_nemesis")?.used, reacted: rig.reacted(who) };
+    };
+    const lost = await answer(1);
+    const kept = await answer(20);
+    rig.note("nemesis", [lost, kept]);
+    return {
+      rest: () => assert.deepEqual([facts.max, facts.afterShort, facts.afterLong], [1, 0, 0]),
+      "save-or-lose": () => {
+        assert.deepEqual(lost, { before: false, cast: true, hurt: 94, ok: true, hp: 100, used: 1, reacted: true }, `no casting on record is refused; a caster that fails its Wisdom save loses the spell, and the 6 it dealt comes back: ${JSON.stringify(lost)}`);
+        assert.deepEqual([kept.ok, kept.hp, kept.used], [true, 94, 1], `a caster that makes the save keeps its spell: ${JSON.stringify(kept)}`);
+      },
+    };
   },
 
   "ranger::Dreadful Strikes": async (rig) => {

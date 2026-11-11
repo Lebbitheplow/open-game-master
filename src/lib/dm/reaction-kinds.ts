@@ -168,8 +168,19 @@ export function reachAtLevel(range: number | Array<[number, number]>, level: num
 // has advantage before the end of their next turn (authored-hooks.ts).
 export const ENTROPIC_EDGE = "entropic ward";
 
-export function entropicQuarry(sheet: { conditions: string[]; conditionMeta?: unknown }): string | null {
-  if (!sheet.conditions.some((entry) => textKey(entry) === ENTROPIC_EDGE)) return null;
-  const meta = (sheet.conditionMeta as Record<string, { quarry?: string } | undefined> | undefined)?.[ENTROPIC_EDGE];
+// The mark the Hawk spirit's reaction leaves on a creature about to attack
+// (spirit-totem-hawk.ts): the creature it attacks is its `quarry`, and that
+// attack roll has advantage (authored-hooks.ts).
+// Written as its own text key (no punctuation), since the readers compare keys.
+export const HAWK_EDGE = "hawk spirit aim";
+
+// The creature a one-attack edge is against, or null when the sheet holds none.
+export function edgeQuarry(sheet: { conditions: string[]; conditionMeta?: unknown }, mark: string): string | null {
+  if (!sheet.conditions.some((entry) => textKey(entry) === mark)) return null;
+  const meta = (sheet.conditionMeta as Record<string, { quarry?: string } | undefined> | undefined)?.[mark];
   return meta?.quarry ?? null;
+}
+
+export function entropicQuarry(sheet: { conditions: string[]; conditionMeta?: unknown }): string | null {
+  return edgeQuarry(sheet, ENTROPIC_EDGE);
 }

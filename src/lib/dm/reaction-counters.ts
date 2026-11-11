@@ -46,6 +46,7 @@ import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
 import { planSpellThief } from "@/lib/dm/spell-thief";
 import { FLASH_OF_GENIUS_ID, planFlashOfGenius } from "@/lib/dm/flash-of-genius";
+import { MAGIC_USERS_NEMESIS_ID, planMagicUsersNemesis } from "@/lib/dm/magic-users-nemesis";
 import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
 import { payTheWord } from "@/lib/dm/ar-ws-word";
 
@@ -133,6 +134,8 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
     // Spell Thief's effect is the save it forces and the spell undone
     // (src/lib/dm/spell-thief.ts).
     if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
+    // Magic-User's Nemesis makes the caster save or lose the spell (magic-users-nemesis.ts).
+    if (input.defId === MAGIC_USERS_NEMESIS_ID) return planMagicUsersNemesis(campaign, input.turnId, sheet, ask);
     // Flash of Genius adds to the failed save on record (flash-of-genius.ts).
     if (input.defId === FLASH_OF_GENIUS_ID) return planFlashOfGenius(input, ask);
     // Restore Balance, Violent Attraction and Accursed Specter act on the

@@ -732,7 +732,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "spirit_totem_hawk",
     match: ["spirit totem: hawk", "spirit totem (hawk)"],
     summary:
-      "Spirit Totem (Hawk): the druid's reaction grants advantage on an attack against a creature in the aura; allies inside have advantage on Perception checks.",
+      "Spirit Totem (Hawk): the druid's reaction grants advantage on an attack against a creature in the aura (use_reaction \"Spirit Totem\" before the roll, the attacker as targetCharacterId and the creature attacked as targetEnemyId); allies inside have advantage on Perception checks.",
   },
   {
     id: "spirit_totem_unicorn",

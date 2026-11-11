@@ -3637,11 +3637,9 @@
    },
    {
     "c": "when a creature makes an attack roll against a target in the aura, a reaction gives it advantage, and",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Spirit Totem#hawk-reaction",
-    "severity": "high",
-    "where": "use_reaction 'Spirit Totem' is taken as a generic reaction ('resolved from its own text', src/lib/dm/reaction-tools.ts): the druid's reaction is spent, but the ally's next attack on the goblin still rolls one d20.",
-    "kind": "rule-missing"
+    "by": "src/lib/dm/spirit-totem-hawk.ts hawkReaction: the druid's use_reaction \"Spirit Totem\" (Hawk), taken as the attack is declared with the attacker and the creature attacked named, checks the creature stands in the aura (spirit-totem.ts inSpiritAura) and lays a mark the attacker's next attack roll against it reads as advantage and spends (authored-hooks.ts)"
    },
    {
     "c": "you and your allies have advantage on Perception checks in it",
@@ -4625,12 +4623,9 @@
   "clauses": [
    {
     "c": "A reaction forces a caster or teleporter within 60 feet to make a Wisdom save or lose the spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_magic_users_nemesis#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-counter-sub-magic-users-nemesis]",
-    "severity": "medium",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-counter-sub-magic-users-nemesis)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Magic-User's Nemesis#save-or-lose",
+    "by": "src/lib/dm/magic-users-nemesis.ts planMagicUsersNemesis (through reaction-counters.ts planCounterReaction and the cast row of src/lib/srd/trigger-table.ts): the use answers a creature's casting on record within 60 feet, rolls its Wisdom save against the ranger's spell save DC and on a failure undoes the spell on every character it was cast at; refused with no casting on record. A creature's teleport keeps no record and is ruled at the table (the counter's guidance says so)"
    },
    {
     "c": "once per short or long rest",
