@@ -22,6 +22,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
 import { genreDropHold } from "@/lib/dm/genre-b-drops";
+import { packBeastHold } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { cutParts, genreDamageCut } from "@/lib/srd/genre-b-combat";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
@@ -93,6 +94,10 @@ export type PcDamageInput = {
   // Features whose resistance does not hold against this blow (Emissary of
   // Redemption against a creature the paladin attacked).
   exceptFeatures?: string[];
+  // Damage types this one blow is resisted in, by who dealt it or how (One
+  // Blood against a creature the pack has not wounded:
+  // src/lib/dm/genre-b-post-apocalyptic-blows.ts), a comma-separated line each.
+  resists?: string[];
   reason?: string;
 };
 
@@ -101,7 +106,7 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "resists">;
 
 export type BlowDefenses = {
   resisted: string;
@@ -366,6 +371,11 @@ export function applyPcDamage(
   // (src/lib/dm/afflictions.ts).
   if (carried > 0 && !math.dropped) {
     afflictionStress(campaign, turnId, sheet.id, "damage");
+  }
+  // Pack Endurance holds a packmaster's beast at 1 (genre-b-post-apocalyptic-beast.ts).
+  const packHold = math.dropped ? packBeastHold(campaign, sheet) : null;
+  if (packHold) {
+    return { ok: true, hp: `1/${sheet.maxHp}`, damageApplied: carried, held: "Pack Endurance", note: packHold };
   }
   // A summoned creature at 0 hit points disappears (summon-store.ts).
   const vanished = summonAfterDamage(campaign, sheet, math.dropped, carried);

@@ -2561,7 +2561,7 @@
       "ability": null,
       "recharge": "long",
       "upgrades": [],
-      "guidance": "1/long rest, summon 1d4 local beasts to aid you for 10 minutes."
+      "guidance": "1/long rest, summon 1d4 local beasts (wolf stats) to aid you for 10 minutes."
     },
     {
       "id": "post_apocalyptic_chameleon_skin",

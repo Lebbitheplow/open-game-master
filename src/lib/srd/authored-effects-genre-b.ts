@@ -156,8 +156,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
     kind: "save_effect", save: "wis", dcAbility: "int", condition: "pressure point", rounds: 1,
     onFail: "It answers the question truthfully, or refuses where everyone can see it refuse.",
   }),
-  // "you and your beast each gain +2 to damage rolls for 1 minute" (the beast's +2 is the GM's: no pet carries the holder's conditions).
-  spend("Shared Fury", ["packmaster"], "post_apocalyptic_shared_fury", undefined, { kind: "buff", condition: "shared fury", rounds: 10 }),
+  // "you and your beast each gain +2 to damage rolls for 1 minute": the bonded beast carries it too (src/lib/dm/genre-b-post-apocalyptic-beast.ts).
+  spend("Shared Fury", ["packmaster"], "post_apocalyptic_shared_fury", undefined, { kind: "pack", call: "fury" }),
   // "Bonus action: one ally within 30 ft gains temp HP equal to your level + WIS mod."
   spend("Flock's Shepherd", ["waste_preacher"], "post_apocalyptic_flock_s_shepherd", "bonus", { kind: "buff", target: "ally", othersOnly: true, condition: "shepherded", rounds: 600, tempHp: "level+wis" }),
   // "project a 10-ft energy dome for 1 minute: allies inside gain +2 AC".

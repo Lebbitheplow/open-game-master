@@ -28,6 +28,13 @@ const GENRE_B_COUNTER_TERMS: Record<string, Terms> = {
   // "when an ally within 30 ft drops to 0 HP, they instead drop to WIS-mod x 5
   // HP": the damage path spends it (src/lib/dm/genre-b-drops.ts).
   post_apocalyptic_stand_at_the_dawn: { passive: true },
+  // "When your beast would drop to 0 HP, 1/long rest it drops to 1 instead; the
+  // same holds for you while it lives": the damage path spends it
+  // (src/lib/dm/genre-b-post-apocalyptic-beast.ts).
+  post_apocalyptic_pack_endurance: { passive: true },
+  // "Call the Wild ... recharges on a short rest 1/day": the short rest spends
+  // it (src/lib/srd/genre-b-post-apocalyptic.ts packProvides).
+  post_apocalyptic_the_pack_provides: { passive: true },
   post_apocalyptic_rapid_adaptation: { upgrades: [{ match: "Second Adaptation", uses: 2 }] },
   steampunk_field_repair: { upgrades: [{ match: "Field Repair (2d8)", uses: 4 }] },
   steampunk_overpressure_valve: { upgrades: [{ match: "Perpetual Motion", uses: 2 }] },

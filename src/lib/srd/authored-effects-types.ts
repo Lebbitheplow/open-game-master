@@ -452,6 +452,10 @@ export type SpendDoes =
   | { kind: "regain_slot_levels"; levels: Formula }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
+  // The packmaster's beasts (src/lib/dm/genre-b-post-apocalyptic-beast.ts):
+  // the beast bonded, Call the Wild's wolves, Shared Fury on the pair, the
+  // beast grown monstrous by Legend of the Pack.
+  | { kind: "pack"; call: "bonded" | "wild" | "fury" | "legend" }
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.
@@ -566,7 +570,9 @@ export type ReactionDoes =
   // (Penance Shared); "split", each takes half (Blood Bond).
   // `resistFrom`: from this class level the holder resists what it takes
   // (Protective Bond with Expansive Bond).
-  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number }
+  // `ownSummon`: only a creature the holder made ("when your beast within 30
+  // ft takes damage": a packmaster's bonded beast, Blood Bond).
+  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; ownSummon?: boolean }
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";

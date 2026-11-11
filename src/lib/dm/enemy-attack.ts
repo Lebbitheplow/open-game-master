@@ -8,6 +8,7 @@
 // on the other side (a creature the party dominates) is struck stat block
 // against stat block (src/lib/dm/enemy-strike.ts).
 
+import { paBlowResists } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -772,6 +773,8 @@ export function handleEnemyAttack(
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+      // What the post-apocalyptic classes resist of this creature's blow (One Blood).
+      ...paBlowResists({ campaignId: campaign.id, encounterId: encounter.id, attacker: standing, target: struck, ranged, spellAttack: Boolean(attack.spellAttack) }),
     };
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.

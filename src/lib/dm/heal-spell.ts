@@ -23,6 +23,7 @@
 // This module does not import mutations.ts: the cast is handed in.
 
 import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
+import { mendedHide } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
@@ -281,6 +282,12 @@ export function castHealingSpell(
   }
   // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
   riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  // Mended Hide: a packmaster's healing on their own beast is doubled.
+  const mended = mendedHide(caster, target);
+  if (mended) {
+    amount *= 2;
+    riders.push(mended);
+  }
   return {
     amount: Math.max(1, amount),
     note: `${name}: ${scaled?.note ?? expression}${riders.length ? ` (${riders.join(", ")})` : ""}, ${Math.max(1, amount)} hit points.${shared}`,

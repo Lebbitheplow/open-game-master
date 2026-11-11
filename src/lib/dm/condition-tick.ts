@@ -1,3 +1,4 @@
+import { legendEnded } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { settleFrenzies } from "@/lib/dm/frenzy";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
@@ -544,6 +545,11 @@ function tickSheetConditions(
     // turn starts: it takes effect now (long-casting.ts), once the tick is
     // written below.
     const finishing = tick.expired.some((name) => name.toLowerCase() === CASTING) ? castingOf(sheet) : null;
+    // Legend of the Pack's minute ran out: the beast's doubled hit points go.
+    const shrunk = legendEnded(campaign, sheet, tick.expired);
+    if (shrunk) {
+      lines.push(shrunk);
+    }
     for (const name of tick.expired) {
       if (finishing && name.toLowerCase() === CASTING) {
         continue;

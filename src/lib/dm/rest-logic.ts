@@ -1,3 +1,4 @@
+import { packProvides } from "@/lib/srd/genre-b-post-apocalyptic";
 import { easeOrdeal } from "@/lib/dm/ordeal";
 import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
 import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions } from "@/lib/dm/condition-logic";
@@ -220,7 +221,10 @@ export function slotsRefillOnShortRest(
 // write.
 export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInput | null {
   // With the sheet, a counter's refill reads its level (Font of Inspiration).
-  const next = refillResources(sheet.resources, "short", sheet);
+  // The Pack Provides gives a spent Call the Wild back once a day
+  // (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const refilled = refillResources(sheet.resources, "short", sheet);
+  const next = packProvides(sheet, refilled) ?? refilled;
   const changed = Object.entries(next).some(
     ([id, state]) => state.used !== sheet.resources?.[id]?.used,
   );
