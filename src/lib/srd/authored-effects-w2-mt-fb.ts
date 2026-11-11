@@ -18,8 +18,9 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
   // "a natural-weapon hit forces a Wisdom save: the target either attacks a
   // creature of your choice or takes 2d12 psychic damage". The counter was
   // spent with no hit landed, or after a sword's. The barbarian's choice is
-  // the variant: the psychic damage is rolled here; the attack on another
-  // creature is the GM's to make for the creature that failed.
+  // the variant: the psychic damage is rolled here, and the creature that
+  // fails makes its attack on the creature named with its reaction
+  // (src/lib/dm/mt-fb-spend.ts forcedStrike).
   "barbarian::Infectious Fury": {
     subclass: "Path of the Beast",
     counter: "sub_infectious_fury",
@@ -38,7 +39,7 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
                 kind: "save_effect",
                 save: "wis",
                 dcAbility: "con",
-                onFail: "must use its reaction to make a melee attack against another creature of the barbarian's choice that the barbarian can see: the GM makes that attack for it now",
+                strikes: true,
               },
             },
           },

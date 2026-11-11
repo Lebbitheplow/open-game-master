@@ -52,7 +52,7 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { surgeSpend } from "@/lib/dm/mt-fb-wild-surge";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
-import { cleanse, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
+import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -369,6 +369,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // The creature picks the save it is likelier to pass (condition-logic.ts).
       const ability = does.orSave ? likelierSave(enemy.conditions, does.save, does.orSave, dc, (each) => saveModFor(enemy.stats, each)) : does.save;
       const other = does.orSave ? (ability === does.save ? does.orSave : does.save) : undefined;
+      // Who the creature strikes on a failed save, and that it can, is settled
+      // before anything is spent (mt-fb-spend.ts).
+      const strike = does.strikes ? forcedStrikePlan(ctx, enemy) : null;
+      if (strike && "error" in strike) {
+        return strike;
+      }
       const keen = does.advantageAt ? Number(enemy.stats.abilities?.[does.advantageAt.ability] ?? 10) >= does.advantageAt.atLeast : false;
       const save = rollEnemySave(campaign.id, enemy, ability, dc, {
         ...(keen ? { advantage: true } : {}),
@@ -400,6 +406,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       if (!save.success && does.onFail) {
         result.onFail = `${enemy.displayName} ${does.onFail}.`;
+      }
+      if (!save.success && strike) {
+        Object.assign(result, forcedStrike(ctx, strike));
       }
       if (!save.success && does.pushes) {
         Object.assign(result, pushFoe(ctx, getEnemy(enemy.id) ?? enemy, does.pushes.feet));

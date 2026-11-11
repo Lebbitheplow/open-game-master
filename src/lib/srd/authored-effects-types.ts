@@ -351,6 +351,10 @@ export type SpendDoes =
   // a condition, or a note on movement the DM makes on the board.
   | {
       kind: "save_effect";
+      // On a failed save the creature uses its reaction to make one melee
+      // attack against the creature the call names in targetEnemyIds, the
+      // holder's choice (Infectious Fury; src/lib/dm/mt-fb-spend.ts forcedStrike).
+      strikes?: boolean;
       save: Ability;
       // The creature picks: it rolls whichever of the two is better for it
       // (Nature's Wrath: "a Strength or Dexterity save").

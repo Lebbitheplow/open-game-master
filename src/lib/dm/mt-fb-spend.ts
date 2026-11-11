@@ -14,14 +14,21 @@
 //                    falls and lands prone." It was a line asking the GM to
 //                    move the token.
 import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
+import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { listSheets } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
 import { blocksMove, tileAt, tileIndex } from "@/lib/battlemap/types";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { damageDice, damageEnemy, enemyCondition, type SpendContext } from "@/lib/dm/authored-spend-effects";
+import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { tilesApart } from "@/lib/dm/board-reach";
+import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
+import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
+import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -132,4 +139,45 @@ export function cleanse(ctx: SpendContext, conditions: string[]): ToolError | { 
   }
   const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta as ConditionMetaMap, held);
   return { patch: { conditions: cleared.conditions, conditionMeta: cleared.meta }, result: { ended: `${ctx.sheet.name} is no longer ${held.join(" or ")}.` } };
+}
+
+// ---- Infectious Fury's forced attack ----
+
+export type StrikePlan = { attacker: EncounterEnemy; victim: EncounterEnemy; attack: string };
+
+// "It must use its reaction to make a melee attack against another creature
+// of your choice that you can see": the creature the call names in
+// targetEnemyIds, a melee attack of the cursed creature's that reaches it
+// from where it stands (a reaction walks nowhere), and a reaction to make it
+// with. Settled before the save, so a call that cannot end in the attack
+// spends nothing.
+export function forcedStrikePlan(ctx: SpendContext, attacker: EncounterEnemy): StrikePlan | ToolError {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  const ref = (ctx.args.targetEnemyIds ?? []).find((id) => id && id !== attacker.id);
+  const victim = encounter && ref ? resolveEnemyRef(encounter.id, ref) : null;
+  if (!encounter || !victim || victim.id === attacker.id || victim.status !== "alive") {
+    return { error: `${ctx.spend.name}: name the creature ${attacker.displayName} must attack, ${ctx.sheet.name}'s choice, in targetEnemyIds (another living creature of the fight). Nothing was spent.`, retry: true };
+  }
+  if (encounter.reactionsUsed.includes(attacker.id)) {
+    return { error: `${attacker.displayName} has used its reaction this round and has none to attack with: choose the psychic damage (variant "damage"). Nothing was spent.`, refused: "rules" };
+  }
+  const tiles = tilesBetween(encounter.id, attacker.id, victim.id);
+  const melee = attacker.stats.attacks
+    .map((attack) => ({ attack, profile: enemyAttackProfile(attack, attacker.stats.traits ?? []) }))
+    .find(({ profile }) => profile.melee && (tiles === null || tiles <= profile.reachTiles));
+  if (!melee) {
+    return { error: `${attacker.displayName} has no melee attack that reaches ${victim.displayName} from where it stands${tiles === null ? "" : ` (${tiles * 5} feet)`}: name a creature within its reach, or choose the psychic damage. Nothing was spent.`, refused: "rules" };
+  }
+  return { attacker, victim, attack: melee.attack.name };
+}
+
+export function forcedStrike(ctx: SpendContext, plan: StrikePlan): Record<string, unknown> {
+  const sheets = listSheets(ctx.campaign.id);
+  const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const swing = (turn: DmTurn) =>
+    enemyStrikesEnemy(ctx.campaign, turn, getEnemy(plan.attacker.id) ?? plan.attacker, getEnemy(plan.victim.id) ?? plan.victim, { attack: plan.attack, single: true, reaction: true, sheets, sheetsById });
+  const out = ctx.turn ? swing(ctx.turn) : withOpportunityTurn(ctx.campaign.id, swing);
+  return typeof out.error === "string"
+    ? { forcedAttack: `${plan.attacker.displayName} could not make the attack: ${out.error}` }
+    : { forcedAttack: { by: plan.attacker.displayName, at: plan.victim.displayName, cost: "its reaction", ...out } };
 }

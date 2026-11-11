@@ -715,10 +715,27 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const held = foe(enemy).currentHp;
     const made = await fury(enemy, "damage", 20);
     assert.deepEqual([made.result.saved, held - foe(enemy).currentHp], [true, 0], "a save made: nothing");
+    // "Or it must use its reaction to make a melee attack against another
+    // creature of your choice": the creature named, struck by the one that
+    // failed, with its reaction and not its action.
+    const [cursed, other] = await stage(beast, { enemies: 2 });
+    kit.place(other.id, 7, 5);
+    rage(beast);
+    await swing(beast, cursed, [15, 4], { weapon: "Claws" });
+    const unnamed = await fury(cursed, "attack", 2);
+    assert.equal(unnamed.ok, false, `with no creature named for it to attack: ${show(unnamed)}`);
+    const spentBefore = r.used(beast, "sub_infectious_fury");
+    const struck = foe(other).currentHp;
+    const turned = await r.forced([2, 18, 4, 4], () => world.invoke("use_resource", { characterId: beast.id, resource: "Infectious Fury", variant: "attack", targetEnemyId: cursed.id, targetEnemyIds: [other.id] }));
+    assert.equal(turned.ok, true, turned.error);
+    assert.equal(turned.result.saved, false, show(turned));
+    assert.ok(struck - foe(other).currentHp > 0, `the creature that failed struck nobody: ${JSON.stringify(turned.result.forcedAttack).slice(0, 300)}`);
+    assert.ok(world.encounter().reactionsUsed.includes(cursed.id), "the attack took its reaction");
+    assert.equal(r.used(beast, "sub_infectious_fury"), spentBefore + 1);
     kit.freshTurn();
-    await swing(beast, enemy, [15, 4], { weapon: "Claws" });
-    const turned = await fury(enemy, "attack", 2);
-    assert.match(String(turned.result?.onFail), /melee attack against another creature/, `the other choice: ${show(turned)}`);
+    await swing(beast, cursed, [15, 4], { weapon: "Claws" });
+    const again = await fury(cursed, "attack", 2);
+    assert.equal(again.ok, false, `a creature with no reaction left was made to attack again: ${show(again)}`);
   });
   await probe("bestial-soul-adapt", async () => {
     await kit.endFight();
