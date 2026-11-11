@@ -9,6 +9,8 @@ import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
+import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
+import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
@@ -18,6 +20,7 @@ import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condi
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { consumableEffect, findCarriedItem, notCarried } from "@/lib/dm/item-logic";
 import { kiTechnique, spendKiTechnique, spendQuickenedSpell } from "@/lib/dm/bonus-actions";
+import { secondOptionProblem } from "@/lib/dm/mt-srd-metamagic";
 import { removeItemMath } from "@/lib/dm/mutation-math";
 import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions, optionsOfKind } from "@/lib/srd/options";
@@ -430,6 +433,11 @@ export function computeUseResource(
   if (def.id === "sorcery_points") {
     // The variant as its rules text lists it (class-resources.ts).
     if (textKey(variant ?? "") === "quickened spell") {
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, "Quickened Spell", true);
+      if (second) {
+        return second;
+      }
       return spendQuickenedSpell(campaign, sheet, state);
     }
     const direction = fontOfMagicDirection(variant);
@@ -451,6 +459,11 @@ export function computeUseResource(
         return priced;
       }
       metamagicPoints = priced.points;
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, option.n);
+      if (second) {
+        return second;
+      }
     }
   }
 
@@ -484,6 +497,11 @@ export function computeUseResource(
   const gate = counterGate(def, sheet, Boolean(live && (live.kind ?? "fight") === "fight"));
   if (gate) {
     return { error: `${gate} Nothing was spent.`, refused: "rules" };
+  }
+  // The reach the counter's text gives its target (mt-srd-reach.ts).
+  const beyond = targetReachProblem(campaign.id, def, sheet, target);
+  if (beyond) {
+    return { error: `${beyond} Nothing was spent.`, refused: "rules" };
   }
   // A pool a single use may only dip into (Balm of the Summer Court: half the
   // druid level of dice; Healing Light: the Charisma modifier).
@@ -751,9 +769,13 @@ export function computeUseResource(
           outcome.result.concentrationEnded = `${sheet.name} stops concentrating on ${ended} as the rage takes hold.`;
         }
       }
-      outcome.patch.conditions = [...holder.conditions, condition];
+      // Feral Instinct's hold on a surprised first turn ends with the rage
+      // it waited for (mt-srd-barbarian.ts).
+      const entered = condition === RAGING ? withoutRageFirst(holder) : holder;
+      const metaKept = Object.fromEntries(Object.entries(holder.conditionMeta ?? {}).filter(([name]) => name !== RAGE_FIRST));
+      outcome.patch.conditions = [...entered.conditions, condition];
       outcome.patch.conditionMeta = {
-        ...holder.conditionMeta,
+        ...metaKept,
         [condition]: { rounds: def.effect.rounds },
       };
       outcome.result.applied = `${condition} for ${def.effect.rounds} rounds`;

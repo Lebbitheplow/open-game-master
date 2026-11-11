@@ -10,6 +10,7 @@
 
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -53,6 +54,7 @@ import { landSpellDamage } from "@/lib/dm/cast-at-enemy-damage";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { areaShareProblem, markRepeatStruck, openAreaCast, recordAreaShare, repeatStrikeProblem } from "@/lib/dm/area-casting";
+import { castShares } from "@/lib/srd/spell-mechanics";
 // What the spell does beyond damage and condition (src/lib/dm/spell-riders.ts).
 import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip } from "@/lib/dm/spell-riders";
 import { layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
@@ -227,7 +229,8 @@ export function handleCastAtEnemy(
   if (redirect) {
     return redirect;
   }
-  const facts = spellFactsFor(args.spell, authors);
+  // The range as this caster casts it (Distant Spell: mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet, spellFactsFor(args.spell, authors));
   const mech = resolvedMech?.mech ?? null;
   const corrections: string[] = [];
   // A name the server does not know is read against the sheet first: a typo
@@ -369,6 +372,12 @@ export function handleCastAtEnemy(
   if (area) {
     return area;
   }
+  // A casting that takes one creature and holds one more (Twinned Spell)
+  // takes a second creature, never the first again (mt-srd-metamagic.ts).
+  const again = repeating ? null : secondTargetProblem(openAreaCast(encounter, sheet.id, spellName), castShares(mech, { spellLevel, slotLevel: args.level ?? null, casterLevel: sheet.level }), spellName, target);
+  if (again) {
+    return again;
+  }
 
   // The cast itself, through the one guard (src/lib/dm/cast-guard.ts): who
   // may cast, what they hold, the slot of the spell's own level when none is
@@ -418,6 +427,8 @@ export function handleCastAtEnemy(
     ...(cast.droppedConcentration ? { droppedConcentration: cast.droppedConcentration } : {}),
     ...(cast.shares ? { shares: cast.shares } : {}),
     ...(cast.continuing ? { continuing: cast.continuing } : {}),
+    // What a Metamagic option paid did to this cast (mt-srd-metamagic.ts).
+    ...(cast.metamagic ? { metamagic: cast.metamagic } : {}),
   };
   // A Flaming Sphere is cast onto the board, not at a creature: it appears
   // beside the one named, and nobody saves until a creature ends its turn
@@ -498,6 +509,8 @@ export function handleCastAtEnemy(
       // Corona of Light leans only against fire and radiant spells.
       ...(damageType ? { damageType } : {}),
       ...spellSaveOptions(mech, enemy),
+      // Heightened Spell paid for this cast (mt-srd-metamagic.ts).
+      ...heightenedSave(campaign, sheet.id),
       record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${spellName}` },
     });
     saved = save.success;
@@ -590,9 +603,10 @@ export function handleCastAtEnemy(
   }
   if (binds && !saved) {
     const rounds = mechCondition ? undefined : args.rounds;
-    const meta = mechCondition
+    // Extended Spell paid for this cast doubles what it lays (mt-srd-metamagic.ts).
+    const meta = extendedMeta(sheet, mechCondition
       ? conditionMetaFor(mechCondition, picked?.rules ?? {}, source, { ability, dc }, enemy.id)
-      : spellConditionMeta({ rounds, saveEnds: !rounds }, source, { ability, dc });
+      : spellConditionMeta({ rounds, saveEnds: !rounds }, source, { ability, dc }));
     // A word's extra condition lasts as that condition does, not as the
     // spell: Grovel's prone until it stands, Halt's stop to the end of the
     // creature's next turn.

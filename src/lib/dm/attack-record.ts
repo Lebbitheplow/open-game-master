@@ -46,6 +46,9 @@ export type DamageAsk = {
   // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
   feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
   rerollBelow: number;
+  // Empowered Spell on a spell attack's damage: how many low dice are thrown
+  // again (src/lib/dm/mt-srd-metamagic.ts, src/lib/dice.ts).
+  empower?: number;
   // Paid on the hit, resolved once the blow has landed.
   stunDc?: number;
   maneuver?: boolean;

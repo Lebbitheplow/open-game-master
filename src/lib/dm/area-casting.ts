@@ -29,6 +29,7 @@ import { liveZones, saveZones, publishZones } from "@/lib/dm/zone-store";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { factsAsCast } from "@/lib/dm/mt-srd-metamagic";
 
 type Target = { id: string; name: string };
 
@@ -171,7 +172,8 @@ export function boardCatch(input: {
   }
   const blast = spellAreaShape(input.spell, input.authors);
   if (blast) {
-    const range = spellFactsFor(input.spell, input.authors)?.range;
+    // Measured as this caster casts it (Distant Spell: mt-srd-metamagic.ts).
+    const range = factsAsCast(getSheetById(input.caster.id), spellFactsFor(input.spell, input.authors))?.range;
     return {
       blast,
       caught: creaturesInBlast({

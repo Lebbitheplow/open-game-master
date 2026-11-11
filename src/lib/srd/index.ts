@@ -1,3 +1,4 @@
+import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
@@ -475,7 +476,8 @@ export function computeSheetDerived(
     ? { ...withItems, ...sheet.wildShape.abilities }
     : withItems;
   const magic = sheet.equipment ? magicItemRiders(sheet.equipment, sheet) : null;
-  const magicSaveBonus = magic?.saveBonus ?? 0;
+  // An artificer's Soul of Artifice: +1 for each attuned item (mt-srd-artificer.ts).
+  const magicSaveBonus = (magic?.saveBonus ?? 0) + soulOfArtificeBonus(sheet);
   const abilityMods = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [ability, abilityMod(abilities[ability])]),
   ) as Record<Ability, number>;
@@ -497,6 +499,8 @@ export function computeSheetDerived(
   const featureSaves = featureSaveProficiencies({
     features: riderFeatures,
   });
+  const formSaves: string[] = shape?.kind === "wildshape" ? (shape.saves ?? []) : [];
+  const formSkills: Record<string, number> = shape?.kind === "wildshape" ? (shape.skills ?? {}) : {};
   const saveParts = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [
       ability,
@@ -504,8 +508,10 @@ export function computeSheetDerived(
         { label: `${ability.toUpperCase()} modifier`, value: abilityMods[ability] },
         {
           label: "proficiency",
+          // Wild Shape: "You also retain all of your skill and saving throw
+          // proficiencies, in addition to gaining those of the creature."
           value:
-            sheet.proficiencies.saves.includes(ability) || featureSaves.includes(ability) ? pb : 0,
+            sheet.proficiencies.saves.includes(ability) || featureSaves.includes(ability) || formSaves.includes(ability) ? pb : 0,
         },
         // Aura of Protection, the one feature save bonus: an unconscious
         // paladin grants it to nobody, themselves included.
@@ -536,20 +542,22 @@ export function computeSheetDerived(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)
         ? { label: "expertise", value: pb * 2 }
-        : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id)
+        : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id) || formSkills[skill.id] !== undefined
           ? { label: "proficiency", value: pb }
           : halfProficiencyCovers(halfScope, skill.ability)
             ? { label: "half proficiency", value: halfPb }
             : { label: "untrained", value: 0 };
-      return [
-        skill.id,
-        keepMeaningful([
-          { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
-          // Arms of the Astral Self: Wisdom for Strength checks (authored-effects.ts).
-          { label: "subclass features", value: authoredCheckSwap(sheet, skill.ability as Ability, abilityMods) },
-          trained,
-        ]),
-      ];
+      const own = keepMeaningful([
+        { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
+        // Arms of the Astral Self: Wisdom for Strength checks (authored-effects.ts).
+        { label: "subclass features", value: authoredCheckSwap(sheet, skill.ability as Ability, abilityMods) },
+        trained,
+      ]);
+      // "If the creature has the same proficiency as you and the bonus in its
+      // stat block is higher than yours, use the creature's bonus instead of
+      // yours."
+      const printed = formSkills[skill.id];
+      return [skill.id, printed !== undefined && printed > sumParts(own) ? [{ label: `${shape?.form ?? "form"} stat block`, value: printed }] : own];
     }),
   ) as Record<string, DerivedPart[]>;
   const skills = Object.fromEntries(

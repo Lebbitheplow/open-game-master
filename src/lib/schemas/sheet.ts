@@ -209,6 +209,13 @@ export const equipmentItemSchema = z.object({
   // against the three attunements while it waits. Absent on every row
   // written before it.
   attuning: z.boolean().optional(),
+  // A warlock's pact weapon (SRD 5.1, Pact of the Blade): "conjured:<the
+  // warlock's sheet id>" for the weapon the pact made, which exists only
+  // while the pact holds it there; "bonded" for a magic weapon the ritual
+  // bound, "stowed" while that weapon is in its extradimensional space
+  // (src/lib/srd/pact-weapon.ts, src/lib/dm/mt-srd-pact.ts). Absent on every
+  // other row.
+  pact: z.string().trim().max(60).optional(),
   // Charges left on a charged magic item (a wand, a staff). Absent means
   // full: a row written before charges were kept starts with all of them
   // (src/lib/dm/item-charges.ts).
@@ -695,6 +702,11 @@ export const wildShapeSchema = z
     type: z.string().trim().max(30).optional(),
     cr: z.number().min(0).max(30).optional(),
     saves: z.array(z.enum(["str", "dex", "con", "int", "wis", "cha"])).max(6).optional(),
+    // The skills its block lists with their printed bonuses, and its special
+    // senses in feet (SRD 5.1, Wild Shape: the creature's proficiencies are
+    // gained, and only the form's senses are used).
+    skills: z.record(z.string().trim().min(1).max(30), z.number().int().min(-10).max(30)).optional(),
+    senses: z.record(z.string().trim().min(1).max(30), z.number().int().min(0).max(1000)).optional(),
     resist: z.string().trim().max(200).optional(),
     immune: z.string().trim().max(200).optional(),
     vulnerable: z.string().trim().max(120).optional(),

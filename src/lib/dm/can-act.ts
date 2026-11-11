@@ -167,6 +167,16 @@ export function canAct(input: {
     // Outside a fight there are no turns to wait for.
     return { ok: true };
   }
+  // Feral Instinct's first turn: nothing before the rage (mt-srd-barbarian.ts
+  // RAGE_FIRST; the rage's own charge reads the sheet without it).
+  if (sheet.conditions.some((entry) => isConditionNamed(entry, "feral instinct (rage first)"))) {
+    return refuse(
+      "surprised",
+      { error: kind === "reaction"
+        ? `${sheet.name} is surprised and has no reaction until their first turn has passed.`
+        : `${sheet.name} is surprised: Feral Instinct lets them act this turn only if they enter their rage before anything else (use_resource rage). They cannot ${what} first.`, refused: "rules" },
+    );
+  }
   if (isSurprised(encounter, sheet.id, kind === "reaction")) {
     return refuse(
       "surprised",

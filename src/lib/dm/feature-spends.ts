@@ -39,6 +39,8 @@ import { commandersStrike, commandersStrikeCharge, knowsManeuver, rally } from "
 import type { ResourceAction } from "@/lib/srd/class-resources";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { chooseFiendishResilience, stillnessOfMind } from "@/lib/dm/feature-hooks";
+import { sacredWeaponMeta, shedLight } from "@/lib/dm/mt-srd-paladin";
+import { seesOrHears, undeadOrConstruct } from "@/lib/dm/mt-srd-reach";
 
 // Re-exported for the callers that reached it here first.
 export { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
@@ -219,7 +221,12 @@ export function featureVariantSpend(
       }));
     }
     if (isNamed(wanted, "sacred weapon")) {
-      return spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      const imbued = spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      if (!("error" in imbued)) {
+        // "bright light in a 20-foot radius and dim light 20 feet beyond that".
+        shedLight(campaign.id, sheet.id, 20, 20, 1);
+      }
+      return imbued;
     }
     if (isNamed(wanted, "vow of enmity")) {
       // Inside the spend, so a use or bonus action already gone answers first.
@@ -387,8 +394,9 @@ function turnUndead(
       kind.types.test(String(enemy.stats.type ?? "")) &&
       within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET) &&
       // "That can see or hear you" (SRD 5.1, Turn Undead; Arcane Abjuration):
-      // a creature both deafened and unable to see the cleric is left out.
-      !(enemy.conditions.some((entry) => isConditionNamed(entry, "deafened")) && unseenBecause(encounter.id, enemy, sheet)) &&
+      // a creature both deafened and unable to see the cleric is left out
+      // (mt-srd-reach.ts seesOrHears, which every turning asks).
+      seesOrHears(encounter.id, enemy, sheet) &&
       !swallowCoverBetween(sheet.id, enemy.id),
   );
   if (!undead.length) {
@@ -528,9 +536,9 @@ function sacredWeapon(sheet: CharacterSheet): Resolution {
   return {
     patch: {
       conditions: [...held, condition],
-      conditionMeta: { ...sheet.conditionMeta, [condition]: { rounds: 10 } },
+      conditionMeta: { ...sheet.conditionMeta, [condition]: sacredWeaponMeta(sheet, 10) },
     },
-    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light.` },
+    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light for 20 feet and dim light 20 feet beyond.` },
   };
 }
 
@@ -548,7 +556,8 @@ function preserveLife(
   const party = fieldedSheets(campaign, listSheets(campaign.id))
     .map((entry) => getSheetById(entry.id) ?? entry)
     // One Chill Touch grips, or one suffocating, regains nothing (regain.ts).
-    .filter((entry) => canRegain(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
+    // "You can't use this feature on an undead or a construct" (mt-srd-reach.ts).
+    .filter((entry) => canRegain(entry) && !undeadOrConstruct(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
   const room = (entry: CharacterSheet) =>
     Math.max(0, Math.floor(effectiveMaxHp(entry) / 2) - entry.currentHp);
   const ordered = [

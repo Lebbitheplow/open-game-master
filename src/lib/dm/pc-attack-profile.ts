@@ -4,7 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
-import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
+import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
 import { getMounts } from "@/lib/db/mounts";
@@ -415,7 +415,7 @@ export function buildAttackProfile(
     const material = weaponMaterial(sheet.equipment.find((item) => item.name === used.displayName));
     // SRD 5.1, Pact of the Blade: "You are proficient with it while you
     // wield it" (src/lib/srd/pact-weapon.ts).
-    const pactForm = used.srd?.kind === "melee" && holdsPactOfTheBlade(sheet) ? [used.srd.name.toLowerCase()] : [];
+    const pactForm = used.srd && isPactWeapon(sheet, used.displayName, used.srd.kind === "melee") ? [used.srd.name.toLowerCase()] : [];
     const swing = (twoHanded: boolean, weapon = used) => ({
       ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? weapon, {
         riders,

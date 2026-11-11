@@ -7,7 +7,7 @@
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll, revealRollRow, type RollAttacker, type RollKind } from "@/lib/db/rolls";
-import { rollExpression } from "@/lib/dice";
+import { rollExpression, type RollOptions } from "@/lib/dice";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { publishWithSeq } from "@/lib/events";
 
@@ -24,8 +24,10 @@ export function rollCard(
   detail: string,
   expression: string,
   attacker: RollAttacker | null,
+  // How the dice are thrown (an Empowered Spell's rerolls: src/lib/dice.ts).
+  options: RollOptions = {},
 ) {
-  const outcome = rollExpression(expression);
+  const outcome = rollExpression(expression, undefined, options);
   if (!outcome.terms.some((term) => term.kind === "dice")) {
     return outcome;
   }

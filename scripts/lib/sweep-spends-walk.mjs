@@ -55,7 +55,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt", "a spell lies on the holder"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -157,6 +157,12 @@ async function step(rig, scene, name, notes) {
     case "the holder below half hit points":
       world.patch(holder, { currentHp: 30 });
       return { ok: true };
+    // A spell's effect on the holder, for a use that ends one (Cleansing Touch).
+    case "a spell lies on the holder": {
+      const sheet = world.sheet(holder);
+      world.patch(holder, { conditions: [...sheet.conditions, "blessed"], conditionMeta: { ...sheet.conditionMeta, blessed: { spell: "Bless", rounds: 10 } } });
+      return { ok: true };
+    }
     case "the holder raging": {
       if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
       const out = await world.invoke("use_resource", { characterId: holder, resource: "rage" });

@@ -190,6 +190,11 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   if (faded.length) {
     endConcentrationOnFadedSummons(campaign, lines);
   }
+  // A rage the clock ended: its frenzy costs the level of exhaustion, and
+  // what lasted until the rage ended ends (frenzy.ts, rage-bound.ts), as at a
+  // round's wrap.
+  lines.push(...settleFrenzies(campaign));
+  lines.push(...endRageBound(campaign.id).lines);
   if (lines.length) {
     noteAtTable(campaign.id, lines);
   }

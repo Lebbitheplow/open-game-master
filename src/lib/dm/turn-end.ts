@@ -31,6 +31,8 @@ import { endLeashes } from "@/lib/dm/condition-leash";
 import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { echoTurnEnd } from "@/lib/dm/mt-fb-echo";
+import { endBrokenPerformances } from "@/lib/dm/mt-srd-bard";
+import { endPresenceOutOfReach } from "@/lib/dm/mt-srd-barbarian";
 import {
   instancesOf,
   packInstances,
@@ -217,6 +219,12 @@ export function endTurns(
   // Feline Agility's refresh, Inner Radiance's burn (mt-species-turns.ts).
   lines.push(...speciesTurnEnd(campaign, encounterId, combatantIds));
   enemiesChanged ||= leashes.enemiesChanged;
+  // A fear held only within sight and 60 feet of its source (mt-srd-barbarian.ts).
+  const presence = endPresenceOutOfReach(encounterId, combatantIds);
+  lines.push(...presence.lines);
+  enemiesChanged ||= presence.enemiesChanged;
+  // A Countercharm whose bard is silenced, or whose listener no longer hears (mt-srd-bard.ts).
+  lines.push(...endBrokenPerformances(campaign.id));
   // What lasted until a rage now over ended (rage-bound.ts).
   const rageBound = endRageBound(campaign.id);
   lines.push(...rageBound.lines);

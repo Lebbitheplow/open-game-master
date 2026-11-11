@@ -121,6 +121,11 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   if (classId === "cleric") {
     return clericGrants(view, features);
   }
+  // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
+  // at 2nd level, you learn one additional druid cantrip of your choice."
+  if (view.level >= 2 && subclassNamedBare(view.subclass ?? "", "Circle of the Land")) {
+    return { ...NONE, extraCantrips: 1 };
+  }
   return NONE;
 }
 

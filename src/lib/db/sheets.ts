@@ -3,7 +3,9 @@ import { withStartingCharges } from "@/lib/srd/item-charge-rules";
 import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
-import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -941,6 +943,27 @@ export function patchSheet(
     // A Dominate starting or ending moves the character's side (side-watch.ts).
     noteDominationShift(existing.campaignId, existing, next);
   }
+  // A fall unconscious ends a rage and a sacred weapon, whichever route laid
+  // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
+  if (asleep.length) {
+    const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
+    next.conditions = awake.conditions;
+    next.conditionMeta = awake.meta;
+  }
+  // A druid knocked out in a beast's shape is back in their own.
+  if (next.wildShape?.kind === "wildshape" && fellUnconscious(existing.conditions, next.conditions)) {
+    next.wildShape = null;
+  }
+  // A Berserker's rage sets charm and fear aside, and its end gives them back.
+  const suspended = rageSuspension(next);
+  if (suspended) {
+    next.conditions = suspended.conditions;
+    next.conditionMeta = suspended.conditionMeta as typeof next.conditionMeta;
+  }
+  // A warlock's pact weapon out of their hands, and what a death takes with
+  // it (mt-srd-pact.ts).
+  const pactStrays = settlePact(sheetId, existing, next);
   // A flyer knocked prone, or held or exhausted to a speed of 0, falls
   // (flight-watch.ts).
   noteGrounding(existing.campaignId, existing, next);
@@ -1048,6 +1071,11 @@ export function patchSheet(
       sheetId,
     );
   touchCampaign(existing.campaignId);
+  // The minute apart ran out, or the warlock died: the pact weapon is gone
+  // from wherever it lies (mt-srd-pact.ts).
+  if (pactStrays) {
+    vanishStrays(existing.campaignId, sheetId);
+  }
 
   return getSheetById(sheetId);
 }

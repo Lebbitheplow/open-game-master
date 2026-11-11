@@ -180,11 +180,18 @@ export function moveCost(ch: string, traits: MoveTraits = false): number {
 
 // A character's walking traits from their features: a swimming speed, Land's
 // Stride.
+//
+// Unarmored Movement at monk 9 (SRD 5.1): "you gain the ability to move along
+// vertical surfaces and across liquids on your turn without falling during
+// the move". The board's water and its climbs cost such a monk what open
+// ground does; a wall with no climb drawn on it has no height here and stays
+// the GM's.
 export function moveTraitsFrom(features: Array<{ name: string }> = []): MoveTraits {
+  const surfaces = features.some((feature) => /^unarmored movement improvement\b/i.test(feature.name.trim()));
   return {
-    swims: swimsFrom(undefined, features),
+    swims: surfaces || swimsFrom(undefined, features),
     landStride: features.some((feature) => /^land's stride\b/i.test(feature.name.trim())),
-    climbs: climbsFrom(undefined, features),
+    climbs: surfaces || climbsFrom(undefined, features),
   };
 }
 

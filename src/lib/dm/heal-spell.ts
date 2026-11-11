@@ -39,6 +39,7 @@ import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
+import { factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagic";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
@@ -89,7 +90,11 @@ export function castHealingSpell(
   cast: Cast,
 ): HealSpellOutcome | null {
   const authors = spellAuthorsFor(campaign);
-  const facts = spellFactsFor(input.spell, authors);
+  // The caster as they stand now, with the Metamagic they paid for this
+  // spell: Distant Spell's range and Twinned Spell's second creature
+  // (mt-srd-metamagic.ts).
+  const paying = getSheetById(input.caster.id) ?? input.caster;
+  const facts = factsAsCast(paying, spellFactsFor(input.spell, authors));
   if (!facts) {
     // Not a spell anybody published or the table wrote: heal by the amount.
     return null;
@@ -159,7 +164,8 @@ export function castHealingSpell(
   const units = mech?.healPool ? (input.amount ?? 0) : 1;
   if (casting && !casting.paid) {
     const asked = mech?.healPool ? casting.hitPoints : casting.creatures;
-    const reach = castShares(mech, { spellLevel: facts.level, slotLevel: plannedSlot, casterLevel: caster.level });
+    const own = castShares(mech, { spellLevel: facts.level, slotLevel: plannedSlot, casterLevel: caster.level });
+    const reach = own + (mech?.healPool ? 0 : twinExtra(paying, { facts, shares: own, slotLevel: plannedSlot }));
     if (asked > reach) {
       return {
         error: `One casting of ${name} reaches ${reach} ${mech?.healPool ? "hit points" : reach === 1 ? "creature" : "creatures"}, and heal's targets ask ${asked}. Nothing was spent. List what one casting reaches; another casting is its own heal call.`,
@@ -206,7 +212,7 @@ export function castHealingSpell(
     const amount = typeof paid.uses === "number" ? paid.uses : (input.amount ?? 0);
     return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.` };
   }
-  const shared = paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : "";
+  const shared = `${paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : ""}${paid.metamagic ? ` ${String(paid.metamagic)}` : ""}`;
 
   if (mech?.healing) {
     const amount = mech.healing.flat + (mech.healing.perSlotLevel ?? 0) * Math.max(0, slotLevel - facts.level);

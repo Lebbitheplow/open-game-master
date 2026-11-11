@@ -2,7 +2,7 @@
 // clause text and the verdict live in scripts/clauses/srd-classes.json; this
 // file holds how each clause that names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig, TRAINED } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -80,4 +80,29 @@ P["rogue.thiefs-reflexes.surprised"] = async () => {
   assert.equal(t.kit.current()?.characterId, who.id);
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-rogue.mjs", P);
+P["rogue.stroke-of-luck.check"] = async () => {
+  const t = await rig.table();
+  const who = rogue(t, 20);
+  // A 2 on the die: 5 against DC 20 with +3 to Athletics.
+  const failed = await t.roll(who, { kind: "skill_check", skill: "athletics", dc: 20 }, [2]);
+  assert.equal(failed.stored?.total, 5, "the staging: the check fails on a 2");
+  const luck = await t.use(who, "Stroke of Luck");
+  assert.equal(luck.ok, true, luck.error);
+  assert.equal(luck.result.check.total, 23, "the d20 read as a 20");
+  assert.equal(luck.result.check.success, true);
+  assert.equal(t.used(who, "stroke_of_luck"), 1, "the use");
+  const again = await t.roll(who, { kind: "skill_check", skill: "athletics", dc: 20 }, [2]);
+  assert.equal(again.stored?.total, 5);
+  const spent = await t.use(who, "Stroke of Luck");
+  assert.equal(spent.ok, false, "a second failed check was turned before a rest");
+  // A check that was made has nothing to turn.
+  const t2 = await rig.table();
+  const lucky = rogue(t2, 20);
+  const made = await t2.roll(lucky, { kind: "skill_check", skill: "athletics", dc: 10 }, [15]);
+  assert.equal(made.stored?.success, true, "the staging: the check is made");
+  const none = await t2.use(lucky, "Stroke of Luck");
+  assert.equal(none.ok, false, "Stroke of Luck was spent on a check that succeeded");
+  assert.equal(t2.used(lucky, "stroke_of_luck"), 0);
+};
+
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-rogue.mjs", P);

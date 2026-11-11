@@ -11,20 +11,31 @@
 //     reads tranquilityDc for a caster with no spell save DC of their own).
 
 import type { Campaign } from "@/lib/db/campaigns";
-import type { EncounterEnemy } from "@/lib/db/encounters";
+import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/trait-rules";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 
+// A beast or plant that made its save against one druid's Nature's Sanctuary,
+// for the day it is immune to it.
+export const SANCTUARY_PASSED = "unmoved by nature's sanctuary";
+const DAY_ROUNDS = 14400;
+
 export function naturesSanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targetId: string): ToolError | null {
   const target = getSheetById(targetId);
   if (!target || !holdsFeature(target, "nature's sanctuary") || !/\b(beast|plant)\b/.test(textKey(String(enemy.stats.type ?? "")))) {
+    return null;
+  }
+  // "On a successful save, the creature is immune to this effect for 24
+  // hours": the mark its save leaves, read before another is rolled.
+  const meta = enemy.conditionMeta as ConditionMetaMap;
+  if (enemy.conditions.includes(SANCTUARY_PASSED) && instancesOf(meta[SANCTUARY_PASSED]).some((entry) => entry.source === target.id)) {
     return null;
   }
   const dc = computeSheetDerived(target).spellSaveDc ?? 13;
@@ -32,6 +43,17 @@ export function naturesSanctuaryRefusal(campaignId: string, enemy: EncounterEnem
     magical: true,
     record: { detail: `${enemy.displayName}: WIS save against ${target.name}'s Nature's Sanctuary` },
   });
+  if (save.success) {
+    const fresh = getEnemy(enemy.id) ?? enemy;
+    const held = fresh.conditionMeta as ConditionMetaMap;
+    const earlier = fresh.conditions.includes(SANCTUARY_PASSED) ? instancesOf(held[SANCTUARY_PASSED]) : [];
+    const [first, ...rest] = [...earlier, { rounds: DAY_ROUNDS, source: target.id }];
+    patchEnemyConditions(
+      fresh.id,
+      fresh.conditions.includes(SANCTUARY_PASSED) ? fresh.conditions : [...fresh.conditions, SANCTUARY_PASSED],
+      { ...held, [SANCTUARY_PASSED]: rest.length ? { ...first, others: rest } : first } as typeof fresh.conditionMeta,
+    );
+  }
   return save.success
     ? null
     : { error: `${enemy.displayName} fails its WIS save (DC ${dc}) against ${target.name}'s Nature's Sanctuary and cannot attack them: it must choose another target or lose the attack.`, retry: true };

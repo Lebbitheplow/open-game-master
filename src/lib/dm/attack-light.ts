@@ -26,6 +26,7 @@ import { ambientAt, magicalDarknessAt } from "@/lib/battlemap/scene";
 import { chebyshev, tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
 import { breakDown } from "@/lib/dm/calendar";
 import { sensesFromBlock, sensesFromText, type Senses } from "@/lib/srd/senses";
+import { formSenses } from "@/lib/srd/mt-srd-form-senses";
 import { weatherObscurementTiles } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { lightSourcesWithZones, lightsWithZones, zoneHidesFrom } from "@/lib/dm/zone-rules";
@@ -36,7 +37,13 @@ import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
 import { tilesApart } from "@/lib/dm/board-reach";
 
-export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[] }): Senses {
+export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[]; wildShape?: CharacterSheet["wildShape"] }): Senses {
+  // A worn form sees by its own senses alone (mt-srd-form-senses.ts); True
+  // Seeing is a spell on the creature, whatever its shape.
+  const worn = formSenses(sheet);
+  if (worn) {
+    return { ...worn, truesight: Math.max(worn.truesight, Math.floor(conditionTruesightFeet(sheet.conditions ?? []) / 5)) };
+  }
   const texts = [...sheet.features.map((feature) => feature.name), sheet.race];
   const senses = sensesFromText(texts);
   // True Seeing's truesight, in squares (condition-effects-last.ts).

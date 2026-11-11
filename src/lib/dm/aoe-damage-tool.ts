@@ -97,7 +97,7 @@ export const aoeDamageTool: ToolDef = {
           type: "array",
           items: { type: "string" },
           description:
-            "Sculpt Spells only: up to 1 + spell level characterIds from GAME STATE; omit: all caught, [] none. Those spared succeed on the save and take nothing.",
+            "Sculpt Spells or Careful Spell: characterIds from GAME STATE to spare; omit: all caught, [] none. They succeed on the save; Sculpt Spells' take nothing.",
         },
         reason: { type: "string", description: "Short in-fiction cause." },
         ...ZONE_ARGS,

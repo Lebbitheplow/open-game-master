@@ -88,7 +88,7 @@ export function castAttackSpell(plan: AttackPlan): ToolError | null {
     sheets,
     sheetsById,
   ).result;
-  for (const line of [cast.slot, cast.cost, cast.shares, cast.continuing, cast.droppedConcentration]) {
+  for (const line of [cast.slot, cast.cost, cast.shares, cast.continuing, cast.droppedConcentration, cast.metamagic]) {
     if (typeof line === "string") {
       plan.context.notes.push(line);
     }

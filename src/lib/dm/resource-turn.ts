@@ -15,6 +15,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
+import { withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
 import { ACTION_SURGED, RAGE_ENTERED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
@@ -59,11 +60,9 @@ export function prepareResourceCharge(
   if (!def?.action || !encounter || (encounter.kind ?? "fight") !== "fight") {
     return FREE;
   }
-  // ODM's rule: asking for Wild Shape while shaped drops the form and costs
-  // nothing (src/lib/dm/resource-tools.ts).
-  if (def.effect.kind === "wild_shape" && sheet.wildShape) {
-    return FREE;
-  }
+  // Asking for Wild Shape while shaped drops the form and spends no use
+  // (src/lib/dm/resource-tools.ts); in a fight it is the bonus action the
+  // SRD gives the early revert, which counterCost answers below.
   // The cost the Hand's card shows, from the same place (counter-rules.ts):
   // Combat Wild Shape (Circle of the Moon) makes the change a bonus action.
   const action = override ? def.action : counterCost(def, sheet);
@@ -82,7 +81,10 @@ export function prepareResourceCharge(
   if (readied) {
     return { commit: () => readied.release() };
   }
-  const able = canAct({ sheet, encounter, kind });
+  // Entering the rage is the one thing Feral Instinct's surprised first turn
+  // allows (mt-srd-barbarian.ts).
+  const entersRage = def.effect.kind === "condition" && def.effect.condition === RAGING;
+  const able = canAct({ sheet: entersRage ? withoutRageFirst(sheet) : sheet, encounter, kind });
   if (!able.ok) {
     return toolError(able);
   }

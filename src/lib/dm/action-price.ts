@@ -71,15 +71,18 @@ export function priceAction(
   budget: TurnBudget | null,
   action: (typeof ACTIONS)[number],
   bonus: boolean,
-  context: { allyDown?: boolean } = {},
+  context: { allyDown?: boolean; skill?: string } = {},
 ): Price | ToolError {
   const move = MOVES.has(action) ? (action as MoveAction) : null;
-  // Fast Hands (Thief 3): Use an Object with Cunning Action's bonus action.
-  if (bonus && action === "use_object" && hasFastHands(sheet)) {
+  // Fast Hands (Thief 3): Use an Object with Cunning Action's bonus action,
+  // and "a Dexterity (Sleight of Hand) check" with it (SRD 5.1): the check an
+  // improvised action makes with that skill.
+  const sleight = action === "improvise" && context.skill === "sleight_of_hand";
+  if (bonus && (action === "use_object" || sleight) && hasFastHands(sheet)) {
     if (!budget) {
       return { budget: null, feature: "Fast Hands" };
     }
-    const spent = spendAction(budget, "bonus", "Fast Hands (use an object)", sheet.name);
+    const spent = spendAction(budget, "bonus", sleight ? "Fast Hands (Sleight of Hand)" : "Fast Hands (use an object)", sheet.name);
     return spent.ok
       ? { budget: spent.budget, note: "Fast Hands: their bonus action", feature: "Fast Hands" }
       : toolError(spent);

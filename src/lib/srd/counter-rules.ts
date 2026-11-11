@@ -13,6 +13,7 @@
 // at one door alone.
 //
 // Pure.
+import { spellsOn } from "@/lib/srd/mt-srd-spells-on";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { ResourceDef, SaveTerms } from "@/lib/srd/class-resources";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -21,7 +22,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resourceDef } from "@/lib/srd/class-resources";
 
-type GateSheet = Pick<CharacterSheet, "name" | "currentHp" | "maxHp" | "conditions"> & Partial<Pick<CharacterSheet, "conditionMeta" | "exhaustion" | "wildShape">>;
+type GateSheet = Pick<CharacterSheet, "name" | "currentHp" | "maxHp" | "conditions"> & Partial<Pick<CharacterSheet, "conditionMeta" | "exhaustion" | "wildShape" | "concentratingOn">>;
 
 // `inFight`: a fight is on (true), none is (false), or the caller cannot
 // tell (null: an older server's Hand), when the fight-bound rules are left
@@ -38,6 +39,12 @@ export function counterGate(def: ResourceDef, sheet: GateSheet, inFight: boolean
   }
   if (def.fightOnly && inFight === false) {
     return `${def.displayName} works on the creatures of a fight; there is none.`;
+  }
+  // Cleansing Touch ends a spell, and needs one to end. The card is the
+  // paladin's own (use_resource names an ally in targetCharacterId, and the
+  // engine reads that ally's spells: dm/mt-srd-paladin.ts).
+  if (def.id === "cleansing_touch" && !spellsOn(sheet).size) {
+    return `No spell lies on ${sheet.name} for Cleansing Touch to end.`;
   }
   // A self effect already running is not entered again (a rage while raging).
   const running = def.effect.kind === "condition" || (def.effect.kind === "buff" && def.effect.target !== "ally" && !def.effect.variants?.length) ? def.effect.condition : null;
@@ -67,8 +74,12 @@ export function counterSaveDc(
 // withStatedCost), with the one feature that changes another's cost: Combat
 // Wild Shape (Circle of the Moon) makes Wild Shape a bonus action. Its card
 // said action and stayed open with the bonus action spent.
-export function counterCost(def: ResourceDef, sheet: { features?: ReadonlyArray<{ name: string }>; feats?: readonly string[] }): ResourceDef["action"] {
-  if (def.effect.kind === "wild_shape" && holdsFeature(sheet, "Combat Wild Shape")) {
+//
+// And the one use that costs something else: a druid already in a shape is
+// asking to leave it, and "You can revert to your normal form earlier by
+// using a bonus action on your turn" (SRD 5.1, Wild Shape).
+export function counterCost(def: ResourceDef, sheet: { features?: ReadonlyArray<{ name: string }>; feats?: readonly string[]; wildShape?: unknown }): ResourceDef["action"] {
+  if (def.effect.kind === "wild_shape" && (sheet.wildShape || holdsFeature(sheet, "Combat Wild Shape"))) {
     return "bonus";
   }
   return def.action;

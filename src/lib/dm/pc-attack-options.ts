@@ -10,6 +10,8 @@ import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import type { Advantage } from "@/lib/dice";
 import type { TurnBudget } from "@/lib/dm/action-budget";
+import { wieldsOnlyMonkWeapons } from "@/lib/dm/mt-srd-monk";
+import { attackedWith } from "@/lib/dm/mt-srd-ranger";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { resourceLeft } from "@/lib/dm/attack-rules";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
@@ -46,11 +48,11 @@ const hasFeature = (sheet: Pick<CharacterSheet, "features">, name: string) =>
 const hasCondition = (sheet: Pick<CharacterSheet, "conditions">, name: string) =>
   sheet.conditions.some((entry) => entry.trim().toLowerCase() === name);
 
-// Martial Arts works only while the monk wears no armor and carries no
-// shield (SRD 5.1, Martial Arts).
+// Martial Arts works only while the monk wears no armor, carries no shield
+// and holds no weapon that is not a monk weapon (SRD 5.1, Martial Arts).
 export function martialArtsApplies(sheet: CharacterSheet): boolean {
   const worn = acBreakdownFor(sheet);
-  return !worn.armorName && !worn.shieldName;
+  return !worn.armorName && !worn.shieldName && wieldsOnlyMonkWeapons(sheet);
 }
 
 export type AttackOptions = {
@@ -248,6 +250,7 @@ function hordeBreakerProblem(input: {
   sheet: CharacterSheet;
   budget: TurnBudget | null;
   weaponAttack: boolean;
+  profile: AttackProfile;
   args: { bonusAttack?: AnyBonusAttack; offHand?: boolean };
   besideEarlierTarget?: (earlierId: string) => boolean;
   creaturesBeside?: (earlierId: string) => string[];
@@ -273,7 +276,12 @@ function hordeBreakerProblem(input: {
   if (!earlier.length) {
     return { error: "Horde Breaker's extra attack follows a weapon attack on another creature this turn; attack that creature first.", retry: true };
   }
-  if (input.besideEarlierTarget && !earlier.some((id) => input.besideEarlierTarget?.(id))) {
+  // "another attack with the same weapon" (mt-srd-ranger.ts).
+  const sameWeapon = earlier.filter((id) => attackedWith(budget, id, input.profile.weapon));
+  if (!sameWeapon.length) {
+    return { error: `Horde Breaker's extra attack is made with the same weapon as the attack it follows, and ${sheet.name} has attacked no other creature with ${input.profile.weapon} this turn. They can make it with the weapon they attacked with.`, retry: true };
+  }
+  if (input.besideEarlierTarget && !sameWeapon.some((id) => input.besideEarlierTarget?.(id))) {
     const beside = [...new Set(earlier.flatMap((id) => input.creaturesBeside?.(id) ?? []))];
     return {
       error: beside.length

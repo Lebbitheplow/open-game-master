@@ -5,6 +5,7 @@
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
 import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
+import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
@@ -40,7 +41,6 @@ import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { holdsFeature } from "@/lib/srd/feature-names";
 import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
@@ -379,6 +379,8 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
       stunShot,
       feats: spendDamageFeats(scene, record, asked),
       rerollBelow: record.rerollBelow ?? 0,
+      // Empowered Spell paid for the spell this attack is (mt-srd-metamagic.ts).
+      ...(record.spell ? empoweredRoll(campaign, sheet.id) : {}),
       ...(stunDc !== undefined ? { stunDc } : {}),
       ...(record.maneuver && maneuverPaid ? { maneuver: true } : {}),
       ...(critGear ? { critGear: true } : {}),

@@ -15,7 +15,9 @@
 // Split from action-tools.ts, which re-exports the handler.
 
 import { heldAuthored } from "@/lib/srd/authored-effects";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { catchProblem } from "@/lib/dm/mt-srd-monk";
+import { cuttingWordsImmunity } from "@/lib/dm/mt-srd-reach";
+import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -219,6 +221,10 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
     return { error: "The missile can be thrown back at a living enemy from GAME STATE; it was caught and kept." };
   }
   // Not across a swallower's wall (swallow.ts).
+  const uncaught = catchProblem(getSheetById(sheet.id) ?? sheet, record.attack ?? "missile");
+  if (uncaught) {
+    return { error: `${uncaught} No ki was spent.` };
+  }
   const walled = swallowCoverBetween(sheet.id, enemy.id);
   if (walled) {
     return { error: `${walled} The missile was caught and kept.` };
@@ -287,6 +293,12 @@ function cuttingWords(ctx: Ctx): ToolResult {
   // "A creature that you can see" makes the roll.
   const unseen = unseenRefusal(encounter?.id, sheet, record.attacker, "Cutting Words");
   if (unseen) return unseen;
+  // "The creature is immune if it can't hear you or if it's immune to being
+  // charmed" (mt-srd-reach.ts).
+  const immune = cuttingWordsImmunity(record.attacker.id ? getFoe(record.attacker.id) : null);
+  if (immune) {
+    return { error: `${record.attacker.name} ${immune}, so Cutting Words does nothing to it. Nothing was spent.`, refused: "rules" };
+  }
   // The words reach no creature across a swallower's wall (swallow.ts).
   const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
   if (walled) {

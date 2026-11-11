@@ -401,7 +401,7 @@ export function handleTakeAction(
   const allyDown = sheets.some((entry) => entry.id !== sheet.id && (getSheetById(entry.id) ?? entry).currentHp <= 0 && !(getSheetById(entry.id) ?? entry).deathSaves?.dead);
   const price: Price | ToolError = readied
     ? { budget: null }
-    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown });
+    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown, skill: args.skill });
   if ("error" in price) {
     return toolError(price);
   }

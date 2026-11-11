@@ -1,3 +1,4 @@
+import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
 import { sleeplessBy } from "@/lib/srd/mt-species-traits";
@@ -414,7 +415,8 @@ export function handleTakeRest(
       turnId,
       sheetId,
       requested,
-      songDie,
+      // "who can hear your performance" (mt-srd-bard.ts).
+      songDie: songDie && hearsSong(getSheetById(sheetId) ?? { conditions: [] }) ? songDie : null,
       chefDie,
       reason,
       requestedBy: "dm",

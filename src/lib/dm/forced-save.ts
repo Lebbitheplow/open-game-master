@@ -9,6 +9,7 @@
 // in here; cast_at_player and cast_at_enemy are meant to.
 
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
+import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
@@ -346,7 +347,8 @@ export function rollCharacterSave(
   const covered = saveCoverBonus(campaign.id, sheet.id, ability, extra);
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
+  // Land's Stride: advantage against Entangle and its kind (mt-srd-druid.ts).
+  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {

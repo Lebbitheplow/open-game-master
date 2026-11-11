@@ -34,6 +34,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbilityId } from "@/lib/srd/condition-effects";
 import { castRedirect } from "@/lib/dm/cast-redirect";
 import { overchannelProblem, payOverchannel, sculptedIds } from "@/lib/dm/caster-features";
+import { carefulIds, factsAsCast } from "@/lib/dm/mt-srd-metamagic";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
@@ -69,6 +70,9 @@ export type AoeSpellPlan = {
   corrections: string[];
   // Characters an evoker's Sculpt Spells spares (src/lib/dm/caster-features.ts).
   sculpted: string[];
+  // Characters a sorcerer's Careful Spell protects: they succeed on the save
+  // without rolling it (src/lib/dm/mt-srd-metamagic.ts).
+  careful: string[];
 };
 
 export function planAoeSpell(
@@ -116,7 +120,8 @@ export function planAoeSpell(
   }
   const authors = spellAuthorsFor(campaign);
   const resolved = spellMechanicsFor({ spell: input.spell, userIds: authors });
-  const facts = spellFactsFor(input.spell, authors);
+  // The range as this caster casts it (Distant Spell: mt-srd-metamagic.ts).
+  const facts = factsAsCast(caster, spellFactsFor(input.spell, authors));
   const mech = resolved?.mech ?? null;
   const name = resolved?.name ?? facts?.name ?? input.spell;
   const spellLevel = resolved?.spellLevel ?? facts?.level ?? 1;
@@ -257,6 +262,9 @@ export function planAoeSpell(
   if (cast.repeat) {
     corrections.push(String(cast.repeat));
   }
+  if (cast.metamagic) {
+    corrections.push(String(cast.metamagic));
+  }
   let damage: string | null = typeof input.damage === "number" ? String(input.damage) : (input.damage ?? null);
   // An "auto" spell rolls no save; the ability is a placeholder nobody rolls.
   let saveAbility: SaveAbilityId = input.saveAbility ?? mech?.save ?? "dex";
@@ -356,5 +364,7 @@ export function planAoeSpell(
       input.characters.map((sheet) => sheet.id),
       input.sparedCharacterIds,
     ),
+    // Read off the caster as they stood before the cast, which used the mark.
+    careful: mech?.resolution === "auto" ? [] : carefulIds(caster, input.characters.map((sheet) => sheet.id), input.sparedCharacterIds),
   };
 }

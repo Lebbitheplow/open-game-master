@@ -18,6 +18,7 @@ import { splitDamageExpression, typedRollExpression, typedShares, type SpellDice
 import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
+import { empoweredLine, empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
@@ -104,9 +105,15 @@ export function landSpellDamage(input: {
   // The card shows the dice as rolled; the save halves or stops what lands.
   // A maximized blow rolls no dice, so it has no card.
   const shared = sharedRoll !== undefined && !plantMaximum ? (parts.length > 1 && input.sharedSecond !== undefined ? [sharedRoll - input.sharedSecond, input.sharedSecond] : [sharedRoll]) : null;
-  const outcome = shared || parts.every((part) => part.atMaximum)
+  const rolls = !(shared || parts.every((part) => part.atMaximum));
+  const empowered = rolls ? empoweredRoll(campaign, sheet.id) : {};
+  const outcome = !rolls
     ? null
-    : rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name });
+    : // Empowered Spell paid for this cast throws its low dice again (mt-srd-metamagic.ts).
+      rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name }, empowered);
+  if (outcome && empowered.empower) {
+    base.empowered = empoweredLine(empowered.empower);
+  }
   const shares = shared ?? typedShares(outcome, parts);
   const rolledTotal = shares.reduce((sum, share) => sum + share, 0);
   const total = rolledTotal + riders.flat + riders.flatSecond;

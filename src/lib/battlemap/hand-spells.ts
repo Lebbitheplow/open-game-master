@@ -1,6 +1,7 @@
 // Spell and class-feature cards for the Hand (docs/visual-overhaul-plan.md
 // 5.2): what a prepared spell or a limited-use feature costs, rolls and
 // spends, read from the same tables the cast and use_resource tools read.
+import { cardMetamagic } from "@/lib/dm/mt-srd-metamagic-logic";
 import { takesTheDead } from "@/lib/srd/dead-targets";
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -34,7 +35,7 @@ import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { authoredSpellRow, castShares, parseSpellMech, spellMechFor, type SpellMech } from "@/lib/srd/spell-mechanics";
 import { baseHealingDice, scaledSpellDice } from "@/lib/srd/spell-scaling";
 import { mechSpellDamage } from "@/lib/srd/spell-dice";
-import { bakedSpellMech } from "@/lib/content/baked-spells";
+import { bakedSpellDuration, bakedSpellMech } from "@/lib/content/baked-spells";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { areaFor, blastAreaFor } from "@/lib/battlemap/hand-area";
 import { summonPick } from "@/lib/battlemap/hand-summon";
@@ -412,6 +413,19 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
+  // The Metamagic paid for the next spell, as the cast will apply it: the
+  // same reader the cast paths ask (src/lib/dm/mt-srd-metamagic-logic.ts, pure:
+  // the Hand reads no database, so the duration is the SRD's baked one).
+  const metamagic = stored
+    ? null
+    : cardMetamagic(sheet, facts, {
+        shares: castShares(mech, { spellLevel: fact.level, slotLevel: slotLevel ?? null, casterLevel: sheet.level }),
+        slotLevel: slotLevel ?? null,
+        rolls: Boolean(damage) && !heals,
+        saves: Boolean(save) && Boolean(mech.area || mech.areaFeet),
+        rounds: () => mech.buff?.rounds ?? mech.condition?.rounds ?? bakedSpellDuration(name),
+      });
+  if (metamagic?.notes.length) notes.unshift(...metamagic.notes);
   if (stored) {
     notes.unshift(stored.item?.note ?? (stored.holds ? `Out of ${stored.ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.` : `Out of ${stored.ring}, with no slot.`));
   }
@@ -423,7 +437,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     type,
     name: stored?.item?.name ?? (stored ? ringCardName(name) : name),
     cost: shownCost,
-    range: feet(fact.range),
+    range: metamagic?.range ? feet(rangeText(metamagic.range)) : feet(fact.range),
     dice,
     roll,
     rules: notes.slice(0, 2).join(" "),
@@ -446,7 +460,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // A touch spell is a melee spell attack with touch reach (the engine's
     // isMeleeSpellAttack): it previews and aims like a swing.
     melee,
-    ...(melee ? { range: "Touch" } : {}),
+    ...(melee && !metamagic?.range ? { range: "Touch" } : {}),
     disabled: null,
     spent: false,
     compose: false,

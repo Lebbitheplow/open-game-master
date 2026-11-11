@@ -18,6 +18,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
+import { factsAsCast } from "@/lib/dm/mt-srd-metamagic";
 import { spellWard } from "@/lib/dm/zone-rules";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
@@ -102,13 +103,15 @@ export function castToNoEffect(reason: string) {
 // higher slot, the dice are the slot's.
 export function spellAttackReach(
   campaign: Campaign,
-  sheet: Pick<CharacterSheet, "level"> & Partial<Pick<CharacterSheet, "feats" | "features">>,
+  sheet: Pick<CharacterSheet, "level"> & Partial<Pick<CharacterSheet, "feats" | "features" | "conditions">>,
   spell: string,
   profile: AttackProfile,
   slotLevel: number | null,
 ): AttackProfile {
   const authors = spellAuthorsFor(campaign);
-  const facts = spellFactsFor(spell, authors);
+  // Distant Spell paid for this cast doubles the range, and gives a touch
+  // spell 30 feet (mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet.conditions ? { conditions: sheet.conditions } : null, spellFactsFor(spell, authors));
   // Spell Sniper doubles an attack-roll spell's range (feat-combat.ts).
   const factor = spellRangeFactor(sheet);
   // SRD 5.1, Eldritch Spear (a warlock invocation): "When you cast eldritch

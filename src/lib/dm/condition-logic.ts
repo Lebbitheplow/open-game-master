@@ -74,6 +74,12 @@ export type ConditionMeta = {
   // Lasts while this barbarian rages: "until the rage ends" (Call the Hunt,
   // Ancestral Protectors), src/lib/dm/rage-bound.ts.
   whileRagingOf?: string;
+  // The weapon the effect rides (Sacred Weapon): gone from the sheet, the
+  // effect ends (src/lib/dm/mt-srd-unconscious.ts).
+  weapon?: string;
+  // Ends when its holder ends a turn farther than this from the source, or
+  // out of its sight (Intimidating Presence), src/lib/dm/mt-srd-barbarian.ts.
+  turnEndBeyondFeet?: number;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.

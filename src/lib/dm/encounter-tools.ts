@@ -41,6 +41,7 @@ import {
   setEncounterAway,
 } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
@@ -470,6 +471,11 @@ function handleStartEncounter(
     encounter.surprisedIds = ambush.surprisedIds;
     ambushLines = ambush.lines;
   }
+  // Feral Instinct: a surprised barbarian keeps their first turn if they rage
+  // first (mt-srd-barbarian.ts).
+  const feral = feralInstinctOpening(encounter.surprisedIds, sheets);
+  encounter.surprisedIds = feral.surprisedIds;
+  ambushLines = [...ambushLines, ...feral.lines];
   const partySurprised = sheets.some((sheet) => encounter.surprisedIds.includes(sheet.id));
   // Legendary pools and the lair flag (docs/vtt-parity-implementation-
   // plan.md 4.1), written with the fight so the tracker shows them at once.

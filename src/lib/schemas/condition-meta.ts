@@ -84,6 +84,11 @@ const conditionInstanceSchema = z.object({
     // Ends when the rest it was raised for ends, short or long (Hearth of
     // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
     untilRestEnds: z.boolean().optional(),
+    // The weapon the effect rides (Sacred Weapon): src/lib/dm/mt-srd-unconscious.ts.
+    weapon: z.string().trim().min(1).max(80).optional(),
+    // Ends when its holder ends a turn farther than this from the source, or
+    // out of its sight (Intimidating Presence): src/lib/dm/mt-srd-barbarian.ts.
+    turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
     // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
     whileRagingOf: z.string().trim().min(1).max(80).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
