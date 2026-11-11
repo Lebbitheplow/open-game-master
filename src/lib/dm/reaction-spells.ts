@@ -14,6 +14,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellEngineName, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { characterSenses, sensesReaching } from "@/lib/dm/attack-light";
 import { enemyActedThisRound } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -409,7 +410,9 @@ function checkCounterspell(ctx: Ctx): Counter | ToolError {
   if (sheet.conditions.some((entry) => entry.toLowerCase() === "blinded")) {
     return { error: `${sheet.name} is blinded: Counterspell needs a creature they can see. Nothing was spent.`, refused: "rules" };
   }
-  const unseen = enemy.conditions.some((entry) => entry.toLowerCase() === "invisible") && !seesInvisible(sheet);
+  // Revelation in Flesh shows the invisible within 60 feet (the one sight rule, attack-light.ts sensesReaching).
+  const unveiled = sensesReaching(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id }).invisible;
+  const unseen = enemy.conditions.some((entry) => entry.toLowerCase() === "invisible") && !seesInvisible(sheet) && !unveiled;
   if (unseen) {
     return { error: `${enemy.displayName} is invisible to ${sheet.name}: Counterspell needs a creature they can see. Nothing was spent.`, refused: "rules" };
   }

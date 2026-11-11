@@ -32,9 +32,11 @@ import { conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
 import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
-import { tilesApart } from "@/lib/dm/board-reach";
+import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
+import { revelationSightTiles, unveilsAt, type UnveilingSense } from "@/lib/dm/ar-ws-revelation";
+import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 
-export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[] }): Senses {
+export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[] }): Senses & UnveilingSense {
   const texts = [...sheet.features.map((feature) => feature.name), sheet.race];
   const senses = sensesFromText(texts);
   // True Seeing's truesight, in squares (condition-effects-last.ts).
@@ -42,7 +44,9 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   const named = Math.max(senses.darkvision, darkvisionTilesFromText(texts));
   // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night).
   const authored = Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
-  return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) };
+  // Revelation in Flesh's sight of the invisible (ar-ws-revelation.ts).
+  const unveils = revelationSightTiles(sheet.conditions);
+  return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing), ...(unveils ? { unveils } : {}) };
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {
@@ -65,9 +69,12 @@ export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?
 // The one rule every sight check reads: an attack roll (condition-logic.ts
 // attackContext), "a creature you can see" (authored-saves.ts), and who
 // provokes an opportunity attack.
-export function sensesReaching(encounterId: string | null, viewer: { refId: string; senses: Senses }, seen: { refId: string }): PastSight {
+export function sensesReaching(encounterId: string | null, viewer: { refId: string; senses: Senses & UnveilingSense }, seen: { refId: string }): PastSight {
   const { blindsight, truesight } = viewer.senses;
-  if (!blindsight && !truesight) {
+  // A sense that shows the invisible alone (Revelation in Flesh): its reach,
+  // and no total cover between the two (ar-ws-revelation.ts).
+  const unveils = viewer.senses.unveils ?? 0;
+  if (!blindsight && !truesight && !unveils) {
     return { blindsight: false, truesight: false };
   }
   const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
@@ -75,7 +82,12 @@ export function sensesReaching(encounterId: string | null, viewer: { refId: stri
   const to = map ? getTokenByRef(map.id, seen.refId) : null;
   const apart = from && to ? tilesApart(from, to) : null;
   const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
-  return { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+  const past: PastSight = { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+  if (!unveils) {
+    return past;
+  }
+  const clear = !map || !from || !to || hasLineOfSightBetween(map.terrain, map.width, spaceOf(from), spaceOf(to));
+  return { ...past, invisible: unveilsAt(unveils, apart, clear) };
 }
 
 // Both ways round, for an attack: what the attacker's senses reach of the

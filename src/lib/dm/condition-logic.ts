@@ -357,14 +357,16 @@ function has(conditions: string[], names: string[]): string | null {
 // (attack-light.ts sensesReaching measures it on the board): blindsight
 // perceives without eyes, so neither blindness nor invisibility stops it;
 // truesight sees the invisible.
-export type PastSight = { blindsight?: boolean; truesight?: boolean };
+// `invisible`: a sense that shows the invisible and nothing more reaches it
+// (Revelation in Flesh's 60 feet, src/lib/dm/ar-ws-revelation.ts).
+export type PastSight = { blindsight?: boolean; truesight?: boolean; invisible?: boolean };
 
 // Whether a viewer sees an invisible creature: See Invisibility or True
 // Seeing among its conditions, or blindsight or truesight that reaches it.
 // The one rule an attack roll, a Dodge, "a creature you can see" and an
 // opportunity attack all read.
 export function seesInvisible(viewerConditions: string[], senses: PastSight = {}): boolean {
-  return Boolean(senses.blindsight || senses.truesight || conditionSeesInvisible(viewerConditions));
+  return Boolean(senses.blindsight || senses.truesight || senses.invisible || conditionSeesInvisible(viewerConditions));
 }
 
 // Why the conditions keep one creature from seeing another, or null: it is

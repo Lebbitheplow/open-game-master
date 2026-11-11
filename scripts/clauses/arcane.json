@@ -1929,9 +1929,9 @@
    },
    {
     "c": "you see any invisible creature within 60 feet that isn't behind total cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an attack on an invisible creature under \"revelation in flesh (see)\" was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-revelation.ts revelationSightTiles and unveilsAt, read by attack-light.ts characterSenses and sensesReaching (the one sight rule: attack rolls, 'a creature you can see', opportunity attacks, Counterspell, the Hand's edges). Total cover is no clear line on the board's walls",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-see"
    },
    {
     "c": "you gain a flying speed equal to your walking speed and can hover",
@@ -1947,9 +1947,9 @@
    },
    {
     "c": "or you can squeeze through a space as narrow as an inch and spend 5 feet of movement to escape nonmagical restraints or a grapple",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an escape from a grapple under \"revelation in flesh (squeeze)\" was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-squeeze.ts squeezeSlip at take_action escape (action-tools.ts handleTakeAction) and the Hand's Escape card (ar-ws-revelation.ts squeezeSlips). Rulings: the 5 feet are measured against the speed once the hold is gone; a spell's restraint or no movement left gets the ordinary escape (the action and its check), not the slip; squeezing through an inch-wide space is the GM's to narrate, the board has no such space",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-squeeze"
    }
   ]
  },

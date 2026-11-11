@@ -90,7 +90,7 @@ export function targetEdges(input: {
     };
     const enemy = getEnemy(enemyId);
     const senses = sheet && enemy ? attackSenses(encounterId, { refId: characterId, senses: characterSenses(sheet) }, { refId: enemyId, senses: enemySenses(enemy) }) : null;
-    if (senses && [senses.attackerSenses, senses.targetSenses].some((side) => side.blindsight || side.truesight)) {
+    if (senses && [senses.attackerSenses, senses.targetSenses].some((side) => side.blindsight || side.truesight || side.invisible)) {
       edges[enemyId].senses = { attacker: senses.attackerSenses, target: senses.targetSenses };
     }
   }
