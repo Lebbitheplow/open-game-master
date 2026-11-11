@@ -400,10 +400,23 @@ export function probes(rig, shared) {
       const text = sliceFeatures().get("bard::Spiritual Focus")?.text ?? "";
       assert.match(text, /\bd6\b|1d6/, `the words name no die, and the row rolls a d6 from 6th level: "${text}"`);
     },
+    // "roll on the Spirit Tales table using your Bardic Inspiration die ...
+    // you can use an action to choose one creature you can see within 30
+    // feet": a 1 tells The Burned Bridge (src/lib/dm/spirit-tales.ts), which
+    // burns the creature for two dice on a failed save and is then let go.
     "tales-door": async () => {
-      await stage(spirits());
-      const out = await spend(spirits(), "Tales from Beyond");
+      const foes = await stage(spirits());
+      const out = await spend(spirits(), "Tales from Beyond", {}, [1]);
       assert.equal(out.ok, true, `use_resource "Tales from Beyond": ${String(out.error).slice(0, 160)}`);
+      assert.ok(sheet(spirits()).conditions.includes("spirit tale (1)"), "the tale is kept");
+      kit.saveEncounter({ ...world.encounter(), turnBudget: null });
+      kit.freshTurn();
+      const before = foe(foes[0]).currentHp;
+      const told = await spend(spirits(), "Release Tale", { targetEnemyId: foes[0].id }, [1, 3, 3]);
+      assert.equal(told.ok, true, told.error);
+      assert.equal(before - foe(foes[0]).currentHp, 6, `two dice of fire on a failed save: ${show(told).slice(0, 200)}`);
+      assert.ok(!sheet(spirits()).conditions.includes("spirit tale (1)"), "the tale is let go");
+      assert.equal((await spend(spirits(), "Release Tale", { targetEnemyId: foes[0].id })).ok, false, "nothing held to tell again");
     },
     // "session" is staged in sweep-clauses-arcane-bard-wbf.mjs: the probe that
     // stood here asked for a 3rd-level spell from a session of one, which the
@@ -413,7 +426,6 @@ export function probes(rig, shared) {
   const infectiousRest = rests(["bard", "College of Eloquence"], "sub_infectious_inspiration", "long");
 
   const KNOWN = {
-    "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
   };
   return { PROBES, KNOWN };
 }

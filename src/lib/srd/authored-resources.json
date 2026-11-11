@@ -1397,6 +1397,19 @@
    "slotFallback": 3
   },
   {
+   "id": "sub_whispers_of_the_dead",
+   "displayName": "Whispers of the Dead",
+   "match": [
+    "whispers of the dead"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "none",
+   "outOfFight": true,
+   "guidance": "After each short or long rest, one skill or tool proficiency the Phantom chooses (variant: the skill or the tool), kept until the next choice replaces it. A skill check and a tool check read it as the sheet's own."
+  },
+  {
    "id": "sub_manifest_mind",
    "displayName": "Manifest Mind",
    "match": [
@@ -1990,7 +2003,33 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "An hour with tinker's tools conjures any set of artisan's tools needed, lasting until the next use."
+   "guidance": "With thieves' tools or artisan's tools in hand and an hour out of a fight, one set of artisan's tools (variant: which) is made and put in the pack; the set the last use made vanishes. The server takes the hour and spends the use itself.",
+   "outOfFight": true,
+   "fx": {
+    "kind": "buff",
+    "condition": "right tool",
+    "rounds": 0,
+    "variants": [
+     "right tool (alchemist's supplies)",
+     "right tool (brewer's supplies)",
+     "right tool (calligrapher's supplies)",
+     "right tool (carpenter's tools)",
+     "right tool (cartographer's tools)",
+     "right tool (cobbler's tools)",
+     "right tool (cook's utensils)",
+     "right tool (glassblower's tools)",
+     "right tool (jeweler's tools)",
+     "right tool (leatherworker's tools)",
+     "right tool (mason's tools)",
+     "right tool (painter's supplies)",
+     "right tool (potter's tools)",
+     "right tool (smith's tools)",
+     "right tool (tinker's tools)",
+     "right tool (weaver's tools)",
+     "right tool (woodcarver's tools)"
+    ]
+   },
+   "requires": "tools_in_hand"
   },
   {
    "id": "art_experimental_elixir",

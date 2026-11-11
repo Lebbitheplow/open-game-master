@@ -18,5 +18,4 @@ export const KNOWN = {
 };
 
 export const SKIP = {
-  "born-to-the-saddle-fall": "a hero's fall has no door of its own to call: falling damage to a character is the GM's apply_damage and set_condition prone, so there is nothing to run that could stand them up",
 };

@@ -59,6 +59,8 @@ import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { arcaneShot } from "@/lib/dm/mt-fb-arcane-shot";
 import { echoSpend } from "@/lib/dm/mt-fb-echo";
 import { mindSpend } from "@/lib/dm/scribe-mind";
+import { heldTale, tellTale } from "@/lib/dm/spirit-tales";
+import { magicAwareness, unerringEye } from "@/lib/dm/sense-magic";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
@@ -386,7 +388,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
           conditionMeta: {
             ...cleared.meta,
             [condition]: {
-              ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.untilLongRest ? { untilLongRest: true } : { rounds: does.rounds }),
+              ...(does.lasting ? {} : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.untilLongRest ? { untilLongRest: true } : { rounds: does.rounds }),
               ...(quarry ? { quarry: quarry.id } : {}),
               ...(does.endsIfIncapacitated ? { endsIfIncapacitated: true } : {}),
             },
@@ -396,6 +398,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         lines.push(
           quarry
             ? `${sheet.name}'s ${condition} is on ${quarry.displayName}: their attacks against it carry it.`
+            : does.lasting
+              ? `${sheet.name} is ${condition} until the feature is used again.`
             : does.untilLongRest
               ? `${sheet.name} is ${condition} until it is used or they finish a long rest.`
             : `${sheet.name} is ${condition} for ${does.rounds} rounds${tempHp ? `, with ${Math.max(tempHp, sheet.tempHp)} temporary hit points` : ""}.`,
@@ -802,6 +806,27 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return echoSpend(ctx);
     case "mind":
       return mindSpend(ctx);
+    case "tell_tale":
+      return tellTale(ctx);
+    case "sense":
+      return does.what === "magic" ? magicAwareness(ctx) : unerringEye(ctx);
+    case "release_tale": {
+      const held = heldTale(sheet);
+      if (!held) {
+        return { error: `${sheet.name} holds no spirit tale: use_resource Tales from Beyond rolls one first. Nothing was spent.`, refused: "rules" };
+      }
+      // "This can be you": a tale that helps lands on the bard when no one is named.
+      const args = held.tale.helps && !ctx.args.targetCharacterId ? { ...ctx.args, targetCharacterId: sheet.id } : ctx.args;
+      const played = resolveSpendEffect({ ...ctx, args }, held.tale.does);
+      if ("error" in played) {
+        return played;
+      }
+      // The tale is told: it is let go.
+      const now = getSheetById(sheet.id) ?? sheet;
+      const cleared = removeConditions(now.conditions, now.conditionMeta, [held.mark]);
+      const base = played.patch ?? {};
+      return { ...played, patch: { ...base, conditions: (base.conditions ?? cleared.conditions).filter((entry) => entry !== held.mark), conditionMeta: Object.fromEntries(Object.entries(base.conditionMeta ?? cleared.meta).filter(([name]) => name !== held.mark)) as FullPatchSheetInput["conditionMeta"] }, result: { tale: held.tale.name, ...played.result } };
+    }
     case "wild_surge":
       return surgeSpend({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: ctx.args }, does, ctx.spend.name);
     // Alter Memories (src/lib/dm/ar-ws-alter-memories.ts): the charmed

@@ -3902,8 +3902,9 @@
   "clauses": [
    {
     "c": "Spend a Bardic Inspiration die and roll on a table of spirit tales, each with its own effect you can release on a target.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: tales-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: tales-door",
+    "by": "src/lib/dm/spirit-tales.ts: the server's own twelve-tale table, rolled with the Bardic Inspiration die (use_resource Tales from Beyond, a bonus action), kept as spirit tale (N) until a rest, and played on one creature within 30 feet by use_resource Release Tale (an action)"
    }
   ]
  },

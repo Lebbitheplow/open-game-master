@@ -57,6 +57,9 @@ function targetOf(does: SpendDoes): HandTarget {
     return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" || does.target === "creature" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
+  // A spirit tale is told at a creature; one that heals lands on the bard
+  // when the card names no ally (spirit-tales.ts).
+  if (does.kind === "release_tale") return "enemy";
   // The creatures of the player's choice: aimed at one, the others added.
   if (does.kind === "save_area" && does.chosen) return "enemy";
   // The creature the hit landed on (Blade Flourish, Gathered Swarm's push),

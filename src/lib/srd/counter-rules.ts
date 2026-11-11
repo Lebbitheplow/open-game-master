@@ -21,8 +21,9 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resourceDef } from "@/lib/srd/class-resources";
+import { ARTISANS_TOOLS } from "@/lib/srd/tool-choices";
 
-type GateSheet = Pick<CharacterSheet, "name" | "currentHp" | "maxHp" | "conditions"> & Partial<Pick<CharacterSheet, "conditionMeta" | "exhaustion" | "wildShape" | "concentratingOn">>;
+type GateSheet = Pick<CharacterSheet, "name" | "currentHp" | "maxHp" | "conditions"> & Partial<Pick<CharacterSheet, "conditionMeta" | "exhaustion" | "wildShape" | "concentratingOn" | "equipment">>;
 
 // `inFight`: a fight is on (true), none is (false), or the caller cannot
 // tell (null: an older server's Hand), when the fight-bound rules are left
@@ -33,6 +34,11 @@ export function counterGate(def: ResourceDef, sheet: GateSheet, inFight: boolean
     if (sheet.currentHp >= max / 2) {
       return `${def.displayName} is used when ${sheet.name} has fewer than half of their hit points left, and they have ${sheet.currentHp}/${max}.`;
     }
+  }
+  // The Right Tool for the Job: thieves' tools or artisan's tools in hand
+  // (src/lib/dm/mt-srd-artificer.ts asks the same at the door).
+  if (def.requires === "tools_in_hand" && sheet.equipment && !sheet.equipment.some((item) => [...ARTISANS_TOOLS, "thieves' tools"].some((tools) => textKey(item.name) === textKey(tools)))) {
+    return `${def.displayName} needs thieves' tools or a set of artisan's tools in hand, and ${sheet.name}'s pack holds neither.`;
   }
   if (def.outOfFight && inFight === true) {
     return `${def.displayName} takes a minute or more of work, so it is used out of a fight, not in the middle of one.`;

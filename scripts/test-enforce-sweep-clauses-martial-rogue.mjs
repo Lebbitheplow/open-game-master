@@ -178,6 +178,28 @@ const sneakDice = (level) => Math.ceil(level / 2);
   const { world, kit, hero, stage, spend, swing, roll, budget, act, d20s, walk, show } = r;
   const SKILLED = { skills: ["insight", "perception", "investigation"], saves: [], expertise: [], languages: ["Common"], tools: [], armor: ["light"], weapons: ["simple", "martial"] };
   const inquisitive = hero("rogue", "Inquisitive", 9, { ...RAPIER, proficiencies: SKILLED });
+  // "you sense the presence of illusions, shapechangers not in their original
+  // form, and other magic designed to deceive the senses within 30 feet of
+  // you, provided you aren't blinded or deafened": an invisible friend 15 feet
+  // off is sensed and nothing of them told; one 50 feet off is not; blinded,
+  // the action is refused.
+  await probe("unerring-eye-senses", async () => {
+    const eye = hero("rogue", "Inquisitive", 13, { ...RAPIER, proficiencies: SKILLED });
+    const near = hero("wizard", "School of Illusion", 5);
+    const far = hero("wizard", "School of Illusion", 5);
+    await stage(eye, { cast: [[near, 8, 5], [far, 15, 5]] });
+    world.patch(near.id, { name: "Hidden Near", conditions: ["invisible"] });
+    world.patch(far.id, { name: "Hidden Far", conditions: ["invisible"] });
+    kit.place(eye.id, 5, 5);
+    const out = await spend(eye, "Unerring Eye");
+    assert.equal(out.ok, true, out.error);
+    const told = JSON.stringify(out.result);
+    assert.match(told, /deceiving the senses about Hidden Near/, told.slice(0, 300));
+    assert.doesNotMatch(told, /Hidden Far/, "50 feet off is beyond the 30");
+    kit.freshTurn();
+    world.patch(eye.id, { conditions: ["blinded"] });
+    assert.equal((await spend(eye, "Unerring Eye")).ok, false, "not while blinded");
+  });
   await probe("ear-for-deceit-floor", async () => {
     await kit.endFight();
     const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, about: "lies", reason: "is the merchant lying about the price?" }, [3]);
@@ -273,6 +295,26 @@ const sneakDice = (level) => Math.ceil(level / 2);
   const r = await openRig();
   const { world, kit, hero, stage, spend, swing, roll, sheet, foe, give, d20s, show } = r;
   const phantom = hero("rogue", "Phantom", 9, RAPIER);
+  // "Whenever you finish a short or long rest, you can gain one skill or tool
+  // proficiency of your choice ... You lose this proficiency when you use
+  // this feature to choose a different proficiency that you lack": Arcana
+  // chosen out of a fight adds the proficiency bonus (+4 at 9th level) to
+  // the Arcana skill; a second choice waits for a rest, and History after
+  // the short rest takes Arcana's place.
+  await probe("whispers-of-the-dead", async () => {
+    const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+    const scholar = hero("rogue", "Phantom", 9, RAPIER);
+    await kit.endFight();
+    const skill = (id) => computeSheetDerived(sheet(scholar)).skills[id];
+    const base = { arcana: skill("arcana"), history: skill("history") };
+    const out = await spend(scholar, "Whispers of the Dead", { variant: "arcana" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(skill("arcana") - base.arcana, 4, "Arcana takes the proficiency bonus");
+    assert.equal((await spend(scholar, "Whispers of the Dead", { variant: "history" })).ok, false, "one choice until the next rest");
+    assert.equal((await world.invoke("take_rest", { kind: "short" })).ok, true);
+    assert.equal((await spend(scholar, "Whispers of the Dead", { variant: "history" })).ok, true);
+    assert.deepEqual([skill("arcana") - base.arcana, skill("history") - base.history], [0, 4], "History in Arcana's place");
+  });
   await probe("wails-from-the-grave", async () => {
     const [first, second] = await stage(phantom, { enemies: 2, cast: [] });
     kit.setEnemy(first.id, { conditions: ["prone"] });

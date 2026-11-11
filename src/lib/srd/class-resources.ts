@@ -355,7 +355,7 @@ export type ResourceDef = {
   atZeroHp?: boolean;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
-  requires?: "below_half";
+  requires?: "below_half" | "tools_in_hand";
   // The most one use may spend: half the class level (Balm of the Summer
   // Court's dice) or the Charisma modifier, at least one (Healing Light's).
   perUse?: "half_level" | "cha";
@@ -818,7 +818,7 @@ type SubclassResourceRow = {
   slotFallback?: number;
   replacesAttack?: boolean;
   atZeroHp?: boolean;
-  requires?: "below_half";
+  requires?: "below_half" | "tools_in_hand";
   perUse?: "half_level" | "cha";
   recovers?: string;
   restHolds?: { long?: number; shortIfNone?: number };

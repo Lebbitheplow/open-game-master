@@ -80,7 +80,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     ],
     effects: [
       { kind: "guard_aura", rangeFt: 5, gate: { ...RAGING, choice: "bear" } },
-      { kind: "move", fly: "walk", gate: { ...RAGING, choice: "eagle" }, note: "Falling at the end of the turn with nothing holding the barbarian up is the GM's to hold." },
+      { kind: "move", fly: "walk", gate: { ...RAGING, choice: "eagle" }, note: "Ending the turn in the air with nothing else holding the barbarian up, they fall prone (src/lib/dm/fall-landing.ts eagleBurstFalls)." },
       {
         kind: "bonus_attack",
         after: "attack",

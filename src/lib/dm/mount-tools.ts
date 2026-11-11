@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { landsOnFeet } from "@/lib/dm/fall-landing";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertCampaignMessage } from "@/lib/db/messages";
@@ -326,7 +327,9 @@ export function handleDismount(
   const save = turn
     ? rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to land on their feet`)
     : null;
-  const failed = !save || !save.success;
+  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
+  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  const failed = !standing && (!save || !save.success);
   if (failed && turn) {
     applyDmMutation(
       campaign,
@@ -343,6 +346,7 @@ export function handleDismount(
     save: save?.total ?? "failed automatically",
     dc: DISMOUNT_SAVE_DC,
     ...(failed ? { landed: "prone, within 5 feet of the mount" } : { landed: "on their feet" }),
+    ...(standing ? { note: `${standing}: they land on their feet.` } : {}),
   };
 }
 
@@ -360,6 +364,12 @@ function mountFalls(
   turn?: DmTurn,
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
+  // Born to the Saddle lands them standing with no reaction (fall-landing.ts).
+  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  if (standing) {
+    tableNote(campaign, `${mountName} goes down; ${sheet.name} lands on their feet.`);
+    return { ok: true, dismounted: mountName, landed: "on their feet", note: `${standing}: no reaction needed.` };
+  }
   const reacts = !encounter || (!encounter.reactionsUsed.includes(sheet.id) && reactionRefusal(campaign.id, sheet, encounter, "Landing on their feet") === null);
   if (reacts) {
     if (encounter) {
@@ -390,4 +400,12 @@ function mountFalls(
     landed: "prone, within 5 feet of the mount",
     note: `${sheet.name} has no reaction left to jump clear, so they fall prone.`,
   };
+}
+
+// Whether the rider's mount stands aloft on the board (a flying mount's fall
+// is from a height the board does not keep).
+function mountAloft(campaignId: string, riderId: string): boolean {
+  const encounter = getActiveEncounter(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  return Boolean(map && getTokenByRef(map.id, riderId)?.movement === "fly");
 }

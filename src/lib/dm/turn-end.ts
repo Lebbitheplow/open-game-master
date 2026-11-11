@@ -32,6 +32,7 @@ import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { echoTurnEnd } from "@/lib/dm/mt-fb-echo";
 import { mindTurnEnd } from "@/lib/dm/scribe-mind";
+import { eagleBurstFalls } from "@/lib/dm/fall-landing";
 import { endBrokenPerformances } from "@/lib/dm/mt-srd-bard";
 import { endPresenceOutOfReach } from "@/lib/dm/mt-srd-barbarian";
 import {
@@ -234,6 +235,8 @@ export function endTurns(
   lines.push(...echoTurnEnd(campaign, combatantIds));
   // A spellbook mind more than 300 feet from its wizard (scribe-mind.ts).
   lines.push(...mindTurnEnd(campaign, combatantIds));
+  // An Eagle totem barbarian in the air on the burst alone falls (fall-landing.ts).
+  lines.push(...eagleBurstFalls(campaign, combatantIds));
   // What an authored subclass feature does as a turn ends (Protective Spirit): authored-hooks.ts.
   lines.push(...authoredTurnEnd(campaign, combatantIds));
   // A spell area that strikes as a turn ends there (Grease, Wall of Fire): zone-triggers.ts.

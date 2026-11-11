@@ -387,10 +387,9 @@
    },
    {
     "c": "you land on your feet from a fall of 10 feet or less",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-fall",
-    "read_only": true,
-    "stopped": "A hero's fall has no door of its own: the GM applies the damage and the prone condition by hand, so nothing can be run."
+    "by": "src/lib/dm/fall-landing.ts landsOnFeet, asked by mount-tools.ts where a rider thrown or brought down with the mount is laid prone: off a mount on the ground and not incapacitated, a Cavalier lands standing"
    }
   ]
  },
@@ -1408,9 +1407,9 @@
    },
    {
     "c": "though you fall if you end your turn in the air with nothing holding you up",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; the row leaves it to the GM (src/lib/srd/authored-effects-data.ts barbarian::Totemic Attunement: \"Falling at the end of the turn with nothing holding the barbarian up is the GM's to hold.\"), and a fall is damage and prone: a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/fall-landing.ts eagleBurstFalls (turn-end.ts): a barbarian aloft on the Eagle's flight alone, with no spell or item holding them up, lands prone as their turn ends",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-eagle-falls"
    },
    {
     "c": "Elk lets you pass through a Large or smaller creature's space",
@@ -1937,9 +1936,9 @@
   "clauses": [
    {
     "c": "As an action, sense spells and magic items within 60 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: what the action reveals is information the GM gives; no written ruling in the row (sub_magic_awareness has no fx)"
+    "is": "held",
+    "by": "src/lib/dm/sense-magic.ts magicAwareness: the spell areas, the spells creatures concentrate on or laid, and the magic items carried or on the floor within 60 feet and in sight, each spell with its school",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: magic-awareness-senses"
    },
    {
     "c": "a number of times per long rest equal to your proficiency bonus",
@@ -3449,9 +3448,9 @@
   "clauses": [
    {
     "c": "Sense illusions, shapechangers and other deceptions within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: information the GM gives; sub_unerring_eye has no fx and no written ruling"
+    "is": "held",
+    "by": "src/lib/dm/sense-magic.ts unerringEye: illusion areas, creatures under deceiving magic and creatures that change shape within 30 feet and in sight, told without what they hide; refused while blinded or deafened",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: unerring-eye-senses"
    },
    {
     "c": "a Wisdom-modifier number of times per long rest",
@@ -3582,9 +3581,9 @@
   "clauses": [
    {
     "c": "After each rest, gain proficiency in one skill or tool of your choice.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Whispers of the Dead: \"One skill or tool proficiency chosen after each rest: the GM notes it for the day.\"): a proficiency is a number on every check of that skill, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data4.ts rogue::Whispers of the Dead (once a short rest, out of a fight): the skill or tool chosen is a lasting mark read by src/lib/srd/borrowed-proficiency.ts (computeSheetDerived's skills, roll-riders.ts tool checks), replaced by the next choice",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: whispers-of-the-dead"
    }
   ]
  },

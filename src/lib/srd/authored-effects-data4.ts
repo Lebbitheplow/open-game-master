@@ -3,6 +3,7 @@
 // across every class (the shape of an entry: authored-effects-data.ts). Each
 // gets the hook that fits, or a `narrated` line saying why the DM holds it.
 
+import { WHISPERED_MARK, borrowedVariants } from "@/lib/srd/borrowed-proficiency";
 import type { AuthoredEntry, Formula } from "@/lib/srd/authored-effects-types";
 
 // Wild Magic Surge (Wild Magic sorcerer 1): after a sorcerer spell of 1st
@@ -97,9 +98,15 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // The server's own Spirit Tales table (src/lib/dm/spirit-tales.ts): a
+  // bonus action and a Bardic Inspiration die roll the tale, an action plays
+  // it on a creature within 30 feet.
   "bard::Tales from Beyond": {
     subclass: "College of Spirits",
-    narrated: "The Spirit Tales table is the GM's to roll and narrate; the Bardic Inspiration die it spends is the bard's counter.",
+    spends: [
+      { name: "Tales from Beyond", pool: { id: "bardic_inspiration" }, action: "bonus", does: { kind: "tell_tale" } },
+      { name: "Release Tale", aliases: ["Bestow Tale", "Spirit Tale"], action: "action", does: { kind: "release_tale" } },
+    ],
   },
   "bard::Mystical Connection": {
     subclass: "College of Spirits",
@@ -470,7 +477,13 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     // "To tell whether a creature is lying": the check's `about` says so (roll-about.ts "lies").
     effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, about: "lies" }],
   },
-  "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
+  // One skill or tool proficiency chosen out of a fight, once after each
+  // short or long rest (its counter), kept until the next choice replaces
+  // it; the skill check and the tool check read it (borrowed-proficiency.ts).
+  "rogue::Whispers of the Dead": {
+    subclass: "Phantom",
+    spends: [{ name: "Whispers of the Dead", pool: { id: "sub_whispers_of_the_dead" }, action: "none", fight: "out", does: { kind: "buff", condition: WHISPERED_MARK, variants: borrowedVariants(WHISPERED_MARK), rounds: 0, lasting: true } }],
+  },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },
 
   // ---- sorcerer ----

@@ -215,6 +215,25 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.ok(!foeHas(huge, "prone"));
   });
 
+  // "This benefit works only in short bursts; you fall if you end your turn
+  // in the air and nothing else is holding you aloft": aloft on the eagle's
+  // flight alone the barbarian comes down prone as the turn ends; under a Fly
+  // spell they stay up.
+  await probe("totemic-attunement-eagle-falls", async () => {
+    const { setTokenMovement } = await import("../src/lib/db/battle-maps.ts");
+    const aloft = async (extra) => {
+      const eagle = await totem(14, "eagle", "eagle", "eagle");
+      await stage(eagle);
+      rage(eagle);
+      if (extra) world.patch(eagle.id, { conditions: [...sheet(eagle).conditions, extra] });
+      setTokenMovement(kit.token(eagle.id).id, "fly");
+      r.endTurn();
+      return [sheet(eagle).conditions.includes("prone"), kit.token(eagle.id).movement];
+    };
+    assert.deepEqual(await aloft(null), [true, "walk"], "on the burst alone they fall");
+    assert.deepEqual(await aloft("flying"), [false, "fly"], "a Fly spell holds them up");
+  });
+
   await probe("totemic-attunement-tiger-needs-a-run", async () => {
     const tiger = await totem(14, "tiger", "tiger", "tiger");
     const [enemy] = await stage(tiger);
@@ -817,6 +836,26 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
   const r = await openRig();
   const { world, hero, stage, spend, react } = r;
   const wild = hero("barbarian", "Path of Wild Magic", 14);
+
+  // "you know the location of any spell or magic item within 60 feet of you
+  // that isn't behind total cover. When you sense a spell, you learn which
+  // school of magic it belongs to": a friend 20 feet off holding Bless and a
+  // Cloak of Protection is sensed, with the spell's school; a friend 80 feet
+  // off with the same is not.
+  await probe("magic-awareness-senses", async () => {
+    const near = hero("cleric", "Life Domain", 5, { equipment: [{ name: "Cloak of Protection", qty: 1, equipped: true }] });
+    const far = hero("cleric", "Life Domain", 5, { equipment: [{ name: "Cloak of Protection", qty: 1, equipped: true }] });
+    await stage(wild, { cast: [[near, 9, 5], [far, 21, 5]] });
+    world.patch(near.id, { name: "Near Priest", concentratingOn: "Bless" });
+    world.patch(far.id, { name: "Far Priest", concentratingOn: "Bless" });
+    r.kit.place(wild.id, 5, 5);
+    const out = await spend(wild, "Magic Awareness");
+    assert.equal(out.ok, true, out.error);
+    const told = JSON.stringify(out.result);
+    assert.match(told, /enchantment on Near Priest/, `the spell and its school: ${told.slice(0, 300)}`);
+    assert.match(told, /magic item carried by Near Priest/);
+    assert.doesNotMatch(told, /Far Priest/, "80 feet off is beyond the 60");
+  });
 
   const surged = (who, n) => r.has(who, `wild surge (${n})`);
   // "When you enter your rage, roll a d8 for a magical effect that lasts the rage."

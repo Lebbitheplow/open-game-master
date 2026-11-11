@@ -14,6 +14,9 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/sense-magic.ts#str-eq": [["english-source", 2, "reference: SRD spell, condition and feature names"]],
+    "lib/dm/sense-magic.ts#str-list": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
+    "lib/dm/fall-landing.ts#str-eq": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
     "lib/dm/mount-area.ts#str-key": [["key", 1, "a mount's stored ref, an SRD mount id (engine vocabulary)"]],
     "lib/dm/casting-answered.ts#str-indexOf": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
     "lib/dm/casting-answered.ts#re-word": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
@@ -1969,7 +1972,7 @@
     "lib/dm/srd-defenses.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/srd-defenses.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/srd-defenses.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/srd-feature-spends.ts#str-eq": [["english-source",8,"reference: SRD feature and option names (the directive pins them)"],["key",8,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"],["key",2,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
+    "lib/dm/srd-feature-spends.ts#str-eq": [["english-source", 8, "reference: SRD feature and option names (the directive pins them)"], ["key", 8, "the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"], ["key", 5, "the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
     "lib/dm/srd-feature-spends.ts#str-list": [["key",1,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
     "lib/dm/draconic-spends.ts#str-eq": [["key",8,"the documented variant keys (fear, charm, awe; manifest, dismiss) and the conditions they lay (engine vocabulary)"]],
     "lib/dm/draconic-spends.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
@@ -2402,7 +2405,7 @@
     "lib/srd/authored-effects-data3.ts#re-word": [["key",1,"weapon properties (engine vocabulary)"]],
     "lib/srd/authored-effects-data3.ts#str-list": [["english-source", 22, "ODM's authored effect rows (bundled data), the Armor Model weapons' names among them"], ["key", 1, "ODM's own ids and words (engine vocabulary)"]],
     "lib/srd/authored-effects-data3.ts#toUpperCase": [["display",1,"capitalised damage type"]],
-    "lib/srd/authored-effects-data4.ts#str-list": [["english-source",7,"ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-data4.ts#str-list": [["english-source", 8, "ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-more.ts#str-eq": [["key",1,"class id (engine vocabulary)"]],
     "lib/srd/authored-effects-more.ts#str-key": [["key",1,"creature sizes"]],
     "lib/srd/authored-effects-genre.ts#str-list": [["english-source",1,"ODM's authored effect rows (bundled data)"]],

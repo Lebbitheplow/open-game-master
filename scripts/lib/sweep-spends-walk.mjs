@@ -56,7 +56,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt", "a spell lies on the holder"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt", "a spell lies on the holder", "the holder holds a spirit tale", "no fight, tools in the holder's hands"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -201,6 +201,16 @@ async function step(rig, scene, name, notes) {
       return { ok: true };
     case "no fight":
       return world.invoke("end_encounter", { outcome: "truce" });
+    // The Right Tool for the Job asks for thieves' or artisan's tools in hand
+    // and an hour out of a fight (src/lib/dm/mt-srd-artificer.ts).
+    case "no fight, tools in the holder's hands":
+      world.patch(holder, { equipment: [...world.sheet(holder).equipment, { name: "Thieves' tools", qty: 1 }] });
+      return world.invoke("end_encounter", { outcome: "truce" });
+    // A College of Spirits bard's tale kept in mind (src/lib/dm/spirit-tales.ts),
+    // which Release Tale plays.
+    case "the holder holds a spirit tale":
+      world.patch(holder, { conditions: [...world.sheet(holder).conditions, "spirit tale (1)"] });
+      return { ok: true };
     case "a hit on the holder":
       return strike(holder, [9, 4]);
     case "a critical hit on the holder":
@@ -595,10 +605,15 @@ export async function knock(rig, scene, { stagings, variants = [undefined], call
       stagingFailures.push(`${key}: ${from.failed}`);
       continue;
     }
-    for (const variant of variants) {
+    // A door that names its options in its refusal ("needs a variant: a or
+    // b") is asked again with the first of them, as a player would pick one.
+    const asked = [...variants];
+    for (const variant of asked) {
       for (const [label, target] of aims.map((index) => ladder[index])) {
         const made = call({ ...target, ...(variant !== undefined ? { variant } : {}) });
         const tried = await rig.attempt(scene, from.snapshot, made.name, made.args);
+        const named = variant === undefined && !tried.ok ? /needs a variant: (.+?)(?: or |\. )/.exec(String(tried.error ?? ""))?.[1] : undefined;
+        if (named && !asked.includes(named)) asked.push(named);
         const read = readChanges(scene, tried.changes);
         const entry = { staging: key, variant, target: label, ok: tried.ok, kind: tried.kind, error: short(tried.error), threw: tried.threw, sig: signature(scene, tried), read, result: tried.result, call: made };
         tries.push(entry);

@@ -427,6 +427,9 @@ export type SpendDoes =
       // (Awakened Spellbook's ritual at its normal casting time, kept until
       // a ritual uses it: src/lib/dm/ar-ws-swift-ritual.ts).
       untilLongRest?: boolean;
+      // The mark has no clock: it lasts until the next use of the feature
+      // replaces it (Whispers of the Dead's proficiency).
+      lasting?: boolean;
       // An ally other than the holder ("a willing creature other than
       // yourself": Blessing of the Trickster): the holder is no target.
       othersOnly?: boolean;
@@ -703,6 +706,13 @@ export type SpendDoes =
   // Manifest Mind: the spellbook's mind placed on the board
   // (src/lib/dm/scribe-mind.ts mindSpend).
   | { kind: "mind" }
+  // Tales from Beyond: the tale rolled and kept, and the tale held played on
+  // a creature (src/lib/dm/spirit-tales.ts).
+  | { kind: "tell_tale" }
+  // Magic Awareness and Unerring Eye: what the engine holds near the holder,
+  // told to them (src/lib/dm/sense-magic.ts).
+  | { kind: "sense"; what: "magic" | "deceit" }
+  | { kind: "release_tale" }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }

@@ -395,7 +395,28 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.match(JSON.stringify(out.result), /Mounting cost[^.]*\(5 ft\)/, `mounting cost a Cavalier more than 5 feet (${before} squares before): ${show(out)}`);
   });
 
-  await probe("born-to-the-saddle-fall", () => {});
+  // "If you fall off your mount and descend no more than 10 feet, you can
+  // land on your feet if you're not incapacitated": the warhorse goes down
+  // with the rider's reaction already spent, and a thrown rider fails the
+  // Dexterity save; the Cavalier stands both times, a Champion falls prone.
+  await probe("born-to-the-saddle-fall", async () => {
+    const champion = hero("fighter", "Champion", 5);
+    const prone = (who) => sheet(who).conditions.includes("prone");
+    const fall = async (who, cause) => {
+      await stage(who);
+      world.patch(who.id, { conditions: sheet(who).conditions.filter((entry) => entry !== "prone") });
+      assert.equal((await world.invoke("mount_up", { characterId: who.id, mount: "warhorse" })).ok, true);
+      kit.saveEncounter({ ...world.encounter(), reactionsUsed: [...world.encounter().reactionsUsed, who.id] });
+      world.clearDice();
+      world.dice(1, 1);
+      const out = await world.invoke("dismount", { characterId: who.id, cause });
+      world.clearDice();
+      assert.equal(out.ok, true, out.error);
+      return prone(who);
+    };
+    assert.deepEqual([await fall(cavalier, "mount-prone"), await fall(champion, "mount-prone")], [false, true], "the mount goes down with no reaction left");
+    assert.deepEqual([await fall(cavalier, "forced-move"), await fall(champion, "forced-move")], [false, true], "thrown, the save failed");
+  });
 
   await probe("unwavering-mark-melee-hit", async () => {
     const [enemy] = await stage(cavalier, { cast: [[ally, 7, 5]] });

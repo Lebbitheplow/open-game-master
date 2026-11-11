@@ -69,9 +69,9 @@
     "clauses": [
       {
         "c": "With tinker's tools and an hour's work you conjure any set of artisan's tools you need, once per rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not built: the counter (art_right_tool, once a short rest) is spent and the rest is told: nothing asks for tinker's tools, takes the hour or puts the tools on the sheet. In w2-mt-srd-handoff.jsonl"
+        "is": "held",
+        "by": "src/lib/dm/mt-srd-artificer.ts rightToolForTheJob (srd-feature-spends.ts): thieves' or artisan's tools in hand asked, an hour on the clock out of a fight, the set put in the pack and the last set taken out, the once-a-rest use spent by the server",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.right-tool.makes-tools"
       }
     ]
   },

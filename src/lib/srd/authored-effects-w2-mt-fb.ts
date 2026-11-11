@@ -6,6 +6,17 @@
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
+  // What the action senses is told to the barbarian from the board's spells,
+  // creatures and items (src/lib/dm/sense-magic.ts).
+  "barbarian::Magic Awareness": {
+    subclass: "Path of Wild Magic",
+    spends: [{ name: "Magic Awareness", pool: { id: "sub_magic_awareness" }, action: "action", does: { kind: "sense", what: "magic" } }],
+  },
+  // What the action senses is told to the rogue, and nothing of what it hides.
+  "rogue::Unerring Eye": {
+    subclass: "Inquisitive",
+    spends: [{ name: "Unerring Eye", pool: { id: "sub_unerring_eye" }, action: "action", does: { kind: "sense", what: "deceit" } }],
+  },
   // "a reaction-free end to being charmed or frightened by spending a die"
   // (the resistance is feature-effects.ts's): a die was spent under the
   // variant and the fighter stayed frightened.

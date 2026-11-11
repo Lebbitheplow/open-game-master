@@ -69,6 +69,32 @@ P["artificer.magical-tinkering.count"] = async () => {
   assert.match(String((await t.use(dull, "Magical Tinkering")).error), /Intelligence modifier/);
 };
 
+// "With thieves' tools or artisan's tools in hand, you can magically create
+// one set of artisan's tools ... This creation requires 1 hour of
+// uninterrupted work ... they vanish when you use this feature again": no
+// tools in hand is refused; with tinker's tools the smith's tools land in the
+// pack and an hour passes; after a rest the next use makes a weaver's set and
+// the smith's tools are gone.
+P["artificer.right-tool.makes-tools"] = async () => {
+  const t = await rig.table();
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  const who = artificer(t, 3, { equipment: [] });
+  t.patch(who, { features: [...t.sheet(who).features.filter((entry) => entry.name !== "The Right Tool for the Job"), feature("The Right Tool for the Job")] });
+  const make = (variant) => t.use(who, "The Right Tool for the Job", { variant });
+  const holds = (name) => t.sheet(who).equipment.some((item) => item.name.toLowerCase() === name);
+  assert.match(String((await make("Smith's tools")).error), /thieves' tools or a set of artisan's tools/, "no tools in hand");
+  t.patch(who, { equipment: [{ name: "Tinker's tools", qty: 1 }] });
+  const before = getClock(t.world.campaignId).instant;
+  const out = await make("Smith's tools");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(holds("smith's tools"), true, "the smith's tools are in the pack");
+  assert.equal(getClock(t.world.campaignId).instant - before, 60, "an hour's work");
+  assert.equal((await make("Weaver's tools")).ok, false, "once until a rest");
+  assert.equal((await t.world.invoke("take_rest", { kind: "short" })).ok, true);
+  assert.equal((await make("Weaver's tools")).ok, true);
+  assert.deepEqual([holds("weaver's tools"), holds("smith's tools")], [true, false], "the new set, and the last one gone");
+};
+
 // "you ignore all class, race, spell and level requirements on using them"
 P["artificer.magic-item-savant.requirements"] = async () => {
   const rule = (attunedBy) => ({ attunedBy: { text: "someone else", ...attunedBy } });
