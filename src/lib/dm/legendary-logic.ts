@@ -3,6 +3,7 @@ import { legendaryCountIn } from "@/lib/dm/ability-entries";
 import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { findMonsterAbility, normalizeAbilityLedgers, type AbilityLedger, type MonsterAbility } from "@/lib/dm/monster-abilities";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import type { TurnBudget } from "@/lib/dm/action-budget";
 import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
@@ -126,6 +127,12 @@ export type LegendaryState = {
   // until they act, last-hit.ts), by that turn's key: one reaction for the
   // pass (held-turn.ts).
   lateReacted?: { turn: string; ids: string[] };
+  // What the turn the pointer last left spent, kept past its end
+  // (encounter-tools.ts advancePointer): a call that ends its own turn (a
+  // Fathomless Plunge taking the warlock out of the order passes it on,
+  // settleTurn) still shows the action it paid, read where the live budget
+  // has gone to the next creature.
+  endedTurn?: TurnBudget;
 };
 
 export type LegendaryPurchaseRecord = {
@@ -242,6 +249,9 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(typeof record.turnStart === "string" && record.turnStart ? { turnStart: record.turnStart } : {}),
     ...(lateReacted && typeof lateReacted.turn === "string" && stringList(lateReacted.ids).length
       ? { lateReacted: { turn: lateReacted.turn, ids: stringList(lateReacted.ids) } }
+      : {}),
+    ...(record.endedTurn && typeof record.endedTurn === "object" && typeof (record.endedTurn as { ownerId?: unknown }).ownerId === "string"
+      ? { endedTurn: record.endedTurn as TurnBudget }
       : {}),
   };
 }

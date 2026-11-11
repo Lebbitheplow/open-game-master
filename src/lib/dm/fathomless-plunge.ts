@@ -59,7 +59,8 @@ export function plungeAfterSpend(
     takeOffBoard(campaign.id, sheet.id);
   }
   const live = getActiveEncounter(campaign.id);
-  const heroesLeft = live?.order.filter((entry) => entry.kind === "pc").length ?? 0;
+  // The dead left behind are no hero still in the fight.
+  const heroesLeft = live?.order.filter((entry) => entry.kind === "pc" && getSheetById(entry.characterId)?.deathSaves?.dead !== true).length ?? 0;
   // The fight is left standing as the turn that paid for the plunge ends:
   // with no hero in it, the GM ends it (end_encounter, party_fled), and
   // the action the plunge cost stays spent on the turn it was taken in.

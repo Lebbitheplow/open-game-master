@@ -435,7 +435,13 @@ export async function handRig() {
 
   const budgetOf = (world, heroId) => {
     const encounter = world.encounter();
-    const own = encounter?.turnBudget?.ownerId === heroId ? encounter.turnBudget : null;
+    // A call that ended the hero's own turn (a Fathomless Plunge takes them out
+    // of the order, and the turn passes on) is read from that turn's record.
+    const holder = encounter?.order?.[encounter.turnIndex];
+    const passed = holder && !(holder.kind === "pc" && holder.characterId === heroId);
+    const own = encounter?.turnBudget?.ownerId === heroId
+      ? encounter.turnBudget
+      : passed && encounter?.legendary?.endedTurn?.ownerId === heroId ? encounter.legendary.endedTurn : null;
     return {
       action: Boolean(own?.actionUsed),
       bonus: Boolean(own?.bonusUsed),

@@ -1579,7 +1579,7 @@ export function settleTurn(campaign: Campaign, before: TurnHolder | null): strin
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
     // stable character, the death save a pass rolled).
-    partyFallen(campaign, before.partyCouldRise);
+    partyFallen(campaign, before.partyCouldRise, before.order);
   }
   return fireFightEvents(campaign);
 }
@@ -1838,6 +1838,12 @@ function advancePointer(
   // it is thrown away, so they never depend on when this row is saved.
   const endedTurn = { budget: encounter.turnBudget };
   encounter.turnBudget = null;
+  // Kept as the ended turn's record (legendary-logic.ts endedTurn).
+  if (endedTurn.budget) {
+    encounter.legendary.endedTurn = endedTurn.budget;
+  } else {
+    delete encounter.legendary.endedTurn;
+  }
   // The character landed on after enemies this walk hands out, who act
   // first: their turn begins once those enemies have acted
   // (src/lib/dm/held-turn.ts). Until then their spent reaction stays spent
@@ -2661,7 +2667,7 @@ function enemyStanding(encounter: Encounter): boolean {
 // engine calls a victory. Somebody only stable (healing brings them round,
 // SRD 5.1) or a DM's combatant in the order: the ending is the story's, so
 // the table is told and the DM woken once to say it.
-function partyFallen(campaign: Campaign, couldRise: boolean) {
+function partyFallen(campaign: Campaign, couldRise: boolean, orderBefore?: OrderEntry[]) {
   const encounter = getActiveEncounter(campaign.id);
   // The party is the characters on its side: a companion fighting against
   // it is no member whose fall loses the fight (src/lib/dm/combatant.ts).
@@ -2670,6 +2676,16 @@ function partyFallen(campaign: Campaign, couldRise: boolean) {
     return;
   }
   if (!enemyStanding(encounter) || partyCanRise(encounter)) {
+    return;
+  }
+  // A character who left the order alive in this call (a Fathomless Plunge
+  // taking the living away from a dead friend) went, they did not fall: the
+  // fight is the GM's to end as the story has it (party_fled), never lost
+  // because only the dead are left on the board.
+  const leftAlive = (orderBefore ?? []).some((entry) => entry.kind === "pc"
+    && !encounter.order.some((now) => now.kind === "pc" && now.characterId === entry.characterId)
+    && getSheetById(entry.characterId)?.deathSaves?.dead !== true);
+  if (leftAlive) {
     return;
   }
   // A DM's own combatant in the order (an "npc" slot) may yet raise them:

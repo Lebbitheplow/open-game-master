@@ -147,6 +147,17 @@ export function probes(rig, shared) {
       assert.equal((world.encounter()?.order ?? []).some((entry) => entry.kind === "pc"), false, "no hero is left in the fight's order");
       assert.match(String(again.result.plunge), /party_fled/, `the GM is told to end the fight: ${JSON.stringify(again.result).slice(0, 300)}`);
       assert.equal(budget()?.actionUsed, true, "the plunge's action stays spent");
+      // A dead friend left in the order: the living went, so the fight is the
+      // GM's to end as fled, never lost because only the dead stay on the board.
+      const dead = holder("fighter", "Champion", 5, {}, "dead");
+      await stage(deep, { others: [friend(), dead] });
+      world.patch(dead.id, { currentHp: 0, conditions: ["unconscious"], deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+      const withDead = world.encounter().order.filter((entry) => entry.kind !== "pc" || [deep.id, friend().id, dead.id].includes(entry.characterId));
+      kit.saveEncounter({ ...world.encounter(), order: withDead, turnIndex: withDead.findIndex((entry) => entry.characterId === deep.id) });
+      const third = await spend(deep, "Fathomless Plunge");
+      assert.equal(third.ok, true, third.error);
+      assert.match(String(third.result.plunge), /party_fled/, `the dead friend is no hero still in the fight: ${JSON.stringify(third.result).slice(0, 300)}`);
+      assert.ok(world.encounter(), "the fight was not lost to the dead friend left behind");
     },
     // ---- Sanctuary Vessel (The Genie, 10th level)
     "sanctuary-party": async () => {
