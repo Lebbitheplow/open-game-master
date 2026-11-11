@@ -44,7 +44,7 @@ export function attackDamageRiders(input: {
   // The target, for the riders that read it (Colossus Slayer). Absent (the
   // Hand, which deals before a target is picked): the riders that need one
   // are left out.
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string }; conditions?: string[] };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -68,7 +68,7 @@ export function attackDamageRiders(input: {
           ...riders.damageRiders,
           ...hunterRiders(sheet, input.enemy),
           ...pactRiders(sheet, kind, profile),
-          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked } : undefined),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked, conditions: input.enemy.conditions } : undefined),
         ]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {

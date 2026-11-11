@@ -82,6 +82,34 @@ export const GENRE_A_HORROR: GenreRow[] = [
   // "1/long rest, force an invisible, ethereal, or shapechanged creature
   // within 60 ft into its true visible form for 1 minute (CHA save negates)"
   played("parapsychologist", "Observer Effect", "horror_observer_effect", "action", "observer_effect", "enemy"),
+  // ---- around an attack: src/lib/dm/genre-a-horror-hits.ts ----
+  // "1/long rest, an attack against a creature at half HP or lower becomes an
+  // automatic critical if it hits": the mark the next such attack spends.
+  counted("slayer", "The Stake Remembers", "horror_the_stake_remembers", {
+    spends: [{ name: "The Stake Remembers", pool: { id: "horror_the_stake_remembers" }, action: "none", does: { kind: "buff", condition: "the stake remembers", rounds: 1 } }],
+  }),
+  // "1/short rest, declare a called shot: on hit, the target also loses one
+  // movement mode, attack, or sense until your next turn": the variant names
+  // which.
+  counted("slayer", "Called Shot", "horror_called_shot", {
+    spends: [{
+      name: "Called Shot",
+      pool: { id: "horror_called_shot" },
+      action: "none",
+      does: { kind: "buff", condition: "called shot", rounds: 1, variants: { movement: "called shot (movement)", attack: "called shot (attack)", sense: "called shot (sense)" } },
+    }],
+  }),
+  // "Your critical hits against your Quarry deal maximum damage"
+  held("slayer", "Deathblow", "src/lib/dm/genre-a-horror-hits.ts", "horrorCritMaximum"),
+  // "Your critical hits against undead or shapechangers stun them until the
+  // end of your next turn (CON save negates...)"
+  held("slayer", "Piercing the Heart", "src/lib/dm/genre-a-horror-hits.ts", "horrorOnHit"),
+  // "After damaging a spirit, your party's attacks against it count as magical for 1 minute"
+  held("parapsychologist", "Ectoplasmic Sample", "src/lib/dm/genre-a-horror-hits.ts", "horrorOnHit, horrorSampled"),
+  // "Your attacks deal +1d8 damage against creatures that have downed an ally this fight"
+  { feature: "No Witnesses Left", classes: ["survivor"], entry: { subclass: "genre", effects: [{ kind: "hit_rider", dice: "1d8", vsCondition: "downed an ally" }] } },
+  // "Your apparatus spells ignore resistance to psychic and force damage"
+  { feature: "Resonance Lock", classes: ["parapsychologist"], entry: { subclass: "genre", effects: [{ kind: "ignore_resist", types: ["psychic", "force"] }] } },
   // "While no ally is within 10 ft, +1 AC and advantage on Stealth"
   held("survivor", "Alone in the Dark", "src/lib/dm/genre-a-horror-board.ts", "horrorAcBonus, horrorLentRolls"),
   // "Immune to being frightened while any ally can see you"

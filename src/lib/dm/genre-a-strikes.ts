@@ -29,6 +29,8 @@ export type StrikeTarget = {
   // Absent: the caller did not plan marks, and a vsMark rider holds while
   // its mark is held.
   marked?: ReadonlySet<string>;
+  // The conditions the creature carries, for a vsCondition rider.
+  conditions?: readonly string[];
 };
 
 const mods = (sheet: Pick<CharacterSheet, "abilities">) =>
@@ -72,6 +74,7 @@ export function genreStrikeRiders(
     if (effect.vsTypes && !(type && effect.vsTypes.some((kind) => type.includes(kind)))) continue;
     if (effect.vsNotActed && !target?.notActed) continue;
     if (effect.vsMark && !markRides(sheet, effect.vsMark, target)) continue;
+    if (effect.vsCondition && !target?.conditions?.some((entry) => isConditionNamed(entry, effect.vsCondition!))) continue;
     out.push({
       feature: held.feature,
       dice: resolveFormula(effect.dice, held.level, mods(sheet)),

@@ -299,5 +299,98 @@ await test("Observer Effect: a failed CHA save ends a creature's invisibility fo
   assert.ok(foeHas(scene.near.id, "invisible"), "the save negates");
 });
 
+const strike = async (scene, enemy, faces, args = {}) => {
+  t.kit.giveTurn(scene.holder.id);
+  const before = t.foeHp(enemy.id);
+  const out = must(await t.kit.swing(scene.holder.id, enemy.id, faces, args), "the staged attack");
+  return { out: out.result, loss: before - t.foeHp(enemy.id) };
+};
+
+await test("The Stake Remembers: a hit on a creature at half its hit points is a critical and spends the mark; above half it is neither", async () => {
+  const scene = await t.stage({ classId: "slayer", level: 15 });
+  must(await spend(scene, "horror_the_stake_remembers"), "The Stake Remembers");
+  const healthy = await strike(scene, scene.near, [15, 3, 3, 3, 3, 3, 3]);
+  assert.ok(!healthy.out.crit, "above half its hit points");
+  assert.ok(sheet(scene.holder.id).conditions.includes("the stake remembers"), "the mark is kept for a creature it fits");
+  t.kit.setEnemy(scene.near.id, { currentHp: 150 });
+  const bloodied = await strike(scene, scene.near, [15, 3, 3, 3, 3, 3, 3]);
+  assert.equal(bloodied.out.crit, true, "an automatic critical at half");
+  assert.ok(!sheet(scene.holder.id).conditions.includes("the stake remembers"), "spent");
+});
+
+await test("Deathblow: a critical on the Quarry deals the same maximum whatever the dice show, and more than a rolled one", async () => {
+  const crit = async (level, face) => {
+    const scene = await t.stage({ classId: "slayer", level });
+    must(await spend(scene, "Quarry", { targetEnemyId: scene.near.id }), "Quarry");
+    return (await strike(scene, scene.near, [20, face, face, face, face, face, face, face, face])).loss;
+  };
+  const ones = await crit(15, 1);
+  assert.equal(await crit(15, 2), ones, "the dice do not matter");
+  assert.ok(ones > (await crit(14, 2)), "more than a 14th-level slayer's rolled critical");
+  // Not the Quarry: an ordinary critical.
+  const scene = await t.stage({ classId: "slayer", level: 15 });
+  const a = (await strike(scene, scene.near, [20, 1, 1, 1, 1, 1, 1])).loss;
+  const b = (await strike(scene, scene.near, [20, 2, 2, 2, 2, 2, 2])).loss;
+  assert.ok(b > a, "a creature that is not the Quarry takes the rolled critical");
+});
+
+await test("Piercing the Heart: a critical stuns an undead that fails its CON save, and not a humanoid", async () => {
+  const scene = await t.stage({ classId: "slayer", level: 7 });
+  typed(scene.near, "undead");
+  await strike(scene, scene.near, [20, 1, 1, 1, 1, 1, 1, 1]);
+  assert.ok(foeHas(scene.near.id, "stunned"), "the undead is stunned");
+  t.kit.place(scene.far.id, 5, 4);
+  await strike(scene, scene.far, [20, 1, 1, 1, 1, 1, 1, 1]);
+  assert.ok(!foeHas(scene.far.id, "stunned"), "a humanoid is not");
+});
+
+await test("Called Shot: the next weapon hit blinds the creature for the called sense, hobbles it for the movement, and spends the mark; a bare call is asked which", async () => {
+  let scene = await t.stage({ classId: "slayer", level: 13 });
+  must(await spend(scene, "horror_called_shot", { variant: "sense" }), "Called Shot (sense)");
+  assert.ok(!foeHas(scene.near.id, "blinded"), "nothing before the hit");
+  await strike(scene, scene.near, [15, 3, 3, 3]);
+  assert.ok(foeHas(scene.near.id, "blinded"), "blinded on the hit");
+  assert.ok(!sheet(scene.holder.id).conditions.some((entry) => entry.startsWith("called shot")), "the mark is spent");
+  scene = await t.stage({ classId: "slayer", level: 13 });
+  const bare = await spend(scene, "horror_called_shot");
+  assert.equal(bare.ok, false, "which shot is asked");
+  assert.equal(used(scene.holder.id, "horror_called_shot"), 0, "nothing spent");
+  must(await spend(scene, "horror_called_shot", { variant: "movement" }), "Called Shot (movement)");
+  await strike(scene, scene.near, [15, 3, 3, 3]);
+  assert.ok(foeHas(scene.near.id, "hobbling shot"), "speed 0 for the movement");
+});
+
+await test("Ectoplasmic Sample: a hit on an undead marks it for the party's attacks, and a humanoid is not marked", async () => {
+  const hits = await import("../src/lib/dm/genre-a-horror-hits.ts");
+  const scene = await t.stage({ classId: "parapsychologist", level: 7 });
+  typed(scene.near, "undead");
+  await strike(scene, scene.near, [15, 3, 3]);
+  assert.ok(hits.horrorSampled(t.kit.enemy(scene.near.id)), "the sample is taken");
+  t.kit.place(scene.far.id, 5, 4);
+  await strike(scene, scene.far, [15, 3, 3]);
+  assert.ok(!hits.horrorSampled(t.kit.enemy(scene.far.id)), "a humanoid is no spirit");
+});
+
+await test("No Witnesses Left: +1d8 against the creature that dropped an ally, nothing against another", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 11 });
+  t.world.patch(scene.ally.id, { currentHp: 1 });
+  await t.clubs(scene, scene.ally, 19, 6);
+  assert.equal(sheet(scene.ally.id).currentHp, 0, "the ally is down");
+  assert.ok(foeHas(scene.near.id, "downed an ally"), "the record on the creature that did it");
+  t.kit.place(scene.far.id, 5, 4);
+  const witness = await strike(scene, scene.near, [15, 3, 5]);
+  const other = await strike(scene, scene.far, [15, 3, 5]);
+  assert.equal(witness.loss - other.loss, 5, "the d8 rides the hit on the one that downed the ally");
+});
+
+await test("Resonance Lock: the parapsychologist's psychic and force damage ignores resistance, their fire does not", async () => {
+  const { authoredIgnoresResistance } = await import("../src/lib/dm/authored-saves.ts");
+  const scene = await t.stage({ classId: "parapsychologist", level: 15 });
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "psychic"), "Resonance Lock");
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "force"), "Resonance Lock");
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "fire"), null);
+  assert.ok(scene.holder);
+});
+
 t.close();
 console.log(`test-genre-a-horror: ${passed} passed`);

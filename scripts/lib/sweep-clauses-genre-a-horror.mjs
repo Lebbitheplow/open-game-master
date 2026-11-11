@@ -49,6 +49,16 @@ export const HORROR = {
     }
   },
 
+  // A spend that asks which option: with the variant named, something other
+  // than the counter and the turn's cost moves.
+  async spend_variant(t, run, feature) {
+    const scene = await t.stage(feature, { level: run.level });
+    const before = t.reader.snapshot();
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: run.id, variant: run.variant }), `spending ${run.id} (${run.variant})`);
+    const moved = t.readChanges(scene, t.reader.diff(before, t.reader.snapshot()));
+    assert.ok(moved.effects.length > 0, `spending ${run.id} (${run.variant}) moved its counter and the turn's cost and nothing else`);
+  },
+
   // Advantage on a check while no ally stands within 10 feet on the board:
   // two d20s alone, one with the hurt ally beside the holder.
   async check_alone(t, run, feature) {

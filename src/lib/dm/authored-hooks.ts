@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { horrorAfterEnemyHit, horrorAttackSituation } from "@/lib/dm/genre-a-horror-hits";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { endHorrorMarks } from "@/lib/dm/genre-a-horror-marks";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
@@ -197,6 +198,8 @@ export function authoredAfterHit(
     return lines;
   }
   const target = getSheetById(input.target.id) ?? input.target;
+  // No Witnesses Left's record of who downed an ally (genre-a-horror-hits.ts).
+  horrorAfterEnemyHit(campaign, input.attacker, target);
   // Unwavering Mark: a marked creature that damages anyone else opens its
   // marker's bonus attack against it on their next turn
   // (src/lib/dm/feature-bonus-attacks.ts).
@@ -279,6 +282,13 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Entropic Ward: advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
+  }
+  // The Stake Remembers (src/lib/dm/genre-a-horror-hits.ts).
+  const stake = horrorAttackSituation(sheet, enemy);
+  if (stake) {
+    autoCrit = stake.autoCrit;
+    notes.push(stake.note);
+    spent.push(stake.spent);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {

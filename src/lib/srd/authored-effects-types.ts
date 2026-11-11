@@ -299,6 +299,9 @@ export type AuthoredEffect = Base &
         // Only a hit on the creature this mark of the holder's names
         // (Improved Quarry: "Quarry damage rises to +2d6").
         vsMark?: string;
+        // Only a hit on a creature that carries this condition (No Witnesses
+        // Left: the record of the creature that downed an ally).
+        vsCondition?: string;
         weapons?: string[];
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.

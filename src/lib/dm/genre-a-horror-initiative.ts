@@ -11,6 +11,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { horrorHolds } from "@/lib/srd/genre-a-horror-holds";
 
+// Listed in src/lib/srd/genre-a-counter-terms.ts INITIATIVE_COUNTERS.
 const BITTER = "horror_bitter_endurance";
 
 export function horrorAtInitiative(campaign: Campaign, sheetId: string): string[] {

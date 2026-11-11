@@ -13,6 +13,11 @@ const HELD_AT_THE_DROP = (feature: string, what: string): CounterTerms => ({
 
 // The counters src/lib/dm/genre-drop-holds.ts spends, which state their hit
 // points and execute them there, not at use_resource.
+// The counters given as their holder rolls initiative, the use spent with them
+// (src/lib/dm/genre-a-horror-initiative.ts). scripts/test-feature-coverage.mjs
+// reads the list beside the drop holds'.
+export const INITIATIVE_COUNTERS = ["horror_bitter_endurance"];
+
 export const DROP_HOLD_COUNTERS = [
   "horror_won_t_die_here", "horror_the_one_who_lives", "dark_fantasy_martyr_s_endurance", "dark_fantasy_deathless_vigor",
   "horror_the_last_candle", "cyberpunk_one_more_dawn", "horror_final_benediction",

@@ -6,6 +6,7 @@
 // pc-attack.ts, which decides and rolls the attack these dice belong to.
 // Nothing here refuses the attack.
 
+import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
@@ -287,8 +288,10 @@ export function strikeDamage(plan: AttackPlan) {
 
 // A spell, a magic weapon and strikes that count as magical pass
 // resistance to nonmagical attacks.
-export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet"> & { enemy?: { stats?: { type?: string } } }): boolean {
+export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet"> & { enemy?: { stats?: { type?: string }; conditions?: string[] } }): boolean {
   return (
+    // Ectoplasmic Sample: the party's attacks on the sampled spirit (genre-a-horror-hits.ts).
+    horrorSampled(plan.enemy) ||
     plan.kind === "spell" ||
     plan.kind === "granted" ||
     plan.profile.magicBonus > 0 ||

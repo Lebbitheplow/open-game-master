@@ -4,6 +4,7 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { horrorCritMaximum } from "@/lib/dm/genre-a-horror-hits";
 import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
@@ -312,12 +313,19 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     }
     notes.push(WRATH_NOTE);
   }
-  const asked = wrath?.expression ?? rolled;
+  // Deathblow: a critical on the slayer's Quarry at its maximum (genre-a-horror-hits.ts).
+  const deathblow = crit && !stunShot && !wrath
+    ? horrorCritMaximum(sheet, enemy.id, rolled, riders, (dice) => critDamageExpression(dice, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }))
+    : null;
+  if (deathblow) {
+    notes.push(deathblow.note);
+  }
+  const asked = deathblow?.expression ?? wrath?.expression ?? rolled;
   return {
     ask: {
       expression: asked,
-      riders: wrath?.riders ?? riders,
-      ...(wrath?.noDice ? { noDice: true } : {}),
+      riders: deathblow?.riders ?? wrath?.riders ?? riders,
+      ...(wrath?.noDice || deathblow ? { noDice: true } : {}),
       crit,
       stunShot,
       feats: spendDamageFeats(scene, record, asked),

@@ -32,7 +32,6 @@ export const KNOWN = {
   "counter:horror_proof": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:horror_rite_of_severance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:horror_the_final_chapter": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:horror_the_stake_remembers": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:mystery_archetype_made_flesh": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:mystery_deductive_counter": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:mystery_dream_logic": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

@@ -33,6 +33,11 @@ function quarryMarks(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">
     .map((condition) => ({ condition, enemyId: meta[condition]?.quarry ?? null }));
 }
 
+// Whether one of the holder's Quarry marks names this creature (Deathblow).
+export function quarryOn(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">, enemyId: string): boolean {
+  return quarryMarks(sheet).some((entry) => entry.enemyId === enemyId);
+}
+
 const standing = (enemyId: string | null) => {
   const enemy = enemyId ? getEnemy(enemyId) : null;
   return Boolean(enemy && enemy.status === "alive" && !isKnockedOut(enemy));
