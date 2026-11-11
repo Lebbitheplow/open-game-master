@@ -215,7 +215,13 @@ export function probes(rig, shared) {
       const four = await react(war(), "Arcane Deflection", { targetEnemyIds: foes.slice(0, 4).map((enemy) => enemy.id) });
       assert.equal(four.ok, false, "four creatures named");
       assert.deepEqual([lost(before, foes), rig.reacted(war()), sheet(war()).conditions.includes("arcane deflection")], [[0, 0, 0, 0, 0], false, false], "[damage, reaction spent, mark laid] on the refusals");
+      // The attacker named alone (targetEnemyId) is no list for the shroud: the nearest three take it.
+      const aimed = await react(war(), "Arcane Deflection", { targetEnemyId: foes[4].id });
+      assert.equal(aimed.ok, true, aimed.error);
+      assert.deepEqual(lost(before, foes), [half, half, half, 0, 0], "the nearest three, with a far creature named as the one answered");
       // The save's half deals it too.
+      foes = await shrouded(war());
+      before = hps(foes);
       assert.equal((await roll(war(), { kind: "saving_throw", ability: "dex", dc: 14 }, [9])).out.result?.success, false);
       const saved = await react(war(), "Arcane Deflection", { variant: "save" });
       assert.equal(saved.ok, true, saved.error);

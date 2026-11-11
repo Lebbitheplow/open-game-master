@@ -161,8 +161,10 @@ const SHROUD = "Deflecting Shroud";
 const SHROUD_FEET = 60;
 const SHROUD_MOST = 3;
 
-// The creatures the call names for the shroud.
-const shroudNamed = (ctx: Ctx): string[] => [...new Set((ctx.args.targetEnemyIds ?? (ctx.args.targetEnemyId ? [ctx.args.targetEnemyId] : [])).map((ref) => ref.trim()).filter(Boolean))];
+// The creatures the call names for the shroud: its list, never the one
+// creature of targetEnemyId, which a call may carry for the attacker it
+// answers (an archer 80 feet off would have refused the whole reaction).
+const shroudNamed = (ctx: Ctx): string[] => [...new Set((ctx.args.targetEnemyIds ?? []).map((ref) => ref.trim()).filter(Boolean))];
 
 const standing = (enemy: EncounterEnemy) => enemy.status === "alive" && enemy.currentHp > 0;
 
