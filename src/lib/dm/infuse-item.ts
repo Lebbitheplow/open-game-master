@@ -24,19 +24,15 @@ import { publishSheet } from "@/lib/dm/combat-features";
 import { MINUTES_PER_DAY } from "@/lib/dm/calendar";
 import { listPriceCp } from "@/lib/dm/trade-value";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { containsPhrase, findNamed, textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { matchArmor } from "@/lib/srd/armor";
 import { matchResource } from "@/lib/srd/class-resources";
 import { infusedItemsMax, infusionNamed, infusionOf, replicableAt, RESISTANT_TYPES, type InfusionDef, type InfusionMark } from "@/lib/srd/infusions";
-import { INFUSE_COUNTER, knownInfusions } from "@/lib/srd/infusion-picks";
-import { hasItemTag } from "@/lib/srd/item-tags";
-import { magicItemBonus } from "@/lib/srd/item-row";
-import { matchMagicItem } from "@/lib/srd/magic-items";
+import { armorOf, INFUSE_COUNTER, infusionPicks, knownInfusions, magicProblem, takesProblem, weaponOf } from "@/lib/srd/infusion-picks";
 import { classLevelOf } from "@/lib/srd/trait-rules";
 import { matchWeapon } from "@/lib/srd/weapons";
-import { wearSlotOf } from "@/lib/srd/wear-slots";
 import { dismissStrayHomunculi, formHomunculus, HOMUNCULUS } from "@/lib/dm/infusion-servant";
 
 const FEATURE = "Infuse Item";
@@ -52,72 +48,6 @@ function parsePick(variant: string): { name: string; choice: string | null } {
   // The choice after a colon, or in brackets: the documented variant shape.
   const at = [text.indexOf(":"), text.indexOf("(")].filter((index) => index > 0).sort((x, y) => x - y)[0];
   return at === undefined ? { name: text, choice: null } : { name: text.slice(0, at).trim(), choice: text.slice(at + 1).replace(")", "").trim() };
-}
-
-// A mundane helmet, boots, ring or robes has no row in the wear-slot table
-// (it lists the magic ones) and a gem no tag: the place a row is worn on
-// comes first, the item's own word for itself after.
-const HELMET = ["helm", "helmet"];
-const BOOTS = ["boots", "shoes", "slippers", "sandals"];
-const RING = ["ring"];
-const ROBES = ["robe", "robes"];
-const GEM = ["gem", "gemstone", "crystal", "diamond", "ruby", "sapphire", "emerald", "pearl", "jade", "opal", "topaz", "amethyst", "garnet", "jacinth", "onyx", "quartz", "tourmaline", "spinel", "peridot", "chrysoberyl", "bloodstone", "moonstone", "zircon", "aquamarine", "alexandrite", "jet", "coral"];
-const callsItself = (row: EquipmentItem, words: readonly string[]) => words.some((word) => containsPhrase(row.name, word));
-
-type WeaponLike = { category?: string; properties?: string[] };
-
-// The weapon or suit the row is, for the engines' base and the takes test.
-function weaponOf(row: EquipmentItem): WeaponLike | null {
-  return matchWeapon(row) ?? ((row.gear?.weapon as WeaponLike | undefined) ?? null);
-}
-
-function armorOf(row: EquipmentItem): { category: string } | null {
-  return matchArmor(row) ?? ((row.gear?.armor as { category: string } | undefined) ?? null);
-}
-
-// Why the row cannot take the infusion, or null when it can.
-function takesProblem(def: InfusionDef, row: EquipmentItem): string | null {
-  const weapon = weaponOf(row);
-  const trained = Boolean(weapon && (weapon.category === "simple" || weapon.category === "martial"));
-  const armor = armorOf(row);
-  const shield = armor?.category === "shield";
-  switch (def.takes) {
-    case "weapon":
-      return trained ? null : "a simple or martial weapon";
-    case "ammunition_weapon":
-      return trained && weapon?.properties?.includes("ammunition") ? null : "a simple or martial weapon with the ammunition property";
-    case "thrown_weapon":
-      return trained && weapon?.properties?.includes("thrown") ? null : "a simple or martial weapon with the thrown property";
-    case "armor":
-      return armor && !shield ? null : "a suit of armor";
-    case "shield":
-      return shield ? null : "a shield";
-    case "armor_or_shield":
-      return armor ? null : "a suit of armor or a shield";
-    case "armor_or_robes":
-      return (armor && !shield) || wearSlotOf(row) === "robe" || callsItself(row, ROBES) ? null : "a suit of armor or robes";
-    case "focus":
-      return hasItemTag(row, "rod") || hasItemTag(row, "staff") || hasItemTag(row, "wand") ? null : "a rod, a staff or a wand";
-    case "helmet":
-      return wearSlotOf(row) === "head" || callsItself(row, HELMET) ? null : "a helmet";
-    case "boots":
-      return wearSlotOf(row) === "feet" || callsItself(row, BOOTS) ? null : "a pair of boots";
-    case "ring":
-      return wearSlotOf(row) === "ring" || callsItself(row, RING) ? null : "a ring";
-    case "gem":
-      return callsItself(row, GEM) && (listPriceCp(row) ?? 0) >= 100 * 100 ? null : "a gem or crystal worth at least 100 gp";
-    case "any":
-      return null;
-  }
-}
-
-// Whether the row is magic already, apart from an infusion of this
-// artificer's (which the new one replaces: one infusion an item).
-function magicProblem(row: EquipmentItem, artificerId: string): string | null {
-  if (row.infusion) {
-    return row.infusion.by === artificerId ? null : `bears ${row.infusion.byName}'s ${row.infusion.name}`;
-  }
-  return matchMagicItem(row) || magicItemBonus(row.name) > 0 || row.gear?.magic ? "is a magic item" : null;
 }
 
 // A row with its infusion gone: the attunement and the charges were the
@@ -173,7 +103,11 @@ export function infuseItemSpend(campaign: Campaign, stale: CharacterSheet, resou
   const pick = parsePick(args.variant ?? "");
   const def = infusionNamed(pick.name);
   if (!def) {
-    return { error: `${FEATURE} needs the infusion in variant: one ${sheet.name} knows (${known.map((entry) => entry.name).join(", ") || "none picked yet"}). Nothing was spent.`, retry: true };
+    // The picks a player could make now, first: an item carried takes each.
+    const picks = infusionPicks(sheet, listPriceCp);
+    return picks.length
+      ? { error: `${FEATURE} needs a variant: ${picks.slice(0, 6).join(" or ")}. Nothing was spent.`, retry: true }
+      : { error: `${sheet.name} knows no infusion that an item they carry can take (they know ${known.map((entry) => entry.name).join(", ") || "none"}). Nothing was spent.`, refused: "rules" };
   }
   if (!known.some((entry) => entry.name === def.name)) {
     return { error: `${sheet.name} does not know ${def.name}${level < def.level ? ` (it needs a ${def.level}th level artificer)` : ""}: the infusions they know are ${known.map((entry) => entry.name).join(", ") || "none"}. Nothing was spent.`, refused: "rules" };
@@ -193,14 +127,14 @@ export function infuseItemSpend(campaign: Campaign, stale: CharacterSheet, resou
     }
   }
   const named = args.item?.trim();
-  const eligible = (row: EquipmentItem) => !takesProblem(def, row) && !magicProblem(row, sheet.id);
+  const eligible = (row: EquipmentItem) => !takesProblem(def, row, listPriceCp) && !magicProblem(row, sheet.id);
   const row = named
     ? findNamed(sheet.equipment, named, (entry) => [entry.name])
     : (sheet.equipment.find((entry) => entry.equipped && eligible(entry)) ?? sheet.equipment.find(eligible) ?? null);
   if (!row) {
-    return { error: `${def.name} is laid in ${takesProblem(def, { name: "" } as EquipmentItem) ?? "a nonmagical item"} ${sheet.name} carries${named ? `, and they carry no ${named}` : ", and they carry none that is not magic"}. Nothing was spent.`, refused: "rules" };
+    return { error: `${def.name} is laid in ${takesProblem(def, { name: "" } as EquipmentItem, listPriceCp) ?? "a nonmagical item"} ${sheet.name} carries${named ? `, and they carry no ${named}` : ", and they carry none that is not magic"}. Nothing was spent.`, refused: "rules" };
   }
-  const takes = takesProblem(def, row);
+  const takes = takesProblem(def, row, listPriceCp);
   if (takes) {
     return { error: `${def.name} is laid in ${takes}, and ${row.name} is not one. Nothing was spent.`, refused: "rules" };
   }

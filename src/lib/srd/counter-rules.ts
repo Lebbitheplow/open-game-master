@@ -22,6 +22,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resourceDef } from "@/lib/srd/class-resources";
 import { ARTISANS_TOOLS } from "@/lib/srd/tool-choices";
+import { INFUSE_COUNTER, infusionPicks } from "@/lib/srd/infusion-picks";
 
 type GateSheet = Pick<CharacterSheet, "name" | "currentHp" | "maxHp" | "conditions"> & Partial<Pick<CharacterSheet, "conditionMeta" | "exhaustion" | "wildShape" | "concentratingOn" | "equipment">>;
 
@@ -39,6 +40,11 @@ export function counterGate(def: ResourceDef, sheet: GateSheet, inFight: boolean
   // (src/lib/dm/mt-srd-artificer.ts asks the same at the door).
   if (def.requires === "tools_in_hand" && sheet.equipment && !sheet.equipment.some((item) => [...ARTISANS_TOOLS, "thieves' tools"].some((tools) => textKey(item.name) === textKey(tools)))) {
     return `${def.displayName} needs thieves' tools or a set of artisan's tools in hand, and ${sheet.name}'s pack holds neither.`;
+  }
+  // Infuse Item: an infusion the artificer knows and an item of theirs that
+  // can take it (src/lib/srd/infusion-picks.ts; the door asks the same).
+  if (def.id === INFUSE_COUNTER && "features" in sheet && !infusionPicks(sheet as unknown as Parameters<typeof infusionPicks>[0]).length) {
+    return `${def.displayName} lays an infusion ${sheet.name} knows in a nonmagical item they carry, and they know none that an item of theirs can take.`;
   }
   if (def.outOfFight && inFight === true) {
     return `${def.displayName} takes a minute or more of work, so it is used out of a fight, not in the middle of one.`;

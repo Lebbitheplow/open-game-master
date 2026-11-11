@@ -14,15 +14,15 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/srd/infusion-picks.ts#str-includes": [["english-source", 2, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
+    "lib/srd/infusion-picks.ts#str-eq": [["english-source", 3, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
+    "lib/srd/infusion-picks.ts#str-list": [["english-source", 4, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
     "lib/dm/infusion-reactions.ts#str-key": [["key", 1, "the conditions the reactions lay and lift (engine vocabulary)"]],
     "lib/dm/infusion-reactions.ts#str-eq": [["key", 2, "the conditions the reactions lay and lift (engine vocabulary)"]],
     "lib/dm/infusion-charges.ts#str-eq": [["key", 1, "the documented variant words for Radiant Weapon's light (engine vocabulary)"]],
     "lib/dm/infusion-charges.ts#str-list": [["key", 2, "the documented variant words for Radiant Weapon's light (engine vocabulary)"]],
     "lib/dm/infuse-item.ts#str-startsWith": [["english-source", 1, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the documented variant words"]],
     "lib/dm/infuse-item.ts#str-endsWith": [["english-source", 1, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the documented variant words"]],
-    "lib/dm/infuse-item.ts#str-includes": [["english-source", 2, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the documented variant words"]],
-    "lib/dm/infuse-item.ts#str-eq": [["english-source", 3, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the documented variant words"]],
-    "lib/dm/infuse-item.ts#str-list": [["english-source", 4, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the documented variant words"]],
     "lib/srd/infusions.ts#str-eq": [["key", 4, "the documented infusion names, damage types and replicable SRD items (engine vocabulary)"]],
     "lib/srd/infusions.ts#str-list": [["key", 5, "the documented infusion names, damage types and replicable SRD items (engine vocabulary)"]],
     "lib/dm/rock-gnome-tinker.ts#str-list": [["key", 2, "the documented variant keys (repair, dismantle) and the SRD's three device names (engine vocabulary)"]],

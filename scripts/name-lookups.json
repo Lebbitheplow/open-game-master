@@ -9,7 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
-    "lib/dm/infuse-item.ts#helper": [["identity", 1, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
+    "lib/srd/infusion-picks.ts#bypass": [["identity", 2, "a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
+    "lib/srd/infusion-picks.ts#helper": [["identity", 1, "a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
     "lib/dm/infusion-servant.ts#fallback": [["identity", 1, "a record by its whole name (textKey on both sides): the square named, else the turn's first, among the squares stood in"]],
     "lib/dm/infusion-reactions.ts#whole": [["identity", 1, "a record by its whole name (textKey on both sides): the blinded and prone conditions"]],
     "lib/dm/infusion-charges.ts#whole": [["identity", 3, "a record by its whole name (textKey on both sides): the infused row and the radiant light mark"]],
@@ -18,7 +19,6 @@
     "lib/dm/infuse-item.ts#fallback": [["identity", 1, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
     "lib/dm/infuse-item.ts#first": [["identity", 2, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
     "lib/dm/infuse-item.ts#whole": [["identity", 4, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
-    "lib/dm/infuse-item.ts#bypass": [["identity", 2, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
     "lib/dm/infuse-item.ts#partial": [["identity", 4, "a record by its whole name (textKey on both sides): the infusion picks, the damage types and the replicable SRD items"]],
     "lib/srd/infusions.ts#whole": [["identity", 2, "a record by its whole name (textKey on both sides): the infusion option names"]],
     "lib/srd/infusions.ts#keyed": [["identity", 1, "a record by its whole name (textKey on both sides): the infusion option names"]],

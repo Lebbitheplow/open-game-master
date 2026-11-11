@@ -6,6 +6,7 @@
 //
 // Pure.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import { INFUSIONS } from "@/lib/srd/infusions";
 
 const LUNAR_PHASES = ["Full Moon", "New Moon", "Crescent Moon"];
 
@@ -20,6 +21,12 @@ export const STORABLE_SPELLS = [
 ];
 
 export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
+  // Each Infusion pick (src/lib/srd/options.json): what it does is the
+  // infused item's, laid by Infuse Item (src/lib/dm/infuse-item.ts) and run
+  // where the item is used through the item finders that read its row.
+  ...Object.fromEntries(
+    INFUSIONS.map((def) => [`artificer::Infusion: ${def.name}`, { subclass: "Artificer", heldBy: { file: "src/lib/srd/infusions.ts", call: "infusionNamed(" } } satisfies AuthoredEntry]),
+  ),
   // A core artificer feature (20th). Its hold at 1 hit point is pc-damage.ts's
   // (src/lib/dm/soul-of-artifice.ts); this card readies which attunement it
   // ends, picked from the items attuned.

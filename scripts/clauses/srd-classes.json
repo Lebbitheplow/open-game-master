@@ -35,22 +35,22 @@
     "source": "src/lib/help/srd-features.json",
     "group": "artificer",
     "level": 2,
-    "sha": "b965147a9f1f",
+    "sha": "57a3dbab4eab",
     "clauses": [
       {
-        "c": "You know four infusions at 2nd level, six at 6th, eight at 10th, ten at 14th and twelve at 18th, picked from the Infusion list.",
+        "c": "You know four infusions at 2nd level, six at 6th, eight at 10th, ten at 14th and twelve at 18th.",
         "is": "held",
         "by": "the picks the builder and the level-up open by artificer level (src/lib/srd/options.ts GRANTS, kind infusion; optionSlotsFor)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.known"
       },
       {
-        "c": "At the end of a long rest, out of a fight, you lay infusions you know in nonmagical items you carry: two items at a time, three from 6th level, four from 10th, five from 14th and six from 18th.",
+        "c": "At the end of a long rest, out of a fight, you lay them in nonmagical items you carry: two items at a time, three from 6th level, four from 10th, five from 14th, six from 18th.",
         "is": "held",
-        "by": "src/lib/dm/infuse-item.ts infuseItemSpend (use_resource Infuse Item, the counter art_infuse_item of authored-resources.json refilled by a long rest, the Hand's pick from src/lib/srd/infusion-picks.ts), the mark on the item's row (`infusion`, src/lib/schemas/sheet.ts)",
+        "by": "src/lib/dm/infuse-item.ts infuseItemSpend (use_resource Infuse Item, the counter art_infuse_item of authored-resources.json refilled by a long rest and gated by src/lib/srd/counter-rules.ts, the Hand's pick from src/lib/srd/infusion-picks.ts), the mark on the item's row (`infusion`, src/lib/schemas/sheet.ts)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
       },
       {
-        "c": "An item bears one infusion and each infusion is in one item at a time; laying one past your limit ends the oldest.",
+        "c": "An item bears one infusion and each infusion is in one item; past your limit the oldest ends.",
         "is": "held",
         "by": "src/lib/dm/infuse-item.ts infuseItemSpend: the same infusion elsewhere and the item's old one end, and past infusedItemsMax (src/lib/srd/infusions.ts) the oldest by its instant",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
@@ -62,27 +62,21 @@
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
       },
       {
-        "c": "An infused item is a magic item for whoever holds it: Enhanced Weapon, Enhanced Defense and Enhanced Arcane Focus give +1 to the weapon's attacks and damage, to armor class or to spell attacks (+2 from 10th level), Radiant Weapon, Repeating Shot and Returning Weapon +1 to attacks and damage, Repulsion Shield +1 to armor class, Resistant Armor a resistance, and Replicate Magic Item is the item it copies.",
+        "c": "Each infused item is a magic item: the Enhanced ones give +1 (+2 from 10th level) to a weapon, armor class or spell attacks, Radiant Weapon, Repeating Shot and Returning Weapon +1 to attacks and damage, Repulsion Shield +1 AC, Resistant Armor a resistance, and a replica is its item.",
         "is": "held",
         "by": "the infusion's row read by the magic item finders every item engine asks (src/lib/srd/infusions.ts infusionGearDef and infusionMagicDef, through src/lib/srd/magic-gear.ts gearDefFor and src/lib/srd/magic-items.ts matchMagicItem): the weapon bonus at the attack (attack-logic.ts), the armor's at the AC (armor.ts armorOfRow), the worn riders (magicItemRiders), attunement as the item's own",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.effects"
       },
       {
-        "c": "Charges refill at dawn: four on Mind Sharpener, Radiant Weapon and Repulsion Shield (1d4 back), six on Armor of Magical Strength (1d6 back), and the one of Spell-Refueling Ring.",
+        "c": "Charges refill at dawn: four on Mind Sharpener, Radiant Weapon and Repulsion Shield (1d4), six on Armor of Magical Strength (1d6), one on Spell-Refueling Ring.",
         "is": "held",
         "by": "the infusion's charge rule (src/lib/srd/infusions.ts INFUSIONS, read by src/lib/srd/item-charge-rules.ts chargeRuleOf and refilled by src/lib/dm/item-charges.ts rechargeAtDawn)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.effects"
       },
       {
-        "c": "Helm of Awareness gives advantage on initiative and keeps its wearer from being surprised, Arcane Propulsion Armor adds 5 feet of walking speed and makes the unarmed strike its gauntlets' 1d8 force, thrown 20/60 and flying back, and Repeating Shot ignores loading and spends no ammunition.",
+        "c": "Helm of Awareness, Arcane Propulsion Armor, Repeating Shot, Mind Sharpener, Armor of Magical Strength, Radiant Weapon, Repulsion Shield and Spell-Refueling Ring do what their entries in the Infusion list say.",
         "is": "held",
-        "by": "src/lib/srd/trait-rules.ts initiativeAdvantage and src/lib/dm/encounter-open.ts hasAlert (infusionWorn), src/lib/srd/index.ts speedFor, the gauntlets' weapon_rider with its thrown form (src/lib/srd/infusions.ts infusionMagicDef, src/lib/dm/attack-logic.ts), Repeating Shot's dropProperties (src/lib/dm/gear-attack.ts) and makesOwnAmmunition (src/lib/dm/pc-attack-plan.ts)",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.rules"
-      },
-      {
-        "c": "Mind Sharpener's charge and reaction hold a failed concentration save, Armor of Magical Strength's charge adds the wearer's Intelligence modifier to a Strength save it would fail and its reaction keeps them from being knocked prone, Radiant Weapon sheds light 30 feet as a bonus action and its reaction blinds an attacker within 30 feet that fails a Constitution save against your spell save DC until the end of its next turn, Repulsion Shield's pushes a melee attacker 15 feet away, and Spell-Refueling Ring recovers a spent slot of 3rd level or lower once a day.",
-        "is": "held",
-        "by": "src/lib/dm/infusion-charges.ts (mindSharpenerSave in src/lib/dm/concentration.ts, magicalStrengthSave in src/lib/dm/forced-save.ts rollCharacterSave, radiantLight through srd-feature-spends.ts read by src/lib/dm/light-timers.ts carriedLight, refuelLevel and recoverSlot in src/lib/dm/item-use.ts chargedItemUse) and src/lib/dm/infusion-reactions.ts (use_reaction, through src/lib/dm/reaction-tools.ts)",
+        "by": "initiative and surprise (trait-rules.ts initiativeAdvantage, encounter-open.ts hasAlert), speed (srd/index.ts speedFor), the gauntlets' thrown fist (infusions.ts infusionMagicDef, attack-logic.ts), Repeating Shot (gear-attack.ts dropProperties, pc-attack-plan.ts makesOwnAmmunition), src/lib/dm/infusion-charges.ts (concentration.ts, forced-save.ts, light-timers.ts carriedLight, item-use.ts chargedItemUse) and src/lib/dm/infusion-reactions.ts (use_reaction)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.rules"
       },
       {
@@ -92,7 +86,7 @@
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.focus"
       },
       {
-        "c": "Homunculus Servant makes the gem it is laid in, worth 100 gp at least, the heart of a Tiny construct that acts right after you (AC 13, 1 + your Intelligence modifier + artificer level hit points, Force Strike at your spell attack bonus for 1d4 + your proficiency bonus force, 30 feet), and Boots of the Winding Path teleport the wearer as a bonus action up to 15 feet to a square they stood in this turn.",
+        "c": "Homunculus Servant and Boots of the Winding Path do what their entries say.",
         "is": "held",
         "by": "src/lib/dm/infusion-servant.ts (formHomunculus through spawnSummons, laid by infuse-item.ts and dismissed with its infusion; windingPath through srd-feature-spends.ts and the feature move door, src/lib/dm/feature-move.ts, over the squares src/lib/db/battle-maps.ts moveToken keeps)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.servants"

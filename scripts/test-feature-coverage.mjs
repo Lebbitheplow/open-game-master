@@ -85,10 +85,8 @@ const ACKNOWLEDGED = new Set([
   "Unarmored Defense",
   // Artificer. The specialist marker and the tool/attunement perks are
   // narrated from the sheet, exactly like the other subclass markers and
-  // proficiency grants above. "Infuse Item" is the gateway to a real pick
-  // list (src/lib/srd/options.json), and the infusions themselves carry the
-  // mechanics; the feature naming the list does not.
-  "Artificer Specialist", "Infuse Item", "Magical Tinkering", "Tool Expertise",
+  // proficiency grants above.
+  "Artificer Specialist", "Magical Tinkering", "Tool Expertise",
   "Magic Item Adept", "Magic Item Savant", "Magic Item Master",
   "Soul of Artifice",
 ]);
