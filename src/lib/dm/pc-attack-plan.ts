@@ -50,6 +50,7 @@ import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { spellWardOn } from "@/lib/dm/cast-reach";
 import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castFromMind } from "@/lib/dm/scribe-mind";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
@@ -267,13 +268,22 @@ export function planPcAttack(input: {
   const conjured = conjuredPlan?.strike ?? null;
   // Battle-map positions are authoritative; players move their own tokens,
   // so an out-of-reach attack is refused rather than auto-approached.
-  const rangeError = input.skipReach || built.conjured ? null : checkPcAttackRange(encounter.id, sheet.id, enemy.id, {
+  const reachOptions = {
     ranged: profile.ranged,
     rangeTiles: profile.rangeTiles,
     reachTiles: profile.reachTiles,
     thrown: profile.thrown,
     longRangeTiles: profile.longRangeTiles,
-  });
+  };
+  let rangeError = input.skipReach || built.conjured ? null : checkPcAttackRange(encounter.id, sheet.id, enemy.id, reachOptions);
+  // A Scribes wizard's attack-roll spell cast from their spellbook mind's
+  // space when it does not reach from their own (scribe-mind.ts).
+  const mindAt = rangeError && kind === "spell" && args.spell
+    ? castFromMind({ encounterId: encounter.id, casterId: sheet.id, facts: spellFactsFor(args.spell, spellAuthorsFor(campaign)), reachesFrom: (mind) => checkPcAttackRange(encounter.id, sheet.id, enemy.id, { ...reachOptions, from: mind }) === null })
+    : null;
+  if (mindAt) {
+    rangeError = null;
+  }
   if (rangeError) {
     return { refused: rangeError };
   }
@@ -289,7 +299,7 @@ export function planPcAttack(input: {
     // Globe of Invulnerability or an Antimagic Field turns it too.
     (kind === "granted" && built.grantedSpell ? spellWardOn({ encounterId: encounter.id, casterId: sheet.id, targetId: enemy.id, targetName: enemy.displayName, facts: spellFactsFor(built.grantedSpell, spellAuthorsFor(campaign)) }) : null) ??
     spell.noEffect;
-  let geometry = attackGeometry(campaign.id, encounter.id, sheet.id, enemy, profile, conjured?.at);
+  let geometry = attackGeometry(campaign.id, encounter.id, sheet.id, enemy, profile, conjured?.at ?? mindAt ?? undefined);
   const { atRange } = geometry;
   // Antilife Shell: a living creature cannot reach through it in melee. Only
   // enemies' attacks asked it, so a character's sword went through. A weapon

@@ -1318,13 +1318,15 @@
    },
    {
     "c": "manifest your spellbook's mind as a Tiny spectral object within 60 feet that sheds dim light in 10 feet, sees in darkness to 60 feet and moves up to 30 feet when you use a bonus action; it ends if it is ever more than 300 feet from you",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/scribe-mind.ts mindSpend and moveMind: a prop token placed within 60 feet with dim light in 10 feet, moved 30 feet for the wizard's bonus action, ended beyond 300 feet at the turn's end (mindTurnEnd)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-object"
    },
    {
     "c": "While it is manifested you can cast a wizard spell from its space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_manifest_mind_casts#SPENT_FOR_NOTHING"
+    "is": "held",
+    "by": "src/lib/dm/scribe-mind.ts castFromMind, asked by cast-reach.ts spellReachProblem, zone-cast.ts placementReachProblem and pc-attack-plan.ts: a wizard spell that does not reach from the wizard is measured from the mind's square and spends a use of Manifest Mind casting (passive, a bare spend refused)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-casts-from"
    },
    {
     "c": "a number of times per long rest equal to your proficiency bonus",
@@ -1597,8 +1599,9 @@
   "clauses": [
    {
     "c": "You have darkvision out to 120 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-board"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: eyes-board",
+    "by": "src/lib/battlemap/view.ts sheetDarkvisionTiles reads authoredDarkvisionFeet (the authored darkvision row), so the board's sight, a lit square's light (place-light.ts) and an attack's light (attack-light.ts) read 120 feet"
    },
    {
     "c": "From 3rd level you know darkness, which doesn't count against your spells known",

@@ -27,6 +27,7 @@ import { darknessWithin, layZone, type SpellZone, type ZoneCasterKind } from "@/
 import { spaceOf } from "@/lib/dm/board-reach";
 import { LIGHT_SPELLS, zoneKey, zoneOwnKey, zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { holdGasesBack } from "@/lib/battlemap/zones-walls";
+import { castFromMind } from "@/lib/dm/scribe-mind";
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -131,11 +132,20 @@ export function placementReachProblem(campaign: Campaign, input: { casterId: str
   if (!map || !caster || rangeFeet === null || !inside(input.at, map.width, map.height)) {
     return null;
   }
-  const apart = chebyshev(caster.x, caster.y, input.at.x, input.at.y) * 5;
+  const own = layFrom(map, caster, { ...input, facts: input.facts }, rangeFeet);
+  // A Scribes wizard's spell laid from their spellbook mind's space
+  // (scribe-mind.ts castFromMind), when it does not reach from their own.
+  return own && castFromMind({ encounterId: encounter!.id, casterId: input.casterId, facts: input.facts, reachesFrom: (mind) => layFrom(map, mind, { ...input, facts: input.facts! }, rangeFeet) === null }) ? null : own;
+}
+
+// The square's range and clear path from `from`: the caster's own token, or
+// one their spell is cast from.
+function layFrom(map: BattleMap, from: XY, input: { casterName: string; facts: SpellFacts; at: XY }, rangeFeet: number): ToolError | null {
+  const apart = chebyshev(from.x, from.y, input.at.x, input.at.y) * 5;
   if (apart > rangeFeet) {
     return { error: `${input.facts.name} is laid within ${rangeFeet} feet of ${input.casterName}, and (${input.at.x},${input.at.y}) is ${apart} feet away. Name a square within range. Nothing was spent.`, retry: true };
   }
-  if (!hasLineOfSight(map.terrain, map.width, caster.x, caster.y, input.at.x, input.at.y)) {
+  if (!hasLineOfSight(map.terrain, map.width, from.x, from.y, input.at.x, input.at.y)) {
     return { error: `A wall stands between ${input.casterName} and (${input.at.x},${input.at.y}): ${input.facts.name} needs a clear path to where it is laid. Name a square ${input.casterName} can see. Nothing was spent.`, retry: true };
   }
   return null;

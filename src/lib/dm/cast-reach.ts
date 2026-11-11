@@ -27,6 +27,7 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { getSheetById } from "@/lib/db/sheets";
 import { featureSpellReachFeet } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { castFromMind } from "@/lib/dm/scribe-mind";
 
 const FEET_PER_TILE = 5;
 
@@ -61,11 +62,24 @@ export function spellReachProblem(input: {
     return { error: `${inside} Nothing was spent.`, refused: "rules" };
   }
   const { facts } = input;
-  if (!facts) {
+  if (!facts || input.casterId === input.targetId) {
     return null;
   }
-  const apart = tilesBetween(input.encounterId, input.casterId, input.targetId);
-  if (apart === null || input.casterId === input.targetId) {
+  const own = reachFrom(input, facts, input.casterId);
+  // A Scribes wizard's spell cast from their spellbook mind's space
+  // (scribe-mind.ts castFromMind), when it does not reach from their own.
+  return own && castFromMind({ encounterId: input.encounterId, casterId: input.casterId, facts, reachesFrom: (mind) => reachFrom(input, facts, mind.refId) === null }) ? null : own;
+}
+
+// The spell's range and clear path measured from `fromRef`'s token: the
+// caster's own, or a square their spell is cast from.
+function reachFrom(
+  input: { encounterId: string; casterId: string; casterName: string; targetId: string; targetName: string },
+  facts: SpellFacts,
+  fromRef: string,
+): ToolError | null {
+  const apart = tilesBetween(input.encounterId, fromRef, input.targetId);
+  if (apart === null) {
     return null;
   }
   // A feature's own reach for this caster and spell (a Spirits bard's
@@ -85,7 +99,7 @@ export function spellReachProblem(input: {
       ? `${facts.name} is a touch spell and ${input.targetName} is ${apart * FEET_PER_TILE} ft from ${input.casterName}. They must move next to them first. Nothing was spent.`
       : `${input.targetName} is ${apart * FEET_PER_TILE} ft from ${input.casterName}, beyond ${facts.name}'s reach of ${facts.range.kind === "feet" ? facts.range.feet : reach * FEET_PER_TILE} ft. They must move closer or pick another target. Nothing was spent.`, retry: true };
   }
-  if (apart > 1 && wallBetween(input.encounterId, input.casterId, input.targetId)) {
+  if (apart > 1 && wallBetween(input.encounterId, fromRef, input.targetId)) {
     return { error: `${input.targetName} is behind total cover from ${input.casterName}: a spell needs a clear path to its target. They must move to a clear line first or pick another target. Nothing was spent.`, retry: true };
   }
   return null;

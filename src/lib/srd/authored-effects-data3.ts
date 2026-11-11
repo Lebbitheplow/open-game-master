@@ -587,6 +587,14 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // The mind is a token on the board and a condition on the wizard while it
+  // lasts (src/lib/dm/scribe-mind.ts): the condition is what One with the
+  // Word asks, the token is the square its spells are cast from. Free once a
+  // long rest, then a spell slot of any level.
+  "wizard::Manifest Mind": {
+    subclass: "Order of Scribes",
+    spends: [{ name: "Manifest Mind", pool: { id: "sub_manifest_mind", slot: true }, action: "bonus", does: { kind: "mind" } }],
+  },
   "wizard::Wizardly Quill": {
     subclass: "Order of Scribes",
     narrated: "A quill that writes and erases is roleplay: nothing on a sheet changes.",

@@ -15,7 +15,8 @@ export function probes(rig, shared) {
   rig.outfit("wizard", "War Magic", { spells: ["Fire Bolt", "Magic Missile", "Hold Person", "Counterspell"], cantrips: ["Fire Bolt"], acOverride: false });
   rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Acid Splash", "Hold Person"], cantrips: ["Fire Bolt", "Acid Splash"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
   // A scribe's book: 29 spell levels, more than One with the Word's 3d6 can ask.
-  rig.outfit("wizard", "Order of Scribes", { spells: SCRIBE_BOOK });
+  // Shocking Grasp, a touch cantrip, for a spell cast from the mind's space.
+  rig.outfit("wizard", "Order of Scribes", { spells: SCRIBE_BOOK, cantrips: ["Shocking Grasp"] });
   rig.outfit("wizard", "Chronurgy Magic", { spells: ["Hold Person", "Magic Missile", "Fireball", "Cone of Cold"], cantrips: ["Fire Bolt"] });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
@@ -571,12 +572,46 @@ export function probes(rig, shared) {
       assert.equal(budget().bonusUsed, true);
       assert.ok(sheet(scr()).conditions.includes("manifest mind"));
     },
+    // "manifest your spellbook's mind as a Tiny spectral object within 60
+    // feet that sheds dim light in 10 feet ... and moves up to 30 feet when
+    // you use a bonus action": a token on the board (src/lib/dm/scribe-mind.ts).
     "mind-object": async () => {
+      const { listTokens } = await import("../../src/lib/db/battle-maps.ts");
       await stage(scr());
-      const tokens = () => world.enemies().length + world.sheets().length + JSON.stringify(kit.map().zones ?? kit.map().effects ?? "").length;
-      const before = tokens();
-      await spend(scr(), "Manifest Mind");
-      assert.notEqual(tokens(), before, "nothing stands on the board for the mind: no token, no zone, no light, nothing to be within 60 or 300 feet of");
+      const mind = () => listTokens(kit.map().id).find((token) => token.refId === `mind:${scr().id}`);
+      assert.equal(mind(), undefined);
+      const far = await spend(scr(), "Manifest Mind", { x: 5 + 13, y: 5 });
+      assert.equal(far.ok, false, "65 feet off is beyond the 60");
+      const out = await spend(scr(), "Manifest Mind", { x: 5 + 12, y: 5 });
+      assert.equal(out.ok, true, out.error);
+      assert.ok(mind(), "nothing stands on the board for the mind: no token, no zone, no light, nothing to be within 60 or 300 feet of");
+      assert.deepEqual([mind().x, mind().y, mind().lightRadius ?? 0, mind().lightDimRadius], [17, 5, 0, 2], "at the square named, dim light in 10 feet");
+      // Its move takes the bonus action: refused with it spent, then moved 30 feet on a fresh turn.
+      assert.equal((await call("move_token", { token: mind().name, x: 17, y: 6 })).ok, false, "the manifesting took the bonus action");
+      kit.saveEncounter({ ...world.encounter(), turnBudget: null });
+      kit.freshTurn();
+      assert.equal((await call("move_token", { token: mind().name, x: 17, y: 5 + 7 })).ok, false, "35 feet is beyond the 30");
+      const moved = await call("move_token", { token: mind().name, x: 17, y: 5 + 6 });
+      assert.equal(moved.ok, true, moved.error);
+      assert.equal(budget().bonusUsed, true, "the move is a bonus action");
+    },
+    // "While it is manifested you can cast a wizard spell from its space":
+    // Shocking Grasp on a creature 40 feet off reaches from the mind beside
+    // it, for one use of Manifest Mind casting; a bare spend of that use is
+    // refused, as the server spends it with the spell.
+    "mind-casts-from": async () => {
+      const [enemy] = await stage(scr());
+      kit.place(scr().id, 1, 5);
+      kit.place(enemy.id, 9, 5);
+      const before = counter(scr(), "sub_manifest_mind_casts")?.used ?? 0;
+      const touch = () => call("pc_attack", { characterId: scr().id, targetEnemyId: enemy.id, spell: "Shocking Grasp" }, [15, 4]);
+      assert.equal((await touch()).ok, false, "no mind out: the touch spell does not reach 40 feet");
+      assert.equal((await spend(scr(), "Manifest Mind casting")).ok, false, "a bare spend is refused");
+      const out = await spend(scr(), "Manifest Mind", { x: 8, y: 5 });
+      assert.equal(out.ok, true, out.error);
+      const cast = await touch();
+      assert.equal(cast.ok, true, `cast from the mind's space: ${show(cast).slice(0, 200)}`);
+      assert.equal(counter(scr(), "sub_manifest_mind_casts")?.used, before + 1, "one use of Manifest Mind casting is spent");
     },
     "mind-casts": uses(["wizard", "Order of Scribes"], "sub_manifest_mind_casts", { 6: prof(6), 20: prof(20) }),
     "mind-free": async () => {
@@ -723,7 +758,6 @@ export function probes(rig, shared) {
   const wordRest = rests(["wizard", "Order of Scribes"], "sub_one_with_the_word", "long");
 
   const KNOWN = {
-    "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
   };
   return { PROBES, KNOWN };
 }

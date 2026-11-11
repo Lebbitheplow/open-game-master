@@ -1424,7 +1424,8 @@
    "ability": null,
    "proficiency": 1,
    "recharge": "long",
-   "guidance": "A wizard spell cast from the manifested mind's space: a proficiency-bonus number a day. Spend one with use_resource 'Manifest Mind casting' as the spell is cast."
+   "guidance": "A wizard spell cast from the manifested mind's space: a proficiency-bonus number a day. The server spends one itself when a wizard spell that does not reach from the wizard reaches from the mind's square (its range and a clear path measured from there). Never spend it here: a bare spend is refused.",
+   "passive": true
   },
   {
    "id": "sub_awakened_spellbook",

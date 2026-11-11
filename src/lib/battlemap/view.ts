@@ -18,6 +18,7 @@ import { ownZoneFeet } from "@/lib/dm/zone-reach";
 import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
+import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
@@ -107,7 +108,11 @@ export function sheetDarkvisionTiles(sheet: CharacterSheet): number {
   if (worn) {
     return worn.darkvision;
   }
-  return darkvisionTilesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
+  // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night)
+  // is asked here, so the board's sight, a lit square's light and an
+  // attack's light (attack-light.ts) all read the same feet.
+  const named = darkvisionTilesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
+  return Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
 }
 
 // Every sense a character has, from race and feature names (Blind Fighting,

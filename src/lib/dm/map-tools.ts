@@ -89,6 +89,7 @@ import { livePurchase } from "@/lib/dm/legendary-logic";
 import { swallowRowWalk } from "@/lib/dm/swallow";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { echoStrikeFrom, moveEcho } from "@/lib/dm/mt-fb-echo";
+import { moveMind } from "@/lib/dm/scribe-mind";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 
 export { landTheFlightless } from "@/lib/dm/token-state";
@@ -584,6 +585,11 @@ export function handleMoveToken(
   const echoMoved = moveEcho(campaign, encounter, map, args);
   if (echoMoved) {
     return echoMoved;
+  }
+  // A Scribes wizard's spellbook mind moves for their bonus action (scribe-mind.ts).
+  const mindMoved = moveMind(campaign, encounter, map, args);
+  if (mindMoved) {
+    return mindMoved;
   }
   const resolved = resolveMoveTarget(map, encounter.id, args.token, sheets, sheetsById);
   if (!resolved) {
@@ -1095,6 +1101,9 @@ export function checkPcAttackRange(
     // normal range, which is what an attack-roll spell and a homebrew weapon
     // saved without one still do.
     longRangeTiles?: number;
+    // The square the attack is made from when it is not the attacker's own
+    // (a Scribes wizard's spell from their spellbook mind, scribe-mind.ts).
+    from?: { x: number; y: number };
   },
 ): (ToolError & { closeIn?: string }) | null {
   const encounter = getEncounter(encounterId);
@@ -1110,7 +1119,7 @@ export function checkPcAttackRange(
   // "Make any attack of the Attack action from its space": an Echo Knight's
   // melee attack is measured from their echo's square when it is the nearer
   // (mt-fb-echo.ts echoStrikeFrom).
-  const echoAt = options.ranged ? null : echoStrikeFrom(map.id, characterId, target);
+  const echoAt = options.from ?? (options.ranged ? null : echoStrikeFrom(map.id, characterId, target));
   const attacker = echoAt ? { ...own, ...echoAt } : own;
   const distance = tilesApart(attacker, target);
   const maxTiles = longRangeTilesOf(options);

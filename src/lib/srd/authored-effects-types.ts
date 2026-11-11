@@ -696,6 +696,9 @@ export type SpendDoes =
   // Manifest Echo: the echo placed on the board, swapped with or dismissed
   // (src/lib/dm/mt-fb-echo.ts echoSpend).
   | { kind: "echo" }
+  // Manifest Mind: the spellbook's mind placed on the board
+  // (src/lib/dm/scribe-mind.ts mindSpend).
+  | { kind: "mind" }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
