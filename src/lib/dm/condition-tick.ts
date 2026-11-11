@@ -503,8 +503,23 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       ({ conditions, meta } = withLethargy(conditions, meta, lethargyMeta(enemy.id)));
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
     }
+    // One effect, one save, as a character's below: conditions one source laid
+    // together with the same save (the Stone Rune's charm, incapacitation and
+    // stupor) end together on one roll. A hold with no source is its own.
+    const effectSaves = new Map<string, boolean>();
     for (const listed of tick.savesDue) {
       if (!conditions.includes(listed.name) || (options.due && !options.due(enemy.id, holdKey(enemy.id, listed.name, listed.key, listed.dc)))) {
+        continue;
+      }
+      const effect = listed.key === "|" ? null : `${listed.key}|${listed.ability}|${listed.dc}`;
+      const settled = effect ? effectSaves.get(effect) : undefined;
+      if (settled !== undefined) {
+        if (settled) {
+          const removed = removeConditionInstances(conditions, meta, listed.name, (instance) => instanceIdentity(instance) === listed.key && instance.saveEnds?.dc === listed.dc);
+          conditions = removed.conditions;
+          meta = removed.meta;
+          lines.push(`${enemy.displayName} is no longer ${listed.name}: the same save ended it.`);
+        }
         continue;
       }
       // A hold that lets the creature pick its save (Nature's Wrath) takes the
@@ -537,6 +552,9 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
         },
       );
       const shown = outcome.total === null ? "an automatic failure" : String(outcome.total);
+      if (effect) {
+        effectSaves.set(effect, outcome.success);
+      }
       if (outcome.success) {
         const removed = removeConditionInstances(conditions, meta, due.name, holds);
         conditions = removed.conditions;

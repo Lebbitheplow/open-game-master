@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath", "unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence", "combat_inspiration", "convergent_future", "bend_luck"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath", "unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence", "combat_inspiration", "convergent_future", "bend_luck", "prophetic_state"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),

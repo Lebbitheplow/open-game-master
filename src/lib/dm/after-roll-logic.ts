@@ -29,7 +29,9 @@ export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "g
   // The monk and rogue subclasses' (src/lib/dm/mt-mr-offers-logic.ts).
   | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence"
   // Convergent Future and Bend Luck (src/lib/dm/fate-turn-logic.ts).
-  | "convergent_future" | "bend_luck";
+  | "convergent_future" | "bend_luck"
+  // The Storm Rune's prophetic state (src/lib/dm/mt-fb-runes.ts).
+  | "prophetic_state";
 
 export type AfterRollOption = {
   id: AfterRollId;

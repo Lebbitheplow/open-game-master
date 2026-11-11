@@ -69,6 +69,7 @@ import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
 import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 import { blowLandsOn, redirectTaker } from "@/lib/dm/redirect-target";
+import { layHeldCharm } from "@/lib/dm/mt-fb-runes";
 import { laidBySave, openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
 import type { Combatant } from "@/lib/dm/combatant";
 
@@ -248,8 +249,10 @@ function saveDc(holder: CharacterSheet, ability: string): number {
 
 // The creature a redirect turns the attack onto, or why there is none
 // (redirect-target.ts).
-function takerOf(ctx: Ctx, encounter: NonNullable<Ctx["encounter"]>, record: LastHit, reaction: string, closest: boolean): Combatant | ToolError {
+function takerOf(ctx: Ctx, encounter: NonNullable<Ctx["encounter"]>, record: LastHit, reaction: string, closest: boolean, within?: number): Combatant | ToolError {
   return redirectTaker({
+    within,
+    struck: record.characterId,
     campaignId: ctx.campaign.id,
     encounter,
     holder: ctx.sheet,
@@ -611,9 +614,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     }
     case "disadv_vs_hit": {
       const named = allyOf(ctx);
-      const covered = named && does.allyWith ? named : ctx.sheet;
+      const covered = named && (does.allyWith || does.anyAlly) ? named : ctx.sheet;
       if (covered.id !== ctx.sheet.id) {
-        if (!holdsFeature(ctx.sheet, does.allyWith!)) {
+        if (does.allyWith && !holdsFeature(ctx.sheet, does.allyWith)) {
           return { error: `${reaction.name} covers only ${ctx.sheet.name} until they hold ${does.allyWith}. Nothing was spent.`, refused: "rules" };
         }
         if (does.rangeFt && encounter && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
@@ -985,6 +988,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!enemy || !encounter) {
         return { error: `${reaction.name} answers a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }
+      // "A creature you can see" (the Stone Rune): asked of the one it charms.
+      const unseenFoe = reaction.sees === "attacker" ? unseenRefusal(encounter.id, ctx.sheet, { id: enemy.id, name: enemy.displayName }, reaction.name) : null;
+      if (unseenFoe) return unseenFoe;
       // A reaction with variants takes the one named whole after its name
       // ("Raging Storm tundra"); a miss is refused before anything rolls.
       const variants = Object.entries(does.variants ?? {});
@@ -1007,6 +1013,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // Its own immunities, and a petrified creature's to poison.
       if (immuneToCondition(enemy, condition)) {
         return { applied: `${enemy.displayName} fails the ${does.save.toUpperCase()} save but cannot be ${condition}.` };
+      }
+      if (does.also || does.saveEnds) {
+        return { applied: layHeldCharm(ctx, enemy, { names: [condition, ...(does.also ?? [])], rounds: does.rounds, saveEnds: does.saveEnds ? { ability: does.save, dc } : undefined }, `${enemy.displayName} fails the ${does.save.toUpperCase()} save (${save.total ?? "failed"} vs DC ${dc})`) };
       }
       patchEnemyConditions(enemy.id, [...enemy.conditions.filter((entry) => textKey(entry) !== condition), condition], {
         ...(enemy.conditionMeta as ConditionMetaMap),
@@ -1046,7 +1055,18 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.` };
     }
     case "redirect": {
-      const landed = lastHitOn(ctx, ctx.sheet, label);
+      // The Cloud Rune answers a hit on the knight or on a creature they see
+      // within its reach (mt-fb-runes.ts); the others, a hit on the holder. A
+      // character named with no hit open on them, while the knight has one, is
+      // the one the knight's hit turns onto ("a different creature").
+      const named = does.within ? allyOf(ctx) : null;
+      const covered = named && !("error" in lastHitOn(ctx, named, label)) ? named : ctx.sheet;
+      if (does.within && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.within)) {
+        return { error: `${covered.name} is beyond ${does.within} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      const unseenCovered = does.within ? unseenTarget(ctx, found, covered) : null;
+      if (unseenCovered) return unseenCovered;
+      const landed = lastHitOn(ctx, covered, label);
       // Instinctive Charm answers the attack roll, hit or miss
       // (ar-ws-charm-miss.ts): with no hit open, an attack that missed.
       const hit = "error" in landed && does.save ? (missedAttackOn(ctx.campaign.id, ctx.sheet.id, label) ?? landed) : landed;
@@ -1057,7 +1077,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // Who takes the blow, settled before anything is rolled: for
       // Misdirection a creature beside the holder giving cover, for
       // Instinctive Charm the one closest to the attacker (redirect-target.ts).
-      const taker = does.save ? null : takerOf(ctx, encounter, hit.record, reaction.name, false);
+      const taker = does.save ? null : takerOf(ctx, encounter, hit.record, reaction.name, false, does.within);
       if (taker && "error" in taker) return taker;
       // Instinctive Charm: the attacker saves first, and keeps its target on
       // a success. What bars the attacker is asked before who is closest to it.
@@ -1121,14 +1141,14 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const meets = blowLandsOn(ctx.campaign.id, target, swing);
       if (!meets.lands || swing.raw < 1) {
         publishEncounter(ctx.campaign.id);
-        return { applied: `The attack turns onto ${target.name} and misses (${swing.total} against AC ${meets.ac}): ${settled.given} hit points come back to ${ctx.sheet.name}.` };
+        return { applied: `The attack turns onto ${target.name} and misses (${swing.total} against AC ${meets.ac}): ${settled.given} hit points come back to ${covered.name}.` };
       }
       const type = swing.type ?? hit.record.type;
       const applied = target.kind === "enemy"
         ? applyEnemyDamage(ctx.campaign, ctx.turn, encounter, target.enemy, swing.raw, ctx.sheets, ctx.sheetsById, type)
         : applyPcDamage(ctx.campaign, ctx.turn.id, getSheetById(target.id) ?? target.sheet, { amount: swing.raw, type, crit: swing.crit, reason: `${hit.record.attacker.name}'s ${hit.record.attack}, turned by ${reaction.name}` });
       publishEncounter(ctx.campaign.id);
-      return { applied: `The blow lands on ${target.name} instead: ${settled.given} hit points come back to ${ctx.sheet.name}.`, redirected: applied };
+      return { applied: `The blow lands on ${target.name} instead: ${settled.given} hit points come back to ${covered.name}.`, redirected: applied };
     }
     case "force_miss": {
       const target = allyOf(ctx) ?? ctx.sheet;

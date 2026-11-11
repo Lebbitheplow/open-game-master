@@ -924,7 +924,9 @@ export type ReactionDoes =
   // `rangeFt` (Improved Flare). `advantageOnMiss`: a miss gives the holder
   // advantage on their next attack roll against the attacker before the end
   // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
-  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
+  // `anyAlly`: it answers a hit on any ally within `rangeFt` too, with no
+  // feature to hold first (the Storm Rune's prophetic state, 60 feet).
+  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; anyAlly?: true; rangeFt?: number; advantageOnMiss?: boolean }
   // The attacker rolls the d20 that hit an ally in range again and must use the
   // new roll, high or low (Runic Shield). `roller`: the reach is to the creature
   // that rolled, not the one it hit, so a hit on the holder counts too
@@ -979,7 +981,10 @@ export type ReactionDoes =
   // `pullFeet`: a creature that fails is pulled that far straight toward the
   // reactor; `attackWithin`: and, ending within that many feet, takes one melee
   // weapon attack as part of the reaction (Perfected Armor's Guardian).
-  | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string>; pullFeet?: number; attackWithin?: number }
+  // `also`: conditions laid with it that end with it, and `saveEnds`: the
+  // creature saves again at the end of each of its turns, one roll ending them
+  // all (the Stone Rune's charm: incapacitated, speed 0, for a minute).
+  | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string>; pullFeet?: number; attackWithin?: number; also?: string[]; saveEnds?: true }
   // The holder gains a condition (Tokens of the Departed's soul trinket).
   | { kind: "gain_condition"; condition: string; rounds: number }
   // The attack's die is lowered by a die (Bend Luck).
@@ -987,7 +992,10 @@ export type ReactionDoes =
   // The last hit on the holder lands on the creature beside them instead.
   // `save`: the attacker first saves against the holder's DC and keeps its
   // target on a success (Instinctive Charm).
-  | { kind: "redirect"; save?: { ability: Ability; dcAbility: Ability | "spell" }; rangeFt?: number }
+  // `within`: the hit on the holder or on a creature they can see within that
+  // many feet turns onto another creature within as many feet of the holder,
+  // not the attacker, on the same roll (the Cloud Rune: src/lib/dm/mt-fb-runes.ts).
+  | { kind: "redirect"; save?: { ability: Ability; dcAbility: Ability | "spell" }; rangeFt?: number; within?: number }
   // The hit misses on this die or higher (Armor of Hexes: a d6, 4 or more),
   // against a creature the holder marked with this condition.
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }

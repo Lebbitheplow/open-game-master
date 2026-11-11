@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/mt-fb-runes.ts#toUpperCase": [["display", 1, "ability abbreviation shown in a roll note"]],
     "lib/dm/rock-gnome-tinker.ts#str-list": [["key", 2, "the documented variant keys (repair, dismantle) and the SRD's three device names (engine vocabulary)"]],
     "lib/dm/spell-storing-item.ts#str-eq": [["key", 1, "the stored entry's own by and the row's own name, read back from the same sheet (no name typed by a person)"]],
     "lib/dm/genie-vessel.ts#str-list": [["english-source", 1, "reference: a Genie warlock's vessel by its whole name, the warlock's or the feature's"]],
@@ -1339,7 +1340,7 @@
     "lib/dm/authored-mote.ts#toLowerCase": [["key",1,"die notation"]],
     "lib/dm/authored-reactions.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/authored-reactions.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"a reduction's amount kind (half), kept as the cut on record"]],
-    "lib/dm/authored-reactions.ts#toUpperCase": [["display",8,"ability abbreviation shown in a roll note"]],
+    "lib/dm/authored-reactions.ts#toUpperCase": [["display", 9, "ability abbreviation shown in a roll note"]],
     "lib/dm/authored-saves.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/authored-saves.ts#toLowerCase": [["key",1,"condition labels and damage types (engine vocabulary)"]],
     "lib/dm/authored-spend-effects.ts#str-eq": [["key",2,"the documented variant keys (heal, burn)"],["key",1,"feature names the authored layer keys on (engine vocabulary)"],["key",1,"a creature type the authored row names, normalized (creature-type.ts)"]],
@@ -2999,7 +3000,7 @@
     "lib/db/turn-journal.ts#\\w": [["key",3,"the table name in a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]],
     "lib/dm/mt-fb-spend.ts#\\b": [["english-source", 2, "the SRD stat block's speed line (English data): \"fly\""]],
     "lib/dm/mt-fb-spend.ts#re-word": [["english-source", 1, "the SRD stat block's speed line (English data): \"fly\""]],
-    "lib/srd/authored-effects-w2-mt-fb.ts#str-list": [["english-source", 4, "ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-w2-mt-fb.ts#str-list": [["english-source", 5, "ODM's authored effect rows (bundled data)"]],
     "lib/dm/mt-fb-rage-death.ts#str-list": [["key", 1, "condition names the engine writes, for the audit's delta"]],
     "lib/dm/mt-fb-counter-riders.ts#str-case": [["key", 1, "counter ids (engine vocabulary)"]],
     "lib/dm/mt-fb-counter-riders.ts#str-eq": [["key", 1, "an authored option's key, as heldAuthored normalizes it"]],

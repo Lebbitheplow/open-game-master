@@ -55,6 +55,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { swingFacts } from "@/lib/dm/mt-mr-offers";
 import { fateChoicesFor, spendFateAfterRoll } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
+import { propheticChoicesFor, spendPropheticState } from "@/lib/dm/mt-fb-runes";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -120,7 +121,8 @@ export function optionsForPending(
 // Who could answer a roll from their own screen, for a player whose rolls wait
 // (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
 // as it would on the roller's own options. Chronal Shift, War God's Blessing
-// and Flash of Genius, which the artificer may also spend on their own roll.
+// and Flash of Genius, which the artificer may also spend on their own roll,
+// and a Rune Knight's prophetic state (mt-fb-runes.ts), theirs too.
 // A helper on the bench (one character fielded per player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
@@ -140,12 +142,12 @@ export function allyChoicesFor(
     // ally may still bless the roll.
     const fight = getActiveEncounter(campaignId);
     const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
-    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? []), ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? []), ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
   }
   const flash = (artificer: CharacterSheet, ally: boolean) => flashOfGeniusOption(artificer, computeSheetDerived(artificer).abilityMods.int, roll, ally);
   const own = !done.kept && !roll.spent?.includes("flash_of_genius") && canReactNow(campaignId, sheet) ? flash(sheet, false) : null;
   const help = others.filter((artificer) => inShiftReach(campaignId, artificer, sheet)).flatMap((artificer) => flash(artificer, true) ?? []);
-  return [...shifts, ...(own ? [own] : []), ...help, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+  return [...shifts, ...(own ? [own] : []), ...help, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -192,6 +194,9 @@ export function spendAfterRoll(
       markReactionUsed(encounter, giver.id);
     }
     return { outcome: withFlatBonus(outcome, id === "war_gods_blessing" ? WAR_GODS_BLESSING_BONUS : computeSheetDerived(giver).abilityMods.int), choosing: false };
+  }
+  if (id === "prophetic_state") {
+    return spendPropheticState(campaign, sheet, outcome, payer);
   }
   if (isFatePower(id)) {
     return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);

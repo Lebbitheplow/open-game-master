@@ -1087,6 +1087,121 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.ok(afterHit - kit.enemy(enemy.id).currentHp >= 2, `Fire Rune's 2d6 fire lands even when the save is made (${hp} -> ${afterHit} -> ${kit.enemy(enemy.id).currentHp})`);
   });
 
+  // ---- the runes that answer a moment off the knight's turn (mt-fb-runes.ts):
+  // a table of their own, so the order holds only the knight, an ally and the foes.
+  {
+    const t = await openRig();
+    const { call } = await import("./lib/enforce-campaign.mjs");
+    const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+    const { subscribe } = await import("../src/lib/events.ts");
+    const { enemySpeedTiles } = await import("../src/lib/dm/enemy-speed.ts");
+    const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+    const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+    const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+    const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+    const afterRoll = await t.world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+    const rune = (name) => ({ name: options.optionFeatureName("rune", name), source: "class" });
+    const knight = t.hero("fighter", "Rune Knight", 7);
+    const ally = t.hero("fighter", "Champion", 7);
+    t.world.patch(knight.id, { features: [...t.sheet(knight).features, ...["Stone Rune", "Cloud Rune", "Storm Rune"].map(rune)] });
+    // The Hand's reaction strip as the knight's page deals it.
+    const strip = (who) => {
+      const sheet = t.world.sheet(who.id);
+      const encounter = activePublicEncounter(t.world.campaignId);
+      const view = buildPlayerMapView(t.world.campaignId, sheet.userId);
+      return reactionCards(sheet, turnFromEncounter(encounter, sheet, { myTurn: false }), encounter?.lastHits ?? [], t.world.sheets(), "you", view?.feet, encounter?.lastSaves);
+    };
+    const named = (cards, name) => cards.filter((card) => card.name === name);
+
+    // "When a creature you can see ends its turn within 30 feet of you": a
+    // Wisdom save or charmed for a minute, incapacitated at speed 0, saving at
+    // the end of each of its turns. Nothing to answer on the knight's own turn.
+    await probe("rune-stone-charm", async () => {
+      const [enemy] = await t.stage(knight, { cast: [[ally, 3, 3]] });
+      const early = await t.react(knight, "Stone Rune");
+      assert.equal(early.ok, false, `no turn has ended near the knight: ${t.show(early)}`);
+      assert.equal(t.used(knight, "sub_stone_rune"), 0, "nothing spent");
+      // The foes' turns come while nobody's is on the floor (enemies due);
+      // the hand-on ends the goblin's, the last turn to end.
+      const foesUp = () => {
+        for (let step = 0; step < 6 && t.turns.pointer().id !== null; step += 1) t.endTurn();
+        assert.equal(t.turns.pointer().id, null, "the foes' turns are due");
+      };
+      foesUp();
+      t.endTurn();
+      assert.equal(named(strip(knight), "Stone Rune").length, 1, "its card comes up as the foe's turn ends within 30 feet");
+      const out = await t.react(knight, "Stone Rune", {}, 2);
+      assert.equal(out.ok, true, out.error);
+      const held = ["charmed", "incapacitated", "dreamy stupor"].map((name) => t.foeHas(enemy, name));
+      assert.deepEqual(held, [true, true, true], `charmed, incapacitated, speed 0: ${t.show(out)}`);
+      assert.equal(t.used(knight, "sub_stone_rune"), 1, "the rune's use spent");
+      assert.equal(enemySpeedTiles(t.foe(enemy)), 0, "speed 0");
+      assert.equal(t.foe(enemy).conditionMeta.charmed.saveEnds?.ability, "wis");
+      // Its next turn ends (an incapacitated foe's is walked past): one Wisdom
+      // save, made, ends all three together.
+      for (let step = 0; step < 6 && t.foeHas(enemy, "charmed"); step += 1) {
+        t.world.clearDice();
+        t.world.dice(...new Array(8).fill(20));
+        t.turns.skipTurn();
+        t.world.clearDice();
+      }
+      assert.deepEqual(["charmed", "incapacitated", "dreamy stupor"].map((name) => t.foeHas(enemy, name)), [false, false, false], "one save ends the charm whole");
+    });
+
+    // "When you or a creature you can see within 30 feet of you is hit by an
+    // attack roll": a different creature within 30 feet, not the attacker,
+    // becomes the target, using the same roll, before the damage stands.
+    await probe("rune-cloud-turns-hit", async () => {
+      const [first, second] = await t.stage(knight, { enemies: 2, cast: [[ally, 5, 6]] });
+      const before = t.sheet(ally).currentHp;
+      await t.enemyHits(first, ally, [16, 4]);
+      assert.ok(t.sheet(ally).currentHp < before, "the club lands on the ally");
+      const card = named(strip(knight), "Cloud Rune")[0];
+      assert.equal(card?.target, "enemy", `the knight's card for the ally's hit picks the creature: ${JSON.stringify(card ?? null)}`);
+      assert.equal(card?.pickWithin, 30);
+      const onAttacker = await t.react(knight, "Cloud Rune", { targetCharacterId: ally.id, targetEnemyId: first.id });
+      assert.equal(onAttacker.ok, false, "not onto the attacker");
+      const foeHp = t.foe(second).currentHp;
+      const out = await t.react(knight, "Cloud Rune", { targetCharacterId: ally.id, targetEnemyId: second.id });
+      assert.equal(out.ok, true, out.error);
+      assert.equal(t.sheet(ally).currentHp, before, `the ally's hit points come back: ${t.show(out)}`);
+      assert.equal(foeHp - t.foe(second).currentHp, 6, "the same blow lands on the other foe");
+      assert.equal(t.used(knight, "sub_cloud_rune"), 1);
+    });
+
+    // The prophetic state answers the attacks, saves and checks of a creature
+    // the knight can see within 60 feet, not only attacks on the knight: an
+    // ally's hit by a foe is rolled again at disadvantage, and an ally's own
+    // d20 waits on the knight's card for advantage before it lands.
+    await probe("rune-storm-prophetic-allies", async () => {
+      const [enemy] = await t.stage(knight, { cast: [[ally, 5, 6]] });
+      t.give(knight, "prophetic state");
+      const before = t.sheet(ally).currentHp;
+      await t.enemyHits(enemy, ally, [16, 4]);
+      const out = await t.react(knight, "Prophetic State", { targetCharacterId: ally.id }, 1);
+      assert.equal(out.ok, true, out.error);
+      assert.equal(t.sheet(ally).currentHp, before, `rolled again at disadvantage, the hit misses: ${t.show(out)}`);
+      const [foe] = await t.stage(ally, { cast: [[knight, 5, 6]] });
+      t.give(knight, "prophetic state");
+      const here = subscribe(t.world.campaignId, () => {}, t.sheet(knight).userId);
+      try {
+        await t.swing(ally, foe, [2]);
+        const [pending] = listOpenPendingRolls(t.world.campaignId);
+        const offered = (pending?.thrown?.options ?? []).filter((option) => option.id === "prophetic_state");
+        assert.deepEqual(offered.map((option) => option.by), [knight.id], "the knight's card on the ally's missed swing");
+        t.world.signIn({ id: t.sheet(knight).userId });
+        t.world.dice(19);
+        const pressed = await call(afterRoll, "POST", { use: "prophetic_state", by: knight.id }, { campaignId: t.world.campaignId, pendingRollId: pending.id });
+        t.world.clearDice();
+        assert.equal(pressed.status, 200, JSON.stringify(pressed.json));
+        assert.ok(t.world.encounter().reactionsUsed.includes(knight.id), "the knight's reaction spent");
+        assert.ok(t.foe(foe).currentHp < 300, "the higher d20 kept: the swing hits");
+      } finally {
+        here();
+      }
+    });
+  }
+
   const mighty = async (level) => {
     const knight = hero("fighter", "Rune Knight", level);
     const [enemy] = await stage(knight);
