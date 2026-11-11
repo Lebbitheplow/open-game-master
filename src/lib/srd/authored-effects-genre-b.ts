@@ -142,7 +142,7 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // so a bare spend does what the text says rather than reading it back. The
   // conditions are rows of src/lib/srd/genre-b-conditions.ts.
   // "Bonus action: a shielding spirit grants you or an ally +2 AC until your next turn."
-  spend("Spirit Ward", ["spirit_medium"], "mystery_spirit_ward", "bonus", { kind: "buff", target: "ally", condition: "spirit ward", rounds: 1 }),
+  // Spirit Ward's spend is src/lib/srd/authored-effects-genre-b-mystery.ts's (Chorus of the Dead wards two).
   // "grant yourself and allies within 30 ft advantage on the next check made in pursuit of a suspect."
   spend("The Game Afoot", ["detective"], "mystery_the_game_afoot", undefined, { kind: "buff", target: "allies", rangeFt: 30, count: "8", condition: "the game afoot", rounds: 600 }),
   // "allies within 30 ft gain temp HP equal to your level + CON mod."

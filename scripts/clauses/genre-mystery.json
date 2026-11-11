@@ -620,29 +620,16 @@
    },
    {
     "c": "a willing or restrained creature answers three questions truthfully under trance (WIS save resists if unwilling)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Hypnotic Induction#1:fx",
-    "k": "fx",
-    "p": {
-     "id": "mystery_hypnotic_induction",
-     "absent": [
-      "condition"
-     ]
-    },
-    "observed": "the spend hands back condition \"restrained\", which the text does not lay on anyone",
-    "note": "the generator read the text's precondition (\"a willing or restrained creature\") as the condition a failed save lays: the spend hands aoe_damage condition \"restrained\"",
-    "kind": "rule-wrong"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts hypnotic (no condition is laid: the creature must be restrained, or the alienist hold Master of the Couch, and then saves WIS or answers)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Hypnotic Induction: an unrestrained creature in a fight is refused with nothing spent; a restrained one saves (WIS) or answers, and no condition is laid; Master of the Couch takes a hostile creature as it stands"
    },
    {
     "c": "(WIS save resists if unwilling)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Hypnotic Induction#2:fx",
-    "k": "fx",
-    "p": {
-     "id": "mystery_hypnotic_induction",
-     "save": "wis"
-    }
+    "by": "src/lib/dm/genre-b-mystery-spends.ts hypnotic (WIS save against 8 + proficiency + INT)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Hypnotic Induction: an unrestrained creature in a fight is refused with nothing spent; a restrained one saves (WIS) or answers, and no condition is laid; Master of the Couch takes a hostile creature as it stands",
+    "note": "the generic fx probe spent it on an unrestrained goblin, which the text does not let it take (\"a willing or restrained creature\"); the focused case stages the restraint"
    }
   ]
  },
@@ -757,13 +744,9 @@
    },
    {
     "c": "read a sleeping or unconscious creature's dreams for three true impressions",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Unconscious Speaks#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_the_unconscious_speaks"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Unconscious Speaks\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, read a sleeping or unconscious creature's dreams for three t"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts dreams (a waking creature is refused with nothing spent; the three impressions are the GM's to give)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Unconscious Speaks: a waking creature is refused with nothing spent; an unconscious one's dreams are read"
    }
   ]
  },
@@ -830,13 +813,9 @@
    },
    {
     "c": "cure a creature of a long-term madness, phobia, or compulsion, including magical ones",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Radical Breakthrough#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_radical_breakthrough"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Radical Breakthrough\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cure a creature of a long-term madness, phobia, or compulsion,"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Radical Breakthrough (cure: a madness, phobia or compulsion laid by name, and the fear or charm magic left, src/lib/dm/genre-b-cure.ts)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Radical Breakthrough: a madness or a magical fear on the patient ends; a patient with none is refused, nothing spent"
    }
   ]
  },
@@ -2151,23 +2130,21 @@
    },
    {
     "c": "you and all allies within 30 ft each gain a reaction attack when any one of you is hit, for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_general_strike"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"General Strike\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, you and all allies within 30 ft each gain a reaction attack when any"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (the enforcer's reaction to a hit on one of those within 30 feet spends the use, lays the strike on them for a minute and is their own attack; then each striker's reaction attack at the creature that hit one of them); src/lib/srd/authored-effects-genre-b-mystery.ts General Strike gives the counter to the reaction",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: the enforcer calls it with their reaction as an ally within 30 feet is hit, which lays the strike on those in reach for a minute and is their own attack; then each striker answers a hit on any of them; nobody does before the call, and a plain spend is refused"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (REACH_FEET 30 at the call, the condition's 10 rounds)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: a hit on an ally beyond 30 feet is no call, and an ally out of reach when it is called is no striker"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (REACH_FEET 30 at the call, the condition's 10 rounds)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: the enforcer calls it with their reaction as an ally within 30 feet is hit, which lays the strike on those in reach for a minute and is their own attack; then each striker answers a hit on any of them; nobody does before the call, and a plain spend is refused"
    }
   ]
  },
@@ -2499,18 +2476,19 @@
    },
    {
     "c": "publish the truth: a named creature's public standing collapses, and its allies must save (WIS) or abandon it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves",
+    "is": "held",
     "k": "spend_moves",
     "p": {
      "id": "mystery_the_story_of_the_century"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Story of the Century\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, publish the truth: a named creature's public standing coll"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts story (the named creature's allies in the fight save WIS against 8 + proficiency + CHA or flee for the minute, src/lib/dm/flee-logic.ts FLEEING)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Story of the Century#1:spend_moves; scripts/test-genre-b-mystery-features.mjs The Story of the Century: the named creature's allies save (WIS) or abandon it and flee"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts story",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Story of the Century: the named creature's allies save (WIS) or abandon it and flee; the creature itself does not save"
    }
   ]
  },
@@ -2843,13 +2821,9 @@
   "clauses": [
    {
     "c": "A bound protective spirit follows you: 1/rest, it negates one attack that would hit you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Guardian Shade#0:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_guardian_shade"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Guardian Shade\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"A bound protective spirit follows you: 1/rest, it negates one attack that would hit "
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Guardian Shade (a reaction on its own counter: the hit on the medium becomes a miss, src/lib/dm/authored-reactions.ts force_miss), kept to a hit on the medium by src/lib/dm/genre-b-mystery-reactions.ts",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Guardian Shade: the bound spirit turns aside an attack that hit the medium, for its use and their reaction; with no hit on record, or for a hit on an ally, it is refused and nothing is spent"
    },
    {
     "c": "1/rest",
@@ -2890,13 +2864,15 @@
    },
    {
     "c": "hostile entities get a CHA save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts ferrywoman (an undead saves CHA against 8 + proficiency + WIS or is laid to rest; a possessed character is released, the possessor in the fight saving first)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Ferrywoman's Due: an undead that fails its CHA save is laid to rest and one that makes it stays; a creature that is no spirit is refused, nothing spent; a possessed ally is released"
    },
    {
     "c": "CHA save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts ferrywoman (an undead saves CHA against 8 + proficiency + WIS or is laid to rest; a possessed character is released, the possessor in the fight saving first)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Ferrywoman's Due: an undead that fails its CHA save is laid to rest and one that makes it stays; a creature that is no spirit is refused, nothing spent; a possessed ally is released"
    }
   ]
  },
@@ -2926,11 +2902,10 @@
   "clauses": [
    {
     "c": "Spirit Ward can protect two creatures at once and also grants advantage on their next save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Chorus of the Dead#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Chorus of the Dead: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts spiritWard (the ally named and the medium both warded, each with the chorus's advantage on the next save, src/lib/srd/genre-b-mystery-conditions.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Chorus of the Dead#0:unhooked; scripts/test-genre-b-mystery-features.mjs Chorus of the Dead: Spirit Ward on an ally wards the medium too, and each has advantage on their next save, once"
    }
   ]
  },
@@ -2980,18 +2955,15 @@
    },
    {
     "c": "when a creature within 30 ft dies, hold its spirit: it can be revived within 24 hours as if freshly dead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_anchor_of_the_living"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Anchor of the Living\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, when a creature within 30 ft dies, hold its spirit: it can be "
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts anchor and src/lib/dm/genre-b-mystery-anchor.ts (the hold on the audit trail; src/lib/dm/revival.ts minutesSinceDeath answers 0 while it runs)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on, where Revivify's minute had long run out; a living ally and one who died out of reach are refused, nothing spent; scripts/test-genre-b-mystery-features.mjs Anchor of the Living: laid on a dying ally, it holds their spirit if they die within the minute"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts anchor and src/lib/dm/genre-b-mystery-anchor.ts (the hold on the audit trail; src/lib/dm/revival.ts minutesSinceDeath answers 0 while it runs)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on, where Revivify's minute had long run out; a living ally and one who died out of reach are refused, nothing spent"
    }
   ]
  },
@@ -3015,13 +2987,15 @@
    },
    {
     "c": "call a procession of spirits: for 1 minute they obscure, terrify (WIS save), and strike (2d8 necrotic) as you direct",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt and src/lib/srd/authored-effects-genre-b-mystery.ts Queen of the Quiet Court (the call lays the procession on the medium for 10 rounds: attacks against them at disadvantage, and Direct the Procession sends it at another creature with no further use)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic, obscures the medium, and is sent at another creature on a later turn for no further use"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt and src/lib/srd/authored-effects-genre-b-mystery.ts Queen of the Quiet Court (the call lays the procession on the medium for 10 rounds: attacks against them at disadvantage, and Direct the Procession sends it at another creature with no further use)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic, obscures the medium, and is sent at another creature on a later turn for no further use"
    },
    {
     "c": "(WIS save)",
@@ -3052,16 +3026,14 @@
    },
    {
     "c": "terrify (WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#5:fx",
+    "is": "held",
     "k": "fx",
     "p": {
      "id": "mystery_queen_of_the_quiet_court",
      "condition": "frightened"
     },
-    "observed": "the spend hands back condition undefined, and the text's is frightened ({\"ok\":true,\"resource\":\"Queen of the Quiet Court\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, call a procession of spirits: for 1 minute they obscure, terrify (WIS save), a)",
-    "note": "the generator joined the text's two effects: the spend hands aoe_damage a WIS save against 2d8 damage, where the text's save is against the terror and the 2d8 strike has none",
-    "kind": "rule-wrong"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt (WIS save against 8 + proficiency + WIS or frightened of the medium for a minute)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#5:fx; scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic"
    }
   ]
  },

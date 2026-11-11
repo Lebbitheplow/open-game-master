@@ -482,6 +482,11 @@ export type SpendDoes =
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
+  // One of the mystery classes' own spends, by its name in
+  // src/lib/dm/genre-b-mystery-spends.ts (Guardian Shade's shade, the Quiet
+  // Court's procession, Anchor of the Living's hold).
+  // `target`: what its Hand card is aimed at (src/lib/battlemap/hand-subclass.ts).
+  | { kind: "mystery"; effect: string; target?: "enemy" | "ally" }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }

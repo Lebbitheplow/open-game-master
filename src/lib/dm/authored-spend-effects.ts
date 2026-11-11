@@ -5,6 +5,7 @@
 import { regainSlotLevels } from "@/lib/srd/slot-levels";
 import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
 import { layGenreZone } from "@/lib/dm/genre-b-zones";
+import { mysterySpend } from "@/lib/dm/genre-b-mystery-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -419,6 +420,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return healArea(ctx, does);
     case "note":
       return { result: { applied: does.text } };
+    case "mystery":
+      return mysterySpend(ctx, does.effect);
     case "aoe_report": {
       // Rolled in the spend on the creatures the call names, half on a save
       // (src/lib/dm/counter-saves.ts): it handed these numbers back for an

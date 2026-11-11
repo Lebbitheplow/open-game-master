@@ -48,6 +48,7 @@ import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
 import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
+import { mysteryReaction } from "@/lib/dm/genre-b-mystery-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
@@ -666,7 +667,7 @@ function useReaction(
   }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.
-  const authored = authoredReaction(ctx);
+  const authored = mysteryReaction(ctx) ?? authoredReaction(ctx);
   if (authored) {
     return authored;
   }
