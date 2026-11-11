@@ -54,6 +54,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  // A sermon that names its ally (Flock's Shepherd).
+  if (does.kind === "wastes") return does.target ?? "none";
   return "none";
 }
 
@@ -269,7 +271,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         action === "reaction"
           ? { card: "reaction", feature: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) }
           : { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
-      ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
+      ...((does.kind === "buff" || does.kind === "wastes") && does.othersOnly ? { othersOnly: true } : {}),
       ...sightOf(aimDoes(does, aim.variant), aim.target),
     };
     if (does.kind === "buff" && does.variants) {

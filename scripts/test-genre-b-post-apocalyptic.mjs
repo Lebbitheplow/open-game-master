@@ -310,5 +310,194 @@ await run("Blood Bond: the packmaster's reaction splits a hit on their beast bet
   assert.equal(world.sheet(hero.id).currentHp, 97, "the packmaster did not take the other half");
 });
 
+// ---- passives ----
+
+const typed = (enemy, type) => kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, type } });
+const TRAINED_SHEET = { weapons: ["simple", "martial"], armor: ["light", "medium", "heavy", "shields"], saves: [], skills: [], expertise: [], languages: [], tools: [] };
+
+await run("Machine Empathy: a construct that attacks the salvage tech first saves (WIS) or loses the attack; a humanoid just attacks", async () => {
+  const hero = rig.holder(feature("salvage_tech", "Machine Empathy", 15));
+  const { near } = await rig.fight(hero);
+  const hurt = async (...faces) => {
+    world.patch(hero.id, { currentHp: 100 });
+    kit.handOnEnemies();
+    kit.freshRound();
+    clearDice();
+    dice(...faces);
+    await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: hero.id });
+    clearDice();
+    return 100 - world.sheet(hero.id).currentHp;
+  };
+  typed(near, "construct");
+  assert.equal(await hurt(1, 16, 4), 0, "a construct that failed its save still struck the salvage tech");
+  typed(near, "humanoid");
+  assert.equal(await hurt(16, 4), 6, "a humanoid was turned away too, or made to save");
+});
+
+await run("Geiger Sense and Meltdown Ward: radiant and necrotic damage is resisted, then taken not at all", async () => {
+  const sense = rig.holder(feature("salvage_tech", "Geiger Sense", 3));
+  assert.equal(await rig.damageLost(sense, "radiant"), 10, "Geiger Sense did not halve radiant damage");
+  assert.equal(await rig.damageLost(sense, "necrotic"), 10, "Geiger Sense did not halve necrotic damage");
+  assert.equal(await rig.damageLost(sense, "fire"), 20, "Geiger Sense resisted fire");
+  const ward = rig.holder(feature("salvage_tech", "Meltdown Ward", 11));
+  assert.equal(await rig.damageLost(ward, "radiant"), 0, "Meltdown Ward let radiant damage through");
+  assert.equal(await rig.damageLost(ward, "necrotic"), 0, "Meltdown Ward let necrotic damage through");
+});
+
+await run("Apex Genome: two damage types of the aberrant's choice are resisted, a third replacing the older", async () => {
+  const hero = rig.holder(feature("aberrant", "Apex Genome", 17));
+  const choose = (variant) => world.invoke("use_resource", { characterId: hero.id, resource: "Apex Genome", variant, reason: "test" });
+  assert.ok(!(await choose(undefined)).ok, "Apex Genome took no damage type and went through");
+  rig.must(await choose("fire"), "Apex Genome fire");
+  rig.must(await choose("cold"), "Apex Genome cold");
+  assert.equal(await rig.damageLost(hero, "fire"), 10, "fire was not resisted");
+  assert.equal(await rig.damageLost(hero, "cold"), 10, "cold was not resisted");
+  rig.must(await choose("thunder"), "Apex Genome thunder");
+  assert.equal(await rig.damageLost(hero, "fire"), 20, "the oldest choice was kept beside two newer ones");
+  assert.equal(await rig.damageLost(hero, "thunder"), 10, "the third choice was not taken");
+});
+
+await run("Rapid Adaptation: the first elemental blow leaves resistance to its type until a long rest, spent by the blow and never by a bare call", async () => {
+  const hero = rig.holder(feature("aberrant", "Rapid Adaptation", 2));
+  const bare = await spendAt(hero, "Rapid Adaptation");
+  assert.ok(!bare.ok, "a bare spend of Rapid Adaptation went through");
+  assert.equal(await rig.damageLost(hero, "slashing"), 20, "a sword's blow was adapted to");
+  assert.equal(used(hero, "post_apocalyptic_rapid_adaptation"), 0, "a sword's blow spent the use");
+  assert.equal(await rig.damageLost(hero, "fire"), 20, "the blow adapted to was itself resisted");
+  const sheet = world.sheet(hero.id);
+  assert.ok(sheet.conditions.includes("rapid adaptation (fire)"), `the aberrant holds ${JSON.stringify(sheet.conditions)}`);
+  assert.equal(sheet.conditionMeta["rapid adaptation (fire)"]?.untilLongRest, true, "the adaptation does not last until a long rest");
+  assert.equal(used(hero, "post_apocalyptic_rapid_adaptation"), 1, "the adaptation spent no use");
+  assert.equal(await rig.damageLost(hero, "fire"), 10, "fire is not resisted after the adaptation");
+  assert.equal(await rig.damageLost(hero, "cold"), 20, "a second element was adapted to on one use");
+});
+
+await run("Second Adaptation: a use of Rapid Adaptation gives a swimming or a climbing speed for an hour", async () => {
+  const hero = rig.holder(feature("aberrant", "Second Adaptation", 6));
+  assert.equal(world.sheet(hero.id).resources.post_apocalyptic_rapid_adaptation.max, 2, "Rapid Adaptation has other than 2 uses");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Second Adaptation", variant: "swim", reason: "test" }), "Second Adaptation swim");
+  const sheet = world.sheet(hero.id);
+  assert.equal(sheet.conditionMeta["adapted (swim)"]?.rounds, 600, `the aberrant holds ${JSON.stringify(sheet.conditions)}`);
+  assert.equal(used(hero, "post_apocalyptic_rapid_adaptation"), 1, "the adaptation spent no use");
+  const { adaptedSpeeds } = await load("lib/srd/genre-b-post-apocalyptic.ts");
+  assert.deepEqual(adaptedSpeeds(sheet.conditions), { climb: false, swim: true });
+  const { pcMoveTraits } = await load("lib/battlemap/passage.ts");
+  const token = { id: "t", kind: "pc", refId: hero.id, x: 0, y: 0 };
+  const traits = pcMoveTraits({ width: 10, tokens: [token], mover: token, sheet, footprintOf: () => ({ w: 1, h: 1 }), enemySize: () => undefined });
+  assert.equal(traits.swims, true, "the board's walk does not swim");
+  assert.ok(!traits.climbs, "a swimming speed climbs too");
+});
+
+await run("Hardened Mutation: the blow that takes the aberrant below half their hit points gives back slot levels equal to the CHA modifier, once a long rest", async () => {
+  const hero = rig.holder(feature("aberrant", "Hardened Mutation", 15));
+  const slots = { 1: { max: 4, used: 4 }, 2: { max: 3, used: 3 }, 3: { max: 3, used: 3 } };
+  world.patch(hero.id, { currentHp: 100, spellcasting: { ability: "cha", slots, prepared: [], known: [], cantrips: [] } });
+  rig.must(await world.invoke("apply_damage", { characterId: hero.id, amount: 30, type: "slashing", reason: "test" }), "apply_damage");
+  assert.equal(used(hero, "post_apocalyptic_hardened_mutation"), 0, "a blow that left them above half spent the use");
+  rig.must(await world.invoke("apply_damage", { characterId: hero.id, amount: 30, type: "slashing", reason: "test" }), "apply_damage");
+  const after = world.sheet(hero.id);
+  assert.equal(after.spellcasting.slots["3"].used, slots["3"].used - 1, `the slots after: ${JSON.stringify(after.spellcasting.slots)}`);
+  assert.equal(used(hero, "post_apocalyptic_hardened_mutation"), 1, "the regained slot spent no use");
+  assert.ok(!(await spendAt(hero, "Hardened Mutation")).ok, "a bare spend of Hardened Mutation went through");
+});
+
+await run("Chameleon Skin: the aberrant turns invisible until they attack", async () => {
+  const hero = rig.holder(feature("aberrant", "Chameleon Skin", 11));
+  const { near } = await rig.fight(hero);
+  rig.must(await spendAt(hero, "Chameleon Skin"), "use_resource Chameleon Skin");
+  assert.ok(world.sheet(hero.id).conditions.includes("invisible"), `the aberrant holds ${JSON.stringify(world.sheet(hero.id).conditions)}`);
+  rig.myTurn(hero);
+  await rig.swing(hero, near);
+  assert.ok(!world.sheet(hero.id).conditions.includes("invisible"), "the attack left the aberrant invisible");
+});
+
+// ---- the preacher's flock ----
+
+await run("Flock's Shepherd: an ally beyond 30 ft is refused with nothing spent, and Congregation shelters a second ally", async () => {
+  const alone = rig.holder(feature("waste_preacher", "Flock's Shepherd", 1));
+  const hero = rig.holder(feature("waste_preacher", "Congregation", 13));
+  const third = world.addHero({ user: world.addUser("third"), name: "Third", class: "fighter", level: 5, abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, maxHp: 100, proficiencies: TRAINED_SHEET, portrait: { url: "/uploads/test.png" } });
+  rig.must(await spendAt(alone, "Flock's Shepherd", [], { targetCharacterId: ally.id }), "use_resource Flock's Shepherd");
+  assert.equal(world.sheet(ally.id).tempHp, 4, "the named ally did not gain level 1 + WIS 3");
+  assert.equal(world.sheet(third.id).tempHp, 0, "without Congregation a second ally was sheltered");
+  world.patch(ally.id, { tempHp: 0 });
+  await rig.fight(hero);
+  kit.place(third.id, 4, 2);
+  kit.place(ally.id, 18, 9);
+  const far = await spendAt(hero, "Flock's Shepherd", [], { targetCharacterId: ally.id });
+  assert.ok(!far.ok, "an ally 65 feet away was shepherded");
+  assert.equal(used(hero, "post_apocalyptic_flock_s_shepherd"), 0, "the refused spend spent its use");
+  kit.place(ally.id, 5, 3);
+  rig.must(await spendAt(hero, "Flock's Shepherd", [], { targetCharacterId: ally.id }), "use_resource Flock's Shepherd");
+  assert.equal(world.sheet(ally.id).tempHp, 16, "the named ally did not gain level 13 + WIS 3");
+  assert.equal(world.sheet(third.id).tempHp, 16, "Congregation sheltered no second ally");
+});
+
+await run("Testify: allies within 30 ft roll their next save against fear with advantage, which spends it; another save does not", async () => {
+  const hero = rig.holder(feature("waste_preacher", "Testify", 2));
+  await rig.fight(hero);
+  rig.must(await spendAt(hero, "Testify"), "use_resource Testify");
+  assert.ok(world.sheet(ally.id).conditions.includes("testified"), `the ally holds ${JSON.stringify(world.sheet(ally.id).conditions)}`);
+  assert.ok(!world.sheet(hero.id).conditions.includes("testified"), "the preacher testified to themselves");
+  const save = (against) => rig.d20sOf(ally, { kind: "saving_throw", ability: "wis", against });
+  assert.equal(await save("poisoned"), 1, "a save against poison took the sermon's advantage");
+  assert.ok(world.sheet(ally.id).conditions.includes("testified"), "a save against poison spent the sermon");
+  assert.equal(await save("frightened"), 2, "the save against fear threw one d20");
+  assert.ok(!world.sheet(ally.id).conditions.includes("testified"), "the save against fear left the sermon unspent");
+  assert.equal(await save("frightened"), 1, "a second save against fear was at advantage too");
+});
+
+await run("Salvaged Shield Node: an ally in the dome resists a ranged weapon's damage, and a melee blow lands whole", async () => {
+  const hero = rig.holder(feature("salvage_tech", "Salvaged Shield Node", 13));
+  const { near } = await rig.fight(hero);
+  rig.must(await spendAt(hero, "Salvaged Shield Node"), "use_resource Salvaged Shield Node");
+  const hurt = async (attack) => {
+    kit.setEnemy(near.id, { stats: { ...kit.enemy(near.id).stats, attacks: [attack] } });
+    world.patch(ally.id, { currentHp: 100 });
+    kit.handOnEnemies();
+    kit.freshRound();
+    clearDice();
+    dice(19, 4);
+    rig.must(await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: ally.id }), "enemy_attack");
+    clearDice();
+    return 100 - world.sheet(ally.id).currentHp;
+  };
+  kit.place(near.id, 9, 3);
+  assert.equal(await hurt({ name: "Shortbow", toHit: 8, damage: "1d6+2", type: "piercing", mode: "ranged" }), 3, "the arrow's 6 was not halved in the dome");
+  kit.place(near.id, 6, 3);
+  assert.equal(await hurt({ name: "Club", toHit: 8, damage: "1d6+2", type: "bludgeoning", mode: "melee" }), 6, "a club's blow was resisted as an arrow's");
+});
+
+// ---- speed and load ----
+
+await run("Unstoppable: a slowed road warrior moves at their whole speed, and a grapple still holds them", async () => {
+  const hero = rig.holder(feature("road_warrior", "Unstoppable", 15));
+  await rig.fight(hero);
+  const { pcMoveBudget, getActiveBattleMap } = await load("lib/battlemap/view.ts");
+  const speed = () => {
+    const map = getActiveBattleMap(world.campaignId);
+    return pcMoveBudget(world.campaignId, world.encounter(), map, world.sheet(hero.id), kit.token(hero.id)).speed;
+  };
+  const whole = speed();
+  world.patch(hero.id, { conditions: ["slowed"], exhaustion: 2 });
+  assert.equal(speed(), whole, "a slowed, exhausted road warrior lost speed");
+  const { off } = await rig.both(hero, { name: "Unstoppable" }, async () => speed());
+  assert.equal(off, Math.floor(Math.floor(whole / 2) / 2), "without Unstoppable the same road warrior was not slowed");
+  world.patch(hero.id, { conditions: ["grappled"], exhaustion: 0 });
+  assert.equal(speed(), 0, "a grappled road warrior walked free");
+});
+
+await run("Packrat: a scavenger carries twice the weight", async () => {
+  const hero = rig.holder(feature("scavenger", "Packrat", 2));
+  const { encumbranceFor } = await load("lib/srd/encumbrance.ts");
+  const capacity = () => {
+    const sheet = world.sheet(hero.id);
+    return encumbranceFor({ strength: sheet.abilities.str, equipment: sheet.equipment, wearer: sheet }).capacityLb;
+  };
+  const { on, off } = await rig.both(hero, { name: "Packrat" }, async () => capacity());
+  assert.equal(off, 240, `a STR 16 scavenger without Packrat carries ${off} lb`);
+  assert.equal(on, 480, `with Packrat they carry ${on} lb`);
+});
+
 world.close();
 finish();

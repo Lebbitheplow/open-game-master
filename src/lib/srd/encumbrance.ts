@@ -14,6 +14,7 @@
 // Anything still unknown is COUNTED AS UNKNOWN, never as zero: the result
 // reports how many carried items had no weight so nobody reads a total as
 // exact when it is not.
+import { carryDoubled } from "@/lib/srd/genre-b-post-apocalyptic";
 import { gearWeightLb } from "@/lib/srd/adventuring-gear";
 import { matchArmor } from "@/lib/srd/armor";
 import { rowName } from "@/lib/srd/item-row";
@@ -204,7 +205,8 @@ export function encumbranceFor(input: {
 }): Encumbrance {
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const strength = Math.max(1, itemAbilityScore("str", Math.floor(input.strength || 1), input.equipment ?? [], input.wearer));
-  const multiplier = carryMultiplier(input.size);
+  // Packrat: "Carry capacity doubles" (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const multiplier = carryMultiplier(input.size) * (carryDoubled(input.wearer) ? 2 : 1);
   const { pounds, unweighed } = carriedWeight(input.equipment ?? [], input.coins ?? 0);
   const encumberedAtLb = round2(strength * 5 * multiplier);
   const heavilyEncumberedAtLb = round2(strength * 10 * multiplier);

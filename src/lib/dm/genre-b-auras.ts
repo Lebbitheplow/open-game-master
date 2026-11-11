@@ -25,13 +25,14 @@
 // decide the reach; off one the party stands together, as the paladin's
 // aura reads it (src/lib/dm/aura.ts). Two auras of one feature do not stack:
 // the same feature counts once, however many hold it.
+import { TESTIFIED } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
 import { sideOf } from "@/lib/dm/combatant";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { acBreakdownFor } from "@/lib/srd";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
@@ -122,7 +123,10 @@ export function nearbyHolders(campaignId: string, target: Pick<CharacterSheet, "
 // The save riders the auras give: rolls.ts adds a die or advantage to a save
 // against what each names (genre-b-aura-logic.ts saveAuraRiders).
 export function genreBSaveAuras(campaignId: string, target: Pick<CharacterSheet, "id">): GenreSaveAura[] {
-  return coveringAuras(campaignId, target).flatMap((row) => (row.save ? [row.save] : []));
+  const auras = coveringAuras(campaignId, target).flatMap((row) => (row.save ? [row.save] : []));
+  // Testify's mark, which the save it answers spends (genre-b-post-apocalyptic-spends.ts).
+  const testified = getSheetById(target.id)?.conditions.find((entry) => isConditionNamed(entry, TESTIFIED));
+  return testified ? [...auras, { feature: "Testify", advantage: true, against: ["frightened"], spends: testified }] : auras;
 }
 
 // The AC the auras add to an attack on this character.

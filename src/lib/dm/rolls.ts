@@ -532,6 +532,7 @@ export function resolveRollExpression(
     riders.peerless,
     helped,
     ...effects.spent,
+    ...genreAura.spent,
     ...riders.authoredSpent,
     riders.inspired ? INSPIRATION_SPEND : null,
   ].filter(Boolean) as string[];

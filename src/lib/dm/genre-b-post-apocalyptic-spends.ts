@@ -1,4 +1,5 @@
-// The waste preacher's sermons that reach allies by distance
+// The post-apocalyptic classes' spends that take more than a row can say: the
+// waste preacher's sermons that reach allies by distance
 // (src/lib/classes/post-apocalyptic-features.json; WAVE2 D5), resolved for
 // src/lib/dm/authored-spend-effects.ts (kind "wastes"), each refusing before
 // anything is paid:
@@ -8,6 +9,11 @@
 //                     target two allies at once"
 //   Testify           "an audible sermon gives allies within 30 ft advantage on
 //                     their next save against fear or despair"
+//
+// and the aberrant's choice of the day:
+//
+//   Apex Genome       "Resistance to two damage types of your choice, chosen
+//                     each dawn"
 //
 // Rulings where the text meets the tools: use_resource names one character, so
 // with Congregation the second ally is the one within 30 feet with the fewest
@@ -21,15 +27,17 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { removeConditions } from "@/lib/dm/condition-logic";
 import { rollCard } from "@/lib/dm/roll-card";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
-import { SHEPHERDED, TESTIFIED } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
+import { APEX_GENOME, SHEPHERDED, TESTIFIED } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
+import { textKey } from "@/lib/language/text-logic";
 
-export type WastesCall = "shepherd" | "testify";
+export type WastesCall = "shepherd" | "testify" | "genome";
 
 type Result = ToolError | { result: Record<string, unknown> };
 
@@ -53,11 +61,11 @@ function alliesWithin(ctx: SpendContext, feet: number): CharacterSheet[] {
 
 function shepherd(ctx: SpendContext): Result {
   const { sheet, campaign } = ctx;
-  const named = ctx.args.targetCharacterId;
-  if (!named || named === sheet.id) {
+  const allyId = ctx.args.targetCharacterId;
+  if (!allyId || allyId === sheet.id) {
     return { error: `${ctx.spend.name} goes to an ally of ${sheet.name}, never to ${sheet.name}: pass targetCharacterId of an ally. Nothing was spent.`, retry: true };
   }
-  const first = getSheetById(named);
+  const first = getSheetById(allyId);
   if (!first || first.campaignId !== campaign.id) {
     return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
   }
@@ -95,6 +103,26 @@ function testify(ctx: SpendContext): Result {
   return { result: { applied: [`${heard.map((ally) => ally.name).join(", ")}: advantage on their next save against being frightened.`] } };
 }
 
+// Apex Genome: "Resistance to two damage types of your choice, chosen each
+// dawn". The call's variant names the type; two are held at once, a third
+// replacing the older of them, and a long rest (the dawn) ends both.
+function genome(ctx: SpendContext): Result {
+  const type = textKey(ctx.args.variant ?? "");
+  const mark = `${APEX_GENOME} (${type})`;
+  const fresh = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+  const held = fresh.conditions.filter((entry) => isConditionNamed(entry, APEX_GENOME));
+  if (held.some((entry) => isConditionNamed(entry, mark))) {
+    return { error: `${fresh.name} already resists ${type} damage by Apex Genome. Nothing changed.`, refused: "rules" };
+  }
+  const dropped = held.length >= 2 ? held.slice(0, held.length - 1) : [];
+  const kept = removeConditions(fresh.conditions, fresh.conditionMeta, dropped);
+  const updated = patchSheet(fresh.id, { conditions: [...kept.conditions, mark], conditionMeta: { ...kept.meta, [mark]: { untilLongRest: true, source: fresh.id } } });
+  if (updated) {
+    publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+  }
+  return { result: { applied: [`${fresh.name} resists ${type} damage until the next dawn (a long rest).${dropped.length ? ` ${dropped.join(", ")} gives way: two types at a time.` : ""}`] } };
+}
+
 export function wastesSpend(ctx: SpendContext, call: WastesCall): Result {
-  return call === "shepherd" ? shepherd(ctx) : testify(ctx);
+  return call === "shepherd" ? shepherd(ctx) : call === "testify" ? testify(ctx) : genome(ctx);
 }

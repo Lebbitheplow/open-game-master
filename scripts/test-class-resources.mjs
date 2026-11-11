@@ -205,8 +205,10 @@ test("the passive defs are the ones something else spends", () => {
   // Endurance holds the packmaster's beast, or the packmaster, at the drop
   // (src/lib/dm/genre-b-post-apocalyptic-beast.ts), and The Pack Provides is
   // spent by the short rest that gives Call the Wild back
-  // (src/lib/srd/genre-b-post-apocalyptic.ts).
-  assert.deepEqual(passive.filter((id) => /^(mystery|post_apocalyptic|steampunk)_/.test(id)), ["mystery_hard_to_kill", "post_apocalyptic_pack_endurance", "post_apocalyptic_stand_at_the_dawn", "post_apocalyptic_the_pack_provides"]);
+  // (src/lib/srd/genre-b-post-apocalyptic.ts). Rapid Adaptation and Hardened
+  // Mutation answer a blow as it lands
+  // (src/lib/dm/genre-b-post-apocalyptic-blows.ts paDamaged).
+  assert.deepEqual(passive.filter((id) => /^(mystery|post_apocalyptic|steampunk)_/.test(id)), ["mystery_hard_to_kill", "post_apocalyptic_hardened_mutation", "post_apocalyptic_pack_endurance", "post_apocalyptic_rapid_adaptation", "post_apocalyptic_stand_at_the_dawn", "post_apocalyptic_the_pack_provides"]);
   assert.deepEqual(passive.filter((id) => !/^(cyberpunk|dark_fantasy|horror|mystery|post_apocalyptic|steampunk)_/.test(id)), ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_glorious_defense", "sub_undying_sentinel", "art_restorative_reagents", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 

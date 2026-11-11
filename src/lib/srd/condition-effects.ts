@@ -1123,12 +1123,14 @@ export function conditionResistances(conditions: string[], options?: { magical?:
 
 // Speed after condition riders: flat bonuses apply first, then the
 // strongest multiplier (haste x2 beats longstrider stacking oddities).
-export function conditionSpeed(conditions: string[], baseSpeed: number): number {
+// `whole`: nothing slows it (Unstoppable: "Your speed cannot be reduced"): a
+// penalty, a slowing multiplier or a lower set speed is passed over.
+export function conditionSpeed(conditions: string[], baseSpeed: number, whole = false): number {
   let speed = baseSpeed;
   let multiplier = 1;
   // A form with a speed of its own (Gaseous Form) replaces the walk.
   const set = activeConditionEffects(conditions).map(({ row }) => row.speedSet).filter((value): value is number => value !== undefined);
-  if (set.length) {
+  if (set.length && !(whole && Math.min(...set) < baseSpeed)) {
     return Math.min(...set);
   }
   // The strongest boost and the strongest slowdown, each counted once (two
@@ -1137,12 +1139,12 @@ export function conditionSpeed(conditions: string[], baseSpeed: number): number 
   let faster = 1;
   let slower = 1;
   for (const { row } of activeConditionEffects(conditions)) {
-    if (row.speedBonus) {
+    if (row.speedBonus && !(whole && row.speedBonus < 0)) {
       speed += row.speedBonus;
     }
     if (row.speedMultiplier !== undefined) {
       faster = Math.max(faster, row.speedMultiplier);
-      slower = Math.min(slower, row.speedMultiplier);
+      slower = whole ? slower : Math.min(slower, row.speedMultiplier);
     }
   }
   multiplier = faster * slower;

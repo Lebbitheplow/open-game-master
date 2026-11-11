@@ -76,11 +76,9 @@
   "clauses": [
    {
     "c": "Carry capacity doubles",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Packrat#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Packrat: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Packrat: a scavenger carries twice the weight",
+    "by": "src/lib/srd/genre-b-post-apocalyptic.ts carryDoubled, read by src/lib/srd/encumbrance.ts encumbranceFor; \"you always have basic supplies\" is the clause beside it, the GM's"
    },
    {
     "c": "you always have basic supplies (rope, tape, wire, a light source)",
@@ -870,11 +868,9 @@
   "clauses": [
    {
     "c": "Your speed cannot be reduced and you cannot be knocked prone while conscious",
-    "is": "gap",
-    "probe": "not run: the prone immunity is built; no speed reader refuses a reduction for a feature.",
-    "observed": "nothing in the engine answers to Unstoppable: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the prone immunity is built; no speed reader refuses a reduction for a feature."
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Unstoppable: a slowed road warrior moves at their whole speed, and a grapple still holds them",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Unstoppable (prone immunity) and src/lib/srd/genre-b-post-apocalyptic.ts speedCannotBeReduced, read by src/lib/battlemap/view.ts pcMoveBudget: a slowing condition or exhaustion takes nothing off a conscious road warrior's speed (src/lib/srd/condition-effects.ts conditionSpeed, whole); a grapple or a restraint still holds them"
    },
    {
     "c": "you cannot be knocked prone while conscious",
@@ -1143,8 +1139,9 @@
    },
    {
     "c": "after taking elemental damage, gain resistance to that type until you rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_rapid_adaptation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Rapid Adaptation: the first elemental blow leaves resistance to its type until a long rest, spent by the blow and never by a bare call",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-blows.ts paDamaged, asked by src/lib/dm/pc-damage.ts as a blow takes hit points: the rapid adaptation condition (paramResistance) until a long rest, the counter passive (src/lib/srd/genre-b-counter-terms.ts)"
    }
   ]
  },
@@ -1289,8 +1286,9 @@
    },
    {
     "c": "turn near-invisible until you attack or cast",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_chameleon_skin#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Chameleon Skin: the aberrant turns invisible until they attack",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chameleon Skin (the invisible condition for up to an hour), ended by an attack or a cast through src/lib/dm/attack-marks.ts endInvisibilityOnCast"
    }
   ]
  },
@@ -1334,8 +1332,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier when you drop below half HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened_mutation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Hardened Mutation: the blow that takes the aberrant below half their hit points gives back slot levels equal to the CHA modifier, once a long rest",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-blows.ts paDamaged (the blow that crosses half their hit points regains slot levels through src/lib/srd/slot-levels.ts regainSlotLevels), the counter passive"
    }
   ]
  },
@@ -1347,11 +1346,9 @@
   "clauses": [
    {
     "c": "Resistance to two damage types of your choice, chosen each dawn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Apex Genome#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Apex Genome: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Apex Genome: two damage types of the aberrant's choice are resisted, a third replacing the older",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Apex Genome (a spend whose variant names the type) and src/lib/dm/genre-b-post-apocalyptic-spends.ts genome: the apex genome condition (src/lib/srd/genre-b-post-apocalyptic-conditions.ts, paramResistance), two at a time, until a long rest"
    }
   ]
  },
@@ -1429,11 +1426,9 @@
   "clauses": [
    {
     "c": "Rapid Adaptation has 2 uses and can also grant a climb or swim speed for an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Second Adaptation#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Second Adaptation: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Second Adaptation: a use of Rapid Adaptation gives a swimming or a climbing speed for an hour",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (2 uses), src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Second Adaptation (climb or swim, a use of Rapid Adaptation's counter) and src/lib/srd/genre-b-post-apocalyptic.ts adaptedSpeeds, read by src/lib/battlemap/passage.ts pcMoveTraits"
    },
    {
     "c": "Rapid Adaptation has 2 uses",
@@ -1825,9 +1820,9 @@
    },
    {
     "c": "project a 10-ft energy dome for 1 minute: allies inside gain +2 AC and resistance to ranged weapon damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY",
-    "note": "The dome's +2 AC is built (spend + genre-b-conditions.ts); resistance to ranged weapon damage alone is no damage filter the engine has."
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Salvaged Shield Node: an ally in the dome resists a ranged weapon's damage, and a melee blow lands whole",
+    "by": "the spend's condition (src/lib/srd/authored-effects-genre-b.ts, +2 AC in src/lib/srd/genre-b-conditions.ts) and src/lib/dm/genre-b-post-apocalyptic-blows.ts paBlowResists: a ranged attack that is no spell's is resisted (src/lib/dm/enemy-attack.ts, the blow's flags)"
    },
    {
     "c": "10-ft energy dome",
@@ -1866,16 +1861,15 @@
   "clauses": [
    {
     "c": "Constructs and automated defenses must save (WIS) to target you over other creatures",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Machine Empathy: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Machine Empathy: a construct that attacks the salvage tech first saves (WIS) or loses the attack; a humanoid just attacks",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Machine Empathy (ward_vs construct, WIS), rolled by src/lib/dm/authored-hooks.ts authoredIncomingAttack against the salvage tech's spell save DC: the construct that fails loses the attack"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Machine Empathy: a construct that attacks the salvage tech first saves (WIS) or loses the attack; a humanoid just attacks",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Machine Empathy (ward_vs construct, WIS), rolled by src/lib/dm/authored-hooks.ts authoredIncomingAttack against the salvage tech's spell save DC: the construct that fails loses the attack"
    }
   ]
  },
@@ -2018,11 +2012,9 @@
   "clauses": [
    {
     "c": "You sense radiation precisely and are resistant to its effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Geiger Sense#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Geiger Sense: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Geiger Sense and Meltdown Ward: radiant and necrotic damage is resisted, then taken not at all",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Geiger Sense (resist radiant and necrotic, radiation's damage on the SRD engine; sensing it is the GM's to tell)"
    }
   ]
  },
@@ -2101,11 +2093,9 @@
   "clauses": [
    {
     "c": "Immunity to radiant and necrotic damage from tech and radiation sources",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Meltdown Ward#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Meltdown Ward: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Geiger Sense and Meltdown Ward: radiant and necrotic damage is resisted, then taken not at all",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Meltdown Ward (immune_damage radiant and necrotic; in this genre a tech effect is what a spell is, so no blow of those types is left outside \"tech and radiation sources\")"
    }
   ]
  },
@@ -2218,9 +2208,9 @@
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY",
-    "note": "The spend names one ally and lands on them; the 30-foot reach is not measured."
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Flock's Shepherd: an ally beyond 30 ft is refused with nothing spent, and Congregation shelters a second ally",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts shepherd (an ally beyond 30 feet on the board is refused, nothing spent)"
    },
    {
     "c": "WIS-mod uses per long rest",
@@ -2256,13 +2246,15 @@
    },
    {
     "c": "an audible sermon gives allies within 30 ft advantage on their next save against fear or despair",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Testify: allies within 30 ft roll their next save against fear with advantage, which spends it; another save does not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts testify (the testified condition on allies within 30 feet who can hear), read by src/lib/dm/genre-b-auras.ts genreBSaveAuras and spent by the save against being frightened (src/lib/dm/genre-b-aura-logic.ts, src/lib/dm/rolls.ts); despair is no condition a save names"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Testify: allies within 30 ft roll their next save against fear with advantage, which spends it; another save does not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts testify (the testified condition on allies within 30 feet who can hear), read by src/lib/dm/genre-b-auras.ts genreBSaveAuras and spent by the save against being frightened (src/lib/dm/genre-b-aura-logic.ts, src/lib/dm/rolls.ts); despair is no condition a save names"
    }
   ]
  },
@@ -2387,8 +2379,9 @@
   "clauses": [
    {
     "c": "Flock's Shepherd can target two allies at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Flock's Shepherd: an ally beyond 30 ft is refused with nothing spent, and Congregation shelters a second ally",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts shepherd: use_resource names one character, so the second is the ally within 30 feet with the fewest temporary hit points"
    }
   ]
  },

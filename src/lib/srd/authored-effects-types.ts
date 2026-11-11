@@ -456,6 +456,12 @@ export type SpendDoes =
   // the beast bonded, Call the Wild's wolves, Shared Fury on the pair, the
   // beast grown monstrous by Legend of the Pack.
   | { kind: "pack"; call: "bonded" | "wild" | "fury" | "legend" }
+  // The post-apocalyptic classes' spends that reach by distance or take a
+  // named choice (src/lib/dm/genre-b-post-apocalyptic-spends.ts): Flock's
+  // Shepherd, Testify, Apex Genome's damage type (the call's variant).
+  // `target`, `othersOnly`, `rangeFt`: what the Hand's card asks and prints,
+  // as a buff's do.
+  | { kind: "wastes"; call: "shepherd" | "testify" | "genome"; target?: "ally"; othersOnly?: boolean; rangeFt?: number }
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.

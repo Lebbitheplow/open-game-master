@@ -15,6 +15,13 @@ export const LEGEND_OF_THE_PACK = "legend of the pack";
 // heard the sermon (src/lib/dm/genre-b-post-apocalyptic-spends.ts).
 export const SHEPHERDED = "shepherded";
 export const TESTIFIED = "testified";
+// The conditions whose name carries what they give, in parentheses.
+export const RAPID_ADAPTATION = "rapid adaptation";
+export const APEX_GENOME = "apex genome";
+export const ADAPTED = "adapted";
+export const SHIELD_NODE = "salvaged shield node";
+export const LAST_RIDE = "last ride of the reaver";
+export const DEATH_OR_GLORY = "death or glory";
 
 export const GENRE_B_PA_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
@@ -27,4 +34,27 @@ export const GENRE_B_PA_CONDITION_EFFECTS: ConditionEffectRow[] = [
     onHitDice: { dice: "2d8", type: "" },
     speedBonus: 10,
   },
+  // Testify: "advantage on their next save against fear or despair". The
+  // advantage is read where a save is rolled against being frightened
+  // (src/lib/dm/genre-b-auras.ts genreBSaveAuras), which spends the mark.
+  { id: "testified", match: [TESTIFIED], summary: "Testified: advantage on their next save against being frightened, which spends it." },
+  {
+    // Rapid Adaptation: "after taking elemental damage, gain resistance to
+    // that type until you rest" (src/lib/dm/genre-b-post-apocalyptic-blows.ts
+    // lays it as the damage lands, the type in the name).
+    id: "rapid_adaptation",
+    match: [RAPID_ADAPTATION],
+    summary: "Rapid Adaptation: resistance to the damage type they adapted to (named in the condition) until a long rest.",
+    paramResistance: true,
+  },
+  {
+    // Apex Genome: "Resistance to two damage types of your choice, chosen each dawn".
+    id: "apex_genome",
+    match: [APEX_GENOME],
+    summary: "Apex Genome: resistance to a damage type of their choice (named in the condition) until the next dawn.",
+    paramResistance: true,
+  },
+  // Second Adaptation: "can also grant a climb or swim speed for an hour"
+  // (src/lib/srd/genre-b-post-apocalyptic.ts adaptedSpeeds, read by the board's walk).
+  { id: "adapted", match: [ADAPTED], summary: "Adapted: a climbing or a swimming speed (named in the condition) for an hour: climbing or water costs no extra movement." },
 ];

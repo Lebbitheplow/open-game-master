@@ -4,7 +4,9 @@
 //
 // Pure: no database.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
+import { ADAPTED } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
 
 type Uses = Record<string, { max: number; used: number }>;
 
@@ -23,4 +25,29 @@ export function packProvides(sheet: Pick<CharacterSheet, "class" | "features"> &
     return null;
   }
   return { ...resources, [CALL_THE_WILD]: { ...call, used: 0 }, [THE_PACK_PROVIDES]: { ...day, used: day.used + 1 } };
+}
+
+type Holder = Pick<CharacterSheet, "class" | "features"> & Partial<Pick<CharacterSheet, "classes">>;
+
+// Second Adaptation: "a climb or swim speed for an hour", by the condition its
+// spend lays ("adapted (climb)", "adapted (swim)"). The board's walk reads it
+// (src/lib/battlemap/passage.ts pcMoveTraits): a climbing surface or water
+// costs no extra movement.
+export function adaptedSpeeds(conditions: readonly string[] | undefined): { climb: boolean; swim: boolean } {
+  const held = (conditions ?? []).filter((entry) => isConditionNamed(entry, ADAPTED));
+  return { climb: held.some((entry) => isConditionNamed(entry, `${ADAPTED} (climb)`)), swim: held.some((entry) => isConditionNamed(entry, `${ADAPTED} (swim)`)) };
+}
+
+// Unstoppable: "Your speed cannot be reduced ... while conscious". What slows a
+// creature (Slow's half, Ray of Frost's ten feet, two levels of exhaustion)
+// leaves a conscious road warrior's speed whole; what quickens it still does. A
+// grapple or a restraint holds them where they are: that speed is 0 because
+// they are held, which the text's own next clause (prone) shows it lists apart.
+export function speedCannotBeReduced(sheet: Holder & Pick<CharacterSheet, "currentHp">): boolean {
+  return sheet.currentHp > 0 && holdsGenreFeature(sheet, "road_warrior", "Unstoppable");
+}
+
+// Packrat: "Carry capacity doubles" (src/lib/srd/encumbrance.ts encumbranceFor).
+export function carryDoubled(wearer: { class?: string; features?: Array<{ name: string }>; classes?: Array<{ id: string }> } | undefined): boolean {
+  return Boolean(wearer?.class && wearer.features && holdsGenreFeature({ class: wearer.class, features: wearer.features, classes: wearer.classes } as Holder, "scavenger", "Packrat"));
 }
