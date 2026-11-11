@@ -324,6 +324,34 @@ export function probes(rig, shared) {
       assert.equal(out.ok, true, `with the use spent and every slot on the sheet: ${String(out.error).slice(0, 160)}`);
       assert.ok(Object.values(sheet(eloquence()).spellcasting.slots).some((slot) => slot.used > 0), "a slot paid");
     },
+    // "A reaction copies a successful inspiration die onto another creature":
+    // answered through the record of the roll the die made succeed
+    // (last-save.ts recordInspiredSuccess), the die handed to a creature other
+    // than the bard and the roller, and no Bardic Inspiration use spent.
+    "infectious-die": async () => {
+      const bard = eloquence();
+      await stage(bard, { others: [friend(), valor()] });
+      const nothing = await spend(bard, "Infectious Inspiration", { targetCharacterId: valor().id });
+      assert.equal(nothing.ok, false, "spent with no inspired roll on record");
+      assert.equal((await spend(bard, "Bardic Inspiration", { targetCharacterId: friend().id })).ok, true);
+      const { settleHeldDie } = await import("../../src/lib/dm/forced-save.ts");
+      const { rollExpression } = await import("../../src/lib/dice.ts");
+      world.clearDice();
+      world.dice(5, 12);
+      const made = settleHeldDie(world.campaignId, friend().id, rollExpression("1d20"), 15);
+      world.clearDice();
+      assert.ok(made.total >= 15, `the staging: the die carried the roll (${made.total})`);
+      const inspirationUsed = sheet(bard).resources.bardic_inspiration.used;
+      const same = await spend(bard, "Infectious Inspiration", { targetCharacterId: friend().id });
+      assert.equal(same.ok, false, "the die went back to the creature whose roll succeeded");
+      const on = await spend(bard, "Infectious Inspiration", { targetCharacterId: valor().id });
+      assert.equal(on.ok, true, on.error);
+      assert.deepEqual(
+        [has(valor(), "bardic inspiration"), sheet(bard).resources.bardic_inspiration.used - inspirationUsed, sheet(bard).resources.sub_infectious_inspiration.used],
+        [true, 0, 1],
+        "[the other creature holds a die, Bardic Inspiration uses spent on it, Infectious Inspiration uses spent]",
+      );
+    },
     "infectious-uses": async () => {
       await uses(["bard", "College of Eloquence"], "sub_infectious_inspiration", { 14: Math.max(1, MOD.cha), 20: Math.max(1, MOD.cha) })();
       await infectiousRest();

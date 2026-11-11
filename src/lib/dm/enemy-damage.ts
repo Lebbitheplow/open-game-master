@@ -601,7 +601,9 @@ export function applyEnemyDamage(
   if (updated.status === "dead") {
     // A death is a trigger for the reactions that answer one: kept with who
     // dealt the blow (src/lib/dm/last-save.ts, src/lib/srd/trigger-table.ts).
-    recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null });
+    // And with the square it died on: its token is about to leave the board.
+    const diedAt = tokenPosition(campaign.id, enemy.id)?.at ?? null;
+    recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null, ...(diedAt ? { square: diedAt } : {}) });
     // A Wildfire druid near it gains a spectral flame in its space (cauterizing-flames.ts).
     layFlamesOnDeath(campaign.id, { id: enemy.id, size: typeof enemy.stats.size === "string" ? enemy.stats.size : null });
     const corpse = freeFromCorpse(campaign, updated);

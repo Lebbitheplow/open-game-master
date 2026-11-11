@@ -25,7 +25,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { castFirstRefusal } from "@/lib/dm/ar-ws-tempest-logic";
-import { curseHealTakenBack } from "@/lib/dm/master-of-hexes";
+import { curseHealTakenBack, curseMoveRefusal } from "@/lib/dm/master-of-hexes";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import { choiceChange } from "@/lib/dm/ar-ws-stone";
@@ -251,6 +251,11 @@ export function authoredFeatureSpend(
   const unheard = triggerRefusal(triggerAsk);
   if (unheard) {
     return unheard;
+  }
+  // Master of Hexes: the new creature stands within 30 feet of the one that died (master-of-hexes.ts).
+  const beyond = spend.takesBackCurseHeal ? curseMoveRefusal(campaign.id, sheet, args.targetEnemyId) : null;
+  if (beyond) {
+    return beyond;
   }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";

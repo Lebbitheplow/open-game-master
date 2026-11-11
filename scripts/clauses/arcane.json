@@ -2730,9 +2730,9 @@
    },
    {
     "c": "within 30 feet of it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the 30 feet is measured from the creature that died, which is gone from the board when the curse moves (the limits sweep's SKIP says the same)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs row 831-within-feet:warlock::Master of Hexes/Master of Hexes",
+    "by": "src/lib/dm/master-of-hexes.ts curseMoveRefusal (called from authored-spends.ts before anything is spent): the creature the curse moves to stands within 30 feet of the square the cursed creature died on, which its death record keeps (enemy-damage.ts recordTrigger square)"
    },
    {
     "c": "if you aren't incapacitated",
@@ -3745,8 +3745,9 @@
   "clauses": [
    {
     "c": "A reaction copies a successful inspiration die onto another creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_infectious_inspiration#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: infectious-die",
+    "by": "src/lib/dm/arcane-triggered.ts infectiousInspiration (through reaction-counters.ts planCounterReaction and the inspired_success row of src/lib/srd/trigger-table.ts): the use answers a roll a creature within 60 feet has just made succeed with the bard's die on record, hands a die of the bard's size to a different creature within 60 feet and spends no use of Bardic Inspiration"
    },
    {
     "c": "a Charisma-modifier number of times per long rest",

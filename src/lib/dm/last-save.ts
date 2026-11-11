@@ -73,6 +73,9 @@ export type LastSave = {
   // A death: the creature's type ("humanoid", "beast"), and who struck it.
   creatureType?: string;
   killerId?: string | null;
+  // A death: the square the creature stood on as it died, where a board held
+  // it (its token goes with it; Master of Hexes measures from there).
+  square?: { x: number; y: number };
   // A cast: the spell, its level, and who it was aimed at.
   spell?: string;
   level?: number;
@@ -266,7 +269,7 @@ export function markSaveTurned(campaignId: string, id: string) {
 export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near" | "heal_roll";
 export function recordTrigger(
   campaignId: string,
-  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet" | "rollId" | "hpBefore">>,
+  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "square" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet" | "rollId" | "hpBefore">>,
   turn?: string,
 ): LastSave | null {
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);

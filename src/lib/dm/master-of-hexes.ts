@@ -15,6 +15,13 @@ import { holdsFeature } from "@/lib/srd/trait-rules";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
+import { chebyshev } from "@/lib/battlemap/types";
+import { kindOf, openTriggers } from "@/lib/dm/last-save";
+import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { quarryOf } from "@/lib/srd/trigger-table";
+import type { ToolError } from "@/lib/dm/tool-errors";
 
 export const CURSE_HEALED = "hexblade's curse healed";
 
@@ -52,4 +59,29 @@ export function curseHealTakenBack(before: CharacterSheet, sheet: CharacterSheet
     patch: { currentHp: Math.max(1, sheet.currentHp - given), conditions: cleared.conditions, conditionMeta: cleared.meta as CharacterSheet["conditionMeta"] },
     line: given > 0 ? `The curse moves, so ${sheet.name} does not regain the ${given} hit points the first creature's death gave.` : "The curse moves; the first creature's death gave no hit points to take back.",
   };
+}
+
+const MOVE_FEET = 30;
+const CURSE = "hexblade's curse";
+
+// "Move the curse to another creature you can see within 30 feet of it": the
+// 30 feet is from the creature that died, whose square its death record keeps
+// (enemy-damage.ts; the token itself is gone). The refusal for a creature
+// beyond it, or null. With no board, or a death kept before squares were, the
+// reach is not measured and the GM judges it.
+export function curseMoveRefusal(campaignId: string, sheet: CharacterSheet, targetRef: string | null | undefined): ToolError | null {
+  const encounter = getActiveEncounter(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const target = encounter && targetRef ? resolveTargetFoe(encounter.campaignId, encounter, targetRef) : null;
+  const token = map && target ? getTokenByRef(map.id, target.id) : null;
+  const cursed = quarryOf(sheet, CURSE);
+  const death = openTriggers(campaignId).filter((record) => kindOf(record) === "death" && record.square && (!cursed || record.forcer.id === cursed)).at(-1);
+  if (!target || !token || !death?.square) {
+    return null;
+  }
+  const feet = chebyshev(token.x, token.y, death.square.x, death.square.y) * 5;
+  if (feet <= MOVE_FEET) {
+    return null;
+  }
+  return { error: `${target.displayName} is ${feet} feet from where ${death.forcer.name} died, and Master of Hexes moves the curse to a creature within ${MOVE_FEET} feet of it. Nothing was spent.`, refused: "rules" };
 }

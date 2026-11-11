@@ -10,6 +10,11 @@
 //     60 feet hits with a weapon attack, a reaction adds 1d10 to its damage".
 //     A party member's weapon hit of this turn hurts its creature by 1d10 more;
 //     a creature's weapon hit on a character lands 1d10 more on them.
+//   Infectious Inspiration (Eloquence 14): "A reaction copies a successful
+//     inspiration die onto another creature". A creature other than the bard
+//     and the one whose roll succeeded, within 60 feet, is handed a Bardic
+//     Inspiration die of the bard's size, and no use of Bardic Inspiration is
+//     spent (the creature is the call's targetCharacterId).
 //   Accursed Specter (Hexblade 6): a humanoid the warlock slew rises as a
 //     specter under their command (src/lib/dm/summon-arcane.ts).
 //
@@ -19,8 +24,11 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById } from "@/lib/db/sheets";
-import { unseenRefusal } from "@/lib/dm/authored-saves";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { publishPersisted } from "@/lib/events";
+import { givenDieMarks } from "@/lib/dm/ar-wbf-bard-dice-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { heaviestHit, hitIdOf, openHits, plainOfReroll, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { openTriggersFor, type TriggerAsk } from "@/lib/dm/reaction-triggers";
@@ -34,7 +42,7 @@ import { triggerSpecFor, type TriggerEvent } from "@/lib/srd/trigger-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 type Plan = { apply: () => Record<string, unknown> };
-type Input = { campaign: Campaign; turnId: string; sheet: CharacterSheet; defId: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
+type Input = { campaign: Campaign; turnId: string; sheet: CharacterSheet; defId: string; targetCharacterId?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
 // The record an open hit or miss event is, and the swing it names.
 function hitOf(campaignId: string, event: TriggerEvent): LastHit | null {
@@ -135,8 +143,58 @@ function accursedSpecter(input: Input): Plan {
 }
 
 // The plan for one of these counters, or null for any other.
+const INFECTIOUS = "Infectious Inspiration";
+const INFECTIOUS_FEET = 60;
+// 10 minutes of rounds, as a die given with Bardic Inspiration lasts (resource-tools.ts).
+const DIE_ROUNDS = 100;
+const DIE_FAMILY = "bardic inspiration";
+
+function infectiousInspiration(input: Input, ask: TriggerAsk): Plan | ToolError {
+  const { campaign, sheet } = input;
+  const encounter = getActiveEncounter(campaign.id);
+  const event = latest(input, ask);
+  const target = input.targetCharacterId ? (getSheetById(input.targetCharacterId) ?? null) : null;
+  if (!encounter || !event) {
+    return { error: `${INFECTIOUS} answers a roll a creature has just made succeed with ${sheet.name}'s Bardic Inspiration die, and none is open. Nothing was spent.`, refused: "rules" };
+  }
+  if (!target) {
+    return { error: `${INFECTIOUS} hands the die on to another creature: pass that creature as targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  if (target.id === sheet.id || target.id === event.characterId) {
+    return { error: `${INFECTIOUS} encourages a different creature: not ${sheet.name}, and not the one whose roll has just succeeded. Nothing was spent.`, refused: "rules" };
+  }
+  if (!withinFeet(encounter.id, sheet.id, target.id, INFECTIOUS_FEET)) {
+    return { error: `${target.name} is beyond ${INFECTIOUS_FEET} feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  // SRD 5.1 bard, Bardic Inspiration: "A creature can have only one Bardic
+  // Inspiration die at a time."
+  const held = target.conditions.find((entry) => isConditionNamed(entry, DIE_FAMILY));
+  if (held) {
+    return { error: `${target.name} already holds an unspent inspiration die (${held}), and a creature can have only one at a time. Nothing was spent.`, refused: "rules" };
+  }
+  const level = classLevelFor(sheet, "bard") || sheet.level;
+  const die = level >= 15 ? "d12" : level >= 10 ? "d10" : level >= 5 ? "d8" : "d6";
+  const condition = `${DIE_FAMILY} (${die})`;
+  return {
+    apply: () => {
+      const now = getSheetById(target.id) ?? target;
+      const updated = patchSheet(now.id, {
+        conditions: [...now.conditions, condition],
+        // The bard is the die's source, as on one they hand out themselves.
+        conditionMeta: { ...now.conditionMeta, [condition]: { rounds: DIE_ROUNDS, source: sheet.id, ...givenDieMarks(sheet) } },
+      });
+      if (updated) {
+        publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+      }
+      return { granted: `1${die} to ${now.name}, with no use of Bardic Inspiration spent; it is spent on their next d20 roll.` };
+    },
+  };
+}
+
 export function planArcaneTrigger(input: Input, ask: TriggerAsk): Plan | ToolError | null {
   switch (input.defId) {
+    case "sub_infectious_inspiration":
+      return infectiousInspiration(input, ask);
     case "sub_restore_balance":
       return restoreBalance(input, ask);
     case "sub_violent_attraction":
