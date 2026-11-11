@@ -18,7 +18,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
-import { factsAsCast } from "@/lib/dm/mt-srd-metamagic";
+import { factsAsCast } from "@/lib/dm/mt-srd-metamagic-logic";
 import { spellWard } from "@/lib/dm/zone-rules";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { swallowCoverBetween } from "@/lib/dm/swallow";

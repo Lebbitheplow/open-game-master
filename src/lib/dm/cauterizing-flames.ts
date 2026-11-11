@@ -22,24 +22,10 @@ import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 
-export const FLAME_MARK = "spectral flames";
-const FLAME_FEET = 30;
-// A minute.
-const FLAME_ROUNDS = 10;
+import { FLAME_FEET, FLAME_MARK, FLAME_ROUNDS, heldFlames, metaOf, type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
 
-export type SpectralFlame = { x: number; y: number; untilRound: number };
+export { FLAME_MARK, heldFlames, type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
 
-type FlameMeta = { flames?: SpectralFlame[] };
-
-const metaOf = (sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): FlameMeta | null => {
-  const held = sheet.conditions.find((entry) => isConditionNamed(entry, FLAME_MARK));
-  return held ? (((sheet.conditionMeta ?? {}) as Record<string, FlameMeta | undefined>)[held] ?? {}) : null;
-};
-
-// The flames the druid keeps, as stored (the Hand reads it: pure).
-export function heldFlames(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): SpectralFlame[] {
-  return metaOf(sheet)?.flames ?? [];
-}
 
 function writeFlames(campaignId: string, sheet: CharacterSheet, flames: SpectralFlame[]) {
   const others = sheet.conditions.filter((entry) => !isConditionNamed(entry, FLAME_MARK));

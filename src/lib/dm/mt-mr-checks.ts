@@ -11,11 +11,20 @@
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 // The mover has gone farther this turn than half their walking speed.
 export const MOVED_PAST_HALF = "moved past half speed";
 
-export function withMovementFacts<T extends Pick<CharacterSheet, "id" | "campaignId" | "conditions" | "speed">>(sheet: T): T {
+// Only a sheet with a feature that asks (Steady Eye: authored-effects-data3.ts
+// gates on the mark) has the board read for it: every other roll, and a roll
+// resolved with no table behind it, reads no encounter.
+const ASKS_MOVEMENT = ["Steady Eye"];
+
+export function withMovementFacts<T extends Pick<CharacterSheet, "id" | "campaignId" | "conditions" | "speed" | "features">>(sheet: T): T {
+  if (!ASKS_MOVEMENT.some((name) => holdsFeature(sheet, name))) {
+    return sheet;
+  }
   const encounter = getActiveEncounter(sheet.campaignId);
   // Out of a fight nobody counts a turn's movement.
   if (!encounter || (encounter.kind ?? "fight") !== "fight") {

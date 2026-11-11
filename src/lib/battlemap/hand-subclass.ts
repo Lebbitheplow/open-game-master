@@ -9,7 +9,7 @@
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
-import { heldFlames } from "@/lib/dm/cauterizing-flames";
+import { heldFlames } from "@/lib/dm/cauterizing-flames-logic";
 import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
 import { pendingSurge, surgeOf } from "@/lib/srd/mt-fb-surge-state";
 import { BOW_HIT, NO_ROLL, shotsKnown } from "@/lib/srd/mt-fb-arcane-shot";

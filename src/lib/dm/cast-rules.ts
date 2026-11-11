@@ -26,7 +26,7 @@ import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { beastShapeMaterialProblem } from "@/lib/dm/mt-srd-druid";
-import { subtleSpellPaid } from "@/lib/dm/mt-srd-metamagic";
+import { subtleSpellPaid } from "@/lib/dm/mt-srd-metamagic-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
 import { wieldedWeaponFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
