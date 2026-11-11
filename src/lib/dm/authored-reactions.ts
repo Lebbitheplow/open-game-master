@@ -12,6 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
+import { deflectionAftermath, deflectionFirst } from "@/lib/dm/ar-ws-deflection";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -388,7 +389,9 @@ export function authoredReaction(given: Ctx): ToolResult | null {
   answerTriggers({ ...ask, targetEnemyId: ctx.args.targetEnemyId });
   paid?.();
   spendReaction(ctx);
-  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome };
+  // What Arcane Deflection leaves behind, whichever half was used (ar-ws-deflection.ts).
+  const after = reaction.does.kind === "ac_vs_hit" && reaction.does.cantripsOnly ? deflectionAftermath(ctx, holder) : {};
+  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome, ...after };
 }
 
 // The creature a trigger-shaped reaction acts on, when the call names none:
@@ -462,6 +465,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
     }
     case "ac_vs_hit": {
+      // Arcane Deflection (ar-ws-deflection.ts): its shroud's named creatures are
+      // held to its reach, and its other half answers a save just failed.
+      const saved = does.orSave === undefined ? null : deflectionFirst(ctx, found.variant, reaction.name, does.orSave, label);
+      if (saved) return saved;
       let bonus: number;
       let spentDie: string | null = null;
       if (does.amount === "bardic") {

@@ -234,6 +234,10 @@ export type AuthoredEffect = Base &
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }
+    // One attack of the holder's Attack action may be a cantrip with a
+    // casting time of one action (the Bladesinger's Extra Attack:
+    // src/lib/dm/ar-ws-cantrip-attack.ts, through cast-rules.ts turnCharge).
+    | { kind: "attack_cantrip" }
     // An opportunity attack on every other creature's turn, each with its own
     // reaction (Vigilant Defender).
     | { kind: "oa_each_turn" }
@@ -577,7 +581,11 @@ export type ReactionDoes =
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
+  // `cantripsOnly`: every use leaves the holder casting only cantrips until
+  // the end of their next turn (Arcane Deflection: src/lib/dm/ar-ws-deflection.ts).
+  // `orSave`: the same reaction instead adds this much to a saving throw the
+  // holder has just failed (Arcane Deflection's other half).
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; cantripsOnly?: boolean; orSave?: number }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within

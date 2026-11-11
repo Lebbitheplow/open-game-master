@@ -4,6 +4,7 @@
 // scripts/test-hand.mjs.
 import { READIED_WORDS, type Readiable } from "@/lib/dm/readied-kinds";
 import { ACTION_SURGED, spendAction, spendAttack } from "@/lib/dm/action-budget";
+import { spendCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { BONUS_SPELL, LEVELLED_SPELL } from "@/lib/dm/cast-rules";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { asPercent, averageDetail } from "@/lib/srd/odds";
@@ -509,7 +510,9 @@ export function afterCommit(turn: HandTurn, card: HandCard, allowed = 1): HandTu
   // one weapon attack, Action Surge, Flurry of Blows).
   const budget = budgetOf(turn, { id: "hand" }, allowed);
   const result =
-    swing || contest
+    card.attackCantrip
+      ? spendCantripAttack(budget, card.name, "")
+      : swing || contest
       ? spendAttack(budget, "", { unarmed: intent.card === "attack" && intent.weapon === "Unarmed strike", hasteOk: !contest })
       : card.cost === "action" || card.cost === "bonus" || card.cost === "reaction"
         ? spendAction(budget, card.cost, card.name, "")

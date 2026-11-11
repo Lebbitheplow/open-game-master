@@ -682,7 +682,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "bladesong",
     match: ["bladesong"],
     summary:
-      "Bladesong: AC increased by their Intelligence modifier, +10 feet of speed, advantage on Acrobatics, and a bonus on concentration saves. Ends if they wear medium/heavy armor or a shield, or use two hands on a weapon.",
+      "Bladesong: AC increased by their Intelligence modifier, +10 feet of speed, advantage on Acrobatics, and their Intelligence modifier (at least +1) on Constitution saves to keep concentration. Ends if they wear medium/heavy armor or a shield, or use two hands on a weapon.",
     acBonusAbility: "int",
     speedBonus: 10,
   },

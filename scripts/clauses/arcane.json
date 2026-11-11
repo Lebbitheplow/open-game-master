@@ -825,8 +825,9 @@
    },
    {
     "c": "or failing a save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "grants +2 AC",
@@ -836,13 +837,15 @@
    },
    {
     "c": "or +4 on the save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "at the cost of casting only cantrips on your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost",
+    "by": "the reaction row cantripsOnly (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectionAftermath lays the mark arcane deflection to the end of the wizard next turn, and src/lib/dm/ar-ws-deflection-mark.ts deflectionCastProblem refuses any spell but a cantrip at the one cast door (cast-guard.ts castSpell) and on the Hand spell, reaction-spell and summoning cards (ruling: later rays of a casting already made, a held spell repeated effect, a readied release and a spell an item casts are no new casting and pass)"
    }
   ]
  },
@@ -920,8 +923,9 @@
   "clauses": [
    {
     "c": "Arcane Deflection also deals half your wizard level in force damage to up to three creatures within 60 feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud",
+    "by": "src/lib/dm/ar-ws-deflection.ts deflectingShroud, dealt inside deflectionAftermath by either half of the Arcane Deflection reaction for a holder of the feature: half the wizard level in force to the foes named in targetEnemyIds (three at most), else the three nearest, each within 60 feet and seen by the wizard; a creature named beyond the reach, unseen or a fourth is refused before the reaction is spent (shroudRefusal)"
    }
   ]
  },
@@ -943,7 +947,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Bladesinging",
   "level": 2,
-  "sha": "d429d47f0f73",
+  "sha": "1d0692a1c542",
   "clauses": [
    {
     "c": "A bonus action",
@@ -976,9 +980,10 @@
     "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Bladesong check_adv acrobatics (gate: the bladesong condition)"
    },
    {
-    "c": "and a concentration-save bonus",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration"
+    "c": "and your Intelligence modifier (at least +1) on Constitution saves to keep concentration",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration",
+    "by": "src/lib/dm/ar-ws-bladesong.ts bladesongConcentrationBonus, added to the save in src/lib/dm/concentration.ts concentrationDamageHook (the Intelligence modifier, at least +1, only while the bladesong condition holds; the text was given the number)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -1002,8 +1007,9 @@
    },
    {
     "c": "and one of those attacks may be a cantrip with a casting time of one action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip",
+    "by": "authored effect attack_cantrip (src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Extra Attack), counted by src/lib/dm/ar-ws-cantrip-attack.ts spendActionCast inside cast-rules.ts turnCharge, which the cast guard (pc_attack with spell, cast_at_enemy) and the Hand spell cards both ask: a cantrip with a casting time of one action is one attack of the Attack action, before or after the weapon attack, one per action (ruling: Haste extra action, one weapon attack, never pays for it)"
    }
   ]
  },

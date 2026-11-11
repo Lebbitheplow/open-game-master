@@ -58,6 +58,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { matchResource } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { standingForDeflection } from "@/lib/dm/ar-ws-deflection";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -74,6 +75,11 @@ const useReactionSchema = z.object({
   feature: z.string().max(80),
   targetCharacterId: z.string().optional(),
   targetEnemyId: z.string().optional(),
+  // The creatures a reaction strikes when it strikes several (Deflecting
+  // Shroud's up to three: src/lib/dm/ar-ws-deflection.ts). Read from the
+  // console and a card; the tool's description does not name it, so it costs
+  // the model's window nothing, and with none named the engine picks.
+  targetEnemyIds: z.array(z.string()).max(8).optional(),
   // Counterspell: the spell being countered.
   spell: z.string().max(80).optional(),
   // The way a counted reaction goes, when it has two (Cauterizing Flames: heal
@@ -655,7 +661,8 @@ function useReaction(
   if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
-  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
+  // Arcane Deflection's answer to a failed save is judged before that failure (ar-ws-deflection.ts).
+  const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, sheet, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }

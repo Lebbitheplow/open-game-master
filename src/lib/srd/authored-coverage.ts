@@ -186,6 +186,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   max_hp_fixed: { file: "src/lib/dm/ar-ws-inured-logic.ts", call: 'activeAuthored(sheet, "max_hp_fixed")' },
   summon_extra: { file: "src/lib/dm/summon-cast.ts", call: "thrallSpell(" },
   summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
+  attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
 };
 
 export function authoredEffectKinds(): string[] {

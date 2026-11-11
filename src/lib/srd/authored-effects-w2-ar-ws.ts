@@ -101,4 +101,29 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
       spend.does.kind === "choose" ? { ...spend, does: { ...spend.does, changeAfterCast: { school: "transmutation", minLevel: 1 } } } : spend,
     ),
   },
+  // "and one of those attacks may be a cantrip with a casting time of one
+  // action": the cast guard counts such a cantrip as one attack of the Attack
+  // action, once per action (src/lib/dm/ar-ws-cantrip-attack.ts). The second
+  // attack itself is feature-effects.ts's extra_attack.
+  "wizard::Extra Attack": {
+    subclass: "Bladesinging",
+    effects: [{ kind: "attack_cantrip" }],
+  },
+  // "A reaction after being hit or failing a save grants +2 AC or +4 on the
+  // save, at the cost of casting only cantrips on your next turn": the earlier
+  // row held the +2 alone. The same reaction answers a save just failed with
+  // +4, and every use leaves the mark the cast door reads
+  // (src/lib/dm/ar-ws-deflection.ts, ar-ws-deflection-mark.ts).
+  "wizard::Arcane Deflection": {
+    subclass: "War Magic",
+    reactions: [{ name: "Arcane Deflection", does: { kind: "ac_vs_hit", amount: 2, orSave: 4, cantripsOnly: true } }],
+  },
+  // "Arcane Deflection also deals half your wizard level in force damage to
+  // up to three creatures within 60 feet": dealt by the reaction itself, to
+  // the creatures the call names or the three nearest the wizard can see. The
+  // earlier row left it to the GM and apply_damage.
+  "wizard::Deflecting Shroud": {
+    subclass: "War Magic",
+    heldBy: { file: "src/lib/dm/ar-ws-deflection.ts", call: "deflectingShroud(" },
+  },
 };

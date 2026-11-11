@@ -61,6 +61,7 @@ export type TriggerRecordView = {
   forcerId: string;
   forcer: string;
   success?: boolean;
+  dc?: number;
   against?: string;
   damage?: { amount: number; type: string; spell?: boolean };
   petName?: string;

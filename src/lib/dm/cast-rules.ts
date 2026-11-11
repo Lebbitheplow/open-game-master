@@ -19,7 +19,8 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { casterViewsOf, notReadyReason, spellbookOf } from "@/lib/srd/spell-prep";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { matchWeapon } from "@/lib/srd/weapons";
-import { spendAction, spendCastAttack, type TurnBudget } from "@/lib/dm/action-budget";
+import { spendAction, type TurnBudget } from "@/lib/dm/action-budget";
+import { spendActionCast } from "@/lib/dm/ar-ws-cantrip-attack";
 import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -659,6 +660,9 @@ export function turnCharge(input: {
   budget: TurnBudget | null;
   reactionSpent: boolean;
   bonusCast?: BonusCast | null;
+  // One attack of the caster's Attack action may be a cantrip (the
+  // Bladesinger's Extra Attack: src/lib/dm/ar-ws-cantrip-attack.ts).
+  attackCantrip?: boolean;
 }): TurnCharge | CastRefusal {
   const { who, facts, budget, inFight } = input;
   const name = facts?.name ?? input.spell;
@@ -719,7 +723,7 @@ export function turnCharge(input: {
   const spent =
     time === "bonus"
       ? spendAction(budget, "bonus", `casting ${name}`, who)
-      : spendCastAttack(budget, name, who);
+      : spendActionCast(budget, name, who, { holder: Boolean(input.attackCantrip), cantrip: !levelled && time === "action" });
   if (!spent.ok) {
     return toolError(spent);
   }
