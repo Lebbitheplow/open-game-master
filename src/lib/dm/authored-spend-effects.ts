@@ -52,6 +52,7 @@ import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
 import { companionGoes, companionOf, healOne, healRefusal, layLunarWard, veil } from "@/lib/dm/ar-ws-lunar-phenomenon";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { rollAgainst } from "@/lib/roll-labels";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey, words } from "@/lib/language/text-logic";
@@ -300,7 +301,11 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       if ((aim === "enemy" || does.quarry) && !getActiveEncounter(campaign.id)) {
         return { result: { applied: [`${ctx.spend.name}: ${condition}, on the creature the story names. There is no fight, so no creature on the board carries it.`] } };
       }
-      const tempHp = does.tempHp ? Math.max(0, Number(rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: temporary hit points`, formula(ctx, does.tempHp), null).total)) : 0;
+      // The holder's own dice (character-roll.ts rollOwnDice), rolled once the
+      // use is known to land: a seat on physical dice is not asked for dice a
+      // refusal would throw away.
+      const rollTempHp = (ally: CharacterSheet) =>
+        does.tempHp ? Math.max(0, Number(rollOwnDice(campaign, sheet, diceFor(`${ctx.spend.name}: temporary hit points`, sheet, ally), formula(ctx, does.tempHp), { turn: ctx.turn }).total)) : 0;
       if (aim === "enemy") {
         const enemy = targetEnemy(ctx);
         if ("error" in enemy) {
@@ -360,6 +365,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
           return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
         }
         if (ally.id !== sheet.id) {
+          const tempHp = rollTempHp(ally);
           sheetCondition(campaign, ally, condition, does.rounds, tempHp > ally.tempHp ? { tempHp } : {}, undefined, undefined, otherOutcomes(does, condition));
           lines.push(`${ally.name} is ${condition} for ${does.rounds} rounds.`);
           return { result: { applied: lines } };
@@ -396,6 +402,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
       // answered ok and landed nothing.
       if (aim === "self" || aim === "ally") {
+        const tempHp = rollTempHp(sheet);
         const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, otherOutcomes(does, condition));
         // One form at a time: a constellation taken again replaces the one it
         // finds (it was added beside it, two forms at once).
@@ -561,7 +568,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
     case "reroll_save":
       return rerollLastSave(ctx);
     case "temp_hp": {
-      const amount = Math.max(1, Number(rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: temporary hit points`, formula(ctx, does.formula), null).total));
+      const amount = Math.max(1, Number(rollOwnDice(campaign, sheet, `${ctx.spend.name}: temporary hit points`, formula(ctx, does.formula), { turn: ctx.turn }).total));
       if (!does.allies) {
         return {
           patch: amount > sheet.tempHp ? { tempHp: amount } : {},
@@ -722,7 +729,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
         if (reachRefusal) {
           return reachRefusal;
         }
-        const rolled = rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, formula(ctx, does.formula), null).total;
+        const rolled = rollOwnDice(campaign, sheet, diceFor(`${ctx.spend.name}: healing`, sheet, ally), formula(ctx, does.formula), { turn: ctx.turn }).total;
         const gained = regainHitPoints(campaign, ctx.turnId, ally, rolled, `${ctx.spend.name} (${sheet.name})`);
         return { result: { healed: `${ally.name} regains ${gained} hit points (${rolled} rolled).` } };
       }

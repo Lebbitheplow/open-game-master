@@ -71,10 +71,19 @@ then choose, per die shape, where that die's numbers come from:
   browser and HTTPS (localhost is exempt), the same requirement voice has.
 
 A player on real dice is asked for their attacks and their damage, their
-initiative, and the checks and saves the GM asks for. The table still rolls the
-rest for them: death saves, concentration, and the saves a spell, trap or
-monster forces, since the engine makes those in the middle of resolving
-something else. A roll card says any reroll the player owes it (a halfling's
+initiative, and every check and save their character makes, the saves a spell,
+trap or monster forces included. They roll their own healing dice too, and the
+temporary hit points their features and spells give: Second Wind and the other
+class and subclass features that heal, a potion they drink or pour, a healing
+spell they cast, a Healer's kit. A feature or a spell that rolls for each
+creature it heals asks for one roll after another. Hit dice at a short rest
+are theirs as well: Spend a hit die on the sheet asks for the die there, and a
+GM who spends hit dice for a player at the table sends that player a roll
+card. A roll that comes between the GM's moves, such as a death save as a turn
+begins, is rolled for them, and so are the hit dice of a player who is away.
+So, for now, are a character's other dice, such as the damage of a spell that
+makes no attack roll and the dice a reaction or a rider adds. A roll card says
+any reroll the player owes it (a halfling's
 Lucky, Great Weapon Fighting, Piercer, Savage Attacker); the face kept is the
 one entered, and dice the server rolls for them take the same rerolls.
 

@@ -1,12 +1,10 @@
 import { breathAugment } from "@/lib/dm/mt-mr-dragon";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
-import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
+import { diceFor as healingOn, rollOwnDice } from "@/lib/dm/character-roll";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
@@ -78,31 +76,26 @@ export function holdConcentration(campaign: Campaign, turnId: string | null, she
   return displaced ? { concentrationEnded: droppedLine(displaced, outcome.concentrate) } : {};
 }
 
-// Rolls healing server-side as a visible dice card, exactly as a player's
-// own roll would appear. Shared by the potion path and the class-feature
-// healing path; the heal itself always rides the standard heal mutation so
-// the death engine wakes a dying target. Exported for the Combat Wild Shape
-// slot-heal in mutations.ts.
+// Rolls healing as a visible dice card. Shared by the potion path and the
+// class-feature healing path; the heal itself always rides the standard heal
+// mutation so the death engine wakes a dying target. Exported for the Combat
+// Wild Shape slot-heal in mutations.ts.
+//
+// The dice are the roller's own, whoever is healed: the character whose
+// feature it is, or who pours the potion. A seat on physical dice rolls them
+// (src/lib/dm/character-roll.ts), as it rolls its damage. They were thrown
+// here, so a fighter with real dice on the table had Second Wind rolled for
+// them (issue 902). The card joins the turn's cards, so the chronicle shows
+// it: it was sent to the table as it was rolled and then never seen again.
+// A flat amount (Unearthly Recovery's half the maximum) has nothing to roll
+// and is never waited on (character-roll.ts).
 export function rollHealing(
   campaign: Campaign,
-  target: CharacterSheet,
+  roller: CharacterSheet,
   detail: string,
   expression: string,
 ): number {
-  const outcome = rollExpression(expression);
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: target.id,
-    requestedBy: "dm",
-    kind: "custom",
-    detail: `${detail} (${expression})`,
-    result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
-  });
-  return outcome.total;
+  return rollOwnDice(campaign, roller, `${detail} (${expression})`, expression, { flatCard: true }).total;
 }
 
 export function computeUseItem(
@@ -133,7 +126,7 @@ export function computeUseItem(
     if (target.deathSaves?.dead) {
       return { error: `${target.name} is DEAD; a potion cannot help.`, refused: "rules" };
     }
-    const total = rollHealing(campaign, target, carried.name, effect.expression);
+    const total = rollHealing(campaign, sheet, healingOn(carried.name, sheet, target), effect.expression);
     base.healTarget = { characterId: target.id, amount: Math.max(1, total) };
     base.result.healingRolled = total;
   }
@@ -686,7 +679,7 @@ export function computeUseResource(
       if (beyond) {
         return beyond;
       }
-      const total = rollHealing(campaign, target, def.displayName, `${amount}${def.effect.die}`);
+      const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), `${amount}${def.effect.die}`);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
       outcome.result.healed = `${total} HP to ${target.name}`;
@@ -708,7 +701,7 @@ export function computeUseResource(
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
-      const total = rollHealing(campaign, target, def.displayName, expression);
+      const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
       return outcome;
@@ -727,7 +720,7 @@ export function computeUseResource(
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
       const total = Math.max(
         1,
-        rollHealing(campaign, target, `${def.displayName} (temporary HP)`, expression),
+        rollHealing(campaign, sheet, healingOn(`${def.displayName} (temporary HP)`, sheet, target), expression),
       );
       // 5e temporary hit points never stack; the higher value stands.
       if (target.tempHp >= total) {
@@ -781,8 +774,8 @@ export function computeUseResource(
           1,
           rollHealing(
             campaign,
-            recipient,
-            `${def.displayName} (temporary HP)`,
+            sheet,
+            healingOn(`${def.displayName} (temporary HP)`, sheet, recipient),
             effect.tempHp(sheet.level, derived.abilityMods),
           ),
         );

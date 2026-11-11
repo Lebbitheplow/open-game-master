@@ -10,7 +10,7 @@
 
 import { recordCast } from "@/lib/dm/last-save";
 import { shareSpell } from "@/lib/dm/pet-command";
-import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -450,7 +450,9 @@ export function handleCastBuff(
     }
     const fresh = getSheetById(target.id) ?? target;
     // Heroes' Feast rolls each diner's 2d10; it rides in the name as Aid's does.
-    const feast = resolvedMech.mech.maxHpDice ? rollCard(campaign, turn, target.id, "custom", `${args.spell}: ${target.name}'s hit point maximum`, resolvedMech.mech.maxHpDice, null).total : 0;
+    // The caster's own dice, as the temporary hit points below are
+    // (character-roll.ts rollOwnDice): whoever they are for.
+    const feast = resolvedMech.mech.maxHpDice ? rollOwnDice(campaign, sheet, `${args.spell}: ${target.name}'s hit point maximum`, resolvedMech.mech.maxHpDice, { turn }).total : 0;
     const outcome = handleSetCondition(
       campaign,
       turn.id,
@@ -486,9 +488,9 @@ export function handleCastBuff(
     const tempHp = buff.tempHp
       ? buff.tempHp.base +
         (buff.tempHp.perSlotLevel ?? 0) * above +
-        (buff.tempHp.dice ? rollCard(campaign, turn, target.id, "custom", `${args.spell}: temporary hit points`, buff.tempHp.dice, null).total : 0)
+        (buff.tempHp.dice ? rollOwnDice(campaign, sheet, diceFor(`${args.spell}: temporary hit points`, sheet, target), buff.tempHp.dice, { turn }).total : 0)
       : tempDice
-        ? rollCard(campaign, turn, target.id, "custom", `${condition}: temporary hit points`, tempDice, null).total
+        ? rollOwnDice(campaign, sheet, diceFor(`${condition}: temporary hit points`, sheet, target), tempDice, { turn }).total
         : 0;
     if (tempHp > 0) {
       const now = getSheetById(target.id);

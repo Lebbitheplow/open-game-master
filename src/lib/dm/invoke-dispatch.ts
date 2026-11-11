@@ -63,6 +63,7 @@ import {
   handleRecordEvent,
   handleRequestPlayerInput,
   modelCallArguments,
+  oneCastingCall,
 } from "@/lib/dm/turn";
 import { imagesAvailable } from "@/lib/capabilities";
 import { imageProducerReady } from "@/lib/image-generate";
@@ -135,11 +136,20 @@ async function dispatchCall(
   // (src/lib/dm/action-parts-logic.ts listedCalls), for a connected agent
   // program and the console as for the model's turn loop (turn.ts).
   const each = listedCalls(name, sentArguments);
-  if (each) {
-    const refused = listRefusal(name, each) ?? awayCall(name, JSON.parse(sentArguments), context);
-    if (refused) {
-      return refused;
-    }
+  const refused = each ? (listRefusal(name, each) ?? awayCall(name, JSON.parse(sentArguments), context)) : null;
+  if (refused) {
+    return refused;
+  }
+  // One casting over several creatures goes on below as the one call it is
+  // (turn.ts oneCastingCall).
+  const whole = each ? oneCastingCall(campaign, name, sentArguments, each, sheets) : null;
+  if (whole && "refusal" in whole) {
+    return whole.refusal;
+  }
+  if (whole) {
+    sentArguments = whole.rawArguments;
+  }
+  if (each && !whole) {
     const shared = oneCasting(name, each);
     const outcomes: Record<string, unknown>[] = [];
     for (const one of each) {

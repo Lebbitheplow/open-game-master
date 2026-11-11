@@ -435,6 +435,10 @@ export function handleTakeRest(
       chefDie,
       reason,
       requestedBy: "dm",
+      // The GM at the console spends for a player who is at the table: the
+      // dice are still that player's, and on physical dice they roll them.
+      // The server rolls for one who is away, as it spends for them.
+      mayWait: chooses(sheetId),
     });
     if ("error" in spent) {
       const sheet = getSheetById(sheetId);

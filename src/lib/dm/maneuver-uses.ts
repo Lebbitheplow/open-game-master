@@ -14,7 +14,6 @@
 // then the die), so a refusal costs nothing. Must not import mutations.ts.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -27,7 +26,7 @@ import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { COMMANDED, SUPERIORITY_STRIKE, maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import type { ResourceCharge } from "@/lib/dm/resource-turn";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
@@ -58,7 +57,10 @@ export function rally(campaign: Campaign, turnId: string, sheet: CharacterSheet,
   }
   const cha = computeSheetDerived(sheet).abilityMods.cha;
   const expression = `1${maneuverDieFor(sheet)}${cha >= 0 ? "+" : ""}${cha}`;
-  const rolled = Math.max(0, rollCard(campaign, getDmTurn(turnId), sheet.id, "custom", `${sheet.name}: Rally`, expression, null).total);
+  // The fighter's own die, whoever it steadies (character-roll.ts
+  // rollOwnDice). The card joins the call's turn: it was pushed onto a copy
+  // of the turn read here, and never reached the chronicle.
+  const rolled = Math.max(0, rollOwnDice(campaign, sheet, `${sheet.name}: Rally`, expression).total);
   const fresh = getSheetById(ally.id) ?? ally;
   // Temporary hit points do not stack: the better of the two stays.
   const kept = Math.max(fresh.tempHp ?? 0, rolled);

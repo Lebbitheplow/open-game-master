@@ -19,7 +19,10 @@
 // The same holds out of a fight: grant_item and purchase take every item of
 // a chest or a shopping list (items), and heal every creature one healing
 // spell reaches (targets), resolved one by one as the one-entry call each
-// was (listedCalls).
+// was (listedCalls). One casting of a healing spell over several creatures
+// is the exception: it is one call, as a pc_attack's parts are, so a roll
+// one of its creatures waits on holds the whole casting (turn.ts
+// oneCastingCall, mutations.ts healList).
 //
 // No "@/" imports, so the test scripts load it directly.
 
@@ -180,12 +183,19 @@ export function listedCalls(name: string, rawArguments: string): Record<string, 
 // Heal's hit points they share, and `left` of those bound the later entries,
 // which spend nothing (src/lib/dm/heal-spell.ts). An open cast holds a
 // casting across calls in a fight only: out of one, each entry spent a slot.
+//
+// What the first entry paid is kept here, in memory, for the others. A call
+// held for a player's roll is rolled back and run again from its start
+// (held-call.ts), so a casting that outlives one call would be paid for
+// again by the run that follows. `oneCall` marks a casting made and used up
+// inside a single call, built fresh on every run: only its dice may wait.
 export type OneCasting = {
   spell: string;
   creatures: number;
   hitPoints: number;
   paid: Record<string, unknown> | null;
   left: number;
+  oneCall?: boolean;
 };
 
 // The casting a heal list shares, or undefined: no spell named, or entries
