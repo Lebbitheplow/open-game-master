@@ -5,6 +5,7 @@ import { tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { ritualProblem } from "@/lib/dm/cast-rules";
 import { hasPactOfTheChain } from "@/lib/dm/pet-build";
+import { thrallSpell } from "@/lib/dm/ar-ws-thralls";
 import { familiarCatalogue, isFindFamiliar } from "@/lib/srd/familiar-forms";
 import { summonCatalogue, summonSpellFor, type SummonCatalogue } from "@/lib/srd/summon-spells";
 
@@ -55,7 +56,8 @@ export async function GET(
   for (const name of parsed.data.spells) {
     const engine = spellEngineName(name, authors);
     const summoning = summonSpellFor(engine);
-    const catalogue = summoning ? summonCatalogue(summoning) : isFindFamiliar(engine) ? familiarCatalogue() : null;
+    // A necromancer's Animate Dead raises one more (Undead Thralls, ar-ws-thralls.ts).
+    const catalogue = summoning ? summonCatalogue(caster ? thrallSpell(caster, summoning) : summoning) : isFindFamiliar(engine) ? familiarCatalogue() : null;
     if (!catalogue) {
       continue;
     }

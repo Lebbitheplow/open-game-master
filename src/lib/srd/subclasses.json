@@ -4672,7 +4672,7 @@
           "6": [
             {
               "n": "Undead Thralls",
-              "d": "You learn animate dead, raise one extra corpse per casting, and your undead gain extra hit points and add your proficiency bonus to weapon damage."
+              "d": "You learn animate dead, raise one extra corpse per casting, and undead you create with a necromancy spell gain your wizard level in extra hit points and add your proficiency bonus to weapon damage."
             }
           ],
           "10": [

@@ -38,4 +38,17 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "School of Enchantment",
     spends: [{ name: "Alter Memories", action: "action", gm: true, does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
   },
+  // "You learn animate dead, raise one extra corpse per casting, and undead
+  // you create with a necromancy spell gain your wizard level in extra hit
+  // points and add your proficiency bonus to weapon damage": the server makes
+  // the creatures, so it makes one more and makes them sturdier
+  // (src/lib/dm/ar-ws-thralls.ts, from summon-cast.ts). The earlier row left
+  // both to the GM's pen on a stat block the GM never writes.
+  "wizard::Undead Thralls": {
+    subclass: "School of Necromancy",
+    effects: [
+      { kind: "summon_extra", spell: "Animate Dead", amount: 1 },
+      { kind: "summon_thrall", school: "necromancy", types: ["undead"] },
+    ],
+  },
 };

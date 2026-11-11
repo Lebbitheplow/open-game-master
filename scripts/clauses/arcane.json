@@ -611,7 +611,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "School of Necromancy",
   "level": 6,
-  "sha": "2bf8d39ddee0",
+  "sha": "18a72aed5bde",
   "clauses": [
    {
     "c": "You learn animate dead",
@@ -621,13 +621,15 @@
    },
    {
     "c": "raise one extra corpse per casting",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-extra"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-extra",
+    "by": "src/lib/dm/ar-ws-thralls.ts thrallSpell (authored effect summon_extra, Animate Dead, one), from summon-cast.ts castSummon and the summons route. Ruling: the extra corpse joins the casting's budget at every slot level, of either form; reasserting control holds no more than the spell says"
    },
    {
-    "c": "and your undead gain extra hit points and add your proficiency bonus to weapon damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-sturdier"
+    "c": "and undead you create with a necromancy spell gain your wizard level in extra hit points and add your proficiency bonus to weapon damage",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: thralls-sturdier",
+    "by": "src/lib/dm/ar-ws-thralls.ts thrallForm (authored effect summon_thrall, necromancy, undead), from summon-cast.ts castSummon. The text now states the number (the wizard level). Ruling: every attack of the stat blocks Animate Dead and Create Undead make is a weapon attack, so each attack's own damage roll takes the bonus once"
    }
   ]
  },

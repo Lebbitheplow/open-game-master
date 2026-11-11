@@ -526,18 +526,60 @@ export function probes(rig, shared) {
     "thralls-learn": async () => {
       assert.ok(rig.features.subclassSpellsFor("wizard", "School of Necromancy", 6).includes("Animate Dead"), "the spells the subclass teaches at 6th level hold no Animate Dead");
     },
+    // One more per casting at every slot level, of either form, for the
+    // holder alone; a casting past the budget is refused with the slot unspent.
     "thralls-extra": async () => {
       await kit.endFight();
       rig.refill(nec());
-      const out = await call("cast_buff", { characterId: nec().id, spell: "Animate Dead", variant: "Skeleton" });
+      const raise = (who, args) => call("cast_buff", { characterId: who.id, spell: "Animate Dead", ...args });
+      const out = await raise(nec(), { variant: "Skeleton" });
       if (!out.ok) throw new Error(out.error);
       PROBES_SEEN.thralls = out.result.summoned;
       assert.equal(out.result.summoned.length, 2, "skeletons raised by one casting at 3rd level");
+      const higher = await raise(nec(), { variant: "Zombie", level: 4 });
+      assert.equal(higher.result?.summoned.length, 4, `zombies from a 4th-level slot (one, two more for the slot, and the extra): ${show(higher)}`);
+      const used = slotsUsed(nec());
+      const three = await raise(nec(), { mix: [{ variant: "Skeleton", count: 2 }, { variant: "Zombie", count: 1 }] });
+      assert.equal(three.ok, false, "three from a 3rd-level slot is one past the extra corpse");
+      assert.match(String(three.error), /Nothing was spent/);
+      assert.equal(slotsUsed(nec()), used, "the refused casting spent a slot");
+      const mixed = await raise(nec(), { mix: [{ variant: "Skeleton", count: 1 }, { variant: "Zombie", count: 1 }] });
+      assert.deepEqual(mixed.result?.summoned.map((made) => made.name.replace(/ \d+$/, "")).sort(), ["Skeleton", "Zombie"], `the extra corpse may be of the other form: ${show(mixed)}`);
+      // Another wizard's Animate Dead raises the spell's one.
+      const other = holder("wizard", "School of Illusion", 20, { spells: ["Animate Dead"] }, "raiser");
+      const plain = await raise(other, { variant: "Skeleton" });
+      assert.equal(plain.result?.summoned.length, 1, `a wizard without the feature: ${show(plain)}`);
+      PROBES_SEEN.plain = plain.result.summoned;
+      const two = await raise(other, { variant: "Skeleton", count: 2 });
+      assert.equal(two.ok, false, "a wizard without the feature raises no second corpse from a 3rd-level slot");
+      // The table keeps the three the next probe reads; the rest go.
+      const { removeSummon } = await import("../../src/lib/dm/summon-store.ts");
+      for (const made of [...higher.result.summoned, ...mixed.result.summoned]) removeSummon(world.campaign(), world.sheet(made.characterId));
     },
+    // The hit point maximum rises by the wizard's level and the weapon's
+    // damage by the wizard's proficiency bonus (20th level: 20 and +6); another
+    // wizard's skeleton has its stat block's 13 hit points and 1d6+2.
     "thralls-sturdier": async () => {
       if (!PROBES_SEEN.thralls) await PROBES["thralls-extra"]().catch(() => {});
       const [skeleton] = PROBES_SEEN.thralls;
       assert.equal(skeleton.hp, `${13 + 20}/${13 + 20}`, "a skeleton's 13 hit points plus the wizard's level");
+      const [plain] = PROBES_SEEN.plain;
+      assert.equal(plain.hp, "13/13", "another wizard's skeleton");
+      // Each skeleton's shortsword on the dummy: a 4 on the d6.
+      const swing = async (made) => {
+        const [enemy] = await stage(nec());
+        kit.place(made.characterId, 6, 4);
+        kit.giveTurn(made.characterId);
+        kit.freshTurn();
+        const before = foe(enemy).currentHp;
+        const out = await call("pc_attack", { characterId: made.characterId, targetEnemyId: enemy.id, weapon: "Shortsword" }, [15, 4]);
+        assert.equal(out.ok, true, out.error);
+        return before - foe(enemy).currentHp;
+      };
+      assert.deepEqual([await swing(skeleton), await swing(plain)], [4 + 2 + prof(20), 4 + 2], "[the necromancer's skeleton, another wizard's] shortsword damage on a 4");
+      await kit.endFight();
+      const { removeSummon } = await import("../../src/lib/dm/summon-store.ts");
+      for (const made of [...PROBES_SEEN.thralls, ...PROBES_SEEN.plain]) removeSummon(world.campaign(), world.sheet(made.characterId));
     },
     "inured-necrotic": async () => {
       await kit.endFight();
@@ -644,8 +686,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "thralls-extra": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (Animate Dead raises one creature whoever casts it)", note: `The row is narrated ("the GM writes those onto their stat blocks"), yet the server makes the skeleton itself.`, fix: "Raise one more for a holder of Undead Thralls." },
-    "thralls-sturdier": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (authoredSummonHitPoints has no row for Undead Thralls)", note: "The stored text gives no number for the hit points (\"extra hit points\"); the feature it condenses gives the wizard's level. The proficiency bonus on the undead's weapon damage is unread as well.", fix: "A summon_hp row and a damage bonus for the necromancer's undead; state the number in the text." },
     "inured-maximum": { severity: "low", kind: "rule-missing", where: "src/lib/dm/effect-tools.ts set_effect field maxHp (and any creature ability that lowers a maximum)", note: "Reached by the GM's own hand here; the feature-effects row for Inured to Undeath holds the resistance only.", fix: "Refuse a lowering of the hit point maximum for a holder." },
     "stone-change": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Transmuter's Stone (the choose spend is fight: "out" and asks for no spell)`, note: "Looser and stricter than the text at once: out of a fight the benefit changes at will, in one it cannot change even on a transmutation spell.", fix: "A ruling, or tie the change to a transmutation spell of 1st level or higher." },
   };

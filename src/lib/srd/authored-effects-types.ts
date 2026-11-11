@@ -260,6 +260,14 @@ export type AuthoredEffect = Base &
     // What the holder summons with a spell, of these creature types, gains
     // this many hit points per Hit Die (Mighty Summoner: 2, beasts and fey).
     | { kind: "summon_hp_per_hd"; amount: number; types: string[] }
+    // A casting of this spell makes this many more creatures (Undead Thralls:
+    // Animate Dead, one; src/lib/dm/ar-ws-thralls.ts).
+    | { kind: "summon_extra"; spell: string; amount: number }
+    // What the holder makes with a spell of this school, of these creature
+    // types, has its hit point maximum raised by the holder's level in the
+    // class and adds the holder's proficiency bonus to its weapon damage
+    // (Undead Thralls: necromancy, undead; src/lib/dm/ar-ws-thralls.ts).
+    | { kind: "summon_thrall"; school: string; types: string[] }
     // The attacks of the holder's companion of these kinds count as magical
     // (Exceptional Training: the beast companion).
     | { kind: "pet_magical"; pets: Array<"familiar" | "beast_companion" | "drake" | "other"> }
