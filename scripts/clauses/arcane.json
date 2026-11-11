@@ -2270,10 +2270,40 @@
     "by": "src/lib/srd/authored-resources.json sub_lunar_phenomenon fallbackPool (5 sorcery points), paid through src/lib/srd/counter-rules.ts otherPrice by src/lib/dm/authored-spends.ts"
    },
    {
-    "c": "you release your phase's power. Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn, and one creature of your choice there regains 3d8 hit points. New Moon: each creature of your choice within 30 feet makes a Dexterity save or takes 3d10 necrotic damage and has speed 0 until the end of its next turn, and you are invisible until the end of your next turn or until you attack or cast a spell. Crescent Moon: you teleport up to 60 feet with one willing creature within 5 feet of you, and each of you resists all damage until the start of your next turn.",
+    "c": "Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_phenomenon#GUIDANCE_ONLY",
-    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_lunar_phenomenon: closed in wave 1 (its KNOWN entry gone), it runs as a test"
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon full moon (save_area con, blinded, untilItsTurnEnds, chosen)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-full-blinds"
+   },
+   {
+    "c": "and one creature of your choice there regains 3d8 hit points",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon full moon heals (src/lib/dm/ar-ws-lunar-phenomenon.ts healRefusal, healOne)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-full-heals"
+   },
+   {
+    "c": "New Moon: each creature of your choice within 30 feet makes a Dexterity save or takes 3d10 necrotic damage and has speed 0 until the end of its next turn",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon new moon (save_area dex 3d10 necrotic, new moon's stillness: src/lib/srd/authored-conditions.ts speedMultiplier 0)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-new-save"
+   },
+   {
+    "c": "and you are invisible until the end of your next turn or until you attack or cast a spell",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon new moon veils (src/lib/dm/ar-ws-lunar-phenomenon.ts veil; src/lib/dm/attack-marks.ts withoutActionInvisibility)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-new-invisible"
+   },
+   {
+    "c": "Crescent Moon: you teleport up to 60 feet with one willing creature within 5 feet of you",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon crescent moon (teleport 60, companionFt 5: src/lib/dm/ar-ws-lunar-phenomenon.ts companionOf, companionGoes)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-crescent-teleport"
+   },
+   {
+    "c": "and each of you resists all damage until the start of your next turn",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon crescent moon ward (crescent moon's ward: src/lib/srd/authored-conditions.ts; src/lib/dm/ar-ws-lunar-phenomenon.ts layLunarWard)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-crescent-ward"
    }
   ]
  },

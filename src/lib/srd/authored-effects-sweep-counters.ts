@@ -10,6 +10,12 @@
 // ally's sheet carries it for the rounds the feature lasts.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
+// Lunar Phenomenon's conditions (src/lib/srd/authored-conditions.ts): the New
+// Moon's speed 0 on each creature that failed, the Crescent Moon's resistance
+// on the sorcerer and the one who went with them.
+export const NEW_MOON_STILL = "new moon's stillness";
+export const CRESCENT_WARD = "crescent moon's ward";
+
 // Half a rogue's Sneak Attack dice, rounded up (Wails from the Grave).
 const HALF_SNEAK: Array<[number, string]> = [[1, "1d6"], [5, "2d6"], [9, "3d6"], [13, "4d6"], [17, "5d6"]];
 
@@ -118,11 +124,16 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         does: {
           kind: "variants",
           options: {
-            // The hostile creatures within 30 feet; the GM leaves out any the
-            // sorcerer spares.
-            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, condition: "blinded", untilNextTurnEnds: true } },
-            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, dice: "3d10", type: "necrotic" } },
-            "crescent moon": { does: { kind: "teleport", feet: 60 } },
+            // "Each creature of your choice within 30 feet": those named in
+            // targetEnemyIds, every one when none is. Each condition lasts
+            // until the end of the creature's own next turn. The Full Moon
+            // heals the character named in targetCharacterId (else the
+            // sorcerer); the New Moon veils the sorcerer; the Crescent Moon
+            // takes the character named along and wards both
+            // (src/lib/dm/ar-ws-lunar-phenomenon.ts).
+            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, condition: "blinded", untilItsTurnEnds: true, chosen: true, heals: { formula: "3d8", rangeFt: 30 } } },
+            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, dice: "3d10", type: "necrotic", condition: NEW_MOON_STILL, untilItsTurnEnds: true, chosen: true, veils: true } },
+            "crescent moon": { does: { kind: "teleport", feet: 60, companionFt: 5, ward: CRESCENT_WARD } },
           },
         },
       },

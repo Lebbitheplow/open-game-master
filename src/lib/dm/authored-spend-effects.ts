@@ -49,6 +49,7 @@ import { DANCING_ITEM, summonDancingItem } from "@/lib/dm/summon-arcane";
 import { createItem } from "@/lib/dm/authored-spend-arcane";
 import { summonHound } from "@/lib/dm/ar-ws-hound";
 import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
+import { companionGoes, companionOf, healOne, healRefusal, layLunarWard, veil } from "@/lib/dm/ar-ws-lunar-phenomenon";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -607,20 +608,31 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (touchedOne && touchedOne.id !== sheet.id && ctx.encounter && !withinFeet(ctx.encounter.id, sheet.id, touchedOne.id, 5)) {
         return { error: `${touchedOne.name} is beyond ${sheet.name}'s touch (5 feet); ${ctx.spend.name} moves a creature they touch. Nothing was spent.`, refused: "rules" };
       }
+      // A willing creature within reach goes too (Crescent Moon), asked
+      // before anything moves (ar-ws-lunar-phenomenon.ts).
+      const companion = does.companionFt ? companionOf(ctx, does.companionFt) : { sheet: null };
+      if ("error" in companion) {
+        return companion;
+      }
       // With its square named the holder goes there now (ar-ws-shadow-walk.ts).
       const jump = jumpToSquare(ctx, does);
-      if (jump) {
+      if (jump && "error" in jump) {
         return jump;
       }
-      creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);
+      if (!jump) {
+        creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);
+      }
       const move = `move_token, teleport true, spell "${ctx.spend.name}" and casterCharacterId ${sheet.id}`;
-      return {
-        result: {
-          teleport: does.touched
-            ? `A willing creature ${sheet.name} touches moves up to ${does.feet} feet${does.note ? `, ${does.note}` : ""}: if a battle map is live, move its token with ${move}.`
-            : `${sheet.name} moves up to ${does.feet} feet${does.note ? `, ${does.note}` : ""}: if a battle map is live, move their token with ${move}.`,
-        },
-      };
+      const moved = jump
+        ? jump.result
+        : {
+            teleport: does.touched
+              ? `A willing creature ${sheet.name} touches moves up to ${does.feet} feet${does.note ? `, ${does.note}` : ""}: if a battle map is live, move its token with ${move}.`
+              : `${sheet.name} moves up to ${does.feet} feet${does.note ? `, ${does.note}` : ""}: if a battle map is live, move their token with ${move}.`,
+          };
+      const along = companion.sheet && does.companionFt ? { companion: companionGoes(ctx, companion.sheet, does.companionFt, does.feet) } : {};
+      const ward = does.ward ? layLunarWard(ctx, does.ward, companion.sheet) : null;
+      return { ...(ward?.patch ? { patch: ward.patch } : {}), result: { ...moved, ...along, ...(ward ? { ward: ward.line } : {}) } };
     }
     case "die_damage": {
       // Power Surge lands on a creature the wizard's spell hurt this turn:
@@ -909,6 +921,28 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
 }
 
 function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area" }>): Resolution {
+  // What rides the saves (Lunar Phenomenon's healing and veil) is asked
+  // first and given after them (ar-ws-lunar-phenomenon.ts).
+  const unhealed = does.heals ? healRefusal(ctx, does.heals) : null;
+  if (unhealed) {
+    return unhealed;
+  }
+  const saved = saveAreaSaves(ctx, does);
+  if ("error" in saved) {
+    return saved;
+  }
+  const lines = [...(saved.result.applied as string[])];
+  if (does.heals) {
+    lines.push(healOne(ctx, does.heals));
+  }
+  const veiled = does.veils ? veil(ctx) : null;
+  if (veiled) {
+    lines.push(veiled.line);
+  }
+  return { ...(veiled?.patch ? { patch: veiled.patch } : {}), result: { applied: lines } };
+}
+
+function saveAreaSaves(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area" }>): ToolError | { result: { applied: string[] } } {
   const { campaign, sheet } = ctx;
   const encounter = getActiveEncounter(campaign.id);
   // No fight on, so no creature is on the board to save: the use is paid and the
@@ -982,7 +1016,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       } else {
         layEnemyConditionInstance(campaign, fresh(), does.condition, {
           source: sheet.id,
-          ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.untilItsTurnEnds ? { untilTurnEndOf: enemy.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
           ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
           ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
         });
