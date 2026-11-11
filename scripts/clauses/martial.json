@@ -2105,9 +2105,9 @@
    },
    {
     "c": "Its benefits do not work for anyone else",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no other wielder of the infused weapon staged"
+    "is": "held",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredInfusion (read from the raging holder's own sheet in pc-attack-profile.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-nobody-else"
    },
    {
     "c": "a bonus action changes the element",

@@ -995,6 +995,20 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     await swing(sixth, enemy, [15, 4, 4]);
     assert.equal(300 - foe(enemy).currentHp, 0, `a fire-infused greataxe dealt ${300 - foe(enemy).currentHp} to a creature immune to fire: the axe's own damage is still slashing`);
   });
+  // "Its benefits do not work for anyone else": the infusion is the raging
+  // barbarian's own, so an ally swinging an axe of the same name beside them
+  // deals the axe's plain damage with no die of the element.
+  await probe("elemental-cleaver-nobody-else", async () => {
+    const friend = hero("fighter", "Champion", 6, AXE);
+    const [enemy] = await stage(sixth, { cast: [[friend, 6, 4]] });
+    rage(sixth);
+    kit.setEnemy(enemy.id, { stats: { immune: "fire" } });
+    kit.giveTurn(friend.id);
+    const hit = await swing(friend, enemy, [15, 4, 4]);
+    assert.equal(hit.ok, true, hit.error);
+    assert.ok(!expr(hit).includes("d6"), `an ally's swing carried the cleaver's die: ${expr(hit)}`);
+    assert.ok(300 - foe(enemy).currentHp > 0, "an ally's axe was turned to fire against a creature immune to it");
+  });
   await probe("elemental-cleaver-thrown", async () => {
     const [enemy] = await stage(sixth);
     rage(sixth);
