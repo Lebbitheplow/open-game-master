@@ -1232,10 +1232,9 @@
   "clauses": [
    {
     "c": "When you use Indomitable to reroll an Intelligence, Wisdom or Charisma saving throw and aren't incapacitated, you can choose one ally within 60 feet that also failed its save against the same effect; if it can see or hear you, it rerolls the save and must use the new roll.",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-indomitable-ally",
-    "read_only": true,
-    "stopped": "The reroll answers one effect's failed save on two characters at once; the row (indomitable_ally, rangeFt 60) is read by src/lib/dm/feature-spends.ts, and no suite stages the shared save."
+    "by": "src/lib/dm/feature-spends.ts bulwarkReroll: Indomitable's reroll of an Intelligence, Wisdom or Charisma save brings one ally within 60 feet who failed the same save with it, and a success lifts the effect that save ends"
    }
   ]
  },

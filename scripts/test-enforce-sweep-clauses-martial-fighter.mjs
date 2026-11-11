@@ -1072,7 +1072,7 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
 // ---- Banneret ----
 {
   const r = await openRig();
-  const { world, kit, hero, stage, spend, react, roll, sheet } = r;
+  const { world, kit, hero, stage, spend, react, roll, sheet, forced } = r;
   const training = await import("../src/lib/srd/subclass-training.ts");
   const banneret = hero("fighter", "Banneret", 10);
   const first = hero("fighter", "Champion", 5);
@@ -1145,7 +1145,20 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(out.ok, true, `an ally with a longbow, 30 feet from the creature: ${String(out.error).slice(0, 110)}`);
   });
 
-  await probe("bulwark-indomitable-ally", () => {});
+  // "choose one ally within 60 feet of you that also failed its saving throw
+  // against the same effect ... it can reroll its saving throw": a DC 15
+  // Wisdom save against fear failed by the marshal and two allies, one 20
+  // feet off and one 70; Indomitable's reroll brings the near one's with it.
+  await probe("bulwark-indomitable-ally", async () => {
+    const marshal = hero("fighter", "Banneret", 18, { abilities: { wis: 10 } });
+    await stage(marshal, { cast: [[first, 9, 5], [second, 19, 5]] });
+    const scare = (who) => forced([2], () => world.invoke("cast_at_player", { characterId: who.id, saveAbility: "wis", dc: 15, condition: "frightened", source: "a dread wail" }));
+    for (const who of [marshal, first, second]) assert.equal((await scare(who)).ok, true);
+    assert.ok([marshal, first, second].every((who) => sheet(who).conditions.includes("frightened")), "all three failed");
+    const out = await spend(marshal, "Indomitable", {}, [19, 19, 19]);
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual([marshal, first, second].map((who) => sheet(who).conditions.includes("frightened")), [false, false, true], `the marshal and the ally within 60 feet shake it off: ${JSON.stringify(out.result).slice(0, 240)}`);
+  });
 }
 
 finish();

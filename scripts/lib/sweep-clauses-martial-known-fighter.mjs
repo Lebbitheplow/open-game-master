@@ -19,5 +19,4 @@ export const KNOWN = {
 
 export const SKIP = {
   "born-to-the-saddle-fall": "a hero's fall has no door of its own to call: falling damage to a character is the GM's apply_damage and set_condition prone, so there is nothing to run that could stand them up",
-  "bulwark-indomitable-ally": "Bulwark answers an Indomitable reroll of a failed Intelligence, Wisdom or Charisma save forced on two characters by one effect; staging the shared failed save needs a creature's spell cast at both, which scripts/test-authored-spend-cards.mjs covers only for the card",
 };
