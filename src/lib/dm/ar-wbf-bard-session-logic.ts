@@ -13,6 +13,14 @@ export const SESSION_SCHOOLS = ["divination", "necromancy"];
 
 export const sessionMark = (spell: string) => `spirit session (${spell.trim()})`;
 
+// A use spent with no spell named waits for it under these marks, by counter
+// (src/lib/dm/ar-wbf-doors.ts); a long rest clears one nobody answered.
+export const UNSPOKEN: Record<string, string> = {
+  sub_spirit_session: "spirit session unspoken",
+  sub_limited_wish: "limited wish unspoken",
+};
+const UNSPOKEN_KEYS = new Set(Object.values(UNSPOKEN).map((entry) => textKey(entry)));
+
 type Lists = { prepared?: string[]; cantrips?: string[] } & Record<string, unknown>;
 type Rested = { conditions: string[]; conditionMeta?: unknown; spellcasting?: Lists | null };
 
@@ -21,12 +29,12 @@ type Rested = { conditions: string[]; conditionMeta?: unknown; spellcasting?: Li
 // there is none. `patch` is the rest's patch so far, read before the sheet.
 export function sessionForgotten(sheet: Rested, patch: Partial<Rested>): Partial<Rested> {
   const conditions = patch.conditions ?? sheet.conditions;
-  const marks = conditions.filter((entry) => MARK.test(entry.trim()));
+  const marks = conditions.filter((entry) => MARK.test(entry.trim()) || UNSPOKEN_KEYS.has(textKey(entry)));
   if (!marks.length) {
     return {};
   }
   // A condition's name is kept in lower case: the spell is found by its key.
-  const spells = new Set(marks.map((entry) => textKey(MARK.exec(entry.trim())![1])));
+  const spells = new Set(marks.flatMap((entry) => { const named = MARK.exec(entry.trim()); return named ? [textKey(named[1])] : []; }));
   const meta = { ...((patch.conditionMeta ?? sheet.conditionMeta ?? {}) as ConditionMetaMap) };
   for (const mark of marks) {
     delete meta[mark];

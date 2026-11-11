@@ -1521,7 +1521,7 @@ function dmMutation(
       );
       publishSheet(campaign, sheet.id);
       // What the use bought beside its counter (Limited Wish's spell, ar-wbf-doors.ts).
-      Object.assign(outcome.result, wbfAfterSpend(sheet, counter?.id, args));
+      Object.assign(outcome.result, wbfAfterSpend(campaign, sheet, counter?.id, args));
       // A feature that lands on someone else (Bardic Inspiration) patches
       // the second sheet the same audited way.
       if (outcome.patchTarget) {

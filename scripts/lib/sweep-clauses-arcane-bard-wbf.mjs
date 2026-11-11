@@ -168,6 +168,16 @@ export function probes(rig, shared) {
       assert.ok(!lists().prepared.includes("Speak with Dead"), "it stays until a long rest");
       assert.ok(!has(who, "spirit session"), JSON.stringify(sheet(who).conditions));
       assert.equal((await cast()).ok, false, "cast after the long rest took it");
+      // The Hand's card sends the session with no spell: the use is spent and
+      // waits, and the call that names the spell spends nothing more.
+      const bare = await ask(undefined);
+      assert.equal(bare.ok, true, bare.error);
+      assert.equal(sheet(who).resources.sub_spirit_session.used, 1, "the bare session spends the use");
+      assert.equal((await ask("Speak with Dead", 2)).ok, false, "a 3rd-level spell from the two who took part");
+      const named = await ask("Speak with Dead", 3);
+      assert.equal(named.ok, true, named.error);
+      assert.equal(sheet(who).resources.sub_spirit_session.used, 1, "naming the spell spends nothing more");
+      assert.ok(lists().prepared.includes("Speak with Dead") && !has(who, "spirit session unspoken"), JSON.stringify(sheet(who).conditions));
     },
   };
 

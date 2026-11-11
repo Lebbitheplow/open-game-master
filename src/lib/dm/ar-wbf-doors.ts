@@ -8,7 +8,7 @@ import { spellFactsFor, spellSchoolFor } from "@/lib/content";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
-import { sessionMark, SESSION_SCHOOLS } from "@/lib/dm/ar-wbf-bard-session-logic";
+import { sessionMark, SESSION_SCHOOLS, UNSPOKEN } from "@/lib/dm/ar-wbf-bard-session-logic";
 import { featDoorSpend } from "@/lib/dm/ar-wbf-feat-doors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
@@ -26,6 +26,13 @@ const SESSION = "sub_spirit_session";
 const WISH = "sub_limited_wish";
 const WISH_LEVEL = 6;
 
+// A use spent with no spell named (the Hand's card sends the bare call) waits
+// for its spell under this mark: the next call names it in variant and spends
+// nothing more. The long rest clears a mark nobody answered
+// (ar-wbf-bard-session-logic.ts).
+const waiting = (sheet: CharacterSheet, id: string) => sheet.conditions.some((entry) => textKey(entry) === textKey(UNSPOKEN[id] ?? ""));
+const without = (sheet: CharacterSheet, id: string) => sheet.conditions.filter((entry) => textKey(entry) !== textKey(UNSPOKEN[id] ?? ""));
+
 export function wbfDoorSpend(campaign: Campaign, turnId: string, stale: CharacterSheet, resourceName: string, args: DoorArgs): ToolResult | null {
   const feat = featDoorSpend(campaign, turnId, stale, resourceName, args);
   if (feat) {
@@ -39,14 +46,43 @@ export function wbfDoorSpend(campaign: Campaign, turnId: string, stale: Characte
   if (!sheet.resources?.[id]) {
     return null;
   }
-  return id === SESSION ? spiritSession(campaign, sheet, args) : wishRefusal(sheet, args.variant);
+  // No spell named: the counter's own spend goes on, and wbfAfterSpend
+  // leaves the mark the next call answers.
+  if (!(args.variant ?? "").trim()) {
+    return null;
+  }
+  if (id === SESSION) {
+    return spiritSession(campaign, sheet, args);
+  }
+  const refusal = wishRefusal(sheet, args.variant);
+  if (refusal || !waiting(sheet, WISH)) {
+    return refusal;
+  }
+  // The wish was spent with no spell named: this call names it.
+  patchSheetAudited(campaign.id, sheet.id, { conditions: without(sheet, WISH) }, { kind: "clear_condition", reason: "Limited Wish: the spell is named", delta: { condition: UNSPOKEN[WISH] } });
+  return { ok: true, resource: "Limited Wish", ...wishCredit(sheet, args.variant) };
 }
 
-export function wbfAfterSpend(sheet: CharacterSheet, counterId: string | undefined, args: DoorArgs): Record<string, unknown> {
-  if (counterId !== WISH) {
+export function wbfAfterSpend(campaign: Campaign, stale: CharacterSheet, counterId: string | undefined, args: DoorArgs): Record<string, unknown> {
+  if (counterId !== WISH && counterId !== SESSION) {
     return {};
   }
-  const facts = spellFactsFor(args.variant ?? "", sheetSpellAuthors(sheet));
+  const sheet = getSheetById(stale.id) ?? stale;
+  if (!(args.variant ?? "").trim()) {
+    if (!waiting(sheet, counterId)) {
+      patchSheetAudited(campaign.id, sheet.id, { conditions: [...sheet.conditions, UNSPOKEN[counterId]] }, { kind: "set_condition", reason: "the use waits for its spell", delta: { condition: UNSPOKEN[counterId] } });
+    }
+    return {
+      pick: counterId === WISH
+        ? 'The wish is spent and waits for its spell: use_resource "Limited Wish" with the spell in variant (6th level or lower, a casting time of one action). Nothing more is spent.'
+        : 'The session is held and waits for its spell: use_resource "Spirit Session" with the divination or necromancy spell in variant and the creatures who took part, the bard included, in amount. Nothing more is spent.',
+    };
+  }
+  return counterId === WISH ? wishCredit(sheet, args.variant) : {};
+}
+
+function wishCredit(sheet: CharacterSheet, variant: string | undefined): Record<string, unknown> {
+  const facts = spellFactsFor(variant ?? "", sheetSpellAuthors(sheet));
   if (!facts) {
     return {};
   }
@@ -82,7 +118,9 @@ function wishRefusal(sheet: CharacterSheet, variant: string | undefined): ToolRe
 // number of creatures who took part, the bard included (one when left out).
 function spiritSession(campaign: Campaign, sheet: CharacterSheet, args: DoorArgs): ToolResult {
   const state = sheet.resources[SESSION];
-  if (state.max - state.used < 1) {
+  // Held already with no spell named: this call names it and spends nothing.
+  const held = waiting(sheet, SESSION);
+  if (!held && state.max - state.used < 1) {
     return { error: `${sheet.name} has held a Spirit Session since their last long rest; it comes back with the next. Nothing was spent.`, refused: "rules" };
   }
   const encounter = getActiveEncounter(campaign.id);
@@ -115,8 +153,8 @@ function spiritSession(campaign: Campaign, sheet: CharacterSheet, args: DoorArgs
     return { error: `${sheet.name} casts no spells. Nothing was spent.`, refused: "rules" };
   }
   const list = facts.level === 0 ? "cantrips" : "prepared";
-  const held = [...(casting.cantrips ?? []), ...(casting.known ?? []), ...(casting.prepared ?? [])].some((name) => textKey(name) === textKey(facts.name));
-  if (held) {
+  const theirs = [...(casting.cantrips ?? []), ...(casting.known ?? []), ...(casting.prepared ?? [])].some((name) => textKey(name) === textKey(facts.name));
+  if (theirs) {
     return { error: `${sheet.name} already has ${facts.name}; Spirit Session teaches a spell they lack. Nothing was spent.`, refused: "rules" };
   }
   const mark = sessionMark(facts.name);
@@ -124,13 +162,13 @@ function spiritSession(campaign: Campaign, sheet: CharacterSheet, args: DoorArgs
     campaign.id,
     sheet.id,
     {
-      resources: { ...sheet.resources, [SESSION]: { max: state.max, used: state.used + 1 } },
+      ...(held ? {} : { resources: { ...sheet.resources, [SESSION]: { max: state.max, used: state.used + 1 } } }),
       spellcasting: { ...casting, [list]: [...(casting[list] ?? []), facts.name] },
       // The mark carries no clock of its own: the long rest's patch takes it
       // and the spell together (ar-wbf-bard-session-logic.ts sessionForgotten).
-      conditions: [...sheet.conditions, mark],
+      conditions: [...without(sheet, SESSION), mark],
     },
-    { kind: "use_resource", reason: `Spirit Session: learns ${facts.name}`, delta: { resource: "Spirit Session", spent: 1 } },
+    { kind: "use_resource", reason: `Spirit Session: learns ${facts.name}`, delta: { resource: "Spirit Session", spent: held ? 0 : 1 } },
   );
   return {
     ok: true,

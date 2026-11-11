@@ -256,8 +256,8 @@ export function probes(rig, shared) {
       const ray = () => call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Disintegrate" }, [2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
       assert.equal((await ray()).ok, false, "the staging: Disintegrate is no spell of this warlock's");
       kit.freshTurn();
-      for (const [spell, why] of [["Wish", "a 9th-level spell"], ["Find the Path", "a casting time of a minute"], [undefined, "no spell named"]]) {
-        const refused = await spend(who, "Limited Wish", spell ? { variant: spell } : {});
+      for (const [spell, why] of [["Wish", "a 9th-level spell"], ["Find the Path", "a casting time of a minute"]]) {
+        const refused = await spend(who, "Limited Wish", { variant: spell });
         assert.equal(refused.ok, false, why);
       }
       assert.equal(sheet(who).resources.sub_limited_wish.used, 0, "a refusal spends nothing");
@@ -273,6 +273,19 @@ export function probes(rig, shared) {
       assert.equal(sheet(who).resources.sub_limited_wish.used, 1, "the use is");
       kit.freshTurn();
       assert.equal((await ray()).ok, false, "a second casting on the one wish");
+      // The Hand's card sends the wish with no spell: the use is spent and
+      // waits, and the call that names the spell spends nothing more.
+      world.patch(who.id, { conditions: [], conditionMeta: {}, resources: { ...sheet(who).resources, sub_limited_wish: { max: 1, used: 0 } } });
+      kit.freshTurn();
+      const bare = await spend(who, "Limited Wish");
+      assert.equal(bare.ok, true, bare.error);
+      assert.equal(sheet(who).resources.sub_limited_wish.used, 1, "the bare wish spends the use");
+      assert.equal((await spend(who, "Limited Wish", { variant: "Wish" })).ok, false, "a 9th-level spell named for the waiting wish");
+      const named = await spend(who, "Limited Wish", { variant: "Disintegrate" });
+      assert.equal(named.ok, true, named.error);
+      assert.equal(sheet(who).resources.sub_limited_wish.used, 1, "naming the spell spends nothing more");
+      assert.equal((await ray()).ok, true, "the named spell is cast");
+      assert.equal((await spend(who, "Limited Wish", { variant: "Disintegrate" })).ok, false, "a second spell on the one wish");
     },
   };
   const KNOWN = {};
