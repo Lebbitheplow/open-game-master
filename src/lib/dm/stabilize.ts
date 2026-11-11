@@ -33,8 +33,7 @@ import { chebyshev } from "@/lib/battlemap/types";
 import { findCarriedItem } from "@/lib/dm/item-logic";
 import { resolveRollExpression } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
-import { rollCharacterD20 } from "@/lib/dm/character-roll";
-import { heldCallTurn } from "@/lib/dm/held-call";
+import { rollCharacterD20, rollOwnDice } from "@/lib/dm/character-roll";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals-logic";
@@ -394,18 +393,7 @@ export function healerKitUse(
   const dice = Math.max(0, target.hitDice?.total ?? target.level);
   // The healer's own die (src/lib/dm/character-roll.ts): on physical dice
   // their player rolls it, as with every healing die (issue 902).
-  const said = `Healer: a healer's kit use on ${target.name} (1d6 + 4 + ${dice} Hit Dice)`;
-  const outcome = rollCharacterD20(campaign, healer, { kind: "custom", expression: `1d6+4+${dice}`, detail: said });
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: healer.id,
-    requestedBy: "dm",
-    kind: "custom",
-    detail: said,
-    result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  heldCallTurn()?.rollIds.push(roll.id);
+  const outcome = rollOwnDice(campaign, healer, `Healer: a healer's kit use on ${target.name} (1d6 + 4 + ${dice} Hit Dice)`, `1d6+4+${dice}`);
   const tended = patchSheet(target.id, { conditions: [...target.conditions, TENDED] });
   if (tended) {
     publishPersisted(campaign.id, "sheet_updated", { sheet: tended });

@@ -33,6 +33,17 @@ import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
 import { publishWithSeq } from "@/lib/events";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 
+// What a landed roll leaves: its record, or, for dice whose call waits again
+// on another roll, the word that they are kept (held-call.ts runHeldAgain).
+export type Landed = StoredRoll | { waiting: string };
+
+const KEPT = "The dice are in. The call they belong to waits on another roll, and records them when it finishes.";
+
+// What a route answers the one who landed a roll.
+export function landedBody(landed: Landed): { roll: StoredRoll } | { waiting: string } {
+  return "waiting" in landed ? landed : { roll: landed };
+}
+
 export type RollLanding = {
   status: "submitted" | "fallback";
   // "(physical)" marks a roll made entirely with real dice.
@@ -43,13 +54,13 @@ export type RollLanding = {
 // A roll that held its whole call (src/lib/dm/held-call.ts): the call runs
 // again with the roll in hand, under the turn it was made on, and records the
 // roll itself as its first run would have.
-function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): StoredRoll | null {
+function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): Landed | null {
   if (!claimHeldPending(pending.id, landing.status)) {
     return null;
   }
   const parkedOn = getDmTurn(pending.turnId);
   const record = parkedOn?.actor === "human_dm" ? startPersonsRecord(campaign, parkedOn) : null;
-  const { roll } = runInTurnScope(pending.turnId, () => {
+  const { roll, waits } = runInTurnScope(pending.turnId, () => {
     const holder = turnHolder(campaign.id);
     const ran = runHeldAgain(campaign, pending, outcome, landing);
     settleTurn(campaign, holder);
@@ -59,10 +70,10 @@ function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult,
   if (record && after) {
     postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
   }
-  return roll;
+  return waits ? { waiting: KEPT } : roll;
 }
 
-function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): StoredRoll | null {
+function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): Landed | null {
   if (pending.carry?.call) {
     return landHeld(campaign, pending, thrown, landing);
   }
@@ -183,7 +194,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   return roll;
 }
 
-export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): StoredRoll | null {
+export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): Landed | null {
   const roll = landOne(campaign, pending, outcome, landing);
   if (!roll) {
     return null;

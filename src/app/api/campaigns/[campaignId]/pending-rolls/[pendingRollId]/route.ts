@@ -14,7 +14,7 @@ import { optionsForPending } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { throwDamage } from "@/lib/dm/attack-blow";
 import type { DamageAsk } from "@/lib/dm/attack-record";
-import { landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { publishPersisted } from "@/lib/events";
 
 export const runtime = "nodejs";
@@ -91,7 +91,7 @@ export async function POST(
   // table is never left waiting on a button the answerer cannot see.
   if (pending.thrown) {
     const kept = landPendingRoll(context.campaign, pending, pending.thrown.outcome, pending.thrown.landing);
-    return kept ? Response.json({ roll: kept }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return kept ? Response.json(landedBody(kept)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
   // The faces the player typed or their Pixels dice reported. A "digital"
@@ -182,5 +182,5 @@ export async function POST(
   if (!roll) {
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
-  return Response.json({ roll });
+  return Response.json(landedBody(roll));
 }

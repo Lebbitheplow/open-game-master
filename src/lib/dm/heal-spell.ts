@@ -29,12 +29,10 @@ import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertRoll } from "@/lib/db/rolls";
-import { rollCharacterD20 } from "@/lib/dm/character-roll";
-import { heldCallTurn } from "@/lib/dm/held-call";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
-import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -255,19 +253,7 @@ export function castHealingSpell(
     // of their own that share what the first one paid, in memory
     // (action-parts-logic.ts OneCasting), and a call held for a roll is run
     // again alone, without it.
-    const said = `${name} on ${target.name} (${full})`;
-    const outcome = rollCharacterD20(campaign, caster, { kind: "custom", expression: full, detail: said, mayWait: !casting || casting.creatures < 2 });
-    const roll = insertRoll({
-      campaignId: campaign.id,
-      characterId: caster.id,
-      requestedBy: "dm",
-      kind: "custom",
-      detail: said,
-      result: outcome,
-    });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    heldCallTurn()?.rollIds.push(roll.id);
-    amount = outcome.total;
+    amount = rollOwnDice(campaign, caster, `${name} on ${target.name} (${full})`, full, { flatCard: true, mayWait: !casting || casting.creatures < 2 }).total;
   }
   // Regenerate goes on healing at the start of each of the target's turns
   // (src/lib/dm/spell-aura.ts reads the mark).

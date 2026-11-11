@@ -1,12 +1,9 @@
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
-import { rollCharacterD20 } from "@/lib/dm/character-roll";
-import { heldCallTurn } from "@/lib/dm/held-call";
-import { publishWithSeq } from "@/lib/events";
+import { diceFor as healingOn, rollOwnDice } from "@/lib/dm/character-roll";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
@@ -70,27 +67,7 @@ export function rollHealing(
   detail: string,
   expression: string,
 ): number {
-  const said = `${detail} (${expression})`;
-  const outcome = rollCharacterD20(campaign, roller, { kind: "custom", expression, detail: said });
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: roller.id,
-    requestedBy: "dm",
-    kind: "custom",
-    detail: said,
-    result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
-  });
-  heldCallTurn()?.rollIds.push(roll.id);
-  return outcome.total;
-}
-
-// What a healing card says when the healed is not the one who rolls.
-function healingOn(what: string, roller: CharacterSheet, target: CharacterSheet): string {
-  return target.id === roller.id ? what : `${what} on ${target.name}`;
+  return rollOwnDice(campaign, roller, `${detail} (${expression})`, expression, { flatCard: true }).total;
 }
 
 export function computeUseItem(

@@ -72,12 +72,14 @@ then choose, per die shape, where that die's numbers come from:
 
 A player on real dice is asked for their attacks and their damage, their
 initiative, and every check and save their character makes, the saves a spell,
-trap or monster forces included. They roll their own healing dice too: Second
-Wind and most other class features that heal, a potion they drink or pour, a
-healing spell they cast on one creature, a Healer's kit. A roll that comes
-between the GM's moves, such as a death save as a turn begins, is rolled for
-them. So, for now, are hit dice at a short rest, one healing spell shared among
-several creatures, and the dice of a few subclass features. A roll card says
+trap or monster forces included. They roll their own healing dice too, and the
+temporary hit points their features and spells give: Second Wind and the other
+class and subclass features that heal, a potion they drink or pour, a healing
+spell they cast on one creature, a Healer's kit. A feature that rolls for each
+creature it heals asks for one roll after another. A roll that comes between
+the GM's moves, such as a death save as a turn begins, is rolled for them. So,
+for now, are hit dice at a short rest and one healing spell shared among
+several creatures. A roll card says
 any reroll the player owes it (a halfling's
 Lucky, Great Weapon Fighting, Piercer, Savage Attacker); the face kept is the
 one entered, and dice the server rolls for them take the same rerolls.

@@ -22,9 +22,9 @@
 
 import { entryDice, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
-import { dicePreferencesOf } from "@/lib/db/dm-turns";
-import type { Campaign } from "@/lib/db/campaigns";
-import type { RollKind, RollVisibility } from "@/lib/db/rolls";
+import { dicePreferencesOf, type DmTurn } from "@/lib/db/dm-turns";
+import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { insertRoll, type RollKind, type RollVisibility } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { afterAttackOptions, afterRollOptions, type AfterRollOption } from "@/lib/dm/after-roll-logic";
@@ -32,8 +32,9 @@ import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-ro
 import { afterRollDeadline } from "@/lib/dm/after-roll-timer";
 import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
-import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
+import { heldCallTurn, inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { noteShift, shiftArmedFor, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
+import { publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -178,6 +179,40 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
   const settle = (outcome: RollResult) =>
     roll.settle ? roll.settle(outcome) : roll.settleHeldDie && typeof roll.dc === "number" && heldDieWaits(sheet, roll.dc) ? settleHeldDie(campaign.id, sheet.id, outcome, roll.dc) : outcome;
   return answerArmed(campaign.id, sheet.name, tag, roll.dc, settle(thrown), () => settle(throwOnce()));
+}
+
+// The other dice of a character's own that a call rolls: the healing or the
+// temporary hit points of their feature, potion, spell or kit (issue 902).
+// Thrown through the door above, so a seat on physical dice rolls them;
+// stored under the one who rolls them, whoever they are for; sent to the
+// table; and added to the turn's cards, so the chronicle shows the roll. A
+// site that throws such dice calls this rather than rollCard (roll-card.ts),
+// which throws them where it stands.
+//
+// A flat amount has nothing to roll, and gets a card only where the site
+// always gave it one (`flatCard`). `turn` is the turn the card joins when the
+// site holds one; left out, it is the held call's own.
+export function rollOwnDice(
+  campaign: Campaign,
+  roller: CharacterSheet,
+  detail: string,
+  expression: string,
+  options: { mayWait?: boolean; flatCard?: boolean; turn?: DmTurn | null } = {},
+): RollResult {
+  const said = detail.slice(0, 200);
+  const outcome = rollCharacterD20(campaign, roller, { kind: "custom", expression, detail: said, ...(options.mayWait === false ? { mayWait: false } : {}) });
+  if (!options.flatCard && !outcome.terms.some((term) => term.kind === "dice")) {
+    return outcome;
+  }
+  const roll = insertRoll({ campaignId: campaign.id, characterId: roller.id, requestedBy: "dm", kind: "custom", detail: said, result: outcome });
+  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  (options.turn ?? heldCallTurn())?.rollIds.push(roll.id);
+  return outcome;
+}
+
+// What a card for such dice says when they are for somebody else.
+export function diceFor(what: string, roller: Pick<CharacterSheet, "id">, target: Pick<CharacterSheet, "id" | "name">): string {
+  return target.id === roller.id ? what : `${what} on ${target.name}`;
 }
 
 const ROLLED_AGAIN: Partial<Record<RollTag["kind"], string>> = { save: "save", check: "check", death_save: "death save" };

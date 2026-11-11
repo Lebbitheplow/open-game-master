@@ -365,12 +365,19 @@ export function registerHeldRunner(runner: HeldRunner) {
 // is kept for the turn to hand on (turn.ts resumeDmTurn). The roll the run
 // recorded for the player is the card's; with none (the call was refused
 // this time) the player's dice are recorded as they landed.
+//
+// A call may wait again, on its next roll: a second creature's healing, a
+// second player's check. The dice just entered then stay with the call
+// (`decided`), and the run that finishes records them with the rest.
+// `waits` says so, and no roll is recorded here: recorded here as well, the
+// roll was on record twice, once as it landed and once by the run that
+// finished.
 export function runHeldAgain(
   campaign: Campaign,
   pending: PendingRoll,
   outcome: RollResult,
   landing: { status: "submitted" | "fallback"; physical: boolean; source: "digital" | "physical" },
-): { roll: StoredRoll | null; answer: ToolResult | null } {
+): { roll: StoredRoll | null; answer: ToolResult | null; waits?: boolean } {
   const call = pending.carry?.call;
   const turn = getDmTurn(pending.turnId);
   const runner = globalThis.__odmHeldRunner;
@@ -388,12 +395,19 @@ export function runHeldAgain(
     answer = { error: `${call.name} failed on the server once the roll landed, so nothing came of it.`, retry: true };
   }
   saveDmTurn(turn);
-  const found = getDatabase()
-    .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1`)
-    .get(campaign.id, pending.characterId, pending.kind, since) as { id: string } | undefined;
+  const waits = isHeldPark(answer);
+  // The run records this character's rolls of this kind in the order it asked
+  // for them: this card's is the one after those the call's earlier cards
+  // were for.
+  const earlier = call.decided.filter((entry) => entry.characterId === pending.characterId && entry.kind === pending.kind).length;
+  const found = waits
+    ? undefined
+    : (getDatabase()
+        .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1 OFFSET ?`)
+        .get(campaign.id, pending.characterId, pending.kind, since, earlier) as { id: string } | undefined);
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;
   const recorded = Boolean(roll);
-  if (!roll) {
+  if (!roll && !waits) {
     roll = insertRoll({
       campaignId: campaign.id,
       characterId: pending.characterId,
@@ -408,19 +422,19 @@ export function runHeldAgain(
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, pendingRollId: pending.id, source: landing.source });
   }
-  const told = isHeldPark(answer) ? null : answer;
+  const told = waits ? null : answer;
   getDatabase()
     .prepare(`UPDATE pending_rolls SET roll_id = ?, carry_json = ? WHERE id = ?`)
     .run(roll?.id ?? null, JSON.stringify({ ...pending.carry, ...(told ? { answer: JSON.stringify(told) } : {}) }), pending.id);
   // The roll the run recorded was sent as any roll of the call's is, with no
-  // word of the card it answers: the table is told the card is done. Without
-  // this it stayed up, asking for dice already entered, until the page was
-  // loaded again.
-  const answered = recorded ? getPendingRoll(pending.id) : null;
+  // word of the card it answers, and a call that waits again sends no roll
+  // yet: the table is told the card is done. Without this it stayed up,
+  // asking for dice already entered, until the page was loaded again.
+  const answered = recorded || waits ? getPendingRoll(pending.id) : null;
   if (answered && answered.status !== "pending") {
     publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(answered) });
   }
-  return { roll, answer: told };
+  return { roll, answer: told, ...(waits ? { waits } : {}) };
 }
 
 // Takes the card off the table before its call runs again, so nothing in

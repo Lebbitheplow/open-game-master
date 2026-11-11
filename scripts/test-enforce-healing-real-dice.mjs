@@ -54,7 +54,21 @@ const cleric = world.addHero({
 });
 const ward = world.addHero({ name: "Tam", class: "rogue", level: 3, maxHp: 30, abilities: { dex: 16, con: 10 }, proficiencies: TRAINED });
 const monk = world.addHero({ name: "Moe", class: "monk", subclass: "open_hand", level: 6, maxHp: 40, abilities: { dex: 16, con: 10 }, proficiencies: TRAINED });
-const BASE = Object.fromEntries([fighter, cleric, ward, monk].map((hero) => [hero.id, world.sheet(hero.id)]));
+// The dice of a subclass's own healing, a maneuver's and a spell's temporary
+// hit points: thrown by another helper (roll-card.ts), so they were still the
+// server's once Second Wind was not.
+const crown = world.addHero({ name: "Oren", class: "paladin", subclass: "Oath of the Crown", level: 9, maxHp: 30, abilities: { str: 16, cha: 16, con: 10 }, proficiencies: TRAINED });
+const peace = world.addHero({ name: "Pia", class: "cleric", subclass: "Peace Domain", level: 9, maxHp: 30, abilities: { wis: 16, con: 10 }, proficiencies: TRAINED });
+const master = world.addHero({
+  name: "Rolf", class: "fighter", subclass: "Battle Master", level: 5, maxHp: 30, abilities: { str: 16, cha: 14, con: 10 }, proficiencies: TRAINED,
+  features: [{ name: "Maneuver: Rally", source: "choice" }],
+});
+const mage = world.addHero({
+  name: "Wim", class: "wizard", level: 3, maxHp: 30, abilities: { int: 16, con: 10 }, proficiencies: TRAINED,
+  spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["False Life"], known: [], cantrips: [] },
+});
+const HEROES = [fighter, cleric, ward, monk, crown, peace, master, mage];
+const BASE = Object.fromEntries(HEROES.map((hero) => [hero.id, world.sheet(hero.id)]));
 
 const pendingOf = (hero) => listOpenPendingRolls(world.campaignId).filter((entry) => entry.userId === hero.userId);
 const rollsSince = (mark) => listRecentRolls(world.campaignId, 40).filter((roll) => !mark.has(roll.id));
@@ -63,7 +77,7 @@ const rollMark = () => new Set(listRecentRolls(world.campaignId, 40).map((roll) 
 // Everyone hurt and whole otherwise, nobody on physical dice, nothing waiting.
 function reset() {
   getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
-  for (const hero of [fighter, cleric, ward, monk]) {
+  for (const hero of HEROES) {
     setMemberRealDice(world.campaignId, hero.userId, false);
     const base = BASE[hero.id];
     world.patch(hero.id, {
@@ -214,6 +228,28 @@ await test("a d20 the same door holds closes its card too: a group check on phys
   assert.equal(pendingOf(fighter).length, 0);
 });
 
+await test("a call that waits on two players records each roll once", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, fighter.userId, true);
+  setMemberRealDice(world.campaignId, ward.userId, true);
+  const mark = rollMark();
+  const out = await world.invoke("group_check", { skill: "stealth", dc: 12, characterIds: [fighter.id, ward.id], reason: "creeping past the watch" });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  const [first] = [...pendingOf(fighter), ...pendingOf(ward)];
+  assert.ok(first, "no roll card went out");
+  const firstHero = first.userId === fighter.userId ? fighter : ward;
+  const secondHero = firstHero === fighter ? ward : fighter;
+  // The call waits again, on the second player: the first roll is kept with
+  // it, and was recorded here and again by the run that finished.
+  await enter(firstHero, first, [15]);
+  assert.equal(rollsSince(mark).length, 0, "the first roll went on record before its call finished");
+  const [second] = pendingOf(secondHero);
+  assert.ok(second, "no roll card went to the second player");
+  await enter(secondHero, second, [4]);
+  const rolls = rollsSince(mark).filter((roll) => roll.kind === "skill_check");
+  assert.deepEqual(rolls.map((roll) => roll.characterId).sort(), [fighter.id, ward.id].sort(), `one roll each: ${rolls.map((roll) => `${roll.detail} = ${roll.total}`).join("; ")}`);
+});
+
 await test("a flat amount has nothing to roll, so a seat on physical dice is not asked", async () => {
   reset();
   setMemberRealDice(world.campaignId, monk.userId, true);
@@ -236,6 +272,103 @@ await test("one casting over a list of creatures is still thrown by the server, 
   assert.ok(world.sheet(ward.id).currentHp > 5, "Tam was not healed");
   assert.ok(world.sheet(fighter.id).currentHp > 5, "Brakk was not healed");
   assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 1, "one casting, one slot");
+});
+
+await test("a subclass feature that heals several is rolled once, by its holder: Turn the Tide", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, crown.userId, true);
+  const mark = rollMark();
+  const out = await world.invoke("use_resource", { characterId: crown.id, resource: "Channel Divinity", variant: "turn the tide" });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.equal(out.result.parked, true, `the call did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+  const [pending, ...more] = pendingOf(crown);
+  assert.ok(pending, "no roll card went to the paladin's seat");
+  assert.equal(more.length, 0, "one roll shared out is one card");
+  assert.equal(pending.expression, "1d6+3");
+  assert.match(pending.detail, /Turn the Tide: healing/);
+  assert.equal(world.sheet(ward.id).currentHp, 5);
+  assert.equal(world.sheet(crown.id).resources.channel_divinity.used, 0, "the use was spent before the die was in");
+
+  await enter(crown, pending, [4]);
+  assert.equal(world.sheet(ward.id).currentHp, 12, "4 on the d6 and Charisma's 3 heal 7");
+  assert.equal(world.sheet(fighter.id).currentHp, 12);
+  assert.equal(world.sheet(crown.id).resources.channel_divinity.used, 1);
+  const rolls = rollsSince(mark);
+  assert.equal(rolls.length, 1, `one roll on record, not ${rolls.length}`);
+  assert.equal(rolls[0].characterId, crown.id, "the roll is the paladin's");
+});
+
+await test("a feature that rolls for each creature asks for one roll after another, each on record once: Balm of Peace", async () => {
+  reset();
+  // Two creatures hurt, so two rolls.
+  for (const hero of HEROES) {
+    world.patch(hero.id, { currentHp: hero.id === ward.id || hero.id === fighter.id ? 5 : BASE[hero.id].maxHp });
+  }
+  setMemberRealDice(world.campaignId, peace.userId, true);
+  const mark = rollMark();
+  const out = await world.invoke("use_resource", { characterId: peace.id, resource: "Channel Divinity", variant: "balm of peace" });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.equal(out.result.parked, true, `the call did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+  const [first, ...more] = pendingOf(peace);
+  assert.ok(first, "no roll card went to the cleric's seat");
+  assert.equal(more.length, 0, "one card at a time");
+  assert.equal(first.expression, "2d6+3");
+  assert.match(first.detail, /Balm of Peace: healing on (Tam|Brakk)/);
+
+  await enter(peace, first, [1, 1]);
+  const [second, ...extra] = pendingOf(peace);
+  assert.ok(second, "the second creature's roll did not come to the cleric's seat");
+  assert.equal(extra.length, 0);
+  assert.notEqual(second.detail, first.detail, "the second card is for the other creature");
+  assert.equal(world.sheet(peace.id).resources.channel_divinity.used, 0, "the use was spent before every die was in");
+  assert.equal(world.sheet(ward.id).currentHp + world.sheet(fighter.id).currentHp, 10, "nobody is healed until the call can finish");
+
+  await enter(peace, second, [6, 6]);
+  assert.deepEqual([world.sheet(ward.id).currentHp, world.sheet(fighter.id).currentHp].sort((a, b) => a - b), [10, 20], "2 + 3 for one, 12 + 3 for the other");
+  assert.equal(world.sheet(peace.id).resources.channel_divinity.used, 1, "one use");
+  assert.equal(pendingOf(peace).length, 0);
+  const rolls = rollsSince(mark);
+  assert.deepEqual(rolls.map((roll) => roll.total).sort((a, b) => a - b), [5, 15], `each roll on record once: ${rolls.map((roll) => `${roll.detail} = ${roll.total}`).join("; ")}`);
+  assert.ok(rolls.every((roll) => roll.characterId === peace.id), "the rolls are the cleric's");
+});
+
+await test("a maneuver's temporary hit points are rolled by the fighter who spends the die: Rally", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, master.userId, true);
+  const mark = rollMark();
+  const out = await world.invoke("use_resource", { characterId: master.id, resource: "Superiority Dice", variant: "rally", targetCharacterId: ward.id });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.equal(out.result.parked, true, `the call did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+  assert.equal(pendingOf(ward).length, 0, "the one steadied was asked to roll");
+  const [pending] = pendingOf(master);
+  assert.ok(pending, "no roll card went to the fighter's seat");
+  assert.equal(pending.expression, "1d8+2");
+  assert.equal(world.sheet(ward.id).tempHp, 0);
+
+  await enter(master, pending, [5]);
+  assert.equal(world.sheet(ward.id).tempHp, 7, "5 on the d8 and Charisma's 2");
+  const rolls = rollsSince(mark);
+  assert.equal(rolls.length, 1, `one roll on record, not ${rolls.length}`);
+  // The chronicle draws its dice cards from the turn's list: Rally's card was
+  // pushed onto a copy of the turn and never reached it.
+  assert.ok(getDmTurn(out.turnId).rollIds.includes(rolls[0].id), "Rally's roll is not among the turn's cards");
+});
+
+await test("a spell's temporary hit points are rolled by its caster: False Life", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, mage.userId, true);
+  const out = await world.invoke("cast_buff", { characterId: mage.id, spell: "False Life" });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.equal(out.result.parked, true, `the call did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+  const [pending] = pendingOf(mage);
+  assert.ok(pending, "no roll card went to the wizard's seat");
+  // The spell's 4 is added to the die by the cast.
+  assert.equal(pending.expression, "1d4");
+  assert.equal(world.sheet(mage.id).spellcasting.slots[1].used, 0, "the slot was spent before the die was in");
+
+  await enter(mage, pending, [3]);
+  assert.equal(world.sheet(mage.id).tempHp, 7, "3 on the d4 and 4");
+  assert.equal(world.sheet(mage.id).spellcasting.slots[1].used, 1, "one casting, one slot");
 });
 
 world.close();

@@ -21,9 +21,10 @@
 // GM's calls (a death save as the turn passes once the GM has spoken, a
 // disease's save at a rest) has no call to hold, and is still thrown.
 // The healing dice of a character's own feature, potion, spell or Healer's
-// kit go through the same door (issue 902: Second Wind was rolled for a seat
-// on physical dice). The sentence does not name them; its second half is
-// what holds them.
+// kit, and the temporary hit points a feature or spell gives, go through the
+// same door (character-roll.ts rollOwnDice; issue 902: Second Wind was rolled
+// for a seat on physical dice). The sentence does not name them; its second
+// half is what holds them.
 export const REAL_DICE_SCOPE =
   "You roll your attacks and their damage, initiative, and every check and save your character makes, the saves a spell, trap or monster forces on you included. Only a roll that comes between the GM's moves, such as a death save as your turn begins, may be rolled for you.";
 
