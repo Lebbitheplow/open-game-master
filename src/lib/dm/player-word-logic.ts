@@ -180,16 +180,33 @@ const ASK_TAG =
 const ASK_INDIRECT =
   /^[\p{L}'’-]+\s+(?:[\p{L}]+ly\s+)?(?:ask|asks|asked|inquire|inquires|wonder|wonders)\b(?:\s+(?!(?:to|for)\b)[\p{L}'’-]+){0,3}?\s+(?:what|whether|if|how|why|where|who|whom|when|which|about)\b(?![^]*\b(?:and|then|but)\b)[^]*$/iu;
 
-// A line that only asks: every sentence of it ends in a question mark, in
-// any script, or at an English table only says who asks.
-export function onlyAsks(text: string, english = true): boolean {
+// The English words a character settles in to hear someone out with, or
+// says they speak with: "I sit and say", "Kara leans back and listens", "I
+// tell Borin". Said alone they ask nothing and try nothing.
+const SETTLE_VERB = String.raw`(?:\p{L}+ly\s+)?(?:(?:sit|sits|sat)(?:\s+(?:down|back))?|(?:lean|leans|leaned)\s+(?:back|in|forward)|(?:nod|nods|nodded)|(?:settle|settles|settled)(?:\s+(?:in|back))?|(?:smile|smiles|smiled)|(?:listen|listens|listened)(?:\s+(?:closely|carefully|quietly|intently))?(?:\s+to\s+(?:him|her|them))?|say|says|said|reply|replies|replied|answer|answers|answered|(?:tell|tells|told)\s+[\p{L}'-]+)`;
+const SETTLE = String.raw`[\p{L}'-]+\s+${SETTLE_VERB}(?:\s*,?\s+(?:and\s+then|and|then)\s+${SETTLE_VERB})*`;
+// Words that only invite the other to go on talking: "I'm all ears", "Go
+// on", "Tell me more", with a name or "please" beside them. "Go on, give me
+// the key" and "I'm all ears, but you pay first" say more, and are not this.
+const HEAR_OUT = String.raw`(?:(?:i'm|im|i\s+am|we're|we\s+are)\s+(?:all\s+ears|listening)|(?:please\s*,?\s*)?(?:go\s+on|go\s+ahead|carry\s+on|continue|keep\s+talking|tell\s+me\s+more|let's\s+hear\s+it)(?:\s*,?\s*please)?)`;
+const SETTLES = new RegExp(`^${SETTLE}[\\s,.!…]*$`, "iu");
+const HEARS = new RegExp(`^(?:${SETTLE}\\s*[,:]?\\s+)?${HEAR_OUT}(?<called>(?:\\s*,\\s*[\\p{L}'-]+){0,2})(?:\\s*,?\\s+${SETTLE})?[\\s,.!…]*$`, "iu");
+// A word set off by a comma beside the invitation is the one spoken to
+// ("Go on, Borin") or a softener ("Go on, then"); a lower-case word is a
+// second order ("Go on, confess"), which is more than listening.
+const CALLED = /^(?:\p{Lu}[\p{L}'-]*|then|please|friend)$/u;
+
+type SentenceKind = "question" | "tag" | "listen" | "settle" | null;
+
+// What each sentence of a line is. Every script reads a question mark; an
+// English table also reads who asks, an indirect question, and, when
+// `hearing`, words that only listen and the settling in around them.
+function sentenceKinds(text: string, english: boolean, hearing: boolean): SentenceKind[] {
   const parts = text
     .split(/(?<=[.!?。！？؟\n])\s*/)
     .map((part) => part.trim())
     .filter((part) => /[\p{L}\p{N}]/u.test(part));
-  // Each sentence is a question, a tag, or something else; a line of tags
-  // alone ("I ask.") asks nothing.
-  const kind = (part: string): "question" | "tag" | null => {
+  return parts.map((part): SentenceKind => {
     if (/[?？؟]["'”’)\]]*$/.test(part)) {
       return "question";
     }
@@ -198,21 +215,63 @@ export function onlyAsks(text: string, english = true): boolean {
     if (!english) {
       return null;
     }
-    return ASK_INDIRECT.test(bare) ? "question" : ASK_TAG.test(bare) ? "tag" : null;
-  };
-  const kinds = parts.map(kind);
+    if (ASK_INDIRECT.test(bare)) {
+      return "question";
+    }
+    if (ASK_TAG.test(bare)) {
+      return "tag";
+    }
+    if (!hearing) {
+      return null;
+    }
+    // Speech marks, double or single, are only where the words were said:
+    // 'I sit and say, "I'm all ears."' reads as I sit and say, I'm all ears.
+    const plain = part
+      .replace(/[’‘]/g, "'")
+      .replace(/["“”]/g, " ")
+      .replace(/(^|\s)'|'(?=[\s,.!…]|$)/g, "$1 ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const heard = HEARS.exec(plain);
+    if (heard) {
+      const called = (heard.groups?.called ?? "").split(",").map((word) => word.trim()).filter(Boolean);
+      return called.every((word) => CALLED.test(word)) ? "listen" : null;
+    }
+    if (SETTLES.test(plain)) {
+      return /\blisten/i.test(plain) ? "listen" : "settle";
+    }
+    return null;
+  });
+}
+
+// A line that only asks: every sentence of it ends in a question mark, in
+// any script, or at an English table only says who asks. A line of tags
+// alone ("I ask.") asks nothing.
+export function onlyAsks(text: string, english = true): boolean {
+  const kinds = sentenceKinds(text, english, false);
   return kinds.includes("question") && kinds.every((entry) => entry !== null);
 }
 
-// Whether every one of the character's lines only asks: no Hand card, and
-// nothing said beside the question. A roll to sway someone is the answer to
-// an attempt, and a question is none (SRD 5.1, Ability Checks: the GM calls
-// for one when a character tries something whose outcome is in doubt), so
-// the AI answers the question in character and the player decides whether
-// to press. No line at all is not this: the GM may still call for a check
-// the scene forces.
+// A line that only asks or only hears someone out: every sentence asks, says
+// who asks, invites the other to go on ("I'm all ears", "Go on"), or settles
+// in to listen ("I sit back"), and one of them asks or listens. Issue #896:
+// 'I sit and say, "I'm all ears."' got a Persuasion check toward the one
+// speaking. The fight-turn reader keeps onlyAsks: a listener in a fight has
+// still not said what their turn is.
+export function onlyAsksOrListens(text: string, english = true): boolean {
+  const kinds = sentenceKinds(text, english, true);
+  return kinds.some((entry) => entry === "question" || entry === "listen") && kinds.every((entry) => entry !== null);
+}
+
+// Whether every one of the character's lines only asks or listens: no Hand
+// card, and nothing said beside it. A roll to sway someone is the answer to
+// an attempt, and a question or an ear is none (SRD 5.1, Ability Checks:
+// the GM calls for one when a character tries something whose outcome is in
+// doubt), so the AI answers in character and the player decides whether to
+// press. No line at all is not this: the GM may still call for a check the
+// scene forces.
 export function onlyAsked(lines: readonly Pick<WordLine, "content" | "card">[], english: boolean): boolean {
-  return lines.length > 0 && lines.every((line) => !line.card && onlyAsks(line.content, english));
+  return lines.length > 0 && lines.every((line) => !line.card && onlyAsksOrListens(line.content, english));
 }
 
 // The skills social_check rolls: the checks that try to change a mind.
@@ -223,9 +282,10 @@ export function swaySkill(skill: string | undefined): boolean {
   return SWAY_SKILLS.has(textKey(skill ?? ""));
 }
 
-// The refusal of a roll to sway someone the player only asked a question of.
+// The refusal of a roll to sway someone the player only asked a question of
+// or listened to.
 export function askedSwayRefusal(name: string): string {
-  return `${name}'s player only asked a question, and a question sways no one, so nothing was rolled. Answer it in character, as the one asked feels about the party, and do not narrate a check. If the player then presses, argues or bargains, that attempt is the roll.`;
+  return `${name}'s player only asked a question or listened, and that sways no one, so nothing was rolled. Answer in character, as the one spoken to feels about the party, and do not narrate a check. If the player then presses, argues or bargains, that attempt is the roll.`;
 }
 
 export function readPlayerWord(

@@ -102,9 +102,11 @@ export function walkHeld(campaignId: string, actor: Pick<DmTurn, "actor"> | null
 
 // The refusal of a roll to sway someone (social_check, or a Persuasion,
 // Deception or Intimidation check) for a player's character whose player
-// only asked a question since the DM last spoke, or null. In a fight or out
-// of one: a player asked a companion something, and the AI rolled
-// Persuasion against a DC for an attempt they never made (0.34.1 report).
+// only asked a question or listened since the DM last spoke, or null. In a
+// fight or out of one: a player asked a companion something, and the AI
+// rolled Persuasion against a DC for an attempt they never made (0.34.1
+// report); a player sat down and said "I'm all ears", and the AI rolled
+// Persuasion toward the one talking (issue #896).
 // The AI's turn only, and never a character the AI plays; asked before
 // anything is rolled or spent.
 export function swayUnasked(campaignId: string, actor: Pick<DmTurn, "actor"> | null, sheet: Pick<CharacterSheet, "id" | "name">): ToolError | null {

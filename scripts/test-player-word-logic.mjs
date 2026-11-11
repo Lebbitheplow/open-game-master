@@ -9,7 +9,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { englishHold, englishActs, englishDeclines, onlyAsks, onlyAsked, askedSwayRefusal, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
+const { englishHold, englishActs, englishDeclines, onlyAsks, onlyAsksOrListens, onlyAsked, askedSwayRefusal, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
 const { parseWordReading } = await import("../src/lib/dm/player-word-read.ts");
 
 const FIGHT = "2026-11-08T12:00:00.000Z";
@@ -92,7 +92,43 @@ assert.equal(onlyAsked([], true), false);
 // At a table in another language only the question mark is read.
 assert.equal(onlyAsked([{ content: "¿Conoces este camino?", card: null }], false), true);
 assert.equal(onlyAsks('"Is it far?" I ask Corin.', false), false);
-assert.match(askedSwayRefusal("Kara"), /^Kara's player only asked a question, .*nothing was rolled\. Answer it in character/);
+// Hearing someone out sways no one either (issue #896: 'I sit and say, "I'm
+// all ears."' got a Persuasion check toward the one talking). Only the sway
+// guard reads it: in a fight a listener has still not named their turn.
+for (const text of [
+  'I sit and say, "I\'m all ears."',
+  "I sit and say, \u201cI\u2019m all ears.\u201d",
+  "I sit and say, 'I'm all ears.'",
+  "I'm all ears.",
+  "Go on.",
+  '"Go on, Borin," I say.',
+  "Go on, then.",
+  "Please, go on.",
+  "I lean back and listen.",
+  'I nod. "Tell me more."',
+  "Kara settles in and listens closely.",
+  "I'm listening. What happened to the travelers?",
+]) {
+  assert.equal(onlyAsksOrListens(text), true, text);
+  assert.equal(onlyAsked([{ content: text, card: null }], true), true, text);
+}
+assert.equal(onlyAsks("I'm all ears."), false, "the fight-turn reader keeps questions only");
+for (const text of [
+  "I sit down.",
+  "I nod.",
+  "Go on, give me the key.",
+  "Go on, confess.",
+  "I'm all ears, but you pay us first.",
+  "Tell me more, or I break your arm.",
+  "I sit and tell him he will pay us double.",
+  "I lean in and say, \"Fifty is an insult. Make it a hundred.\"",
+  "I'm all ears. Now lower the price.",
+  "Go on, and lower the price.",
+]) {
+  assert.equal(onlyAsksOrListens(text), false, text);
+}
+assert.equal(onlyAsksOrListens("Continúa.", false), false, "another language reads only the question mark");
+assert.match(askedSwayRefusal("Kara"), /^Kara's player only asked a question or listened, .*nothing was rolled\. Answer in character/);
 
 // ---- the reading ----
 

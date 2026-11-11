@@ -30,7 +30,7 @@ const corin = world.sheets().find((sheet) => sheet.name === "Corin");
 await world.invoke("set_npc", { name: "Tamsin", gender: "Female" });
 
 const REFUSAL = (name) =>
-  `${name}'s player only asked a question, and a question sways no one, so nothing was rolled. Answer it in character, as the one asked feels about the party, and do not narrate a check. If the player then presses, argues or bargains, that attempt is the roll.`;
+  `${name}'s player only asked a question or listened, and that sways no one, so nothing was rolled. Answer in character, as the one spoken to feels about the party, and do not narrate a check. If the player then presses, argues or bargains, that attempt is the roll.`;
 
 const rolls = () => listRecentRolls(world.campaignId, 500).length;
 // The engine's answer: a refusal's words, or the result it resolved to.
@@ -99,6 +99,19 @@ await test("Once the DM has answered, the player's push is the attempt, and it r
 await test("A question in another language is a question too.", async () => {
   scene(["¿Conoces este camino, Corin?"]);
   assert.equal(refusal(await persuade()), REFUSAL("Kara"));
+});
+
+await test('Hearing someone out sways no one (issue #896): \'I sit and say, "I\'m all ears."\' refuses social_check and Persuasion, rolling nothing.', async () => {
+  scene(['I sit and say, "I\'m all ears."']);
+  const before = rolls();
+  assert.equal(refusal(await persuade("Tamsin")), REFUSAL("Kara"));
+  assert.equal(refusal(await skill("persuasion")), REFUSAL("Kara"));
+  assert.equal(rolls(), before, "a refusal rolled dice");
+  scene(["I'm all ears. Now drop the price, or we walk."]);
+  world.dice(14);
+  const out = await persuade("Tamsin");
+  world.clearDice();
+  resolved(out);
 });
 
 // ---- what stays as it was ----
