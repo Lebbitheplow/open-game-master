@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
 import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
-import { HandAimBar, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
+import { HandAimBar, HandReadPanel, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
 import { HandCardFace, HandPlayedCard } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandArrange } from "@/app/campaigns/[campaignId]/HandArrange";
 import { HandMoreSheet } from "@/app/campaigns/[campaignId]/HandMoreSheet";
@@ -360,6 +360,8 @@ function HandInner({
   const sectionRef = useRef<HTMLElement>(null);
 
   const [pickedId, setPickedId] = useState<string | null>(null);
+  // A card that cannot be played now, opened to be read (HandReadPanel).
+  const [readId, setReadId] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [riderIds, setRiderIds] = useState<string[]>([]);
   const [played, setPlayed] = useState<{ card: HandCard; seq: number } | null>(null);
@@ -391,6 +393,8 @@ function HandInner({
 
   // A card that stopped being playable (the turn moved on) drops out of aim.
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
+  // Read only while it stays unplayable: once the turn comes, a press aims it.
+  const reading = picked ? null : cards.find((card) => card.id === readId && card.disabled) ?? null;
   const riders = useMemo(
     () => cards.filter((card) => riderIds.includes(card.id) && !card.disabled),
     [cards, riderIds],
@@ -535,8 +539,10 @@ function HandInner({
     (card: HandCard, native = false) => {
       if (card.disabled) {
         say(card.disabled);
+        if (!native) setReadId(card.id);
         return;
       }
+      setReadId(null);
       setNoticeEntry(null);
       setBoardNative(native);
       setMoreOpen(false);
@@ -1074,6 +1080,20 @@ function HandInner({
               onBack={releaseAim}
               onEdit={() => toComposer(sentence)}
               onCommit={() => void commit()}
+            />
+          ) : reading && !boardNative ? (
+            <HandReadPanel
+              card={reading}
+              onClose={() => {
+                const id = reading.id;
+                setReadId(null);
+                window.requestAnimationFrame(() => {
+                  const card = [...(sectionRef.current?.querySelectorAll<HTMLElement>("[data-card-id]") ?? [])].find(
+                    (element) => element.dataset.cardId === id,
+                  );
+                  card?.focus({ preventScroll: true });
+                });
+              }}
             />
           ) : riders.length ? (
             <p className="mt-1 animate-fade-up text-xs text-amber-200/80">

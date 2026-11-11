@@ -455,6 +455,13 @@
 /* ---- the aim bar ---- */
 
 .hand-aim { animation: fade-up var(--dur-move) var(--ease-settle) both; }
+/* The "Full text" opener reads as a small label with a turning mark, like a
+   disclosure, not as a list item; the keyboard sees where it is. */
+.hand-full-text-toggle { list-style: none; gap: 6px; }
+.hand-full-text-toggle::-webkit-details-marker { display: none; }
+.hand-full-text-toggle::before { content: "▸"; transition: transform var(--dur-quick) var(--ease-snap); }
+.hand-full-text[open] > .hand-full-text-toggle::before { transform: rotate(90deg); }
+.hand-full-text-toggle:focus-visible { outline: 2px solid var(--color-amber-400, #fbbf24); outline-offset: 2px; }
 .hand-target[aria-pressed="true"] {
   border-color: rgba(212, 171, 58, 0.85);
   box-shadow: 0 0 14px rgba(212, 171, 58, 0.28);
