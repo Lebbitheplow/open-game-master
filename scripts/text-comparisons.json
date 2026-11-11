@@ -1876,7 +1876,7 @@
     "lib/dm/srd-defenses.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/srd-defenses.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/srd-defenses.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/srd-feature-spends.ts#str-eq": [["english-source",8,"reference: SRD feature and option names (the directive pins them)"],["key",3,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
+    "lib/dm/srd-feature-spends.ts#str-eq": [["english-source",8,"reference: SRD feature and option names (the directive pins them)"],["key",3,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"],["key",2,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
     "lib/dm/srd-feature-spends.ts#str-list": [["key",1,"the feature a use_resource call names and the words that end Quivering Palm harmlessly (the tool's own vocabulary), read through textKey"]],
     "lib/dm/draconic-spends.ts#str-eq": [["key",8,"the documented variant keys (fear, charm, awe; manifest, dismiss) and the conditions they lay (engine vocabulary)"]],
     "lib/dm/draconic-spends.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
@@ -2898,10 +2898,12 @@
     "lib/dm/mt-srd-monk.ts#\\b": [["english-source",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text: rock, boulder, ballista)"],["english-source",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text: rock, boulder, ballista)"]],
     "lib/dm/mt-srd-monk.ts#toLowerCase": [["english-source",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text: rock, boulder, ballista)"]],
     "lib/dm/mt-srd-monk.ts#re-word": [["english-source",1,"a missile too large for one hand, read in an enemy attack's own name (stat-block text: rock, boulder, ballista)"]],
+    "lib/dm/mt-srd-unconscious.ts#str-list": [["key",1,"conditions by their engine names"],["key",2,"conditions by their engine names"]],
+    "lib/dm/mt-srd-reach.ts#re-word": [["key",1,"undead or construct read in the creature type a sheet's own record carries (engine vocabulary)"],["english-source",1,"charmed read in a stat block's condition immunities line (stat-block text)"]],
+    "lib/dm/mt-srd-reach.ts#\\b": [["english-source",1,"charmed read in a stat block's condition immunities line (stat-block text)"],["english-source",1,"charmed read in a stat block's condition immunities line (stat-block text)"]],
+    "lib/dm/mt-srd-barbarian.ts#str-list": [["key",1,"the words a call ends a rage with (the tool's own vocabulary), read through textKey"]],
     "lib/dm/mt-srd-paladin.ts#\\b": [["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"],["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"]],
     "lib/dm/mt-srd-paladin.ts#re-word": [["key",1,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"],["key",2,"the words a call names Lay on Hands' cure with (cure, disease, poison, neutralize): the tool's own vocabulary for the variant, read through textKey"]],
-    "lib/dm/mt-srd-unconscious.ts#str-list": [["key",1,"conditions by their engine names"],["key",2,"conditions by their engine names"]],
-    "lib/dm/mt-srd-reach.ts#re-word": [["key",1,"undead or construct read in the creature type a sheet's own record carries (engine vocabulary)"]],
-    "lib/dm/mt-srd-barbarian.ts#str-list": [["key",1,"the words a call ends a rage with (the tool's own vocabulary), read through textKey"]]
+    "lib/dm/mt-srd-bard.ts#str-list": [["key",1,"the words a call ends a Countercharm with (the tool's own vocabulary), read through textKey"]]
   }
 }

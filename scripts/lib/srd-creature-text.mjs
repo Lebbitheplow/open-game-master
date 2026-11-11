@@ -325,6 +325,16 @@ function namedParagraphs(md) {
 // whose actions replace the page's own (the diseased giant rat's bite);
 // `from` names the block's own heading on a page that holds more than it
 // (the half-dragon template's sample veteran).
+// "Perception +3, Stealth +4" as skill ids and their printed bonuses: what a
+// form's block lists, for Wild Shape's "gaining those of the creature".
+export function parseSkills(text) {
+  const out = {};
+  for (const match of String(text ?? "").matchAll(/([A-Z][A-Za-z ]+?)\s*([+-]\d+)/g)) {
+    out[match[1].trim().toLowerCase().replace(/\s+/g, "_")] = Number(match[2]);
+  }
+  return out;
+}
+
 export function parseRulebookPage(source, { variant, from } = {}) {
   // A quoted sidebar (a variant rule) is no part of the block unless asked
   // for; "**Sense**s" is one of the conversion's slips.
@@ -367,6 +377,7 @@ export function parseRulebookPage(source, { variant, from } = {}) {
   }
   const saves = field("Saving Throws?");
   return {
+    skills: parseSkills(field("Skills")),
     size: sizeMatch?.[1] ?? "",
     type: (sizeMatch?.[2] ?? "").toLowerCase(),
     ac: Number(/^(\d+)/.exec(field("Armor Class"))?.[1] ?? 0),

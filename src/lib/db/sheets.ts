@@ -2,7 +2,7 @@ import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layou
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { endedByFallingUnconscious, endedByLosingWeapon, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -945,6 +945,10 @@ export function patchSheet(
     const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
     next.conditions = awake.conditions;
     next.conditionMeta = awake.meta;
+  }
+  // A druid knocked out in a beast's shape is back in their own.
+  if (next.wildShape?.kind === "wildshape" && fellUnconscious(existing.conditions, next.conditions)) {
+    next.wildShape = null;
   }
   // A Berserker's rage sets charm and fear aside, and its end gives them back.
   const suspended = rageSuspension(next);

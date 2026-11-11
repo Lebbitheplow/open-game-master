@@ -35,6 +35,7 @@ import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { publishZones } from "@/lib/dm/zone-store";
 import { textKey } from "@/lib/language/text-logic";
+import { spellsOn } from "@/lib/srd/mt-srd-spells-on";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsFeature } from "@/lib/srd/trait-rules";
@@ -164,23 +165,6 @@ export function layOnHandsCure(campaign: Campaign, stale: CharacterSheet, args: 
 }
 
 // ---- Cleansing Touch ----
-
-// The spells whose effects a sheet carries, each with the conditions it laid.
-function spellsOn(sheet: CharacterSheet): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  const meta = (sheet.conditionMeta ?? {}) as ConditionMetaMap;
-  for (const name of sheet.conditions) {
-    for (const entry of instancesOf(meta[name])) {
-      if (entry.spell) {
-        out.set(entry.spell, [...(out.get(entry.spell) ?? []), name]);
-      }
-    }
-  }
-  if (sheet.concentratingOn && !out.has(sheet.concentratingOn)) {
-    out.set(sheet.concentratingOn, []);
-  }
-  return out;
-}
 
 export function cleansingTouch(campaign: Campaign, turnId: string, stale: CharacterSheet, args: SpendArgs): ToolResult {
   const sheet = getSheetById(stale.id) ?? stale;

@@ -695,6 +695,11 @@ export const wildShapeSchema = z
     type: z.string().trim().max(30).optional(),
     cr: z.number().min(0).max(30).optional(),
     saves: z.array(z.enum(["str", "dex", "con", "int", "wis", "cha"])).max(6).optional(),
+    // The skills its block lists with their printed bonuses, and its special
+    // senses in feet (SRD 5.1, Wild Shape: the creature's proficiencies are
+    // gained, and only the form's senses are used).
+    skills: z.record(z.string().trim().min(1).max(30), z.number().int().min(-10).max(30)).optional(),
+    senses: z.record(z.string().trim().min(1).max(30), z.number().int().min(0).max(1000)).optional(),
     resist: z.string().trim().max(200).optional(),
     immune: z.string().trim().max(200).optional(),
     vulnerable: z.string().trim().max(120).optional(),

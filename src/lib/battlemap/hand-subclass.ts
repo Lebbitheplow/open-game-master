@@ -365,8 +365,20 @@ export function intimidatingPresenceCards(sheet: CharacterSheet, turn: HandTurn)
     spent: false,
     compose: false,
     intent: { card: "feature", resourceId: "Intimidating Presence" },
+    // "choose one creature that you can see": the chips follow the board's
+    // sight, as the engine's refusal does (combat-features.ts).
+    sight: true,
   };
-  return [gated(card, standingGate(sheet, turn, "action"), costGate("action", turn, sheet, "Intimidating Presence"))];
+  return [
+    gated(
+      card,
+      standingGate(sheet, turn, "action"),
+      sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
+        ? { reason: `Intimidating Presence takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
+        : null,
+      costGate("action", turn, sheet, "Intimidating Presence"),
+    ),
+  ];
 }
 
 // The once-chosen options of the subclass features a character holds

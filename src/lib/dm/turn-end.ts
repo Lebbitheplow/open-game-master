@@ -29,6 +29,7 @@ import { zoneTurnEnd } from "@/lib/dm/zone-triggers";
 import { blinkTurnEnd } from "@/lib/dm/spell-planes";
 import { endLeashes } from "@/lib/dm/condition-leash";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { endBrokenPerformances } from "@/lib/dm/mt-srd-bard";
 import { endPresenceOutOfReach } from "@/lib/dm/mt-srd-barbarian";
 import {
   instancesOf,
@@ -218,6 +219,8 @@ export function endTurns(
   const presence = endPresenceOutOfReach(encounterId, combatantIds);
   lines.push(...presence.lines);
   enemiesChanged ||= presence.enemiesChanged;
+  // A Countercharm whose bard is silenced, or whose listener no longer hears (mt-srd-bard.ts).
+  lines.push(...endBrokenPerformances(campaign.id));
   // What lasted until a rage now over ended (rage-bound.ts).
   const rageBound = endRageBound(campaign.id);
   lines.push(...rageBound.lines);

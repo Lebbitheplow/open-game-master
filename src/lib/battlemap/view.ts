@@ -1,3 +1,4 @@
+import { formSenses } from "@/lib/srd/mt-srd-form-senses";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { tokenSides } from "@/lib/dm/combatant";
 import { getCampaignById, getFloor } from "@/lib/db/campaigns";
@@ -95,12 +96,21 @@ function elevationOf(movement: TokenMovement): "flying" | "burrowing" | null {
 }
 
 export function sheetDarkvisionTiles(sheet: CharacterSheet): number {
+  // A worn form sees by its own senses alone (srd/mt-srd-form-senses.ts).
+  const worn = formSenses(sheet);
+  if (worn) {
+    return worn.darkvision;
+  }
   return darkvisionTilesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
 }
 
 // Every sense a character has, from race and feature names (Blind Fighting,
 // Devil's Sight, Ghostly Gaze, a homebrew "blindsight 30 ft" feature).
 export function sheetSenses(sheet: CharacterSheet): Senses {
+  const worn = formSenses(sheet);
+  if (worn) {
+    return worn;
+  }
   const senses = sensesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
   return { ...senses, darkvision: Math.max(senses.darkvision, sheetDarkvisionTiles(sheet)) };
 }

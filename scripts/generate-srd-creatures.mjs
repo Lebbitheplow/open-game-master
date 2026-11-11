@@ -100,6 +100,8 @@ function fromPack(row, data) {
     },
     saves: SAVE_FIELDS.filter((field) => data[`${field}_save`] !== null && data[`${field}_save`] !== undefined).map((field) => field.slice(0, 3)),
     senses: parseSenses(data.senses),
+    // The skills the block lists, by id, with the printed bonus.
+    skills: Object.fromEntries(Object.entries(data.skills ?? {}).filter(([, bonus]) => typeof bonus === "number").map(([skill, bonus]) => [skill.trim().toLowerCase().replace(/\s+/g, "_"), bonus])),
     resist: defenseWords(data.damage_resistances),
     immune: defenseWords(data.damage_immunities),
     vulnerable: defenseWords(data.damage_vulnerabilities),
@@ -177,7 +179,7 @@ function differences(block, page, keeps = {}) {
     }
     found.push(`${field}: pack ${JSON.stringify(ours)}, SRD ${JSON.stringify(theirs)}`);
   };
-  for (const field of ["size", "type", "cr", "ac", "hp", "speeds", "abilities", "saves", "senses"]) {
+  for (const field of ["size", "type", "cr", "ac", "hp", "speeds", "abilities", "saves", "senses", "skills"]) {
     same(field, block[field], page[field]);
   }
   for (const field of DEFENSES) {
@@ -221,6 +223,7 @@ function finished(block) {
     abilities: block.abilities,
     ...(block.saves.length ? { saves: block.saves } : {}),
     ...(Object.keys(block.senses).length ? { senses: block.senses } : {}),
+    ...(Object.keys(block.skills).length ? { skills: block.skills } : {}),
     ...Object.fromEntries(DEFENSES.filter((field) => block[field]).map((field) => [field, block[field]])),
     attacks,
     ...(perTurn > 1 ? { attacksPerTurn: perTurn } : {}),

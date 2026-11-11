@@ -60,11 +60,9 @@ export function prepareResourceCharge(
   if (!def?.action || !encounter || (encounter.kind ?? "fight") !== "fight") {
     return FREE;
   }
-  // ODM's rule: asking for Wild Shape while shaped drops the form and costs
-  // nothing (src/lib/dm/resource-tools.ts).
-  if (def.effect.kind === "wild_shape" && sheet.wildShape) {
-    return FREE;
-  }
+  // Asking for Wild Shape while shaped drops the form and spends no use
+  // (src/lib/dm/resource-tools.ts); in a fight it is the bonus action the
+  // SRD gives the early revert, which counterCost answers below.
   // The cost the Hand's card shows, from the same place (counter-rules.ts):
   // Combat Wild Shape (Circle of the Moon) makes the change a bonus action.
   const action = override ? def.action : counterCost(def, sheet);

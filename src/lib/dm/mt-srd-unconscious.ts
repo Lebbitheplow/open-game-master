@@ -1,6 +1,11 @@
 // What ends as its holder falls unconscious (SRD 5.1):
 //
 //   Rage: "It ends early if you are knocked unconscious".
+//   Wild Shape: "You automatically revert if you fall unconscious, drop to 0
+//   hit points, or die." The fall to 0 in the form is the damage path's
+//   (pc-damage.ts, with the excess carried over); fellUnconscious is what
+//   patchSheet asks for the sleep or the poison that drops a druid in a
+//   beast's shape.
 //   Sacred Weapon (Oath of Devotion): "If you are no longer holding or
 //   carrying this weapon, or if you fall unconscious, this effect ends."
 //   endedByLosingWeapon reads the weapon the effect names in its meta.
@@ -32,10 +37,15 @@ const ENDS = ["raging", "sacred weapon"];
 
 const holds = (conditions: readonly string[], name: string) => conditions.some((entry) => isConditionNamed(entry, name));
 
+// Whether this write is the one that knocks the sheet out.
+export function fellUnconscious(before: readonly string[], after: readonly string[]): boolean {
+  return holds(after, UNCONSCIOUS) && !holds(before, UNCONSCIOUS);
+}
+
 // The conditions that go as the sheet falls unconscious: empty unless this
 // write is the one that knocks them out.
 export function endedByFallingUnconscious(before: readonly string[], after: readonly string[]): string[] {
-  if (!holds(after, UNCONSCIOUS) || holds(before, UNCONSCIOUS)) {
+  if (!fellUnconscious(before, after)) {
     return [];
   }
   return after.filter((entry) => isConditionNamed(entry, ...ENDS));

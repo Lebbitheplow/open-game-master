@@ -36,6 +36,9 @@ export type BeastForm = {
   // The saving throws its block lists as proficient, and the damage and
   // conditions it shrugs off, in the words damageAdjust reads.
   saves?: SrdCreature["saves"];
+  // The skills its block lists with their printed bonuses: what Wild Shape
+  // gains. (Its special senses, in feet, are `senses` below.)
+  skills?: SrdCreature["skills"];
   resist?: string;
   immune?: string;
   vulnerable?: string;
@@ -66,6 +69,7 @@ function beastForm(creature: SrdCreature): BeastForm {
     size: creature.size,
     abilities: creature.abilities,
     ...(creature.saves?.length ? { saves: creature.saves } : {}),
+    ...(creature.skills ? { skills: creature.skills } : {}),
     ...(creature.resist ? { resist: creature.resist } : {}),
     ...(creature.immune ? { immune: creature.immune } : {}),
     ...(creature.vulnerable ? { vulnerable: creature.vulnerable } : {}),
@@ -122,6 +126,8 @@ export function wildShapeRecord(
     type: form.type,
     cr: form.cr,
     ...(form.saves?.length ? { saves: form.saves } : {}),
+    ...(form.skills ? { skills: form.skills } : {}),
+    ...(form.senses ? { senses: form.senses } : {}),
     ...(form.resist ? { resist: form.resist } : {}),
     ...(form.immune ? { immune: form.immune } : {}),
     ...(form.vulnerable ? { vulnerable: form.vulnerable } : {}),

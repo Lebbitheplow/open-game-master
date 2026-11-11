@@ -39,8 +39,10 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { draconicPresence, dragonWings, elementalAffinityResistance } from "@/lib/dm/draconic-spends";
+import { countercharm } from "@/lib/dm/mt-srd-bard";
 import { asksToEndRage, endRage } from "@/lib/dm/mt-srd-barbarian";
 import { asksForCure, cleansingTouch, layOnHandsCure } from "@/lib/dm/mt-srd-paladin";
+import { strokeOfLuckCheck } from "@/lib/dm/mt-srd-rogue";
 
 export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string };
 
@@ -57,6 +59,12 @@ export function srdFeatureSpend(
   if (name === "rage" && asksToEndRage(args.variant)) return endRage(campaign, sheet);
   if (name === "lay on hands" && asksForCure(args.variant)) return layOnHandsCure(campaign, sheet, args);
   if (name === "cleansing touch") return cleansingTouch(campaign, turnId, sheet, args);
+  if (name === "stroke of luck") {
+    // A failed ability check to answer, or the counter's own path.
+    const luck = strokeOfLuckCheck(campaign, sheet);
+    if (luck) return luck;
+  }
+  if (name === "countercharm") return countercharm(campaign, sheet, args.variant);
   if (name === "peerless skill") return peerlessSkill(campaign, sheet);
   if (name === "quivering palm") return quiveringPalm(campaign, turnId, sheet, args.targetEnemyId, args.variant);
   if (name === "draconic presence") return draconicPresence(campaign, turnId, sheet, args.variant);

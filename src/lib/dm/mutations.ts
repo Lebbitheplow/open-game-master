@@ -92,7 +92,7 @@ import {
 } from "@/lib/dm/resource-tools";
 import { resourceTools } from "@/lib/dm/resource-tool-defs";
 import { applyDamageTool, clearConditionTool, setConditionTool } from "@/lib/dm/merged-tool-defs";
-import { searchSpells, spellFactsFor, spellNameMatches } from "@/lib/content";
+import { searchSpells, spellFactsFor, spellNameMatches, spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { suggestedSpellCount } from "@/lib/content/mechanics";
 import { abilityMod } from "@/lib/srd";
@@ -1853,7 +1853,7 @@ function dmMutation(
         if (bookView) {
           // Copying costs 50 gp and two hours a spell level, paid now; the
           // hours are not something a fight has room for.
-          const cost = facts ? copyCost(facts) : { gold: 0, hours: 0 };
+          const cost = facts ? copyCost(facts, { features: sheet.features, school: spellSchoolFor(facts.name, spellAuthorsFor(campaign)) }) : { gold: 0, hours: 0 };
           const live = getActiveEncounter(campaign.id);
           if (cost.hours && live && live.status === "active" && (live.kind ?? "fight") === "fight") {
             return {

@@ -73,3 +73,15 @@ export function targetReachProblem(
   }
   return null;
 }
+
+// Why Cutting Words does nothing to a creature, or null: "The creature is
+// immune if it can't hear you or if it's immune to being charmed."
+export function cuttingWordsImmunity(foe: { conditions: string[]; stats: { conditionImmune?: unknown } } | null): string | null {
+  if (!foe) {
+    return null;
+  }
+  if (deafened(foe)) {
+    return "is deafened and cannot hear the bard";
+  }
+  return /\bcharmed\b/i.test(String(foe.stats.conditionImmune ?? "")) ? "cannot be charmed" : null;
+}
