@@ -79,7 +79,8 @@ import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardRe
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
+import { forcerOfCall, holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
+import { slayersCounterAtStop } from "@/lib/dm/slayers-counter";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
@@ -1333,9 +1334,10 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     // call's one roll, whichever of its d20s comes first.
     const picked = watchChoiceOf(stop);
     // Every power but Portent's number is armed to answer the roll once it goes wrong.
-    const shifting = Boolean(stop.power) && stop.power !== "portent";
+    // Slayer's Counter arms nothing: its attack is made before the call (below).
+    const shifting = Boolean(stop.power) && stop.power !== "portent" && stop.power !== "slayers_counter";
     const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;
@@ -1346,10 +1348,13 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
       if (at === 0) {
         markWatchAnswered(campaignId, toolCall.tape ?? []);
       }
+      // Slayer's Counter is made "before the save": the ranger's attack, then
+      // the call that forces it, which reads a hit's mark (slayers-counter.ts).
+      const countered = at === 0 && stop.power === "slayers_counter" && stop.shift ? slayersCounterAtStop(campaign, turn, watcherId, forcerOfCall(toolCall, standing?.id)) : null;
       const ran = await runWithShift(campaignId, shift, () => runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
       outcome = ran.result.result;
       portent = ran.result.portent;
-      chronalShift = ran.shift;
+      chronalShift = ran.shift ?? countered;
     } catch (error) {
       console.error(`[dm-turn] a held ${toolCall.name} threw:`, error);
       outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };

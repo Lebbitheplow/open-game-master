@@ -12,8 +12,8 @@ const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring
 const NUMBER = `motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING}`;
 const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
-type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods";
-const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods" };
+type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter";
+const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter" };
 
 // The feature a character watches with: a diviner's numbers first, then a
 // chronurgist's shift, an artificer's Flash of Genius, a divine soul's
@@ -32,6 +32,8 @@ const WATCH_FOR: Record<Power, string> = {
   chronal_shift: "use Chronal Shift on it",
   flash_of_genius: "add your Intelligence modifier to a save that fails",
   favored_by_the_gods: "add 2d4 to your save if it fails",
+  // Asked without the button: the stop comes for the ranger's own save alone.
+  slayers_counter: "attack your prey before a save it forces on you",
 };
 
 // The Intelligence modifier Flash of Genius adds, as the sheet's score gives it.
@@ -163,7 +165,9 @@ export function WatchCard({
                 aria-describedby={clockId}
                 onClick={() => void answer({ shift: true, ...choice })}
                 title={
-                  power === "flash_of_genius"
+                  power === "slayers_counter"
+                    ? "Spend your reaction on one weapon attack against your prey before the save is rolled: if it hits, your save succeeds."
+                    : power === "flash_of_genius"
                     ? "Spend a use of Flash of Genius and your reaction only if the save fails and your Intelligence modifier would carry it."
                     : power === "favored_by_the_gods"
                       ? "Spend Favored by the Gods only if the save fails and 2d4 could carry it: the 2d4 is added to the save."
@@ -171,7 +175,7 @@ export function WatchCard({
                 }
                 className={NUMBER}
               >
-                {power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
+                {power === "slayers_counter" ? "Attack it first" : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
               </button>
             )}
         <button

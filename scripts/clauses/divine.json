@@ -4658,13 +4658,13 @@
     "c": "A reaction attacks your prey when it forces a save on you",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:ranger::Slayer's Counter::Slayer's Counter#TRIGGER_UNCHECKED",
-    "by": "src/lib/srd/trigger-table.ts slayer's counter (a save forced by the prey), read by reaction-triggers.ts (the spends sweep walks it clean)"
+    "by": "src/lib/srd/trigger-table.ts slayer's counter (a save forced by the prey), read by reaction-triggers.ts (the spends sweep walks it clean); a player the server can ask is stopped for before the save is rolled (src/lib/dm/foresight.ts slayersCounterStops, scripts/test-slayers-counter-stop.mjs)"
    },
    {
     "c": "and a hit means the save automatically succeeds",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Slayer's Counter#auto-success",
-    "by": "src/lib/dm/authored-reactions.ts case attack (turnsSave) with src/lib/dm/save-turned.ts turnFailedSave: the reaction attack is made as the ranger stood before the failed save, and a hit makes that save a success: the hit points a success would have spared come back (cast-at-player.ts keeps them on the save record) and the conditions the failure laid end"
+    "by": "src/lib/dm/slayers-counter.ts slayersCounterAtStop with slayers-counter-mark.ts and forced-save.ts rollCharacterSave: at the stop before the save the ranger's attack is made first, and a hit makes the save succeed with no roll, so its damage and conditions never land (scripts/test-slayers-counter-stop.mjs). A seat no stop reaches keeps the answer after the roll: src/lib/dm/authored-reactions.ts case attack (turnsSave) with src/lib/dm/save-turned.ts turnFailedSave: the reaction attack is made as the ranger stood before the failed save, and a hit makes that save a success: the hit points a success would have spared come back (cast-at-player.ts keeps them on the save record) and the conditions the failure laid end"
    }
   ]
  },

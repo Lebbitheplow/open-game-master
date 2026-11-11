@@ -85,9 +85,10 @@ export async function runHeldMove(pendingId: string): Promise<void> {
   })();
   const watcherId = pending.characterId ?? "";
   const picked = watchChoiceOf(stop);
-  const shifting = Boolean(stop.power) && stop.power !== "portent";
+  // Slayer's Counter never stops a turn's end: it answers a save alone.
+  const shifting = Boolean(stop.power) && stop.power !== "portent" && stop.power !== "slayers_counter";
   const choice = !shifting && stop.face !== null && watcherId ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-  const shift = shifting && stop.shift && picked && stop.power && stop.power !== "portent" && watcherId ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+  const shift = shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" && watcherId ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
   const { endHeldOwnTurn } = await import("@/lib/dm/encounter-tools");
   const ran = await runWithShift(campaign.id, shift, () => runWithForetold(campaign, pending.turnId, choice, async () => endHeldOwnTurn(campaign.id, characterId)));
   const told = [ran.result.portent, ran.shift].filter((line): line is string => Boolean(line));

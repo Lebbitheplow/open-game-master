@@ -50,6 +50,7 @@ import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, sav
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { ownTurnOf } from "@/lib/dm/held-turn";
+import { stopReaches } from "@/lib/dm/chronal-shift";
 import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
@@ -928,6 +929,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // the attack is made as its holder stood before that save failed, so
       // what the failure laid comes off for it, and goes back on if the
       // attack does not turn the save (save-turned.ts).
+      // A ranger whose player can be asked takes it at the stop before the save
+      // (foresight.ts slayersCounterStops, slayers-counter.ts), so nothing has
+      // to be given back. The answer to a save already rolled is kept for a
+      // seat no stop reaches (an agent's, a companion's, a player away).
+      if (does.turnsSave && stopReaches(ctx.campaign.id, getSheetById(ctx.sheet.id) ?? ctx.sheet)) {
+        return { error: `${reaction.name} is made before the save is rolled: the server stops for ${ctx.sheet.name}'s player when their prey forces a save on them. Nothing was spent.`, refused: "rules" };
+      }
       const failedSave = does.turnsSave ? openFailedSave(ctx.campaign.id, ctx.sheet.id, enemy.id) : null;
       const bound = failedSave ? laidBySave(getSheetById(ctx.sheet.id) ?? ctx.sheet, failedSave) : { names: [], meta: {} };
       const rebind = () => {

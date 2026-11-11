@@ -4,12 +4,12 @@ import { getPendingRoll, type WatchPower } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { answerWatch } from "@/lib/dm/foresight-release";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
-import { canHelpSaveNow, canShiftNow } from "@/lib/dm/chronal-shift";
+import { canHelpSaveNow, canReactNow, canShiftNow } from "@/lib/dm/chronal-shift";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 
 export const runtime = "nodejs";
 
-const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods" };
+const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter" };
 export const dynamic = "force-dynamic";
 
 // `choice`: whose roll, by its place in the stop's list, when the stop offers
@@ -83,6 +83,9 @@ export async function POST(
     }
     if ("shift" in data && (power === "flash_of_genius" || power === "favored_by_the_gods") && (!sheet || !canHelpSaveNow(campaignId, sheet, power))) {
       return Response.json({ error: power === "flash_of_genius" ? "Your Flash of Genius is spent, or your reaction is." : "Your Favored by the Gods is spent." }, { status: 409 });
+    }
+    if ("shift" in data && power === "slayers_counter" && (!sheet || !canReactNow(campaignId, sheet))) {
+      return Response.json({ error: "Your reaction is spent." }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
     return Response.json({ error: "This is not your choice yet." }, { status: 403 });

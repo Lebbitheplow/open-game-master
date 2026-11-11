@@ -50,7 +50,9 @@ export type Seen = { tag: RollTag; ref: string; name: string };
 // caught saves on its own and the watcher picks whose; `rollerWaits`, the
 // roller's own card answers it after it lands; `riderSaves`, the save an
 // enemy's hit may force on its target.
-export type About = { line: string; rollerId: string; rolls: Seen[]; perCreature: boolean; rollerWaits: boolean; riderSaves?: Seen[] };
+// `forcerId`: the creature whose spell or ability the call is, when it names
+// one (Slayer's Counter answers a save its prey forces).
+export type About = { line: string; rollerId: string; rolls: Seen[]; perCreature: boolean; rollerWaits: boolean; riderSaves?: Seen[]; forcerId?: string };
 
 export function holdsCondition(creature: { conditions?: readonly string[] }, ...names: string[]): boolean {
   return (creature.conditions ?? []).some((written) => isConditionNamed(written, ...names));

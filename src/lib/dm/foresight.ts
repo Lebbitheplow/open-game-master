@@ -18,7 +18,8 @@ import { createPendingRoll, getPendingRoll, publicPendingRoll, setPendingWatch, 
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { spellEngineName, spellMechanicsFor } from "@/lib/content";
 import { boardCatch } from "@/lib/dm/area-casting";
-import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
+import { canHelpSaveNow, canReactNow, canShiftNow, inShiftReach, playerAtTable, stopReaches, type SaveHelp } from "@/lib/dm/chronal-shift";
+import { quarryFor } from "@/lib/dm/reaction-triggers";
 import { kindOfId, sideOf } from "@/lib/dm/combatant";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { attackNamed } from "@/lib/dm/enemy-profile";
@@ -272,11 +273,36 @@ function savesHelped(campaignId: string, encounter: Encounter, sheet: CharacterS
   });
 }
 
+// The creature whose spell or ability a held call is, when the call names one.
+export function forcerOfCall(call: Pick<HeldCall, "rawArguments">, encounterId: string | null | undefined): string | null {
+  const args = argsOf(call.rawArguments);
+  const ref = typeof args.casterEnemyId === "string" ? args.casterEnemyId : typeof args.enemyId === "string" ? args.enemyId : null;
+  return ref && encounterId ? (resolveEnemyRef(encounterId, ref)?.id ?? null) : null;
+}
+
+// Slayer's Counter (Monster Slayer 15, src/lib/dm/slayers-counter.ts): "A
+// reaction attacks your prey when it forces a save on you". Whether a save
+// `forcerId` is about to force on this character stops for it: they hold it,
+// their player can be asked, their reaction is theirs to take, and the
+// creature is the one under their Slayer's Prey. No Watch button is asked of
+// them: the stop comes only for their own save from their own prey.
+export function slayersCounterStops(campaignId: string, encounter: Encounter, ranger: CharacterSheet, forcerId: string): boolean {
+  return holdsFeature(ranger, "slayer's counter") && stopReaches(campaignId, ranger) && canReactNow(campaignId, ranger) && quarryFor(encounter.id, ranger, "slayer's prey") === forcerId;
+}
+
 // The watcher for this call and the choices they are offered, or null. A
 // wizard holding a number is asked first, then one holding a Chronal Shift
 // that reaches a roll a card will not already offer, then an artificer's
 // Flash of Genius or a divine soul's Favored by the Gods on a save.
 function watcherFor(campaignId: string, encounter: Encounter, about: About, ownCard: boolean, sheets: readonly CharacterSheet[]): { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[] } | null {
+  // A ranger's own save, forced by their prey: Slayer's Counter is asked first,
+  // since its attack comes before the roll anyone else would answer.
+  for (const roll of about.forcerId ? about.rolls : []) {
+    const ranger = roll.tag.roller === "hero" && roll.tag.kind === "save" ? sheets.find((sheet) => sheet.id === roll.ref) : null;
+    if (ranger && slayersCounterStops(campaignId, encounter, ranger, about.forcerId!)) {
+      return { watcher: ranger, power: "slayers_counter", choices: [{ name: ranger.name, rolls: [{ tag: roll.tag, reverse: "failure" }] }] };
+    }
+  }
   const side = (ref: string) => sideOf(encounter, kindOfId(encounter.id, ref) ?? "enemy", ref);
   const choicesOf = (rolls: Seen[], reverseFor: (roll: Seen) => WatchRoll["reverse"]): WatchChoice[] => {
     const one = (roll: Seen): WatchRoll => ({ tag: roll.tag, reverse: reverseFor(roll) });
@@ -325,7 +351,8 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
   const about = rollAbout(campaign, first, sheets, encounter);
   // A wizard's own check waits on its own card already (invoke-roll.ts); a
   // turn's own end is never held by its own watcher (turn-hold.ts).
-  return about ? openWatchStop(campaign, turn.id, calls, about, first.name === "request_roll" || first.name === "end_turn", encounter, sheets) !== null : false;
+  const forcerId = about ? forcerOfCall(first, encounter.id) : null;
+  return about ? openWatchStop(campaign, turn.id, calls, forcerId ? { ...about, forcerId } : about, first.name === "request_roll" || first.name === "end_turn", encounter, sheets) !== null : false;
 }
 
 // Opens a stop on what `about` says is about to roll, for the first watcher
@@ -421,7 +448,8 @@ export function watchStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCal
   // A player's own card answers their roll once it lands (after-roll.ts), so
   // only Portent's number is asked here, and never of the roller themselves.
   const rollerWaits = hero ? rollsCanWait(hero) : tag.kind === "attack";
-  const about: About = { line: `${shown} is about to make ${words}.`, rollerId: creature.id, rolls: [{ tag, ref: creature.id, name: shown }], perCreature: false, rollerWaits };
+  const forcerId = forcerOfCall(call, encounter.id);
+  const about: About = { line: `${shown} is about to make ${words}.`, rollerId: creature.id, rolls: [{ tag, ref: creature.id, name: shown }], perCreature: false, rollerWaits, ...(forcerId ? { forcerId } : {}) };
   const found = watcherFor(campaign.id, encounter, about, rollerWaits, sheets);
   if (!found) {
     return null;
@@ -433,7 +461,8 @@ export function watchStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCal
 // held call, so a call nobody watches asks nothing of every d20 it throws.
 export function anyoneWatching(campaignId: string): boolean {
   const encounter = getActiveEncounter(campaignId);
-  return Boolean(encounter) && listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === encounter?.id);
+  // A ranger holding Slayer's Counter is asked without a Watch button (slayersCounterStops).
+  return Boolean(encounter) && listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === encounter?.id || holdsFeature(sheet, "slayer's counter"));
 }
 
 globalThis.__odmWatchStop = watchStopForRoll;

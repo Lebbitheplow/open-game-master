@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
@@ -347,6 +348,12 @@ export function rollCharacterSave(
   extra?: SaveExtra,
 ): ForcedSave {
   const sheet = getSheetById(stale.id) ?? stale;
+  // Slayer's Counter's attack hit at the stop before this save
+  // (slayers-counter-mark.ts): it succeeds with no roll.
+  if (from && takeCounteredSave(sheet.id, from.id)) {
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, true, resists?.against, dc);
+    return { success: true, total: null, autoFailed: false, notes: ["Slayer's Counter: the attack hit, so this save succeeds with no roll"] };
+  }
   const shieldSave = single && ability === "dex" ? shieldMasterSaveBonus(sheet) : 0;
   const covered = saveCoverBonus(campaign.id, sheet.id, ability, extra);
   // Diehard: advantage against what would exhaust them.

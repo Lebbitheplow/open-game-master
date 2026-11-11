@@ -89,6 +89,12 @@ function unplaced(encounterId: string, a: string, b: string): boolean {
   return !map || !getTokenByRef(map.id, a) || !getTokenByRef(map.id, b);
 }
 
+// The creature under the holder's mark (Slayer's Prey), as a trigger row reads
+// it: named on their own condition, or carrying the mark with them as its source.
+export function quarryFor(encounterId: string, holder: CharacterSheet, mark: string): string | null {
+  return quarryOf(holder, mark) ?? markedBy(encounterId, holder.id, mark);
+}
+
 function markedBy(encounterId: string, holderId: string, mark: string): string | null {
   const key = textKey(mark);
   const enemy = listEnemies(encounterId).find((entry) =>

@@ -88,7 +88,7 @@ export type PendingRoll = {
   // A watch stop (src/lib/dm/foresight.ts): what it waits on, which feature
   // it is for, and whose roll it may answer when there is more than one
   // (`when`: the words a Chronal Shift waits for, "if it succeeds").
-  watch?: { line: string; deadline: string; power?: "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods"; choices?: Array<{ name: string; when: string }> } | null;
+  watch?: { line: string; deadline: string; power?: "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter"; choices?: Array<{ name: string; when: string }> } | null;
   userId: string;
   characterId: string | null;
   kind: string;
