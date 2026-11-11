@@ -137,7 +137,9 @@ await test("A card played as the Hand sends it does what the spend says: a capst
     for (const spend of build.spends) {
       // A spend that rides a weapon hit waits for one (Arcane Jolt, Wails
       // from the Grave: "after a sneak attack"); its own suite lands the hit.
-      if (spend.name === "Arcane Jolt" || spend.afterWeaponHit) continue;
+      // One that rides a wizard spell's damage waits for that (Power Surge:
+      // the wizard clause suite's surge-spend casts the spell first).
+      if (spend.name === "Arcane Jolt" || spend.afterWeaponHit || spend.afterSpellDamage) continue;
       const enemy = await stage(build.hero);
       // Psionic Recovery brings energy back, and is refused at a full pool.
       if (spend.name === "Psionic Recovery") {
