@@ -1,7 +1,8 @@
 import { named } from "@/lib/dm/roll-about";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
-import { featCheckRider, hasSkulker } from "@/lib/srd/feat-combat";
+import { featCheckRider } from "@/lib/srd/feat-combat";
+import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { d20Expression, type Advantage } from "@/lib/dice";
 import {
   exhaustionRollState,
@@ -626,12 +627,14 @@ function resolveUnfloored(
     // Stealth checks; the AC breakdown already knows what is worn.
     const armorStealth = skill.id === "stealth" && Boolean(wornBreakdown?.stealthDisadvantage);
     const sunlit = skill.id === "perception" && Boolean(extras?.sunlight);
-    // Skulker: dim light costs their Perception nothing (feat-combat.ts).
+    // Skulker and the Eagle's aspect: dim light costs their Perception
+    // nothing (dim-sight.ts).
+    const spares = skill.id === "perception" ? dimLightSpares(sheet) : null;
     const veiledBy = skill.id === "perception" ? (extras?.obscured ?? null) : null;
-    const veiled = veiledBy && hasSkulker(sheet) && /dim light/i.test(veiledBy) ? null : veiledBy;
+    const veiled = veiledBy && spares && /dim light/i.test(veiledBy) ? null : veiledBy;
     // Dim light: disadvantage on Perception that relies on sight (SRD 5.1,
-    // Vision and Light), which Skulker waives.
-    const dimSight = skill.id === "perception" && bySight && extras?.light === "dim" && !hasSkulker(sheet);
+    // Vision and Light), which they waive.
+    const dimSight = skill.id === "perception" && bySight && extras?.light === "dim" && !spares;
     // The feats' check riders: an expertise die, an advantage, a doubled
     // proficiency (src/lib/srd/feat-combat.ts).
     const featRider = featCheckRider(sheet, skill.id, { about: named(args.about), creature: named(args.creature) });
@@ -679,7 +682,7 @@ function resolveUnfloored(
       ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
       ...(armorStealth ? ["their armor imposes disadvantage on Stealth"] : []),
       ...(featRider ? [featRider.note] : []),
-      ...(veiledBy && !veiled ? ["Skulker: dim light costs their Perception nothing"] : []),
+      ...((veiledBy && !veiled) || (spares && bySight && extras?.light === "dim") ? [`${spares}: dim light costs their Perception nothing`] : []),
       ...(sunlit ? ["Sunlight Sensitivity: disadvantage on Perception in direct sunlight"] : []),
       ...(veiled ? [veiled] : []),
       ...(dimSight ? ["dim light: disadvantage on Perception by sight"] : []),

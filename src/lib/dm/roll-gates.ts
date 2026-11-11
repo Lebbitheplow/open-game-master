@@ -13,6 +13,7 @@
 // (contest-roll.ts rollCharacterCheck: proficiency and expertise, its
 // advantage and conditions, its features and effects).
 
+import { authoredStealthAtNormal, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -80,6 +81,10 @@ export function marchStealthProblem(
     return null;
   }
   if (pace === "normal" && alone && stealthyAlone(alone.roller, alone.terrain, clock.marched ?? [])) {
+    return null;
+  }
+  // The Wolf's aspect moves stealthily at a normal pace (authored "travel").
+  if (pace === "normal" && alone?.roller && authoredStealthAtNormal(alone.roller as AuthoredSheet)) {
     return null;
   }
   return { error: `The party is marching at a ${pace} pace, which leaves no room for stealth (SRD 5.1, Travel Pace). Travel at a slow pace to move stealthily, or let the march end (pass_time or a rest) before the Stealth check.`, refused: "rules" };

@@ -26,6 +26,7 @@ import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
 import { sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
 import { lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
+import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
 import { obscuredFor, silencedImmunity } from "@/lib/dm/zone-rules";
@@ -504,6 +505,7 @@ export function handleCheckNotice(
         ? sightPassiveShift({
             pace: clock.travelPace,
             byEar: args.by === "hearing",
+            spared: dimLightSpares(fresh),
             ...(ambient ? { light: lightForSheet(ambient, fresh) } : {}),
           })
         : { shift: 0, blind: false, disadvantage: false, notes: [] };

@@ -121,6 +121,13 @@ export type AuthoredEffect = Base &
     // Darkvision to this range, or `orAdd` more feet when the holder already
     // sees in the dark (Umbral Sight: 60, or 30 more).
     | { kind: "darkvision"; feet: number; orAdd?: number }
+    // Dim light costs the holder's Perception nothing (Aspect of the Beast,
+    // Eagle): src/lib/dm/dim-sight.ts, read by every Perception door.
+    | { kind: "dim_sight" }
+    // On the road (Aspect of the Beast): Elk doubles the pace of the holder and
+    // up to `companions` others travelling with them; Wolf moves stealthily at
+    // a normal pace (src/lib/dm/world-tools.ts, roll-gates.ts).
+    | { kind: "travel"; doubles?: { companions: number }; stealthAt?: "normal" }
     // An ability modifier (at least +1) added to the damage of the holder's weapon attacks
     // (Aura of Hate: Charisma, melee; Song of Victory: Intelligence, melee,
     // while bladesinging).

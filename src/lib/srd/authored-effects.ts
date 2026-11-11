@@ -442,6 +442,32 @@ export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: 
   return best + flat;
 }
 
+// ---- the road and the dark ----
+
+// The feature that spares the holder's Perception in dim light, or null.
+export function authoredDimSight(sheet: AuthoredSheet): string | null {
+  return activeAuthored(sheet, "dim_sight")[0]?.held.feature ?? null;
+}
+
+// What a travelling party's pace is multiplied by: 2 when one of them holds
+// a doubling (Elk) and the party is no larger than the holder and the
+// companions it carries along, else 1.
+export function authoredPaceFactor(travellers: readonly AuthoredSheet[]): number {
+  for (const sheet of travellers) {
+    for (const { effect } of activeAuthored(sheet, "travel")) {
+      if (effect.doubles && travellers.length <= effect.doubles.companions + 1) {
+        return 2;
+      }
+    }
+  }
+  return 1;
+}
+
+// Whether the holder moves stealthily at a normal pace (Wolf).
+export function authoredStealthAtNormal(sheet: AuthoredSheet): boolean {
+  return activeAuthored(sheet, "travel").some(({ effect }) => effect.stealthAt === "normal");
+}
+
 // ---- AC, speed, movement ----
 
 export function authoredAcBonus(sheet: AuthoredSheet): { bonus: number; parts: string[] } {

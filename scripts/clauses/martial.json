@@ -1342,16 +1342,15 @@
    },
    {
     "c": "dim light no longer hampers your Perception",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the engine was not shown to impose the dim-light disadvantage on Perception for anyone, so there was nothing to lift; no probe staged dim light"
+    "is": "held",
+    "by": "src/lib/dm/dim-sight.ts dimLightSpares (Eagle's dim_sight), read by rolls.ts and check_notice",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-eagle-dim-light"
    },
    {
     "c": "Elk doubles the travel pace of you and up to ten companions within 60 feet of you",
-    "is": "gap",
-    "read_only": true,
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-elk-travel",
-    "stopped": "the travel tool walks a prepared route's legs with the weather rolled; a doubled pace could only be read off a staged journey, which this suite does not build"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts authoredPaceFactor, in the travel tool's legs (world-tools.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-elk-travel"
    },
    {
     "c": "Tiger makes you proficient in two of Athletics, Acrobatics, Stealth and Survival",
@@ -1361,9 +1360,9 @@
    },
    {
     "c": "Wolf lets you track at a fast pace and move stealthily at a normal pace",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the row note says it is narrated (src/lib/srd/authored-effects-data.ts barbarian::Aspect of the Beast), but a pace's Perception and Stealth penalties are numbers; no journey was staged"
+    "is": "held",
+    "by": "src/lib/dm/roll-gates.ts marchStealthProblem (authoredStealthAtNormal); no pace refuses a tracking check",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-wolf-pace"
    }
   ]
  },

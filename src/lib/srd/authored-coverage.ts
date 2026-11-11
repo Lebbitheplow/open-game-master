@@ -130,6 +130,8 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   // Peerless Athlete's capacity and jumps (src/lib/srd/carry-jump-effects.ts).
   carry_factor: { file: "src/lib/dm/load-rules.ts", call: "authoredCarryFactor(" },
   jump_feet: { file: "src/lib/dm/jump-reach.ts", call: "authoredJumpFeet(" },
+  dim_sight: { file: "src/lib/dm/dim-sight.ts", call: "authoredDimSight(" },
+  travel: { file: "src/lib/dm/world-tools.ts", call: "authoredPaceFactor(" },
   move: { file: "src/lib/srd/index.ts", call: "authoredSpeeds(" },
   init_adv: { file: "src/lib/srd/trait-rules.ts", call: "authoredInitiativeAdvantage(" },
   init_ability: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },

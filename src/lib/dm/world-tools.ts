@@ -1,4 +1,5 @@
 import { turnLedger, writeTurnLedger } from "@/lib/dm/turn-marks";
+import { authoredPaceFactor } from "@/lib/srd/authored-effects";
 import { z } from "zod";
 import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
@@ -734,13 +735,15 @@ function travelStretch(
   // Pace), at the weather the party sets out in.
   const before = getClock(campaign.id);
   const weatherFactor = before.weather ? weatherTravelFactor(before.weather) : 1;
-  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor });
+  // The Elk's aspect doubles the party's pace (authored "travel").
+  const paceFactor = authoredPaceFactor(travellers);
+  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
   // A ranger's favored terrain: its difficult ground does not slow the group
   // on a leg of an hour or more (mt-srd-ranger.ts, Natural Explorer).
   const guide = "error" in leg ? null : naturalExplorerGuide(travellers, args.land, terrain, leg.hours);
   if (guide) {
     terrain = "normal";
-    leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor });
+    leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
   }
   if ("error" in leg) {
     return leg;

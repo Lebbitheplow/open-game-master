@@ -7,5 +7,4 @@ export const KNOWN = {
 };
 
 export const SKIP = {
-  "aspect-of-the-beast-elk-travel": "the travel tool walks a prepared route's legs with the weather rolled; a doubled pace could only be read off a staged journey, which this suite does not build",
 };

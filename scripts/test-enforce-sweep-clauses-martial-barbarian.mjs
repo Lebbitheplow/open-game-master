@@ -111,7 +111,55 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(liftLimits(sheet(bear)).capacityLb, 2 * liftLimits(sheet(other)).capacityLb, `a Bear carries ${liftLimits(sheet(bear)).capacityLb} lb, the same as any barbarian of their Strength`);
   });
 
-  await probe("aspect-of-the-beast-elk-travel", () => {});
+  // Elk: "the travel pace of you and up to ten companions within 60 feet of
+  // you is doubled". Two hours on the road at a normal pace: 6 miles, 12 with
+  // the Elk (no sky is rolled under four hours).
+  await probe("aspect-of-the-beast-elk-travel", async () => {
+    const elk = await totem(6, "bear", "elk");
+    const plain = await totem(6, "bear", "wolf");
+    await kit.endFight();
+    const went = async (who) => {
+      const out = await world.invoke("travel", { hours: 2, pace: "normal", characterIds: [who.id, ally.id] });
+      assert.equal(out.ok, true, out.error);
+      return JSON.stringify(out.result).match(/"miles":\s*([\d.]+)/)?.[1];
+    };
+    assert.deepEqual([await went(plain), await went(elk)], ["6", "12"], "the Elk doubles the party's pace");
+  });
+
+  // Eagle: "dim light doesn't impose disadvantage on your Wisdom (Perception)
+  // checks". A passive Perception in dim light is 5 lower for anyone else.
+  await probe("aspect-of-the-beast-eagle-dim-light", async () => {
+    const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+    const eagle = await totem(6, "bear", "eagle");
+    const plain = await totem(6, "bear", "wolf");
+    await kit.endFight();
+    // A clear sky: fog's own disadvantage is not the dim light's.
+    await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
+    const notices = async (who) => {
+      const score = computeSheetDerived(sheet(who)).passivePerception;
+      const out = await world.invoke("check_notice", { sense: "perception", dc: score, characterIds: [who.id], light: "dim" });
+      assert.equal(out.ok, true, out.error);
+      return out.result.anyNoticed;
+    };
+    assert.deepEqual([await notices(plain), await notices(eagle)], [false, true], "dim light costs the Eagle's Perception nothing");
+  });
+
+  // Wolf: "you can track other creatures while traveling at a fast pace, and
+  // you can move stealthily while traveling at a normal pace". After a normal
+  // pace march, a Stealth check is refused to the rest and open to the Wolf;
+  // a tracking (Survival) check at a fast pace is open.
+  await probe("aspect-of-the-beast-wolf-pace", async () => {
+    const wolf = await totem(6, "bear", "wolf");
+    const plain = await totem(6, "bear", "eagle");
+    await kit.endFight();
+    const sneaks = async (who) => {
+      assert.equal((await world.invoke("travel", { hours: 1, pace: "normal", characterIds: [who.id] })).ok, true);
+      return (await world.invoke("request_roll", { characterId: who.id, kind: "skill_check", skill: "stealth", dc: 10 })).ok;
+    };
+    assert.deepEqual([await sneaks(plain), await sneaks(wolf)], [false, true], "the Wolf moves stealthily at a normal pace");
+    assert.equal((await world.invoke("travel", { hours: 1, pace: "fast", characterIds: [wolf.id] })).ok, true);
+    assert.equal((await world.invoke("request_roll", { characterId: wolf.id, kind: "skill_check", skill: "survival", dc: 10 })).ok, true, "tracking at a fast pace");
+  });
 
   await probe("aspect-of-the-beast-tiger-skills", async () => {
     const tiger = await totem(6, "tiger", "tiger");

@@ -46,8 +46,18 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         abilities: ["str"],
         about: "push_pull_lift_break",
         gate: { choice: "bear" },
-        note: "Eagle's sight, Elk's travel pace and Wolf's tracking pace are narrated; Tiger's two skills are picked with the subclass's training (subclass-training.ts).",
+        note: "Eagle's mile-away sight is narrated; Tiger's two skills are picked with the subclass's training (subclass-training.ts).",
       },
+      // "Dim light doesn't impose disadvantage on your Wisdom (Perception) checks."
+      { kind: "dim_sight", gate: { choice: "eagle" } },
+      // "the travel pace of you and up to ten companions within 60 feet of you
+      // is doubled". The party travels together, so a party of eleven or
+      // fewer is within the 60 feet the march keeps.
+      { kind: "travel", doubles: { companions: 10 }, gate: { choice: "elk" } },
+      // "you can track other creatures while traveling at a fast pace, and you
+      // can move stealthily while traveling at a normal pace". Tracking is a
+      // Survival check no pace refuses; the normal pace is the one to lift.
+      { kind: "travel", stealthAt: "normal", gate: { choice: "wolf" } },
     ],
   },
   "barbarian::Totemic Attunement": {
