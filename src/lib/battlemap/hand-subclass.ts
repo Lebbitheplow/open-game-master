@@ -311,8 +311,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       spend.afterSpellDamage && turn.myTurn && !spellHurt(turn.marks).length
         ? { reason: `${spend.name} rides a wizard spell's damage: hurt a creature with one this turn first.`, spent: false }
         : null,
-      // Tempestuous Magic: after a spell of 1st level or higher cast this turn.
-      spend.afterLevelledCast && turn.myTurn && !levelledCastThisTurn(turn.marks)
+      // Tempestuous Magic: in a fight, after a spell of 1st level or higher
+      // cast this turn (out of one no turn is kept, and the engine takes it).
+      spend.afterLevelledCast && inFightOf(turn) === true && turn.myTurn && !levelledCastThisTurn(turn.marks)
         ? { reason: castFirstReason(spend.name, sheet.name), spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
