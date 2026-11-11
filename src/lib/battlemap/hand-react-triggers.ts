@@ -33,7 +33,7 @@ function eventOfHit(hit: PublicLastHit): TriggerEvent {
 
 const costOf = (action: string | undefined): HandCost => (action === "reaction" ? "reaction" : action === "bonus" ? "bonus" : action === "none" ? "free" : "action");
 
-function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean }): HandCard {
+function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean; anyTurn?: boolean }): HandCard {
   const { event, spec } = input;
   // `aimEnemy`: the player picks the creature (Master of Hexes' new quarry).
   const target: HandTarget = input.onAlly ? "ally" : input.aimEnemy || (spec.aimsAt && event.creatureId) ? "enemy" : "none";
@@ -63,7 +63,10 @@ function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: 
     prompt: `${event.creatureName}: ${spec.what}`,
     ...(event.creatureId ? { answers: { characterId: event.characterId || sheet.id, attackerId: event.creatureId, attacker: event.creatureName } } : {}),
   };
-  const kind = input.cost === "reaction" ? "reaction" : input.cost === "bonus" ? "bonus" : input.cost === "free" ? "free" : "action";
+  // `anyTurn`: a spend that costs nothing of the turn and answers a record on
+  // anyone's turn (Empowered Healing after an ally's healing roll) is asked as
+  // a reaction is, and spends none (ar-ws-empowered-healing.ts asks the same).
+  const kind = input.cost === "reaction" || input.anyTurn ? "reaction" : input.cost === "bonus" ? "bonus" : input.cost === "free" ? "free" : "action";
   return gated(base, standingGate(sheet, turn, kind), costGate(input.cost, turn, sheet, input.name));
 }
 
@@ -114,7 +117,7 @@ export function triggerCards(
       const spec = triggerSpecFor(spend.name);
       if (!spec || !gateHolds(spend.gate, sheet, held)) continue;
       for (const event of openFor(spec, events, context(triggerKey(textKey(spend.name), sheet.id))).slice(-1)) {
-        cards.push(card(sheet, turn, { id: spend.name, name: spend.name, cost: costOf(spend.action), spec, event, intent: { card: "feature", resourceId: spend.name }, rules: `${spend.name} answers ${spec.what}.`, resource: "", aimEnemy: spend.does.kind === "buff" && Boolean(spend.does.quarry) }));
+        cards.push(card(sheet, turn, { id: spend.name, name: spend.name, cost: costOf(spend.action), spec, event, intent: { card: "feature", resourceId: spend.name }, rules: `${spend.name} answers ${spec.what}.`, resource: "", aimEnemy: spend.does.kind === "buff" && Boolean(spend.does.quarry), anyTurn: spend.does.kind === "reroll_heal" }));
       }
     }
     for (const reaction of held.entry.reactions ?? []) {

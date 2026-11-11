@@ -445,6 +445,9 @@ export type SpendDoes =
       dispelsDarkness?: boolean;
     }
   | { kind: "reroll_save" }
+  // The healing dice of a spell cast this turn rolled again, the new roll
+  // standing (Empowered Healing: src/lib/dm/ar-ws-empowered-healing.ts).
+  | { kind: "reroll_heal" }
   // Temporary hit points: to the holder, or to allies in range.
   | { kind: "temp_hp"; formula: Formula; allies?: { rangeFt: number; count: Formula } }
   // Hit points to the characters in reach (Turn the Tide, Balm of Peace), at

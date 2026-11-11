@@ -66,5 +66,14 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
     ],
     spends: [{ name: "Lunar Empowerment", aliases: ["Moonlight"], action: "bonus", gate: { choiceOf: FULL_MOON }, does: { kind: "light", brightFt: 10, dimFt: 10, condition: "moonlight" } }],
   },
+  // "Spend 1 sorcery point to reroll healing dice for yourself or an ally,
+  // once per turn": it answers the healing dice a spell rolled this turn
+  // (src/lib/srd/trigger-table.ts), costs nothing of the turn, and keeps its
+  // once a turn itself, since the turn is often an ally's
+  // (src/lib/dm/ar-ws-empowered-healing.ts).
+  "sorcerer::Empowered Healing": {
+    subclass: "Divine Soul",
+    spends: [{ name: "Empowered Healing", pool: { id: "sorcery_points", amount: 1 }, action: "none", does: { kind: "reroll_heal" } }],
+  },
   "sorcerer::Spell Bombardment": { subclass: "Wild Magic", heldBy: { file: "src/lib/dm/ar-ws-bombardment.ts", call: "holdsFeature(sheet, SPELL_BOMBARDMENT)" } },
 };

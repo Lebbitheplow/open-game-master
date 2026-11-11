@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
+import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
@@ -436,6 +437,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     }
     case "save_area":
       return saveArea(ctx, does);
+    case "reroll_heal":
+      return rerollHealing(ctx);
     case "reroll_save":
       return rerollLastSave(ctx);
     case "temp_hp": {

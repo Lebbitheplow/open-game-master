@@ -12,6 +12,7 @@ export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
   const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
+  rig.outfit("sorcerer", "Divine Soul", { spells: ["Cure Wounds"] });
   rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
   rig.outfit("sorcerer", "Aberrant Mind", { spells: ["Dissonant Whispers"] });
   rig.outfit("sorcerer", "Shadow Magic", { spells: ["Darkness"] });
@@ -116,7 +117,66 @@ export function probes(rig, shared) {
     },
     // ---- Divine Soul
     "favored-rest": rests(["sorcerer", "Divine Soul"], "sub_favored_by_the_gods", "short"),
-    "empowered-healing-door": hasDoor(["sorcerer", "Divine Soul"], "Empowered Healing", () => ({ targetCharacterId: friend().id })),
+    // The healing dice of a spell cast this turn, rolled again for 1 sorcery
+    // point (src/lib/dm/ar-ws-empowered-healing.ts). Cure Wounds heals 1d8 a
+    // slot level plus the Charisma modifier.
+    "empowered-healing-door": async () => {
+      const who = soul();
+      const points = () => left(who, "sorcery_points");
+      const cure = async (caster, target, faces, level) => {
+        const out = await call("heal", { characterId: target.id, casterId: caster.id, spell: "Cure Wounds", ...(level ? { level } : {}) }, faces);
+        assert.equal(out.ok, true, out.error);
+      };
+      const hurtFriend = (hpNow) => world.patch(friend().id, { currentHp: hpNow });
+      // No healing roll on record: refused, the point kept, and no card dealt.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      const early = await spend(who, "Empowered Healing");
+      assert.equal(early.ok, false, "with no healing rolled this turn");
+      assert.equal(points(), 20, "nothing spent");
+      assert.equal(rig.table.offered(who, "Empowered Healing").length, 0, "no card with no roll to answer");
+      // 3d8 + 4 on a 2, a 7 and a 3: 16. The 2 and the 3 are rolled again (an 8 and a 1): 20.
+      await cure(who, friend(), [2, 7, 3], 3);
+      assert.equal(sheet(friend()).currentHp, 26);
+      assert.deepEqual(rig.table.offered(who, "Empowered Healing").map((card) => card.disabled), [null], "one card, open, while the roll is on record");
+      const again = await spend(who, "Empowered Healing", {}, [8, 1]);
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([again.rolled.map((die) => [die.sides, die.face]), sheet(friend()).currentHp, points()], [[[8, 8], [8, 1]], 30, 19], "[dice rolled again, the friend's hit points, sorcery points]");
+      // Once a turn: a second healing spell that turn is not rolled again.
+      kit.freshTurn();
+      await cure(who, friend(), [1], 1);
+      const twice = await spend(who, "Empowered Healing", {}, [8]);
+      assert.equal(twice.ok, false, "a second use that turn");
+      assert.deepEqual([sheet(friend()).currentHp, points()], [35, 19], "nothing rolled, nothing spent");
+      // The new roll stands when it is lower: 4 + 4 becomes 1 + 4.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [4], 1);
+      const lower = await spend(who, "Empowered Healing", {}, [1]);
+      assert.equal(lower.ok, true, lower.error);
+      assert.equal(sheet(friend()).currentHp, 15, "10 + 5: the reroll is kept");
+      // A die above half is left alone unless the call says how many to roll again.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [5], 1);
+      const high = await spend(who, "Empowered Healing");
+      assert.equal(high.ok, false, "a 5 on a d8, no number given");
+      assert.equal(points(), 20, "nothing spent");
+      const named = await spend(who, "Empowered Healing", { amount: 1 }, [8]);
+      assert.equal(named.ok, true, named.error);
+      assert.deepEqual([sheet(friend()).currentHp, points()], [22, 19], "10 + 8 + 4, for a point");
+      // An ally's roll: within 5 feet of the sorcerer, on the ally's own turn; not from 20 feet.
+      const ally = S("Divine Soul", 6);
+      for (const [x, expected] of [[4, { ok: true, hp: 20, points: 19 }], [1, { ok: false, hp: 16, points: 20 }]]) {
+        await stage(who, { others: [ally], first: ally });
+        kit.place(ally.id, x, 5);
+        world.patch(ally.id, { currentHp: 10 });
+        await cure(ally, ally, [2], 1);
+        const out = await spend(who, "Empowered Healing", {}, [6]);
+        assert.deepEqual({ ok: out.ok, hp: sheet(ally).currentHp, points: points() }, expected, `an ally ${(5 - x) * 5} feet from the sorcerer rolled Cure Wounds: ${String(out.error ?? "").slice(0, 120)}`);
+      }
+      await kit.endFight();
+    },
     wings: async () => {
       await stage(soul());
       assert.deepEqual(rig.speeds(soul()), {});
@@ -582,7 +642,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
-    "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },

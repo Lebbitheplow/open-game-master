@@ -30,7 +30,7 @@ type Ref = { id: string; name: string };
 
 // The last four are read off the running turn, never written here
 // (reaction-triggers.ts triggerRecords).
-export type TriggerKind = "save" | "death" | "turn_end" | "cast" | "pet_damage" | "turn_start" | "weapon_hit" | "surge" | "wind_step";
+export type TriggerKind = "save" | "death" | "turn_end" | "cast" | "pet_damage" | "turn_start" | "weapon_hit" | "surge" | "wind_step" | "heal_roll";
 
 // One trigger. `characterId` is the character it befell (who saved, whose pet
 // was hurt, who surged); `forcer` the creature that did it (forced the save,
@@ -57,6 +57,10 @@ export type LastSave = {
   targets?: string[];
   // A turn's end: whether an enemy's (or a character's) turn it was.
   enemy?: boolean;
+  // A healing spell's dice (kind heal_roll, ar-ws-empowered-healing.ts): the
+  // roll's own row, and the hit points the healed creature had before it.
+  rollId?: string;
+  hpBefore?: number;
   // The reactions that answered it, by answer key (last-hit.ts answerKey).
   answered?: string[];
   encounterId: string;
@@ -169,7 +173,7 @@ export function noteSaveDamage(campaignId: string, characterId: string, forcerId
 // A trigger other than a save, written where it happens: a death
 // (enemy-damage.ts), a turn's end (last-hit.ts closeHitsAtTurnEnd), a cast, a
 // pet's damage (pet-tools.ts), an Action Surge (resource-turn.ts).
-export function recordTrigger(campaignId: string, record: { kind: "death" | "turn_end" | "cast" | "pet_damage"; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy">>, turn?: string): LastSave | null {
+export function recordTrigger(campaignId: string, record: { kind: "death" | "turn_end" | "cast" | "pet_damage" | "heal_roll"; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy" | "rollId" | "hpBefore">>, turn?: string): LastSave | null {
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);
 }
 

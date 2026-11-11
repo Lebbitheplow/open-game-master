@@ -1515,8 +1515,9 @@
   "clauses": [
    {
     "c": "Spend 1 sorcery point to reroll healing dice for yourself or an ally, once per turn.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door",
+    "by": "authored spend Empowered Healing (does reroll_heal, 1 sorcery point, no cost of the turn): src/lib/dm/ar-ws-empowered-healing.ts rerollHealing answers the heal_roll trigger record heal-spell.ts writes (last-save.ts, trigger-table.ts: this turn, rolled by the sorcerer or a creature within 5 feet). Rulings: the dice rolled again are those showing half their faces or less, or the lowest N when amount says; the new roll stands, higher or lower; once a turn on the fight turn marks; in a fight only, as every trigger record is"
    }
   ]
  },
