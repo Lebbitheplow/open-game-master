@@ -123,16 +123,128 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
   const blade = hero("fighter", "Arcane Archer", 7);
   const champion = hero("fighter", "Champion", 7);
 
+  // Arcane Shot (XGtE): the options a sheet knows are its picks ("Arcane
+  // Shot: Bursting Arrow"), as the builder writes them.
+  const ALL_SHOTS = ["Banishing", "Beguiling", "Bursting", "Enfeebling", "Grasping", "Piercing", "Seeking", "Shadow"];
+  const knows = (who, names) =>
+    world.patch(who.id, { features: [...sheet(who).features.filter((feature) => !feature.name.startsWith("Arcane Shot: ")), ...names.map((name) => ({ ...sheet(who).features[0], name: `Arcane Shot: ${name} Arrow` }))] });
+  const srd = await import("../src/lib/srd/index.ts");
+  // One option on a fresh turn: an arrow that hits, then the option on it.
+  // Returns the hit points the option took and what the engine said.
+  async function loose(who, option, faces) {
+    const [enemy] = await stage(who);
+    // Out of melee, where a bow shoots with no disadvantage.
+    kit.place(enemy.id, 8, 5);
+    const noRoll = option === "piercing" || option === "seeking";
+    if (!noRoll) {
+      const shot = await swing(who, enemy, [15, 4], { weapon: "Longbow" });
+      assert.equal(shot.ok, true, shot.error);
+    }
+    const before = foe(enemy).currentHp;
+    const out = await spend(who, "Arcane Shot", { variant: option, targetEnemyId: enemy.id }, faces);
+    assert.equal(out.ok, true, `${option}: ${out.error}`);
+    return { enemy, took: before - foe(enemy).currentHp, out };
+  }
+
   await probe("arcane-shot-once-per-turn", async () => {
+    knows(archer, ["Bursting", "Shadow"]);
     const [enemy] = await stage(archer);
-    const first = await spend(archer, "Arcane Shot", { targetEnemyId: enemy.id });
+    kit.place(enemy.id, 8, 5);
+    const shot = await swing(archer, enemy, [15, 4], { weapon: "Longbow" });
+    assert.equal(shot.ok, true, shot.error);
+    const first = await spend(archer, "Arcane Shot", { variant: "bursting", targetEnemyId: enemy.id }, [3, 4]);
     assert.equal(first.ok, true, first.error);
-    const second = await spend(archer, "Arcane Shot", { targetEnemyId: enemy.id });
-    assert.equal(second.ok, false, `a second Arcane Shot in one turn was taken (${used(archer, "sub_arcane_shot")} of 2 spent, no arrow fired)`);
+    const second = await spend(archer, "Arcane Shot", { variant: "shadow", targetEnemyId: enemy.id }, [3, 4, 1]);
+    assert.equal(second.ok, false, `a second Arcane Shot in one turn was taken (${used(archer, "sub_arcane_shot")} of 2 spent)`);
+    assert.equal(used(archer, "sub_arcane_shot"), 1, "the refused one spent nothing");
   });
 
-  await probe("arcane-shot-options", () => {
+  // "when you fire an arrow from a shortbow or longbow as part of the Attack
+  // action ... deciding when the arrow hits unless the option makes no attack roll".
+  await probe("arcane-shot-on-the-arrow", async () => {
+    knows(archer, ["Bursting", "Seeking"]);
+    const [enemy] = await stage(archer);
+    const early = await spend(archer, "Arcane Shot", { variant: "bursting", targetEnemyId: enemy.id }, [3, 4]);
+    assert.equal(early.ok, false, "an option was applied with no arrow in the creature");
+    assert.equal(used(archer, "sub_arcane_shot"), 0, "and the refusal spent nothing");
+    // A sword's hit is no arrow.
+    knows(blade, ["Bursting", "Seeking"]);
+    const [other] = await stage(blade);
+    assert.equal((await swing(blade, other, [15, 4])).ok, true);
+    assert.equal((await spend(blade, "Arcane Shot", { variant: "bursting", targetEnemyId: other.id }, [3, 4])).ok, false, "a longsword's hit carried an Arcane Shot");
+    assert.equal((await spend(blade, "Arcane Shot", { variant: "seeking", targetEnemyId: other.id }, [5, 4, 1])).ok, false, "a Seeking Arrow was loosed with no bow");
+    // The option with no attack roll takes one attack of the Attack action.
+    const [third] = await stage(archer);
+    const before = r.budget(archer)?.attacksMade ?? 0;
+    const sought = await spend(archer, "Arcane Shot", { variant: "seeking", targetEnemyId: third.id }, [5, 4, 1]);
+    assert.equal(sought.ok, true, sought.error);
+    assert.equal((r.budget(archer)?.attacksMade ?? 0) - before, 1, "a Seeking Arrow took no attack of the Attack action");
+  });
+
+  await probe("arcane-shot-options", async () => {
     assert.notDeepEqual(options.optionLabelsOpenedBy("fighter", "Arcane Shot"), [], "Arcane Shot opens no pick of its options");
+    assert.equal(options.optionsOfKind("arcane_shot").length, 8, "the eight options");
+    for (const [level, count] of [[3, 2], [6, 2], [7, 3], [10, 4], [15, 5], [18, 6]]) {
+      assert.equal(options.optionSlotsFor("fighter", "Arcane Archer", level, "arcane_shot"), count, `options known at level ${level}`);
+    }
+    assert.equal(options.optionSlotsFor("fighter", "Champion", 7, "arcane_shot"), 0, "a Champion knows none");
+    // An option not among the picks is refused.
+    knows(archer, ["Bursting", "Shadow"]);
+    const [enemy] = await stage(archer);
+    kit.place(enemy.id, 8, 5);
+    assert.equal((await swing(archer, enemy, [15, 4], { weapon: "Longbow" })).ok, true);
+    const out = await spend(archer, "Arcane Shot", { variant: "banishing", targetEnemyId: enemy.id }, [1]);
+    assert.equal(out.ok, false, "an option the archer never chose was used");
+    assert.equal(used(archer, "sub_arcane_shot"), 0, "and the refusal spent nothing");
+  });
+
+  // "the save DC is 8 + your proficiency bonus + your Intelligence modifier"
+  await probe("arcane-shot-save-dc", async () => {
+    const sage = hero("fighter", "Arcane Archer", 7, { ...BOW, abilities: { int: 18 } });
+    knows(sage, ["Shadow", "Banishing"]);
+    const derived = srd.computeSheetDerived(sheet(sage));
+    const dc = 8 + derived.proficiencyBonus + derived.abilityMods.int;
+    assert.equal(dc, 8 + 3 + 4);
+    // The dummy saves at +0: a die one under the DC fails, the DC itself holds.
+    const failed = await loose(sage, "shadow", [3, 4, dc - 1]);
+    assert.equal(r.foeHas(failed.enemy, "shadow arrow"), true, `a ${dc - 1} against DC ${dc} saved: ${show(failed.out)}`);
+    const held = await loose(sage, "shadow", [3, 4, dc]);
+    assert.equal(r.foeHas(held.enemy, "shadow arrow"), false, `a ${dc} against DC ${dc} failed: ${show(held.out)}`);
+    const sent = await loose(sage, "banishing", [1]);
+    assert.equal(r.foeHas(sent.enemy, "banished"), true, `a failed Charisma save left the creature here: ${show(sent.out)}`);
+  });
+
+  // "Beguiling, Bursting, Enfeebling, Grasping and Shadow deal 2d6 damage,
+  // Piercing and Seeking 1d6 and Banishing none"
+  await probe("arcane-shot-damage", async () => {
+    knows(archer, ALL_SHOTS);
+    const dex = srd.computeSheetDerived(sheet(archer)).abilityMods.dex;
+    for (const option of ["beguiling", "bursting", "enfeebling", "grasping", "shadow"]) {
+      assert.equal((await loose(archer, option, [3, 4, 20])).took, 7, `${option}: 2d6`);
+    }
+    assert.equal((await loose(archer, "banishing", [20])).took, 0, "banishing deals none below 18th level");
+    for (const option of ["piercing", "seeking"]) {
+      // The arrow's own 1d8 + Dexterity, and 1d6 more, on a failed save; half each on a success.
+      assert.equal((await loose(archer, option, [5, 4, 1])).took, 5 + dex + 4, `${option}: the arrow and 1d6`);
+      assert.equal((await loose(archer, option, [5, 4, 20])).took, Math.floor((5 + dex) / 2) + 2, `${option}: half on a success`);
+    }
+    // The riders the engine holds: half damage from its weapon attacks.
+    const weak = await loose(archer, "enfeebling", [3, 4, 1]);
+    assert.equal(r.foeHas(weak.enemy, "enfeebling arrow"), true, show(weak.out));
+    const hpBefore = sheet(archer).currentHp;
+    kit.place(weak.enemy.id, 6, 5);
+    await r.enemyHits(weak.enemy, archer, [16, 4]);
+    assert.equal(hpBefore - sheet(archer).currentHp, 3, "the dummy's club deals 4 + 2, halved by the Enfeebling Arrow");
+  });
+
+  // "at 18th level these become 4d6, 2d6 and 2d6 force"
+  await probe("arcane-shot-18th", async () => {
+    const master = hero("fighter", "Arcane Archer", 18, BOW);
+    knows(master, ALL_SHOTS);
+    const dex = srd.computeSheetDerived(sheet(master)).abilityMods.dex;
+    assert.equal((await loose(master, "bursting", [1, 2, 3, 4])).took, 10, "4d6");
+    assert.equal((await loose(master, "banishing", [3, 4, 20])).took, 7, "banishing: 2d6 force");
+    assert.equal((await loose(master, "seeking", [5, 3, 4, 1])).took, 5 + dex + 7, "seeking: the arrow and 2d6");
   });
 
   // "The prestidigitation or druidcraft cantrip": chosen, then cast.

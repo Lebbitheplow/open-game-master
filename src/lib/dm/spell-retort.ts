@@ -77,6 +77,11 @@ function usesStrength(enemy: EncounterEnemy, attack: EnemyAttack, ranged: boolea
 
 // The damage an enfeebled creature's blow deals.
 export function enfeebledBlow(enemy: EncounterEnemy, attack: EnemyAttack, ranged: boolean, amount: number): number {
+  // An Enfeebling Arrow halves every weapon attack's damage, not only the
+  // Strength ones (src/lib/dm/mt-fb-arcane-shot.ts lays the condition).
+  if (enemy.conditions.includes("enfeebling arrow")) {
+    return Math.floor(amount / 2);
+  }
   return enemy.conditions.includes("enfeebled") && usesStrength(enemy, attack, ranged) ? Math.floor(amount / 2) : amount;
 }
 

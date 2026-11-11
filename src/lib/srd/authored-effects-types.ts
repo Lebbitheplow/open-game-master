@@ -476,6 +476,8 @@ export type SpendDoes =
   // A creature the feature makes, as an ally with its stat block (the steel
   // defender, src/lib/dm/summon-defender.ts).
   | { kind: "summon"; form: string }
+  // One option of an Arcane Archer's Arcane Shot (src/lib/dm/mt-fb-arcane-shot.ts).
+  | { kind: "arcane_shot"; option: "banishing" | "beguiling" | "bursting" | "enfeebling" | "grasping" | "piercing" | "seeking" | "shadow" }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }

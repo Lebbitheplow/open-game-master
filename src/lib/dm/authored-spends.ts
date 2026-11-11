@@ -104,7 +104,10 @@ function prepareCost(
       commit: () => {
         const live = getActiveEncounter(campaign.id);
         if (onceKey && live && budget) {
-          storeBudget(live, { ...budget, oncePerTurn: [...budget.oncePerTurn, onceKey] });
+          // Read again: the effect may have spent an attack of the turn itself
+          // (a Piercing Arrow, src/lib/dm/mt-fb-arcane-shot.ts).
+          const now = budgetFor(live, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) ?? budget;
+          storeBudget(live, { ...now, oncePerTurn: [...now.oncePerTurn, onceKey] });
         }
         return {};
       },

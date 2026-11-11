@@ -809,7 +809,7 @@
     "lib/battlemap/hand-options.ts#whole": [["identity", 3, "the options aimed at one creature or at the creatures of the player's choice, by whole name"], ["identity", 3, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"]],
     "lib/battlemap/hand-spells.ts#whole": [["identity",2,"spells and riders by whole name"]],
     "lib/battlemap/hand-spells.ts#whole-single": [["identity",2,"concentration by textKey"]],
-    "lib/battlemap/hand-subclass.ts#partial": [["identity",1,"spends by whole name"],["key",3,"the prefix of a once-per-turn budget key"],["parse",1,"ODM's own counter guidance read for the turn cost it names (bundled data)"]],
+    "lib/battlemap/hand-subclass.ts#partial": [["identity",1,"spends by whole name"],["key",4,"the prefix of a once-per-turn budget key"],["parse",1,"ODM's own counter guidance read for the turn cost it names (bundled data)"]],
     "lib/battlemap/hand-summon.ts#first": [["key",1,"a spell's own level, read off the slot levels its catalogue's first form is offered at (issue 685)"]],
     "lib/battlemap/hand-summon.ts#keyed": [["key",12,"a summoning card's creatures by the name the catalogue gave them (picked from it), their numbers and budgets by slot level, the player's counts by those names, and the catalogues and the table's fetched spell facts by textKey of the sheet's spell names (issue 685)"]],
     "lib/battlemap/hand-summon.ts#partial": [["key",1,"a board control's own value, \"Skeleton:+\", which the Hand wrote and the bridge held to its offer"]],
@@ -2801,6 +2801,9 @@
     "lib/srd/mt-fb-surge-state.ts#partial": [["key",1,"the engine's own Wild Surge conditions, by whole name and their \"(number)\" note"]],
     "lib/srd/mt-fb-surge-state.ts#number": [["parse",1,"the table's number in a condition the engine wrote"]],
     "lib/dm/mt-fb-wild-surge.ts#first": [["search",1,"the nearest creature within 30 feet: a sort by distance, its first"]],
-    "lib/dm/mt-fb-wild-surge.ts#whole": [["key",1,"the surge's own area on the board, by its zone key on both sides"]]
+    "lib/dm/mt-fb-wild-surge.ts#whole": [["key",1,"the surge's own area on the board, by its zone key on both sides"]],
+    "lib/srd/mt-fb-arcane-shot.ts#partial": [["identity",2,"an SRD weapon (shortbow, longbow) by a whole word of the name it is carried under, textKey"],["key",1,"the turn's own marks: a key the engine wrote, by its prefix"]],
+    "lib/dm/mt-fb-arcane-shot.ts#bypass": [["identity",1,"a carried weapon's own name asked whether it is a shortbow or longbow (the line itself)"]],
+    "lib/dm/mt-fb-arcane-shot.ts#first": [["search",1,"the first ally within 30 feet of the creature, when the player named none"]]
   }
 }

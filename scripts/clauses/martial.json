@@ -251,18 +251,21 @@
   "clauses": [
    {
     "c": "Once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-once-per-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-once-per-turn",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts fighter::Arcane Shot (oncePerTurn)"
    },
    {
     "c": "when you fire an arrow from a shortbow or longbow as part of the Attack action, you can apply one Arcane Shot option you know, deciding when the arrow hits unless the option makes no attack roll",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#TRIGGER_AS_CARD"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-on-the-arrow",
+    "by": "src/lib/dm/mt-fb-arcane-shot.ts arcaneShot (a bow's hit this turn, or one attack of the Attack action for Piercing and Seeking)"
    },
    {
     "c": "You know two options (Banishing, Beguiling, Bursting, Enfeebling, Grasping, Piercing, Seeking, Shadow) and learn another at 7th, 10th, 15th and 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-options"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-options",
+    "by": "src/lib/srd/options.ts GRANTS arcane_shot and src/lib/srd/options.json"
    },
    {
     "c": "you have two uses",
@@ -278,18 +281,21 @@
    },
    {
     "c": "the save DC is 8 + your proficiency bonus + your Intelligence modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-save-dc",
+    "by": "src/lib/dm/mt-fb-arcane-shot.ts arcaneShot (dc)"
    },
    {
     "c": "Beguiling, Bursting, Enfeebling, Grasping and Shadow deal 2d6 damage, Piercing and Seeking 1d6 and Banishing none",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-damage",
+    "by": "src/lib/srd/mt-fb-arcane-shot.ts shotDamage"
    },
    {
     "c": "at 18th level these become 4d6, 2d6 and 2d6 force",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-18th",
+    "by": "src/lib/srd/mt-fb-arcane-shot.ts shotDamage (18th level)"
    }
   ]
  },

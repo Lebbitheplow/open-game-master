@@ -189,7 +189,11 @@ const CASTING_ABILITY = {
   bard: "cha", cleric: "wis", druid: "wis", paladin: "cha", ranger: "wis", sorcerer: "cha", warlock: "cha", wizard: "int", artificer: "int",
 };
 // A pick the builder's owed choices write as a feature of its own.
-const EXTRA_FEATURES = { "Draconic Bloodline": ["Dragon Ancestor: Red"] };
+const EXTRA_FEATURES = {
+  "Draconic Bloodline": ["Dragon Ancestor: Red"],
+  // The Arcane Shot options a sheet knows are picks: every one, so each variant of the spend is walked.
+  "Arcane Archer": ["Banishing", "Beguiling", "Bursting", "Enfeebling", "Grasping", "Piercing", "Seeking", "Shadow"].map((name) => `Arcane Shot: ${name} Arrow`),
+};
 const slots = () => Object.fromEntries([1, 2, 3, 4, 5].map((level) => [String(level), { max: 3, used: 1 }]));
 
 export async function openSpendsRig() {

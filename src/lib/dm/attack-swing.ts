@@ -33,6 +33,7 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { chargedBudget } from "@/lib/dm/mt-fb-charge";
 import { growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { NATURAL_HIT } from "@/lib/srd/mt-fb-run";
+import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
@@ -161,6 +162,10 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // feature that answers a Sneak Attack (Wails from the Grave) knows the
     // first creature, and that one landed at all.
     // A natural weapon's hit is kept as one, for what rides it (Infectious Fury).
+    // An arrow from a shortbow or longbow, for an Arcane Shot to ride.
+    if (isBow(record.weapon)) {
+      markAttackTurn(campaign.id, record, `${BOW_HIT}${record.targetEnemyId}`);
+    }
     if (authoredNaturalWeapon(scene.sheet, record.weapon)) {
       markAttackTurn(campaign.id, record, `${NATURAL_HIT}${record.targetEnemyId}`);
     }

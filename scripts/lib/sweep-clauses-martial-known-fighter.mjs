@@ -6,20 +6,6 @@ const ROWS_B = "src/lib/srd/authored-effects-data-b.ts";
 const ROWS_4 = "src/lib/srd/authored-effects-data4.ts";
 
 export const KNOWN = {
-  "arcane-shot-once-per-turn": {
-    severity: "medium", kind: "rule-wrong",
-    where: "src/lib/srd/authored-resources.json sub_arcane_shot (a plain counter: no oncePerTurn, no attack it rides)",
-    note: "Both uses go in one turn, with no arrow fired.",
-    fix: "Make Arcane Shot a pc_attack option (as maneuvers are) that claims a once-a-turn key.",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/dm/pc-attack-riders.ts"],
-  },
-  "arcane-shot-options": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/options.ts GRANTS and src/lib/srd/options.json (no option kind for Arcane Shot; maneuvers, runes and disciplines have one)",
-    note: "Nothing lets a player choose the two options known or learn another at 7th, 10th, 15th and 18th level, so no engine can tell Banishing from Bursting.",
-    fix: "Add an arcane_shot option kind opened by Arcane Shot with steps 3:2, 7:3, 10:4, 15:5, 18:6 and the eight options' rows.",
-    files: ["src/lib/srd/options.ts", "src/lib/srd/options.json"],
-  },
 
   "rune-carver-runes-do-nothing": {
     severity: "medium", kind: "rule-missing",

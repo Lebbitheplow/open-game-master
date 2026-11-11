@@ -214,7 +214,9 @@ const WRITTEN: Record<string, TriggerSpec> = {
   sub_magic_users_nemesis: { on: [{ kind: "cast", rangeFt: 60 }], what: "a creature casting a spell within 60 feet of them" , aimsAt: true },
   sub_spell_thief: { on: [{ kind: "cast", atHolder: true }], what: "a spell a creature has just cast at them" , aimsAt: true },
   hurl_through_hell: { on: [{ kind: "own_hit" }], what: "a creature they have hit with an attack this turn" , aimsAt: true },
-  sub_arcane_shot: { on: [{ kind: "own_hit" }], what: "an arrow of theirs that hit this turn" , aimsAt: true },
+  // Arcane Shot is no row here: its spend asks for the arrow itself (a bow's
+  // hit this turn, or one attack of the Attack action for the two options with
+  // no attack roll; src/lib/dm/mt-fb-arcane-shot.ts).
   sub_accursed_specter: { on: [{ kind: "death", byHolder: true, types: ["humanoid"] }], what: "a humanoid they have just slain" },
   sub_wings_unfurled: { on: [{ kind: "own_wind_step" }], what: "their Step of the Wind this turn" },
   sub_call_the_hunt: { on: [{ kind: "own_rage_entered" }], what: "the rage they have just entered" },

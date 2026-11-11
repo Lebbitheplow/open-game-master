@@ -48,6 +48,7 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // for, not new art: a dragon for the sorcerer's ancestor, the ranger's and
   // the wizard's own features, the druid's circle.
   "family/option-dragon-ancestor": { kind: "spell", slug: "summon-draconic-spirit" },
+  "family/option-arcane-shot": { kind: "feature", slug: "arcane-shot" },
   "family/option-favored-enemy": { kind: "feature", slug: "favored-enemy" },
   "family/option-favored-terrain": { kind: "feature", slug: "natural-explorer" },
   "family/option-land-circle": { kind: "feature", slug: "druid-circle" },

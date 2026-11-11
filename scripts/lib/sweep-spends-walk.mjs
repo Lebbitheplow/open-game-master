@@ -50,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -196,6 +196,20 @@ async function step(rig, scene, name, notes) {
       return save(scene.ally.id);
     case "the holder hit a foe":
       return swing([18, 5]);
+    // An arrow from a longbow in the near foe, which an Arcane Shot rides (and
+    // the bow its two options with no attack roll are loosed from). The holder
+    // is handed the bow; beside the foe it shoots at disadvantage, so both
+    // d20s are laid. The turn is kept: its mark is what the spend asks for.
+    case "the holder shot a foe with a longbow": {
+      const sheet = world.sheet(holder);
+      if (!sheet.equipment.some((item) => item.name === "Longbow")) {
+        world.patch(holder, { equipment: [...sheet.equipment.map((item) => ({ ...item, equipped: false })), { name: "Longbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] });
+      }
+      world.dice(18, 18, 5);
+      const out = await world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Longbow" });
+      world.clearDice();
+      return out;
+    }
     // A run of two squares straight at the foe by the holder's own move, then
     // the hit: what rides a charge (Ferocious Charger) asks the turn for both.
     // The move is the player's own, through the board's route: the GM's

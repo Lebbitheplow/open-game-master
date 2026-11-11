@@ -1862,7 +1862,7 @@
     "lib/dm/spell-pool.ts#toLowerCase": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/spell-retort.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/spell-retort.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["english-source",1,"the condition label the engine writes (\"fire shield (fire)\")"]],
-    "lib/dm/spell-retort.ts#str-includes": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/spell-retort.ts#str-includes": [["key", 3, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/spell-retort.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/spell-retort.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/spell-riders.ts#toLowerCase": [["key",1,"a turn-end mark's condition label"],["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
@@ -2905,6 +2905,8 @@
     "lib/dm/mt-fb-beast.ts#toLowerCase": [["english-source", 4, "an authored natural weapon's English name (Bite, Claws, Tail), lowered for the condition's name and a sentence"]],
     "lib/srd/mt-fb-training.ts#str-list": [["key", 1, "skill ids (engine vocabulary)"]],
     "lib/dm/mt-fb-wild-surge.ts#toUpperCase": [["display", 1, "an ability id shown as its abbreviation in a roll's detail"]],
-    "lib/srd/mt-fb-surge-state.ts#RegExp i": [["key", 1, "the engine's own Wild Surge conditions and the number in them"]]
+    "lib/srd/mt-fb-surge-state.ts#RegExp i": [["key", 1, "the engine's own Wild Surge conditions and the number in them"]],
+    "lib/srd/mt-fb-arcane-shot.ts#str-list": [["key", 1, "the Arcane Shot option keys (engine vocabulary)"]],
+    "lib/srd/mt-fb-arcane-shot.ts#str-includes": [["english-source", 2, "SRD weapon names (bundled data), compared through textKey"]]
   }
 }

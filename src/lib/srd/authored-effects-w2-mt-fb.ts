@@ -45,7 +45,34 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
         },
       },
     ],
+  },  // Arcane Shot (XGtE): one option a turn on an arrow from a shortbow or
+  // longbow, from the two uses. Which options a sheet knows, and what each
+  // does, is src/lib/dm/mt-fb-arcane-shot.ts.
+  "fighter::Arcane Shot": {
+    subclass: "Arcane Archer",
+    spends: [
+      {
+        name: "Arcane Shot",
+        pool: { id: "sub_arcane_shot" },
+        action: "none",
+        oncePerTurn: true,
+        does: {
+          kind: "variants",
+          options: {
+            banishing: { does: { kind: "arcane_shot", option: "banishing" } },
+            beguiling: { does: { kind: "arcane_shot", option: "beguiling" } },
+            bursting: { does: { kind: "arcane_shot", option: "bursting" } },
+            enfeebling: { does: { kind: "arcane_shot", option: "enfeebling" } },
+            grasping: { does: { kind: "arcane_shot", option: "grasping" } },
+            piercing: { does: { kind: "arcane_shot", option: "piercing" } },
+            seeking: { does: { kind: "arcane_shot", option: "seeking" } },
+            shadow: { does: { kind: "arcane_shot", option: "shadow" } },
+          },
+        },
+      },
+    ],
   },
+
   // "When you enter your rage, roll a d8 for a magical effect that lasts the
   // rage": rolled as the rage is entered and applied by
   // src/lib/dm/mt-fb-wild-surge.ts, which keeps the surge in force as the

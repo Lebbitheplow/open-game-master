@@ -10,6 +10,7 @@
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
 import { pendingSurge, surgeOf } from "@/lib/srd/mt-fb-surge-state";
+import { BOW_HIT, NO_ROLL, shotsKnown } from "@/lib/srd/mt-fb-arcane-shot";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -302,6 +303,8 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         // A Controlled Surge chooses between the numbers it rolled.
         options: Object.entries(does.options)
           .filter(([, option]) => option.does.kind !== "wild_surge" || !option.does.pick || (pendingSurge(sheet) ?? []).includes(option.does.pick) || !pendingSurge(sheet))
+          // An Arcane Shot offers the options the archer knows.
+          .filter(([, option]) => option.does.kind !== "arcane_shot" || shotsKnown(sheet.features).includes(option.does.option))
           .map(([value]) => ({ value, label: pickLabel(value) })),
       };
     }
@@ -322,6 +325,22 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         const aimed = aimDoes(does, aim.variant);
         return aimed.kind === "cleanse" && !sheet.conditions.some((entry) => aimed.conditions.some((name) => isConditionNamed(entry, name)))
           ? { reason: `${spend.name} ends being ${aimed.conditions.join(" or ")}, and ${sheet.name} is neither.`, spent: false }
+          : null;
+      })(),
+      // An Arcane Shot goes with an option the archer knows, on an arrow that
+      // hit this turn; the two loosed with no attack roll need no hit
+      // (src/lib/dm/mt-fb-arcane-shot.ts).
+      (() => {
+        if (does.kind !== "variants" || !Object.values(does.options).some((option) => option.does.kind === "arcane_shot")) {
+          return null;
+        }
+        const known = shotsKnown(sheet.features);
+        if (!known.length) {
+          return { reason: `${spend.name} needs its options chosen on the sheet first.`, spent: false };
+        }
+        const rides = (turn.marks ?? []).some((mark) => mark.startsWith(BOW_HIT));
+        return turn.myTurn && !rides && !known.some((shot) => NO_ROLL.includes(shot))
+          ? { reason: `${spend.name} rides an arrow from a shortbow or longbow that hit this turn: land one first.`, spent: false }
           : null;
       })(),
       // A Wild Surge's choice waits for two rolls, and its repeat for its
