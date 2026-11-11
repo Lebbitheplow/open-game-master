@@ -173,11 +173,14 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     // "until the end of your next turn. While it is within 5 feet of you".
     effects: [{ kind: "mark", condition: "unwavering mark", effect: "disadv_others", melee: true, untilNextTurnEnds: true, rangeFt: 5 }],
   },
+  // "Creatures provoke an opportunity attack from you when they move 5 feet or
+  // more while within your reach, and a creature you hit with an opportunity
+  // attack has its speed reduced to 0": the opportunity engine's own trigger
+  // and hit (opportunity.ts, opportunity-strike.ts). It was a reaction taken
+  // on the call's word, with no creature having moved.
   "fighter::Hold the Line": {
     subclass: "Cavalier",
-    reactions: [
-      { name: "Hold the Line", does: { kind: "attack", rangeFt: 5, onHitCondition: { name: "held in place", rounds: 1 } } },
-    ],
+    heldBy: { file: "src/lib/dm/opportunity.ts", call: "movesWithinReachAt(" },
   },
   "fighter::Vigilant Defender": {
     subclass: "Cavalier",
@@ -332,6 +335,7 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   },
   "fighter::Inspiring Surge": {
     subclass: "Banneret",
-    reactions: [{ name: "Inspiring Surge", usedBy: "party", does: { kind: "attack", rangeFt: 5 } }],
+    // "use a reaction to make one weapon attack; two allies from 18th level".
+    reactions: [{ name: "Inspiring Surge", usedBy: "party", does: { kind: "attack", rangeFt: 5, weaponRange: true, answers: [[10, "1"], [18, "2"]] } }],
   },
 };

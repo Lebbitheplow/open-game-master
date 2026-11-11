@@ -164,11 +164,17 @@ export function channelOptions(sheet: OptionSheet): HeldOption[] {
   return [...new Set(all)].map((name) => ({ name, cost: costOf(CHANNEL_DIVINITY, name) }));
 }
 
+// An option with a counter of its own (Telekinetic Movement: "free once per
+// short rest or by spending a die") is dealt as that counter's card, which
+// takes the free use first and then a die; a second card of it from the pool
+// would be the same play twice.
+const OWN_COUNTER = ["telekinetic movement"];
+
 // The Psionic Energy uses the sheet's features name.
 export function psionicOptions(sheet: OptionSheet): HeldOption[] {
   const out: HeldOption[] = [];
   for (const feature of sheet.features) {
-    const found = PSIONIC_ENERGY.find(([option]) => isNamed(feature.name, option));
+    const found = PSIONIC_ENERGY.find(([option]) => isNamed(feature.name, option) && !OWN_COUNTER.includes(option));
     if (found && !out.some((entry) => textKey(entry.name) === textKey(found[0]))) {
       out.push({ name: feature.name.trim(), cost: costOf(PSIONIC_ENERGY, found[0]) });
     }

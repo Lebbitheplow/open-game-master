@@ -27,13 +27,15 @@ const SPELL_TABLE = { file: "src/lib/srd/features.ts", call: "export function su
 
 export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   // ---- barbarian ----
+  // The rituals are cast with the spells' own tool, ritual true
+  // (src/lib/srd/mt-fb-casts.ts); what they reveal is the GM's to tell.
   "barbarian::Spirit Seeker": {
     subclass: "Path of the Totem Warrior",
-    narrated: "Ritual castings of beast sense and speak with animals: information and talk the GM narrates, no number in a fight.",
+    heldBy: { file: "src/lib/srd/granted-casts.ts", call: "featureCastsHeld(" },
   },
   "barbarian::Spirit Walker": {
     subclass: "Path of the Totem Warrior",
-    narrated: "A ritual commune with nature: information the GM gives, no number in a fight.",
+    heldBy: { file: "src/lib/srd/granted-casts.ts", call: "featureCastsHeld(" },
   },
   "barbarian::Vengeful Ancestors": {
     subclass: "Path of the Ancestral Guardian",

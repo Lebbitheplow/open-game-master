@@ -526,6 +526,9 @@ export type AuthoredSpend = {
   // straight, right before a melee attack on it this turn (Ferocious Charger;
   // src/lib/dm/mt-fb-charge.ts chargeRefusal).
   chargeFeet?: number;
+  // Rides a hit of one of the holder's natural weapons this turn, on the
+  // creature named (Infectious Fury; src/lib/dm/mt-fb-charge.ts naturalHitRefusal).
+  afterNaturalHit?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
@@ -590,7 +593,11 @@ export type ReactionDoes =
   // One weapon attack with the reaction (the holder's own, or an ally's
   // when the feature belongs to someone else in the party).
   // `vowed`: only at the creature under the holder's Vow of Enmity, once it has attacked.
-  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean }
+  // `weaponRange`: any weapon attack, in the weapon's own reach or range
+  // (Inspiring Surge: "one weapon attack"), not only one within rangeFt.
+  // `answers`: how many allies may answer one trigger, by the holder's class
+  // level (Inspiring Surge: one, two from 18th; src/lib/dm/mt-fb-surge.ts).
+  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean; weaponRange?: boolean; answers?: Array<[number, string]> }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
   | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string> }
   // The holder gains a condition (Tokens of the Departed's soul trinket).

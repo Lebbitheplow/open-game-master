@@ -7,7 +7,7 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { enemiesStrikeWalker } from "@/lib/dm/opportunity-sides";
-import { entersReachAt, leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/opportunity-reach-logic";
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -463,7 +463,10 @@ export function resolvePcOpportunityAttacks(
     }
     // Polearm Master: a creature entering the polearm's reach provokes too.
     const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
-    if (!leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) && !entering) {
+    // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
+    // within the reach provokes too.
+    const within = holdsFeature(sheet, "Hold the Line") ? movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    if (!leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) && !entering && !within) {
 
       continue;
     }

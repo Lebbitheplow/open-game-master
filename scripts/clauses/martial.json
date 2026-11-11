@@ -231,8 +231,9 @@
   "clauses": [
    {
     "c": "The prestidigitation or druidcraft cantrip",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-archer-lore-cantrip"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-archer-lore-cantrip",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts fighter::Arcane Archer Lore (choose) and src/lib/srd/mt-fb-casts.ts featureCastsHeld"
    },
    {
     "c": "proficiency in Arcana or Nature",
@@ -477,8 +478,9 @@
   "clauses": [
    {
     "c": "Creatures provoke an opportunity attack from you when they move 5 feet or more while within your reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:fighter::Hold the Line::Hold the Line#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: hold-the-line-moves-within-reach",
+    "by": "src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (movesWithinReachAt)"
    },
    {
     "c": "a creature you hit with an opportunity attack has its speed reduced to 0",
@@ -974,8 +976,9 @@
   "clauses": [
    {
     "c": "Cast telekinesis for free once per long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_telekinetic_master#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-master-free-cast",
+    "by": "src/lib/srd/counter-casts.ts sub_telekinetic_master (the cast spends the use)"
    },
    {
     "c": "make one weapon attack as a bonus action while concentrating on it",
@@ -1189,8 +1192,9 @@
   "clauses": [
    {
     "c": "Action Surge also lets an ally",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:fighter::Inspiring Surge::Inspiring Surge#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-answers-a-surge",
+    "by": "src/lib/srd/trigger-table.ts inspiring surge (the surge on record)"
    },
    {
     "c": "within 60 feet",
@@ -1199,13 +1203,15 @@
    },
    {
     "c": "use a reaction to make one weapon attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-any-weapon"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-any-weapon",
+    "by": "src/lib/dm/authored-reactions.ts attack (weaponRange)"
    },
    {
     "c": "two allies from 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-one-ally"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-one-ally",
+    "by": "src/lib/dm/mt-fb-surge.ts answersRefusal (answers: one, two from 18th)"
    }
   ]
  },
@@ -1232,9 +1238,9 @@
   "clauses": [
    {
     "c": "Ritual casting of beast sense and speak with animals.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; the row is narrated (src/lib/srd/authored-effects-data.ts barbarian::Spirit Seeker: \"Ritual castings of beast sense and speak with animals: information and talk the GM narrates, no number in a fight.\") but whether cast_spell takes either spell as a ritual from a barbarian with no spell list was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (ritualOnly), src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-seeker-rituals"
    }
   ]
  },
@@ -1357,9 +1363,9 @@
   "clauses": [
    {
     "c": "Cast commune with nature as a ritual",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; narrated (src/lib/srd/authored-effects-data.ts barbarian::Spirit Walker: \"A ritual commune with nature: information the GM gives, no number in a fight.\")"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (ritualOnly), src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-walker-ritual"
    },
    {
     "c": "the answer arrives as a spirit beast",
@@ -1507,9 +1513,9 @@
   "clauses": [
    {
     "c": "Cast augury or clairvoyance",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: a cast of either spell by a barbarian with no spell list"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_consult_the_spirits",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: consult-the-spirits-cast"
    },
    {
     "c": "once per short or long rest",
@@ -1519,9 +1525,9 @@
    },
    {
     "c": "using Wisdom, without a slot or components",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_consult_the_spirits (ability wis, noMaterial, slot free)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: consult-the-spirits-wisdom"
    }
   ]
  },
@@ -1879,9 +1885,9 @@
    },
    {
     "c": "a natural-weapon hit forces a Wisdom save: the target either attacks a creature of your choice or takes 2d12 psychic damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_infectious_fury#HANDS_BACK",
-    "recorded_by": "spends-hands-back-counter-sub-infectious-fury"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: infectious-fury",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Infectious Fury (afterNaturalHit; src/lib/dm/mt-fb-charge.ts naturalHitRefusal)"
    }
   ]
  },
@@ -2020,9 +2026,9 @@
    },
    {
     "c": "cast with Wisdom",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a cast of the chosen cantrip by the barbarian was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (the cantrip chosen, ability wis)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: giants-power-cast-with-wisdom"
    }
   ]
  },

@@ -135,10 +135,21 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.notDeepEqual(options.optionLabelsOpenedBy("fighter", "Arcane Shot"), [], "Arcane Shot opens no pick of its options");
   });
 
-  await probe("arcane-archer-lore-cantrip", () => {
-    const taught = JSON.stringify(features.subclassSpellsFor("fighter", "Arcane Archer", 3));
-    const picks = JSON.stringify(sheet(archer).features.map((feature) => feature.name));
-    assert.match(`${taught} ${picks}`, /prestidigitation|druidcraft/i, `no table and no pick gives the cantrip (spells: ${taught})`);
+  // "The prestidigitation or druidcraft cantrip": chosen, then cast.
+  await probe("arcane-archer-lore-cantrip", async () => {
+    const lore = hero("fighter", "Arcane Archer", 3, BOW);
+    await kit.endFight();
+    const early = await world.invoke("use_spell_slot", { characterId: lore.id, spell: "Prestidigitation" });
+    assert.equal(early.ok, false, "before the cantrip is chosen");
+    const wrong = await spend(lore, "Arcane Archer Lore", { variant: "fire bolt" });
+    assert.equal(wrong.ok, false, `a cantrip the feature does not offer: ${show(wrong)}`);
+    const chosen = await spend(lore, "Arcane Archer Lore", { variant: "prestidigitation" });
+    assert.equal(chosen.ok, true, `no pick gives the cantrip: ${show(chosen)}`);
+    assert.ok(sheet(lore).features.some((feature) => feature.name === "Arcane Archer Lore (Prestidigitation)"));
+    const cast = await world.invoke("use_spell_slot", { characterId: lore.id, spell: "Prestidigitation" });
+    assert.equal(cast.ok, true, `the cantrip chosen cannot be cast: ${cast.error}`);
+    assert.equal((await world.invoke("use_spell_slot", { characterId: lore.id, spell: "Druidcraft" })).ok, false, "the one not chosen");
+    assert.ok(features.subclassSpellsFor, "the subclass tables are still read");
   });
 
   await probe("magic-arrow-magical", async () => {
@@ -252,15 +263,27 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(sheet(ally).currentHp, hurt + 3, "a 20 against AC 13 + 1 still hits, for half of 6");
   });
 
+  // On the creature's own turn it sidesteps 5 feet, from beside the fighter to
+  // beside the fighter: no reach is left, and Hold the Line strikes all the same.
   const line = hero("fighter", "Cavalier", 10);
-  const onEnemyTurn = async () => {
-    const [enemy] = await stage(line);
+  const sidestep = async (who) => {
+    const [enemy] = await stage(who);
     const encounter = world.encounter();
     kit.saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => !entry.characterId), turnBudget: null });
-    const out = await react(line, "Hold the Line", { targetEnemyId: enemy.id }, [15, 4, 4]);
-    assert.equal(out.ok, true, out.error);
+    const moved = await r.forced([15, 4, 4], () => world.invoke("move_token", { token: enemy.id, x: 6, y: 4 }));
+    assert.equal(moved.ok, true, moved.error);
     return enemy;
   };
+  const onEnemyTurn = () => sidestep(line);
+  await probe("hold-the-line-moves-within-reach", async () => {
+    const enemy = await sidestep(line);
+    assert.ok(300 - foe(enemy).currentHp > 0, "a creature that moved 5 feet within the cavalier's reach was not struck");
+    assert.ok(world.encounter().reactionsUsed.includes(line.id), "it is the cavalier's reaction");
+    const other = await sidestep(ally);
+    assert.equal(300 - foe(other).currentHp, 0, "a Champion strikes only a creature leaving their reach");
+    const none = await react(line, "Hold the Line", { targetEnemyId: enemy.id }, [15, 4, 4]);
+    assert.equal(none.ok, false, "no reaction is taken on the call's word: the engine strikes when the creature moves");
+  });
   await probe("hold-the-line-speed-0", async () => {
     const enemy = await onEnemyTurn();
     assert.ok(foeHas(enemy, "held in place"), "the opportunity attack's hit left the creature free to move");
@@ -651,6 +674,20 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.ok(has(allies[0], "bulwark of force"), "an ally 30 feet away was left out");
   });
 
+  // "Cast telekinesis for free once per long rest": the spell's own tool
+  // casts it with no slot and spends the use; a bare spend is refused.
+  await probe("telekinetic-master-free-cast", async () => {
+    const master = hero("fighter", "Psi Warrior", 18);
+    await stage(master);
+    const bare = await spend(master, "Telekinetic Master");
+    assert.equal(bare.ok, false, `a bare spend: ${show(bare)}`);
+    assert.equal(used(master, "sub_telekinetic_master"), 0);
+    const cast = await world.invoke("use_spell_slot", { characterId: master.id, spell: "Telekinesis", level: 5 });
+    assert.equal(cast.ok, true, cast.error);
+    assert.deepEqual([used(master, "sub_telekinetic_master"), sheet(master).concentratingOn], [1, "Telekinesis"], "the use spent, the spell held");
+    kit.freshTurn();
+    assert.equal((await world.invoke("use_spell_slot", { characterId: master.id, spell: "Telekinesis", level: 5 })).ok, false, "once per long rest");
+  });
   await probe("telekinetic-master-bonus-attack", async () => {
     const master = hero("fighter", "Psi Warrior", 18);
     const [enemy] = await stage(master);
@@ -767,12 +804,29 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const out = await react(first, "Inspiring Surge", { targetEnemyId: enemy.id }, [15, 4]);
     assert.equal(out.ok, false, "an ally 70 feet from the Banneret took the attack");
   });
+  // "Action Surge also lets an ally": with no surge, there is nothing to answer.
+  await probe("inspiring-surge-answers-a-surge", async () => {
+    const [enemy] = await stage(banneret, { cast: [[first, 6, 4]] });
+    const early = await react(first, "Inspiring Surge", { targetEnemyId: enemy.id }, [15, 4]);
+    assert.equal(early.ok, false, "an ally took the attack with no Action Surge used");
+    await spend(banneret, "Action Surge");
+    const out = await react(first, "Inspiring Surge", { targetEnemyId: enemy.id }, [15, 4]);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(world.encounter().reactionsUsed.includes(first.id), "the ally's reaction");
+  });
   await probe("inspiring-surge-one-ally", async () => {
     const [enemy] = await stage(banneret, { cast: [[first, 6, 4], [second, 6, 6]] });
     await spend(banneret, "Action Surge");
     const answers = [];
     for (const ally of [first, second]) answers.push((await react(ally, "Inspiring Surge", { targetEnemyId: enemy.id }, [15, 4])).ok);
     assert.deepEqual(answers, [true, false], "at 10th level one ally answers the surge");
+    assert.ok(!world.encounter().reactionsUsed.includes(second.id), "the ally refused keeps their reaction");
+    const marshal = hero("fighter", "Banneret", 18);
+    const [foe2] = await stage(marshal, { cast: [[first, 6, 4], [second, 6, 6], [archer, 4, 5]] });
+    await spend(marshal, "Action Surge");
+    const later = [];
+    for (const ally of [first, second, archer]) later.push((await react(ally, "Inspiring Surge", { targetEnemyId: foe2.id }, [15, 4])).ok);
+    assert.deepEqual(later, [true, true, false], `two allies from 18th level: ${JSON.stringify(world.encounter().turnBudget?.oncePerTurn)}`);
   });
   await probe("inspiring-surge-any-weapon", async () => {
     const [enemy] = await stage(banneret, { cast: [[archer, 4, 5]] });

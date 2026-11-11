@@ -11,10 +11,11 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -100,12 +101,20 @@ function findReaction(ctx: Ctx): Found | null | ToolError {
     return { error: `${ctx.sheet.name} does not have ${named.reaction.name}; only its holder takes that reaction. Nothing was spent.`, refused: "rules" };
   }
   // A reaction the feature gives an ally: someone at the table holds it.
+  // Two at the table may hold it: the one whose turn this is did what the
+  // reaction answers (the banneret who surged), and the first was asked alone.
+  const acting = getActiveEncounter(ctx.campaign.id)?.turnBudget?.ownerId;
+  const holders: Found[] = [];
   for (const stale of listSheets(ctx.campaign.id)) {
     const holder = getSheetById(stale.id) ?? stale;
     const held = heldAuthored(holder).find((entry) => entry.key === named.row.key);
     if (held && !holder.deathSaves?.dead) {
-      return { reaction: named.reaction, held, holder, variant: "" };
+      holders.push({ reaction: named.reaction, held, holder, variant: "" });
     }
+  }
+  const serving = holders.find((entry) => entry.holder.id === acting) ?? holders[0];
+  if (serving) {
+    return serving;
   }
   return { error: `Nobody at the table has ${named.reaction.name}, so ${ctx.sheet.name} cannot answer with it. Nothing was spent.`, refused: "rules" };
 }
@@ -807,8 +816,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           return { error: `${reaction.name} answers ${enemy.displayName}'s attack, and the server has none on record. Nothing was spent.`, refused: "rules" };
         }
       }
-      if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
+      if (!does.weaponRange && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}; ${reaction.name} is a melee attack. Nothing was spent.`, refused: "rules" };
+      }
+      const crowded = does.answers ? answersRefusal(ctx.campaign.id, holder, reaction.name, Number(resolveFormula(does.answers, held.level))) : null;
+      if (crowded) {
+        return crowded;
       }
       // Each of these answers what another creature does (moves, attacks,
       // forces a save, is commanded) on that creature's turn or its holder's,
@@ -825,6 +838,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
       if (typeof result.error === "string") {
         return toolError(result);
+      }
+      if (does.answers) {
+        noteAnswer(ctx.campaign.id, holder, reaction.name, ctx.sheet.id);
       }
       if (does.onHitCondition && result.hit) {
         const fresh = getEnemy(enemy.id);

@@ -95,6 +95,27 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.ok(grants.some((grant) => /aspect of the beast/i.test(grant.name)), `the Tiger's two skills have no pick: the subclass's training at 6th level is [${grants.map((grant) => grant.name).join(", ")}]`);
   });
 
+  // "Ritual casting of beast sense and speak with animals" (3rd level) and
+  // "Cast commune with nature as a ritual" (10th): as rituals, and no other way.
+  await probe("spirit-seeker-rituals", async () => {
+    const seeker = await totem(3, "bear");
+    await kit.endFight();
+    for (const spell of ["Beast Sense", "Speak with Animals"]) {
+      const plain = await world.invoke("use_spell_slot", { characterId: seeker.id, spell });
+      assert.equal(plain.ok, false, `${spell} cast outright, with no slot to pay for it`);
+      const ritual = await world.invoke("use_spell_slot", { characterId: seeker.id, spell, ritual: true });
+      assert.equal(ritual.ok, true, `${spell} as a ritual: ${ritual.error}`);
+    }
+    assert.equal((await world.invoke("use_spell_slot", { characterId: seeker.id, spell: "Commune with Nature", ritual: true })).ok, false, "Spirit Walker's ritual at 3rd level");
+    assert.equal((await world.invoke("use_spell_slot", { characterId: seeker.id, spell: "Detect Magic", ritual: true })).ok, false, "a ritual the feature does not name");
+  });
+  await probe("spirit-walker-ritual", async () => {
+    const walker = await totem(10, "bear", "bear");
+    await kit.endFight();
+    const ritual = await world.invoke("use_spell_slot", { characterId: walker.id, spell: "Commune with Nature", ritual: true });
+    assert.equal(ritual.ok, true, ritual.error);
+    assert.equal((await world.invoke("use_spell_slot", { characterId: walker.id, spell: "Commune with Nature" })).ok, false, "not outright");
+  });
   await probe("totemic-attunement-bear", async () => {
     const bear = await totem(14, "bear", "bear", "bear");
     const [enemy] = await stage(ally, { cast: [[bear, 6, 4]] });
@@ -282,6 +303,26 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(out.ok, false, `a blinded barbarian shielded an ally they cannot see (${sheet(ally).currentHp - hurt} damage taken back)`);
   });
 
+  // "Cast augury or clairvoyance once per short or long rest, using Wisdom,
+  // without a slot or components."
+  await probe("consult-the-spirits-cast", async () => {
+    const seer = hero("barbarian", "Path of the Ancestral Guardian", 10, AXE);
+    await kit.endFight();
+    const cast = await world.invoke("use_spell_slot", { characterId: seer.id, spell: "Augury" });
+    assert.equal(cast.ok, true, cast.error);
+    assert.equal(cast.result.slotLevel, null, "no slot");
+    assert.equal(r.used(seer, "sub_consult_the_spirits"), 1);
+    assert.equal((await world.invoke("use_spell_slot", { characterId: seer.id, spell: "Clairvoyance" })).ok, false, "one use between the two");
+    assert.equal((await world.invoke("use_spell_slot", { characterId: seer.id, spell: "Bless" })).ok, false, "no other spell");
+    await world.invoke("take_rest", { kind: "short" });
+    assert.equal((await world.invoke("use_spell_slot", { characterId: seer.id, spell: "Clairvoyance" })).ok, true, "clairvoyance, with no focus worth 100 gp carried");
+  });
+  await probe("consult-the-spirits-wisdom", async () => {
+    const { grantedCastsOf } = await import("../src/lib/srd/granted-casts.ts");
+    const seer = hero("barbarian", "Path of the Ancestral Guardian", 10, AXE);
+    const grants = grantedCastsOf(sheet(seer)).filter((grant) => grant.source === "Consult the Spirits");
+    assert.deepEqual(grants.map((grant) => [grant.spell, grant.ability, grant.slot, grant.noMaterial]), [["Augury", "wis", "free", true], ["Clairvoyance", "wis", "free", true]]);
+  });
   await probe("spirit-shield-dice", async () => {
     for (const [level, dice] of [[6, 2], [9, 2], [10, 3], [13, 3], [14, 4]]) {
       const shield = hero("barbarian", "Path of the Ancestral Guardian", level, AXE);
@@ -603,6 +644,35 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const lost = await lostTo("Longsword");
     assert.equal(lost, Math.floor((4 + MOD + rageBonus(14)) / 2), `a longsword in the same hands deals ${lost} through resistance to nonmagical weapons`);
   });
+  // "A natural-weapon hit forces a Wisdom save: the target either attacks a
+  // creature of your choice or takes 2d12 psychic damage."
+  await probe("infectious-fury", async () => {
+    const fury = (enemy, variant, faces) => spend(beast, "Infectious Fury", { targetEnemyId: enemy.id, variant }, faces);
+    const [enemy] = await stage(beast);
+    rage(beast);
+    const idle = await fury(enemy, "damage", 2);
+    assert.equal(idle.ok, false, `with no hit landed: ${show(idle)}`);
+    await swing(beast, enemy, [15, 4], { weapon: "Longsword" });
+    const sword = await fury(enemy, "damage", 2);
+    assert.equal(sword.ok, false, `after a sword's hit: ${show(sword)}`);
+    assert.equal(r.used(beast, "sub_infectious_fury"), 0, "a refusal spends nothing");
+    kit.freshTurn();
+    await swing(beast, enemy, [15, 4], { weapon: "Claws" });
+    const before = foe(enemy).currentHp;
+    const failed = await fury(enemy, "damage", 2);
+    assert.equal(failed.ok, true, failed.error);
+    assert.deepEqual([failed.result.dc, failed.result.saved, before - foe(enemy).currentHp], [8 + prof(14) + MOD, false, 4], "2d12 psychic at 2 each on a failed Wisdom save");
+    assert.equal(r.used(beast, "sub_infectious_fury"), 1);
+    kit.freshTurn();
+    await swing(beast, enemy, [15, 4], { weapon: "Claws" });
+    const held = foe(enemy).currentHp;
+    const made = await fury(enemy, "damage", 20);
+    assert.deepEqual([made.result.saved, held - foe(enemy).currentHp], [true, 0], "a save made: nothing");
+    kit.freshTurn();
+    await swing(beast, enemy, [15, 4], { weapon: "Claws" });
+    const turned = await fury(enemy, "attack", 2);
+    assert.match(String(turned.result?.onFail), /melee attack against another creature/, `the other choice: ${show(turned)}`);
+  });
   await probe("bestial-soul-adapt", async () => {
     await kit.endFight();
     const out = await spend(beast, "Bestial Soul", { variant: "swim" });
@@ -695,6 +765,18 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.ok(sheet(who).features.some((feature) => feature.name === "Giant's Power (Thaumaturgy)"));
   });
 
+  // "Your choice of the druidcraft or thaumaturgy cantrip, cast with Wisdom."
+  await probe("giants-power-cast-with-wisdom", async () => {
+    const { grantedCastsOf } = await import("../src/lib/srd/granted-casts.ts");
+    const who = await giant(3);
+    await kit.endFight();
+    assert.equal((await world.invoke("use_spell_slot", { characterId: who.id, spell: "Thaumaturgy" })).ok, false, "before the cantrip is chosen");
+    await choose(who, "Giant's Power", "thaumaturgy");
+    const cast = await world.invoke("use_spell_slot", { characterId: who.id, spell: "Thaumaturgy" });
+    assert.equal(cast.ok, true, `the cantrip chosen cannot be cast: ${cast.error}`);
+    assert.deepEqual(grantedCastsOf(sheet(who)).filter((grant) => grant.source === "Giant's Power").map((grant) => [grant.spell, grant.ability]), [["Thaumaturgy", "wis"]]);
+    assert.equal((await world.invoke("use_spell_slot", { characterId: who.id, spell: "Druidcraft" })).ok, false, "the one not chosen");
+  });
   await probe("giants-havoc-reach", async () => {
     const who = await giant(3);
     const [enemy] = await stage(who);

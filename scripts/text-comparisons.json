@@ -1634,7 +1634,7 @@
     "lib/dm/ooc-question.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/ooc-question.ts#str-eq": [["key",7,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/opportunity-strike.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/opportunity-strike.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/opportunity-strike.ts#str-includes": [["key", 2, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/opportunity-strike.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/opportunity.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/dm/option-costs.ts#\\b": [["display",1,"an SRD option name title-cased"]],
@@ -2896,10 +2896,11 @@
     "lib/db/turn-journal.ts#\\w": [["key",3,"the table name in a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]],
     "lib/dm/mt-fb-spend.ts#\\b": [["english-source", 2, "the SRD stat block's speed line (English data): \"fly\""]],
     "lib/dm/mt-fb-spend.ts#re-word": [["english-source", 1, "the SRD stat block's speed line (English data): \"fly\""]],
-    "lib/srd/authored-effects-w2-mt-fb.ts#str-list": [["english-source", 1, "ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-w2-mt-fb.ts#str-list": [["english-source", 2, "ODM's authored effect rows (bundled data)"]],
     "lib/dm/mt-fb-rage-death.ts#str-list": [["key", 1, "condition names the engine writes, for the audit's delta"]],
     "lib/dm/mt-fb-counter-riders.ts#str-case": [["key", 1, "counter ids (engine vocabulary)"]],
     "lib/dm/mt-fb-counter-riders.ts#str-eq": [["key", 1, "an authored option's key, as heldAuthored normalizes it"]],
-    "lib/dm/pc-attack-damage.ts#str-list": [["key", 1, "SRD weapon row names, compared through textKey"]]
+    "lib/dm/pc-attack-damage.ts#str-list": [["key", 1, "SRD weapon row names, compared through textKey"]],
+    "lib/srd/mt-fb-casts.ts#str-list": [["english-source", 4, "SRD spell names and the authored features that cast them (bundled data), compared through textKey"]]
   }
 }

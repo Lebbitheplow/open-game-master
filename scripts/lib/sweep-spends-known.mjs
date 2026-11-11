@@ -104,7 +104,6 @@ export const KNOWN = {
   "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_power_surge": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_restore_balance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "reaction:fighter::Hold the Line::Hold the Line": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
   "spend:druid::Cauterizing Flames::Cauterizing Flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "spend:druid::Spirit Totem::Move Spirit Totem": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "spend:monk::Ascendant Aspect::Explosive Fury": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },

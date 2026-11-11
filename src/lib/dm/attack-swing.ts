@@ -31,6 +31,8 @@ import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { chargedBudget } from "@/lib/dm/mt-fb-charge";
+import { NATURAL_HIT } from "@/lib/srd/mt-fb-run";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -155,6 +157,10 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // The hit that spent the turn's Sneak Attack names its creature, so a
     // feature that answers a Sneak Attack (Wails from the Grave) knows the
     // first creature, and that one landed at all.
+    // A natural weapon's hit is kept as one, for what rides it (Infectious Fury).
+    if (authoredNaturalWeapon(scene.sheet, record.weapon)) {
+      markAttackTurn(campaign.id, record, `${NATURAL_HIT}${record.targetEnemyId}`);
+    }
     if (record.hitClaims?.includes("sneak_attack")) {
       markAttackTurn(campaign.id, record, `${SNEAK_HIT}${record.targetEnemyId}`);
     }

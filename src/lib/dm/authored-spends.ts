@@ -31,7 +31,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
-import { chargeRefusal } from "@/lib/dm/mt-fb-charge";
+import { chargeRefusal, naturalHitRefusal } from "@/lib/dm/mt-fb-charge";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 
 export type AuthoredSpendArgs = {
@@ -211,6 +211,10 @@ export function authoredFeatureSpend(
   const unrun = spend.chargeFeet && inFight ? chargeRefusal(campaign.id, sheet, spend.name, spend.chargeFeet, args.targetEnemyId) : null;
   if (unrun) {
     return unrun;
+  }
+  const unclawed = spend.afterNaturalHit ? naturalHitRefusal(campaign.id, sheet, spend.name, args.targetEnemyId) : null;
+  if (unclawed) {
+    return unclawed;
   }
   // The pool: how much, from which counter.
   let poolId: string | null = null;

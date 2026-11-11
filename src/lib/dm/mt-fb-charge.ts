@@ -20,7 +20,7 @@ import { tilesApart } from "@/lib/dm/board-reach";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { CHARGED, OPEN_RUN, RUN_FROM, chargedFeet } from "@/lib/srd/mt-fb-run";
+import { CHARGED, NATURAL_HIT, OPEN_RUN, RUN_FROM, chargedFeet } from "@/lib/srd/mt-fb-run";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The character walks on their own turn in a fight: the square they left is
@@ -73,6 +73,22 @@ export function chargeRefusal(campaignId: string, sheet: CharacterSheet, label: 
   }
   return {
     error: `${label} follows a run of at least ${feet} feet straight at the creature, right before the attack that hit it, and ${sheet.name} has made no such run this turn. Nothing was spent.`,
+    refused: "rules",
+  };
+}
+
+// The refusal of a spend that rides a natural weapon's hit
+// (AuthoredSpend.afterNaturalHit) when none landed on the creature named this
+// turn, or null. With no creature named, any such hit this turn opens it and
+// the spend's own target rule picks the creature.
+export function naturalHitRefusal(campaignId: string, sheet: CharacterSheet, label: string, enemyId: string | undefined): ToolError | null {
+  const encounter = getActiveEncounter(campaignId);
+  const marks = encounter?.turnBudget && encounter.turnBudget.ownerId === sheet.id ? encounter.turnBudget.oncePerTurn : [];
+  if (enemyId ? marks.includes(`${NATURAL_HIT}${enemyId}`) : marks.some((mark) => mark.startsWith(NATURAL_HIT))) {
+    return null;
+  }
+  return {
+    error: `${label} rides a hit of ${sheet.name}'s natural weapon (bite, claws or tail) on the creature, and none has landed on it this turn: pc_attack with that weapon first. Nothing was spent.`,
     refused: "rules",
   };
 }

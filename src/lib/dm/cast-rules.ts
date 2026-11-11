@@ -97,7 +97,12 @@ export function spellHeldProblem(
   if (!casting) {
     // A tiefling fighter's Infernal Legacy is cast with no Spellcasting
     // feature at all (granted-casts.ts).
-    const grant = options.ritual ? null : grantedCastFor(grantSheet(sheet), names);
+    const granted = grantedCastFor(grantSheet(sheet), names);
+    // A feature's ritual (Spirit Seeker) is cast as one and no other way.
+    if (granted?.ritualOnly && !options.ritual) {
+      return { error: `${sheet.name} casts ${facts?.name ?? spell} through ${granted.source} as a ritual only: ten minutes longer, no slot. Send ritual true.`, retry: true };
+    }
+    const grant = options.ritual && !granted?.ritualOnly ? null : granted;
     return grant
       ? grantUseProblem(sheet, grant, facts?.name ?? spell)
       : { error: `${sheet.name} has no Spellcasting feature and cannot cast spells.`, refused: "rules" };
@@ -528,7 +533,7 @@ export function ritualProblem(
   if (!facts.ritual) {
     return { error: `${facts.name} has no ritual tag; it cannot be cast as a ritual and needs a slot.`, refused: "rules" };
   }
-  if (!canCastRituals(sheet) && !pactRitualOf(sheet, facts.name)) {
+  if (!canCastRituals(sheet) && !pactRitualOf(sheet, facts.name) && !grantedCastFor(grantSheet(sheet), namesOf(spell, facts))?.ritualOnly) {
     return { error: `${sheet.name}'s class does not cast rituals (bards, clerics, druids and wizards do); ${facts.name} needs a slot.`, refused: "rules" };
   }
   return null;

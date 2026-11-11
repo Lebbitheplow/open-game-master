@@ -25,3 +25,8 @@ export function chargedFeet(marks: readonly string[] | undefined, enemyId?: stri
   }
   return most;
 }
+
+// The creature a natural weapon of the attacker's hit this turn, one key each
+// (attack-swing.ts writes it beside the weapon hit's), for what rides such a
+// hit (Infectious Fury).
+export const NATURAL_HIT = "natural-hit:";

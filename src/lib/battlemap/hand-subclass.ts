@@ -8,7 +8,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
-import { chargedFeet } from "@/lib/srd/mt-fb-run";
+import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -308,6 +308,18 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
         : null,
+      // What rides a natural weapon's hit waits for one, and what ends a
+      // condition waits for the condition, as the engine does
+      // (src/lib/dm/mt-fb-charge.ts naturalHitRefusal, mt-fb-spend.ts cleanse).
+      spend.afterNaturalHit && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(NATURAL_HIT))
+        ? { reason: `${spend.name} rides a hit of a natural weapon (bite, claws or tail): land one this turn first.`, spent: false }
+        : null,
+      (() => {
+        const aimed = aimDoes(does, aim.variant);
+        return aimed.kind === "cleanse" && !sheet.conditions.some((entry) => aimed.conditions.some((name) => isConditionNamed(entry, name)))
+          ? { reason: `${spend.name} ends being ${aimed.conditions.join(" or ")}, and ${sheet.name} is neither.`, spent: false }
+          : null;
+      })(),
       // A spend that rides a charge waits for the run, as the engine does
       // (src/lib/dm/mt-fb-charge.ts).
       spend.chargeFeet && turn.myTurn && chargedFeet(turn.marks) < spend.chargeFeet

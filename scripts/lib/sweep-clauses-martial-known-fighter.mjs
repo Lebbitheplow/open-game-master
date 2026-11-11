@@ -20,13 +20,6 @@ export const KNOWN = {
     fix: "Add an arcane_shot option kind opened by Arcane Shot with steps 3:2, 7:3, 10:4, 15:5, 18:6 and the eight options' rows.",
     files: ["src/lib/srd/options.ts", "src/lib/srd/options.json"],
   },
-  "arcane-archer-lore-cantrip": {
-    severity: "low", kind: "rule-missing",
-    where: "src/lib/srd/subclass-training.ts (Arcane Archer Lore trains the skill only) and src/lib/srd/subclasses.json (the subclass has no `spells` table)",
-    note: "The skill pick is granted; the cantrip is on no spell table and no pick, so the sheet never holds it.",
-    fix: "Give the subclass a cantrip pick (prestidigitation or druidcraft) the way Giant's Power's row does (choose).",
-    files: ["src/lib/srd/subclasses.json", "src/lib/srd/authored-effects-data-b.ts"],
-  },
 
   "rune-carver-runes-do-nothing": {
     severity: "medium", kind: "rule-missing",
@@ -43,20 +36,6 @@ export const KNOWN = {
     files: ["src/lib/srd/subclass-training.ts"],
   },
 
-  "inspiring-surge-one-ally": {
-    severity: "medium", kind: "rule-wrong",
-    where: "src/lib/dm/authored-reactions.ts (a party reaction is taken by whoever names it; no count per Action Surge)",
-    note: "At 10th level two allies each take the attack; the text gives the second only from 18th.",
-    fix: "Count the allies who answered this surge on the holder's turn budget (one, two from 18th).",
-    files: ["src/lib/dm/authored-reactions.ts"],
-  },
-  "inspiring-surge-any-weapon": {
-    severity: "medium", kind: "rule-wrong",
-    where: `${ROWS_B} fighter::Inspiring Surge (rangeFt: 5: "Inspiring Surge is a melee attack")`,
-    note: "An ally with a longbow and a foe 30 feet off is refused: the text says one weapon attack.",
-    fix: "Let the reaction attack use the ally's weapon range.",
-    files: [ROWS_B, "src/lib/dm/authored-reactions.ts"],
-  },
 };
 
 export const SKIP = {
