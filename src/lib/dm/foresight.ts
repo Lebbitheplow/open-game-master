@@ -39,6 +39,11 @@ import { publishPersisted } from "@/lib/events";
 import { moreAbout } from "@/lib/dm/foresight-more";
 import { attackRiderFoes, foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { canTurnFate, inFateReach } from "@/lib/dm/fate-turn";
+
+// The rolls a watch stop offers Convergent Future and Bend Luck on: the ones
+// a roll site asks takeFate about.
+const FATE_KINDS: readonly RollTag["kind"][] = ["save", "check", "death_save"];
 
 // A stop comes before every watched roll, so it cannot ask for long.
 export const WATCH_SECONDS = 20;
@@ -52,7 +57,7 @@ export const WATCH_SECONDS = 20;
 function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string): boolean {
   return (
     sheet.watchingEncounterId === encounterId &&
-    (foretoldLeft(sheet).length > 0 || holdsFeature(sheet, "chronal shift") || holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods")) &&
+    (foretoldLeft(sheet).length > 0 || holdsFeature(sheet, "chronal shift") || holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods") || holdsFeature(sheet, "convergent future") || holdsFeature(sheet, "bend luck")) &&
     sheet.currentHp > 0 &&
     !holdsCondition(sheet, "blinded", "unconscious") &&
     rollsCanWait(sheet) &&
@@ -323,6 +328,21 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
     );
     if (reach.length && canShiftNow(campaignId, sheet)) {
       return { watcher: sheet, power: "chronal_shift", choices: choicesOf(reach, (roll) => (side(roll.ref) === mine ? "failure" : "success")) };
+    }
+    // Convergent Future and Bend Luck (fate-turn.ts) answer a save or a check
+    // the call throws: a foe's success, a friend's failure. An attack roll's
+    // hit is the reaction card's, and a roll that waits on its own card is
+    // offered there.
+    for (const power of ["convergent_future", "bend_luck"] as const) {
+      const fated = canTurnFate(campaignId, sheet, power)
+        ? about.rolls.filter((roll) => {
+            const creature = sheets.find((entry) => entry.id === roll.ref) ?? getFoe(roll.ref);
+            return !(about.rollerWaits && roll.ref === about.rollerId) && FATE_KINDS.includes(roll.tag.kind) && Boolean(creature) && inFateReach(campaignId, sheet, creature!, power);
+          })
+        : [];
+      if (fated.length) {
+        return { watcher: sheet, power, choices: choicesOf(fated, (roll) => (side(roll.ref) === mine ? "failure" : "success")) };
+      }
     }
     for (const power of ["flash_of_genius", "favored_by_the_gods"] as const) {
       const saves = canHelpSaveNow(campaignId, sheet, power) ? savesHelped(campaignId, encounter, sheet, power, about, sheets) : [];

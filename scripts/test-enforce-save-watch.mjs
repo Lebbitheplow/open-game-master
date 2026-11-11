@@ -334,6 +334,45 @@ await test("An ally's check a call throws stops for Flash of Genius, which adds 
   assert.match(toldLast().savedWith ?? JSON.stringify(toldLast()), /Ines used Flash of Genius: Kara's check went from 12 to 15 against DC 15/);
 });
 
+// Bend Luck (Wild Magic 6) and Convergent Future (Chronurgy 14) answer another
+// creature's roll "after the creature rolls but before any effects of the roll
+// occur": a save a call throws has no card, so the stop asks before it
+// (src/lib/dm/fate-turn.ts takeFate).
+await test("A wild mage watches with Bend Luck: an ally's failed save takes 1d4 for 2 sorcery points and the reaction, and a chronurgist's Convergent Future makes it succeed for a level of exhaustion.", async () => {
+  reset();
+  assert.equal((await toggle(artUser, artificer.id, false)).status, 200);
+  world.patch(sorcerer.id, { features: [{ name: "Bend Luck", description: "" }], resources: { sorcery_points: { max: 6, used: 0 } } });
+  kit.place(sorcerer.id, 5, 4);
+  assert.equal((await toggle(solUser, sorcerer.id)).status, 200);
+  await enemyTurn([needle(ally.id)]);
+  let [stop] = stops();
+  assert.ok(stop, "the save stops for the sorcerer");
+  assert.equal(publicPendingRoll(stop).watch.power, "bend_luck");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices, [{ name: "Kara", when: "if it fails" }]);
+  // 5 + 2 = 7 against DC 10, and a d4 of 3 makes it 10.
+  world.dice(5, 3, 4);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.equal(lastSave()?.total, 10, "the stored save carries the d4");
+  assert.match(toldLast().savedWith ?? JSON.stringify(toldLast()), /Sol used Bend Luck: Kara's save went from 7 to 10 against 10, and it succeeds/);
+  assert.equal(world.sheet(sorcerer.id).resources.sorcery_points.used, 2);
+  assert.ok(world.encounter().reactionsUsed.includes(sorcerer.id), "the reaction");
+  // The same seat as a chronurgist with no Chronal Shift left.
+  reset();
+  world.patch(sorcerer.id, { features: [{ name: "Convergent Future", description: "" }], resources: {}, exhaustion: 0, watchingEncounterId: world.encounter().id });
+  await enemyTurn([needle(ally.id, 30)]);
+  [stop] = stops();
+  assert.equal(publicPendingRoll(stop)?.watch.power, "convergent_future");
+  world.dice(5, 4);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.equal(lastSave()?.total, 30, "the lowest number that succeeds");
+  assert.equal(world.sheet(sorcerer.id).exhaustion, 1);
+  assert.equal(toldLast().damage, 0, "a save made to succeed takes no poison");
+});
+
 model.close();
 finish();
 world.close();

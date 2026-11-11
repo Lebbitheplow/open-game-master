@@ -560,7 +560,7 @@ export type HeldCall = { id?: string; name: string; rawArguments: string; tape?:
 // Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
 // once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop
 // stored before there were two is Portent's.
-export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter";
+export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck";
 // One creature's roll the stop may answer: its tag on the dice, and the way
 // it must go for a Chronal Shift to take it ("success" a foe's, "failure" an
 // ally's).

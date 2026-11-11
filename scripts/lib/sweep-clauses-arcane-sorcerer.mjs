@@ -3,7 +3,8 @@
 // Sorcery (scripts/clauses/arcane.json; run by
 // test-enforce-sweep-clauses-arcane-sorcerer.mjs).
 import assert from "node:assert/strict";
-import { MOD, prof } from "./sweep-clauses-arcane.mjs";
+import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
+import { fateProbe } from "./fate-probe.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
 
@@ -65,12 +66,28 @@ export function probes(rig, shared) {
       assert.equal(rig.reacted(wild()), true);
       assert.equal(hp(wild()), before + 6);
     },
+    // "Apply the number rolled as a bonus or penalty (your choice) to the
+    // creature's roll": a d4 added to a friend's save that failed by one, on
+    // its card, and taken off a foe's save that passed, at the watch stop.
     "bend-doors": async () => {
-      await stage(wild(), { others: [friend()], first: friend() });
-      const failed = await roll(friend(), { kind: "saving_throw", ability: "dex", dc: 14 }, [11]);
-      assert.equal(failed.out.result?.success, false);
-      const out = await react(wild(), "Bend Luck", { targetCharacterId: friend().id, variant: "add" }, [4]);
-      assert.equal(out.ok, true, `to add 1d4 to an ally's save that failed by one: ${String(out.error).slice(0, 170)}`);
+      const who = wild();
+      const used = () => sheet(who).resources.sorcery_points.used;
+      const foes = await fateProbe(rig, { holder: who, friend: friend(), power: "bend_luck", paid: (what) => assert.equal(used(), 2, `2 sorcery points for ${what}`) });
+      // The foe needs `need` on the die against the sorcerer's DC: rolled
+      // exactly, the save passes, and a d4 of 1 off it makes it fail.
+      const need = spellDc("sorcerer", 20) - foes.saveMod;
+      const out = await foes.cast([need, 1, 1, 1, 1, 1]);
+      assert.match(out.shift ?? "", /used Bend Luck: .* and it fails/, "a foe's save that passed by nothing is not bent");
+      assert.ok(out.lost > 0, "the spell lands once the save is bent under the Difficulty Class");
+      assert.equal(used(), 2, "2 sorcery points for the foe's save");
+      // A save out of a d4's reach is left alone, and nothing is spent.
+      rig.refill(who);
+      (await import("../../src/lib/db/encounters.ts")).saveEncounter({ ...world.encounter(), reactionsUsed: [] });
+      kit.freshTurn();
+      const far = await foes.cast([need - 6, 1, 1, 1, 1, 1]);
+      assert.equal(far.shift, null);
+      assert.equal(used(), 0, "a failed save costs nothing");
+      rig.refill(who);
     },
     // Every door a spell's damage is rolled at (src/lib/dm/ar-ws-bombardment.ts):
     // a die showing its highest number is rolled again and added, once a turn.
@@ -807,7 +824,6 @@ export function probes(rig, shared) {
   const phenomenonRest = rests(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", "long");
 
   const KNOWN = {
-    "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
   };
   return { PROBES, KNOWN };

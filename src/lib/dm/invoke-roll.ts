@@ -15,6 +15,7 @@ import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
+import { takeFate } from "@/lib/dm/fate-turn";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
@@ -279,6 +280,10 @@ export function handleRequestRoll(
         outcome = rollExpression(resolved.expression, undefined, { purpose });
         noteShift(campaignId, `${by} used Chronal Shift: ${sheet.name} rolled the ${args.kind.replaceAll("_", " ")} again (${first} became ${outcome.total}), and the new roll stands.`);
       }
+    }
+    // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
+    if (sheet && typeof args.dc === "number" && canWaitOnRoll(args.kind)) {
+      outcome = takeFate(campaignId, purpose, sheet.name, outcome, args.dc)?.outcome ?? outcome;
     }
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, or a wizard beside them could make them

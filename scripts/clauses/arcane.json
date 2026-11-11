@@ -1153,8 +1153,9 @@
    },
    {
     "c": "as a success or a failure",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-other-rolls"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-other-rolls",
+    "by": "src/lib/dm/fate-turn.ts: a friend's failing roll on its after-the-roll card (fateChoicesFor), a save or check a call throws at the watch stop (takeFate), a hit by the reaction (force_miss)"
    },
    {
     "c": "at the cost of a level of exhaustion",
@@ -1445,8 +1446,9 @@
    },
    {
     "c": "to add or subtract 1d4 on another creature's attack, check or save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bend-doors"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bend-doors",
+    "by": "src/lib/dm/fate-turn.ts: 1d4 on a friend's failing roll on its after-the-roll card, off a foe's save at the watch stop (takeFate), off a hit by the reaction (attack_penalty)"
    }
   ]
  },

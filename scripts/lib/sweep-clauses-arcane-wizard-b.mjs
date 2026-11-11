@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
 
+import { fateProbe } from "./fate-probe.mjs";
 const DATA = "src/lib/srd/authored-effects-data*.ts";
 export const SCRIBE_BOOK = ["Magic Missile", "Shield", "Detect Magic", "Scorching Ray", "Fireball", "Lightning Bolt", "Fly", "Ice Storm", "Cone of Cold", "Chain Lightning"];
 const RES = "src/lib/srd/authored-resources.json";
@@ -459,12 +460,18 @@ export function probes(rig, shared) {
       const out = await react(chr(), "Convergent Future");
       assert.equal(out.ok, false, `the roll was made 75 feet away: ${show(out).slice(0, 140)}`);
     },
+    // "Decide whether the number rolled is the minimum needed to succeed or one
+    // less than that number": a friend's failed save made a success on its
+    // card, and a foe's passed save made a failure at the watch stop.
     "convergent-other-rolls": async () => {
-      await stage(chr(), { others: [friend()], first: friend() });
-      const failed = await roll(friend(), { kind: "saving_throw", ability: "dex", dc: 25 }, [2]);
-      assert.equal(failed.out.result?.success, false);
-      const out = await react(chr(), "Convergent Future", { targetCharacterId: friend().id, variant: "success" });
-      assert.equal(out.ok, true, `to make an ally's failed save a success: ${String(out.error).slice(0, 170)}`);
+      const who = chr();
+      const foes = await fateProbe(rig, { holder: who, friend: friend(), power: "convergent_future", paid: (what) => assert.equal(sheet(who).exhaustion, 1, `a level of exhaustion for ${what}`) });
+      const out = await foes.cast([20, 1, 1, 1, 1, 1]);
+      assert.match(out.shift ?? "", /used Convergent Future: the die is ignored/, "a foe's passed save is not answered");
+      assert.match(out.shift, /it fails/);
+      assert.ok(out.lost > 0, "the spell the foe saved against lands once its save is made a failure");
+      assert.equal(sheet(who).exhaustion, 1, "a level of exhaustion for the foe's save");
+      rig.refill(who);
     },
     // ---- Graviturgy
     "density-speed": async () => {
@@ -716,7 +723,6 @@ export function probes(rig, shared) {
   const wordRest = rests(["wizard", "Order of Scribes"], "sub_one_with_the_word", "long");
 
   const KNOWN = {
-    "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
   };
   return { PROBES, KNOWN };

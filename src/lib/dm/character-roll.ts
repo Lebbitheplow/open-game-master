@@ -34,6 +34,7 @@ import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { noteShift, shiftArmedFor, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
+import { takeFate } from "@/lib/dm/fate-turn";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -187,5 +188,7 @@ function answerArmed(campaignId: string, who: string, tag: RollTag | undefined, 
     outcome = again();
     noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${who} rolled the ${words} again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
+  outcome = takeFate(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
   return takeSaveHelp(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
 }

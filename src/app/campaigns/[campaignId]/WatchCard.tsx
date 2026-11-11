@@ -12,8 +12,8 @@ const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring
 const NUMBER = `motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING}`;
 const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
-type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter";
-const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter" };
+type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck";
+const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck" };
 
 // The feature a character watches with: a diviner's numbers first, then a
 // chronurgist's shift, an artificer's Flash of Genius, a divine soul's
@@ -23,6 +23,8 @@ export function watchFeatureOf(sheet: CharacterSheet): Power | null {
   if (holdsFeature(sheet, "chronal shift")) return "chronal_shift";
   if (holdsFeature(sheet, "flash of genius")) return "flash_of_genius";
   if (holdsFeature(sheet, "favored by the gods")) return "favored_by_the_gods";
+  if (holdsFeature(sheet, "convergent future")) return "convergent_future";
+  if (holdsFeature(sheet, "bend luck")) return "bend_luck";
   return null;
 }
 
@@ -34,6 +36,8 @@ const WATCH_FOR: Record<Power, string> = {
   favored_by_the_gods: "add 2d4 to your save if it fails",
   // Asked without the button: the stop comes for the ranger's own save alone.
   slayers_counter: "attack your prey before a save it forces on you",
+  convergent_future: "decide a save or check with Convergent Future",
+  bend_luck: "bend a save or check by 1d4",
 };
 
 // The Intelligence modifier Flash of Genius adds, as the sheet's score gives it.
@@ -167,6 +171,10 @@ export function WatchCard({
                 title={
                   power === "slayers_counter"
                     ? "Spend your reaction on one weapon attack against your prey before the save is rolled: if it hits, your save succeeds."
+                    : power === "convergent_future"
+                    ? "Use your reaction and gain a level of exhaustion only if the roll goes that way: the die is ignored, and the roll goes the other way by one."
+                    : power === "bend_luck"
+                    ? "Spend your reaction and 2 sorcery points only if the roll goes that way and 1d4 could turn it: the d4 is added to a friend's roll or taken off a foe's."
                     : power === "flash_of_genius"
                     ? "Spend a use of Flash of Genius and your reaction only if the save fails and your Intelligence modifier would carry it."
                     : power === "favored_by_the_gods"
@@ -175,7 +183,7 @@ export function WatchCard({
                 }
                 className={NUMBER}
               >
-                {power === "slayers_counter" ? "Attack it first" : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
+                {power === "slayers_counter" ? "Attack it first" : power === "convergent_future" ? `Decide it ${when}` : power === "bend_luck" ? `Bend it 1d4 ${when}` : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
               </button>
             )}
         <button

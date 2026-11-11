@@ -27,7 +27,9 @@ import { combatInspirationOption } from "@/lib/dm/ar-wbf-bard-dice-logic";
 
 export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath" | "combat_inspiration"
   // The monk and rogue subclasses' (src/lib/dm/mt-mr-offers-logic.ts).
-  | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence";
+  | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence"
+  // Convergent Future and Bend Luck (src/lib/dm/fate-turn-logic.ts).
+  | "convergent_future" | "bend_luck";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -350,7 +352,8 @@ export function answeredLine(id: AfterRollId, helper: string, roller: string, be
   if (id === "chronal_shift") {
     return `${helper} used Chronal Shift: ${roller} rolled again (${before} became ${after}), and the new roll stands.`;
   }
-  return `${helper} used ${id === "war_gods_blessing" ? "War God's Blessing" : "Flash of Genius"}: ${roller}'s roll went from ${before} to ${after}.`;
+  const feature = id === "war_gods_blessing" ? "War God's Blessing" : id === "convergent_future" ? "Convergent Future" : id === "bend_luck" ? "Bend Luck" : "Flash of Genius";
+  return `${helper} used ${feature}: ${roller}'s roll went from ${before} to ${after}.`;
 }
 
 // A wizard's Chronal Shift offered on another character's roll.

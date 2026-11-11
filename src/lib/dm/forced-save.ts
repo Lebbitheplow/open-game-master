@@ -12,6 +12,7 @@ import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
+import { takeFate } from "@/lib/dm/fate-turn";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
@@ -407,6 +408,8 @@ export function rollCharacterSave(
     outcome = settled(throwSave());
     noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck set on this save at the stop (fate-turn.ts).
+  outcome = takeFate(campaign.id, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
   // Flash of Genius or Favored by the Gods set on this save at the stop.
   const helped = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, dc);
   if (helped) {
@@ -580,6 +583,9 @@ export function rollEnemySave(
     outcome = rollExpression(expression, undefined, { purpose });
     noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${enemy.displayName} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck a watcher set on this save: a success made
+  // one less than the Difficulty Class, or a d4 taken off it.
+  outcome = takeFate(campaignId, purpose, enemy.displayName, outcome, dc)?.outcome ?? outcome;
   if (options.record) {
     const roll = insertRoll({
       campaignId,

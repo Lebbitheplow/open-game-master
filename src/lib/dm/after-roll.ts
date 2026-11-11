@@ -53,6 +53,8 @@ import { inPlay } from "@/lib/dm/roster";
 import { combatDie, unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { swingFacts } from "@/lib/dm/mt-mr-offers";
+import { fateChoicesFor, spendFateAfterRoll } from "@/lib/dm/fate-turn";
+import { isFatePower } from "@/lib/dm/fate-turn-logic";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -138,12 +140,12 @@ export function allyChoicesFor(
     // ally may still bless the roll.
     const fight = getActiveEncounter(campaignId);
     const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
-    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? [])];
+    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? []), ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept)];
   }
   const flash = (artificer: CharacterSheet, ally: boolean) => flashOfGeniusOption(artificer, computeSheetDerived(artificer).abilityMods.int, roll, ally);
   const own = !done.kept && !roll.spent?.includes("flash_of_genius") && canReactNow(campaignId, sheet) ? flash(sheet, false) : null;
   const help = others.filter((artificer) => inShiftReach(campaignId, artificer, sheet)).flatMap((artificer) => flash(artificer, true) ?? []);
-  return [...shifts, ...(own ? [own] : []), ...help];
+  return [...shifts, ...(own ? [own] : []), ...help, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -190,6 +192,9 @@ export function spendAfterRoll(
       markReactionUsed(encounter, giver.id);
     }
     return { outcome: withFlatBonus(outcome, id === "war_gods_blessing" ? WAR_GODS_BLESSING_BONUS : computeSheetDerived(giver).abilityMods.int), choosing: false };
+  }
+  if (isFatePower(id)) {
+    return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);
   }
   if (id === "guided_strike") {
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
