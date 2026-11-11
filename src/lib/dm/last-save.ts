@@ -354,6 +354,21 @@ export function recordTurnEnd(campaignId: string, encounter: Pick<Encounter, "ro
   recordTrigger(campaignId, { kind: "turn_end", forcer: { id: orderEntryId(ending), name }, enemy: ending.kind !== "pc" }, turn);
 }
 
+// The turns of the enemies a pass held the floor for, ended as the hold
+// releases (encounter-tools.ts handOnEnemyTurns): the pointer walked past
+// them, so no move of it ends their turns, and a reaction to a creature
+// ending its turn near (the Stone Rune, Skirmisher) had no record of one.
+// In order of play, so the last of them is the turn's end left open.
+export function recordEnemyTurnEnds(campaignId: string, encounter: Pick<Encounter, "id" | "round" | "order">, enemyIds: readonly string[]) {
+  const alive = new Map(listEnemies(encounter.id).filter((enemy) => enemy.status === "alive").map((enemy) => [enemy.id, enemy.displayName]));
+  for (const entry of encounter.order) {
+    const id = orderEntryId(entry);
+    if (entry.kind !== "pc" && enemyIds.includes(id) && alive.has(id)) {
+      recordTurnEnd(campaignId, encounter, entry, alive.get(id)!);
+    }
+  }
+}
+
 // A trigger answered: a save by one reaction and its card goes; another kind
 // keeps who answered it, so each holder answers it once.
 export function answerSave(campaignId: string, id: string, key?: string) {

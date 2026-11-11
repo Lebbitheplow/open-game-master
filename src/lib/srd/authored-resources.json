@@ -2441,6 +2441,52 @@
    "guidance": "Whether the Arcane Ward has been raised since the last long rest (it is raised once a day, by the first abjuration spell of 1st level or higher). The server keeps it."
   },
   {
+   "id": "sub_cloud_rune",
+   "displayName": "Cloud Rune",
+   "match": [
+    "rune: cloud rune",
+    "cloud rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "A reaction when the knight or a creature they can see within 30 feet is hit by an attack: the attack turns onto another creature within 30 feet of the knight, not the attacker, on the same roll. The server asks the knight's player at the hit, before its damage is rolled; a hit already dealt is not taken back."
+  },
+  {
+   "id": "sub_stone_rune",
+   "displayName": "Stone Rune",
+   "match": [
+    "rune: stone rune",
+    "stone rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "A reaction when a creature the knight can see ends its turn within 30 feet: a Wisdom save (8 + proficiency + Constitution) or it is charmed for a minute, incapacitated with a speed of 0, saving again at the end of each of its turns. The server rolls the saves (use_reaction 'Stone Rune')."
+  },
+  {
    "id": "sub_fire_rune",
    "displayName": "Fire Rune",
    "match": [
@@ -2528,7 +2574,7 @@
     ]
    ],
    "recharge": "short",
-   "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll against them to disadvantage (use_reaction \"Prophetic State\").",
+   "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll that hit them or a creature they can see within 60 feet to disadvantage (use_reaction \"Prophetic State\"), or gives advantage to an attack roll, save or check such a creature has just rolled, on its card.",
    "action": "bonus"
   }
  ]

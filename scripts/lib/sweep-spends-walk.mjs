@@ -646,6 +646,41 @@ export async function knock(rig, scene, { stagings, variants = [undefined], call
   return { accepted: null, threw: null, tries, spentOnRefusal, stagingFailures };
 }
 
+// The stop a hit opens before its damage is rolled, for the reactor's own
+// player at the table: a reaction that turns the hit (the Cloud Rune,
+// src/lib/dm/cloud-rune.ts) has no use_reaction after the damage, so its door
+// is the stop's answer, invoked on the first creature it offers. The hit is
+// struck as its staging strikes it, with the player subscribed; null when no
+// stop opened for the reactor.
+export const STOPPED = ["a hit on the holder", "a hit on the ally beside the holder"];
+export async function stopDoor(rig, scene, reactorId, key) {
+  const { world } = rig;
+  const userId = world.sheet(reactorId)?.userId;
+  if (!userId) return null;
+  const { subscribe } = await import("../../src/lib/events.ts");
+  const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
+  const { call } = await import("./enforce-campaign.mjs");
+  const { settleQueue } = await import("./enforce-narrator.mjs");
+  const watch = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/watch");
+  rig.reader.restore(scene.snapshot);
+  world.clearDice();
+  const off = subscribe(world.campaignId, () => {}, userId);
+  try {
+    await step(rig, scene, key, new Set());
+    world.clearDice();
+    const stop = listOpenPendingRolls(world.campaignId).find((pending) => pending.parkedFor === "watch" && pending.characterId === reactorId);
+    if (!stop) return null;
+    world.signIn({ id: userId });
+    const answered = await call(watch, "POST", { shift: true, ...((stop.watch?.choices?.length ?? 0) > 1 ? { choice: 0 } : {}) }, { campaignId: world.campaignId, pendingRollId: stop.id });
+    await settleQueue(world.campaignId);
+    const tried = { ok: answered.status === 200, kind: answered.status === 200 ? null : "refused", error: answered.status === 200 ? null : JSON.stringify(answered.json), changes: rig.reader.diff(scene.snapshot, rig.reader.snapshot()), result: answered.json };
+    return { staging: `${key}, answered at its stop (${stop.watch?.power ?? "watch"})`, target: stop.watch?.choices?.[0]?.name ?? "no target", ok: tried.ok, kind: tried.kind, error: short(tried.error), sig: signature(scene, tried), read: readChanges(scene, tried.changes), result: tried.result };
+  } finally {
+    off();
+    world.clearDice();
+  }
+}
+
 // The same rung of the ladder through another door: what a second door is
 // compared with.
 export async function replay(rig, scene, entry, call) {

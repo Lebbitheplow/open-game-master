@@ -559,8 +559,15 @@ export type HeldCall = { id?: string; name: string; rawArguments: string; tape?:
 // Which feature the stop is for: Portent's number before the roll, or a
 // Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
 // once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop
-// stored before there were two is Portent's.
-export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck";
+// stored before there were two is Portent's. Slayer's Counter and the Cloud
+// Rune act at the stop itself (answeredAtStop), arming nothing on the dice.
+export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck" | "cloud_rune";
+
+// The powers answered at the stop, before the held call runs again, rather
+// than armed on its dice to be taken once the roll goes wrong.
+export function answeredAtStop(power: WatchPower | undefined): boolean {
+  return power === "slayers_counter" || power === "cloud_rune";
+}
 // One creature's roll the stop may answer: its tag on the dice, and the way
 // it must go for a Chronal Shift to take it ("success" a foe's, "failure" an
 // ally's).
@@ -568,7 +575,8 @@ export type WatchRoll = { tag: RollTag; reverse: "success" | "failure" };
 // Whose roll: a creature by name, and the rolls of theirs the call may make
 // (a spell at a creature is the caster's attack or the creature's save,
 // whichever d20 comes first). An area holds one choice per creature in it.
-export type WatchChoice = { name: string; rolls: WatchRoll[] };
+// `ref`: the creature a Cloud Rune stop's choice turns the attack onto.
+export type WatchChoice = { name: string; rolls: WatchRoll[]; ref?: string };
 export type WatchStop = {
   calls: HeldCall[];
   tag: RollTag;
@@ -588,6 +596,9 @@ export type WatchStop = {
   // The watcher said to use it if the roll goes wrong: a Chronal Shift rolls
   // it again, Flash of Genius and Favored by the Gods add to a failed save.
   shift?: boolean;
+  // The hit a Cloud Rune stop holds (cloud-rune.ts): who attacked whom, and
+  // which swing of the call it was.
+  hit?: { attackerId: string; struckId: string; swing: number };
 };
 
 // The choice a stop's answer stands on: the one picked, or the only one.

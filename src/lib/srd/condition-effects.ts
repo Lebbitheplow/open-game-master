@@ -231,6 +231,14 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     summary: "Stopped: speed 0 for the rest of the turn (Sentinel's opportunity attack hit).",
     speedSet: 0,
   },
+  // The Stone Rune's charm (authored-effects-w2-mt-fb.ts): laid with charmed
+  // and incapacitated, and ended with them by the one save.
+  {
+    id: "dreamy-stupor",
+    match: ["dreamy stupor"],
+    summary: "Dreamy stupor (Stone Rune): speed 0 while the rune's charm holds.",
+    speedSet: 0,
+  },
   {
     id: "hamstrung",
     match: ["hamstrung"],

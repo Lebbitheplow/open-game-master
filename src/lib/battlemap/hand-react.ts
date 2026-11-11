@@ -735,7 +735,9 @@ function subclassReactions(
             does.kind === "ac_vs_hit" ||
             does.kind === "disadv_vs_hit" ||
             (does.kind === "resist_instance" && typed(does.types)) ||
-            does.kind === "redirect" ||
+            // The Cloud Rune (`within`) is asked at the hit before its damage
+            // (cloud-rune.ts), never as a card after it.
+            (does.kind === "redirect" && !does.within) ||
             does.kind === "force_miss" ||
             does.kind === "uncrit" ||
             (does.kind === "reroll_hit" && Boolean(does.roller)) ||
@@ -747,7 +749,7 @@ function subclassReactions(
             does.kind === "reroll_hit" ||
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
-            (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
+            (does.kind === "disadv_vs_hit" && (Boolean(does.anyAlly) || (Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)))) ||
             does.kind === "echo_takes_hit" ||
             (does.kind === "resist_instance" && !does.bond && typed(does.types));
       if (!answers) continue;

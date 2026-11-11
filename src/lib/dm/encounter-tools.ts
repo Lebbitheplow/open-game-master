@@ -161,6 +161,7 @@ import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
 import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostTurns } from "@/lib/dm/enemies-due";
 import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
+import { recordEnemyTurnEnds } from "@/lib/dm/last-save";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
 import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -3002,6 +3003,11 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
       publishEncounter(campaign.id);
       return null;
     }
+  }
+  // Their turns have ended: what answers a creature ending its turn near
+  // has that record now, before the character up next acts.
+  if (due.length) {
+    recordEnemyTurnEnds(campaign.id, encounter, due);
   }
   releaseEnemyHold(campaign);
   // The enemies before the character up next have had their turns: theirs

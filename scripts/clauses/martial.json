@@ -1034,10 +1034,28 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-carver-runes-do-nothing"
    },
    {
-    "c": "and an invokable effect once per short or long rest",
-    "is": "gap",
-    "read_only": true,
-    "why": "Fire, Frost, Hill and Storm invoke (sub_*_rune, probe rune-carver-runes-do-nothing); Stone and Cloud do not: both are reactions to an event with no window in the engine (a creature ending its turn within 30 feet, an attack hitting a creature within 30 feet), and the Storm Rune's prophetic state answers attacks on the knight only, not on allies within 60 feet"
+    "c": "and an invokable effect once per short or long rest: Fire, Frost and Hill",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (sub_fire_rune, sub_frost_rune, sub_hill_rune)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runes-invoked"
+   },
+   {
+    "c": "Stone: a reaction as a creature ends its turn within 30 feet, charming it on a failed Wisdom save",
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"stone rune\" (turn_end, 30 feet) + src/lib/dm/mt-fb-runes.ts layHeldCharm + src/lib/dm/condition-tick.ts one effect, one save",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-stone-charm"
+   },
+   {
+    "c": "Cloud: a reaction as the knight or a creature within 30 feet is hit, turning the attack onto another creature",
+    "is": "held",
+    "by": "src/lib/dm/cloud-rune.ts cloudRuneAtHit (a stop at the hit before its damage, held-call.ts stopAfterThrow) + landTurnedBlow",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-cloud-turns-hit"
+   },
+   {
+    "c": "Storm: the prophetic state's reaction on the rolls of a creature within 60 feet",
+    "is": "held",
+    "by": "src/lib/dm/authored-reactions.ts disadv_vs_hit (anyAlly) + src/lib/dm/mt-fb-runes.ts propheticChoicesFor (after-roll.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-storm-prophetic-allies"
    }
   ]
  },

@@ -240,6 +240,9 @@ const WRITTEN: Record<string, TriggerSpec> = {
   sub_infectious_inspiration: { on: [{ kind: "inspired_success", rangeFt: 60 }], what: "a roll a creature within 60 feet of them has just made succeed with their Bardic Inspiration die" },
   // Authored reactions (src/lib/srd/authored-effects-data*.ts), taken with use_reaction.
   "perfected armor": { on: [{ kind: "turn_end", rangeFt: 30 }], what: "a creature ending its turn within 30 feet of them" , aimsAt: true },
+  // The Stone Rune's charm, on a creature in the fight's other side: the
+  // reaction lays it on a foe (authored-reactions.ts save_condition).
+  "stone rune": { on: [{ kind: "turn_end", rangeFt: 30, enemy: true }], what: "a creature ending its turn within 30 feet of them", aimsAt: true },
   skirmisher: { on: [{ kind: "turn_end", rangeFt: 5, enemy: true }], what: "an enemy ending its turn within 5 feet of them" },
   "halo of spores": { on: [{ kind: "turn_start", rangeFt: 10 }, { kind: "moved_near", rangeFt: 10 }], what: "a creature moving into a space within 10 feet of them or starting its turn there" , aimsAt: true },
   "tokens of the departed": DIES_NEAR(30),

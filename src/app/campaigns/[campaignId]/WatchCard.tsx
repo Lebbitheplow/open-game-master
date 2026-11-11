@@ -12,8 +12,8 @@ const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring
 const NUMBER = `motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING}`;
 const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
-type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck";
-const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck" };
+type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck" | "cloud_rune";
+const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck", cloud_rune: "Cloud Rune" };
 
 // The feature a character watches with: a diviner's numbers first, then a
 // chronurgist's shift, an artificer's Flash of Genius, a divine soul's
@@ -38,6 +38,9 @@ const WATCH_FOR: Record<Power, string> = {
   slayers_counter: "attack your prey before a save it forces on you",
   convergent_future: "decide a save or check with Convergent Future",
   bend_luck: "bend a save or check by 1d4",
+  // Asked without the button: the stop comes at a hit on the knight or a
+  // creature they see within 30 feet, before its damage.
+  cloud_rune: "turn a hit onto another creature before its damage",
 };
 
 // The Intelligence modifier Flash of Genius adds, as the sheet's score gives it.
@@ -129,8 +132,8 @@ export function WatchCard({
     <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
       <p className="text-sm">{pending.reason}</p>
       {asking ? (
-        <div role="radiogroup" aria-label="Whose roll it answers" className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs">Whose roll:</span>
+        <div role="radiogroup" aria-label={power === "cloud_rune" ? "The creature the attack turns onto" : "Whose roll it answers"} className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs">{power === "cloud_rune" ? "Turn it onto:" : "Whose roll:"}</span>
           {choices.map((entry, index) => (
             <button
               key={`${entry.name}:${index}`}
@@ -146,7 +149,7 @@ export function WatchCard({
           ))}
         </div>
       ) : null}
-      <div role="group" aria-label={power === "portent" ? "Use a number Portent foretold, or let it roll" : `Use ${feature} on this roll, or let it roll`} className="mt-2 flex flex-wrap items-center gap-2">
+      <div role="group" aria-label={power === "portent" ? "Use a number Portent foretold, or let it roll" : power === "cloud_rune" ? "Turn the hit with the Cloud Rune, or let it land" : `Use ${feature} on this roll, or let it roll`} className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-xs">{feature}:</span>
         {power === "portent"
           ? numbers.map((value) => (
@@ -171,6 +174,8 @@ export function WatchCard({
                 title={
                   power === "slayers_counter"
                     ? "Spend your reaction on one weapon attack against your prey before the save is rolled: if it hits, your save succeeds."
+                    : power === "cloud_rune"
+                    ? `Spend your reaction and a use of the Cloud Rune: the attack targets ${choices[pick ?? 0]?.name ?? "the creature you pick"} instead, on the same roll, and its damage is rolled for them.`
                     : power === "convergent_future"
                     ? "Use your reaction and gain a level of exhaustion only if the roll goes that way: the die is ignored, and the roll goes the other way by one."
                     : power === "bend_luck"
@@ -183,7 +188,7 @@ export function WatchCard({
                 }
                 className={NUMBER}
               >
-                {power === "slayers_counter" ? "Attack it first" : power === "convergent_future" ? `Decide it ${when}` : power === "bend_luck" ? `Bend it 1d4 ${when}` : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
+                {power === "slayers_counter" ? "Attack it first" : power === "cloud_rune" ? `Turn it onto ${choices[pick ?? 0]?.name ?? "them"}` : power === "convergent_future" ? `Decide it ${when}` : power === "bend_luck" ? `Bend it 1d4 ${when}` : power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
               </button>
             )}
         <button
@@ -193,11 +198,11 @@ export function WatchCard({
           onClick={() => void answer({ pass: true })}
           className={PLAIN}
         >
-          Let it roll
+          {power === "cloud_rune" ? "Let it land" : "Let it roll"}
         </button>
-        <span id={clockId} className="check-dim text-xs" aria-live="off"><span className="sr-only">It rolls on its own in </span>{left}s</span>
+        <span id={clockId} className="check-dim text-xs" aria-live="off"><span className="sr-only">{power === "cloud_rune" ? "It lands on its own in " : "It rolls on its own in "}</span>{left}s</span>
       </div>
-      {asking && picked === null ? <p className="check-dim mt-1 text-xs">Choose whose roll first.</p> : null}
+      {asking && picked === null ? <p className="check-dim mt-1 text-xs">{power === "cloud_rune" ? "Choose the creature it turns onto first." : "Choose whose roll first."}</p> : null}
       {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
     </CheckFrame>
   );

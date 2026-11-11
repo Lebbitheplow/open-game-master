@@ -36,6 +36,7 @@ import {
   type WatchStop,
   type DmTurn,
   watchChoiceOf,
+  answeredAtStop,
 } from "@/lib/db/dm-turns";
 import { haltDmTurn, haltUnbuiltTurn } from "@/lib/dm/turn-halt";
 import { assertJobLive, bindJobTurn, DmJobStopped, jobAbandoned, runInTurnScope, setJobStage } from "@/lib/dm/job-control";
@@ -81,6 +82,7 @@ import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { forcerOfCall, holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { slayersCounterAtStop } from "@/lib/dm/slayers-counter";
+import { layCloudTurn } from "@/lib/dm/cloud-rune";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
@@ -1335,9 +1337,9 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     const picked = watchChoiceOf(stop);
     // Every power but Portent's number is armed to answer the roll once it goes wrong.
     // Slayer's Counter arms nothing: its attack is made before the call (below).
-    const shifting = Boolean(stop.power) && stop.power !== "portent" && stop.power !== "slayers_counter";
+    const shifting = Boolean(stop.power) && stop.power !== "portent" && !answeredAtStop(stop.power);
     const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" && stop.power !== "cloud_rune" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;
@@ -1351,6 +1353,10 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
       // Slayer's Counter is made "before the save": the ranger's attack, then
       // the call that forces it, which reads a hit's mark (slayers-counter.ts).
       const countered = at === 0 && stop.power === "slayers_counter" && stop.shift ? slayersCounterAtStop(campaign, turn, watcherId, forcerOfCall(toolCall, standing?.id)) : null;
+      // The Cloud Rune's answer, read at the hit the call stopped on (cloud-rune.ts).
+      if (at === 0) {
+        layCloudTurn(watcherId, stop);
+      }
       const ran = await runWithShift(campaignId, shift, () => runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
       outcome = ran.result.result;
       portent = ran.result.portent;

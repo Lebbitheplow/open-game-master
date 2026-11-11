@@ -132,6 +132,8 @@ export type ConditionMeta = {
   // read at its turn's end for a regurgitation; and the feet of movement out
   // of its corpse.
   swallow?: { turns?: Record<string, number>; escapeFeet?: number };
+  // A Cloud Rune knight's answers at the stops before hits' damage (cloud-rune.ts).
+  cloudTurns?: Array<{ attackerId: string; struckId: string; swing: number; onto: string | null }>;
   // The clock instant (in-world minutes) the running hour of a commanding
   // charm began at: Command Undead's hourly save
   // (src/lib/dm/ar-ws-command-hours.ts).
