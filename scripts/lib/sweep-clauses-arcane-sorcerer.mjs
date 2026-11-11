@@ -194,6 +194,18 @@ export function probes(rig, shared) {
         assert.deepEqual({ ok: out.ok, hp: sheet(ally).currentHp, points: points() }, expected, `an ally ${(5 - x) * 5} feet from the sorcerer rolled Cure Wounds: ${String(out.error ?? "").slice(0, 120)}`);
       }
       await kit.endFight();
+      // Out of a fight no turn keeps the roll, and it was refused there: the
+      // last healing roll is rolled again once (last-save.ts recordCalmTrigger).
+      hurtFriend(10);
+      const before = points();
+      await cure(who, friend(), [2], 1);
+      assert.equal(sheet(friend()).currentHp, 16);
+      const calm = await spend(who, "Empowered Healing", {}, [8]);
+      assert.equal(calm.ok, true, `out of a fight: ${String(calm.error ?? "").slice(0, 160)}`);
+      assert.deepEqual([sheet(friend()).currentHp, points()], [22, before - 1], "10 + 8 + 4 out of a fight, for a point");
+      const second = await spend(who, "Empowered Healing", {}, [8]);
+      assert.equal(second.ok, false, "the same roll rolled again twice");
+      assert.equal(points(), before - 1, "nothing spent");
     },
     wings: async () => {
       await stage(soul());

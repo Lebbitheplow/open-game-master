@@ -24,6 +24,12 @@
 // spent. Once per turn is kept on the fight's turn marks, since the turn is
 // often an ally's.
 //
+// Out of a fight no turn keeps a record, so the healing roll is kept as the
+// one calm record of its kind (last-save.ts recordCalmTrigger) until it is
+// rolled again or another healing roll replaces it: one reroll a roll, as
+// "once per turn" asks of a table that keeps no turns. The 5 feet are the
+// GM's to judge with no board.
+//
 // Called by authored-spend-effects.ts resolveSpendEffect (kind reroll_heal).
 
 import type { Campaign } from "@/lib/db/campaigns";
@@ -36,7 +42,7 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { answerKey } from "@/lib/dm/last-hit";
-import { openTriggers, recordTrigger } from "@/lib/dm/last-save";
+import { answerSave, calmTrigger, openTriggers, recordCalmTrigger, recordTrigger } from "@/lib/dm/last-save";
 import { openTriggersFor, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { regainHitPoints } from "@/lib/dm/regain";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -53,11 +59,12 @@ type Resolution = ToolError | { result: Record<string, unknown> };
 // A healing spell's dice were just rolled (heal-spell.ts): kept as this
 // turn's record while a character of the table could roll them again.
 export function noteHealingRoll(campaign: Pick<Campaign, "id">, input: { roll: StoredRoll; caster: CharacterSheet; target: CharacterSheet; spell: string }) {
-  if (!getActiveEncounter(campaign.id) || !listSheets(campaign.id).some((sheet) => holdsFeature(sheet, EMPOWERED_HEALING))) {
+  if (!listSheets(campaign.id).some((sheet) => holdsFeature(sheet, EMPOWERED_HEALING))) {
     return;
   }
   const target = getSheetById(input.target.id) ?? input.target;
-  recordTrigger(campaign.id, {
+  const record = getActiveEncounter(campaign.id) ? recordTrigger : recordCalmTrigger;
+  record(campaign.id, {
     kind: "heal_roll",
     characterId: target.id,
     forcer: { id: input.caster.id, name: input.caster.name },
@@ -83,17 +90,28 @@ export function diceToReroll(terms: StoredRoll["breakdown"]["terms"], count: num
   return [...all].sort((a, b) => a.value / a.sides - b.value / b.sides).slice(0, Math.max(0, count));
 }
 
-export function rerollHealing(ctx: SpendContext): Resolution {
+// The roll this call answers: this turn's in a fight, as the trigger table
+// reads it for the holder; out of one, the calm record of the last healing
+// roll, by the holder or another creature (no board measures the 5 feet).
+function healingRecord(ctx: SpendContext) {
   const { campaign, sheet, spend } = ctx;
-  const encounter = getActiveEncounter(campaign.id);
+  if (!getActiveEncounter(campaign.id)) {
+    return calmTrigger(campaign.id, "heal_roll") ?? undefined;
+  }
   const ask = { campaignId: campaign.id, reactor: sheet, name: spend.name, label: answerKey(textKey(spend.name), sheet.id) };
   const spec = triggerSpecOf(ask);
   const [event] = spec ? openTriggersFor(ask, spec).slice(-1) : [];
-  const record = event ? openTriggers(campaign.id).find((entry) => entry.id === event.id) : undefined;
+  return event ? openTriggers(campaign.id).find((entry) => entry.id === event.id) : undefined;
+}
+
+export function rerollHealing(ctx: SpendContext): Resolution {
+  const { campaign, sheet, spend } = ctx;
+  const encounter = getActiveEncounter(campaign.id);
+  const record = healingRecord(ctx);
   const roll = record?.rollId ? getRoll(record.rollId) : null;
   const target = record ? getSheetById(record.characterId) : null;
-  if (!encounter || !record || !roll || !target) {
-    return { error: `${spend.name} rolls again the healing dice of a spell cast this turn, and the server has no such roll on record. Nothing was spent.`, refused: "rules" };
+  if (!record || !roll || !target) {
+    return { error: `${spend.name} rolls again the healing dice of a spell just cast${encounter ? " this turn" : ""}, and the server has no such roll on record. Nothing was spent.`, refused: "rules" };
   }
   // "Provided you aren't incapacitated": asked as a reaction is, on anyone's
   // turn, though it spends none (the Hand's card asks the same).
@@ -102,8 +120,8 @@ export function rerollHealing(ctx: SpendContext): Resolution {
     return { ...toolError(able), error: `${able.error} Nothing was spent.` };
   }
   const mark = `empowered-healing:${sheet.id}`;
-  const stamp = `${encounter.id}:${turnKey(encounter)}`;
-  if (fightMarked(encounter.id, mark, stamp)) {
+  const stamp = encounter ? `${encounter.id}:${turnKey(encounter)}` : "";
+  if (encounter && fightMarked(encounter.id, mark, stamp)) {
     return { error: `${spend.name} is used once a turn, and ${sheet.name} has used it this turn. Nothing was spent.`, refused: "rules" };
   }
   const asked = ctx.args.amount === undefined ? undefined : Math.floor(ctx.args.amount);
@@ -135,7 +153,12 @@ export function rerollHealing(ctx: SpendContext): Resolution {
     moved = currentHp - target.currentHp;
     patchSheetAudited(campaign.id, target.id, { currentHp }, { kind: "heal", reason: `${spend.name}: ${record.spell ?? "healing"} rolled again, and the new roll stands`, delta: { amount: moved, newHp: currentHp } });
   }
-  markFight(encounter.id, mark, stamp);
+  if (encounter) {
+    markFight(encounter.id, mark, stamp);
+  } else {
+    // Out of a fight the roll is rolled again once (healingRecord).
+    answerSave(campaign.id, record.id, answerKey(textKey(spend.name), sheet.id));
+  }
   const now = getSheetById(target.id) ?? target;
   return {
     result: {
