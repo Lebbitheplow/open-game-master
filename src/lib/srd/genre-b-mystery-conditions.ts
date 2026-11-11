@@ -24,6 +24,13 @@ export const DREAM_RITE = "the unconscious speaks";
 export const FERRY_RITE = "ferrywoman's due";
 export const STORY_RITE = "the story of the century";
 
+// Archetype Made Flesh: the creature's next save against the alienist's
+// treatment counts as a roll of 1 (src/lib/dm/genre-b-mystery-dossier.ts).
+export const ARCHETYPE = "archetype made flesh";
+// The Examined Mind: the slotless treatment, not to be resisted by a creature
+// whose Trauma Map the alienist holds.
+export const EXAMINED = "the examined mind";
+
 export const GENRE_B_MYSTERY_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
     id: "chorus_of_the_dead",
@@ -52,4 +59,6 @@ export const GENRE_B_MYSTERY_CONDITION_EFFECTS: ConditionEffectRow[] = [
   { id: "the_unconscious_speaks", match: [DREAM_RITE], summary: "The Unconscious Speaks: the GM gives the alienist three true impressions from the dreams of the sleeping or unconscious creature they read." },
   { id: "ferrywomans_due", match: [FERRY_RITE], summary: "Ferrywoman's Due: a spirit is laid to rest or a possession released with no contest; a hostile entity makes a CHA save against the medium's DC to resist." },
   { id: "the_story_of_the_century", match: [STORY_RITE], summary: "The Story of the Century: the named creature's public standing collapses; each of its allies makes a WIS save against the muckraker's DC or abandons it." },
+  { id: "archetype_made_flesh", match: [ARCHETYPE], summary: "Archetype Made Flesh: its next saving throw against the alienist's treatment (a spell of theirs) counts as a roll of 1." },
+  { id: "the_examined_mind", match: [EXAMINED], summary: "The Examined Mind: the alienist's next treatment cannot be resisted by a creature whose Trauma Map they hold." },
 ];

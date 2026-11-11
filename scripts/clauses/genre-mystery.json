@@ -467,11 +467,9 @@
    },
    {
     "c": "advantage on all checks and saves opposing them until the case ends",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Nemesis Study#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Nemesis Study: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts nemesisClaim and socialEdge: social_check against the nemesis, a grapple or shove contest with it (src/lib/dm/combat-actions.ts) and every save it forces (src/lib/dm/forced-save.ts rollCharacterSave) are rolled with advantage; the Nemesis Study spend names the foe, one at a time",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Nemesis Study: checks opposing the nemesis and saves it forces are rolled with advantage; another foe's are not; a new nemesis replaces the old"
    }
   ]
  },
@@ -699,11 +697,10 @@
    },
    {
     "c": "advantage on Insight and Persuasion against it permanently",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Case Study#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Case Study: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts socialEdge, asked by src/lib/dm/social-tools.ts social_check (advantage on Persuasion against the creature on file, picked once by the Case Study spend)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Case Study: Persuasion against the creature studied is rolled with advantage, no other approach and no other person is, and the pick is for good",
+    "note": "Insight against the creature studied has no door: request_roll names no person a check is about (its creature field is a type or race), so that half waits on a tool field measured against the compact budget (handoff)"
    }
   ]
  },
@@ -860,8 +857,9 @@
    },
    {
     "c": "it cannot be resisted by creatures you have a Trauma Map of",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts treatmentUndoes (a creature whose Trauma Map is on file fails the save, Legendary Resistance and all), the map filed by the at-will Trauma Map spend (src/lib/srd/authored-effects-genre-b-mystery.ts)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Examined Mind: its treatment cannot be resisted by a creature whose Trauma Map the alienist holds, and any other creature saves as it rolls"
    }
   ]
  },
@@ -1016,8 +1014,9 @@
    },
    {
     "c": "your treatments treat one target's saving throw as if it rolled a 1",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_archetype_made_flesh#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts archetype (the mark on the creature named) and src/lib/dm/genre-b-mystery-dossier.ts treatmentUndoes, asked by src/lib/dm/forced-save.ts rollEnemySave (the d20 of its next save against the alienist's spell counts as 1)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Archetype Made Flesh: the creature marked makes its next save against the alienist's treatment as if it rolled a 1, once; an unmarked creature's 20 stands"
    }
   ]
  },
@@ -1486,11 +1485,10 @@
   "clauses": [
    {
     "c": "A creature that has believed one of your lies has disadvantage on Insight against you thereafter",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Sunk Cost#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Sunk Cost: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts noteBelievedLie and socialEdge, asked by src/lib/dm/social-tools.ts social_check: a Deception that succeeded is on file, and later lies to that person meet a DC 5 lower (a passive Insight at disadvantage, SRD 5.1 Passive Checks)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Sunk Cost#0:unhooked; scripts/test-genre-b-mystery-features.mjs Sunk Cost: once a creature has believed the grifter's lie, their next lie meets a DC 5 lower; a grifter without the feature gets no such edge"
    }
   ]
  },

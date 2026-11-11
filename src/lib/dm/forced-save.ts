@@ -53,6 +53,7 @@ import { authoredEnemySave } from "@/lib/dm/authored-saves";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { nemesisClaim, treatmentUndoes } from "@/lib/dm/genre-b-mystery-dossier";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -322,7 +323,8 @@ export function rollCharacterSave(
   const covered = saveCoverBonus(campaign.id, sheet.id, ability, extra);
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
+  // Nemesis Study: a save the detective's nemesis forces (genre-b-mystery-dossier.ts).
+  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null) ?? nemesisClaim(campaign.id, sheet, from);
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {
@@ -552,8 +554,14 @@ export function rollEnemySave(
     });
     options.record.turn?.rollIds.push(roll.id);
   }
-  const made = outcome.total >= dc;
-  const resisted = !made && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
+  // An alienist's treatment undoes the save (genre-b-mystery-dossier.ts): as
+  // if it rolled a 1, or not to be resisted at all.
+  const undone = treatmentUndoes(campaignId, enemy, options.magical === true);
+  if (undone?.face && outcome.natural !== undefined) {
+    outcome = { ...outcome, total: outcome.total - outcome.natural + undone.face };
+  }
+  const made = !undone?.hard && outcome.total >= dc;
+  const resisted = !made && !undone?.hard && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
   if (!made && !resisted) {
     noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
   }
@@ -572,6 +580,7 @@ export function rollEnemySave(
       ...coverNote(covered),
       ...riders.notes,
       ...authored.notes,
+      ...(undone ? [undone.note] : []),
       ...(shiftedBy ? [`${shiftedBy}'s Chronal Shift: rolled again (${firstTotal} became ${outcome.total})`] : []),
     ],
   };

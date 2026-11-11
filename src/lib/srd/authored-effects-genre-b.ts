@@ -209,7 +209,7 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "cast a 1st-level tech effect without expending a slot"; Power Cell Cache (3rd): "up to 3rd level".
   spend("Power Cell Cache", ["salvage_tech"], "post_apocalyptic_power_cell_cache", undefined, { kind: "buff", condition: [[5, "slotless cast (1st)"], [14, "slotless cast (3rd)"]], rounds: 600 }),
   spend("Sublimation", ["alchemist"], "steampunk_sublimation", undefined, { kind: "buff", condition: "slotless cast (3rd)", rounds: 600 }),
-  spend("The Examined Mind", ["alienist"], "mystery_the_examined_mind", undefined, { kind: "buff", condition: "slotless cast (5th)", rounds: 600 }),
+  // The Examined Mind's spend is src/lib/srd/authored-effects-genre-b-mystery.ts's (it reads the Trauma Map).
   spend("Magnum Opus", ["machinist"], "steampunk_magnum_opus", undefined, { kind: "buff", condition: "slotless cast (6th)", rounds: 600 }),
   spend("The Great Work", ["alchemist"], "steampunk_the_great_work", undefined, { kind: "buff", condition: "slotless cast (7th)", rounds: 600 }),
   // "Choose one 3rd-level schematic; cast it 1/long rest without a slot": the player's chosen spell, of exactly that level.

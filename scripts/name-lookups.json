@@ -1955,7 +1955,7 @@
     "lib/dm/zone-move.ts#whole": [["identity",1,"the caster's held zone by whole spell key (zoneKey, issue 659)"]],
     "lib/dm/zone-rules.ts#whole": [["key",1,"zone rows and refs"]],
     "lib/dm/genre-b-mystery-reactions.ts#whole": [["key",1,"sheet, token, enemy and counter ids, and condition names folded by textKey"]],
-    "lib/dm/genre-b-mystery-spends.ts#whole": [["key",4,"sheet, token, enemy and counter ids, and condition names folded by textKey"]],
+    "lib/dm/genre-b-mystery-spends.ts#whole": [["key",5,"sheet, token, enemy and counter ids, and condition names folded by textKey"]],
     "lib/dm/genre-b-mystery-wall.ts#whole": [["key",1,"token refs"]],
     "lib/dm/zone-store.ts#whole": [["identity",2,"zones by whole spell key"]],
     "lib/dm/zone-store.ts#whole-single": [["identity",2,"concentration, spells, downtime subjects, relationships, trade lines and zones by textKey (zoneKey is textKey plus ODM's English spell aliases) or normalizeName; turn and order keys"]],

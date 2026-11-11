@@ -18,6 +18,7 @@ import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { spendVanish, VANISH } from "@/lib/srd/genre-b-mystery";
+import { nemesisClaim } from "@/lib/dm/genre-b-mystery-dossier";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -240,7 +241,7 @@ export function contest(
   // (src/lib/dm/contest-roll.ts), against the target's better of Athletics
   // (STR) and Acrobatics (DEX). Ties go to the defender.
   const rollContest = (die: { die: string; label: string } | undefined): { text: string; won: boolean } => {
-    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
+    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
     if (checked.rollId) {
       turn.rollIds.push(checked.rollId);
     }

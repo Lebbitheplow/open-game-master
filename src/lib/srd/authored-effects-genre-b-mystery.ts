@@ -27,6 +27,11 @@ function spend(feature: string, classes: string[], counter: string, action: Spen
 }
 
 
+// A spend with no counter: taken whenever the story allows, at no cost of the turn.
+function atWill(feature: string, classes: string[], does: SpendDoes): GenreRow {
+  return { feature, classes, entry: { subclass: "genre", spends: [{ name: feature, action: "none", does }] } };
+}
+
 function react(feature: string, classes: string[], counter: string, does: ReactionDoes): GenreRow {
   return { feature, classes, entry: { subclass: "genre", counter, reactions: [{ name: feature, pool: { id: counter }, does }] } };
 }
@@ -111,6 +116,23 @@ export const GENRE_B_MYSTERY_AUTHORED: GenreRow[] = [
   // (src/lib/dm/genre-b-cure.ts). The text names no reach: the patient is in
   // the alienist's hearing, as Break the Delusion's is.
   spend("Radical Breakthrough", ["alienist"], "mystery_radical_breakthrough", undefined, { kind: "cure", ends: ["madness", "long-term madness", "indefinite madness", "phobia", "compulsion", "frightened", "charmed"], rangeFt: 30 }),
+
+  // "your treatments treat one target's saving throw as if it rolled a 1":
+  // the creature named, on its next save against the alienist's spell
+  // (src/lib/dm/genre-b-mystery-dossier.ts treatmentUndoes).
+  spend("Archetype Made Flesh", ["alienist"], "mystery_archetype_made_flesh", "none", mystery("archetype", "enemy")),
+  // "cast one treatment of 5th level or lower without a slot; it cannot be
+  // resisted by creatures you have a Trauma Map of" (the slotless mark is
+  // src/lib/dm/genre-b-free-cast.ts's).
+  spend("The Examined Mind", ["alienist"], "mystery_the_examined_mind", undefined, mystery("examined_mind")),
+  // The files (src/lib/dm/genre-b-mystery-dossier.ts): at will, on a creature
+  // of the fight or a person named in the variant.
+  atWill("Trauma Map", ["alienist"], mystery("trauma_map", "enemy")),
+  atWill("Case Study", ["alienist"], mystery("case_study", "enemy")),
+  atWill("Nemesis Study", ["detective"], mystery("nemesis", "enemy")),
+  // "A creature that has believed one of your lies has disadvantage on Insight
+  // against you thereafter": social_check keeps the file and reads it.
+  row("Sunk Cost", ["grifter"], { heldBy: { file: "src/lib/dm/social-tools.ts", call: "socialEdge(" } }),
 
   // ---- muckraker ----
   // "1/long rest, publish the truth: a named creature's public standing

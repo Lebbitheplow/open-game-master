@@ -42,6 +42,8 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { FLEEING } from "@/lib/dm/flee-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { anchorSpirit } from "@/lib/dm/genre-b-mystery-anchor";
+import { FILE, fileHeld, fileNameOf, onFile, openFile } from "@/lib/dm/genre-b-mystery-dossier";
+import { getNpcByName } from "@/lib/db/npcs";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { minutesSinceDeath } from "@/lib/dm/revival";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
@@ -50,7 +52,7 @@ import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { rollAgainst } from "@/lib/roll-labels";
 import { computeSheetDerived } from "@/lib/srd";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
-import { CHORUS, DREAM_RITE, FERRY_RITE, QUIET_COURT, SPIRIT_ANCHORED, SPIRIT_WARD, STORY_RITE, TRANCE, TRANCE_RITE } from "@/lib/srd/genre-b-mystery-conditions";
+import { ARCHETYPE, CHORUS, DREAM_RITE, EXAMINED, FERRY_RITE, QUIET_COURT, SPIRIT_ANCHORED, SPIRIT_WARD, STORY_RITE, TRANCE, TRANCE_RITE } from "@/lib/srd/genre-b-mystery-conditions";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -394,7 +396,80 @@ function dreams(ctx: SpendContext): Resolution {
   return rite(ctx, DREAM_RITE, `${ctx.sheet.name} reads ${name}'s dreams: ${reads}.`);
 }
 
+// ---- the files (src/lib/dm/genre-b-mystery-dossier.ts) ----
+
+// The creature a file is opened on: one of the fight, or a person named in
+// the variant, as the story has them.
+function subjectOf(ctx: SpendContext): { name: string; npcId?: string } | ToolError {
+  const enemy = ctx.args.targetEnemyId && ctx.encounter ? resolveTargetFoe(ctx.campaign.id, ctx.encounter, ctx.args.targetEnemyId) : null;
+  if (enemy) {
+    return { name: fileNameOf(enemy), ...(enemy.npcId ? { npcId: enemy.npcId } : {}) };
+  }
+  const named = (ctx.args.variant ?? "").trim();
+  if (named) {
+    const npc = getNpcByName(ctx.campaign.id, named);
+    return { name: npc?.name ?? named, ...(npc ? { npcId: npc.id } : {}) };
+  }
+  return { error: `${ctx.spend.name} names a creature: one of the fight (targetEnemyId), or a person by name (variant). Nothing was spent.`, refused: "rules" };
+}
+
+function traumaMap(ctx: SpendContext): Resolution {
+  const subject = subjectOf(ctx);
+  if ("error" in subject) return subject;
+  openFile(ctx.campaign, ctx.sheet, subject.name, FILE.trauma, subject);
+  return { result: { applied: `${ctx.sheet.name} holds a Trauma Map of ${subject.name}: the GM names its deepest current fear or fixation, truthfully.` } };
+}
+
+function caseStudy(ctx: SpendContext): Resolution {
+  const subject = subjectOf(ctx);
+  if ("error" in subject) return subject;
+  // "permanently": the one creature picked stays the pick.
+  const held = fileHeld(ctx.campaign.id, ctx.sheet.id, FILE.study);
+  if (held) {
+    return { error: `${ctx.sheet.name}'s Case Study is ${held}, and it is theirs for good. Nothing was spent.`, refused: "rules" };
+  }
+  openFile(ctx.campaign, ctx.sheet, subject.name, FILE.study, subject);
+  return { result: { applied: `${subject.name} is ${ctx.sheet.name}'s Case Study: advantage on Insight and Persuasion against it from now on.` } };
+}
+
+function nemesis(ctx: SpendContext): Resolution {
+  const subject = subjectOf(ctx);
+  if ("error" in subject) return subject;
+  if (onFile(ctx.campaign.id, ctx.sheet.id, subject.name, FILE.nemesis)) {
+    return { error: `${subject.name} is ${ctx.sheet.name}'s nemesis already. Nothing was spent.`, refused: "rules" };
+  }
+  openFile(ctx.campaign, ctx.sheet, subject.name, FILE.nemesis, { ...subject, single: true });
+  return { result: { applied: `${subject.name} is ${ctx.sheet.name}'s nemesis until the case ends: advantage on every check and save opposing them.` } };
+}
+
+// "your treatments treat one target's saving throw as if it rolled a 1": the
+// creature named carries the mark until its next save against the alienist's spell.
+function archetype(ctx: SpendContext): Resolution {
+  const enemy = namedEnemy(ctx);
+  if (!ctx.encounter || !enemy) {
+    return { error: `${ctx.spend.name} marks a creature of the fight for the alienist's next treatment (targetEnemyId). Nothing was spent.`, refused: "rules" };
+  }
+  layEnemyConditionInstance(ctx.campaign, enemy, ARCHETYPE, { source: ctx.sheet.id, rounds: MINUTE });
+  publishEncounter(ctx.campaign.id);
+  return { result: { applied: `${enemy.displayName}'s next saving throw against ${ctx.sheet.name}'s treatment counts as a roll of 1.` } };
+}
+
+// "cast one treatment of 5th level or lower without a slot; it cannot be
+// resisted by creatures you have a Trauma Map of".
+function examinedMind(ctx: SpendContext): Resolution {
+  const free = resolveSpendEffect(ctx, { kind: "buff", condition: "slotless cast (5th)", rounds: 600 });
+  if ("error" in free) return free;
+  const patch = (free.patch ?? {}) as { conditions?: string[]; conditionMeta?: ConditionMetaMap };
+  const conditions = [...(patch.conditions ?? ctx.sheet.conditions).filter((entry) => textKey(entry) !== textKey(EXAMINED)), EXAMINED];
+  return { patch: { ...patch, conditions, conditionMeta: { ...((patch.conditionMeta ?? ctx.sheet.conditionMeta) as ConditionMetaMap), [EXAMINED]: { rounds: 600 } } }, result: free.result };
+}
+
 const EFFECTS: Record<string, (ctx: SpendContext) => Resolution> = {
+  trauma_map: traumaMap,
+  case_study: caseStudy,
+  nemesis,
+  archetype,
+  examined_mind: examinedMind,
   spirit_ward: spiritWard,
   quiet_court: (ctx) => quietCourt(ctx, true),
   quiet_court_direct: (ctx) => quietCourt(ctx, false),

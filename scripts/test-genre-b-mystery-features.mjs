@@ -17,6 +17,7 @@ const SRC = new URL("../src/", import.meta.url);
 const { minutesSinceDeath } = await import(new URL("lib/dm/revival.ts", SRC).href);
 const { getClock, setClockInstant } = await import(new URL("lib/db/clock.ts", SRC).href);
 const { killOutright } = await import(new URL("lib/dm/death.ts", SRC).href);
+const { rollEnemySave, rollCharacterSave } = await import(new URL("lib/dm/forced-save.ts", SRC).href);
 const { getCampaignById } = await import(new URL("lib/db/campaigns.ts", SRC).href);
 
 const { test, finish } = suite("test-genre-b-mystery-features");
@@ -470,6 +471,103 @@ await run("Radical Breakthrough: a madness or a magical fear on the patient ends
   rig.must(await cure(), "use_resource Radical Breakthrough");
   assert.ok(!world.sheet(ally.id).conditions.includes("madness"), `the patient still carries ${JSON.stringify(world.sheet(ally.id).conditions)}`);
   assert.equal(used(hero, "mystery_radical_breakthrough"), 1);
+});
+
+// ---- the files ----
+
+const campaign = () => getCampaignById(world.campaignId);
+// A creature's save against the spell of whoever's turn it is, its d20 forced.
+function spellSave(enemy, face) {
+  clearDice();
+  dice(face);
+  const out = rollEnemySave(world.campaignId, kit.enemy(enemy.id), "wis", 15, { magical: true });
+  clearDice();
+  return out;
+}
+const person = async (name) => rig.must(await world.invoke("set_npc", { name, attitude: "indifferent", gender: "Female" }), "set_npc");
+async function sway(hero, npc, approach, face = 11) {
+  clearDice();
+  diceLog();
+  dice(face, face);
+  const out = rig.must(await world.invoke("social_check", { characterId: hero.id, npc, approach, reason: "test" }), "social_check");
+  const d20s = diceLog().filter((die) => die.sides === 20).length;
+  clearDice();
+  return { ...out, d20s };
+}
+
+await run("Archetype Made Flesh: the creature marked makes its next save against the alienist's treatment as if it rolled a 1, once; an unmarked creature's 20 stands", async () => {
+  const hero = rig.holder(feature("alienist", "Archetype Made Flesh", 14));
+  const { near, far } = await rig.fight(hero);
+  assert.equal(spellSave(far, 20).success, true, "the staged 20 does not make the save");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Archetype Made Flesh", targetEnemyId: near.id, reason: "test" }), "use_resource Archetype Made Flesh");
+  assert.equal(used(hero, "mystery_archetype_made_flesh"), 1);
+  const undone = spellSave(near, 20);
+  assert.equal(undone.success, false, `the marked creature's 20 stood (total ${undone.total})`);
+  assert.ok(undone.total < 10, `a roll of 1 totalled ${undone.total}`);
+  assert.equal(spellSave(near, 20).success, true, "the mark outlived the one save");
+});
+
+await run("The Examined Mind: its treatment cannot be resisted by a creature whose Trauma Map the alienist holds, and any other creature saves as it rolls", async () => {
+  const hero = rig.holder(feature("alienist", "The Examined Mind", 20));
+  const { near, far } = await rig.fight(hero);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Trauma Map", targetEnemyId: near.id, reason: "test" }), "use_resource Trauma Map");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "The Examined Mind", reason: "test" }), "use_resource The Examined Mind");
+  assert.ok(world.sheet(hero.id).conditions.includes("slotless cast (5th)"), "the slotless treatment is not ready");
+  assert.equal(spellSave(far, 20).success, true, "a creature with no Trauma Map on file could not resist");
+  assert.equal(spellSave(near, 20).success, false, "the mapped creature resisted the treatment on a 20");
+  assert.equal(spellSave(near, 20).success, true, "the one treatment went on undoing saves");
+});
+
+await run("Case Study: Persuasion against the creature studied is rolled with advantage, no other approach and no other person is, and the pick is for good", async () => {
+  const hero = rig.holder(feature("alienist", "Case Study", 10));
+  await person("Vex");
+  await person("Orla");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Case Study", variant: "Vex", reason: "test" }), "use_resource Case Study");
+  assert.equal((await sway(hero, "Vex", "persuade")).d20s, 2, "Persuasion against the creature studied threw one d20");
+  assert.equal((await sway(hero, "Vex", "intimidate")).d20s, 1, "Intimidation took Case Study's advantage");
+  assert.equal((await sway(hero, "Orla", "persuade")).d20s, 1, "a person not studied gave the advantage");
+  const again = await world.invoke("use_resource", { characterId: hero.id, resource: "Case Study", variant: "Orla", reason: "test" });
+  assert.equal(again.ok, false, "a second Case Study was picked");
+});
+
+await run("Nemesis Study: checks opposing the nemesis and saves it forces are rolled with advantage; another foe's are not; a new nemesis replaces the old", async () => {
+  const hero = rig.holder(feature("detective", "Nemesis Study", 15));
+  const { near, far } = await rig.fight(hero);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Nemesis Study", targetEnemyId: near.id, reason: "test" }), "use_resource Nemesis Study");
+  const forced = (enemy) => {
+    clearDice();
+    diceLog();
+    rollCharacterSave(campaign(), null, world.sheet(hero.id), "con", 10, "test save", undefined, kit.enemy(enemy.id));
+    return diceLog().filter((die) => die.sides === 20).length;
+  };
+  assert.equal(forced(near), 2, "a save the nemesis forced threw one d20");
+  assert.equal(forced(far), 1, "a save another foe forced took the advantage");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Nemesis Study", targetEnemyId: far.id, reason: "test" }), "a new nemesis");
+  assert.equal(forced(near), 1, "the old nemesis is still one");
+  assert.equal(forced(far), 2);
+  await kit.endFight();
+  await person("Moriarty");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Nemesis Study", variant: "Moriarty", reason: "test" }), "use_resource Nemesis Study by name");
+  assert.equal((await sway(hero, "Moriarty", "intimidate")).d20s, 2, "a check opposing the nemesis threw one d20");
+});
+
+await run("Sunk Cost: once a creature has believed the grifter's lie, their next lie meets a DC 5 lower; a grifter without the feature gets no such edge", async () => {
+  const row = feature("grifter", "Sunk Cost", 7);
+  const hero = rig.holder(row);
+  await person("Mark");
+  const first = await sway(hero, "Mark", "deceive", 19);
+  assert.equal(first.success, true, "the staged lie was not believed");
+  // The lie may have warmed them: the plain DC is what Persuasion meets now.
+  const plainDc = (await sway(hero, "Mark", "persuade", 11)).dc;
+  const second = await sway(hero, "Mark", "deceive", 11);
+  assert.equal(second.dc, Math.max(5, plainDc - 5), `the second lie met DC ${second.dc}, and Persuasion DC ${plainDc}`);
+  assert.ok(second.dc < plainDc, "Sunk Cost took nothing off the DC");
+  rig.reset();
+  const plain = rig.holder(feature("grifter", "The Angle", 3));
+  await person("Mark");
+  await sway(plain, "Mark", "deceive", 19);
+  const fair = (await sway(plain, "Mark", "persuade", 11)).dc;
+  assert.equal((await sway(plain, "Mark", "deceive", 11)).dc, fair, "a grifter with no Sunk Cost met a lower DC");
 });
 
 // ---- the muckraker ----
