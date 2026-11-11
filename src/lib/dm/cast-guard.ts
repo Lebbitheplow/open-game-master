@@ -25,7 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
-import { clearCastMarks } from "@/lib/dm/mt-srd-metamagic";
+import { clearCastMarks, factsAsCast, settleTwin } from "@/lib/dm/mt-srd-metamagic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -342,7 +342,8 @@ export function castSpell(
   }
   const via = asked.via ?? "slot";
   const authors = spellAuthorsFor(campaign);
-  const facts = spellFactsFor(spell, authors);
+  // Distant Spell's range, for a square named for the spell's area (mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet, spellFactsFor(spell, authors));
   const name = facts?.name ?? spell;
   // A casting of a minute or more held across the caster's turns whose
   // rounds have run out (long-casting-logic.ts): this call completes it, from
@@ -703,18 +704,19 @@ export function castSpell(
     result.completed = `${name}'s casting is complete and it takes effect now; it costs no action.`;
   }
 
+  // Twinned Spell paid for this spell (mt-srd-metamagic.ts): its price is
+  // settled against the level it is cast at, and an eligible spell takes one
+  // more creature. An area, and a casting that already takes several, do not.
+  const ownShares = castShares(mech, { spellLevel: facts?.level ?? slotLevel ?? 0, slotLevel, casterLevel: sheet.level });
+  const twin = input.storing ? null : settleTwin(campaign, sheet.id, name, { facts, shares: via === "aoe" ? Math.max(2, ownShares) : ownShares, slotLevel });
+  if (twin) {
+    result.metamagic = twin.note;
+  }
   if (turn.kind === "budget" && encounter) {
     let budget = turn.budget;
     // aoe_damage resolves every creature in the area in its one call, so
     // nothing of the casting is left open for a second call to reuse.
-    const shares =
-      via === "aoe"
-        ? 1
-        : castShares(mech, {
-            spellLevel: facts?.level ?? slotLevel ?? 0,
-            slotLevel,
-            casterLevel: sheet.level,
-          });
+    const shares = via === "aoe" ? 1 : ownShares + (twin?.extra ?? 0);
     // use_spell_slot resolves nothing itself, so every share is still to come.
     const uses = Math.max(1, Math.min(shares, Math.floor(input.uses ?? 1)));
     const left = via === "slot" ? shares : shares - uses;
@@ -812,7 +814,7 @@ export function castSpell(
   // cast at an enemy ends Sanctuary (src/lib/dm/spell-defenses.ts).
   endInvisibilityOnCast(campaign.id, sheet.id);
   // The Metamagic paid for this spell is used (mt-srd-metamagic.ts).
-  clearCastMarks(campaign, sheet.id);
+  clearCastMarks(campaign, sheet.id, via === "enemy" || via === "aoe" || via === "attack");
   if (via === "enemy" || via === "aoe" || via === "attack") {
     endSanctuaryOnHarm(campaign.id, sheet.id);
   }

@@ -7300,45 +7300,45 @@
       },
       {
         "c": "When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell's full force.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "To do so, you spend 1 sorcery point and choose a number of those creatures up to your Charisma modifier (minimum of one creature).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "A chosen creature automatically succeeds on its saving throw against the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "When you cast a spell that has a range of 5 feet or greater, you can spend 1 sorcery point to double the range of the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Distant Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Distant Spell paid: the spell's range is doubled and a touch spell reaches 30 feet, on every cast path (mt-srd-metamagic.ts factsAsCast, at cast-at-enemy.ts, cast-buff.ts, aoe-spell.ts, aoe-damage.ts, heal-spell.ts, cast-guard.ts and cast-reach.ts spellAttackReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.distant"
       },
       {
         "c": "When you cast a spell that has a range of touch, you can spend 1 sorcery point to make the range of the spell 30 feet.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Distant Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Distant Spell paid: the spell's range is doubled and a touch spell reaches 30 feet, on every cast path (mt-srd-metamagic.ts factsAsCast, at cast-at-enemy.ts, cast-buff.ts, aoe-spell.ts, aoe-damage.ts, heal-spell.ts, cast-guard.ts and cast-reach.ts spellAttackReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.distant"
       },
       {
         "c": "When you roll damage for a spell, you can spend 1 sorcery point to reroll a number of the damage dice up to your Charisma modifier (minimum of one).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell paid: the spell's damage roll throws again the dice that fell below their average, lowest first and up to the Charisma modifier (one at least), and the new faces stand (mt-srd-metamagic.ts empoweredRoll, src/lib/dice.ts empower, at cast-at-enemy-damage.ts, aoe-damage.ts and attack-swing.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.empowered"
       },
       {
         "c": "You must use the new rolls.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell paid: the spell's damage roll throws again the dice that fell below their average, lowest first and up to the Charisma modifier (one at least), and the new faces stand (mt-srd-metamagic.ts empoweredRoll, src/lib/dice.ts empower, at cast-at-enemy-damage.ts, aoe-damage.ts and attack-swing.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.empowered"
       },
       {
         "c": "You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.",
@@ -7348,9 +7348,9 @@
       },
       {
         "c": "When you cast a spell that has a duration of 1 minute or longer, you can spend 1 sorcery point to double its duration, to a maximum duration of 24 hours.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Extended Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Extended Spell paid: what the spell lays lasts twice as long, 24 hours at most, when it lasts a minute or longer: a buff's condition (cast-buff.ts) and the condition a failed save lays (cast-at-enemy.ts, aoe-damage.ts), through mt-srd-metamagic.ts extendedRounds",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.extended"
       },
       {
         "c": "When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 3 sorcery points to give one target of the spell disadvantage on its first saving throw made against the spell.",
@@ -7372,15 +7372,15 @@
       },
       {
         "c": "When you cast a spell that targets only one creature and doesn't have a range of self, you can spend a number of sorcery points equal to the spell's level to target a second creature in range with the same spell (1 sorcery point if the spell is a cantrip).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Twinned Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Twinned Spell paid: a spell that takes one creature at the slot it is cast from and has no range of self takes a second creature (never the first again), for the spell's level in sorcery points (1 for a cantrip) whatever the spend named; a spell that cannot be twinned gives the points back (mt-srd-metamagic.ts settleTwin and twinExtra, at cast-guard.ts, cast-buff.ts and heal-spell.ts; secondTargetProblem at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.twinned"
       },
       {
         "c": "To be eligible, a spell must be incapable of targeting more than one creature at the spell's current level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Twinned Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Twinned Spell paid: a spell that takes one creature at the slot it is cast from and has no range of self takes a second creature (never the first again), for the spell's level in sorcery points (1 for a cantrip) whatever the spend named; a spell that cannot be twinned gives the points back (mt-srd-metamagic.ts settleTwin and twinExtra, at cast-guard.ts, cast-buff.ts and heal-spell.ts; secondTargetProblem at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.twinned"
       },
       {
         "c": "For example, *magic missile* and *scorching ray* aren't eligible, but *ray of frost* and *chromatic orb* are.",

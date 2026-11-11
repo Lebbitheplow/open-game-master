@@ -38,6 +38,7 @@ import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { afterEnemySave, concentrationShaken, layAreaConditions, spellAutoSave, spellSaveOptions } from "@/lib/dm/spell-riders";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { getSheetById } from "@/lib/db/sheets";
+import { empoweredLine, empoweredRoll, extendedMeta, factsAsCast } from "@/lib/dm/mt-srd-metamagic";
 import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { aoeOnCharacters } from "@/lib/dm/aoe-characters";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
@@ -175,7 +176,8 @@ export function handleAoeDamage(
   const blastArea = blastCaster && args.spell ? spellAreaShape(args.spell, spellAuthorsFor(campaign)) : null;
   let caughtByArea = false;
   if (blastCaster && blastArea && args.spell) {
-    const range = spellFactsFor(args.spell, spellAuthorsFor(campaign))?.range;
+    // Measured as this caster casts it (Distant Spell: mt-srd-metamagic.ts).
+    const range = factsAsCast(getSheetById(blastCaster.id) ?? blastCaster, spellFactsFor(args.spell, spellAuthorsFor(campaign)))?.range;
     const caught = creaturesInBlast({
       encounterId: encounter.id,
       casterId: blastCaster.id,
@@ -319,7 +321,7 @@ export function handleAoeDamage(
   // card said 60 ft. Asked before the slot is spent; what bars the cast
   // itself (no slot, not their turn) is said first (tool-errors.ts).
   if (args.spell && !args.casterEnemyId && charmedCaster) {
-    const facts = spellFactsFor(args.spell, spellAuthorsFor(campaign));
+    const facts = factsAsCast(getSheetById(charmedCaster.id) ?? charmedCaster, spellFactsFor(args.spell, spellAuthorsFor(campaign)));
     const at = zonePlacement(args).at;
     const laid = at
       ? placementReachProblem(campaign, { casterId: charmedCaster.id, casterName: charmedCaster.name, spell: args.spell, runsAs: engineSpell ? engineSpell.runsAs : null, facts, at })
@@ -490,6 +492,7 @@ export function handleAoeDamage(
   // theirs. A caster whose token is hidden is not named, as a hidden
   // creature it catches is not (the tracker's word for it).
   let wrathNote: string | null = null;
+  let empoweredNote: string | null = null;
   const areaBy: RollAttacker | null = plan
     ? { kind: "sheet", id: plan.caster.id, name: plan.caster.name }
     : enemyUse
@@ -525,8 +528,14 @@ export function handleAoeDamage(
       spendWrath(campaign.id, holder.id);
       wrathNote = WRATH_NOTE;
     }
+    // Empowered Spell paid for this cast throws the low dice of its damage
+    // again (mt-srd-metamagic.ts): the spell's first roll takes it.
+    const empowered = plan ? empoweredRoll(campaign, plan.caster.id) : {};
+    if (empowered.empower) {
+      empoweredNote = empoweredLine(empowered.empower);
+    }
     for (const [index, { expression, type }] of parts.entries()) {
-      const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression);
+      const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -558,12 +567,13 @@ export function handleAoeDamage(
   const halfOnSave = args.halfOnSave ?? true;
   const ability = (args.saveAbility ?? "dex") as SaveAbility;
   // What a failed save lays on an enemy, recorded with the spell and caster.
+  // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
   const conditionMeta = plan?.mech?.condition
-    ? spellConditionMeta(
+    ? extendedMeta(plan.caster, spellConditionMeta(
         plan.mech.condition,
         { spell: plan.spell, casterId: plan.caster.id, slotLevel: plan.slotLevel },
         { ability, dc: saveDc },
-      )
+      ))
     : null;
 
   const results: Array<Record<string, unknown>> = [];
@@ -859,6 +869,7 @@ export function handleAoeDamage(
     ok: true,
     ...(plan ? { spell: plan.spell, caster: plan.caster.name } : {}),
     ...(wrathNote ? { destructiveWrath: wrathNote } : {}),
+    ...(empoweredNote ? { empowered: empoweredNote } : {}),
     ...(plan?.mech?.note ? { spellNote: plan.mech.note } : {}),
     ...(shaken.length ? { concentration: shaken } : {}),
     damageRolled: total,

@@ -29,6 +29,7 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { extendedRounds, factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagic";
 import { lifetimeAtSlot } from "@/lib/dm/spell-effects";
 import { withTempHpClaim, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healDeathHook } from "@/lib/dm/death";
@@ -322,7 +323,12 @@ export function handleCastBuff(
         casterLevel: sheet.level,
       })
     : null;
-  const most = buff.target === "self" ? 1 : (shares ?? (buff.target === "ally" ? 1 : 6));
+  // The range, and the creatures, as this caster casts it: Distant Spell,
+  // and Twinned Spell's second creature for a spell that takes one
+  // (mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet, spellFactsFor(args.spell, authors));
+  const own = buff.target === "self" ? 1 : (shares ?? (buff.target === "ally" ? 1 : 6));
+  const most = own + (buff.target === "self" ? 0 : twinExtra(sheet, { facts, shares: own, slotLevel: plannedSlot ?? null }));
   if (targetSheets.length + targetRows.length > most) {
     return {
       error: `${resolvedMech.name} from a level ${plannedSlot ?? resolvedMech.spellLevel} slot affects at most ${most} creature${most === 1 ? "" : "s"}; ${targetSheets.length + targetRows.length} were named. Name ${most} or fewer, or cast it from a higher slot. Ask the player which. Nothing was spent.`,
@@ -352,7 +358,6 @@ export function handleCastBuff(
   }
   // On a mapped fight each recipient must be within the spell's range with
   // a clear path: a touch spell reaches only the creature beside the caster.
-  const facts = spellFactsFor(args.spell, authors);
   // A recipient inside a ward (src/lib/dm/cast-reach.ts spellWardOn) is
   // targeted all the same, and the spell does nothing to them.
   const warded = new Map<string, string>();
@@ -417,7 +422,8 @@ export function handleCastBuff(
   // 3rd-level slot: eight hours; until dispelled has no count). Rounds tick
   // in a fight and on the clock outside one (src/lib/dm/condition-tick.ts),
   // so Mage Armor's eight hours are eight hours.
-  const lasts = lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors);
+  // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
+  const lasts = extendedRounds(sheet, lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors));
   const rounds = lasts === null ? null : Math.max(1, lasts);
   const duration =
     rounds === null
@@ -546,6 +552,7 @@ export function handleCastBuff(
     ...(cast.cost ? { cost: cast.cost } : {}),
     ...(cast.slot ? { slot: cast.slot } : {}),
     ...(cast.droppedConcentration ? { droppedConcentration: cast.droppedConcentration } : {}),
+    ...(cast.metamagic ? { metamagic: cast.metamagic } : {}),
     ...(summary ? { effect: summary } : {}),
     ...(resolvedMech.mech.note ? { spellNote: resolvedMech.mech.note } : {}),
     ...(resolvedMech.concentration ? { concentration: `${sheet.name} is concentrating on ${resolvedMech.name}.` } : {}),

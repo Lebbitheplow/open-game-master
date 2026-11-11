@@ -1487,7 +1487,7 @@ function dmMutation(
       }
       patchSheet(sheet.id, outcome.patch);
       // A Metamagic option paid rides the next spell cast (mt-srd-metamagic.ts).
-      markPaidOption(campaign, sheet.id, args.variant);
+      markPaidOption(campaign, sheet.id, args.variant, { points: typeof outcome.result.spent === "number" ? outcome.result.spent : undefined, pool: counter?.id });
       Object.assign(outcome.result, charge.commit());
       if (castMark) {
         Object.assign(outcome.result, castMark.apply());

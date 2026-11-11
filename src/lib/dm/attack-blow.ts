@@ -5,6 +5,7 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -39,7 +40,10 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 // Brutal Attack rolls it twice and keeps the better, Savage Attacker the
 // weapon's own dice, Piercer rerolls the lowest die.
 export function throwDamage(ask: DamageAsk, who: string, notes: string[]): RollResult {
-  let outcome = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow, purpose: { roller: "hero", kind: "damage", who } });
+  let outcome = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow, ...(ask.empower ? { empower: ask.empower } : {}), purpose: { roller: "hero", kind: "damage", who } });
+  if (ask.empower) {
+    notes.push(empoweredLine(ask.empower));
+  }
   if (ask.feats.brutal) {
     const again = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow });
     notes.push(`Brutal Attack: the damage rolled twice (${outcome.total} and ${again.total}), the better kept`);
@@ -84,6 +88,7 @@ export function damageDiceNote(ask: DamageAsk): string {
     ask.feats.brutal ? ", rolling the damage a second time and keeping the better total (Brutal Attack)" : "",
     ask.feats.savage ? ", rolling the weapon's dice a second time and keeping the better total (Savage Attacker)" : "",
     ask.feats.piercer ? ", rerolling the lowest damage die once and keeping the new roll (Piercer)" : "",
+    ask.empower ? `, rerolling up to ${ask.empower} of the damage dice and keeping the new rolls (Empowered Spell)` : "",
   ].join("");
 }
 
@@ -97,6 +102,7 @@ export function damageDiceSteps(ask: DamageAsk): string {
     ask.feats.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
     ask.feats.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
     ask.feats.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
+    ask.empower ? `reroll up to ${ask.empower} of the damage dice and keep the new rolls (Empowered Spell)` : "",
   ].filter(Boolean);
   return steps.length ? `Before you enter your dice: ${steps.join(", then ")}.` : "";
 }

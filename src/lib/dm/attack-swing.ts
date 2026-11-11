@@ -4,6 +4,7 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
@@ -328,6 +329,8 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
       stunShot,
       feats: spendDamageFeats(scene, record, asked),
       rerollBelow: record.rerollBelow ?? 0,
+      // Empowered Spell paid for the spell this attack is (mt-srd-metamagic.ts).
+      ...(record.spell ? empoweredRoll(campaign, sheet.id) : {}),
       ...(stunDc !== undefined ? { stunDc } : {}),
       ...(record.maneuver && maneuverPaid ? { maneuver: true } : {}),
       ...(critGear ? { critGear: true } : {}),

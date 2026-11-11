@@ -55,7 +55,11 @@ export function aoeOnCharacters(input: {
     // The save a requested roll would be: conditions, a paladin's aura,
     // lasting effects, exhaustion and an inspiration die all count
     // (src/lib/dm/forced-save.ts).
-    const save = rollCharacterSave(
+    // Careful Spell: "A chosen creature automatically succeeds on its saving
+    // throw against the spell" (mt-srd-metamagic.ts). No die is thrown, and
+    // a spell that deals half on a success still deals it.
+    const careful = plan?.careful.includes(sheet.id) ?? false;
+    const save = careful ? { success: true, autoFailed: false, total: null, notes: [] as string[] } : rollCharacterSave(
       campaign,
       turn,
       sheet,
@@ -107,7 +111,7 @@ export function aoeOnCharacters(input: {
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: sheet.name,
-      ...(save.autoFailed ? { autoFailed: save.notes.join("; ") } : { save: save.total }),
+      ...(careful ? { careful: `${plan?.caster.name}'s Careful Spell: they succeed on the save.` } : save.autoFailed ? { autoFailed: save.notes.join("; ") } : { save: save.total }),
       success,
       damage: damageTaken,
       ...(evasion ? { evasion: success ? "no damage" : "half damage" } : {}),
