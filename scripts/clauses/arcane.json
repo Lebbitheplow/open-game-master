@@ -1365,8 +1365,9 @@
    },
    {
     "c": "then roll 3d6, and spells in your book with a combined level at least that total vanish from it until you finish 1d6 long rests (if there aren't enough, you drop to 0 hit points)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-vanish",
+    "by": "src/lib/dm/ar-ws-word.ts payTheWord, called by src/lib/dm/reaction-counters.ts (One with the Word); the spells and their long rests are kept on the sheet (spellcasting.vanished, src/lib/srd/ar-ws-spellbook.ts) and counted back by src/lib/dm/rest-logic.ts longRestPatch. Rulings: the spells are the wizard's choice in the source, so the call may name the ones to lose first (variant) and the server takes unprepared spells before prepared ones beyond those; a book that cannot pay keeps its spells and the wizard drops to 0 hit points."
    },
    {
     "c": "Once per long rest",

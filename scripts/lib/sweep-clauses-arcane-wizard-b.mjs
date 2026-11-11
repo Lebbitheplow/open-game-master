@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { MOD, prof } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
+export const SCRIBE_BOOK = ["Magic Missile", "Shield", "Detect Magic", "Scorching Ray", "Fireball", "Lightning Bolt", "Fly", "Ice Storm", "Cone of Cold", "Chain Lightning"];
 const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
@@ -12,6 +13,8 @@ export function probes(rig, shared) {
   const { friend, mage, drain, uses, rests, movesSomething, buysAnother } = shared;
   rig.outfit("wizard", "War Magic", { spells: ["Magic Missile", "Hold Person", "Counterspell"], acOverride: false });
   rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Hold Person"], cantrips: ["Fire Bolt"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
+  // A scribe's book: 29 spell levels, more than One with the Word's 3d6 can ask.
+  rig.outfit("wizard", "Order of Scribes", { spells: SCRIBE_BOOK });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
   const chr = () => holder("wizard", "Chronurgy Magic");
@@ -350,13 +353,59 @@ export function probes(rig, shared) {
       assert.equal(hp(scr()), before + 6, "all of the damage is prevented");
       assert.ok(!sheet(scr()).conditions.includes("manifest mind"), "the mind is dismissed");
     },
+    // The price is taken from the book: spells of the 3d6's total in levels
+    // leave it (prepared and known alike), held on the sheet with the 1d6 long
+    // rests rolled then; they cannot be cast meanwhile; each long rest counts
+    // one off and the last writes them back; the wizard may name the spells
+    // that go first; and a book that cannot pay keeps its spells and drops
+    // the wizard to 0 hit points.
     "word-vanish": async () => {
-      await hit(scr());
-      world.patch(scr().id, { conditions: ["manifest mind"], spellcasting: { ...sheet(scr()).spellcasting, prepared: ["Fireball", "Fly", "Shield"], known: ["Fireball", "Fly", "Shield"] } });
-      // 3d6 of 1 each: spells of 3 levels together leave the book.
-      await react(scr(), "One with the Word", {}, [1, 1, 1]);
-      const book = sheet(scr()).spellcasting;
-      assert.ok(book.known.length + book.prepared.length < 6, "every spell is still in the book after the 3d6");
+      const book = () => {
+        const now = sheet(scr()).spellcasting;
+        return { prepared: now.prepared, known: now.known, gone: (now.vanished ?? []).map((entry) => `${entry.spell} for ${entry.rests}`) };
+      };
+      const staged = async (spells) => {
+        await hit(scr());
+        const { vanished: _old, ...casting } = sheet(scr()).spellcasting;
+        void _old;
+        world.patch(scr().id, { conditions: ["manifest mind"], spellcasting: { ...casting, prepared: spells, known: spells } });
+      };
+      // 3d6 of 1 each (3 levels), then a 2 on the d6: Fireball (3rd) pays alone.
+      await staged(["Fireball", "Fly", "Shield"]);
+      const out = await react(scr(), "One with the Word", {}, [1, 1, 1, 2]);
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(book(), { prepared: ["Fly", "Shield"], known: ["Fly", "Shield"], gone: ["Fireball for 2"] }, `the book after a 3 on the 3d6 and a 2 on the d6: ${show(out).slice(0, 200)}`);
+      kit.giveTurn(scr().id);
+      kit.freshTurn();
+      const cast = await call("use_spell_slot", { characterId: scr().id, spell: "Fireball" });
+      assert.equal(cast.ok, false, "a vanished spell is cast");
+      // One long rest: still gone, one rest left. A day on, the second: back.
+      // (A long rest counts once in 24 hours, so a day passes before each.)
+      const day = async () => assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await kit.endFight();
+      await day();
+      await rig.rest("long");
+      assert.deepEqual(book().gone, ["Fireball for 1"], "after one of its two long rests");
+      assert.ok(!book().prepared.includes("Fireball"), "back a rest early");
+      await day();
+      await rig.rest("long");
+      await day();
+      assert.deepEqual(book(), { prepared: ["Fly", "Shield", "Fireball"], known: ["Fly", "Shield", "Fireball"], gone: [] }, "after the second long rest it is written back");
+      // The spells named go first: a 4 (1 + 1 + 2) takes Shield (1st) and Fly (3rd).
+      await staged(["Fireball", "Fly", "Shield"]);
+      const named = await react(scr(), "One with the Word", { variant: "Shield, Fly" }, [1, 1, 2, 3]);
+      assert.equal(named.ok, true, named.error);
+      assert.deepEqual(book(), { prepared: ["Fireball"], known: ["Fireball"], gone: ["Shield for 3", "Fly for 3"] }, "the spells the wizard named");
+      // A book of one 1st-level spell cannot pay a 3: it keeps the spell, and
+      // the wizard, whose damage was prevented, drops to 0 hit points.
+      await staged(["Shield"]);
+      const short = await react(scr(), "One with the Word", {}, [1, 1, 1, 6]);
+      assert.equal(short.ok, true, short.error);
+      assert.deepEqual([sheet(scr()).currentHp, sheet(scr()).conditions.includes("unconscious"), book().prepared, book().gone], [0, true, ["Shield"], []], `[hit points, unconscious, the book, gone] when the book cannot pay: ${show(short).slice(0, 200)}`);
+      const { vanished: _gone, ...casting } = sheet(scr()).spellcasting;
+      void _gone;
+      world.patch(scr().id, { conditions: [], conditionMeta: {}, deathSaves: null, spellcasting: { ...casting, prepared: SCRIBE_BOOK, known: SCRIBE_BOOK } });
+      rig.refill(scr());
     },
     "word-uses": async () => {
       await uses(["wizard", "Order of Scribes"], "sub_one_with_the_word", { 14: 1 })();
@@ -381,7 +430,6 @@ export function probes(rig, shared) {
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
     scrivener: { severity: "low", kind: "rule-missing", where: `${RES} sub_master_scrivener (a counter with guidance)`, note: "No scroll is made; the +1 level casting has nothing to ride.", fix: "Write a scroll onto the sheet that the cast tools read one level higher and a long rest removes." },
-    "word-vanish": { severity: "low", kind: "rule-missing", where: "src/lib/dm/reaction-counters.ts One with the Word (the price is told, not taken)", note: "The reaction prevents the damage for free.", fix: "Roll the 3d6 and mark spells of that many levels as gone until 1d6 long rests pass." },
   };
   return { PROBES, KNOWN };
 }

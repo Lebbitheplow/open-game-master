@@ -1439,7 +1439,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction to damage while the Manifest Mind is summoned: all of that damage is prevented and the mind is dismissed; spells totalling 3d6 levels or more vanish from the spellbook until 1d6 long rests pass. The server prevents the damage and rolls the 3d6."
+   "guidance": "A reaction to damage while the Manifest Mind is summoned: all of that damage is prevented and the mind is dismissed; spells totalling 3d6 levels or more vanish from the spellbook until 1d6 long rests pass. The server prevents the damage, rolls the 3d6 and the 1d6, takes the spells out of the book and writes them back when the rests have passed; a book that cannot pay keeps its spells and the wizard drops to 0 hit points. variant may name the spells to lose first, separated by commas."
   },
   {
    "id": "sub_hunters_sense",
