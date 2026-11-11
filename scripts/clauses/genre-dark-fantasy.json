@@ -997,8 +997,9 @@
    },
    {
     "c": "choose life or death for a touched creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (life for a creature at the table, death for a foe, a touch)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    },
    {
@@ -1009,22 +1010,22 @@
      "target": "ally",
      "want": "full"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Master of the Black Ledger#2",
-    "observed": "the spend on the ally is refused: \"Master of the Black Ledger makes the creatures it catches save: pass targetEnemyId\"; the counter knows only the death choice",
-    "where": "scripts/generate-class-resources.mjs parseFx (enemy_save) and src/lib/dm/resource-tools.ts: the fx carries the death choice's save only, and no life choice (a touched creature restored to full HP)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (every hit point restored, under regain.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Master of the Black Ledger#2"
    },
    {
     "c": "10d10 necrotic",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a save_effect of 10d10 necrotic)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (CON save against the spell save DC, half on a success)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    }
   ]

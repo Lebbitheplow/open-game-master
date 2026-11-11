@@ -37,7 +37,11 @@ export type DarkFantasyPlay =
   // radiant shared among the creatures in 30 feet, DEX save halves).
   | "blood_offering"
   | "mortify"
-  | "apotheosis";
+  | "apotheosis"
+  // Master of the Black Ledger: life (full hit points) for a creature the
+  // doctor touches at the table, or death (10d10 necrotic, CON save halves)
+  // for a foe they touch.
+  | "black_ledger";
 
 export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 
@@ -54,4 +58,5 @@ export const DARK_FANTASY_AIM: Record<DarkFantasyPlay, DarkFantasyAim> = {
   blood_offering: "none",
   mortify: "none",
   apotheosis: "none",
+  black_ledger: "ally",
 };

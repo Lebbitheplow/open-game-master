@@ -73,6 +73,11 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("penitent", "Apotheosis of Suffering", "dark_fantasy_apotheosis_of_suffering", {
     spends: [{ name: "Apotheosis of Suffering", pool: { id: "dark_fantasy_apotheosis_of_suffering" }, action: "action", does: { kind: "dark_fantasy", play: "apotheosis" } }],
   }),
+  // "1/long rest, choose life or death for a touched creature: full HP
+  // restored, or 10d10 necrotic (CON save halves)": an action, a touch.
+  counted("plague_doctor", "Master of the Black Ledger", "dark_fantasy_master_of_the_black_ledger", {
+    spends: [{ name: "Master of the Black Ledger", pool: { id: "dark_fantasy_master_of_the_black_ledger" }, action: "action", does: { kind: "dark_fantasy", play: "black_ledger" } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

@@ -8,6 +8,7 @@ import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-e
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
+import { namedOption } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
 import { BRAND, BRAND_CONDITIONS, BRAND_TWIN, JUDGMENT_SHOT, LANCED, PURGING_FLAME, SECOND_BRAND, THRENODY, JUDGED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
@@ -17,6 +18,8 @@ import { foesOfSheet } from "@/lib/dm/sheet-foe";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { computeSheetDerived } from "@/lib/srd";
+import { getSheetById } from "@/lib/db/sheets";
+import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 
 type Resolution = ReturnType<typeof resolveSpendEffect>;
 
@@ -44,6 +47,8 @@ export function playDarkFantasy(ctx: SpendContext, play: DarkFantasyPlay): Resol
       return mortify(ctx);
     case "apotheosis":
       return apotheosis(ctx);
+    case "black_ledger":
+      return blackLedger(ctx);
   }
 }
 
@@ -324,4 +329,41 @@ function apotheosis(ctx: SpendContext): Resolution {
     }
   }
   return { patch: { currentHp: 1 }, result: { paid, share, applied: lines } };
+}
+
+// Master of the Black Ledger: "choose life or death for a touched creature:
+// full HP restored, or 10d10 necrotic (CON save halves)". The variant names
+// the choice; without one, a creature at the table (targetCharacterId) is
+// given life and a foe (targetEnemyId) death. Either is a touch: within 5
+// feet on a board. Before this a life was refused, the counter knowing only
+// the save.
+function blackLedger(ctx: SpendContext): Resolution {
+  const named = ctx.args.variant ? namedOption(ctx.spend.name, ctx.args.variant, ["life", "death"]) : null;
+  if (named !== null && typeof named !== "string") {
+    return named;
+  }
+  const wanted = named ?? (ctx.args.targetCharacterId ? "life" : ctx.args.targetEnemyId ? "death" : null);
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  if (wanted === "death") {
+    const foe = encounter && ctx.args.targetEnemyId ? resolveTargetFoe(ctx.campaign.id, encounter, ctx.args.targetEnemyId) : null;
+    if (foe && !withinFeet(encounter!.id, ctx.sheet.id, foe.id, 5)) {
+      return { error: `${foe.displayName} is beyond ${ctx.sheet.name}'s touch. Nothing was spent.`, refused: "rules" };
+    }
+    return resolveSpendEffect(ctx, { kind: "save_effect", save: "con", dcAbility: "spell", dice: "10d10", type: "necrotic", half: true });
+  }
+  if (!wanted) {
+    return { error: `${ctx.spend.name} takes variant "life" (a creature at the table, targetCharacterId) or "death" (a foe, targetEnemyId). Ask the player which. Nothing was spent.`, retry: true };
+  }
+  const target = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : ctx.sheet;
+  if (!target || target.campaignId !== ctx.campaign.id || target.deathSaves?.dead) {
+    return { error: `${ctx.spend.name} gives life to a living creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, 5)) {
+    return { error: `${target.name} is beyond ${ctx.sheet.name}'s touch. Nothing was spent.`, refused: "rules" };
+  }
+  if (!canRegain(target)) {
+    return { error: `${target.name} cannot regain hit points right now, so ${ctx.spend.name} would heal nothing. Nothing was spent.`, refused: "rules" };
+  }
+  const gained = regainHitPoints(ctx.campaign, ctx.turnId, target, Math.max(0, target.maxHp - target.currentHp), `${ctx.spend.name} (${ctx.sheet.name})`);
+  return { result: { healed: `${target.name} regains ${gained} hit points: every one restored.` } };
 }

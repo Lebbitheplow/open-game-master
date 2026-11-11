@@ -300,5 +300,18 @@ await test("Greater Mortification: up to twice the proficiency bonus, doubled be
   assert.ok(conditions(scene.holder.id).includes("mortified flesh (16)"), JSON.stringify(conditions(scene.holder.id)));
 });
 
+await test("Master of the Black Ledger: life restores every hit point of the touched ally; death is 10d10 necrotic on a touched foe, half on a save", async () => {
+  const scene = await t.stage({ classId: "plague_doctor", level: 20 });
+  must(await spend(scene, "dark_fantasy_master_of_the_black_ledger", { targetCharacterId: scene.ally.id }), "life");
+  assert.equal(sheet(scene.ally.id).currentHp, sheet(scene.ally.id).maxHp);
+  const death = await t.stage({ classId: "plague_doctor", level: 20 });
+  t.world.dice(1, ...new Array(10).fill(5));
+  must(await spend(death, "dark_fantasy_master_of_the_black_ledger", { targetEnemyId: death.near.id, variant: "death" }), "death");
+  t.world.clearDice();
+  assert.equal(300 - t.foeHp(death.near.id), 50);
+  const far = await spend(death, "dark_fantasy_master_of_the_black_ledger", { targetEnemyId: death.far.id, variant: "death" });
+  assert.equal(far.ok, false, "a foe 70 feet off is beyond a touch");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);
