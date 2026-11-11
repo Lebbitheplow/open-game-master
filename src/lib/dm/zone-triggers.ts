@@ -22,6 +22,7 @@ import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turn
 import { getBattleMap, getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, setEnemyConcentration, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -162,7 +163,10 @@ function strike(
     }
     let dealt = 0;
     if (dice && (failed || (trigger.half && !trigger.damageOnFail))) {
-      const rolled = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by).total;
+      const thrown = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by);
+      // Spell Bombardment on a character's standing spell (src/lib/dm/ar-ws-bombardment.ts).
+      const caster = zone.casterKind === "pc" ? getSheetById(zone.casterId) : null;
+      const rolled = ((caster ? spellBombardment({ campaign, turn: null, sheet: caster, outcome: thrown, spell: zone.spell }) : null)?.outcome ?? thrown).total;
       dealt = failed ? rolled : Math.floor(rolled / 2);
       if (dealt > 0) {
         const before = enemy.currentHp;

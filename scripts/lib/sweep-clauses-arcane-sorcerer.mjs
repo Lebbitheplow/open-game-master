@@ -12,6 +12,7 @@ export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
   const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
+  rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
   rig.outfit("sorcerer", "Aberrant Mind", { spells: ["Dissonant Whispers"] });
   rig.outfit("sorcerer", "Shadow Magic", { spells: ["Darkness"] });
   rig.outfit("sorcerer", "Lunar Sorcery", { spells: ["Sacred Flame"], cantrips: ["Sacred Flame"] });
@@ -69,7 +70,50 @@ export function probes(rig, shared) {
       const out = await react(wild(), "Bend Luck", { targetCharacterId: friend().id, variant: "add" }, [4]);
       assert.equal(out.ok, true, `to add 1d4 to an ally's save that failed by one: ${String(out.error).slice(0, 170)}`);
     },
-    "bombardment-door": hasDoor(["sorcerer", "Wild Magic"], "Spell Bombardment", (foes) => ({ targetEnemyId: foes[0].id })),
+    // Every door a spell's damage is rolled at (src/lib/dm/ar-ws-bombardment.ts):
+    // a die showing its highest number is rolled again and added, once a turn.
+    // Each case reads the dice the engine threw and what the creature lost.
+    "bombardment-door": async () => {
+      const who = wild();
+      const thrown = (out, sides) => out.rolled.filter((die) => die.sides === sides).map((die) => die.face);
+      const through = async (enemy, name, args, faces) => {
+        const before = foe(enemy).currentHp;
+        const out = await call(name, args, faces);
+        assert.equal(out.ok, true, out.error);
+        return { out, lost: before - foe(enemy).currentHp };
+      };
+      // cast_at_enemy: Poison Spray is 4d12 at 20th level, the save failed on a 1.
+      let [enemy] = await stage(who);
+      const spray = (caster, faces) => through(enemy, "cast_at_enemy", { characterId: caster.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, faces);
+      const first = await spray(who, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(first.out, 12), first.lost], [[12, 2, 3, 4, 5], 26], "a 12 on a d12 is rolled again and added");
+      assert.match(String(first.out.result.spellBombardment), /Spell Bombardment/);
+      // A second spell that turn: two dice at their highest, none rolled again.
+      kit.freshTurn();
+      const second = await spray(who, [1, 12, 12, 3, 4, 9]);
+      assert.deepEqual([thrown(second.out, 12), second.lost, second.out.unused], [[12, 12, 3, 4], 31, 1], "once per turn");
+      // No die at its highest number adds nothing, and leaves the turn's use.
+      [enemy] = await stage(who);
+      const none = await spray(who, [1, 11, 2, 3, 4, 9]);
+      assert.deepEqual([thrown(none.out, 12), none.lost, none.out.unused], [[11, 2, 3, 4], 20, 1], "no die at its highest number");
+      kit.freshTurn();
+      const late = await spray(who, [1, 2, 3, 12, 4, 6]);
+      assert.deepEqual([thrown(late.out, 12), late.lost], [[2, 3, 12, 4, 6], 27], "the use was still there for the next spell of the turn");
+      // Below 18th level there is no such feature.
+      const young = S("Wild Magic", 17);
+      [enemy] = await stage(young);
+      const plain = await spray(young, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(plain.out, 12), plain.lost], [[12, 2, 3, 4], 21], "a 17th-level wild sorcerer");
+      // aoe_damage: Burning Hands, 3d6 rolled before the save.
+      [enemy] = await stage(who);
+      const hands = await through(enemy, "aoe_damage", { casterCharacterId: who.id, spell: "Burning Hands", enemyIds: [enemy.id] }, [6, 1, 1, 4, 1]);
+      assert.deepEqual([thrown(hands.out, 6), hands.lost], [[6, 1, 1, 4], 12], "an area spell's die");
+      // pc_attack: Fire Bolt, 4d10 on a hit, at a creature 20 feet off.
+      [enemy] = await stage(who);
+      kit.place(enemy.id, 9, 5);
+      const bolt = await through(enemy, "pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [15, 10, 1, 1, 1, 7]);
+      assert.deepEqual([thrown(bolt.out, 10), bolt.lost], [[10, 1, 1, 1, 7], 20], "a spell attack's die");
+    },
     // ---- Divine Soul
     "favored-rest": rests(["sorcerer", "Divine Soul"], "sub_favored_by_the_gods", "short"),
     "empowered-healing-door": hasDoor(["sorcerer", "Divine Soul"], "Empowered Healing", () => ({ targetCharacterId: friend().id })),
@@ -538,7 +582,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
-    "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },

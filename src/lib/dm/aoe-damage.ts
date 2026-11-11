@@ -59,6 +59,7 @@ import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
 import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -491,6 +492,7 @@ export function handleAoeDamage(
   // theirs. A caster whose token is hidden is not named, as a hidden
   // creature it catches is not (the tracker's word for it).
   let wrathNote: string | null = null;
+  let bombardNote: string | null = null;
   const areaBy: RollAttacker | null = plan
     ? { kind: "sheet", id: plan.caster.id, name: plan.caster.name }
     : enemyUse
@@ -527,7 +529,12 @@ export function handleAoeDamage(
       wrathNote = WRATH_NOTE;
     }
     for (const [index, { expression, type }] of parts.entries()) {
-      const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression);
+      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression);
+      // Spell Bombardment: a die at its highest number is rolled again, once
+      // a turn, on the roll's own card (src/lib/dm/ar-ws-bombardment.ts).
+      const burst = plan ? spellBombardment({ campaign, turn, sheet: plan.caster, outcome: thrown, spell: plan.spell, card: false }) : null;
+      const outcome = burst?.outcome ?? thrown;
+      bombardNote = burst?.note ?? bombardNote;
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -873,6 +880,7 @@ export function handleAoeDamage(
     ok: true,
     ...(plan ? { spell: plan.spell, caster: plan.caster.name } : {}),
     ...(wrathNote ? { destructiveWrath: wrathNote } : {}),
+    ...(bombardNote ? { spellBombardment: bombardNote } : {}),
     ...(plan?.mech?.note ? { spellNote: plan.mech.note } : {}),
     ...(shaken.length ? { concentration: shaken } : {}),
     damageRolled: total,

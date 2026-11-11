@@ -1455,8 +1455,9 @@
   "clauses": [
    {
     "c": "Once per turn, the highest damage die you roll for a spell explodes: roll it again and add it.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door",
+    "by": "src/lib/dm/ar-ws-bombardment.ts spellBombardment, called where a character spell damage is rolled: cast-at-enemy-damage.ts landSpellDamage, aoe-damage.ts, attack-blow.ts landSwingBlow (pc_attack spells, both dice paths) and zone-triggers.ts. Applied without a call (it only helps): of the kept dice at their highest number the largest is rolled again once and joins its own term; once per turn by the fight turn marks; a die dealt at its maximum without a roll does not explode"
    }
   ]
  },

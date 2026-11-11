@@ -44,4 +44,8 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Cast your psionic spells by spending sorcery points equal to the spell's
   // level instead of a slot, with no verbal, somatic or costly components."
   "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+  // "Once per turn, the highest damage die you roll for a spell explodes: roll
+  // it again and add it": at every door a character's spell damage is rolled
+  // (src/lib/dm/ar-ws-bombardment.ts names them), with no call of its own.
+  "sorcerer::Spell Bombardment": { subclass: "Wild Magic", heldBy: { file: "src/lib/dm/ar-ws-bombardment.ts", call: "holdsFeature(sheet, SPELL_BOMBARDMENT)" } },
 };
