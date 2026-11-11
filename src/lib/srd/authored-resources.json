@@ -1977,8 +1977,7 @@
    "uses": 1,
    "ability": "int",
    "recharge": "long",
-   "action": "reaction",
-   "guidance": "A reaction adding the artificer's Intelligence modifier to an ability check or saving throw by them or a creature they can see within 30 feet, before the roll's outcome lands. The server offers it itself: a player's check or save, a save a creature forces on them included, waits on a card the artificer's player answers, and a roll that cannot wait (a companion's, a creature's spell on a seat an agent plays) stops first for an artificer watching the fight. Never spend it here: a bare spend is refused.",
+   "guidance": "Adds the artificer's Intelligence modifier to an ability check or saving throw by them or a creature they can see within 30 feet, for the artificer's reaction, before the roll's outcome lands. The server offers it and takes the reaction itself: a player's check or save, a save a creature forces on them included, waits on a card the artificer's player answers, and a roll that cannot wait (a companion's, a creature's spell on a seat an agent plays) stops first for an artificer watching the fight. Never spend it here: a bare spend is refused.",
    "passive": true
   },
   {
