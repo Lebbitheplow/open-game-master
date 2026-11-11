@@ -19,6 +19,7 @@ import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condi
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { consumableEffect, findCarriedItem, notCarried } from "@/lib/dm/item-logic";
 import { kiTechnique, spendKiTechnique, spendQuickenedSpell } from "@/lib/dm/bonus-actions";
+import { secondOptionProblem } from "@/lib/dm/mt-srd-metamagic";
 import { removeItemMath } from "@/lib/dm/mutation-math";
 import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions, optionsOfKind } from "@/lib/srd/options";
@@ -409,6 +410,11 @@ export function computeUseResource(
   if (def.id === "sorcery_points") {
     // The variant as its rules text lists it (class-resources.ts).
     if (textKey(variant ?? "") === "quickened spell") {
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, "Quickened Spell", true);
+      if (second) {
+        return second;
+      }
       return spendQuickenedSpell(campaign, sheet, state);
     }
     const direction = fontOfMagicDirection(variant);
@@ -430,6 +436,11 @@ export function computeUseResource(
         return priced;
       }
       metamagicPoints = priced.points;
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, option.n);
+      if (second) {
+        return second;
+      }
     }
   }
 

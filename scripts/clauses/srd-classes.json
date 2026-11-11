@@ -7294,9 +7294,9 @@
       },
       {
         "c": "You can use only one Metamagic option on a spell when you cast it, unless otherwise noted.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: one option a spell"
+        "is": "held",
+        "by": "a second option paid before the spell is cast is refused, spending nothing (src/lib/dm/mt-srd-metamagic.ts secondOptionProblem, at resource-tools.ts computeUseResource)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.one-option"
       },
       {
         "c": "When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell's full force.",
@@ -7342,9 +7342,9 @@
       },
       {
         "c": "You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell is the one option accepted beside another (mt-srd-metamagic.ts secondOptionProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.one-option"
       },
       {
         "c": "When you cast a spell that has a duration of 1 minute or longer, you can spend 1 sorcery point to double its duration, to a maximum duration of 24 hours.",
@@ -7354,12 +7354,9 @@
       },
       {
         "c": "When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 3 sorcery points to give one target of the spell disadvantage on its first saving throw made against the spell.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.heightened",
-        "where": "src/lib/dm/resource-tools.ts metamagicPrice (Heightened Spell: 3 points spent, nothing handed to the next save)",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "After the 3 points the creature's save against Hold Person is one d20. The spends sweep recorded the points as spent for nothing (a ruling); this is the run that shows the save untouched."
+        "is": "held",
+        "by": "the option paid rides the next spell cast at a creature: its save is rolled with disadvantage and the mark is used (mt-srd-metamagic.ts heightenedSave, at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.heightened"
       },
       {
         "c": "When you cast a spell that has a casting time of 1 action, you can spend 2 sorcery points to change the casting time to 1 bonus action for this casting.",
@@ -7369,9 +7366,9 @@
       },
       {
         "c": "When you cast a spell, you can spend 1 sorcery point to cast it without any somatic or verbal components.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Subtle Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "the option paid takes the verbal and somatic components off the next spell cast, at the cast guard and on the Hand's card (mt-srd-metamagic.ts subtleSpellPaid, in cast-rules.ts componentsAsCast), and is used by that cast",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.subtle"
       },
       {
         "c": "When you cast a spell that targets only one creature and doesn't have a range of self, you can spend a number of sorcery points equal to the spell's level to target a second creature in range with the same spell (1 sorcery point if the spell is a cantrip).",

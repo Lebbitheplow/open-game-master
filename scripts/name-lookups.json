@@ -2794,6 +2794,9 @@
     "lib/dm/mt-srd-paladin.ts#whole-single": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
     "lib/dm/mt-srd-paladin.ts#keyed": [["identity",1,"the spell Cleansing Touch ends, named whole through textKey against the spells that lie on the sheet; the weapon a Sacred Weapon rides, read off the row in hand"]],
     "lib/dm/mt-srd-bard.ts#keyed": [["key",1,"the words a call ends a Countercharm with and a condition's meta read by the key it was written under (engine vocabulary)"]],
-    "lib/dm/mt-srd-druid.ts#partial": [["pattern",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]]
+    "lib/dm/mt-srd-druid.ts#partial": [["pattern",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]],
+    "lib/dm/mt-srd-metamagic.ts#partial": [["key",1,"the mark a paid Metamagic option leaves on the sorcerer (a condition ODM itself names), compared as keys through textKey"]],
+    "lib/dm/mt-srd-metamagic.ts#whole": [["key",1,"the mark a paid Metamagic option leaves on the sorcerer (a condition ODM itself names), compared as keys through textKey"],["key",4,"the mark a paid Metamagic option leaves on the sorcerer (a condition ODM itself names), compared as keys through textKey"]],
+    "lib/dm/mt-srd-metamagic.ts#keyed": [["key",1,"the mark a paid Metamagic option leaves on the sorcerer (a condition ODM itself names), compared as keys through textKey"]]
   }
 }

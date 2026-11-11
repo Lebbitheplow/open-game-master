@@ -1,3 +1,4 @@
+import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
 import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { shadowExperience } from "@/lib/db/companion-departures";
@@ -1485,6 +1486,8 @@ function dmMutation(
         return { result: outcome };
       }
       patchSheet(sheet.id, outcome.patch);
+      // A Metamagic option paid rides the next spell cast (mt-srd-metamagic.ts).
+      markPaidOption(campaign, sheet.id, args.variant);
       Object.assign(outcome.result, charge.commit());
       if (castMark) {
         Object.assign(outcome.result, castMark.apply());

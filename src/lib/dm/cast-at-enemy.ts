@@ -8,6 +8,7 @@
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { heightenedSave } from "@/lib/dm/mt-srd-metamagic";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -481,6 +482,8 @@ export function handleCastAtEnemy(
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.
       cover: mech?.ignoresCover ? 0 : coverFor(encounter.id, sheet.id, enemy.id),
       ...spellSaveOptions(mech, enemy),
+      // Heightened Spell paid for this cast (mt-srd-metamagic.ts).
+      ...heightenedSave(campaign, sheet.id),
       record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${spellName}` },
     });
     saved = save.success;

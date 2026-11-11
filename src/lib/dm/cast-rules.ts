@@ -24,6 +24,7 @@ import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { beastShapeMaterialProblem } from "@/lib/dm/mt-srd-druid";
+import { subtleSpellPaid } from "@/lib/dm/mt-srd-metamagic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
@@ -223,6 +224,10 @@ export function componentsAsCast(sheet: Caster, facts: SpellFacts | null, grant:
   let cast = grant?.noMaterial ? { ...facts, material: false } : facts;
   if (!grant && holdsFeature(sheet, "Archdruid") && druidHolds(sheet, namesOf(facts.name, facts), extras)) {
     cast = { ...cast, verbal: false, somatic: false, material: cast.material && (Boolean(cast.materialCostGp) || cast.materialConsumed) };
+  }
+  // Subtle Spell paid for this cast (mt-srd-metamagic.ts).
+  if (subtleSpellPaid(sheet)) {
+    cast = { ...cast, verbal: false, somatic: false };
   }
   return cast;
 }

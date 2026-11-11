@@ -25,6 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { clearCastMarks } from "@/lib/dm/mt-srd-metamagic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -810,6 +811,8 @@ export function castSpell(
   // Casting a spell ends Invisibility (src/lib/dm/attack-marks.ts), and one
   // cast at an enemy ends Sanctuary (src/lib/dm/spell-defenses.ts).
   endInvisibilityOnCast(campaign.id, sheet.id);
+  // The Metamagic paid for this spell is used (mt-srd-metamagic.ts).
+  clearCastMarks(campaign, sheet.id);
   if (via === "enemy" || via === "aoe" || via === "attack") {
     endSanctuaryOnHarm(campaign.id, sheet.id);
   }

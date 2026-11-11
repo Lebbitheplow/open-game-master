@@ -2907,6 +2907,7 @@
     "lib/dm/mt-srd-bard.ts#str-list": [["key",1,"the words a call ends a Countercharm with (the tool's own vocabulary), read through textKey"]],
     "lib/dm/mt-srd-druid.ts#\\b": [["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"],["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]],
     "lib/dm/mt-srd-druid.ts#re-word": [["english-source",1,"the three SRD spells of plants magic makes to hold a creature (Entangle, Wall of Thorns, Grasping Vine), read in the line the engine itself writes for the save it rolls"]],
-    "lib/dm/mt-srd-ranger.ts#str-eq": [["key",1,"a favored terrain against the land a call names: one fixed vocabulary (NATURAL_TERRAINS)"]]
+    "lib/dm/mt-srd-ranger.ts#str-eq": [["key",1,"a favored terrain against the land a call names: one fixed vocabulary (NATURAL_TERRAINS)"]],
+    "lib/dm/mt-srd-metamagic.ts#toLowerCase": [["key",1,"the mark a paid Metamagic option leaves on the sorcerer (a condition ODM itself names), compared as keys through textKey"]]
   }
 }
