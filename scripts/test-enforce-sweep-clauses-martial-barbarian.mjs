@@ -722,8 +722,12 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     kit.place(other.id, 7, 5);
     rage(beast);
     await swing(beast, cursed, [15, 4], { weapon: "Claws" });
+    // With no creature named (the Hand's card names none) the line asks the GM.
     const unnamed = await fury(cursed, "attack", 2);
-    assert.equal(unnamed.ok, false, `with no creature named for it to attack: ${show(unnamed)}`);
+    assert.match(String(unnamed.result?.onFail), /melee attack against another creature/, `with no creature named: ${show(unnamed)}`);
+    assert.ok(!world.encounter().reactionsUsed.includes(cursed.id), "no attack was made, and its reaction is gone");
+    kit.freshTurn();
+    await swing(beast, cursed, [15, 4], { weapon: "Claws" });
     const spentBefore = r.used(beast, "sub_infectious_fury");
     const struck = foe(other).currentHp;
     const turned = await r.forced([2, 18, 4, 4], () => world.invoke("use_resource", { characterId: beast.id, resource: "Infectious Fury", variant: "attack", targetEnemyId: cursed.id, targetEnemyIds: [other.id] }));
@@ -734,7 +738,7 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(r.used(beast, "sub_infectious_fury"), spentBefore + 1);
     kit.freshTurn();
     await swing(beast, cursed, [15, 4], { weapon: "Claws" });
-    const again = await fury(cursed, "attack", 2);
+    const again = await spend(beast, "Infectious Fury", { variant: "attack", targetEnemyId: cursed.id, targetEnemyIds: [other.id] }, 2);
     assert.equal(again.ok, false, `a creature with no reaction left was made to attack again: ${show(again)}`);
   });
   await probe("bestial-soul-adapt", async () => {

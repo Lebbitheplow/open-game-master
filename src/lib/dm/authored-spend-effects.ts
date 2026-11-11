@@ -404,7 +404,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       }
-      if (!save.success && does.onFail) {
+      // The line for the GM, unless the engine makes the attack it asks for.
+      if (!save.success && does.onFail && !strike) {
         result.onFail = `${enemy.displayName} ${does.onFail}.`;
       }
       if (!save.success && strike) {

@@ -150,13 +150,18 @@ export type StrikePlan = { attacker: EncounterEnemy; victim: EncounterEnemy; att
 // targetEnemyIds, a melee attack of the cursed creature's that reaches it
 // from where it stands (a reaction walks nowhere), and a reaction to make it
 // with. Settled before the save, so a call that cannot end in the attack
-// spends nothing.
-export function forcedStrikePlan(ctx: SpendContext, attacker: EncounterEnemy): StrikePlan | ToolError {
+// spends nothing. Null when the call names no creature: the Hand's card has
+// no second pick to name one with, so the save is rolled and the row's line
+// asks the GM for the attack, as it did before the engine made it.
+export function forcedStrikePlan(ctx: SpendContext, attacker: EncounterEnemy): StrikePlan | ToolError | null {
   const encounter = getActiveEncounter(ctx.campaign.id);
   const ref = (ctx.args.targetEnemyIds ?? []).find((id) => id && id !== attacker.id);
-  const victim = encounter && ref ? resolveEnemyRef(encounter.id, ref) : null;
-  if (!encounter || !victim || victim.id === attacker.id || victim.status !== "alive") {
-    return { error: `${ctx.spend.name}: name the creature ${attacker.displayName} must attack, ${ctx.sheet.name}'s choice, in targetEnemyIds (another living creature of the fight). Nothing was spent.`, retry: true };
+  if (!encounter || !ref) {
+    return null;
+  }
+  const victim = resolveEnemyRef(encounter.id, ref);
+  if (!victim || victim.id === attacker.id || victim.status !== "alive") {
+    return { error: `${ctx.spend.name}: ${ref} is no living creature of the fight for ${attacker.displayName} to attack. Name another in targetEnemyIds. Nothing was spent.`, retry: true };
   }
   if (encounter.reactionsUsed.includes(attacker.id)) {
     return { error: `${attacker.displayName} has used its reaction this round and has none to attack with: choose the psychic damage (variant "damage"). Nothing was spent.`, refused: "rules" };
