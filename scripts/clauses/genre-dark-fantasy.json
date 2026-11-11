@@ -1151,14 +1151,16 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flock_remembers#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "flockHold of src/lib/dm/genre-a-dark-fantasy-vitals.ts, called from genre-drop-holds.ts at the drop",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flock Remembers",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-the-flock-remembers"
    },
    {
     "c": "the flock carries you 60 ft to safety and you stabilize",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flock_remembers#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "flockHold of src/lib/dm/genre-a-dark-fantasy-vitals.ts (stable at 0, 60 feet credited to the token)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flock Remembers",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-flock-remembers"
    }
   ]
@@ -1757,14 +1759,16 @@
    },
    {
     "c": "when an ally within 30 ft dies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_last_rose#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the Last Rose ally hold of src/lib/dm/genre-drop-holds.ts (spent at the drop, passive in genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Last Rose",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-the-last-rose"
    },
    {
     "c": "they instead drop to 1 HP and your next attack is an automatic critical if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_last_rose#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the hold (1 HP) and its holder mark, read by src/lib/dm/genre-a-dark-fantasy-edges.ts (the next attack a critical if it hits)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Last Rose",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-last-rose"
    }
   ]

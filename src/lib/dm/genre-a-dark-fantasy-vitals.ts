@@ -14,7 +14,10 @@ import { dmRoll } from "@/lib/dm/roll-card";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { STABLE_SOURCE, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
+import { downConditions } from "@/lib/dm/vitals-logic";
+import { stableDeathTrack } from "@/lib/dm/death-logic";
+import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 
 export const LAST_RITES_WARD = "warded by last rites";
 const TRIAGED = "triaged";
@@ -57,4 +60,26 @@ export function triageWake(sheet: Pick<CharacterSheet, "conditions" | "condition
   }
   const cleared = removeConditions(woken.conditions, woken.conditionMeta, [mark]);
   return { hp, conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
+// The Flock Remembers: "1/long rest, when you drop to 0 HP, the flock carries
+// you 60 ft to safety and you stabilize". Held at the drop (genre-drop-holds.ts):
+// the doctor lies at 0, unconscious and stable, and is credited 60 feet of
+// carrying the token may move (move_token, teleport true, spell "The Flock
+// Remembers"), no opportunity attack drawn. Not on a killing blow, as no hold is.
+const FLOCK = "dark_fantasy_the_flock_remembers";
+export function flockHold(sheet: CharacterSheet, write: (target: CharacterSheet, patch: FullPatchSheetInput, delta: Record<string, unknown>) => void): Record<string, unknown> | null {
+  const state = sheet.resources?.[FLOCK];
+  if (!state || state.used >= state.max) {
+    return null;
+  }
+  const down = downConditions(sheet);
+  write(sheet, { currentHp: 0, resources: { ...sheet.resources, [FLOCK]: { max: state.max, used: state.used + 1 } }, conditions: down.conditions, conditionMeta: down.conditionMeta, deathSaves: stableDeathTrack() }, { "The Flock Remembers": true });
+  creditFeatureTeleport(sheet.id, "The Flock Remembers", 60);
+  return {
+    ok: true,
+    hp: `0/${sheet.maxHp}`,
+    held: "The Flock Remembers",
+    note: `${sheet.name} drops to 0, and the flock carries them up to 60 feet to safety: they are stable. Move their token with move_token, teleport true, spell "The Flock Remembers". The use is spent.`,
+  };
 }

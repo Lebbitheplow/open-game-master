@@ -22,6 +22,8 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { flockHold } from "@/lib/dm/genre-a-dark-fantasy-vitals";
+import { LAST_ROSE } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 
 type Mods = Record<string, number>;
 
@@ -38,7 +40,9 @@ type SelfHold = {
   condition?: { name: string; rounds: number };
 };
 
-type AllyHold = { id: string; feature: string; rangeFt: number; hp: (mods: Mods) => number };
+// `holderMark`: a condition the hold leaves on its holder (The Last Rose: the
+// next attack is a critical hit if it hits, src/lib/dm/genre-a-dark-fantasy-edges.ts).
+type AllyHold = { id: string; feature: string; rangeFt: number; hp: (mods: Mods) => number; holderMark?: string };
 
 const holds = (sheet: CharacterSheet, id: string) => Boolean(sheet.resources?.[id]);
 
@@ -62,6 +66,10 @@ const ALLY_HOLDS: AllyHold[] = [
   { id: "cyberpunk_one_more_dawn", feature: "One More Dawn", rangeFt: 30, hp: () => 1 },
   // "they instead drop to WIS-mod x 5 HP"
   { id: "horror_final_benediction", feature: "Final Benediction", rangeFt: 30, hp: (mods) => Math.max(1, 5 * (mods.wis ?? 0)) },
+  // "when an ally within 30 ft dies, they instead drop to 1 HP and your next
+  // attack is an automatic critical if it hits": held at the drop that would
+  // begin the dying, as One More Dawn is.
+  { id: "dark_fantasy_the_last_rose", feature: "The Last Rose", rangeFt: 30, hp: () => 1, holderMark: LAST_ROSE },
 ];
 
 function feetApart(encounterId: string, a: string, b: string): number | null {
@@ -97,6 +105,11 @@ export function genreDropHold(
   if (sheet.conditions.some((entry) => isConditionNamed(entry, DEATHLESS_CHAMPION))) {
     write(sheet, { currentHp: 1 }, { "Deathless Champion": true });
     return { ok: true, hp: `1/${max}`, held: "Deathless Champion", note: `${sheet.name} cannot drop below 1 hit point while Deathless Champion lasts.` };
+  }
+  // The Flock Remembers: carried off and stable (genre-a-dark-fantasy-vitals.ts).
+  const flock = flockHold(sheet, write);
+  if (flock) {
+    return flock;
   }
   for (const hold of SELF_HOLDS) {
     const pool = hold.pool?.(sheet) ?? hold.id;
@@ -139,7 +152,7 @@ export function genreDropHold(
         continue;
       }
       const hp = Math.min(max, hold.hp(computeSheetDerived(holder).abilityMods));
-      write(holder, { resources }, { [hold.feature]: sheet.name });
+      write(holder, { resources, ...(hold.holderMark ? { conditions: [...holder.conditions.filter((entry) => entry !== hold.holderMark), hold.holderMark], conditionMeta: { ...(holder.conditionMeta ?? {}), [hold.holderMark]: {} } } : {}) }, { [hold.feature]: sheet.name });
       write(sheet, { currentHp: hp }, { [hold.feature]: holder.name });
       return {
         ok: true,

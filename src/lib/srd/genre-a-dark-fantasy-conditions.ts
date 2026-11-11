@@ -22,6 +22,9 @@ export const JUDGMENT_SHOT = "judgment shot";
 export const LANCED = "lanced wound";
 // Threnody: "deal half damage on their next attack" (src/lib/dm/genre-a-dark-fantasy-wards.ts).
 export const THRENODY = "threnody";
+// The Last Rose: "your next attack is an automatic critical if it hits"
+// (src/lib/dm/genre-a-dark-fantasy-edges.ts).
+export const LAST_ROSE = "the last rose";
 
 export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   {
@@ -47,6 +50,7 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   { id: "purging_flame", match: [PURGING_FLAME], summary: "Purging Flame: the next hit on the branded creature deals +2d10 radiant.", onHitDice: { dice: "2d10", type: "radiant" }, marksTarget: true, consumedBy: "hit" },
   { id: "judgment_shot", match: [JUDGMENT_SHOT], summary: "Judgment Shot: the next ranged attack on the branded creature is a critical hit if it hits." },
   { id: "lanced_wound", match: [LANCED], summary: "Lanced wound: it cannot regain hit points until the plague doctor's next turn." },
+  { id: "the_last_rose", match: [LAST_ROSE], summary: "The Last Rose: the grave knight's next attack is a critical hit if it hits." },
   { id: "threnody", match: [THRENODY], summary: "Threnody: its next attack that lands deals half damage." },
   { id: "judged", match: [JUDGED], summary: "Judged (The Flame That Judges): +1d8 radiant on attacks against this branded creature, until it dies or the hunter rests.", onHitDice: { dice: "1d8", type: "radiant" }, marksTarget: true },
   { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },

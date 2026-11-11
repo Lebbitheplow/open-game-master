@@ -242,5 +242,27 @@ await test("Rose Thorn Oath: a pact-blade hit heals the knight their Charisma mo
   assert.equal(sheet(scene.holder.id).currentHp, 52, "once a turn");
 });
 
+await test("The Last Rose: an ally within 30 feet who would drop to 0 stays at 1, and the knight's next hit is a critical hit", async () => {
+  const scene = await t.stage({ classId: "grave_knight", level: 15 });
+  must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 25, type: "slashing" }), "the blow");
+  assert.equal(sheet(scene.ally.id).currentHp, 1);
+  assert.equal(sheet(scene.holder.id).resources.dark_fantasy_the_last_rose.used, 1);
+  const hit = must(await swing(scene, scene.near, [15, 4, 4, 3, 3, 3, 3]), "the swing");
+  assert.equal(hit.result.crit, true, JSON.stringify(hit.result).slice(0, 200));
+  assert.ok(!conditions(scene.holder.id).includes("the last rose"));
+});
+
+await test("The Flock Remembers: at 0 hit points the doctor is stable and may be carried 60 feet", async () => {
+  const { featureTeleportFeet } = await import("../src/lib/dm/feature-teleport.ts");
+  const scene = await t.stage({ classId: "plague_doctor", level: 15 });
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 120, type: "slashing" }), "the blow");
+  const after = sheet(scene.holder.id);
+  assert.equal(after.currentHp, 0);
+  assert.equal(after.deathSaves?.stable, true);
+  assert.equal(featureTeleportFeet(scene.holder.id, "The Flock Remembers"), 60);
+  const bare = await spend(scene, "dark_fantasy_the_flock_remembers");
+  assert.equal(bare.ok, false, "no call spends it");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);
