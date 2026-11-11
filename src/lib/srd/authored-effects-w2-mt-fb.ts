@@ -46,6 +46,49 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "When you enter your rage, roll a d8 for a magical effect that lasts the
+  // rage": rolled as the rage is entered and applied by
+  // src/lib/dm/mt-fb-wild-surge.ts, which keeps the surge in force as the
+  // condition "wild surge (N)". These are what the table leaves standing: a
+  // weapon turned to force and thrown (4), force for whoever hits the
+  // barbarian (5), and the bonus-action repeats of 2, 3 and 8, each taken
+  // only while its effect is the surge in force (the engine and the Hand both
+  // read src/lib/srd/mt-fb-surge-state.ts: no hand-laid condition opens one).
+  "barbarian::Wild Surge": {
+    subclass: "Path of Wild Magic",
+    spends: [
+      { name: "Wild Surge Teleport", action: "bonus", does: { kind: "wild_surge", again: 2 } },
+      { name: "Wild Surge Spirit", action: "bonus", does: { kind: "wild_surge", again: 3 } },
+      { name: "Wild Surge Bolt", action: "bonus", does: { kind: "wild_surge", again: 8 } },
+    ],
+    effects: [
+      { kind: "infuse", type: "force", rangeFt: 20, longRangeFt: 60, gate: { condition: "wild surge (4)" } },
+      { kind: "retaliate", formula: "1d6", type: "force", gate: { condition: "wild surge (5)" } },
+    ],
+  },
+  // "roll twice and choose either effect; if both dice show the same number,
+  // choose any effect on the table": the two rolls wait as "wild surge
+  // pending", and this is the choice.
+  "barbarian::Controlled Surge": {
+    subclass: "Path of Wild Magic",
+    spends: [
+      {
+        name: "Controlled Surge",
+        aliases: ["Wild Surge Choice"],
+        action: "none",
+        does: {
+          kind: "variants",
+          options: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((pick) => [String(pick), { does: { kind: "wild_surge" as const, pick } }])),
+        },
+      },
+    ],
+  },
+  // "When you take damage or fail a save while raging, a reaction rerolls
+  // your Wild Surge effect" (the trigger: trigger-table.ts).
+  "barbarian::Unstable Backlash": {
+    subclass: "Path of Wild Magic",
+    reactions: [{ name: "Unstable Backlash", gate: { raging: true }, does: { kind: "resurge" } }],
+  },
   // "you can adapt to swim, climb or jump after each rest": chosen out of a
   // fight. Swim and climb are a speed equal to the walking speed; the jump's
   // Athletics check that lengthens a leap is rolled with request_roll when

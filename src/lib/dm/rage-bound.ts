@@ -16,6 +16,7 @@ import { instancesOf, removeConditionInstances, type ConditionMeta, type Conditi
 import { RAGING } from "@/lib/srd/class-resources";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { fallAsRageEnds } from "@/lib/dm/mt-fb-rage-death";
+import { SURGE, endSurgeTracesOf } from "@/lib/dm/mt-fb-wild-surge";
 import { RAGING_ON } from "@/lib/dm/vitals-logic";
 
 // The meta an instance laid until its source's rage ends carries.
@@ -52,6 +53,8 @@ export function endRageBound(campaignId: string): { lines: string[]; enemiesChan
     // A zealot the rage kept up at 0 hit points falls, or dies (mt-fb-rage-death.ts).
     const fell = names.some((name) => isConditionNamed(name, RAGING_ON)) ? fallAsRageEnds(campaignId, sheet.id) : null;
     if (fell) lines.push(fell);
+    // A wild surge's aura on the board goes with it (mt-fb-wild-surge.ts).
+    if (names.some((name) => isConditionNamed(name, SURGE))) endSurgeTracesOf(campaignId, sheet.id);
   }
   const encounter = getActiveEncounter(campaignId);
   for (const stale of encounter ? listEnemies(encounter.id) : []) {

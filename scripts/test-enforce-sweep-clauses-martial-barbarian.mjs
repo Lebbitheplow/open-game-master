@@ -749,13 +749,94 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
   const { world, hero, stage, spend, react } = r;
   const wild = hero("barbarian", "Path of Wild Magic", 14);
 
-  await probe("wild-surge-rolls-nothing", async () => {
+  const surged = (who, n) => r.has(who, `wild surge (${n})`);
+  // "When you enter your rage, roll a d8 for a magical effect that lasts the rage."
+  await probe("wild-surge-rolls", async () => {
+    const young = hero("barbarian", "Path of Wild Magic", 3);
+    await stage(young);
+    world.diceLog();
+    const out = await spend(young, "Rage", {}, [4]);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.diceLog().filter((die) => die.sides === 8).length, 1, "entering the rage rolled no d8");
+    assert.ok(surged(young, 4) && /^4:/.test(String(out.result.surge)), `the effect rolled is in force: ${r.show(out)}`);
+    await world.invoke("clear_condition", { characterId: young.id, condition: "raging" });
+    r.endTurn();
+    assert.ok(!surged(young, 4), "the surge outlived the rage");
+  });
+  // The table, effect by effect, with the d8 forced: DC 8 + 2 + 3 at 3rd level.
+  await probe("wild-surge-table", async () => {
+    const { featureTeleportFeet } = await import("../src/lib/dm/feature-teleport.ts");
+    const young = hero("barbarian", "Path of Wild Magic", 3, { ...AXE, ac: 5 });
+    const near = hero("fighter", "Champion", 5, { ac: 12 });
+    const far = hero("fighter", "Champion", 5);
+    const enter = async (faces, cast = []) => {
+      const [enemy] = await stage(young, { cast });
+      const out = await spend(young, "Rage", {}, faces);
+      assert.equal(out.ok, true, out.error);
+      return { enemy, out };
+    };
+    const lost = (enemy) => 300 - r.foe(enemy).currentHp;
+    // 1: the d12 (5), the creature's save (a 2), the temporary hit points (7).
+    const one = await enter([1, 5, 2, 7]);
+    assert.deepEqual([lost(one.enemy), r.sheet(young).tempHp], [5, 7], `1: ${r.show(one.out)}`);
+    const saved = await enter([1, 5, 20, 7]);
+    assert.equal(lost(saved.enemy), 0, "1: a Constitution save made");
+    // 2: the teleport, credited for move_token.
+    await enter([2]);
+    assert.equal(featureTeleportFeet(young.id, "Wild Surge"), 30, "2: no 30-foot teleport credited");
+    r.kit.freshTurn();
+    assert.equal((await spend(young, "Wild Surge Teleport")).ok, true, "2: again as a bonus action");
+    assert.equal(r.budget().bonusUsed, true);
+    assert.equal((await spend(young, "Wild Surge Bolt")).ok, false, "8's repeat is not 2's");
+    // 3: the spirit's d6 (4) and the Dexterity save (a 2).
+    const three = await enter([3, 4, 2]);
+    assert.equal(lost(three.enemy), 4, `3: ${r.show(three.out)}`);
+    r.kit.freshTurn();
+    assert.equal((await spend(young, "Wild Surge Spirit", { targetEnemyId: three.enemy.id }, [4, 2])).ok, true);
+    assert.equal(lost(three.enemy), 8, "3: again as a bonus action");
+    // 4: the weapon in hand deals force.
+    const four = await enter([4]);
+    const hit = await r.swing(young, four.enemy, [15, 4]);
+    assert.equal(hit.result.damageType, "force", `4: the greataxe deals ${hit.result.damageType}`);
+    // 5: a creature that hits the barbarian takes 1d6 force (a 3).
+    const five = await enter([5]);
+    await r.forced([16, 4, 3], () => world.invoke("enemy_attack", { enemyId: five.enemy.id, targetCharacterId: young.id }));
+    assert.equal(lost(five.enemy), 3, "5: nothing came back at the creature that hit");
+    // 6: +1 AC for the barbarian and the ally within 10 feet, not the one 40 feet off.
+    const six = await enter([6], [[near, 5, 7], [far, 5, 13]]);
+    assert.deepEqual([r.has(young, "wild surge ward"), r.has(near, "wild surge ward"), r.has(far, "wild surge ward")], [true, true, false], "6");
+    r.kit.place(six.enemy.id, 6, 7);
+    const hp = r.sheet(near).currentHp;
+    await r.enemyHits(six.enemy, near, [8, 4]);
+    assert.equal(r.sheet(near).currentHp, hp, "6: a 12 to hit against AC 12 + 1 is a miss");
+    // 7: the ground around them, on the board.
+    await enter([7]);
+    assert.ok((r.kit.map().spellZones ?? []).some((zone) => zone.spell === "Wild Surge" && zone.casterId === young.id), "7: no difficult ground on the board");
+    // 8: the bolt's d6 (3), and blindness on a failed Constitution save.
+    const eight = await enter([8, 3, 2]);
+    assert.equal(lost(eight.enemy), 3, `8: ${r.show(eight.out)}`);
+    assert.ok(r.foeHas(eight.enemy, "blinded"), "8: a failed save and no blindness");
+    const sighted = await enter([8, 3, 20]);
+    assert.deepEqual([lost(sighted.enemy), r.foeHas(sighted.enemy, "blinded")], [3, false], "8: the damage lands, the save spares the eyes");
+  });
+  // "Whenever you roll on the wild magic table, roll twice and choose either
+  // effect; if both dice show the same number, choose any effect on the table."
+  await probe("controlled-surge", async () => {
     await stage(wild);
     world.diceLog();
-    const out = await spend(wild, "Rage", {}, [5, 5, 5, 5]);
+    const out = await spend(wild, "Rage", {}, [3, 7]);
     assert.equal(out.ok, true, out.error);
-    const d8s = world.diceLog().filter((die) => die.sides === 8).length;
-    assert.ok(d8s >= 1 || /surge/i.test(JSON.stringify(out.result)), "entering the rage rolled no d8 and named no Wild Surge");
+    assert.equal(world.diceLog().filter((die) => die.sides === 8).length, 2, "two d8s");
+    assert.ok(r.has(wild, "wild surge pending") && !surged(wild, 3) && !surged(wild, 7), `the two rolls wait on the choice: ${r.show(out)}`);
+    assert.equal((await spend(wild, "Controlled Surge", { variant: "5" })).ok, false, "a number neither die shows");
+    const chosen = await spend(wild, "Controlled Surge", { variant: "7" });
+    assert.equal(chosen.ok, true, chosen.error);
+    assert.ok(surged(wild, 7) && !r.has(wild, "wild surge pending"));
+    assert.equal(r.budget().actionUsed ?? false, false, "the choice costs nothing of the turn");
+    await stage(wild);
+    await spend(wild, "Rage", {}, [4, 4]);
+    assert.equal((await spend(wild, "Controlled Surge", { variant: "6" })).ok, true, "both dice the same: any effect of the table");
+    assert.ok(surged(wild, 6));
   });
   await probe("bolstering-magic-d3", async () => {
     const bolster = hero("barbarian", "Path of Wild Magic", 6);
@@ -800,12 +881,25 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.ok(!r.has(mage, "bolstered slot"), "a long rest, and the creature may take one again");
   });
 
-  await probe("unstable-backlash-rerolls-nothing", async () => {
-    await stage(wild);
-    r.rage(wild);
+  // "When you take damage or fail a save while raging, a reaction rerolls
+  // your Wild Surge effect."
+  await probe("unstable-backlash", async () => {
+    const tenth = hero("barbarian", "Path of Wild Magic", 10, { ac: 5 });
+    const [enemy] = await stage(tenth);
+    assert.equal((await spend(tenth, "Rage", {}, [4])).ok, true);
+    const idle = await react(tenth, "Unstable Backlash", {}, [6]);
+    assert.equal(idle.ok, false, `with no damage taken and no save failed: ${r.show(idle)}`);
+    assert.ok(surged(tenth, 4), "a refusal rerolls nothing");
+    await r.enemyHits(enemy, tenth, [16, 4]);
     world.diceLog();
-    const out = await react(wild, "Unstable Backlash", {}, [5, 5]);
-    assert.ok(out.ok && world.diceLog().some((die) => die.sides === 8), `the reaction was ${out.ok ? "spent" : "refused"} and no d8 rolled`);
+    const out = await react(tenth, "Unstable Backlash", {}, [6]);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(world.diceLog().some((die) => die.sides === 8), "no d8 rolled");
+    assert.ok(surged(tenth, 6) && !surged(tenth, 4), `the new effect replaces the old: ${r.show(out)}`);
+    assert.ok(world.encounter().reactionsUsed.includes(tenth.id), "the reaction");
+    const [calm] = await stage(tenth);
+    await r.enemyHits(calm, tenth, [16, 4]);
+    assert.equal((await react(tenth, "Unstable Backlash", {}, [6])).ok, false, "not while calm");
   });
 }
 

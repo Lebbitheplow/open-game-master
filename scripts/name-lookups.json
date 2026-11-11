@@ -2797,6 +2797,10 @@
     "lib/srd/mt-fb-training.ts#whole": [["identity",2,"a class id and a subclass by whole name, textKey on both sides"]],
     "lib/srd/mt-fb-training.ts#partial": [["identity",1,"a feature with its option by whole name: a Set of the sheet's feature names, textKey on both sides"]],
     "lib/dm/mt-fb-beast.ts#partial": [["parse",1,"the \"(weapon)\" note of the engine's own beast form condition"]],
-    "lib/dm/mt-fb-beast.ts#whole-single": [["identity",1,"a natural weapon by whole name, textKey on both sides"]]
+    "lib/dm/mt-fb-beast.ts#whole-single": [["identity",1,"a natural weapon by whole name, textKey on both sides"]],
+    "lib/srd/mt-fb-surge-state.ts#partial": [["key",1,"the engine's own Wild Surge conditions, by whole name and their \"(number)\" note"]],
+    "lib/srd/mt-fb-surge-state.ts#number": [["parse",1,"the table's number in a condition the engine wrote"]],
+    "lib/dm/mt-fb-wild-surge.ts#first": [["search",1,"the nearest creature within 30 feet: a sort by distance, its first"]],
+    "lib/dm/mt-fb-wild-surge.ts#whole": [["key",1,"the surge's own area on the board, by its zone key on both sides"]]
   }
 }

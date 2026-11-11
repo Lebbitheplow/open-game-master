@@ -9,6 +9,7 @@
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { NATURAL_HIT, chargedFeet } from "@/lib/srd/mt-fb-run";
+import { pendingSurge, surgeOf } from "@/lib/srd/mt-fb-surge-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -298,7 +299,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       card.choice = {
         arg: "variant",
         label: "Choose",
-        options: Object.keys(does.options).map((value) => ({ value, label: pickLabel(value) })),
+        // A Controlled Surge chooses between the numbers it rolled.
+        options: Object.entries(does.options)
+          .filter(([, option]) => option.does.kind !== "wild_surge" || !option.does.pick || (pendingSurge(sheet) ?? []).includes(option.does.pick) || !pendingSurge(sheet))
+          .map(([value]) => ({ value, label: pickLabel(value) })),
       };
     }
     return gated(
@@ -320,6 +324,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           ? { reason: `${spend.name} ends being ${aimed.conditions.join(" or ")}, and ${sheet.name} is neither.`, spent: false }
           : null;
       })(),
+      // A Wild Surge's choice waits for two rolls, and its repeat for its
+      // effect to be the surge in force (src/lib/srd/mt-fb-surge-state.ts).
+      does.kind === "variants" && Object.values(does.options).some((option) => option.does.kind === "wild_surge") && !pendingSurge(sheet)
+        ? { reason: `${spend.name} chooses between two Wild Surge rolls, and none is waiting.`, spent: false }
+        : null,
+      does.kind === "wild_surge" && does.again && surgeOf(sheet) !== does.again
+        ? { reason: `${spend.name} repeats Wild Surge's effect ${does.again}, which is not the surge in force.`, spent: false }
+        : null,
       // A spend that rides a charge waits for the run, as the engine does
       // (src/lib/dm/mt-fb-charge.ts).
       spend.chargeFeet && turn.myTurn && chargedFeet(turn.marks) < spend.chargeFeet

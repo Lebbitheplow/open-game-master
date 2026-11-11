@@ -17,6 +17,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
+import { rollSurge } from "@/lib/dm/mt-fb-wild-surge";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor } from "@/lib/srd/authored-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -42,7 +43,8 @@ export function afterCounterSpend(ride: CounterRide): Record<string, unknown> {
     case "second_wind":
       return rallyingCry(ride, sheet);
     case "rage":
-      return { ...stormAuraWakes(ride, sheet) };
+      // The storm herald's aura wakes; a wild magic barbarian's surge is rolled.
+      return { ...stormAuraWakes(ride, sheet), ...(rollSurge({ campaign: ride.campaign, turn: getDmTurn(ride.turnId), sheet, args: ride.args }) ?? {}) };
     default:
       return {};
   }

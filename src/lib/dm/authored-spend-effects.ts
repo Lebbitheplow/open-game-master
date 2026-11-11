@@ -47,6 +47,7 @@ import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { surgeSpend } from "@/lib/dm/mt-fb-wild-surge";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { cleanse, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
@@ -582,6 +583,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // The fighter and barbarian repair's own (src/lib/dm/mt-fb-spend.ts).
     case "cleanse":
       return cleanse(ctx, does.conditions);
+    case "wild_surge":
+      return surgeSpend({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: ctx.args }, does, ctx.spend.name);
   }
 }
 

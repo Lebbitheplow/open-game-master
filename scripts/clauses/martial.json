@@ -1951,13 +1951,15 @@
   "clauses": [
    {
     "c": "When you enter your rage, roll a d8 for a magical effect that lasts the rage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts rollSurge (called as the Rage is spent: mt-fb-counter-riders.ts)"
    },
    {
     "c": "(save DC 8 + your proficiency bonus + your Constitution modifier): 1, shadowy tendrils deal 1d12 necrotic damage to each creature of your choice within 30 feet that fails a Constitution save and give you 1d12 temporary hit points; 2, you teleport up to 30 feet, and again as a bonus action on later turns; 3, a spirit appears beside a creature within 30 feet and bursts at the end of the turn, dealing 1d6 force damage to each creature within 5 feet of it that fails a Dexterity save, and again as a bonus action on later turns; 4, a weapon you hold deals force damage and gains light and thrown (20/60), returning to your hand; 5, each creature that hits you with an attack roll takes 1d6 force damage; 6, you and your allies within 10 feet of you gain +1 AC; 7, the ground within 15 feet of you is difficult terrain for your enemies; 8, a bolt of light deals 1d6 radiant damage to a creature within 30 feet and blinds it until the start of your next turn unless it succeeds on a Constitution save, and again as a bonus action on later turns.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-table",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts applySurge (the eight effects; 4 and 5 as authored effects, 7 as the board's aura)"
    }
   ]
  },
@@ -1995,8 +1997,9 @@
   "clauses": [
    {
     "c": "When you take damage or fail a save while raging, a reaction rerolls your Wild Surge effect.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: unstable-backlash-rerolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: unstable-backlash",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Unstable Backlash (resurge; trigger: src/lib/srd/trigger-table.ts)"
    }
   ]
  },
@@ -2008,8 +2011,9 @@
   "clauses": [
    {
     "c": "Whenever you roll on the wild magic table, roll twice and choose either effect; if both dice show the same number, choose any effect on the table.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: controlled-surge",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts rollSurge and surgeSpend (two rolls pending, the Controlled Surge spend chooses)"
    }
   ]
  },

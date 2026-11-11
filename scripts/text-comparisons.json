@@ -2903,6 +2903,8 @@
     "lib/dm/pc-attack-damage.ts#str-list": [["key", 1, "SRD weapon row names, compared through textKey"]],
     "lib/srd/mt-fb-casts.ts#str-list": [["english-source", 4, "SRD spell names and the authored features that cast them (bundled data), compared through textKey"]],
     "lib/dm/mt-fb-beast.ts#toLowerCase": [["english-source", 4, "an authored natural weapon's English name (Bite, Claws, Tail), lowered for the condition's name and a sentence"]],
-    "lib/srd/mt-fb-training.ts#str-list": [["key", 1, "skill ids (engine vocabulary)"]]
+    "lib/srd/mt-fb-training.ts#str-list": [["key", 1, "skill ids (engine vocabulary)"]],
+    "lib/dm/mt-fb-wild-surge.ts#toUpperCase": [["display", 1, "an ability id shown as its abbreviation in a roll's detail"]],
+    "lib/srd/mt-fb-surge-state.ts#RegExp i": [["key", 1, "the engine's own Wild Surge conditions and the number in them"]]
   }
 }

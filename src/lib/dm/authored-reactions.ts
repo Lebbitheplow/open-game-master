@@ -11,6 +11,7 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { rollSurge } from "@/lib/dm/mt-fb-wild-surge";
 import { beastFormRefusal, growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
@@ -465,6 +466,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         }
       }
       return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
+    }
+    // Unstable Backlash: the Wild Surge rolled again (mt-fb-wild-surge.ts).
+    case "resurge": {
+      const rolled = rollSurge({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: { targetEnemyId: ctx.args.targetEnemyId } });
+      return rolled ?? { error: `${ctx.sheet.name} has no Wild Surge to roll again while not raging. Nothing was spent.`, refused: "rules" };
     }
     case "ac_vs_hit": {
       let bonus: number;

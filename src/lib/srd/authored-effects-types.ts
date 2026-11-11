@@ -495,7 +495,11 @@ export type SpendDoes =
   | { kind: "restore"; pool: string; amount: number; clears?: string }
   // Ends these conditions on the holder; refused, with nothing spent, when
   // they carry none of them (Guarded Mind: src/lib/dm/mt-fb-spend.ts).
-  | { kind: "cleanse"; conditions: string[] };
+  | { kind: "cleanse"; conditions: string[] }
+  // Wild Surge (src/lib/dm/mt-fb-wild-surge.ts): `pick`, Controlled Surge's
+  // choice of that number among the two rolled; `again`, the bonus-action
+  // repeat of that effect while it is the surge in force.
+  | { kind: "wild_surge"; pick?: number; again?: number };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -630,7 +634,9 @@ export type ReactionDoes =
   | { kind: "move"; trigger: "enemy_adjacent" | "oa_hit"; free?: boolean }
   // A melee attack that missed the holder hits another creature within 5
   // feet of them instead (Tipsy Sway).
-  | { kind: "redirect_miss"; rangeFt: number };
+  | { kind: "redirect_miss"; rangeFt: number }
+  // The holder's Wild Surge is rolled again (Unstable Backlash).
+  | { kind: "resurge" };
 
 export type AuthoredReaction = {
   name: string;

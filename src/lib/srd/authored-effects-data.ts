@@ -194,11 +194,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       },
     ],
   },
-  "barbarian::Unstable Backlash": {
-    subclass: "Path of Wild Magic",
-    narrated:
-      "Rerolls the Wild Surge table, whose effects are narrated; use_reaction spends the reaction from the sheet's feature.",
-  },
+  // Unstable Backlash: src/lib/srd/authored-effects-w2-mt-fb.ts.
   // Bigby Presents: Giant's Power and Giant's Havoc at 3rd, Elemental Cleaver
   // at 6th, Mighty Impel at 10th, Demiurgic Colossus at 14th. Giant's Power's
   // cantrip is the option chosen; a barbarian keeps no spell list, so the

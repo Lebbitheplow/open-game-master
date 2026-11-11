@@ -50,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -218,6 +218,27 @@ async function step(rig, scene, name, notes) {
       if (!raged.ok) return raged;
       world.dice(18, 5);
       return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Claws" });
+    }
+    // A rage entered with the wild magic table's d8 forced (both dice, for a
+    // holder of Controlled Surge, who then chooses it): the surge in force is
+    // the effect whose bonus-action repeat is under test. The turn is given
+    // back, the rage having taken its bonus action.
+    case "the holder's wild surge is the teleport":
+    case "the holder's wild surge is the spirit":
+    case "the holder's wild surge is the bolt": {
+      const effect = name.endsWith("teleport") ? 2 : name.endsWith("spirit") ? 3 : 8;
+      if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
+      world.dice(effect, effect, 2, 2, 2, 2);
+      const raged = await world.invoke("use_resource", { characterId: holder, resource: "rage" });
+      if (!raged.ok) return raged;
+      if (world.sheet(holder).conditions.includes("wild surge pending")) {
+        world.dice(2, 2, 2, 2);
+        const chosen = await world.invoke("use_resource", { characterId: holder, resource: "Controlled Surge", variant: String(effect) });
+        if (!chosen.ok) return chosen;
+      }
+      world.clearDice();
+      refresh();
+      return { ok: true };
     }
     // A condition a spend ends (Guarded Mind: charmed or frightened).
     case "the holder frightened": {

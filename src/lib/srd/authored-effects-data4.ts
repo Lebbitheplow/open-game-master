@@ -52,14 +52,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     // until the rage ends.
     heldBy: { file: "src/lib/dm/death.ts", call: "ragesBeyondDeath(" },
   },
-  "barbarian::Wild Surge": {
-    subclass: "Path of Wild Magic",
-    narrated: "The d8 table's effect is rolled and narrated by the GM; its damage goes through aoe_damage and apply_damage, its AC through set_effect.",
-  },
-  "barbarian::Controlled Surge": {
-    subclass: "Path of Wild Magic",
-    narrated: "Rolling the wild magic table twice and choosing is the GM's roll on that narrated table.",
-  },
+  // Wild Surge and Controlled Surge: src/lib/srd/authored-effects-w2-mt-fb.ts.
 
   // ---- bard ----
   "bard::Master's Flourish": {
