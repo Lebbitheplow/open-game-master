@@ -8,6 +8,13 @@ import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions } from "@/lib/srd/options";
 
 export const BOW_HIT = "bow-hit:";
+// The conditions three options lay that the engine reads by these names
+// (src/lib/srd/authored-conditions.ts, src/lib/dm/mt-fb-arrow-riders.ts), and
+// the mark on a charm a Beguiling Arrow laid.
+export const ENFEEBLING = "enfeebling arrow";
+export const GRASPING = "grasping arrow";
+export const SHADOWED = "shadow arrow";
+export const BEGUILED = "beguiling";
 
 export const SHOTS = ["banishing", "beguiling", "bursting", "enfeebling", "grasping", "piercing", "seeking", "shadow"] as const;
 export type Shot = (typeof SHOTS)[number];

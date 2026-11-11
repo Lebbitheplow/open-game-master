@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-fighter.mjs";
 
-const { probe, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
+const { probe, test, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const NONMAGICAL = { stats: { resist: "bludgeoning, piercing, and slashing from nonmagical attacks" } };
 const CASTER = { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: ["Burning Hands"], cantrips: ["Fire Bolt"] };
 const BOW = { equipment: [{ name: "Longbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] };
@@ -145,6 +145,81 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(out.ok, true, `${option}: ${out.error}`);
     return { enemy, took: before - foe(enemy).currentHp, out };
   }
+
+  // ---- what the options do after the arrow has landed (mt-fb-arrow-riders.ts) ----
+  const enemyTurn = () => {
+    const encounter = world.encounter();
+    kit.saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => !entry.characterId), turnBudget: null });
+  };
+  // "Its speed is reduced by 10 feet, and it takes 2d6 slashing damage the
+  // first time on each turn it moves 1 foot or more."
+  await test("Grasping Arrow takes 10 feet of speed and tears 2d6 on the first move of a turn", async () => {
+    knows(archer, ["Grasping", "Shadow"]);
+    const { enemy } = await loose(archer, "grasping", [3, 4]);
+    const { enemySpeedTiles } = await import("../src/lib/dm/enemy-speed.ts");
+    assert.equal(enemySpeedTiles({ ...foe(enemy), conditions: [] }) - enemySpeedTiles(foe(enemy)), 2, "the brambles took no speed");
+    enemyTurn();
+    const before = foe(enemy).currentHp;
+    const first = await r.forced([3, 4], () => world.invoke("move_token", { token: enemy.id, x: 9, y: 5 }));
+    assert.equal(first.ok, true, first.error);
+    assert.equal(before - foe(enemy).currentHp, 7, `2d6 slashing (3 + 4) as it moves: ${show(first)}`);
+    const again = await r.forced([3, 4], () => world.invoke("move_token", { token: enemy.id, x: 10, y: 5 }));
+    assert.equal(again.ok, true, again.error);
+    assert.equal(before - foe(enemy).currentHp, 7, "a second move on the same turn tore it again");
+  });
+
+  // "It can't see anything farther than 5 feet away."
+  await test("Shadow Arrow leaves a creature 5 feet of sight", async () => {
+    knows(archer, ["Grasping", "Shadow"]);
+    const light = await import("../src/lib/dm/attack-light.ts");
+    const sees = (enemy) =>
+      light.attackSight({
+        campaignId: world.campaignId,
+        encounterId: world.encounter().id,
+        attacker: { refId: enemy.id, senses: light.enemySenses(foe(enemy)) },
+        target: { refId: archer.id, senses: light.characterSenses(sheet(archer)) },
+      });
+    const { enemy, out } = await loose(archer, "shadow", 2);
+    assert.ok(r.foeHas(enemy, "shadow arrow"), show(out));
+    assert.deepEqual(sees(enemy), { attackerSees: false, targetSees: true }, "15 feet off, it still sees the archer");
+    kit.place(enemy.id, 6, 5);
+    assert.equal(sees(enemy).attackerSees, true, "within 5 feet it sees");
+  });
+
+  // "Ends early if the chosen ally attacks the charmed target, deals damage
+  // to it, or forces it to make a saving throw."
+  await test("Beguiling Arrow's charm ends when the ally it names attacks the creature", async () => {
+    knows(archer, ["Beguiling", "Shadow"]);
+    const [enemy] = await stage(archer, { cast: [[champion, 7, 6]] });
+    kit.place(enemy.id, 8, 5);
+    assert.equal((await swing(archer, enemy, [15, 4], { weapon: "Longbow" })).ok, true);
+    const out = await spend(archer, "Arcane Shot", { variant: "beguiling", targetEnemyId: enemy.id, targetCharacterId: champion.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(r.foeHas(enemy, "charmed"), show(out));
+    kit.freshTurn();
+    assert.equal((await swing(archer, enemy, [15, 4], { weapon: "Longbow" })).ok, true);
+    assert.ok(r.foeHas(enemy, "charmed"), "the archer's own arrow ended the charm");
+    kit.giveTurn(champion.id);
+    assert.equal((await swing(champion, enemy, [15, 4])).ok, true);
+    assert.ok(!r.foeHas(enemy, "charmed"), "the ally struck it and it is still charmed by them");
+  });
+
+  // Piercing and Seeking are arrows too: one leaves the quiver, and with none
+  // there is nothing to loose.
+  await test("Piercing Arrow takes an arrow from the quiver", async () => {
+    knows(archer, ["Piercing", "Seeking"]);
+    const arrows = () => sheet(archer).equipment.find((item) => item.name === "Arrows")?.qty ?? 0;
+    world.patch(archer.id, { equipment: BOW.equipment });
+    const { out } = await loose(archer, "piercing", 2);
+    assert.equal(arrows(), 19, `no arrow left the quiver: ${show(out)}`);
+    world.patch(archer.id, { equipment: BOW.equipment.filter((item) => item.name !== "Arrows") });
+    const [enemy] = await stage(archer);
+    kit.place(enemy.id, 8, 5);
+    const none = await spend(archer, "Arcane Shot", { variant: "seeking", targetEnemyId: enemy.id }, 2);
+    assert.equal(none.ok, false, `loosed with an empty quiver: ${show(none)}`);
+    assert.equal(used(archer, "sub_arcane_shot"), 0, "the refusal spent a use");
+    world.patch(archer.id, { equipment: BOW.equipment });
+  });
 
   await probe("arcane-shot-once-per-turn", async () => {
     knows(archer, ["Bursting", "Shadow"]);

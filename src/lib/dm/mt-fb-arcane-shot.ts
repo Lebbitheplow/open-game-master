@@ -23,15 +23,14 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { computeSheetDerived } from "@/lib/srd";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { BOW_HIT, NO_ROLL, SHOT_LABEL, isBow, lastBowHit, shotDamage, shotsKnown, type Shot } from "@/lib/srd/mt-fb-arcane-shot";
+import { BEGUILED, BOW_HIT, ENFEEBLING, GRASPING, NO_ROLL, SHADOWED, SHOT_LABEL, isBow, lastBowHit, shotDamage, shotsKnown, type Shot } from "@/lib/srd/mt-fb-arcane-shot";
+import { spendAmmo, withAmmoCount } from "@/lib/srd/ammunition";
+import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 
-type Resolution = ToolError | { result: Record<string, unknown> };
+type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
-// The conditions two options lay that the engine reads by these names.
-export const ENFEEBLING = "enfeebling arrow";
-export const GRASPING = "grasping arrow";
-export const SHADOWED = "shadow arrow";
+export { ENFEEBLING, GRASPING, SHADOWED };
 
 const refuse = (text: string): ToolError => ({ error: `${text} Nothing was spent.`, refused: "rules" });
 
@@ -115,6 +114,11 @@ export function arcaneShot(ctx: SpendContext, shot: Shot): Resolution {
     if ("error" in built) {
       return built;
     }
+    // The arrow is one from the quiver, as any shot's is (pc-attack-plan.ts).
+    const ammo = spendAmmo(sheet.equipment, { base: built.profile.base, name: built.profile.weapon }, sheet.name);
+    if (ammo && !ammo.ok) {
+      return refuse(ammo.error);
+    }
     const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
     const spent = budget ? spendAttack(budget, sheet.name) : null;
     if (!spent || !spent.ok) {
@@ -132,7 +136,9 @@ export function arcaneShot(ctx: SpendContext, shot: Shot): Resolution {
     }
     publishEncounter(campaign.id);
     return {
+      ...(ammo ? { patch: { equipment: withAmmoCount(sheet.equipment, ammo.index, ammo.remaining) } } : {}),
       result: {
+        ...(ammo ? { ammunition: `${ammo.name}: ${ammo.remaining} left.` } : {}),
         shot: `${label}: no attack roll, one attack of the Attack action. ${shot === "piercing" ? "Each creature in a line 30 feet long" : "The creature named, wherever it hides,"} makes a Dexterity save (DC ${dc}) against the arrow's damage (${arrow}) and ${extra.dice} ${extra.type} (${more}), half on a success.${shot === "seeking" ? ` ${sheet.name} learns where it is.` : ""}`,
         struck: lines,
       },
@@ -161,7 +167,7 @@ export function arcaneShot(ctx: SpendContext, shot: Shot): Resolution {
       if (!ally) {
         lines.push(named ? `${named.name} is not an ally within 30 feet of ${target.displayName}: no one charms it.` : `No ally stands within 30 feet of ${target.displayName}: no one charms it.`);
       } else if (fresh && fails(fresh, "wis", "charmed")) {
-        lay(fresh, "charmed", { source: ally.id, ...untilMine }, `${target.displayName} is charmed by ${ally.name} until the start of ${sheet.name}'s next turn, or until ${ally.name} attacks it, damages it or forces a save on it.`);
+        lay(fresh, "charmed", { source: ally.id, [BEGUILED]: true, ...untilMine }, `${target.displayName} is charmed by ${ally.name} until the start of ${sheet.name}'s next turn, or until ${ally.name} attacks it, damages it or forces a save on it.`);
       } else if (fresh) {
         lines.push(`${target.displayName} makes the Wisdom save (DC ${dc}) and is not charmed.`);
       }

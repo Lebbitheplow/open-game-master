@@ -35,6 +35,7 @@ import { holdGasesBack } from "@/lib/battlemap/zones-walls";
 import { isQuake, quakeFissures, quakeShake } from "@/lib/dm/zone-quake";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
+import { bramblesAfterMove } from "@/lib/dm/mt-fb-arrow-riders";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -353,6 +354,20 @@ function settle(campaign: Campaign, map: BattleMap, zones: SpellZone[]) {
 // the square it was caught on. `careful` is a walk made at half speed, which
 // enters caltrops and ball bearings with no save (zones-gear.ts).
 export function zonesAfterMove(
+  campaign: Campaign,
+  encounterId: string,
+  mover: { kind: string; refId: string },
+  start: XY,
+  walked: XY[],
+  options: { careful?: boolean } = {},
+): string[] {
+  // What clings to the mover tears as it moves, area or none (Grasping
+  // Arrow's brambles: mt-fb-arrow-riders.ts). Every walk and push comes here.
+  const torn = mover.kind === "enemy" && walked.length ? bramblesAfterMove(campaign, encounterId, mover.refId) : [];
+  return [...torn, ...areasAfterMove(campaign, encounterId, mover, start, walked, options)];
+}
+
+function areasAfterMove(
   campaign: Campaign,
   encounterId: string,
   mover: { kind: string; refId: string },
