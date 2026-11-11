@@ -448,6 +448,29 @@ await test("the Hand reads the light on its square only from a host that offers 
   const r = await openRig();
   const { kit, hero, stage, spend, swing, foe, used, budget, show } = r;
   const sun = hero("monk", "Way of the Sun Soul", 11, BARE);
+  // "Extendable with ki as a bonus action": after the Attack action, 1 ki
+  // and the bonus action buy two more bolts, thrown at range like the first.
+  await probe("radiant-sun-bolt-ki-bolts", async () => {
+    const BOLT = { weapon: "Radiant Sun Bolt" };
+    const [enemy] = await stage(sun);
+    kit.place(enemy.id, 10, 5);
+    const early = await swing(sun, enemy, [15, 3], { ...BOLT, feature: "flurry of blows" });
+    assert.equal(early.ok, false, `before the Attack action: ${String(early.error).slice(0, 120)}`);
+    assert.equal(used(sun, "ki"), 0, "and the refusal spent no ki");
+    for (let count = 0; count < 2; count += 1) assert.equal((await swing(sun, enemy, [15, 3], BOLT)).ok, true, "the Attack action's bolts");
+    const made = [];
+    const said = [];
+    for (let count = 0; count < 3; count += 1) {
+      const bolt = await swing(sun, enemy, [15, 3], { ...BOLT, feature: "flurry of blows" });
+      made.push(bolt.ok);
+      said.push(String(bolt.error ?? "ok").slice(0, 160));
+    }
+    assert.deepEqual(made, [true, true, false], `two more bolts, 25 feet off, and no third: ${said.join(" | ")}`);
+    assert.equal(used(sun, "ki"), 1, "1 ki");
+    assert.equal(budget().bonusUsed, true, "the bonus action");
+    assert.equal(300 - foe(enemy).currentHp, 4 * (3 + MOD), "four bolts of 1d8 (3s) + Dexterity, radiant");
+  });
+
   await probe("searing-arc-strike", async () => {
     const [enemy] = await stage(sun);
     const early = await spend(sun, "Searing Arc Strike", { amount: 2, targetEnemyIds: [enemy.id] }, 2);

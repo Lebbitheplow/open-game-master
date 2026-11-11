@@ -13,6 +13,7 @@
 import { SNEAK_HIT, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { gateHolds, hasCondition, heldAuthored, type AuthoredSheet, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { textKey } from "@/lib/language/text-logic";
 
 // A creature a Flurry of Blows strike of this turn was aimed at, one mark a
 // strike (Intoxicated Frenzy counts them and reads who they went to).
@@ -56,6 +57,17 @@ export function flurryBought(sheet: AuthoredSheet, budget: TurnBudget): Partial<
     return {};
   }
   return { disengaged: true, oncePerTurn: budget.oncePerTurn.includes(DRUNKEN_FEET) ? budget.oncePerTurn : [...budget.oncePerTurn, DRUNKEN_FEET] };
+}
+
+// Radiant Sun Bolt, "usable with the Attack action and extendable with ki as
+// a bonus action": the 1 ki and the bonus action that buy Flurry of Blows'
+// two strikes buy two more bolts, so a strike of the flurry may be a bolt
+// for the monk who holds it. The part door keeps the bolt's name
+// (pc-attack-parts.ts naturalAttack) and the turn counts it as one of the
+// flurry's strikes (pc-attack-spend.ts), both through here.
+const SUN_BOLT_NAMES = ["radiant sun bolt", "sun bolt"];
+export function sunBoltStrike(sheet: AuthoredSheet, weapon: string | null | undefined): boolean {
+  return SUN_BOLT_NAMES.includes(textKey(weapon ?? "")) && holdsRow(sheet, "monk::Radiant Sun Bolt") !== null;
 }
 
 // "An extra Arms attack when taking the Attack action" (Awakened Astral

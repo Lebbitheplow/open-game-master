@@ -23,6 +23,7 @@
     "lib/srd/mt-mr-casts.ts#str-list": [["english-source",1,"reference: the four SRD spells Shadow Arts casts"],["key",1,"a feature's source field (race, background)"]],
     "lib/srd/mt-mr-unarmed.ts#str-list": [["key",1,"Draconic Strike's damage types, the engine's vocabulary"]],
     "lib/srd/mt-mr-kensei.ts#str-list": [["english-source",1,"reference: the four Way of the Kensei features whose training grant picks a kensei weapon"]],
+    "lib/dm/mt-mr-turn.ts#str-list": [["english-source",1,"reference: the two names Radiant Sun Bolt's natural weapon goes by in its row"]],
     "lib/dm/mt-mr-spends.ts#str-eq": [["key",1,"a variant word of use_resource (no poison)"],["english-source",1,"reference: the feature name move_token carries for Shadow Step's teleport"]],
     "lib/dm/mt-mr-spends.ts#str-list": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/hidden-names-logic.ts#RegExp i": [["key", 1, "a hidden creature's own names in the table's prose"]],

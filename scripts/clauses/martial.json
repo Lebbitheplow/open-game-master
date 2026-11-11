@@ -2495,9 +2495,9 @@
    },
    {
     "c": "usable with the Attack action and extendable with ki as a bonus action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; src/lib/srd/authored-effects-data2.ts monk::Radiant Sun Bolt note: \"Its bonus-action pair of bolts for 1 ki after the Attack action is Flurry of Blows' place; the GM allows it.\""
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts sunBoltStrike (a Flurry of Blows strike may be a bolt: pc-attack-parts.ts naturalAttack, pc-attack-spend.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: radiant-sun-bolt-ki-bolts"
    }
   ]
  },

@@ -12,7 +12,7 @@ import { ACTION_SURGED, attacksLeft, spendAction, spendAttack, type SpendResult,
 import { usesLeft } from "@/lib/dm/bonus-routes";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
-import { flurryStrikeRefusal, holdsRow, swingMarks } from "@/lib/dm/mt-mr-turn";
+import { flurryStrikeRefusal, holdsRow, sunBoltStrike, swingMarks } from "@/lib/dm/mt-mr-turn";
 import { loadingProblem, withLoadingFired } from "@/lib/dm/attack-rules";
 import { withClawsExtra } from "@/lib/dm/authored-attacks";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
@@ -139,7 +139,7 @@ export function spendAttackEconomy(input: {
         : kind === "spell"
           ? // The cast guard charges the casting time in pc-attack.ts.
             { ok: true as const, budget }
-          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike", flurry: args.flurryStrike === true });
+          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike" || sunBoltStrike(sheet, profile.weapon), flurry: args.flurryStrike === true });
     if (!spend.ok) {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }

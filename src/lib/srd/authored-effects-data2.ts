@@ -77,7 +77,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         kind: "natural_weapon",
         weapon: { name: "Radiant Sun Bolt", aliases: ["sun bolt"], dice: [[1, "1d4"], [5, "1d6"], [11, "1d8"], [17, "1d10"]], type: "radiant", ranged: true, rangeFt: 30 },
-        note: "Its bonus-action pair of bolts for 1 ki after the Attack action is Flurry of Blows' place; the GM allows it.",
+        // Its bonus-action pair of bolts for 1 ki after the Attack action is
+        // Flurry of Blows' place: a flurry strike may be a bolt
+        // (src/lib/dm/mt-mr-turn.ts sunBoltStrike).
       },
     ],
   },
