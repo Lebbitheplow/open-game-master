@@ -51,4 +51,13 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
       { kind: "summon_thrall", school: "necromancy", types: ["undead"] },
     ],
   },
+  // "your hit point maximum cannot be reduced": a drain, a lowering effect
+  // and exhaustion's halving all leave it where it is
+  // (src/lib/dm/ar-ws-inured-logic.ts). The necrotic resistance of the same
+  // feature is the feature table's (src/lib/srd/feature-effects.ts). No row
+  // held this half before.
+  "wizard::Inured to Undeath": {
+    subclass: "School of Necromancy",
+    effects: [{ kind: "max_hp_fixed" }],
+  },
 };

@@ -183,6 +183,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   spend: { file: "src/lib/dm/mutations.ts", call: "authoredFeatureSpend(" },
   reaction: { file: "src/lib/dm/reaction-tools.ts", call: "authoredReaction(" },
   spell_check_prof: { file: "src/lib/dm/ar-ws-spell-check.ts", call: 'activeAuthored(sheet, "spell_check_prof")' },
+  max_hp_fixed: { file: "src/lib/dm/ar-ws-inured-logic.ts", call: 'activeAuthored(sheet, "max_hp_fixed")' },
   summon_extra: { file: "src/lib/dm/summon-cast.ts", call: "thrallSpell(" },
   summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
 };

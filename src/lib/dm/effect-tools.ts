@@ -1,3 +1,4 @@
+import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { z } from "zod";
 import { type Campaign } from "@/lib/db/campaigns";
 import {
@@ -258,6 +259,12 @@ export function handleSetEffect(
         retry: true,
       };
     }
+  }
+  // Inured to Undeath: a holder's maximum cannot be lowered, by the GM's own
+  // hand either (ar-ws-inured-logic.ts). Refused before anything is written.
+  const fixed = target.kind === "character" && maxHpShift(checked.effect.modifiers) < 0 ? maxHpCannotFall(getSheetById(target.id)) : null;
+  if (fixed) {
+    return { error: `${target.name}'s hit point maximum cannot be reduced (${fixed}). Send the effect without its maxHp modifier. Nothing was changed.`, refused: "rules" };
   }
   // Reapplying by the same name replaces rather than stacks: casting Bless
   // twice on the same target does not double it, and two rows would leave the

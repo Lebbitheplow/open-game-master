@@ -260,6 +260,9 @@ export type AuthoredEffect = Base &
     // What the holder summons with a spell, of these creature types, gains
     // this many hit points per Hit Die (Mighty Summoner: 2, beasts and fey).
     | { kind: "summon_hp_per_hd"; amount: number; types: string[] }
+    // The holder's hit point maximum cannot be reduced, by a drain, an effect
+    // or exhaustion (Inured to Undeath, src/lib/dm/ar-ws-inured-logic.ts).
+    | { kind: "max_hp_fixed" }
     // A casting of this spell makes this many more creatures (Undead Thralls:
     // Animate Dead, one; src/lib/dm/ar-ws-thralls.ts).
     | { kind: "summon_extra"; spell: string; amount: number }

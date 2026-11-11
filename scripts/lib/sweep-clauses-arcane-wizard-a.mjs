@@ -587,12 +587,51 @@ export function probes(rig, shared) {
       assert.equal(await hurt(old, 10, "necrotic"), 5);
       assert.equal(await hurt(old, 10, "fire"), 10);
     },
+    // Every door that lowers a maximum: the GM's effect (refused, nothing
+    // written), a drain laid as a condition, a creature's Life Drain on a
+    // failed save, and exhaustion's halving. The friend beside them is lowered
+    // by each, and a necromancer below 10th level too.
     "inured-maximum": async () => {
       await kit.endFight();
       const old = holder("wizard", "School of Necromancy", 10);
+      const young = holder("wizard", "School of Necromancy", 9);
+      const { effectiveMaxHp: condition } = await import("../../src/lib/dm/condition-logic.ts");
       const before = sheet(old).maxHp;
-      await call("set_effect", { characterId: old.id, name: "life drain", field: "maxHp", mode: "add", value: -10, duration: "manual" });
+      const drain = (who) => call("set_effect", { characterId: who.id, name: "life drain", field: "maxHp", mode: "add", value: -10, duration: "manual" });
+      const refused = await drain(old);
       assert.equal(sheet(old).maxHp, before, "a drain of 10 lowers the hit point maximum");
+      assert.equal(refused.ok, false, "the effect is refused, not written with nothing behind it");
+      assert.match(String(refused.error), /Inured to Undeath/);
+      assert.match(String(refused.error), /Nothing was changed/);
+      const youngBefore = sheet(young).maxHp;
+      assert.equal((await drain(young)).ok, true, "a 9th-level necromancer is drained as anybody");
+      assert.equal(sheet(young).maxHp, youngBefore - 10);
+      assert.equal((await call("clear_effect", { characterId: young.id, name: "life drain" })).ok, true);
+      assert.equal(sheet(young).maxHp, youngBefore, "the lifted effect gives the 10 back");
+      // A drain laid by name.
+      const laid = await call("set_condition", { characterId: old.id, condition: "max hp reduced (-7)" });
+      assert.deepEqual([sheet(old).maxHp, sheet(old).conditions.some((name) => /max hp reduced/i.test(name))], [before, false], `[maximum, drain on the sheet] after set_condition: ${show(laid)}`);
+      // A wight's Life Drain: 1d6+2 necrotic on a 4, the Constitution save failed.
+      const [wight] = await stage(old, { others: [friend()] });
+      kit.setEnemy(wight.id, { stats: { ...foe(wight).stats, attacks: [{ name: "Life Drain", toHit: 4, damage: "1d6+2", type: "necrotic", onHit: { save: "con", dc: 30, drainMaxHp: "all" } }] } });
+      const [oldMax, friendMax] = [sheet(old).maxHp, sheet(friend()).maxHp];
+      const hpBefore = sheet(old).currentHp;
+      const onOld = await rig.table.strike(wight, old, [18, 4, 2]);
+      assert.equal(sheet(old).maxHp, oldMax, `Life Drain on the necromancer: ${JSON.stringify(onOld.result).slice(0, 300)}`);
+      assert.equal(hpBefore - sheet(old).currentHp, 3, "the 6 necrotic still lands, halved by the feature's resistance");
+      assert.match(JSON.stringify(onOld.result), /cannot be reduced \(Inured to Undeath\)/);
+      kit.place(friend().id, 6, 4);
+      await rig.table.strike(wight, friend(), [18, 4, 2]);
+      assert.equal(sheet(friend()).maxHp, friendMax - 6, "the same drain on the friend");
+      await kit.endFight();
+      world.patch(friend().id, { conditions: [], conditionMeta: {} });
+      assert.equal(sheet(friend()).maxHp, friendMax, "the friend's maximum comes back with the drain's end");
+      // Exhaustion level 4 halves a maximum.
+      world.patch(old.id, { exhaustion: 4 });
+      world.patch(friend().id, { exhaustion: 4 });
+      assert.deepEqual([condition(sheet(old)), condition(sheet(friend()))], [before, Math.floor(friendMax / 2)], "[the necromancer's, the friend's] maximum at exhaustion 4");
+      world.patch(old.id, { exhaustion: 0 });
+      world.patch(friend().id, { exhaustion: 0 });
     },
     "command-undead-action": async () => {
       const [enemy] = await stage(nec());
@@ -686,7 +725,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "inured-maximum": { severity: "low", kind: "rule-missing", where: "src/lib/dm/effect-tools.ts set_effect field maxHp (and any creature ability that lowers a maximum)", note: "Reached by the GM's own hand here; the feature-effects row for Inured to Undeath holds the resistance only.", fix: "Refuse a lowering of the hit point maximum for a holder." },
     "stone-change": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Transmuter's Stone (the choose spend is fight: "out" and asks for no spell)`, note: "Looser and stricter than the text at once: out of a fight the benefit changes at will, in one it cannot change even on a transmutation spell.", fix: "A ruling, or tie the change to a transmutation spell of 1st level or higher." },
   };
   return { PROBES, KNOWN };

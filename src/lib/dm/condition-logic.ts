@@ -11,6 +11,7 @@ import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
+import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 
 export {
   DAMAGE_TYPES,
@@ -137,7 +138,7 @@ const MAX_HP_BONUS = [
   { family: "aid", match: /^aided \(\+(\d+)\)$/i },
   { family: "heroes' feast", match: /^heroes' feast \(\+(\d+)\)$/i },
 ];
-const MAX_HP_DRAIN = /^max hp reduced \(-(\d+)\)$/i;
+export const MAX_HP_DRAIN = /^max hp reduced \(-(\d+)\)$/i;
 
 export function maxHpRiders(
   conditions: string[],
@@ -855,7 +856,9 @@ export function effectiveMaxHp(sheet: {
       max += (modOf(set) - modOf(sheet.abilities.con)) * sheet.level;
     }
   }
-  return exhaustionMaxHp(sheet.exhaustion ?? 0, max);
+  // Inured to Undeath: a maximum that cannot be reduced is not halved
+  // (ar-ws-inured-logic.ts).
+  return maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
 }
 
 // Advantage effect of exhaustion on a d20 roll: level 1+ = disadvantage on

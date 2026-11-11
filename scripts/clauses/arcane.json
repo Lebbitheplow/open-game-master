@@ -647,8 +647,9 @@
    },
    {
     "c": "and your hit point maximum cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: inured-maximum"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: inured-maximum",
+    "by": "src/lib/dm/ar-ws-inured-logic.ts maxHpCannotFall (authored effect max_hp_fixed), asked at every door that lowers a maximum: a drain condition in src/lib/db/sheets.ts patchSheet (ar-ws-inured.ts keptFromDrain) and enemy-hit.ts drainMaxHp, set_effect field maxHp (effect-tools.ts, refused), and exhaustion 4 in condition-logic.ts effectiveMaxHp. Ruling: every reduction counts, exhaustion included; a bonus that ends (Aid) is not a reduction"
    }
   ]
  },
