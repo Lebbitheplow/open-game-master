@@ -15,6 +15,7 @@
 // Off the map there is nothing to measure: the conditions (blinded,
 // invisible, hidden) are the whole answer, as before.
 
+import { horrorVeilTiles } from "@/lib/srd/genre-a-horror-holds";
 import { getClock } from "@/lib/db/clock";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import type { EncounterEnemy } from "@/lib/db/encounters";
@@ -42,7 +43,8 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   const named = Math.max(senses.darkvision, darkvisionTilesFromText(texts));
   // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night).
   const authored = Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
-  return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) };
+  // Veilsight sees the invisible within 30 feet (genre-a-horror-holds.ts).
+  return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing, horrorVeilTiles(sheet)) };
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {

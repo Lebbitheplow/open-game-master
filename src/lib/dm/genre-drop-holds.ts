@@ -18,7 +18,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
-import { effectiveMaxHp } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { horrorDropEnds } from "@/lib/srd/genre-a-horror-holds";
 import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -116,10 +117,18 @@ export function genreDropHold(
         ? { conditions: [...sheet.conditions, hold.condition.name], conditionMeta: { ...(sheet.conditionMeta ?? {}), [hold.condition.name]: { rounds: hold.condition.rounds } } }
         : {}),
     };
-    write(sheet, patch, { [hold.feature]: true });
+    // Nine Lives: the survivor's hold also ends one condition (genre-a-horror-holds.ts).
+    const ends = horrorDropEnds(sheet, hold.id);
+    if (ends) {
+      const cleared = removeConditions(patch.conditions ?? sheet.conditions, (patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap, [ends]);
+      patch.conditions = cleared.conditions;
+      patch.conditionMeta = cleared.meta;
+    }
+    write(sheet, patch, { [hold.feature]: true, ...(ends ? { "Nine Lives": ends } : {}) });
     return {
       ok: true,
       hp: `${hp}/${max}`,
+      ...(ends ? { nineLives: `Nine Lives: ${sheet.name} is no longer ${ends}.` } : {}),
       held: hold.feature,
       note: `${sheet.name} should have fallen, but ${hold.feature} holds them at ${hp} HP${temp ? ` with ${temp} temporary hit points` : ""}${hold.condition ? `, and their ${hold.condition.name} burns again` : ""}. The use is spent.`,
     };

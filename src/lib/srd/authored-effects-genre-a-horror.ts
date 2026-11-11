@@ -110,6 +110,12 @@ export const GENRE_A_HORROR: GenreRow[] = [
   { feature: "No Witnesses Left", classes: ["survivor"], entry: { subclass: "genre", effects: [{ kind: "hit_rider", dice: "1d8", vsCondition: "downed an ally" }] } },
   // "Your apparatus spells ignore resistance to psychic and force damage"
   { feature: "Resonance Lock", classes: ["parapsychologist"], entry: { subclass: "genre", effects: [{ kind: "ignore_resist", types: ["psychic", "force"] }] } },
+  // "See invisible and ethereal creatures within 30 ft"
+  held("occultist", "Veilsight", "src/lib/dm/attack-light.ts", "horrorVeilTiles"),
+  // "Won't Die Here recharges on a long rest and also ends one condition on you"
+  held("survivor", "Nine Lives", "src/lib/dm/genre-drop-holds.ts", "horrorDropEnds"),
+  // "Creatures cannot teleport into or out of a 30-ft radius around you unless you allow it"
+  held("occultist", "Warden of the Threshold", "src/lib/dm/map-tools.ts", "horrorTeleportRefusal"),
   // "While no ally is within 10 ft, +1 AC and advantage on Stealth"
   held("survivor", "Alone in the Dark", "src/lib/dm/genre-a-horror-board.ts", "horrorAcBonus, horrorLentRolls"),
   // "Immune to being frightened while any ally can see you"

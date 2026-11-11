@@ -4,6 +4,7 @@
 // without its mechanism: the feature was a line of the GM's prompt.
 import assert from "node:assert/strict";
 import { openClauseRig, must } from "./lib/sweep-clauses-genre-a.mjs";
+import { d20Faces } from "./lib/enforce-combat.mjs";
 
 const t = await openClauseRig();
 const { horrorCheckRider, horrorMagicalAgainst } = await import("../src/lib/srd/genre-a-horror-holds.ts");
@@ -145,11 +146,12 @@ await test("Bleeding Power: a 1st-level stigmata with no slot for 1d4 that nothi
 
 await test("Borrowed Eyes: a WIS save, and a creature the occultist cannot see is refused with nothing spent", async () => {
   const scene = await t.stage({ classId: "occultist", level: 6 });
-  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
-  const unseen = await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id });
-  assert.equal(unseen.ok, false, "an invisible creature");
+  // The far foe: Veilsight (occultist 3, "See invisible and ethereal creatures
+  // within 30 ft") sees an invisible creature beside the occultist.
+  t.kit.setEnemy(scene.far.id, { conditions: ["invisible"] });
+  const unseen = await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.far.id });
+  assert.equal(unseen.ok, false, "an invisible creature 70 feet off");
   assert.equal(sheet(scene.holder.id).resources.horror_borrowed_eyes.used, 0, "nothing spent");
-  t.kit.setEnemy(scene.near.id, { conditions: [] });
   t.world.dice(1);
   must(await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id }), "Borrowed Eyes");
   t.world.clearDice();
@@ -390,6 +392,61 @@ await test("Resonance Lock: the parapsychologist's psychic and force damage igno
   assert.equal(authoredIgnoresResistance(t.world.campaignId, "force"), "Resonance Lock");
   assert.equal(authoredIgnoresResistance(t.world.campaignId, "fire"), null);
   assert.ok(scene.holder);
+});
+
+await test("Veilsight: an invisible creature within 30 feet is attacked with no disadvantage; before the feature it is", async () => {
+  const thrown = async (level) => {
+    const scene = await t.stage({ classId: "occultist", level });
+    t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+    await strike(scene, scene.near, [15, 15, 3, 3]);
+    const attack = t.kit.lastRolls(4).find((roll) => roll.kind === "attack");
+    return d20Faces(attack).length;
+  };
+  assert.equal(await thrown(2), 2, "an unseen target: disadvantage");
+  assert.equal(await thrown(3), 1, "Veilsight sees it");
+});
+
+await test("Nine Lives: Won't Die Here also ends the worst condition, and before the feature it ends none", async () => {
+  const drop = async (level) => {
+    const scene = await t.stage({ classId: "survivor", level }, { hp: 5 });
+    t.world.patch(scene.holder.id, { conditions: ["poisoned", "frightened"] });
+    must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 20, type: "fire" }), "the blow");
+    return sheet(scene.holder.id);
+  };
+  const before = await drop(8);
+  assert.equal(before.currentHp, 1, "Won't Die Here");
+  assert.deepEqual([...before.conditions].sort(), ["frightened", "poisoned"], "no condition ends at 8th level");
+  const after = await drop(9);
+  assert.equal(after.currentHp, 1, "Won't Die Here");
+  assert.deepEqual(after.conditions, ["poisoned"], "frightened ends, the lesser stays");
+});
+
+await test("Warden of the Threshold: a foe cannot teleport out of or into the 30 feet around the occultist; an ally, and a jump that crosses nothing, may", async () => {
+  const jump = (token, x, y, more = {}) => t.world.invoke("move_token", { token, x, y, teleport: true, rangeFeet: 500, ...more });
+  const scene = await t.stage({ classId: "occultist", level: 15 });
+  const out = await jump(scene.near.id, 15, 12);
+  assert.equal(out.ok, false, "out of the radius");
+  assert.match(String(out.error), /Warden of the Threshold/);
+  const into = await jump(scene.far.id, 6, 6);
+  assert.equal(into.ok, false, "into the radius");
+  must(await jump(scene.near.id, 6, 6), "a jump inside the radius");
+  must(await jump(scene.far.id, 18, 12), "a jump outside the radius");
+  must(await jump(scene.ally.id, 15, 12), "the warden allows an ally");
+  // 14th level: no ward.
+  const early = await t.stage({ classId: "occultist", level: 14 });
+  must(await jump(early.near.id, 15, 12), "no ward before 15th level");
+});
+
+await test("Walk Between: a square the occultist cannot see is refused, one in sight is taken", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 11 });
+  // A wall across the board between the occultist at (5,5) and row 9.
+  t.kit.openField(Array.from({ length: t.kit.map().width }, (_, x) => [x, 8, "#"]));
+  must(await spend(scene, "horror_walk_between"), "Walk Between");
+  const blind = await t.world.invoke("move_token", { token: scene.holder.id, x: 5, y: 10, teleport: true, spell: "Walk Between", casterCharacterId: scene.holder.id });
+  assert.equal(blind.ok, false, "behind the wall");
+  assert.match(String(blind.error), /can see/);
+  must(await t.world.invoke("move_token", { token: scene.holder.id, x: 9, y: 5, teleport: true, spell: "Walk Between", casterCharacterId: scene.holder.id }), "a square in sight");
+  assert.equal(t.kit.token(scene.holder.id).x, 9);
 });
 
 t.close();

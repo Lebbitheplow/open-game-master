@@ -5,7 +5,7 @@
 //
 // Pure: the sheet alone.
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { normalizeCreatureType } from "@/lib/bestiary/creature-type";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -89,6 +89,35 @@ export function horrorCultSave(
   return resists?.magical && CULT_SLUGS.includes(textKey(from?.slug ?? "")) && horrorHolds(sheet, "Turncoat's Insight")
     ? { advantage: "advantage", reason: "Turncoat's Insight: advantage against a cultist's spell" }
     : null;
+}
+
+// Veilsight (occultist 3): "See invisible and ethereal creatures within 30
+// ft", as the reach, in squares, of the one sense the SRD engine holds that
+// sees the invisible and into the Ethereal Plane: truesight (which also sees
+// through magical darkness; the engine holds no narrower sense). Read by
+// src/lib/dm/attack-light.ts characterSenses, the one reader of a
+// character's senses.
+export function horrorVeilTiles(sheet: AuthoredSheet): number {
+  return horrorHolds(sheet, "Veilsight") ? 6 : 0;
+}
+
+// Nine Lives (survivor 9): "Won't Die Here ... also ends one condition on
+// you": the condition that ends as the hold keeps the survivor up, the worst
+// first (a player has no moment to choose at the drop). Read by
+// src/lib/dm/genre-drop-holds.ts for the survivor's own hold.
+const NINE_LIVES_ENDS = ["paralyzed", "stunned", "restrained", "frightened", "charmed", "blinded", "poisoned", "grappled", "deafened", "prone"];
+const WONT_DIE_HERE = ["horror_won_t_die_here", "horror_the_one_who_lives"];
+export function horrorDropEnds(sheet: AuthoredSheet, holdId: string): string | null {
+  if (!WONT_DIE_HERE.includes(holdId) || !horrorHolds(sheet, "Nine Lives")) {
+    return null;
+  }
+  for (const name of NINE_LIVES_ENDS) {
+    const found = (sheet.conditions ?? []).find((entry) => isConditionNamed(entry, name));
+    if (found) {
+      return found;
+    }
+  }
+  return null;
 }
 
 // Death's Old Acquaintance (survivor 17): "Advantage on death saves", read by

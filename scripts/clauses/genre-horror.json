@@ -974,15 +974,12 @@
   "clauses": [
    {
     "c": "See invisible and ethereal creatures within 30 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Veilsight#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Veilsight#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorVeilTiles, read by src/lib/dm/attack-light.ts characterSenses as truesight out to 30 feet, the one sense of the SRD engine that sees the invisible and the ethereal (it also sees through magical darkness; the engine holds no narrower sense)"
    }
   ]
  },
@@ -1097,9 +1094,9 @@
    },
    {
     "c": "to a space you can see",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the teleport credit holds (occultist::Walk Between#2), and it is a number of feet only; a destination out of the holder's sight was not staged"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal: a square with no line of sight from the occultists own is refused",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -1111,15 +1108,12 @@
   "clauses": [
    {
     "c": "Creatures cannot teleport into or out of a 30-ft radius around you unless you allow it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Warden of the Threshold#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Warden of the Threshold#0",
+    "by": "src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal, asked by src/lib/dm/map-tools.ts handleTeleportToken: a creature not on the wardens side is refused a teleport that crosses the 30-foot radius either way; the wardens side is what they allow"
    }
   ]
  },
@@ -1327,15 +1321,12 @@
    },
    {
     "c": "also ends one condition on you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Nine Lives#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Nine Lives#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorDropEnds, read by src/lib/dm/genre-drop-holds.ts as Wont Die Here keeps the survivor up: the worst condition on them ends (no moment to choose at the drop)"
    }
   ]
  },

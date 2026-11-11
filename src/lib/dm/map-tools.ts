@@ -70,6 +70,7 @@ import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
+import { horrorTeleportRefusal } from "@/lib/dm/genre-a-horror-wards";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -333,6 +334,12 @@ export function handleTeleportToken(
   const distanceFeet = Math.max(Math.abs(args.x - token.x), Math.abs(args.y - token.y)) * TILE_FEET;
   const spender = args.spell && args.casterCharacterId ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById) : null;
   const featureFeet = spender && args.spell ? featureTeleportFeet(spender.id, args.spell) : null;
+  // The horror classes' rules on a teleport (Warden of the Threshold, Walk
+  // Between's "a space you can see": src/lib/dm/genre-a-horror-wards.ts).
+  const warded = horrorTeleportRefusal(campaign.id, map, token, { x: args.x, y: args.y }, args.spell);
+  if (warded) {
+    return warded;
+  }
   // A legendary action that bought the jump (a sphinx's or a solar's
   // Teleport) gives its reach and has paid for it.
   const live = token.kind === "enemy" ? getActiveEncounter(campaign.id) : null;
