@@ -862,7 +862,7 @@ export function effectiveMaxHp(sheet: {
   }
   // Inured to Undeath: a maximum that cannot be reduced is not halved
   // (ar-ws-inured-logic.ts).
-  return maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
+  return (sheet.exhaustion ?? 0) >= 4 && maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
 }
 
 // Advantage effect of exhaustion on a d20 roll: level 1+ = disadvantage on

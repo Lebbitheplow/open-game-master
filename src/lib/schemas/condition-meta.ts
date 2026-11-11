@@ -86,6 +86,9 @@ const conditionInstanceSchema = z.object({
     untilLongRest: z.boolean().optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
+    // The clock instant (in-world minutes) a commanding charm's running hour
+    // began at (Command Undead's hourly save, src/lib/dm/ar-ws-command-hours.ts).
+    hourFrom: z.number().int().min(0).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A Dominate spell's standing order: the combatant its creature was told

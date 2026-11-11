@@ -74,7 +74,9 @@ function ruleDc(holder: CharacterSheet, rule: HourlyRule): number {
 }
 
 type Commanded = {
-  view: EncounterEnemy;
+  // The creature as the save reads it; a sheet's foe view is made only once
+  // its charm is known to be a commanding one.
+  view: () => EncounterEnemy;
   conditions: string[];
   meta: ConditionMetaMap;
   write: (meta: ConditionMetaMap) => void;
@@ -89,7 +91,7 @@ function charmedCreatures(campaign: Campaign): Commanded[] {
   const enemies = (encounter ? listEnemies(encounter.id) : [])
     .filter((enemy) => enemy.status === "alive" && charmed(enemy.conditions))
     .map((enemy): Commanded => ({
-      view: enemy,
+      view: () => enemy,
       conditions: enemy.conditions,
       meta: (enemy.conditionMeta ?? {}) as ConditionMetaMap,
       write: (meta) => patchEnemyConditions(enemy.id, enemy.conditions, meta as EncounterEnemy["conditionMeta"]),
@@ -97,7 +99,7 @@ function charmedCreatures(campaign: Campaign): Commanded[] {
   const sheets = listSheets(campaign.id)
     .filter((sheet) => charmed(sheet.conditions))
     .map((sheet): Commanded => ({
-      view: sheetFoeView(encounter?.id ?? "", sheet),
+      view: () => sheetFoeView(encounter?.id ?? "", sheet),
       conditions: sheet.conditions,
       meta: (sheet.conditionMeta ?? {}) as ConditionMetaMap,
       write: (meta) => {
@@ -128,7 +130,8 @@ export function commandedHourlySaves(campaignId: string, from: number, to: numbe
     if (!key || !instance || !holder || !rule) {
       continue;
     }
-    const scoreOf = (ability: string) => Number((creature.view.stats.abilities as Record<string, number> | undefined)?.[ability] ?? 10);
+    const view = creature.view();
+    const scoreOf = (ability: string) => Number((view.stats.abilities as Record<string, number> | undefined)?.[ability] ?? 10);
     if (scoreOf(rule.hourlySaveAt.ability) < rule.hourlySaveAt.atLeast) {
       continue;
     }
@@ -144,12 +147,12 @@ export function commandedHourlySaves(campaignId: string, from: number, to: numbe
     const dc = ruleDc(holder, rule);
     const keen = rule.advantageAt ? scoreOf(rule.advantageAt.ability) >= rule.advantageAt.atLeast : false;
     const ability = rule.save.toUpperCase();
-    const name = creature.view.displayName;
+    const name = view.displayName;
     const feature = instance.spell ?? "the command";
     let freedAt = 0;
     let last: number | null = null;
     for (let hour = 1; hour <= Math.min(ended, MAX_HOURS) && !freedAt; hour += 1) {
-      const save = rollEnemySave(campaign.id, creature.view, rule.save, dc, { ...(keen ? { advantage: true } : {}), against: CHARMED });
+      const save = rollEnemySave(campaign.id, view, rule.save, dc, { ...(keen ? { advantage: true } : {}), against: CHARMED });
       last = save.total ?? null;
       freedAt = save.success ? hour : 0;
     }
