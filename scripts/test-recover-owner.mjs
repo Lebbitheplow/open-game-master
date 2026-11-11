@@ -22,7 +22,7 @@ const { POST } = await import("../src/app/api/auth/recover-owner/route.ts");
 const { POST: token } = await import("../src/app/api/auth/token/route.ts");
 const { hashPassword } = await import("../src/lib/auth.ts");
 const { claimFirstAdmin } = await import("../src/lib/setup-code.ts");
-const { createUser, getUserByUsername, setUserPassword } = await import("../src/lib/db/users.ts");
+const { createUser, getUserByUsername, setUserAdmin, setUserPassword } = await import("../src/lib/db/users.ts");
 
 let passed = 0;
 async function test(name, fn) {
@@ -82,6 +82,23 @@ await test("a name that is no admin here recovers the world's owner, never a gue
   assert.equal((await response.json()).user.username, "host");
   assert.equal((await signIn("guest", "guest-secret-1")).status, 200, "the guest's password moved");
   assert.equal((await signIn("host", "app-made-new-2")).status, 200);
+});
+
+await test("a host a co-admin demoted is still the one let back in, never the co-admin", async () => {
+  // The host made a guest an admin, and that admin took the host's admin
+  // away and reset the host's password. The app names its own host: the
+  // world's first account is recovered, and the co-admin's account and
+  // password are left alone.
+  const coAdmin = createUser("coadmin", await hashPassword("coadmin-secret-1"), { isAdmin: true });
+  setUserAdmin(host.id, false);
+  setUserPassword(host.id, await hashPassword("temporary-nobody-saw-2"), true);
+  const response = await recover({ setupCode: "shell-made-secret", password: "app-made-new-5", username: "host" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.username, "host");
+  assert.equal((await signIn("coadmin", "coadmin-secret-1")).status, 200, "the co-admin's password is untouched");
+  assert.equal((await signIn("host", "app-made-new-5")).status, 200);
+  setUserAdmin(host.id, true);
+  setUserAdmin(coAdmin.id, false);
 });
 
 await test("wrong codes lock the address out", async () => {

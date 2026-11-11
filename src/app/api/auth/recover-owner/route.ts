@@ -25,10 +25,15 @@ const recoverSchema = z.object({
   username: z.string().trim().max(24).optional(),
 });
 
+// The host is the world's first account, the one the app claimed with the
+// setup code. The named account is taken when it is an admin or that first
+// account: a co-admin the host made can take the host's admin away, and the
+// app must still get its own host back rather than the co-admin's account.
 function worldOwner(username: string | undefined) {
+  const users = listUsers();
   const named = username ? getUserByUsername(username) : null;
-  if (named && named.isAdmin && !isCompanionUserId(named.id)) return named;
-  return listUsers().find((user) => user.isAdmin) ?? null;
+  if (named && !isCompanionUserId(named.id) && (named.isAdmin || named.id === users[0]?.id)) return named;
+  return users.find((user) => user.isAdmin) ?? null;
 }
 
 export async function POST(request: Request) {
