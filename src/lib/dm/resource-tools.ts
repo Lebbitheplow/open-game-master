@@ -17,6 +17,7 @@ import { unseenBecause, unseenByConditions, withinFeet } from "@/lib/dm/authored
 import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condition-logic";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { consumableEffect, findCarriedItem, notCarried } from "@/lib/dm/item-logic";
+import { metamagicPaid } from "@/lib/dm/ar-ws-lunar-boons";
 import { kiTechnique, spendKiTechnique, spendQuickenedSpell } from "@/lib/dm/bonus-actions";
 import { removeItemMath } from "@/lib/dm/mutation-math";
 import { textKey } from "@/lib/language/text-logic";
@@ -463,7 +464,8 @@ export function computeUseResource(
   if (def.id === "sorcery_points") {
     // The variant as its rules text lists it (class-resources.ts).
     if (textKey(variant ?? "") === "quickened spell") {
-      return spendQuickenedSpell(campaign, sheet, state);
+      const quickened = spendQuickenedSpell(campaign, sheet, state);
+      return "error" in quickened ? quickened : metamagicPaid(campaign.id, sheet, quickened);
     }
     const direction = fontOfMagicDirection(variant);
     if (direction) {
@@ -565,6 +567,12 @@ export function computeUseResource(
       effect: def.guidance,
     },
   };
+
+  // Lunar Boons: a Metamagic option paid waits for its spell, or takes the
+  // boon of one already cast this turn (src/lib/dm/ar-ws-lunar-boons.ts).
+  if (metamagicPoints !== null) {
+    metamagicPaid(campaign.id, sheet, outcome);
+  }
 
   // One with Shadows: dim light or darkness, then invisible until the warlock
   // moves or acts (src/lib/dm/one-with-shadows.ts).

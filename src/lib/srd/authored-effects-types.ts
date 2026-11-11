@@ -74,6 +74,10 @@ export type AuthoredEffect = Base &
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     | { kind: "attacked_disadv"; from: string[] }
+    // Attack rolls against the holder are at disadvantage while the holder
+    // stands entirely in darkness (Lunar Empowerment's New Moon:
+    // src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil).
+    | { kind: "attacked_disadv_dark" }
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).
@@ -477,8 +481,15 @@ export type SpendDoes =
       dispelsDarkness?: boolean;
     }
   | { kind: "reroll_save" }
+  // The healing dice of a spell cast this turn rolled again, the new roll
+  // standing (Empowered Healing: src/lib/dm/ar-ws-empowered-healing.ts).
+  | { kind: "reroll_heal" }
   // Temporary hit points: to the holder, or to allies in range.
   | { kind: "temp_hp"; formula: Formula; allies?: { rangeFt: number; count: Formula } }
+  // A ward of dice on a creature in reach, one die for each unit spent, which
+  // the creature spends off damage it takes until its next long rest (Bastion
+  // of Law: src/lib/dm/ar-ws-bastion.ts).
+  | { kind: "damage_ward"; die: string; rangeFt: number; condition: string }
   // Hit points to the characters in reach (Turn the Tide, Balm of Peace), at
   // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
   // healing the holder deals as they walk past. `belowHalf`: only those at or
@@ -524,6 +535,11 @@ export type SpendDoes =
   // pack, worth no more than `gpPerLevel` times the class level (Performance
   // of Creation: src/lib/dm/authored-spend-arcane.ts).
   | { kind: "create_item"; gpPerLevel: number }
+  // A light the holder sheds and carries, lit by one call and doused by the
+  // next: bright for `brightFt`, dim for `dimFt` beyond, the condition the
+  // sheet carries while it is lit (Lunar Empowerment's Full Moon:
+  // src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight).
+  | { kind: "light"; brightFt: number; dimFt: number; condition: string }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
@@ -534,6 +550,11 @@ export type SpendDoes =
   // these levels and cast with an action, written onto their pack (Master
   // Scrivener: src/lib/dm/ar-ws-scrivener.ts).
   | { kind: "scribe_scroll"; minLevel: number; maxLevel: number }
+  // The GM's surge: with the pool's use spent it rolls on the wild magic
+  // table and gives the use back; otherwise the holder's d20 is rolled and a 1
+  // rolls on the table. `clears`: the mark the spend's gate asked for (Wild
+  // Magic Surge: src/lib/dm/ar-ws-wild-surge.ts).
+  | { kind: "wild_surge"; pool: string; clears: string }
   // A creature the holder charmed saves or loses hours of memory, as many as
   // the call's amount, at most the ability modifier plus one; the mark it
   // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).

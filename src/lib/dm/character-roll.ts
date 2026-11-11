@@ -34,6 +34,7 @@ import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { shiftArmedFor } from "@/lib/dm/chronal-shift";
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -110,8 +111,10 @@ export function initiativeWaits(campaign: Campaign, stale: CharacterSheet): bool
   return choicesFor(campaign, sheet, { kind: "initiative", expression: "1d20", detail: "initiative" }, lowest).length > 0;
 }
 
-export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll: CharacterRoll): RollResult {
+export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, asked: CharacterRoll): RollResult {
   const sheet = getSheetById(stale.id) ?? stale;
+  // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
+  const roll = asked.kind === "damage" ? asked : { ...asked, expression: tranceFloored(sheet, asked.expression) };
   const decided = takeDecided(sheet.id, roll.kind);
   if (decided) {
     return decided.raw && roll.adjust ? roll.adjust(decided.outcome) : decided.outcome;

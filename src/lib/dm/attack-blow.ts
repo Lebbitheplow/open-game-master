@@ -14,6 +14,7 @@ import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { hurlThroughHell, HURL_THROUGH_HELL, openHandOnHit, poisonOnHit, spendFeatureUse } from "@/lib/dm/attack-onhit";
 import type { AttackRecord, DamageAsk } from "@/lib/dm/attack-record";
 import { attackStage, attackTurn, emitAttackFx, finishSwing, markAttackTurn, type SwingScene } from "@/lib/dm/attack-swing";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
@@ -122,7 +123,13 @@ export function landSwingBlow(
     finishSwing(scene, record, { hit: !ask.half, damage: 0 });
     return { warning: `${scene.enemy.displayName} is no longer in the fight; the damage was NOT applied. Narrate around it.` };
   }
-  const damageOutcome = roll.breakdown;
+  // Spell Bombardment: a spell's die at its highest number is rolled again,
+  // once a turn (src/lib/dm/ar-ws-bombardment.ts).
+  const burst = record.spell ? spellBombardment({ campaign, turn: scene.turn, sheet, outcome: roll.breakdown, spell: record.spell }) : null;
+  if (burst) {
+    notes.push(burst.note);
+  }
+  const damageOutcome = burst?.outcome ?? roll.breakdown;
   const profile = { damageType: record.damageType ?? "", ...(record.material ? { material: record.material } : {}) };
   const blowFlags = {
     magical: record.magical === true,

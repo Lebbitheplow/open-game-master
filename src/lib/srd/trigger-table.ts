@@ -27,7 +27,8 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   pet_damage   `characterId`'s pet took damage
 //   weapon_hit   `characterId` hit `creatureId` with a weapon on their turn
 //   surge        `characterId` used Action Surge this turn; wind_step: Step of the Wind
-export type TriggerEventKind = "hit" | "miss" | "save" | "death" | "turn_end" | "turn_start" | "cast" | "pet_damage" | "weapon_hit" | "surge" | "wind_step";
+//   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
+export type TriggerEventKind = "hit" | "miss" | "save" | "death" | "turn_end" | "turn_start" | "cast" | "pet_damage" | "weapon_hit" | "surge" | "wind_step" | "heal_roll";
 
 export type TriggerEvent = {
   id: string;
@@ -133,7 +134,9 @@ export type TriggerOn =
   // The holder's pet took damage.
   | { kind: "pet_damage" }
   // The feature's holder used Action Surge (the reactor is an ally within the reach).
-  | { kind: "surge"; rangeFt: number };
+  | { kind: "surge"; rangeFt: number }
+  // A spell's healing dice rolled by the holder or a creature within the reach (Empowered Healing).
+  | { kind: "heal_roll"; rangeFt: number };
 
 export type TriggerSpec = {
   on: TriggerOn[];
@@ -180,6 +183,7 @@ const WRITTEN: Record<string, TriggerSpec> = {
   "duelist's flourish": { on: [{ kind: "missed", melee: true }], what: "a melee attack that has just missed them" , aimsAt: true },
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
+  "empowered healing": { on: [{ kind: "heal_roll", rangeFt: 5 }], what: "healing dice they or a creature within 5 feet of them rolled for a spell this turn" },
 };
 
 // Raging Storm's environments each wait for their own thing.
@@ -276,6 +280,8 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
       return event.kind === "pet_damage" && self(event.characterId) && (event.amount ?? 0) > 0;
     case "surge":
       return event.kind === "surge" && event.characterId === (ctx.featureHolderId ?? ctx.holderId) && reach(event.characterId, on.rangeFt);
+    case "heal_roll":
+      return event.kind === "heal_roll" && reach(event.creatureId, on.rangeFt);
   }
 }
 

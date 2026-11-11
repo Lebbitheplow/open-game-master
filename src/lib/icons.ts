@@ -62,6 +62,13 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // A Scribe's Awakened Spellbook (its ritual use, authored-effects-w2-ar-ws.ts)
   // wears the painting of the same book's mind.
   "feature/awakened-spellbook": { kind: "feature", slug: "manifest-mind" },
+  // Three sorcerer spends the fifth round of the arcane repair built wear
+  // paintings of their kin, not new art: the moon's own glyph for the light a
+  // Lunar sorcerer sheds (Lunar Boons' card is gone: the cast spends it), a
+  // healing spell for the healing dice rolled again, a ward for the ward.
+  "feature/lunar-empowerment": { kind: "feature", slug: "lunar-boons" },
+  "feature/empowered-healing": { kind: "spell", slug: "cure-wounds" },
+  "feature/bastion-of-law": { kind: "spell", slug: "warding-bond" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

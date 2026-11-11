@@ -62,6 +62,7 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -1392,6 +1393,12 @@ function dmMutation(
       const srdSpend = srdFeatureSpend(campaign, turnId, sheet, resourceName, args);
       if (srdSpend) {
         return { result: srdSpend };
+      }
+      // A creature warded by Bastion of Law spends the ward's dice off a blow
+      // on record, for no reaction (src/lib/dm/ar-ws-bastion.ts).
+      const wardSpend = spendWardDice(campaign, turnId, sheet, resourceName, args, sheets, sheetsById);
+      if (wardSpend) {
+        return { result: wardSpend };
       }
       // Authored subclass features the engine resolves (src/lib/dm/authored-spends.ts).
       const authoredSpend = authoredFeatureSpend(campaign, turnId, sheet, resourceName, args, reason);

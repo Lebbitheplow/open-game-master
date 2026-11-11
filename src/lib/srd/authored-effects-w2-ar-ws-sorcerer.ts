@@ -8,11 +8,15 @@
 // it, so nothing the earlier rounds built is dropped.
 //
 // Pure.
+import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 // A spell paid for with sorcery points in place of a slot is the cast guard's
 // (src/lib/dm/ar-ws-points-cast.ts says when the points pay).
 const POINTS_CAST = { file: "src/lib/dm/cast-guard.ts", call: "pointsOfferFor(sheet, engine, facts, input.level)" };
+
+const FULL_MOON = { feature: "Lunar Embodiment", value: "full moon" };
+const NEW_MOON = { feature: "Lunar Embodiment", value: "new moon" };
 
 export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "You have darkvision out to 120 feet" (the effect, as authored-effects-data4.ts
@@ -91,4 +95,59 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "Once per turn, the highest damage die you roll for a spell explodes: roll
+  // it again and add it": at every door a character's spell damage is rolled
+  // (src/lib/dm/ar-ws-bombardment.ts names them), with no call of its own.
+  // The row authored-effects-data3.ts had (the Full Moon's checks, the New
+  // Moon's Stealth, the Crescent Moon's resistances), with the two halves it
+  // left to the GM: "Full Moon: a bonus action sheds bright light in 10 feet
+  // and dim light 10 feet beyond (or douses it)" is the spend, and "attack
+  // rolls against you have disadvantage while you are entirely in darkness"
+  // the New Moon's second effect (src/lib/dm/ar-ws-lunar-empowerment.ts).
+  "sorcerer::Lunar Empowerment": {
+    subclass: "Lunar Sorcery",
+    effects: [
+      { kind: "check_adv", skills: ["investigation", "perception"], gate: { choiceOf: FULL_MOON }, note: "Only within the bright light the sorcerer sheds; the GM keeps to that." },
+      { kind: "check_adv", skills: ["stealth"], gate: { choiceOf: NEW_MOON } },
+      { kind: "attacked_disadv_dark", gate: { choiceOf: NEW_MOON } },
+      { kind: "resist", types: ["necrotic", "radiant"], gate: { choiceOf: { feature: "Lunar Embodiment", value: "crescent moon" } } },
+    ],
+    spends: [{ name: "Lunar Empowerment", aliases: ["Moonlight"], action: "bonus", gate: { choiceOf: FULL_MOON }, does: { kind: "light", brightFt: 10, dimFt: 10, condition: "moonlight" } }],
+  },
+  // "After casting a sorcerer spell of 1st level or higher, the GM may have
+  // you roll a d20; on a 1 you roll on the wild magic table": the GM's call
+  // (no card), open for a round after every such casting. With Tides of Chaos
+  // spent it is the surge Tides names: the table is rolled and the use comes
+  // back (src/lib/dm/ar-ws-wild-surge.ts; the table is the app's own,
+  // src/lib/srd/ar-ws-wild-surge-table.ts).
+  "sorcerer::Wild Magic Surge": {
+    subclass: "Wild Magic",
+    spends: [
+      {
+        name: "Wild Magic Surge",
+        gm: true,
+        action: "none",
+        gate: { condition: SURGE_CHANCE, because: "is rolled only right after a sorcerer spell of 1st level or higher" },
+        does: { kind: "wild_surge", pool: "sub_tides_of_chaos", clears: SURGE_CHANCE },
+      },
+    ],
+  },
+  // "Spend 1 to 5 sorcery points to give a creature that many d8s to spend
+  // reducing damage, until your next long rest": the points in amount, an
+  // action, the creature within 30 feet; the warded creature spends the dice
+  // itself (src/lib/dm/ar-ws-bastion.ts).
+  "sorcerer::Bastion of Law": {
+    subclass: "Clockwork Soul",
+    spends: [{ name: "Bastion of Law", pool: { id: "sorcery_points", perUnit: true, max: 5 }, action: "action", does: { kind: "damage_ward", die: "d8", rangeFt: 30, condition: "bastion of law" } }],
+  },
+  // "Spend 1 sorcery point to reroll healing dice for yourself or an ally,
+  // once per turn": it answers the healing dice a spell rolled this turn
+  // (src/lib/srd/trigger-table.ts), costs nothing of the turn, and keeps its
+  // once a turn itself, since the turn is often an ally's
+  // (src/lib/dm/ar-ws-empowered-healing.ts).
+  "sorcerer::Empowered Healing": {
+    subclass: "Divine Soul",
+    spends: [{ name: "Empowered Healing", pool: { id: "sorcery_points", amount: 1 }, action: "none", does: { kind: "reroll_heal" } }],
+  },
+  "sorcerer::Spell Bombardment": { subclass: "Wild Magic", heldBy: { file: "src/lib/dm/ar-ws-bombardment.ts", call: "holdsFeature(sheet, SPELL_BOMBARDMENT)" } },
 };

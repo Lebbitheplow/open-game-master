@@ -58,6 +58,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  // The creature warded (Bastion of Law), the holder or an ally in reach.
+  if (does.kind === "damage_ward") return "ally";
   return "none";
 }
 

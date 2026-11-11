@@ -6,12 +6,13 @@ import assert from "node:assert/strict";
 import { MOD, prof } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
-const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother, movesSomething } = shared;
+  const { friend, drain, freeReactions, uses, rests, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
+  rig.outfit("sorcerer", "Divine Soul", { spells: ["Cure Wounds"] });
+  rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
   rig.outfit("sorcerer", "Aberrant Mind", { spells: ["Dissonant Whispers"] });
   rig.outfit("sorcerer", "Shadow Magic", { spells: ["Darkness"] });
   rig.outfit("sorcerer", "Lunar Sorcery", { spells: ["Sacred Flame"], cantrips: ["Sacred Flame"] });
@@ -69,10 +70,112 @@ export function probes(rig, shared) {
       const out = await react(wild(), "Bend Luck", { targetCharacterId: friend().id, variant: "add" }, [4]);
       assert.equal(out.ok, true, `to add 1d4 to an ally's save that failed by one: ${String(out.error).slice(0, 170)}`);
     },
-    "bombardment-door": hasDoor(["sorcerer", "Wild Magic"], "Spell Bombardment", (foes) => ({ targetEnemyId: foes[0].id })),
+    // Every door a spell's damage is rolled at (src/lib/dm/ar-ws-bombardment.ts):
+    // a die showing its highest number is rolled again and added, once a turn.
+    // Each case reads the dice the engine threw and what the creature lost.
+    "bombardment-door": async () => {
+      const who = wild();
+      const thrown = (out, sides) => out.rolled.filter((die) => die.sides === sides).map((die) => die.face);
+      const through = async (enemy, name, args, faces) => {
+        const before = foe(enemy).currentHp;
+        const out = await call(name, args, faces);
+        assert.equal(out.ok, true, out.error);
+        return { out, lost: before - foe(enemy).currentHp };
+      };
+      // cast_at_enemy: Poison Spray is 4d12 at 20th level, the save failed on a 1.
+      let [enemy] = await stage(who);
+      const spray = (caster, faces) => through(enemy, "cast_at_enemy", { characterId: caster.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, faces);
+      const first = await spray(who, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(first.out, 12), first.lost], [[12, 2, 3, 4, 5], 26], "a 12 on a d12 is rolled again and added");
+      assert.match(String(first.out.result.spellBombardment), /Spell Bombardment/);
+      // A second spell that turn: two dice at their highest, none rolled again.
+      kit.freshTurn();
+      const second = await spray(who, [1, 12, 12, 3, 4, 9]);
+      assert.deepEqual([thrown(second.out, 12), second.lost, second.out.unused], [[12, 12, 3, 4], 31, 1], "once per turn");
+      // No die at its highest number adds nothing, and leaves the turn's use.
+      [enemy] = await stage(who);
+      const none = await spray(who, [1, 11, 2, 3, 4, 9]);
+      assert.deepEqual([thrown(none.out, 12), none.lost, none.out.unused], [[11, 2, 3, 4], 20, 1], "no die at its highest number");
+      kit.freshTurn();
+      const late = await spray(who, [1, 2, 3, 12, 4, 6]);
+      assert.deepEqual([thrown(late.out, 12), late.lost], [[2, 3, 12, 4, 6], 27], "the use was still there for the next spell of the turn");
+      // Below 18th level there is no such feature.
+      const young = S("Wild Magic", 17);
+      [enemy] = await stage(young);
+      const plain = await spray(young, [1, 12, 2, 3, 4, 5]);
+      assert.deepEqual([thrown(plain.out, 12), plain.lost], [[12, 2, 3, 4], 21], "a 17th-level wild sorcerer");
+      // aoe_damage: Burning Hands, 3d6 rolled before the save.
+      [enemy] = await stage(who);
+      const hands = await through(enemy, "aoe_damage", { casterCharacterId: who.id, spell: "Burning Hands", enemyIds: [enemy.id] }, [6, 1, 1, 4, 1]);
+      assert.deepEqual([thrown(hands.out, 6), hands.lost], [[6, 1, 1, 4], 12], "an area spell's die");
+      // pc_attack: Fire Bolt, 4d10 on a hit, at a creature 20 feet off.
+      [enemy] = await stage(who);
+      kit.place(enemy.id, 9, 5);
+      const bolt = await through(enemy, "pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [15, 10, 1, 1, 1, 7]);
+      assert.deepEqual([thrown(bolt.out, 10), bolt.lost], [[10, 1, 1, 1, 7], 20], "a spell attack's die");
+    },
     // ---- Divine Soul
     "favored-rest": rests(["sorcerer", "Divine Soul"], "sub_favored_by_the_gods", "short"),
-    "empowered-healing-door": hasDoor(["sorcerer", "Divine Soul"], "Empowered Healing", () => ({ targetCharacterId: friend().id })),
+    // The healing dice of a spell cast this turn, rolled again for 1 sorcery
+    // point (src/lib/dm/ar-ws-empowered-healing.ts). Cure Wounds heals 1d8 a
+    // slot level plus the Charisma modifier.
+    "empowered-healing-door": async () => {
+      const who = soul();
+      const points = () => left(who, "sorcery_points");
+      const cure = async (caster, target, faces, level) => {
+        const out = await call("heal", { characterId: target.id, casterId: caster.id, spell: "Cure Wounds", ...(level ? { level } : {}) }, faces);
+        assert.equal(out.ok, true, out.error);
+      };
+      const hurtFriend = (hpNow) => world.patch(friend().id, { currentHp: hpNow });
+      // No healing roll on record: refused, the point kept, and no card dealt.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      const early = await spend(who, "Empowered Healing");
+      assert.equal(early.ok, false, "with no healing rolled this turn");
+      assert.equal(points(), 20, "nothing spent");
+      assert.equal(rig.table.offered(who, "Empowered Healing").length, 0, "no card with no roll to answer");
+      // 3d8 + 4 on a 2, a 7 and a 3: 16. The 2 and the 3 are rolled again (an 8 and a 1): 20.
+      await cure(who, friend(), [2, 7, 3], 3);
+      assert.equal(sheet(friend()).currentHp, 26);
+      assert.deepEqual(rig.table.offered(who, "Empowered Healing").map((card) => card.disabled), [null], "one card, open, while the roll is on record");
+      const again = await spend(who, "Empowered Healing", {}, [8, 1]);
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([again.rolled.map((die) => [die.sides, die.face]), sheet(friend()).currentHp, points()], [[[8, 8], [8, 1]], 30, 19], "[dice rolled again, the friend's hit points, sorcery points]");
+      // Once a turn: a second healing spell that turn is not rolled again.
+      kit.freshTurn();
+      await cure(who, friend(), [1], 1);
+      const twice = await spend(who, "Empowered Healing", {}, [8]);
+      assert.equal(twice.ok, false, "a second use that turn");
+      assert.deepEqual([sheet(friend()).currentHp, points()], [35, 19], "nothing rolled, nothing spent");
+      // The new roll stands when it is lower: 4 + 4 becomes 1 + 4.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [4], 1);
+      const lower = await spend(who, "Empowered Healing", {}, [1]);
+      assert.equal(lower.ok, true, lower.error);
+      assert.equal(sheet(friend()).currentHp, 15, "10 + 5: the reroll is kept");
+      // A die above half is left alone unless the call says how many to roll again.
+      await stage(who, { others: [friend()] });
+      hurtFriend(10);
+      await cure(who, friend(), [5], 1);
+      const high = await spend(who, "Empowered Healing");
+      assert.equal(high.ok, false, "a 5 on a d8, no number given");
+      assert.equal(points(), 20, "nothing spent");
+      const named = await spend(who, "Empowered Healing", { amount: 1 }, [8]);
+      assert.equal(named.ok, true, named.error);
+      assert.deepEqual([sheet(friend()).currentHp, points()], [22, 19], "10 + 8 + 4, for a point");
+      // An ally's roll: within 5 feet of the sorcerer, on the ally's own turn; not from 20 feet.
+      const ally = S("Divine Soul", 6);
+      for (const [x, expected] of [[4, { ok: true, hp: 20, points: 19 }], [1, { ok: false, hp: 16, points: 20 }]]) {
+        await stage(who, { others: [ally], first: ally });
+        kit.place(ally.id, x, 5);
+        world.patch(ally.id, { currentHp: 10 });
+        await cure(ally, ally, [2], 1);
+        const out = await spend(who, "Empowered Healing", {}, [6]);
+        assert.deepEqual({ ok: out.ok, hp: sheet(ally).currentHp, points: points() }, expected, `an ally ${(5 - x) * 5} feet from the sorcerer rolled Cure Wounds: ${String(out.error ?? "").slice(0, 120)}`);
+      }
+      await kit.endFight();
+    },
     wings: async () => {
       await stage(soul());
       assert.deepEqual(rig.speeds(soul()), {});
@@ -458,15 +561,83 @@ export function probes(rig, shared) {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();
       await balanceRest();
     },
-    "bastion-door": hasDoor(["sorcerer", "Clockwork Soul"], "Bastion of Law", () => ({ targetCharacterId: friend().id, amount: 2 })),
+    // The ward and its dice (src/lib/dm/ar-ws-bastion.ts): laid for 1 to 5
+    // sorcery points as an action on a creature within 30 feet, spent by the
+    // warded creature off a blow on record for no reaction, gone at a long rest.
+    "bastion-door": async () => {
+      const who = clock();
+      const points = () => left(who, "sorcery_points");
+      const ward = (carrier) => sheet(carrier).conditions.filter((entry) => entry.startsWith("bastion of law"));
+      const dice = (carrier, args, faces) => spend(carrier, "Bastion of Law", { variant: "reduce", ...args }, faces);
+      const [enemy] = await stage(who, { others: [friend()] });
+      kit.place(enemy.id, 4, 4);
+      // Six points are more than it takes; 35 feet is farther than it reaches.
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 6 })).ok, false, "6 sorcery points");
+      kit.place(friend().id, 12, 5);
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 })).ok, false, "a creature 35 feet away");
+      assert.deepEqual([points(), budget()?.actionUsed ?? false, ward(friend())], [20, false, []], "nothing spent on a refusal");
+      kit.place(friend().id, 4, 5);
+      const laid = await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 3 });
+      assert.equal(laid.ok, true, laid.error);
+      assert.deepEqual([points(), budget().actionUsed, ward(friend())], [17, true, ["bastion of law (3d8)"]], "[sorcery points, the action, the friend's ward]");
+      // With no blow on record the dice are kept.
+      assert.equal((await dice(friend(), { amount: 2 }, [3, 1])).ok, false, "no damage to reduce");
+      assert.deepEqual(ward(friend()), ["bastion of law (3d8)"]);
+      assert.equal(rig.table.offered(friend(), "Bastion of Law").length, 0, "no card with no blow open");
+      // The dummy's club lands for 6; two dice (a 3 and a 1) give 4 back.
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal(sheet(friend()).currentHp, 44);
+      assert.deepEqual(rig.table.offered(friend(), "Bastion of Law").map((card) => [card.disabled, card.intent.variant]), [[null, "reduce"]], "the warded creature's card");
+      const cut = await dice(friend(), { amount: 2 }, [3, 1]);
+      assert.equal(cut.ok, true, cut.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend()), rig.reacted(friend())], [48, ["bastion of law (1d8)"], false], "[hit points, the ward left, a reaction spent]");
+      // One blow is answered once; a new blow takes no more dice than the ward holds.
+      assert.equal((await dice(friend(), {}, [8])).ok, false, "the same blow again");
+      await rig.table.strike(enemy, friend(), [16, 4]);
+      assert.equal((await dice(friend(), { amount: 2 }, [8, 8])).ok, false, "two dice of a ward of one");
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [42, ["bastion of law (1d8)"]], "nothing rolled, nothing spent");
+      const last = await dice(friend(), {}, [8]);
+      assert.equal(last.ok, true, last.error);
+      assert.deepEqual([sheet(friend()).currentHp, ward(friend())], [48, []], "an 8 takes the whole 6 off, and the ward is spent");
+      // Laid again, the earlier ward ends: on the sorcerer first, then on the friend.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { amount: 1 })).ok, true);
+      assert.deepEqual([ward(who), points()], [["bastion of law (1d8)"], 16]);
+      kit.freshTurn();
+      assert.equal((await spend(who, "Bastion of Law", { targetCharacterId: friend().id, amount: 2 })).ok, true);
+      assert.deepEqual([ward(who), ward(friend()), points()], [[], ["bastion of law (2d8)"], 14], "one ward at a time");
+      // "until your next long rest". The clock is put back after it, so the
+      // probes that follow fight at the hour they would have.
+      const clocks = await import("../../src/lib/db/clock.ts");
+      const hour = clocks.getClock(world.campaignId);
+      await rig.rest("long");
+      clocks.setClock(world.campaignId, hour);
+      assert.deepEqual(ward(friend()), [], "after a long rest");
+    },
     "trance-on": async () => {
       await tranced();
       assert.equal(sheet(clock()).conditionMeta["trance of order"].rounds, 10);
     },
+    // The three rolls the text names, each with the trance and without: a
+    // save and a check through request_roll, an attack through pc_attack. A
+    // 10 or higher on the die is left as it fell, and a natural 1 on an
+    // attack, counted as a 10, is no automatic miss.
     "trance-floor": async () => {
-      await tranced();
-      const rolled = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
-      assert.equal(rolled.out.result.total, 10 + MOD.dex, "a Dexterity save with a 3 on the die");
+      const totals = async (enemy) => {
+        const save = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
+        const check = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [9]);
+        const high = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [14]);
+        const swing = await kit.swing(clock().id, enemy.id, [1, 4]);
+        assert.equal(swing.ok, true, swing.error);
+        return { save: save.total, check: check.total, high: high.total, attack: swing.toHit.total, hit: swing.result.hit === true };
+      };
+      const [bare] = await stage(clock());
+      const without = await totals(bare);
+      const [enemy] = await tranced();
+      const within = await totals(enemy);
+      const toHit = without.attack - 1;
+      assert.deepEqual(without, { save: 3 + MOD.dex, check: without.check, high: without.high, attack: 1 + toHit, hit: false }, "with no trance the dice count as they fall");
+      assert.deepEqual(within, { save: 10 + MOD.dex, check: without.check + 1, high: without.high, attack: 10 + toHit, hit: 10 + toHit >= foe(enemy).stats.ac }, "in the trance: a Dexterity save on a 3, an Arcana check on a 9 and on a 14, an attack roll on a natural 1");
     },
     "trance-advantage": async () => {
       const [enemy] = await tranced();
@@ -515,7 +686,58 @@ export function probes(rig, shared) {
       const apart = await call("cast_at_enemy", { characterId: lunar().id, targetEnemyId: one.id, secondTargetEnemyId: two.id, spell: "Sacred Flame" }, [1, 1, 3, 3, 3, 3]);
       assert.equal(apart.ok, false, "40 feet apart");
     },
-    "lunar-boons": movesSomething(["sorcerer", "Lunar Sorcery"], "Lunar Boons"),
+    // A Metamagic spend names no spell, so the boon meets it at the cast
+    // (src/lib/dm/ar-ws-lunar-boons.ts): the option paid, then the spell.
+    // Each case is [sorcery points, boons] the two calls cost together.
+    "lunar-boons": async () => {
+      const who = lunar();
+      const state = () => [left(who, "sorcery_points"), left(who, "sub_lunar_boons")];
+      const meta = (option, amount = 1) => spend(who, "Sorcery Points", { variant: option, amount });
+      const cast = (spell) => call("use_spell_slot", { characterId: who.id, spell });
+      const paid = async (steps, { boons = true } = {}) => {
+        rig.refill(who);
+        if (!boons) drain(who, "sub_lunar_boons");
+        const before = state();
+        for (const step of steps) {
+          const out = await step();
+          assert.equal(out.ok, true, out.error);
+        }
+        return [before[0] - state()[0], before[1] - state()[1]];
+      };
+      await phase("Crescent Moon");
+      world.patch(who.id, { features: [...sheet(who).features.filter((feature) => !feature.name.startsWith("Metamagic: ")), ...["Extended Spell", "Twinned Spell"].map((name) => ({ name: `Metamagic: ${name}`, source: "class", description: "" }))] });
+      // Crescent Moon: illusion and transmutation. Alter Self is transmutation,
+      // Lesser Restoration abjuration (the Full Moon's).
+      assert.deepEqual(await paid([() => cast("Alter Self")]), [0, 0], "a spell of the phase's schools with no Metamagic on it");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [0, 1], "Extended Spell (1 point) on Alter Self in the Crescent Moon phase");
+      assert.deepEqual(await paid([() => meta("Twinned Spell", 2), () => cast("Alter Self")]), [1, 1], "Twinned Spell on a 2nd-level spell (2 points)");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [1, 0], "on a spell of another phase's school");
+      assert.ok(!sheet(who).conditions.includes("lunar boon"), "the Metamagic rode that spell: the mark is gone");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration"), () => cast("Alter Self")]), [1, 0], "a later spell of the phase's schools takes nothing back");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")], { boons: false }), [1, 0], "with no boon left");
+      // The counter is spent by the cast, never by a call of its own.
+      rig.refill(who);
+      const bare = await spend(who, "Lunar Boons");
+      assert.equal(bare.ok, false, "a bare spend of the counter");
+      assert.equal(left(who, "sub_lunar_boons"), prof(20), "nothing spent");
+      // The phase decides the schools.
+      await phase("Full Moon");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [0, 1], "abjuration in the Full Moon phase");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [1, 0], "transmutation in the Full Moon phase");
+      // In a fight the spell may come first: a Metamagic option paid later that
+      // turn costs 1 less there and then, once.
+      await stage(who);
+      const before = state();
+      for (const step of [() => cast("Lesser Restoration"), () => meta("Extended Spell")]) {
+        const out = await step();
+        assert.equal(out.ok, true, out.error);
+      }
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [0, 1], "the spell, then Extended Spell, on one turn");
+      const again = await meta("Extended Spell");
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [1, 1], "a second option that turn pays its price until its own spell is cast");
+      rig.refill(who);
+    },
     "boons-uses": async () => {
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_boons", { 6: prof(6), 20: prof(20) })();
       await boonsRest();
@@ -568,12 +790,7 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
-    "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
-    "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
-    "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
-    "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },
   };
   return { PROBES, KNOWN };
 }

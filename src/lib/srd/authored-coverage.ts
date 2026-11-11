@@ -188,6 +188,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
   attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
   cast_burst: { file: "src/lib/dm/ar-ws-heart-storm.ts", call: 'activeAuthored(caster, "cast_burst")' },
+  attacked_disadv_dark: { file: "src/lib/dm/ar-ws-lunar-empowerment.ts", call: 'activeAuthored(target, "attacked_disadv_dark")' },
 };
 
 export function authoredEffectKinds(): string[] {

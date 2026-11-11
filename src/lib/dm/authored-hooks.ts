@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -153,6 +154,12 @@ export function authoredIncomingAttack(input: {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
+  }
+  // Lunar Empowerment's New Moon: entirely in darkness (ar-ws-lunar-empowerment.ts).
+  const veil = darkVeil(input.campaignId, input.encounterId, target);
+  if (veil) {
+    sources.push("disadvantage");
+    notes.push(veil);
   }
   for (const name of GUARD_MARKS) {
     const condition = attacker.conditions.find((entry) => textKey(entry) === name);

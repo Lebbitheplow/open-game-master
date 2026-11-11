@@ -7,6 +7,7 @@
 import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
@@ -111,7 +112,13 @@ export function landSpellDamage(input: {
   const outcome = shared || parts.every((part) => part.atMaximum)
     ? null
     : rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name });
-  const shares = shared ?? typedShares(outcome, parts);
+  // Spell Bombardment: a die at its highest number is rolled again, once a
+  // turn (src/lib/dm/ar-ws-bombardment.ts).
+  const burst = outcome ? spellBombardment({ campaign, turn, sheet, outcome, spell: spellName }) : null;
+  if (burst) {
+    base.spellBombardment = burst.note;
+  }
+  const shares = shared ?? typedShares(burst?.outcome ?? outcome, parts);
   const rolledTotal = shares.reduce((sum, share) => sum + share, 0);
   const total = rolledTotal + riders.flat + riders.flatSecond;
   const halves = halfOnSave || riders.potentCantrip;

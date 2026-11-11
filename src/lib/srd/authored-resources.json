@@ -1175,7 +1175,8 @@
    "ability": null,
    "proficiency": 1,
    "recharge": "long",
-   "guidance": "Metamagic on a spell of the current phase's schools costs 1 sorcery point less (minimum 0)."
+   "guidance": "Metamagic on a spell of the current phase's schools costs 1 sorcery point less (minimum 0), and the server does it: pay the Metamagic option with Sorcery Points, then cast the spell with its own tool; a spell of the phase's schools gives 1 point back and spends a boon.",
+   "passive": true
   },
   {
    "id": "sub_waxing_and_waning",

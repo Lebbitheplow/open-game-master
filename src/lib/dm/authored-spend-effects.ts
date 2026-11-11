@@ -5,6 +5,10 @@
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim";
 import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
+import { layWard } from "@/lib/dm/ar-ws-bastion";
+import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
+import { wildSurge } from "@/lib/dm/ar-ws-wild-surge";
+import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -227,8 +231,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const features = sheet.features.map((feature) =>
         feature.name === owner.name ? { ...feature, name: `${owner.feature} (${option})` } : feature,
       );
-      // A change a casting opened spends its opening (ar-ws-stone.ts).
-      return { patch: { features, ...changeSpent(sheet, does) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
+      // A change a casting opened spends its opening (ar-ws-stone.ts); leaving
+      // the Full Moon ends its light (ar-ws-lunar-empowerment.ts). A feature is
+      // one or the other, so the two never write the same field.
+      return { patch: { features, ...changeSpent(sheet, does), ...moonlightEnds(ctx, owner.feature, option) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
       const condition = conditionName(ctx, does);
@@ -453,6 +459,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     }
     case "save_area":
       return saveArea(ctx, does);
+    case "reroll_heal":
+      return rerollHealing(ctx);
     case "reroll_save":
       return rerollLastSave(ctx);
     case "temp_hp": {
@@ -626,6 +634,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Master Scrivener's scroll (src/lib/dm/ar-ws-scrivener.ts).
     case "scribe_scroll":
       return scribeScroll(ctx, does);
+    case "light":
+      return toggleLight(ctx, does);
+    case "wild_surge":
+      return wildSurge(ctx, does);
+    case "damage_ward":
+      return layWard(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

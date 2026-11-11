@@ -1405,9 +1405,9 @@
    },
    {
     "c": "the GM may have you roll a d20; on a 1 you roll on the wild magic table",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the engine holds no wild magic table (grep finds the words in the text and the cast guard only); what the d20 and the table do is the GM's narration, with no written reason on the row"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: surge-roll",
+    "by": "authored spend Wild Magic Surge (the GM call, does wild_surge, gate surge chance): src/lib/dm/ar-ws-wild-surge.ts wildSurge rolls the sorcerer d20 and on a 1 a die on the app own table (src/lib/srd/ar-ws-wild-surge-table.ts, an original table of ten entries, not the printed one) and applies the entry; surgeChanceAfter (cast-guard.ts castSpell) opens the chance after every sorcerer spell of 1st level or higher. Ruling: with Tides of Chaos spent the surge is triggered outright, no d20, and the use comes back"
    }
   ]
  },
@@ -1471,8 +1471,9 @@
   "clauses": [
    {
     "c": "Once per turn, the highest damage die you roll for a spell explodes: roll it again and add it.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bombardment-door",
+    "by": "src/lib/dm/ar-ws-bombardment.ts spellBombardment, called where a character spell damage is rolled: cast-at-enemy-damage.ts landSpellDamage, aoe-damage.ts, attack-blow.ts landSwingBlow (pc_attack spells, both dice paths) and zone-triggers.ts. Applied without a call (it only helps): of the kept dice at their highest number the largest is rolled again once and joins its own term; once per turn by the fight turn marks; a die dealt at its maximum without a roll does not explode"
    }
   ]
  },
@@ -1530,8 +1531,9 @@
   "clauses": [
    {
     "c": "Spend 1 sorcery point to reroll healing dice for yourself or an ally, once per turn.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door",
+    "by": "authored spend Empowered Healing (does reroll_heal, 1 sorcery point, no cost of the turn): src/lib/dm/ar-ws-empowered-healing.ts rerollHealing answers the heal_roll trigger record heal-spell.ts writes (last-save.ts, trigger-table.ts: this turn, rolled by the sorcerer or a creature within 5 feet). Rulings: the dice rolled again are those showing half their faces or less, or the lowest N when amount says; the new roll stands, higher or lower; once a turn on the fight turn marks; in a fight only, as every trigger record is"
    }
   ]
  },
@@ -2046,8 +2048,9 @@
   "clauses": [
    {
     "c": "Spend 1 to 5 sorcery points to give a creature that many d8s to spend reducing damage, until your next long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: bastion-door",
+    "by": "authored spend Bastion of Law (does damage_ward, 1 to 5 sorcery points in amount, an action, within 30 feet): src/lib/dm/ar-ws-bastion.ts layWard lays the condition bastion of law (Nd8) until the next long rest, ending an earlier ward; spendWardDice (mutations.ts use_resource, variant reduce, the dice in amount) rolls the dice off the heaviest attack or fall damage on record against the warded creature for no reaction, each blow once. Ruling: damage with no hit record (a failed save) cannot be given back and is refused with the dice kept"
    }
   ]
  },
@@ -2071,8 +2074,9 @@
    },
    {
     "c": "and you treat any d20 of 9 or lower as a 10 on attacks, checks and saves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor",
+    "by": "src/lib/dm/ar-ws-trance-floor.ts tranceFloored (the dice grammar floor f10 under the leading d20, so faces entered from physical dice are floored too), called by rolls.ts resolveRollExpression (checks, saves, initiative, death saves), character-roll.ts rollCharacterD20 (attacks other tools throw) and pc-attack-resolve.ts strikeToHit (pc_attack). Ruling: a natural 1 counted as a 10 is no automatic miss"
    },
    {
     "c": "once per long rest",
@@ -2168,8 +2172,9 @@
   "clauses": [
    {
     "c": "When you use Metamagic on a spell of your current phase's schools (Full Moon: abjuration and divination; New Moon: enchantment and necromancy; Crescent Moon: illusion and transmutation), it costs 1 sorcery point less (minimum 0)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons",
+    "by": "src/lib/dm/ar-ws-lunar-boons.ts metamagicPaid (resource-tools.ts computeUseResource, every Metamagic option) and boonAtCast (cast-guard.ts castSpell). Ruling: the Metamagic spend names no spell, so the option paid marks the sorcerer and the next spell cast, if of the phase schools, gives 1 point back and spends a boon; in a fight a phase spell cast first lowers a Metamagic option paid later that turn; a bare spend of the counter is refused"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2211,9 +2216,9 @@
    },
    {
     "c": "Full Moon: a bonus action sheds bright light in 10 feet and dim light 10 feet beyond (or douses it)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves the light to the GM (\"Only within the bright light the sorcerer sheds; the GM keeps to that.\"); no light was looked for on the board"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-light",
+    "by": "authored spend Lunar Empowerment (does light, a bonus action, gate Full Moon): src/lib/dm/ar-ws-lunar-empowerment.ts toggleLight lays the condition moonlight and sets the sorcerer's own token light (bright 2 tiles, dim to 4), read by the board's light and carried with them (light-timers.ts carriedLight through ar-ws-moonlight-logic.ts); the same call douses it, and leaving the Full Moon ends it (moonlightEnds)"
    },
    {
     "c": "and you and creatures of your choice in that bright light have advantage on Intelligence (Investigation) and Wisdom (Perception) checks",
@@ -2229,9 +2234,9 @@
    },
    {
     "c": "and attack rolls against you have disadvantage while you are entirely in darkness",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"Attack rolls against them in total darkness are at disadvantage; the GM keeps to that.\"); an attack in darkness was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowerment-dark",
+    "by": "authored effect attacked_disadv_dark, gate New Moon: src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil, read by authored-hooks.ts authoredIncomingAttack (enemy-swing-odds.ts). Ruling: entirely in darkness is the sorcerer's own square dark and unlit on the board (attack-light.ts standsInDarkness), whatever the attacker's senses; with no board, a dark place and no carried light"
    },
    {
     "c": "Crescent Moon: you resist necrotic and radiant damage",
