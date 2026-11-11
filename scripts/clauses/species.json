@@ -765,9 +765,9 @@
    },
    {
     "c": "Tinker",
-    "is": "gap",
-    "read_only": true,
-    "why": "not built: SRD 5.1 Tinker is an hour's work and 10 gp of materials for one of three Tiny clockwork devices (a toy, a fire starter, a music box), three at most at a time, each stopping after 24 hours unless an hour is spent repairing it. The hour, the gold and the count of three can be held today; the 24 hours cannot, because an equipment row carries no instant it was made at, and nothing ran the clause"
+    "is": "held",
+    "by": "src/lib/dm/rock-gnome-tinker.ts tinker (use_resource Tinker through mt-species-spends.ts speciesTraitSpend: an hour and 10 gp a device, three working at a time, the row's madeAt read for its 24 hours, repair and dismantle)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rock_gnome.tinker"
    }
   ]
  },

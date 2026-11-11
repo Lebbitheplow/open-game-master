@@ -19,6 +19,7 @@
 //
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path; must not import mutations.ts.
+import { holdsTinker, tinker } from "@/lib/dm/rock-gnome-tinker";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -52,6 +53,8 @@ export function speciesTraitSpend(
   if (name === "shapechanger" && lineageShapechanger(sheet, args.variant)) return shapechanger(campaign, sheet, args.variant);
   if (name === "feline agility" && sheet.resources?.[FELINE_AGILITY_COUNTER]) return felineAgility(campaign, sheet);
   if (name === "celestial revelation" && sheet.resources?.[REVELATION_COUNTER]) return celestialRevelation(campaign, turnId, sheet, args.variant);
+  // A rock gnome's clockwork devices (rock-gnome-tinker.ts).
+  if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
   return null;
 }
 

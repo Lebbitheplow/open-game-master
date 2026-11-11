@@ -9,6 +9,11 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/rock-gnome-tinker.ts#fallback": [["identity", 1, "a record by its whole name (textKey on both sides): the SRD device names and tinker's tools in the pack; a stopped device of that name before a working one"]],
+    "lib/dm/rock-gnome-tinker.ts#first": [["identity", 2, "a record by its whole name (textKey on both sides): the SRD device names and tinker's tools in the pack"]],
+    "lib/dm/rock-gnome-tinker.ts#partial": [["identity", 1, "a record by its whole name (textKey on both sides): the SRD device names and tinker's tools in the pack"]],
+    "lib/dm/rock-gnome-tinker.ts#bypass": [["identity", 3, "a record by its whole name (textKey on both sides): the SRD device names and tinker's tools in the pack"]],
+    "lib/dm/rock-gnome-tinker.ts#whole": [["identity", 3, "a record by its whole name (textKey on both sides): the SRD device names and tinker's tools in the pack"]],
     "lib/dm/spell-storing-item.ts#fallback": [["identity", 1, "with no item named (the model's use_resource has no item field), the weapon or focus the artificer holds equipped, else one they carry; the result names the item it chose"]],
     "lib/dm/spell-storing-item.ts#whole": [["identity", 3, "an item row or a spell by its whole name (findNamed, textKey on both sides)"]],
     "lib/dm/spirit-projection.ts#fallback": [["identity", 1, "a body token by its id, its ref or its whole name as the board names it"]],

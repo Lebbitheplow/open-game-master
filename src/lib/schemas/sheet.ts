@@ -220,6 +220,10 @@ export const equipmentItemSchema = z.object({
   // full: a row written before charges were kept starts with all of them
   // (src/lib/dm/item-charges.ts).
   charges: z.number().int().min(0).max(999).optional(),
+  // The clock's instant a rock gnome's Tinker device was made or last
+  // repaired (src/lib/dm/rock-gnome-tinker.ts): it works for 24 hours after.
+  // Absent on every other row.
+  madeAt: z.number().int().min(0).optional(),
   // What a Ring of Spell Storing holds (src/lib/srd/spell-storing.ts): each
   // spell at the slot level it was cast from, with its caster's numbers.
   storedSpells: z

@@ -41,6 +41,32 @@ for (const row of RACES) {
       same([first.ok, healed, t.budget()?.actionUsed, t.used(who, "race_healing_hands"), again.ok], [true, 9, true, 1, false], `${row.name}: Healing Hands on a friend, then again (${first.error ?? ""})`);
     });
   }
+  if (holds(row, "tinker")) {
+    // An hour and 10 gp a device, three working at a time, each stopping 24
+    // hours after it was made or repaired; dismantled, its 10 gp come back.
+    probe("tinker", async () => {
+      const { advanceClock, getClock } = await import("../src/lib/db/clock.ts");
+      const t = await rig.table();
+      const who = t.hero(of({ equipment: [{ name: "Tinker's Tools", qty: 1 }] }));
+      t.patch(who, { gold: 100, copper: 0 });
+      const now = () => getClock(t.world.campaignId).instant;
+      const devices = () => t.sheet(who).equipment.filter((item) => typeof item.madeAt === "number").map((item) => item.name);
+      const start = now();
+      const made = [];
+      for (const device of ["Clockwork Toy", "Music Box", "Fire Starter"]) made.push((await t.use(who, "Tinker", { variant: device })).ok);
+      const fourth = await t.use(who, "Tinker", { variant: "Clockwork Toy" });
+      same([made, fourth.ok, devices().length, t.sheet(who).gold, now() - start], [[true, true, true], false, 3, 70, 180], `${row.name}: three devices made, the fourth refused (${fourth.error ?? ""})`);
+      advanceClock(t.world.campaignId, 24, "hours");
+      const after = await t.use(who, "Tinker", { variant: "Clockwork Toy" });
+      const repaired = await t.use(who, "Tinker", { variant: "repair music box" });
+      const third = await t.use(who, "Tinker", { variant: "Fire Starter" });
+      const over = await t.use(who, "Tinker", { variant: "repair fire starter" });
+      same([after.ok, repaired.ok, third.ok, over.ok, devices().length], [true, true, true, false, 5], `${row.name}: the three stopped after 24 hours, so three more work, the fourth repair refused (${over.error ?? ""})`);
+      const gold = t.sheet(who).gold;
+      const taken = await t.use(who, "Tinker", { variant: "dismantle clockwork toy" });
+      same([taken.ok, t.sheet(who).gold - gold, devices().length], [true, 10, 4], `${row.name}: a device dismantled gives its 10 gp back`);
+    });
+  }
   if (holds(row, "celestial revelation")) {
     probe("revelation", async () => {
       const { flyingSpeedOf } = await import("../src/lib/battlemap/types.ts");
@@ -414,6 +440,7 @@ const NAMES = [
   "species.bugbear.long-limbed", "species.bugbear.powerful-build", "species.bugbear.surprise-attack",
   "species.lizardfolk.natural-armor", "species.lizardfolk.natural-weapon", "species.lizardfolk.breath", "species.lizardfolk.speeds", "species.lizardfolk.hungry-jaws",
   "species.orc.aggressive", "species.orc.powerful-build",
+  "species.rock_gnome.tinker",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
