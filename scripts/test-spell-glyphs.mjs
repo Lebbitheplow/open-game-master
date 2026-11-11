@@ -237,4 +237,21 @@ test("a dealt spell card carries its glyph and the words for what it takes", () 
   assert.deepEqual(iconCandidates(handCardArtwork(fireball)), [spellGlyphSrc("fire")]);
 });
 
+// The glyph and its words are styled by class names of their own: the words
+// first wore "hand-target", the aim bar's target buttons' class, and gave
+// those buttons their nowrap, their gold and a font sized from a container
+// they are not in, so a button spread over the board (dominated-sides).
+test("the glyph's class names are worn by the card's glyph alone", () => {
+  const face = readFileSync(path.join(ROOT, "src/app/campaigns/[campaignId]/HandCardFace.tsx"), "utf8");
+  const art = face.slice(face.indexOf("function SpellGlyphArt"), face.indexOf("export function HandPreviewRows"));
+  const classes = [...art.matchAll(/className="([^"]+)"/g)].flatMap((match) => match[1].split(" ")).filter((name) => name !== "hand-art-icon");
+  assert.ok(classes.length >= 2, "the glyph and its words have class names");
+  const dir = path.join(ROOT, "src/app");
+  const files = readdirSync(dir, { recursive: true }).filter((file) => /\.tsx$/.test(file) && !file.endsWith("HandCardFace.tsx"));
+  for (const file of files) {
+    const text = readFileSync(path.join(dir, file), "utf8");
+    for (const name of classes) assert.ok(!new RegExp(`["'\\s]${name}["'\\s]`).test(text), `${file} wears ${name}, the spell glyph's own class`);
+  }
+});
+
 console.log(`spell glyphs: ${passed} checks passed`);

@@ -233,7 +233,7 @@
   filter: drop-shadow(0 1px 2px rgba(4, 2, 12, 0.55));
   user-select: none;
 }
-.hand-target {
+.hand-glyph-words {
   display: flex;
   flex: 1 1 0;
   min-width: 0;
@@ -257,11 +257,11 @@
   white-space: nowrap;
   overflow: hidden;
 }
-.hand-target > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.hand-glyph-words > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* The stage row's 28px column has no room beside the glyph: the range on
    the card's top line and its details say it there. */
 @container (max-width: 56px) {
-  .hand-target { display: none; }
+  .hand-glyph-words { display: none; }
   .hand-glyph { margin-inline: auto; }
 }
 .hand-art[data-glyph] .hand-glyph:only-child { margin-inline: auto; }
