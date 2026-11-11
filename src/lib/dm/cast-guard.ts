@@ -27,6 +27,7 @@
 
 import { castRefills } from "@/lib/dm/ar-ws-transposition";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
+import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -564,6 +565,12 @@ export function castSpell(
   const open = liveBudget ? openCastOf(liveBudget, name) : null;
   if (open && liveBudget) {
     return continueOpenCast(encounter as Encounter, liveBudget, open, name, input);
+  }
+  // Arcane Deflection's price: no new casting but a cantrip until the end of
+  // the wizard's next turn (ar-ws-deflection-mark.ts says what it lets by).
+  const deflected = completing ? null : deflectionCastProblem(sheet, name, facts?.level);
+  if (deflected) {
+    return deflected;
   }
 
   // The casting Slow held back last turn, completed now for this turn's

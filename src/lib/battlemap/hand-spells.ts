@@ -5,6 +5,7 @@ import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
+import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
@@ -523,6 +524,8 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     card,
     standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),
     problem(casterStateProblem(sheet)),
+    // Arcane Deflection's price, as the cast door asks it (ar-ws-deflection-mark.ts).
+    problem(deflectionCastProblem(sheet, facts?.name ?? name, fact.level)),
     // The components as this caster makes them (an Archdruid's druid spells
     // need neither voice nor hands), and the Silence the board says they
     // stand in, as the cast guard asks them (cast-rules.ts castComponents).

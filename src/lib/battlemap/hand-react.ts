@@ -12,6 +12,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { casterStateProblem, componentProblem, focusProblem } from "@/lib/dm/cast-rules";
+import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
@@ -141,6 +142,8 @@ function spellReaction(
     card,
     fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
     problem(casterStateProblem(sheet)),
+    // Arcane Deflection's price bars a reaction spell too (ar-ws-deflection-mark.ts).
+    problem(deflectionCastProblem(sheet, spell, facts?.level)),
     problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
     free?.free || slot ? null : { reason: free?.spent ?? `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
     costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),

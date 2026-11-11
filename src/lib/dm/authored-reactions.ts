@@ -12,6 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
+import { deflectionAftermath } from "@/lib/dm/ar-ws-deflection";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -388,7 +389,9 @@ export function authoredReaction(given: Ctx): ToolResult | null {
   answerTriggers({ ...ask, targetEnemyId: ctx.args.targetEnemyId });
   paid?.();
   spendReaction(ctx);
-  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome };
+  // What Arcane Deflection leaves behind, whichever half was used (ar-ws-deflection.ts).
+  const after = reaction.does.kind === "ac_vs_hit" && reaction.does.cantripsOnly ? deflectionAftermath(ctx, holder) : {};
+  return { ok: true, reaction: reaction.name, spent: SPENT(ctx.sheet.name), ...outcome, ...after };
 }
 
 // The creature a trigger-shaped reaction acts on, when the call names none:

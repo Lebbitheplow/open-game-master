@@ -835,8 +835,9 @@
    },
    {
     "c": "at the cost of casting only cantrips on your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-cost",
+    "by": "the reaction row cantripsOnly (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectionAftermath lays the mark arcane deflection to the end of the wizard next turn, and src/lib/dm/ar-ws-deflection-mark.ts deflectionCastProblem refuses any spell but a cantrip at the one cast door (cast-guard.ts castSpell) and on the Hand spell, reaction-spell and summoning cards (ruling: later rays of a casting already made, a held spell repeated effect, a readied release and a spell an item casts are no new casting and pass)"
    }
   ]
  },

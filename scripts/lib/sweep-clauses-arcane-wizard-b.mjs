@@ -10,7 +10,7 @@ const RES = "src/lib/srd/authored-resources.json";
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, roll, stage } = rig;
   const { friend, mage, drain, uses, rests, movesSomething, buysAnother } = shared;
-  rig.outfit("wizard", "War Magic", { spells: ["Magic Missile", "Hold Person", "Counterspell"], acOverride: false });
+  rig.outfit("wizard", "War Magic", { spells: ["Fire Bolt", "Magic Missile", "Hold Person", "Counterspell"], cantrips: ["Fire Bolt"], acOverride: false });
   rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Acid Splash", "Hold Person"], cantrips: ["Fire Bolt", "Acid Splash"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
@@ -68,10 +68,25 @@ export function probes(rig, shared) {
     "deflection-cost": async () => {
       const [enemy] = await hit(war());
       assert.equal((await react(war(), "Arcane Deflection")).ok, true);
-      kit.giveTurn(war().id);
-      kit.freshTurn();
+      assert.ok(sheet(war()).conditions.includes("arcane deflection"), "the reaction leaves its mark");
+      // The wizard's next turn, come to by the table's own End Turn.
+      rig.cycleTo(war());
+      const before = JSON.stringify([budget(), sheet(war()).spellcasting.slots]);
       const cast = await call("cast_at_enemy", { characterId: war().id, targetEnemyId: enemy.id, spell: "Magic Missile" }, [4, 4, 4]);
       assert.equal(cast.ok, false, "on the turn after Arcane Deflection, a 1st-level spell is cast");
+      assert.match(cast.error, /casts only cantrips until the end of their next turn/);
+      assert.equal(JSON.stringify([budget(), sheet(war()).spellcasting.slots]), before, "the refusal spends neither the slot nor the action");
+      // The Hand shuts the same cards the door refuses, and leaves the cantrip.
+      assert.deepEqual([await open(war(), "Magic Missile"), await open(war(), "Hold Person"), await open(war(), "Fire Bolt")], [false, false, true], "[Magic Missile, Hold Person, Fire Bolt] cards open under the mark");
+      assert.match((await card(war(), "Magic Missile")).disabled, /only cantrips/);
+      const bolt = await call("pc_attack", { characterId: war().id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [10, 10]);
+      assert.equal(bolt.ok, true, `a cantrip under the mark: ${String(bolt.error).slice(0, 170)}`);
+      // The mark ends with that turn: the turn after, the spell is cast.
+      rig.endCurrent();
+      assert.ok(!sheet(war()).conditions.includes("arcane deflection"), "the mark outlives the end of the wizard's next turn");
+      rig.cycleTo(war());
+      const later = await call("cast_at_enemy", { characterId: war().id, targetEnemyId: enemy.id, spell: "Magic Missile" }, [4, 4, 4]);
+      assert.equal(later.ok, true, `the turn after that: ${String(later.error).slice(0, 170)}`);
     },
     "surge-max": uses(["wizard", "War Magic"], "sub_power_surge", { 6: Math.max(1, MOD.int), 20: Math.max(1, MOD.int) }),
     "surge-long-rest": async () => {
@@ -392,7 +407,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "deflection-save": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Arcane Deflection (one reaction, ac_vs_hit; no half for a failed save)`, note: "Half of the feature has no door: a failed save cannot be answered.", fix: "A second reaction on the row that adds 4 to the save just failed (the after-roll card's shape)." },
-    "deflection-cost": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (nothing marks the war mage after Arcane Deflection)", note: "The reaction is free of its price: a full spell the turn after.", fix: "Lay a mark until the end of the wizard's next turn that refuses any spell but a cantrip." },
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
