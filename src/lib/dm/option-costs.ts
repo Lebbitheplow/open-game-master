@@ -87,6 +87,15 @@ const SUPERIORITY: Array<[string, Cost]> = [
   ["quick toss", "on_swing"],
   ["grappling strike", "on_swing"],
   ["maneuvering attack", "on_swing"],
+  ["disarming attack", "on_swing"],
+  ["distracting strike", "on_swing"],
+  ["goading attack", "on_swing"],
+  ["lunging attack", "on_swing"],
+  ["menacing attack", "on_swing"],
+  ["precision attack", "on_swing"],
+  ["pushing attack", "on_swing"],
+  ["sweeping attack", "on_swing"],
+  ["trip attack", "on_swing"],
   ["ambush", "none"],
   ["bait and switch", "none"],
   ["commanding presence", "none"],
@@ -110,6 +119,13 @@ export function optionCost(
   const table = defId ? TABLES[defId] : undefined;
   const found = table?.find(([option]) => named.some((name) => isNamed(name, option)));
   if (!found) {
+    // A Superiority Die buys a maneuver: a variant that names none of them
+    // would spend the die for nothing (WAVE2 D4 of the 2026-11-09 gap sweep;
+    // the bare spend is refused by the counter's passive row).
+    const variant = named[0]?.trim();
+    if (defId === "sub_superiority_dice" && variant) {
+      return { refused: { error: `"${variant}" is no maneuver a Superiority Die is spent on here: a maneuver that rides an attack is named in pc_attack's maneuver, Parry, Riposte and Brace are use_reaction, and Rally, Commander's Strike, Ambush, Bait and Switch, Commanding Presence, Evasive Footwork and Tactical Assessment are this call's variant. Nothing was spent.`, retry: true } };
+    }
     return null;
   }
   const [option, cost] = found;

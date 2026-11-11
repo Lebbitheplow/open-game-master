@@ -28,6 +28,8 @@ import { authoredTurnEnd } from "@/lib/dm/authored-turns";
 import { zoneTurnEnd } from "@/lib/dm/zone-triggers";
 import { blinkTurnEnd } from "@/lib/dm/spell-planes";
 import { endLeashes } from "@/lib/dm/condition-leash";
+import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
+import { endRageBound } from "@/lib/dm/rage-bound";
 import {
   instancesOf,
   packInstances,
@@ -211,7 +213,13 @@ export function endTurns(
   // A hold its source has let go of (Champion Challenge): condition-leash.ts.
   const leashes = endLeashes(encounterId);
   lines.push(...leashes.lines);
+  // Feline Agility's refresh, Inner Radiance's burn (mt-species-turns.ts).
+  lines.push(...speciesTurnEnd(campaign, encounterId, combatantIds));
   enemiesChanged ||= leashes.enemiesChanged;
+  // What lasted until a rage now over ended (rage-bound.ts).
+  const rageBound = endRageBound(campaign.id);
+  lines.push(...rageBound.lines);
+  enemiesChanged ||= rageBound.enemiesChanged;
   // What an authored subclass feature does as a turn ends (Protective Spirit): authored-hooks.ts.
   lines.push(...authoredTurnEnd(campaign, combatantIds));
   // A spell area that strikes as a turn ends there (Grease, Wall of Fire): zone-triggers.ts.

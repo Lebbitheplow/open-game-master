@@ -46,26 +46,12 @@ export const KNOWN = {
     fix: "A spend: 1 ki, once per turn, after a kensei weapon hit, adds one martial arts die of the weapon's damage.",
     files: [ROWS2, "src/lib/srd/feature-effects.ts"],
   },
-  "mastery-of-death": {
-    severity: "medium", kind: "rule-missing",
-    where: `${ROWS4} monk::Mastery of Death (narrated: "Spending 1 ki to drop to 1 hit point instead of 0: the GM heals the monk to 1 and spends the ki with use_resource.")`,
-    note: "The monk drops to 0, unconscious and prone, with ki left; use_resource \"Mastery of Death\" is refused.",
-    fix: "At 0 hit points with 1 ki left, spend it and set 1 hit point (src/lib/dm/vitals-logic.ts), as Relentless Endurance does.",
-    files: ["src/lib/dm/vitals-logic.ts", ROWS4],
-  },
   "hand-of-healing-5-feet": {
     severity: "low", kind: "rule-wrong",
     where: `${ROWS4} monk::Hand of Healing (spend with no range)`,
     note: "An ally 20 feet away is healed by touch.",
     fix: "rangeFt: 5 on the spend.",
     files: [ROWS4],
-  },
-  "hand-of-ultimate-mercy-revives": {
-    severity: "high", kind: "rule-wrong",
-    where: "src/lib/srd/authored-resources.json sub_wholeness_of_body_mercy (fx heal_target) and the heal_target path in src/lib/dm/feature-spends.ts (a dead target is refused)",
-    note: "\"Hero 5 is DEAD; Hand of Ultimate Mercy cannot help.\": the feature that exists to bring the dead back refuses the dead.",
-    fix: "A revive fx: a target dead no more than 24 hours returns with 4d10 + Wisdom hit points and its death saves cleared.",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/dm/feature-spends.ts"],
   },
   "arms-of-the-astral-self-reach": {
     severity: "medium", kind: "rule-missing",

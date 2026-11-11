@@ -47,6 +47,7 @@ import { authoredFeatureSpend } from "@/lib/dm/authored-spends";
 import { afterHealingSpell } from "@/lib/dm/heal-after-dra";
 import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
+import { speciesTraitSpend } from "@/lib/dm/mt-species-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
@@ -1395,6 +1396,12 @@ function dmMutation(
       }
       // Peerless Skill, Quivering Palm, Draconic Presence, Hide in Plain
       // Sight, Primeval Awareness (src/lib/dm/srd-feature-spends.ts).
+      // Shell Defense, a changeling's Shapechanger, Feline Agility, Celestial
+      // Revelation (src/lib/dm/mt-species-spends.ts).
+      const speciesSpend = speciesTraitSpend(campaign, turnId, sheet, resourceName, args);
+      if (speciesSpend) {
+        return { result: speciesSpend };
+      }
       const srdSpend = srdFeatureSpend(campaign, turnId, sheet, resourceName, args);
       if (srdSpend) {
         return { result: srdSpend };

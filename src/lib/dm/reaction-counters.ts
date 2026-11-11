@@ -43,6 +43,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
+import { planSpellThief } from "@/lib/dm/spell-thief";
 
 export const MANIFEST_MIND = "manifest mind";
 // The marker a use that recharges over several long rests leaves, with the
@@ -119,6 +120,9 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
   if (ask && triggerSpecOf(ask)) {
     const unanswered = triggerRefusal(ask);
     if (unanswered) return unanswered;
+    // Spell Thief's effect is the save it forces and the spell undone
+    // (src/lib/dm/spell-thief.ts); the other triggered counters' is their own fx.
+    if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
     return null;
   }
   const turn = getDmTurn(input.turnId);

@@ -101,13 +101,6 @@ export const KNOWN = {
     files: ["src/lib/dm/pc-attack-plan.ts"],
   },
 
-  "legion-of-one-regains-on-initiative": {
-    severity: "low", kind: "data",
-    where: "src/lib/srd/subclasses.json fighter::Legion of One (the text) against src/lib/srd/resource-refills.ts authoredInitiativeRefills (one back only with none left)",
-    note: "The engine follows the published rule (\"if you have no uses left\"); the stored text drops the condition that Relentless, Ever-Ready Shot and Tireless Spirit keep.",
-    fix: "Reword the text: \"When you roll initiative with no Unleash Incarnation uses left, you regain one\".",
-    files: ["src/lib/srd/subclasses.json"],
-  },
   "telekinetic-movement-free-use": {
     severity: "low", kind: "rule-wrong",
     where: "src/lib/dm/option-costs.ts (Telekinetic Movement always spends a Psionic Energy die)",
@@ -135,13 +128,6 @@ export const KNOWN = {
     note: "The engine keeps the published 30 feet; the stored text names no distance.",
     fix: "Add \"within 30 feet\" to the text.",
     files: ["src/lib/srd/subclasses.json"],
-  },
-  "giants-might-one-roll-a-turn": {
-    severity: "medium", kind: "rule-wrong",
-    where: "src/lib/srd/condition-effects.ts (\"giant's might\") and src/lib/srd/authored-conditions.ts (\"giant's might (1d8)\", \"(1d10)\"): the damage die is not once a turn",
-    note: "Every hit of the turn carries the die: a Rune Knight of 5th level adds 2d6 a turn, of 20th 4d10.",
-    fix: "Mark the condition's damage rider oncePerTurn, as Divine Fury's rider is.",
-    files: ["src/lib/srd/condition-effects.ts", "src/lib/srd/authored-conditions.ts"],
   },
   "runic-juggernaut-reach": {
     severity: "low", kind: "rule-missing",

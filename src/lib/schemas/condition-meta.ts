@@ -84,6 +84,8 @@ const conditionInstanceSchema = z.object({
     // Ends when the rest it was raised for ends, short or long (Hearth of
     // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
     untilRestEnds: z.boolean().optional(),
+    // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
+    whileRagingOf: z.string().trim().min(1).max(80).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
     // The temporary hit points the effect granted, gone when it ends.

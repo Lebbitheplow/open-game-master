@@ -174,7 +174,7 @@ await test("A ranger's Nature check they are not proficient in is never asked fo
 await test("Every circumstance a check can be about is read by a trait's key, so the ask never names one that changes nothing.", () => {
   const everything = {
     race: "dwarf",
-    features: ["Favored Enemy (undead)", "Stonecunning", "Artificer's Lore", "Stone Camouflage"].map((name) => ({ name, source: "race" })),
+    features: ["Favored Enemy (undead)", "Stonecunning", "Artificer's Lore", "Stone Camouflage", "Expert Forgery"].map((name) => ({ name, source: "race" })),
     feats: ["Actor", "Stalker", "Forest Denizen", "Floriographer", "Surgical Combatant", "Monster Hunter", "Crafting Expert", "Ace Driver"],
   };
   const read = new Set([...heldCheckTraits(everything), ...heldFeatChecks(everything)].map((key) => key.about));

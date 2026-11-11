@@ -51,6 +51,8 @@ import { rangerSpend } from "@/lib/dm/authored-spend-divine-rng";
 import { clericSpend } from "@/lib/dm/authored-spend-divine-clr";
 import { draSpend, joltReachRefusal } from "@/lib/dm/authored-spend-divine-dra";
 import { noteAuraAsked } from "@/lib/dm/aura-menace";
+import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
+import { martialSpend } from "@/lib/dm/authored-spend-martial";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -475,9 +477,17 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if ("error" in enemy) {
         return enemy;
       }
+      const answer = does.afterSneak
+        ? sneakAnswerFor({ encounter: getActiveEncounter(campaign.id), marks: ctx.marks, sheet, enemy, label: ctx.spend.name, rule: does.afterSneak })
+        : null;
+      if (answer && "error" in answer) {
+        return answer;
+      }
       const dice = formula(ctx, does.dice);
       const rolled = damageDice(ctx, enemy, dice);
-      return { result: { rolled: `${dice}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, does.type) } };
+      const first = answer?.alsoFirst ? getEnemy(answer.firstId) : null;
+      const alsoFirst = first && first.status === "alive" ? { first: { name: first.displayName, ...damageEnemy(ctx, first, rolled, does.type) } } : {};
+      return { result: { rolled: `${dice}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, does.type), ...alsoFirst } };
     }
     case "flourish": {
       const enemy = targetEnemy(ctx);
@@ -607,6 +617,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "wildfire_spirit":
     case "eldritch_cannon":
       return draSpend(ctx, does);
+    // The martial subclasses' own (src/lib/dm/authored-spend-martial.ts).
+    case "allies_join":
+    case "action_attack":
+      return martialSpend(ctx, does);
   }
 }
 

@@ -20,6 +20,7 @@ import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
+import { naturalArmorOf } from "@/lib/srd/mt-species-traits";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
 import { featSpellAbility, type FeatSpellSheet } from "@/lib/srd/feat-spells";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
@@ -207,6 +208,24 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
     };
     const alt = computeArmorClass(altInput);
     if (alt.ac > resolved.ac) {
+      chosenInput = altInput;
+      resolved = alt;
+    }
+  }
+  // A lineage's natural armor (src/lib/srd/mt-species-traits.ts): the base
+  // the body gives, in place of the armor worn or the unarmored formula when
+  // it is the better of the two; a shield adds to it either way.
+  const natural = naturalArmorOf(source);
+  if (natural) {
+    const worn = resolved.armorName;
+    const altInput = {
+      ...input,
+      equipment: worn ? input.equipment.filter((item) => item.name !== worn) : input.equipment,
+      dexMod: natural.dex ? input.dexMod : 0,
+      unarmored: { source: "Natural Armor", base: natural.base, ability: null, allowsShield: true },
+    };
+    const alt = computeArmorClass(altInput);
+    if (alt.armorName === null && alt.ac > resolved.ac) {
       chosenInput = altInput;
       resolved = alt;
     }

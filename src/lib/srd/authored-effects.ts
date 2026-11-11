@@ -44,6 +44,7 @@ import { AUTHORED_DATA_W2_DIVINE } from "@/lib/srd/authored-effects-w2-divine";
 import { AUTHORED_DATA_W2_DIVINE_CLR } from "@/lib/srd/authored-effects-w2-divine-clr";
 import { AUTHORED_DATA_W2_DIVINE_DRA } from "@/lib/srd/authored-effects-w2-divine-dra";
 import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divine-rng";
+import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -63,6 +64,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_W2_DIVINE_CLR,
   ...AUTHORED_DATA_W2_DIVINE_DRA,
   ...AUTHORED_DATA_W2_DIVINE_RNG,
+  ...AUTHORED_DATA_W2_MARTIAL,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };

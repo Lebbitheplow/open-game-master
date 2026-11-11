@@ -7,6 +7,7 @@
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
 import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
@@ -204,7 +205,7 @@ export function planPcAttack(input: {
   }
   const { enemy, giantKiller } = gate;
 
-  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id) });
+  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id), ownTurn: ownTurnOf(encounter, sheet.id) });
   if ("error" in built) {
     return { refused: built };
   }
@@ -580,6 +581,7 @@ export function planPcAttack(input: {
     kind,
     enemy,
     marked: marks.applies,
+    surprised: encounter.round === 1 && encounter.surprisedIds.includes(enemy.id),
   });
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
   const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);

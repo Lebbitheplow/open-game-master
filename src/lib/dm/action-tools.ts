@@ -520,7 +520,7 @@ export function handleTakeAction(
       // The Superiority Die rides the Athletics check; it is paid with the
       // bonus action, once the contest's own checks pass.
       return contest(campaign, turn, sheet, encounter, args, spend, costs, () => {
-        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId, sheets, sheetsById);
+        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId);
         return "error" in strike ? strike : { die: strike.die, label: "Grappling Strike" };
       });
     }

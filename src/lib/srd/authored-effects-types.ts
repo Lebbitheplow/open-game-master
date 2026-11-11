@@ -494,7 +494,11 @@ export type SpendDoes =
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.
-  | { kind: "die_damage"; dice: Formula; type: string }
+  // `afterSneak`: it answers the turn's Sneak Attack hit (action-budget.ts
+  // SNEAK_HIT) and lands on a second creature within `rangeFt` of the one the
+  // Sneak Attack struck, never that one; holding `firstToo`, the struck one
+  // takes it as well (Wails from the Grave, Death's Friend).
+  | { kind: "die_damage"; dice: Formula; type: string; afterSneak?: { rangeFt: number; firstToo?: string } }
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a
   // defensive flourish.
   | { kind: "flourish" }
@@ -525,6 +529,17 @@ export type SpendDoes =
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
+  // Willing allies the holder can see within `rangeFt` answer the holder's
+  // call (Call the Hunt): up to `count` of them, the one named in
+  // targetCharacterId or else the nearest, each gain `condition`; the holder
+  // gains `tempHpEach` temporary hit points for each one. `whileRaging`: the
+  // condition ends with the holder's rage (src/lib/dm/rage-bound.ts).
+  // Resolved by src/lib/dm/allies-join.ts.
+  | { kind: "allies_join"; condition: string; rangeFt: number; count: Formula; rounds: number; tempHpEach?: number; whileRaging?: boolean }
+  // One more attack in the Attack action being taken (Unleash Incarnation):
+  // src/lib/dm/turn-budget.ts grantActionAttack. `note`: what the attack is
+  // held to that the engine leaves to the GM (melee, from the echo's space).
+  | { kind: "action_attack"; note: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }

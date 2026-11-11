@@ -4,13 +4,6 @@ const ROWS2 = "src/lib/srd/authored-effects-data2.ts";
 const ROWS4 = "src/lib/srd/authored-effects-data4.ts";
 
 export const KNOWN = {
-  "death-strike-double": {
-    severity: "high", kind: "rule-missing",
-    where: `${ROWS4} rogue::Death Strike (narrated: "A hit on a surprised creature: it makes a Constitution save (DC 8 + Dexterity + proficiency) or takes double damage, which the GM applies after the hit.")`,
-    note: "A 17th-level Assassin's critical hit on a surprised creature deals 43 and nothing more: no save is rolled and nothing is doubled. The capstone of the subclass is a sentence for the GM.",
-    fix: "On a hit against a creature in surprisedIds, roll its CON save against 8 + DEX + proficiency and double the hit's damage on a failure (src/lib/dm/pc-attack-damage.ts).",
-    files: ["src/lib/dm/pc-attack-damage.ts", ROWS4],
-  },
   "fancy-footwork": {
     severity: "medium", kind: "rule-missing",
     where: `${ROWS4} rogue::Fancy Footwork (narrated: "A creature the rogue attacked in melee this turn makes no opportunity attack against them: the GM withholds it.")`,
@@ -38,6 +31,13 @@ export const KNOWN = {
     note: "The bonus-action hit on a second creature, an ally beside it, carries no Sneak Attack dice.",
     fix: "Allow Sneak Attack twice a turn for a holder, the second against a different creature (src/lib/dm/pc-attack-damage.ts).",
     files: ["src/lib/dm/pc-attack-damage.ts", ROWS2],
+  },
+  "deaths-friend-trinket-at-rest": {
+    severity: "low", kind: "rule-missing",
+    where: `${ROWS4} rogue::Death's Friend (narrated: the GM gives the trinket)`,
+    note: "A 17th-level Phantom with no soul trinket ends a long rest with none in hand.",
+    fix: "A long-rest grant for the holder: the soul trinket condition when none is carried (the rest handler).",
+    files: ["src/lib/dm/rest-tools.ts", ROWS4],
   },
 };
 

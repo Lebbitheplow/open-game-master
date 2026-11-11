@@ -425,6 +425,15 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "One skill proficiency of your choice",
     "Long-Limbed (5 extra feet of reach on melee attacks on your turn)",
     "Surprise Attack (2d6 extra damage on a surprised creature in the first round)",
+    // Cast by nature from the row's innateSpells, as Infernal Legacy and Drow
+    // Magic are (src/lib/srd/racial-grants.ts): the cantrip at will, each
+    // levelled spell a counter of its own, where one shared counter with
+    // nothing behind it stood before.
+    "Firbolg Magic (detect magic and disguise self, 1/short rest each)",
+    "Reach to the Blaze (produce flame, then burning hands 1/long rest from 3rd level)",
+    "Call to the Wave (shape water, then create or destroy water 1/long rest from 3rd level)",
+    "Mingle with the Wind (levitate 1/long rest from 3rd level)",
+    "Merge with Stone (pass without trace 1/long rest from 3rd level)",
   ]);
   const uncovered = [];
   for (const race of races) {

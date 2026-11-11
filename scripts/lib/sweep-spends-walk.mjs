@@ -55,7 +55,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -208,6 +208,22 @@ async function step(rig, scene, name, notes) {
       if (!world.sheet(holder).spellcasting?.slots?.["1"]) return { ok: false, error: "no 1st-level slot to smite with" };
       world.dice(18, 5, 4, 4);
       return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.near.id, weapon: "Longsword", smite: 1 });
+    // A finesse blade at the second foe, brought beside the holder and the
+    // hurt ally: the hit carries Sneak Attack, and the foe beside them (the
+    // ladder's target) is the other creature within 30 feet, for what answers
+    // a Sneak Attack on another creature (Wails from the Grave).
+    // The ally at 0 dead an hour since, for a use that returns the dead to
+    // life (Hand of Ultimate Mercy).
+    case "the ally at 0 died":
+      world.patch(scene.fallen.id, { deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+      return { ok: true };
+    case "the holder sneak attacked a foe": {
+      const held = world.sheet(holder);
+      world.patch(holder, { equipment: [...(held.equipment ?? []), { name: "Dagger", qty: 1, equipped: true }] });
+      kit.place(scene.far.id, 4, 6);
+      world.dice(18, ...new Array(12).fill(3));
+      return world.invoke("pc_attack", { characterId: holder, targetEnemyId: scene.far.id, weapon: "Dagger" });
+    }
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);

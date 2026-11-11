@@ -8,6 +8,7 @@
 // on the other side (a creature the party dominates) is struck stat block
 // against stat block (src/lib/dm/enemy-strike.ts).
 
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -166,6 +167,9 @@ export function handleEnemyAttack(
   if (!encounter) {
     return { error: "No active encounter: enemy_attack works only in a fight. Call start_encounter first.", retry: true };
   }
+  // A mark that rode a rage now over goes before the odds are read
+  // (rage-bound.ts: Ancestral Protectors).
+  endRageBound(campaign.id);
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");

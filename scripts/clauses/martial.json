@@ -695,8 +695,10 @@
   "clauses": [
    {
     "c": "Make one extra melee attack from your echo's space when you take the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_unleash_incarnation#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/turn-budget.ts grantActionAttack (authored-effects-w2-martial.ts fighter::Unleash Incarnation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unleash-incarnation-extra-attack",
+    "note": "The attack is one more of the Attack action, held while the echo is out; that it is melee and from the echo's space is the GM's to keep, as the echo has no square of its own (Manifest Echo#2)."
    },
    {
     "c": "a Constitution-modifier number of times per long rest",
@@ -747,8 +749,9 @@
   "clauses": [
    {
     "c": "When your echo is destroyed by damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_reclaim_potential#TRIGGER_AS_CARD"
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts sub_reclaim_potential own_echo_destroyed (authored-reactions.ts records it as Shadow Martyr's echo falls)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: reclaim-potential-temporary-hit-points"
    },
    {
     "c": "gain temporary hit points of 2d6 + your Constitution modifier",
@@ -768,11 +771,12 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Echo Knight",
   "level": 18,
-  "sha": "5356ec9231ec",
+  "sha": "50d879efe7b4",
   "clauses": [
    {
-    "c": "Regain a use of Unleash Incarnation on initiative",
-    "is": "gap",
+    "c": "When you roll initiative with no Unleash Incarnation uses left, you regain one",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Legion of One init_refill",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: legion-of-one-regains-on-initiative"
    },
    {
@@ -1029,8 +1033,9 @@
    },
    {
     "c": "to one damage roll per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn",
+    "by": "src/lib/dm/attack-damage-riders.ts heldConditionRiders (oncePerTurn, claimed by claimOncePerTurnRiders)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -1426,7 +1431,8 @@
    },
    {
     "c": "or until your rage ends",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (whileRagingOf), src/lib/dm/rage-bound.ts endRageBound",
     "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: ancestral-protectors-rage-ends"
    },
    {
@@ -1863,13 +1869,15 @@
    },
    {
     "c": "you can choose a number of other willing creatures you can see within 30 feet equal to your Constitution modifier (minimum one).",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    },
    {
     "c": "You gain 5 temporary hit points for each that accepts, and until the rage ends each of them can, once on each of its turns, roll a d6 and add it to the damage of an attack that hits.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    }
   ]
  },
@@ -2576,8 +2584,9 @@
   "clauses": [
    {
     "c": "Spend 1 ki to stay at 1 hit point instead of dropping to 0, as long as ki remains.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death",
+    "by": "src/lib/dm/mastery-of-death.ts masteryOfDeathHold, called from pc-damage.ts as the blow lands"
    }
   ]
  },
@@ -2700,8 +2709,9 @@
    },
    {
     "c": "spend 5 ki to return a creature dead no more than 24 hours to life with 4d10 + Wisdom hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives",
+    "by": "src/lib/dm/ultimate-mercy.ts ultimateMercy (feature-spends.ts sub_wholeness_of_body_mercy), heal-spell.ts returnToLife"
    }
   ]
  },
@@ -2850,8 +2860,10 @@
   "clauses": [
    {
     "c": "When you take the Attack action you can replace one attack with a 20-foot cone or a 30-foot line 5 feet wide of acid, cold, fire, lightning or poison: each creature in it makes a Dexterity save against your ki save DC or takes two rolls of your martial arts die (three from 11th level), half on a success.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_breath_of_the_dragon#HANDS_BACK",
+    "is": "held",
+    "by": "src/lib/dm/resource-turn.ts (replacesAttack: spendAttack), src/lib/dm/aoe-spend.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: breath-of-the-dragon-replaces-an-attack",
+    "note": "The sweep's TRIGGER_AS_CARD row for this counter reads \"When you take the Attack action\" as a trigger; the breath may be the action's first attack (DISPUTED in the handoff).",
     "recorded_by": "spends-hands-back-counter-sub-breath-of-the-dragon"
    },
    {
@@ -3019,8 +3031,9 @@
   "clauses": [
    {
     "c": "When you hit a surprised creature, it makes a Constitution save against 8 + Dexterity + proficiency or takes double damage.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double",
+    "by": "src/lib/dm/death-strike.ts deathStrikeDoubles, attack-blow.ts landSwingBlow, pc-attack-damage.ts landBlow doubled"
    }
   ]
  },
@@ -3087,13 +3100,18 @@
   "clauses": [
    {
     "c": "Right after a creature casts a spell that targets you or includes you in its area, a reaction makes it save with its spellcasting ability modifier against your spell save DC.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
     "read_only": true,
     "stopped": "not run: no enemy spell was cast at the trickster to open the reaction"
    },
    {
     "c": "On a failure the spell has no effect on you, and if it is of 1st level or higher and of a level you can cast, you steal it: for 8 hours you know it and can cast it with your spell slots, and the creature can't cast it.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
+    "note": "The caster's own casting of the stolen spell is marked (spell stolen) for the GM, who plays the creature's spells.",
     "read_only": true,
     "stopped": "not run: no probe of this sweep stages it"
    },
@@ -3502,9 +3520,9 @@
   "clauses": [
    {
     "c": "After a sneak attack drops or wounds a creature, a second creature within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the spend follows any weapon hit this turn (afterWeaponHit), not a Sneak Attack's, and its die_damage row carries no rangeFt and does not refuse the creature first hit; no probe swings without Sneak Attack, names the first creature, or stands the second beyond 30 feet"
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts sneakAnswerFor (the turn's SNEAK_HIT mark, a second creature within 30 feet of the first), afterSneak on the die_damage row",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: wails-needs-a-sneak-attack"
    },
    {
     "c": "takes half your sneak attack dice in necrotic damage",
@@ -3585,10 +3603,15 @@
   "sha": "9f9cc868079d",
   "clauses": [
    {
-    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second, and at the end of a long rest a soul trinket appears in your hand if you have none.",
+    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second",
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts (afterSneak.firstToo: Death's Friend) and authored-spend-effects.ts die_damage",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-first-too"
+   },
+   {
+    "c": "at the end of a long rest a soul trinket appears in your hand if you have none.",
     "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Death's Friend: \"the GM applies the damage and the trinket\"): damage is a number, a gap of kind rule-missing"
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-trinket-at-rest"
    }
   ]
  },

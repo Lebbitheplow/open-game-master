@@ -675,8 +675,8 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       { kind: "save", ability: "str" },
       { kind: "check", ability: "str" },
     ],
-    onHitDice: { dice: "1d6", type: "" },
-    weaponOnly: true,
+    // The die is a once-per-turn rider, as the text says (one damage roll a
+    // turn): src/lib/dm/attack-damage-riders.ts heldConditionRiders.
   },
   {
     id: "bladesong",

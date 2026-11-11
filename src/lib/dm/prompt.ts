@@ -692,6 +692,7 @@ export function describeSheet(
         size: sizeForRace(sheet.race),
         // The capacity the pack is refused by (Peerless Athlete doubles it).
         carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   const loadLine = load

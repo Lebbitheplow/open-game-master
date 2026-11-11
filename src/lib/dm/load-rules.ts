@@ -25,6 +25,7 @@ import { rowName } from "@/lib/srd/item-row";
 import { purseCoins, type Purse } from "@/lib/srd/currency";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import type { AuthoredSheet } from "@/lib/srd/authored-effects";
+import { carrySize } from "@/lib/srd/mt-species-traits";
 
 // The authored fields too: a feature that multiplies what the character
 // carries (Peerless Athlete) is read from them (authoredCarryFactor).
@@ -73,8 +74,10 @@ export function capacityProblem(
   if (!then.overCapacity || then.carriedLb <= now.carriedLb) {
     return null;
   }
+  // Both doublings are named, since both can hold at once (a goliath totem warrior).
   const factor = carryFactorOf(sheet);
-  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15${factor > 1 ? `, x ${factor} while their feature lasts` : ""}) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
+  const powerful = carrySize("Medium", sheet as Wearer) !== "Medium";
+  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15${powerful ? ", doubled by Powerful Build" : ""}${factor > 1 ? `, x ${factor} while their feature lasts` : ""}) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
 }
 
 // A character's carrying capacity and push, drag or lift limit, in pounds.
@@ -82,7 +85,7 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
-  // The same factor loadOf weighs by, so the lift and the capacity agree.
-  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined) * carryFactorOf(sheet);
+  // The same size and factor loadOf weighs by, so the lift and the capacity agree.
+  const multiplier = carryMultiplier(carrySize(sheet.race ? sizeForRace(sheet.race) : undefined, sheet as Wearer)) * carryFactorOf(sheet);
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

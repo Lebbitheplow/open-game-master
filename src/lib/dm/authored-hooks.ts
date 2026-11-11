@@ -419,6 +419,9 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
         stamp,
         ...(effect.effect === "save_disadv" ? { untilTurnEndOf: sheet.id } : { untilTurnOf: sheet.id }),
         ...(effect.halve ? { halve: true } : {}),
+        // A mark a rage lays ends with the rage, not only at the next turn
+        // (Ancestral Protectors: "or until your rage ends", rage-bound.ts).
+        ...(effect.gate?.raging ? { whileRagingOf: sheet.id } : {}),
         ...(effect.dice ? { dice: effect.dice, type: effect.damageType ?? "" } : {}),
       },
     };

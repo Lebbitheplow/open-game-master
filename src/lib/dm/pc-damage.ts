@@ -26,6 +26,7 @@ import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
+import { masteryOfDeathHold } from "@/lib/dm/mastery-of-death";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
 import {
   damageAdjust,
@@ -439,6 +440,16 @@ export function applyPcDamage(
   const grave = strengthOfTheGrave(campaign, turnId, sheet, math, input, adjusted.amount, reason);
   if (grave) {
     return tookIt(grave);
+  }
+  // Mastery of Death: a ki point keeps the monk at 1 hit point
+  // (src/lib/dm/mastery-of-death.ts).
+  const now = getSheetById(sheet.id) ?? sheet;
+  const mastery = masteryOfDeathHold(now, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(now)));
+  if (mastery) {
+    patchSheet(sheet.id, mastery);
+    audit(campaign, turnId, now, "apply_damage", { masteryOfDeath: true, ki: 1 }, reason, mastery);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(now)}`, masteryOfDeath: `${sheet.name} should have fallen, but Mastery of Death spends 1 ki to keep them at 1 hit point.` });
   }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.

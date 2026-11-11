@@ -277,4 +277,22 @@ await test("A creature immune to a condition cannot be given it.", async () => {
 
 await kit.endFight();
 world.close();
+// WAVE2 D4 of the 2026-11-09 gap sweep: "Superiority Dice: move the engine's
+// own maneuver spends to name the maneuver as the variant, then refuse a bare
+// spend (R10)". A die spent with no maneuver named bought nothing.
+await test("a bare Superiority Dice spend is refused and costs nothing; the swing's die names its maneuver", async () => {
+  const enemy = await stage();
+  const bare = await world.invoke("use_resource", { characterId: master.id, resource: "Superiority Dice" });
+  assert.equal(bare.ok, false, "a die spent with no maneuver named");
+  const swingVariant = await world.invoke("use_resource", { characterId: master.id, resource: "Superiority Dice", variant: "Trip Attack" });
+  assert.equal(swingVariant.ok, false, "a swing's maneuver is named on pc_attack, not spent here");
+  assert.match(String(swingVariant.error), /pc_attack/);
+  const stray = await world.invoke("use_resource", { characterId: master.id, resource: "Superiority Dice", variant: "a big swing" });
+  assert.equal(stray.ok, false, "a variant that names no maneuver");
+  assert.equal(dice().used, 0, "and none of the refusals spent a die");
+  const out = await swing(enemy, [15, 4, 5, 20], { maneuver: "Trip Attack" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(dice().used, 1, "the swing's own spend still pays its die");
+});
+
 finish();

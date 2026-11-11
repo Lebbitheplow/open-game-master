@@ -7,7 +7,7 @@
 // offered for a spend use_resource would refuse for want of the feature.
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
-import { WEAPON_HIT } from "@/lib/dm/action-budget";
+import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 import { heldFlames } from "@/lib/dm/cauterizing-flames";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -33,6 +33,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
+import { TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -139,7 +140,13 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
   const found = authoredSpendFor(sheet, name);
   if (!found) return false;
   const { spend, held } = found;
-  return spend.fight !== "out" && spend.does.kind !== "choose" && (spendAction(spend) !== "reaction" || aimedReaction(spend)) && gateHolds(spend.gate, sheet, held);
+  return spend.fight !== "out" && spend.does.kind !== "choose" && (spendAction(spend) !== "reaction" || aimedReaction(spend)) && !triggeredSpend(spend) && gateHolds(spend.gate, sheet, held);
+}
+
+// A spend paid from a counter trigger-table.ts holds (authored-spends.ts
+// answers its record before anything is spent).
+function triggeredSpend(spend: AuthoredSpend): boolean {
+  return Boolean(spend.pool && TRIGGERED_COUNTERS.includes(spend.pool.id));
 }
 
 // A reaction that heals one creature or burns another (Cauterizing Flames): one
@@ -240,6 +247,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   const counter = ownCounter(spend);
   const action = spendAction(spend);
   if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  // A spend whose counter waits on a trigger (Call the Hunt's rage just
+  // entered) is dealt when the trigger opens (hand-react-triggers.ts), never
+  // on the holder's own turn: the engine refuses it until then.
+  if (triggeredSpend(spend)) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;
@@ -330,6 +341,19 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       // Inspiring Smite comes right after a Divine Smite (authored-spend-divine.ts).
       aimDoes(does, aim.variant).kind === "smite_temp_hp" && !(turn.marks ?? []).includes(DIVINE_SMITE_LANDED)
         ? { reason: `${spend.name} comes right after a Divine Smite: land one this turn first.`, spent: false }
+        : null,
+      // What answers a Sneak Attack waits for the hit that dealt it, as the
+      // engine does (src/lib/dm/sneak-answer.ts).
+      (() => {
+        const aimed = aimDoes(does, aim.variant);
+        return aimed.kind === "die_damage" && aimed.afterSneak && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(SNEAK_HIT));
+      })()
+        ? { reason: `${spend.name} answers a Sneak Attack: land one this turn first.`, spent: false }
+        : null,
+      // An attack added to the Attack action waits for that action to begin,
+      // as the engine does (turn-budget.ts grantActionAttack).
+      aimDoes(does, aim.variant).kind === "action_attack" && (!turn.myTurn || turn.attacksMade <= 0 || turn.castThisAction === true)
+        ? { reason: `${spend.name} adds an attack to the Attack action: make its first attack first.`, spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.

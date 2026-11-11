@@ -30,6 +30,7 @@ import { shillelaghSwing, hexWarriorSwing } from "@/lib/dm/attack-features";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { authoredNaturalWeapon, authoredReachBonus, naturalWeaponGated } from "@/lib/srd/authored-effects-more";
+import { longLimbedFeet } from "@/lib/srd/mt-species-traits";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
@@ -92,7 +93,8 @@ export function buildAttackProfile(
   },
   // How many tiles lie between the attacker and the target, when the board
   // knows (a thrown weapon past its reach is a ranged attack).
-  target: { apart: number | null } = { apart: null },
+  // `ownTurn`: the swing is made on the attacker's own turn (Long-Limbed).
+  target: { apart: number | null; ownTurn?: boolean } = { apart: null },
 ): BuiltAttack | ToolError {
   const derived = computeSheetDerived(sheet);
   const riders = combatRiders(sheet);
@@ -434,7 +436,7 @@ export function buildAttackProfile(
     // ranged attack, as attackGeometry will find, so it rolls the one-handed
     // die and gives Great Weapon Fighting nothing to reroll.
     if (profile.twoHanded && profile.thrown && !profile.ranged && !properties.includes("two-handed")) {
-      const reachTiles = profile.reachTiles + (authoredReachBonus(sheet)?.tiles ?? 0);
+      const reachTiles = profile.reachTiles + (authoredReachBonus(sheet)?.tiles ?? 0) + longLimbedFeet(sheet, target.ownTurn === true) / 5;
       if (thrownAtRange({ thrown: true, reachTiles }, target.apart)) {
         profile = swing(false);
         handsNote = `${used.displayName} is thrown: one-handed die`;
@@ -456,6 +458,12 @@ export function buildAttackProfile(
   const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
+  }
+  // Long-Limbed (bugbear): 5 more feet on a melee attack of their own turn
+  // (src/lib/srd/mt-species-traits.ts).
+  const limbs = !profile.ranged && profile.reachTiles >= 1 ? longLimbedFeet(sheet, target.ownTurn === true) : 0;
+  if (limbs) {
+    profile = { ...profile, reachTiles: profile.reachTiles + limbs / 5, riderNotes: [...profile.riderNotes, `Long-Limbed: ${limbs} more feet of reach on their own turn`] };
   }
   return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWholeAction: granted?.attack.wholeAction === true, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
 }

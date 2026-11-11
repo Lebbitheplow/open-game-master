@@ -43,4 +43,37 @@ P["druid.natures-ward.fey-charm"] = async () => {
   assert.ok(!t.has(who, "charmed"), `a fey's charm landed on a 10th-level Land druid: ${out.ok ? "accepted" : out.error}`);
 };
 
+// Circle Spells' seven tables: a Land druid who chose the terrain has each
+// row's spells at its level and not before (src/lib/srd/features.ts
+// subclassSpellsFor, the list the sheet adds always prepared). The rows are
+// read from the rulebook's own text, the clauses the ledger holds.
+P["druid.circle-spells.tables"] = async () => {
+  const { subclassSpellsFor } = await import("../src/lib/srd/features.ts");
+  const fs = await import("node:fs");
+  const ledger = JSON.parse(fs.readFileSync(new URL("./clauses/srd-classes.json", import.meta.url), "utf8"))["druid::Circle Spells"];
+  const wrong = [];
+  let terrain = null;
+  let rows = 0;
+  for (const { c } of ledger.clauses) {
+    const title = /^\*\*Table- (\w+) Circle Spells\*\*$/.exec(c);
+    if (title) {
+      terrain = title[1];
+      continue;
+    }
+    const row = /^\| (\d+)\w\w\s+\| ([^|]+?)\s*\|\|?$/.exec(c);
+    if (!row || !terrain) continue;
+    rows += 1;
+    const level = Number(row[1]);
+    const features = [{ name: `Circle Spells (${terrain})` }];
+    const at = subclassSpellsFor("druid", "Circle of the Land", level, undefined, features).map((name) => name.toLowerCase());
+    const before = subclassSpellsFor("druid", "Circle of the Land", level - 1, undefined, features).map((name) => name.toLowerCase());
+    for (const spell of row[2].split(",").map((name) => name.trim().toLowerCase())) {
+      if (!at.includes(spell)) wrong.push(`${terrain} ${level}: no ${spell}`);
+      if (before.includes(spell)) wrong.push(`${terrain} ${level - 1}: ${spell} early`);
+    }
+  }
+  assert.equal(rows, 28, "the staging: the rulebook's seven tables of four rows");
+  assert.deepEqual(wrong, [], "Circle Spells against the rulebook's tables");
+};
+
 await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-druid.mjs", P);

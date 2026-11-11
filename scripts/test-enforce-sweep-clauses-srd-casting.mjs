@@ -99,6 +99,69 @@ for (const [cls, row] of Object.entries(CASTERS)) {
   };
 }
 
+// The Cantrips Known, Spells Known and prepared counts of the SRD 5.1 class
+// tables, by class level, as src/lib/srd/spell-prep.ts reads them for the
+// builder's caps and the server's check of a sheet's lists.
+const prep = await import("../src/lib/srd/spell-prep.ts");
+const CANTRIPS = {
+  bard: [[1, 2], [4, 3], [10, 4]], druid: [[1, 2], [4, 3], [10, 4]], warlock: [[1, 2], [4, 3], [10, 4]],
+  sorcerer: [[1, 4], [4, 5], [10, 6]], wizard: [[1, 3], [4, 4], [10, 5]],
+};
+const KNOWN = {
+  bard: [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
+  sorcerer: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
+  ranger: [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
+  warlock: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+};
+// A 2nd-level spell of each list, for a slot below the spell's level.
+const SECOND = { bard: "Hold Person", druid: "Barkskin", sorcerer: "Blur", wizard: "Blur", ranger: "Barkskin" };
+const viewOf = (cls, level) => ({ classId: cls, level, subclass: "", ability: CASTERS[cls].ability });
+for (const [cls, steps] of Object.entries(CANTRIPS)) {
+  P[`casting.${cls}.cantrips-known`] = () => {
+    for (const [level, count] of steps) {
+      for (const at of [level, level + 1]) assert.equal(prep.cantripCapOf(viewOf(cls, at)), count, `${cls} ${at}`);
+    }
+  };
+}
+for (const [cls, column] of Object.entries(KNOWN)) {
+  P[`casting.${cls}.spells-known`] = () => {
+    const got = column.map((_, at) => prep.spellCapOf(viewOf(cls, at + 1), SCORES(CASTERS[cls].ability))?.count ?? 0);
+    assert.deepEqual(got, column, `${cls}: the Spells Known column, levels 1 to 20`);
+  };
+}
+for (const cls of ["druid", "wizard"]) {
+  // "a number of spells equal to your modifier + your level (minimum of one)".
+  P[`casting.${cls}.prepared-count`] = () => {
+    for (const [score, level, count] of [[16, 3, 6], [18, 5, 9], [8, 1, 1], [10, 20, 20]]) {
+      const abilities = { ...SCORES(CASTERS[cls].ability), [CASTERS[cls].ability]: score };
+      assert.equal(prep.spellCapOf(viewOf(cls, level), abilities)?.count, count, `${cls} ${level} with ${score}`);
+    }
+  };
+}
+for (const [cls, second] of Object.entries(SECOND)) {
+  const row = CASTERS[cls];
+  const caster = (t, level) =>
+    t.hero({ class: cls, level, abilities: SCORES(row.ability), spellcasting: { ability: row.ability, slots: slots(4, 3, 3), prepared: [row.plain, second], known: [row.plain, second], cantrips: [] } });
+  P[`casting.${cls}.slot-or-higher`] = async () => {
+    const t = await rig.table();
+    const who = caster(t, 9);
+    const low = await t.invoke("use_spell_slot", { characterId: who.id, level: 1, spell: second });
+    assert.equal(low.ok, false, `a 1st-level slot cast the 2nd-level ${second}`);
+    const high = await t.invoke("use_spell_slot", { characterId: who.id, level: 2, spell: row.plain });
+    assert.equal(high.ok, true, `a 2nd-level slot did not cast the 1st-level ${row.plain}: ${high.error}`);
+    assert.equal(t.sheet(who).spellcasting.slots["2"].used, 1, "and spent the 2nd-level slot");
+  };
+  P[`casting.${cls}.long-rest-slots`] = async () => {
+    const t = await rig.table();
+    const who = caster(t, 9);
+    t.patch(who, { spellcasting: { ...t.sheet(who).spellcasting, slots: { 1: { max: 4, used: 4 }, 2: { max: 3, used: 2 }, 3: { max: 3, used: 3 } } } });
+    const out = await t.rest("long");
+    assert.equal(out.ok, true, out.error);
+    const used = Object.values(t.sheet(who).spellcasting.slots).reduce((sum, slot) => sum + slot.used, 0);
+    assert.equal(used, 0, "a long rest left slots spent");
+  };
+}
+
 // Every probe the table above makes, by name: the ledger's probe check
 // finds a probe by its name in this file, and the run below holds the table
 // to this list.
@@ -143,6 +206,27 @@ const NAMES = [
   "casting.wizard.ritual-book",
   "casting.wizard.focus",
   "casting.wizard.slots",
+  "casting.bard.cantrips-known",
+  "casting.druid.cantrips-known",
+  "casting.warlock.cantrips-known",
+  "casting.sorcerer.cantrips-known",
+  "casting.wizard.cantrips-known",
+  "casting.bard.spells-known",
+  "casting.sorcerer.spells-known",
+  "casting.ranger.spells-known",
+  "casting.warlock.spells-known",
+  "casting.druid.prepared-count",
+  "casting.wizard.prepared-count",
+  "casting.bard.slot-or-higher",
+  "casting.bard.long-rest-slots",
+  "casting.druid.slot-or-higher",
+  "casting.druid.long-rest-slots",
+  "casting.sorcerer.slot-or-higher",
+  "casting.sorcerer.long-rest-slots",
+  "casting.wizard.slot-or-higher",
+  "casting.wizard.long-rest-slots",
+  "casting.ranger.slot-or-higher",
+  "casting.ranger.long-rest-slots",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists");
 

@@ -1,5 +1,6 @@
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
+import { sleeplessBy } from "@/lib/srd/mt-species-traits";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -284,7 +285,10 @@ export function handleTakeRest(
       // incapacitated, and incapacitation ends concentration): the spell
       // ends whole, through the one function that ends one, before the rest
       // is read from the sheet it leaves.
-      if (getSheetById(id)?.concentratingOn) {
+      // An elf in Trance and a warforged at Sentry's Rest never sleep
+      // (src/lib/srd/mt-species-traits.ts): the spell they hold is still held.
+      const resting = getSheetById(id);
+      if (resting?.concentratingOn && !sleeplessBy(resting)) {
         breakConcentration(campaign, turnId, id, "fell asleep for the long rest");
       }
       const sheet = getSheetById(id);

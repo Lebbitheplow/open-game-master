@@ -16,7 +16,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
-import { ACTION_SURGED, RAGE_ENTERED, spendAction } from "@/lib/dm/action-budget";
+import { ACTION_SURGED, RAGE_ENTERED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
@@ -119,7 +119,9 @@ export function prepareResourceCharge(
   if (!budget) {
     return FREE;
   }
-  const spent = spendAction(budget, action, def.displayName, sheet.name);
+  // One attack of the Attack action, not the whole action (Breath of the
+  // Dragon): a monk with Extra Attack still has the other swing.
+  const spent = def.replacesAttack && action === "action" ? spendAttack(budget, sheet.name) : spendAction(budget, action, def.displayName, sheet.name);
   if (!spent.ok) {
     return toolError(spent);
   }

@@ -46,13 +46,6 @@ export const KNOWN = {
     fix: "A variant pick: a 10-minute condition adding 1d3 to attack rolls and ability checks, or a d3-level slot back for a caster once per long rest.",
     files: ["src/lib/srd/authored-resources.json"],
   },
-  "ancestral-protectors-rage-ends": {
-    severity: "low", kind: "state-lifecycle",
-    where: "src/lib/dm/authored-hooks.ts (the mark is not tied to the barbarian's rage); src/lib/dm/condition-tools.ts clear_condition",
-    note: "With the rage ended the creature still attacks others at disadvantage, and they still resist its damage, until the barbarian's next turn.",
-    fix: "End marks whose row is gated on raging when the source's rage ends.",
-    files: ["src/lib/dm/authored-hooks.ts"],
-  },
   "storm-aura-wakes-with-rage": {
     severity: "medium", kind: "rule-missing",
     where: `src/lib/dm/feature-spends.ts (Rage) and ${ROWS} barbarian::Storm Aura (a bonus-action spend only)`,
@@ -109,13 +102,6 @@ export const KNOWN = {
     note: "Nothing lets the barbarian take the swim, climb or jump option after a rest.",
     fix: "A choose spend (Swim, Climb, Jump) with move effects.",
     files: [ROWS],
-  },
-  "call-the-hunt-does-nothing": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/authored-resources.json sub_call_the_hunt (no fx: the use is spent and the guidance returned)",
-    note: "No temporary hit points reach the barbarian and nothing marks the allies who accepted.",
-    fix: "fx: temporary hit points of 5 per ally named, and a condition on each ally carrying a once-a-turn d6 damage rider.",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/srd/authored-conditions.ts"],
   },
   "wild-surge-rolls-nothing": {
     severity: "medium", kind: "rule-missing",

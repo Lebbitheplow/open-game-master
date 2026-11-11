@@ -229,8 +229,10 @@ await test("a feature's cost is the one its book gives, not the summary's", asyn
   assert.equal(cannon.ok, true, cannon.error);
   assert.equal(cannon.result.cost, "their action");
   // Call the Hunt is used on entering the rage, with no action of its own:
-  // Rage and Call the Hunt go together on one turn.
+  // Rage and Call the Hunt go together on one turn. Its call needs a willing
+  // creature within 30 feet to answer it (allies-join.ts), so the cleric stands by.
   await stage(beast);
+  kit.place(clockwork.id, 4, 5);
   assert.equal((await spend(beast, "Rage")).ok, true);
   const hunt = await spend(beast, "Call the Hunt");
   assert.equal(hunt.ok, true, hunt.error);

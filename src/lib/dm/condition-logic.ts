@@ -71,6 +71,9 @@ export type ConditionMeta = {
   // Held while its source stands within this many feet: ends when the source
   // is down, dead or incapacitated, or farther (src/lib/dm/condition-leash.ts).
   leashFeet?: number;
+  // Lasts while this barbarian rages: "until the rage ends" (Call the Hunt,
+  // Ancestral Protectors), src/lib/dm/rage-bound.ts.
+  whileRagingOf?: string;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.

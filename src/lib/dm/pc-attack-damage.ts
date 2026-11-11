@@ -53,6 +53,8 @@ export function foldDamageRiders(input: {
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
+  // Surprised, in the first round (attack-damage-riders.ts).
+  surprised?: boolean;
 }) {
   const { campaignId, sheet } = input;
   let profile = input.profile;
@@ -407,8 +409,13 @@ export function landBlow(input: {
   holdVictory?: boolean;
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
+  // Death Strike's failed save: the whole blow is doubled, every type of it,
+  // before any resistance meets it (src/lib/dm/death-strike.ts).
+  doubled?: boolean;
 }): Record<string, unknown> {
-  const { campaign, turn, encounter, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  const { campaign, turn, encounter, sheets, sheetsById, profile, damageOutcome, crit, critExtraDice, magical } = input;
+  const times = input.doubled ? 2 : 1;
+  const dealt = input.dealt * times;
   // Path to the Grave: this hit meets a vulnerability to all of its damage,
   // and the curse ends with it (src/lib/dm/grave-curse.ts).
   const curse = isSheetFoe(input.enemy) ? null : graveCurseFor(input.enemy);
@@ -426,7 +433,7 @@ export function landBlow(input: {
   const parts = damageParts(damageOutcome, profile.damageType, input.typedRiders, {
     crit,
     trailingTerms: crit ? critExtraDice : 0,
-  });
+  }).map((part) => ({ ...part, amount: part.amount * times }));
   let applied: Record<string, unknown>;
   if (dealt <= 0) {
     applied = unharmed;

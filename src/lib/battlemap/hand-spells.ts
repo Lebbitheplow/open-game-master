@@ -1,6 +1,7 @@
 // Spell and class-feature cards for the Hand (docs/visual-overhaul-plan.md
 // 5.2): what a prepared spell or a limited-use feature costs, rolls and
 // spends, read from the same tables the cast and use_resource tools read.
+import { takesTheDead } from "@/lib/srd/dead-targets";
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
@@ -431,6 +432,8 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
+    // Revivify and the rest return the dead: their card is aimed at them.
+    ...(takesTheDead({ revives: mech.revive }) ? { takesTheDead: true } : {}),
     toHit: struck ? struck.toHit : toHit,
     ...(struck?.toHitDice ? { toHitDice: struck.toHitDice } : {}),
     ...(struck?.rollAdvantage ? { rollAdvantage: struck.rollAdvantage } : {}),
@@ -751,6 +754,8 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet) } : {}),
       // "one creature other than yourself" (Bardic Inspiration): no "(you)" chip.
       ...(effect.kind === "inspire" && effect.othersOnly ? { othersOnly: true } : {}),
+      // Hand of Ultimate Mercy returns the dead (src/lib/srd/dead-targets.ts).
+      ...(takesTheDead({ counterId: id }) ? { takesTheDead: true } : {}),
       intent:
         cost === "reaction"
           ? { card: "reaction", feature: def.displayName }
@@ -759,7 +764,9 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     cards.push(
       gated(
         card,
-        standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
+        // A use that replaces one attack is open while a swing of the Attack
+        // action is (class-resources.ts replacesAttack).
+        standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : def.replacesAttack ? "attack" : "action"),
         left > 0 ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
         // SRD 5.1 fighter, Action Surge: "only once on the same turn".
         id === "action_surge" && (turn.marks ?? []).includes(ACTION_SURGED)

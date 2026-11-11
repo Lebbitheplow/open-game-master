@@ -23,6 +23,7 @@ import { publishFx } from "@/lib/dm/fx";
 import { planDoorFx } from "@/lib/battlemap/fx-plan";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { budgetApplies } from "@/lib/dm/action-budget";
+import { aggressiveRefusal } from "@/lib/dm/mt-species-board";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
@@ -267,6 +268,7 @@ export async function POST(
   // And the spell areas on the board: difficult ground, Spirit Guardians (zone-rules.ts).
   const traits = withZoneSteps(pcMoveTraits({
     width: map.width,
+    theme: map.theme,
     tokens,
     mover: token,
     sheet,
@@ -364,6 +366,12 @@ export async function POST(
   // them where they stop, so the grapple holds.
   // A companion wary of its commander will not walk out of a foe's reach
   // on their word (issue 503, src/lib/dm/party-conduct.ts).
+  // An orc's Aggressive Dash carries only toward a hostile creature they
+  // can see (src/lib/dm/mt-species-board.ts).
+  const rush = path && turnState ? aggressiveRefusal({ encounter, map, sheet, token, path, budgetTiles: budget, speedTiles: speedToTiles(speed), marks: turnState.oncePerTurn, traits }) : null;
+  if (rush) {
+    return Response.json({ error: rush }, { status: 409 });
+  }
   const refusedOrder = campaign && path && !readied ? riskyOrderGate(campaign, sheet, user.id, [from, ...path], turnState?.disengaged ?? false) : null;
   if (refusedOrder) {
     return Response.json({ error: refusedOrder }, { status: 409 });
