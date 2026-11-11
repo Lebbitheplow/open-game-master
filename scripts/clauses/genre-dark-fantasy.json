@@ -3263,9 +3263,9 @@
    },
    {
     "c": "four allied giant-rat-statted beasts serve for 10 minutes",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap vermin_lord::King Below the Streets#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion rat_pack (four SRD giant rats, allies, 100 rounds)",
+    "probe": "scripts/test-genre-a-summons.mjs: King Below the Streets",
     "same_probe_as": 1
    }
   ]
