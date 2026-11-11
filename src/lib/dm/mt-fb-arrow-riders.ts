@@ -6,8 +6,10 @@
 //     here; a teleport does not go through it.
 //   - Beguiling Arrow's charm "ends early if the chosen ally attacks the
 //     charmed target, deals damage to it, or forces it to make a saving
-//     throw": the ally's attack (attack-swing.ts) and the ally's spell at it
-//     (cast-at-enemy.ts) ask here.
+//     throw": the ally's attack (attack-swing.ts), spell at it
+//     (cast-at-enemy.ts), area (aoe-damage.ts), spend's damage
+//     (authored-spend-effects.ts damageEnemy) and every save it forces
+//     (forced-save.ts rollEnemySave, by the save's origin) ask here.
 // The speed the brambles take and the 5 feet a Shadow Arrow leaves of a
 // creature's sight are rows of src/lib/srd/authored-conditions.ts, read where
 // every speed and every sight is read. Kept apart from the resolver so the

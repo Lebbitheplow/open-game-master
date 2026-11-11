@@ -21,6 +21,7 @@ import { chebyshev, tileIndex, type XY } from "@/lib/battlemap/types";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { areaShapeFromText, blastPickOf, blastTemplate, SRD_AREAS, type AreaShape } from "@/lib/battlemap/area-shape";
 import { textKey } from "@/lib/language/text-logic";
+import { echoOwnerOf } from "@/lib/dm/mt-fb-echo";
 
 export type { AreaShape } from "@/lib/battlemap/area-shape";
 export { areaShapeFromText } from "@/lib/battlemap/area-shape";
@@ -149,7 +150,7 @@ export function creaturesInBlast(input: {
   rangeFeet: number | null;
   at?: XY;
   toward?: XY;
-}): { enemyIds: string[]; characterIds: string[] } | ToolError | null {
+}): { enemyIds: string[]; characterIds: string[]; echoes: string[] } | ToolError | null {
   const map = getBattleMapForEncounter(input.encounterId);
   if (!map) {
     return null;
@@ -182,10 +183,17 @@ function standingIn(
   tokens: ReturnType<typeof listTokens>,
   cells: ReadonlySet<number>,
   options: { skip: string | null; spareParty: boolean },
-): { enemyIds: string[]; characterIds: string[] } {
+): { enemyIds: string[]; characterIds: string[]; echoes: string[] } {
   const enemyIds: string[] = [];
   const characterIds: string[] = [];
+  // An Echo Knight's echo in the area: no creature, but it makes the save
+  // with its knight's bonus (mt-fb-echo.ts echoAreaSave).
+  const echoes: string[] = [];
   for (const token of tokens) {
+    if (echoOwnerOf(token) && cells.has(tileIndex(width, token.x, token.y))) {
+      echoes.push(token.refId);
+      continue;
+    }
     if (token.refId === options.skip) {
       continue;
     }
@@ -198,7 +206,7 @@ function standingIn(
       characterIds.push(token.refId);
     }
   }
-  return { enemyIds, characterIds };
+  return { enemyIds, characterIds, echoes };
 }
 
 // Who a lasting area catches as it appears when its text prints no burst to

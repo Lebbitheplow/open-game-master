@@ -77,6 +77,7 @@ import { surgeSpend } from "@/lib/dm/mt-fb-wild-surge";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { mrSpend } from "@/lib/dm/mt-mr-spends";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
@@ -165,6 +166,8 @@ export function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: nu
   if (!encounter || amount <= 0) {
     return { damage: 0 };
   }
+  // A Beguiling Arrow's charm ends when its ally deals the creature damage.
+  beguilingBroken(ctx.campaign.id, ctx.sheet.id, enemy.id);
   if (ctx.turn) {
     const sheets = listSheets(ctx.campaign.id);
     const applied = applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, sheets, new Map(sheets.map((entry) => [entry.id, entry])), type, { magical: true });

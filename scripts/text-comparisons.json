@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/mt-fb-echo.ts#toUpperCase": [["key", 1, "an ability's abbreviation written in the save's roll line (DEX): engine vocabulary"]],
     "lib/dm/cast-origin.ts#str-eq": [["key", 1, "a spell's damage type, a field of its own mechanics, by textKey: engine vocabulary"]],
     "lib/battlemap/hand-feature-doors.ts#str-eq": [["key", 4, "a spell's casting time and a weapon's kind, fields of their own rows: engine vocabulary"]],
     "lib/srd/level-up-changes.ts#str-eq": [["key", 1, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

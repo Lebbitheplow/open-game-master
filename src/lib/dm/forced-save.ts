@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
@@ -514,6 +515,12 @@ export function rollEnemySave(
     damageType?: string;
   } = {},
 ): ForcedSave {
+  // A Beguiling Arrow's charm ends when its ally forces the creature to save
+  // ("or forces it to make a saving throw"): every save a character's effect
+  // forces names that character as its origin.
+  if (options.origin && "ref" in options.origin) {
+    beguilingBroken(campaignId, options.origin.ref, enemy.id);
+  }
   // A character fighting the party, seen as a foe (sheet-foe.ts), saves as
   // the character it is: proficiency, auras, Bless and its dice card.
   const asSheet = isSheetFoe(enemy) ? getSheetById(enemy.id) : null;

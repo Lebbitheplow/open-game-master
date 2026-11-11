@@ -63,11 +63,11 @@ import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
+import { destroyEcho } from "@/lib/dm/mt-fb-echo";
 import { raiseToCritical } from "@/lib/dm/critical-raise";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
-import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 import { blowLandsOn, redirectTaker } from "@/lib/dm/redirect-target";
 import { laidBySave, openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
 import type { Combatant } from "@/lib/dm/combatant";
@@ -1170,11 +1170,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           : destroyed
             ? `The attack's ${swing.total} hits the echo (AC ${echoAc}, 1 hit point) and destroys it: take it off the board.`
             : `The attack's ${swing.total} misses the echo (AC ${echoAc}), which stays where it is.`;
-      // Destroyed, it is no longer out: Shadow Martyr waits for the next one.
+      // Destroyed, the echo that took the hit is gone: the one nearest the
+      // ally, the other of two (Legion of One) staying out, and the knight's
+      // mark going only with the last (mt-fb-echo.ts destroyEcho).
       if (destroyed) {
-        const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
-        const cleared = removeConditions(now.conditions, now.conditionMeta, now.conditions.filter((entry) => textKey(entry) === textKey(ECHO_OUT)));
-        reactionPatch(ctx.campaign, ctx.turn.id, now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: the echo is destroyed`);
+        destroyEcho(ctx.campaign.id, ctx.sheet.id, { nearRef: ally.id }, `${reaction.name}: it took the hit`);
         // On record, so what answers the echo's destruction (Reclaim
         // Potential, trigger-table.ts own_echo_destroyed) finds it.
         recordTrigger(ctx.campaign.id, { kind: "echo_destroyed", characterId: ctx.sheet.id, forcer: { id: attackerFoeId(hit.record) ?? "", name: hit.record.attacker.name } });
