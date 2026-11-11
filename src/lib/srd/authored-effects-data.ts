@@ -36,6 +36,11 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "Path of the Totem Warrior",
     spends: [{ name: "Aspect of the Beast", fight: "out", does: { kind: "choose", options: TOTEMS } }],
     effects: [
+      // "Bear. ... your carrying capacity (including maximum load and maximum
+      // lift) is doubled": read by the one carry reader (carry-jump-effects.ts
+      // authoredCarryFactor), so the load refusal, the encumbrance tiers and
+      // the lift all double. The lift alone doubled before.
+      { kind: "carry_factor", factor: 2, gate: { choice: "bear" } },
       {
         kind: "check_adv",
         abilities: ["str"],
