@@ -77,3 +77,37 @@ export function carrySwapRecords<T extends { name: string }>(
   }
   return [...withoutSwapRecords(features), ...wanted.map(record)];
 }
+
+type SpellLists = { known?: string[]; prepared?: string[]; pending?: string[] };
+
+// A sheet's lists as an edit sends them, without the spell a recorded swap
+// took out of them. The builder rebuilds a sheet from the subclass's table and
+// writes the table's spell back among the spells known; it is the origin's no
+// longer, and judged as a spell learned it would be off the class's list and
+// refuse the whole edit (src/lib/srd/legality/spells.ts judgeSpellcasting). A
+// spell the stored sheet holds stays: the sorcerer learned it again since.
+export function withoutSwappedOut<T extends SpellLists & { casters?: SpellLists[] }>(
+  sent: T | null,
+  features: ReadonlyArray<{ name: string }> | undefined,
+  held: (SpellLists & { casters?: SpellLists[] }) | null | undefined,
+): T | null {
+  const swaps = swapsOf(features).filter((swap) => textKey(swap.from) !== textKey(swap.to));
+  if (!sent || !swaps.length) {
+    return sent;
+  }
+  const kept = new Set(
+    [held, ...(held?.casters ?? [])].flatMap((lists) => [...(lists?.known ?? []), ...(lists?.prepared ?? []), ...(lists?.pending ?? [])]).map(textKey),
+  );
+  const gone = new Set(swaps.map((swap) => textKey(swap.from)).filter((name) => !kept.has(name)));
+  if (!gone.size) {
+    return sent;
+  }
+  const strip = <L extends SpellLists>(lists: L): L => ({
+    ...lists,
+    ...(lists.known ? { known: lists.known.filter((name) => !gone.has(textKey(name))) } : {}),
+    ...(lists.prepared ? { prepared: lists.prepared.filter((name) => !gone.has(textKey(name))) } : {}),
+    ...(lists.pending ? { pending: lists.pending.filter((name) => !gone.has(textKey(name))) } : {}),
+  });
+  const top = strip(sent);
+  return sent.casters ? { ...top, casters: sent.casters.map(strip) } : top;
+}

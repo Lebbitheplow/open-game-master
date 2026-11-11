@@ -165,6 +165,24 @@ export function probes(rig) {
       assert.deepEqual([points - left(who, "sorcery_points"), JSON.stringify(sheet(who).spellcasting.slots) === slots], [2, true], "[sorcery points spent, no slot spent]");
       await kit.endFight();
       rig.refill(who);
+      // An edit that rebuilds the lists from the origin's table writes Calm
+      // Emotions back among the spells known (the builder does): the door
+      // takes the lists without it, where it would refuse them for a spell
+      // off the sorcerer's list.
+      const [legality, catalog] = [await import("../../src/lib/srd/legality/spells.ts"), await import("../../src/lib/characters/catalog.ts")];
+      const now = sheet(who);
+      const edited = legality.judgeSpellcasting({
+        sent: { ...now.spellcasting, known: [...now.spellcasting.known, "Calm Emotions"] },
+        classes: [{ id: "sorcerer", subclass: "Aberrant Mind", level: now.level }],
+        classOf: (id) => catalog.classGrantsFor(id, []),
+        abilities: now.abilities,
+        spellOf: (name) => catalog.spellFactsFor(name, []),
+        held: now.spellcasting,
+        features: now.features,
+        judgeLists: true,
+        bookAllowance: false,
+      });
+      assert.deepEqual([edited.problems, edited.spellcasting.known.includes("Calm Emotions"), edited.spellcasting.known.includes("Suggestion")], [[], false, true], "[problems, Calm Emotions kept, Suggestion kept] for an edit that writes the swapped-out spell back");
       // Replaced again: the spell given up is the one that holds the place now.
       await takenUp(who, { levelUpSpells: ["Hold Person"], levelUpForget: "Suggestion" });
       assert.deepEqual([swaps(who), (await granted(who)).includes("Hold Person"), knows(who, "Suggestion")], [["Spell swap: Calm Emotions > Hold Person"], true, false]);
