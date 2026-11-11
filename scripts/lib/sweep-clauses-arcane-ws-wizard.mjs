@@ -35,6 +35,48 @@ export function probes(rig, shared) {
       assert.deepEqual([conds(enemy).includes("charmed"), conds(enemy).includes("incapacitated")], [false, false], `[charmed, incapacitated] once it can neither see nor hear the wizard: ${conds(enemy).join(", ")}`);
       assert.ok(conds(enemy).includes("blinded") && conds(enemy).includes("deafened"), "what blinded and deafened it stays");
     },
+    // ---- Necromancy
+    // "An undead with an Intelligence of 12 or higher that failed repeats the
+    // save at the end of every hour, breaking free on a success": the clock is
+    // moved with pass_time, and the server rolls the Charisma save against the
+    // wizard's spell save DC (with the advantage an Intelligence of 8 gave the
+    // first save, so two d20s an hour). A duller undead never rolls.
+    "command-undead-hourly": async () => {
+      const nec = holder("wizard", "School of Necromancy");
+      const d20s = (out) => out.rolled.filter((die) => die.sides === 20).length;
+      const pass = async (amount, unit, faces) => {
+        const out = await call("pass_time", { amount, unit }, faces);
+        assert.equal(out.ok, true, out.error);
+        return out;
+      };
+      // An undead of this Intelligence, commanded (it fails the first save).
+      const commanded = async (int) => {
+        const [enemy] = await stage(nec);
+        kit.setEnemy(enemy.id, { stats: { ...foe(enemy).stats, type: "undead", abilities: { ...foe(enemy).stats.abilities, int, cha: 10 } } });
+        const out = await spend(nec, "Command Undead", { targetEnemyId: enemy.id }, [1, 1]);
+        assert.equal(out.ok, true, out.error);
+        assert.ok(conds(enemy).includes("charmed"), "the undead was to fail and be commanded");
+        return enemy;
+      };
+      const bright = await commanded(12);
+      const early = await pass(50, "minutes", [20, 20]);
+      assert.deepEqual([d20s(early), conds(bright).includes("charmed")], [0, true], "[d20s rolled, still commanded] after fifty minutes: no hour has ended");
+      const hour = await pass(10, "minutes", [2, 3]);
+      assert.deepEqual([d20s(hour), conds(bright).includes("charmed")], [2, true], "[d20s rolled, still commanded] as the first hour ends on a 2 and a 3");
+      assert.match(JSON.stringify(hour.result.hourlySaves ?? null), new RegExp(`CHA save against Command Undead at the end of the hour \\(3 vs DC ${spellDc("wizard", 20)}\\) and fails`));
+      // Three hours more: it fails the first, makes the second on a 19, and
+      // the third hour rolls nothing for a creature already free.
+      const three = await pass(3, "hours", [2, 3, 2, 19, 20, 20]);
+      assert.deepEqual([d20s(three), three.unused, conds(bright).includes("charmed")], [4, 2, false], `[d20s rolled, faces left, still commanded] over three hours: ${JSON.stringify(three.result.hourlySaves ?? null)}`);
+      assert.match(JSON.stringify(three.result.hourlySaves), /breaks free: it no longer obeys Necromancy 20/);
+      const after = await pass(2, "hours", [20, 20]);
+      assert.equal(d20s(after), 0, "a freed creature saves no more");
+      // Intelligence 11: commanded for good, however long.
+      const dull = await commanded(11);
+      const day = await pass(30, "hours", [20, 20]);
+      assert.deepEqual([d20s(day), conds(dull).includes("charmed"), day.result.hourlySaves ?? null], [0, true, null], "[d20s rolled, still commanded, lines] for an undead of Intelligence 11 over thirty hours");
+      await kit.endFight();
+    },
   };
   const KNOWN = {};
   void [MOD, prof, spellDc, world, kit];

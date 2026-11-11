@@ -395,6 +395,11 @@ export type SpendDoes =
       // side while the condition lasts, and the holder's next use lets the
       // last creature go (src/lib/dm/command-undead.ts).
       commands?: boolean;
+      // A creature that failed, with this ability at `atLeast` or more,
+      // repeats the save at the end of every hour and breaks free on a
+      // success (Command Undead: Intelligence 12; rolled as the clock moves,
+      // src/lib/dm/ar-ws-command-hours.ts).
+      hourlySaveAt?: { ability: Ability; atLeast: number };
       // A second condition laid with it, ending with it (Hypnotic Gaze:
       // incapacitated beside charmed); both end on any damage, or once the
       // holder is more than `leashFeet` away (src/lib/dm/condition-leash.ts).

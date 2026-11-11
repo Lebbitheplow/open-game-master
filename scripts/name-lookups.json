@@ -20,6 +20,8 @@
     "lib/dm/ar-ws-inured.ts#keyed": [["key", 4, "a sheet's conditionMeta by the condition key it was written under"]],
     "lib/dm/ar-ws-thralls.ts#whole": [["identity", 2, "the spell a row names against the spell cast, and a spell's school against the row's, by whole name (textKey on both sides)"]],
     "lib/dm/ar-ws-thralls.ts#helper": [["key", 1, "a summoned form's creature type (SRD vocabulary, whole words), as Mighty Summoner reads it"]],
+    "lib/dm/ar-ws-command-hours.ts#whole": [["identity", 1, "the spend a commanding charm names on its holder's rows, by whole name (textKey on both sides)"]],
+    "lib/dm/ar-ws-command-hours.ts#keyed": [["key", 1, "a creature's conditionMeta by the condition key it was written under, and its ability scores by the engine's ability ids"]],
     "lib/dm/master-of-hexes.ts#partial": [["key", 3, "the engine's own marker condition, whose name carries the hit points it gave (\"hexblade's curse healed (N)\"), and that number read back"]],
     "lib/dm/spell-damage-logic.ts#partial": [["key", 1, "the turn's own mark keys (wizard-spell-damage:<id>), never a name"]],
     "lib/dm/pc-damage.ts#keyed": [["identity", 1, "a feat by its whole name, a damage type of the engine's words (textKey on both sides)"]],

@@ -118,6 +118,10 @@ export type ConditionMeta = {
   // read at its turn's end for a regurgitation; and the feet of movement out
   // of its corpse.
   swallow?: { turns?: Record<string, number>; escapeFeet?: number };
+  // The clock instant (in-world minutes) the running hour of a commanding
+  // charm began at: Command Undead's hourly save
+  // (src/lib/dm/ar-ws-command-hours.ts).
+  hourFrom?: number;
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry

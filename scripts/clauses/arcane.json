@@ -703,9 +703,9 @@
    },
    {
     "c": "An undead with an Intelligence of 12 or higher that failed repeats the save at the end of every hour, breaking free on a success.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's onFail leaves the hourly save to the GM (\"which the GM rolls when an hour passes\"); pass_time was not walked an hour with a commanded undead"
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-command-hours.ts commandedHourlySaves (save_effect hourlySaveAt int 12), called by src/lib/db/clock.ts advanceClock for every passing of time. Ruling: the repeat is the same save (Charisma against the spell save DC, with the advantage Intelligence 8 gave the first); the hours are the campaign clock's, a fight's rounds are not counted",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: command-undead-hourly"
    }
   ]
  },

@@ -60,4 +60,30 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "School of Necromancy",
     effects: [{ kind: "max_hp_fixed" }],
   },
+  // "An undead with an Intelligence of 12 or higher that failed repeats the
+  // save at the end of every hour, breaking free on a success": the server
+  // rolls it as the clock moves (src/lib/dm/ar-ws-command-hours.ts). The
+  // earlier row, restated here whole, left that save to the GM.
+  "wizard::Command Undead": {
+    subclass: "School of Necromancy",
+    spends: [
+      {
+        name: "Command Undead",
+        action: "action",
+        does: {
+          kind: "save_effect",
+          save: "cha",
+          dcAbility: "spell",
+          condition: "charmed",
+          rangeFt: 60,
+          sight: true,
+          types: ["undead"],
+          advantageAt: { ability: "int", atLeast: 8 },
+          commands: true,
+          hourlySaveAt: { ability: "int", atLeast: 12 },
+          onFail: "obeys the wizard until they use this again (one of Intelligence 12 or more repeats the save at the end of every hour, rolled by the server as time passes, and breaks free on a success)",
+        },
+      },
+    ],
+  },
 };
