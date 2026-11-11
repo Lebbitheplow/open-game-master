@@ -7,6 +7,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { cardArtwork } from "@/lib/battlemap/card-art";
 import type { HandCard, HandCardType, HandCost } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
+import { spellGlyphLabel, spellGlyphSrc, targetLines, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 
 // One card of the Hand and the outcome preview that floats over it. Styles
 // are in src/app/styles/hand.css; the tilt, the sheen and the art parallax
@@ -45,12 +46,40 @@ const COST_SHORT: Record<HandCost, string> = {
   lair: "Lair",
 };
 
+// What the glyph and the words beside it say, for a screen reader: the card
+// is one button whose label is all it hears.
+function spellAside(card: HandCard): string {
+  const parts = [card.glyph ? spellGlyphLabel(card.glyph) : "", card.targetWords ?? ""].filter(Boolean);
+  return parts.length ? `, ${parts.join(", ")}` : "";
+}
+
 export function typeLabel(type: HandCardType): string {
   return TYPE_LABEL[type];
 }
 
 export function typeTone(type: HandCardType): string {
   return TYPE_TONE[type];
+}
+
+// A spell's glyph at the well's left, where a fanned card still shows it,
+// and the words for what it takes in the room beside it, as large as that
+// room allows (hand.css sizes them from the longest line and the line count).
+function SpellGlyphArt({ glyph, words }: { glyph: SpellGlyph; words?: string }) {
+  const lines = targetLines(words ?? "");
+  const longest = Math.max(0, ...lines.map((line) => line.length));
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="hand-glyph hand-art-icon" src={spellGlyphSrc(glyph)} alt="" draggable={false} />
+      {lines.length ? (
+        <span className="hand-target" style={{ "--target-chars": longest, "--target-lines": lines.length } as CSSProperties}>
+          {lines.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 export function HandPreviewRows({ rows }: { rows: PreviewRow[] }) {
@@ -155,7 +184,7 @@ function HandCardFaceInner({
       // hover, which is how it says why it cannot be played.
       aria-disabled={card.disabled ? "true" : undefined}
       aria-pressed={card.type === "rider" ? attached : undefined}
-      aria-label={`${card.name}, ${COST_SHORT[card.cost]}${card.disabled ? `. ${card.disabled}` : ""}`}
+      aria-label={`${card.name}, ${COST_SHORT[card.cost]}${spellAside(card)}${card.disabled ? `. ${card.disabled}` : ""}`}
       onClick={() => onPick(card)}
     >
       <span className="hand-card-frame" />
@@ -173,12 +202,16 @@ function HandCardFaceInner({
           </span>
           {fresh ? <span className="hand-group-new">New</span> : <span className="hand-range">{card.range}</span>}
         </span>
-        <span className="hand-art">
-          <GameIcon
-            icon={artwork}
-            size={artwork.kind === "action" ? "h-full w-full p-0.5" : "size-[52px] max-sm:size-9"}
-            className="hand-art-icon"
-          />
+        <span className="hand-art" data-glyph={card.glyph ? (card.targetWords ? "words" : "alone") : undefined}>
+          {card.glyph ? (
+            <SpellGlyphArt glyph={card.glyph} words={card.targetWords} />
+          ) : (
+            <GameIcon
+              icon={artwork}
+              size={artwork.kind === "action" ? "h-full w-full p-0.5" : "size-[52px] max-sm:size-9"}
+              className="hand-art-icon"
+            />
+          )}
         </span>
         <span className="hand-name">{card.name}</span>
         <span className="hand-numbers">

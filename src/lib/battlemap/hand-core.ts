@@ -13,6 +13,7 @@ import {
 import { canAct, type ActKind, type ActingEncounter } from "@/lib/dm/can-act";
 import type { OrderEntry } from "@/lib/db/encounters";
 import type { IconRef } from "@/lib/icons";
+import type { SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { combatRiders } from "@/lib/srd/feature-effects";
@@ -115,6 +116,11 @@ export type HandCard = {
   // The condition applied, or "Concentration".
   condition: string;
   icon: IconRef;
+  // A spell card's glyph and the words beside it (issue 845,
+  // spell-glyph-logic.ts): what the spell mainly does, and the area or the
+  // creatures it takes. The card face draws these in place of the icon.
+  glyph?: SpellGlyph;
+  targetWords?: string;
   target: HandTarget;
   toHit: number | null;
   // Dice the attack roll adds beside its bonus ("+1d4" while blessed), and

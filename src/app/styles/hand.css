@@ -210,6 +210,61 @@
   transform: translate(calc((50% - var(--mx, 50%)) * 0.3), calc((50% - var(--my, 50%)) * 0.22));
   transition: transform 200ms var(--ease-settle);
 }
+/* A spell's glyph (issue 845): at the well's left, the part of a card a fan
+   still shows, and the words for what it takes centred in the room beside
+   it. The well is a size container, so the glyph and the words are sized
+   from the well each card size and layout gives it (the fan, the phone,
+   the staged board's three sizes, the stage row's narrow column): the
+   glyph as tall as the well allows, the words as large as their longest
+   line and line count let them, between a readable 9px and 22px. */
+.hand-art[data-glyph] {
+  --glyph-size: min(calc(100cqh - 6px), calc(100cqw - 6px), 56px);
+  container-type: size;
+  /* In proportion to the well, so the smallest staged card keeps room. */
+  gap: 3%;
+  padding: 0 4%;
+}
+.hand-art[data-glyph="words"] { justify-content: flex-start; }
+.hand-glyph {
+  flex: none;
+  width: var(--glyph-size);
+  height: var(--glyph-size);
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(4, 2, 12, 0.55));
+  user-select: none;
+}
+.hand-target {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  /* The interface face, whose 1 is a one: the display face's reads as I. */
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+  /* It runs about 0.46em a character at this weight (measured on the
+     cards), 0.5 to keep a margin. */
+  font-size: clamp(
+    9px,
+    min(calc((100cqh - 10px) / (var(--target-lines) * 1.08)), calc((100cqw - var(--glyph-size) - 6px) / (var(--target-chars) * 0.5))),
+    22px
+  );
+  line-height: 1.04;
+  color: var(--hand-gold);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.hand-target > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* The stage row's 28px column has no room beside the glyph: the range on
+   the card's top line and its details say it there. */
+@container (max-width: 56px) {
+  .hand-target { display: none; }
+  .hand-glyph { margin-inline: auto; }
+}
+.hand-art[data-glyph] .hand-glyph:only-child { margin-inline: auto; }
 
 .hand-name {
   display: block;

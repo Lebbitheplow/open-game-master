@@ -53,3 +53,9 @@ export function cardArtwork(icon: IconRef, genre?: string | null): IconRef {
   if (icon.kind === "action") return icon;
   return isPainted(iconPath("action", baseKey)) ? { kind: "action", key: baseKey, family: icon.family } : icon;
 }
+
+// A Hand card's picture in a list row (the More sheet): a spell's glyph
+// (issue 845, spell-glyph-logic.ts), else the card's own artwork.
+export function handCardArtwork(card: { icon: IconRef; glyph?: string }, genre?: string | null): IconRef {
+  return card.glyph ? { kind: "glyph", key: `spell-${card.glyph}` } : cardArtwork(card.icon, genre);
+}

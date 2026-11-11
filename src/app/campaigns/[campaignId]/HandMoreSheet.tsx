@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
-import { cardArtwork } from "@/lib/battlemap/card-art";
+import { handCardArtwork } from "@/lib/battlemap/card-art";
 import { Sheet } from "@/components/ui/Sheet";
 import { cn } from "@/lib/cn";
 import type { HandCard } from "@/lib/battlemap/hand";
@@ -199,7 +199,7 @@ function MoreRow({
   conditions: string[];
   onPick: (card: HandCard) => void;
 }) {
-  const artwork = cardArtwork(card.icon, genre);
+  const artwork = handCardArtwork(card, genre);
   const rows = previewRows(card, card.intent.card === "reaction" ? null : aim, conditions);
   const facts = [card.dice, card.roll, card.range].filter(Boolean).join(" · ");
   return (

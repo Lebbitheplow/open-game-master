@@ -41,6 +41,7 @@ import { mechSpellDamage } from "@/lib/srd/spell-dice";
 import { bakedSpellDuration, bakedSpellMech } from "@/lib/content/baked-spells";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { areaFor, blastAreaFor } from "@/lib/battlemap/hand-area";
+import { spellGlyph, spellTargetWords, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import { summonPick } from "@/lib/battlemap/hand-summon";
 import {
   SAVE_LABEL,
@@ -150,6 +151,13 @@ const CURSE_LABELS: Record<string, string> = {
   will: "Its will",
   necrotic: "Necrotic wounds",
 };
+
+// A published spell's glyph by its name, for the cards built without a
+// fact (a reaction spell, an attack a spell grants): the engine's own row,
+// or the one baked from the SRD for a server with no pack.
+export function namedSpellGlyph(name: string): SpellGlyph {
+  return spellGlyph({ name, mech: spellMechFor([name]) ?? bakedSpellMech(name) });
+}
 
 // The one pick a spell's row asks the caster to make, as the engine names it
 // (src/lib/srd/spell-mech-types.ts): a condition's variants (Blindness/
@@ -467,6 +475,9 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     ...(stored ? { fromItem: stored.fromItem } : {}),
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
+    // What the spell mainly does, drawn in the card's art well (issue 845).
+    // A ring's card wears it too: it is the spell.
+    glyph: spellGlyph({ name, runsAs: fact.runsAs, ownBlock: Boolean(fact.mech), mech, published: fact.runsAs ? spellMechFor([fact.runsAs]) ?? bakedSpellMech(fact.runsAs) : null }),
     target,
     // Revivify and the rest return the dead: their card is aimed at them.
     ...(takesTheDead({ revives: mech.revive }) ? { takesTheDead: true } : {}),
@@ -534,6 +545,9 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // is asked in the Hand, not left to the model (issue 570).
   const shared = plain || area ? null : spellShares(mech, fact.level, slotLevel ?? null, sheet.level);
   if (shared) card.shares = shared;
+  // Whom or what this casting takes, beside the card's glyph (issue 845).
+  const words = spellTargetWords(card);
+  if (words) card.targetWords = words;
   // No components, no slot and no room in the turn's spell rule: the ring asks
   // what use_item asks (src/lib/dm/spell-storing.ts).
   // An item with no numbers of its own casts with its user's, and a fighter has
