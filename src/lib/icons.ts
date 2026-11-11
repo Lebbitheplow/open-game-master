@@ -48,6 +48,24 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // sibling Unleash Incarnation's painting, a sword and its spectral double:
   // the catalogue's own prompt for it read only the duration.
   "feature/manifest-echo": { kind: "feature", slug: "unleash-incarnation" },
+  // The wave-2 cards with no painting of their own yet wear the closest kin's
+  // (the catalogue's prompts for most of them carry the name alone): a burst
+  // of speed, the mind's hand, the rage that grows the claws, a spirit asked,
+  // a healing hand, a ki strike, a step through space, a bolt of light, and
+  // wild magic's luck.
+  "feature/feline-agility": { kind: "action", slug: "dash" },
+  "feature/telekinetic-movement": { kind: "feature", slug: "telekinetic-adept" },
+  "feature/guarded-mind": { kind: "feature", slug: "stillness-of-mind" },
+  "feature/form-of-the-beast": { kind: "feature", slug: "rage" },
+  "feature/question-a-spirit": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/flurry-of-healing": { kind: "feature", slug: "hand-of-healing" },
+  "feature/deft-strike": { kind: "feature", slug: "ki-empowered-strikes" },
+  "feature/psychic-teleportation": { kind: "feature", slug: "misty-wanderer" },
+  "feature/wild-surge-teleport": { kind: "feature", slug: "misty-escape" },
+  "feature/wild-surge-spirit": { kind: "feature", slug: "summon-wildfire-spirit" },
+  "feature/wild-surge-bolt": { kind: "spell", slug: "guiding-bolt" },
+  "feature/controlled-surge": { kind: "feature", slug: "bend-luck" },
+  "feature/unstable-backlash": { kind: "feature", slug: "tides-of-chaos" },
   // The pick-lists issue #833 added wear the paintings of what they choose
   // for, not new art: a dragon for the sorcerer's ancestor, the ranger's and
   // the wizard's own features, the druid's circle.
