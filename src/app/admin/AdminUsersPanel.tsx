@@ -119,7 +119,16 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
         disabled: busy,
         onSelect: () => void toggleAdmin(user),
       },
-      { id: "reset", label: "Reset password", glyph: "ui-key", disabled: busy, onSelect: () => void resetPassword(user) },
+      {
+        id: "reset",
+        label: "Reset password",
+        glyph: "ui-key",
+        // A reset signs its account out everywhere, so an admin who reset
+        // their own would lose the page before reading the new password
+        // (#909). Their own password is changed in Settings.
+        disabled: busy || user.id === meId,
+        onSelect: () => void resetPassword(user),
+      },
       ...(user.deletionDueAt
         ? [{ id: "keep", label: "Call off the scheduled deletion", glyph: "ui-restore", disabled: busy, onSelect: () => void keepAccount(user) }]
         : []),
@@ -214,15 +223,17 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    title="Reset password"
-                    disabled={busyId === user.id}
-                    onClick={() => resetPassword(user)}
-                    className={ui.btnSmall}
-                  >
-                    {busyId === user.id ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} Reset
-                  </button>
+                  {user.id === meId ? null : (
+                    <button
+                      type="button"
+                      title="Reset password"
+                      disabled={busyId === user.id}
+                      onClick={() => resetPassword(user)}
+                      className={ui.btnSmall}
+                    >
+                      {busyId === user.id ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} Reset
+                    </button>
+                  )}
                   <KebabMenu items={menu} label={`More actions for ${user.username}`} heading={user.username} />
                 </div>
               </ContextMenu>
