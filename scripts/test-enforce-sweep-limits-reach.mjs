@@ -38,6 +38,13 @@ const TRIGGER_ON_TRUST = {
 const KNOWN = {
   "trigger:cleric/Order Domain/Voice of Authority": TRIGGER_ON_TRUST,
   "trigger:fighter/Cavalier/Hold the Line": TRIGGER_ON_TRUST,
+  // Staged since wave 2 (the tentacle's area laid at the holder's square): the
+  // engine refuses with nothing spent, and the Hand still deals the card.
+  "reach:warlock/The Fathomless/Guardian Coil[tentacle of the deep]": {
+    severity: "low",
+    where: "src/lib/battlemap/hand-react.ts (inReach reads distances from the holder; the view gives it none from the holder's own area on the board)",
+    note: "Guardian Coil reaches a creature within 10 feet of the tentacle (src/lib/dm/zone-reach.ts feetFromOwnZone, which the engine reads). The Hand's reaction card is dealt for an ally farther from it; pressing it is refused with nothing spent. The Hand needs the feet from the holder's area in the player's map view (a payload field, so a server feature flag) to withhold the card.",
+  },
 };
 // rowId -> why the generator cannot stage this row.
 const SKIP = {
@@ -49,10 +56,13 @@ const world = await openWorld({ campaign: { maxPlayers: 400 } });
 const table = await limitsTable(world);
 const { kit } = table;
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
+const { placeSpellZone } = await import("../src/lib/dm/zone-cast.ts");
 const TEXT = authoredText();
 
 const reachOf = (does, level = 20) => {
-  const range = does.rangeFt;
+  // Measured from the holder, or from the holder's own area on the board
+  // (nearZone: Guardian Coil reaches a creature within 10 feet of the tentacle).
+  const range = does.rangeFt ?? does.nearZone?.feet;
   if (Array.isArray(range)) {
     return range.filter(([from]) => from <= level).at(-1)?.[1] ?? null;
   }
@@ -130,6 +140,10 @@ for (const item of reactions.filter((entry) => coversAlly(entry.reaction.does) &
       kit.place(friend.id, 1 + apart, 2);
       kit.place(enemy.id, 2 + apart, 2);
       armFor(enemy, item.reaction.does);
+      // The holder's area stands where they do, so its reach is the row's.
+      if (item.reaction.does.nearZone) {
+        placeSpellZone(world.campaign(), { spell: item.reaction.does.nearZone.spell, caster: { kind: "pc", id: who.id, name: world.sheet(who.id).name }, at: { x: 1, y: 2 } });
+      }
       await table.strike(enemy, friend, faces);
       return enemy;
     };

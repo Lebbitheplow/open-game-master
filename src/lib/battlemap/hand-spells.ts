@@ -63,6 +63,7 @@ import { spellDamageRiders, type SpellDamageRiders } from "@/lib/srd/spell-damag
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { StoredSpell } from "@/lib/srd/spell-storing";
 import { compareNames, textKey } from "@/lib/language/text-logic";
+import { featureSpellReachFeet } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { forPlayers } from "@/lib/language/player-text";
 
 // ---- spells ----
@@ -415,12 +416,15 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // A feature that moves the spell to the bonus action shows it there.
   const shownCost: HandCost = stored?.free ? "free" : !stored && !("error" in charge) && charge.kind === "budget" && charge.cost === "bonus action" ? "bonus" : cost;
   const fromRing = stored ? { item: stored.ring } : {};
+  const featureReach = featureSpellReachFeet(sheet, { name, runsAs: fact.runsAs });
   const card: HandCard = {
     id: stored?.item?.id ?? (stored ? `spell:ring:${textKey(stored.ring)}:${textKey(name)}` : `spell:${textKey(name)}`),
     type,
     name: stored?.item?.name ?? (stored ? ringCardName(name) : name),
     cost: shownCost,
-    range: feet(fact.range),
+    // The reach a feature gives this caster's casting (a Spirits bard's
+    // Guidance at 60 feet) is the one cast-reach.ts measures.
+    range: feet(featureReach ? `${featureReach} feet` : fact.range),
     dice,
     roll,
     rules: notes.slice(0, 2).join(" "),
