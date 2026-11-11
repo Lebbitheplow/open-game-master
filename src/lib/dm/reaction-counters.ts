@@ -45,7 +45,6 @@ import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
 import { planSpellThief } from "@/lib/dm/spell-thief";
-import { FLASH_OF_GENIUS_ID, planFlashOfGenius } from "@/lib/dm/flash-of-genius";
 import { MAGIC_USERS_NEMESIS_ID, planMagicUsersNemesis } from "@/lib/dm/magic-users-nemesis";
 import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
 import { payTheWord } from "@/lib/dm/ar-ws-word";
@@ -125,19 +124,17 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
   const ask = def ? { campaignId: campaign.id, reactor: sheet, name: def.displayName, counterId: input.defId, targetEnemyId: input.targetEnemyId, label: answerKey(input.defId, sheet.id) } : null;
   // Its effect is the counter's own, applied by use_resource. The trigger is
   // not marked answered: the spent reaction, or the turn's cost, shuts its card.
-  // Flash of Genius also answers a roll out of a fight, where no record is
-  // kept: there the use is the plain spend it was, for the GM to narrate.
-  const unrecorded = input.defId === FLASH_OF_GENIUS_ID && !getActiveEncounter(campaign.id);
-  if (ask && triggerSpecOf(ask) && !unrecorded) {
+  // Magic-User's Nemesis answers a casting before the spell resolves, which
+  // leaves no record yet, or a teleport on record (magic-users-nemesis.ts).
+  if (ask && input.defId === MAGIC_USERS_NEMESIS_ID) {
+    return planMagicUsersNemesis(input, ask);
+  }
+  if (ask && triggerSpecOf(ask)) {
     const unanswered = triggerRefusal(ask);
     if (unanswered) return unanswered;
     // Spell Thief's effect is the save it forces and the spell undone
     // (src/lib/dm/spell-thief.ts).
     if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
-    // Magic-User's Nemesis makes the caster save or lose the spell (magic-users-nemesis.ts).
-    if (input.defId === MAGIC_USERS_NEMESIS_ID) return planMagicUsersNemesis(campaign, input.turnId, sheet, ask);
-    // Flash of Genius adds to the failed save on record (flash-of-genius.ts).
-    if (input.defId === FLASH_OF_GENIUS_ID) return planFlashOfGenius(input, ask);
     // Restore Balance, Violent Attraction and Accursed Specter act on the
     // record they answer (arcane-triggered.ts); the other triggered
     // counters' effect is their own fx.

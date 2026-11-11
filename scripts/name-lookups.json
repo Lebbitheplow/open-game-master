@@ -9,6 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/casting-answered.ts#partial": [["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/dm/casting-answered.ts#whole": [["identity", 1, "an innate spell by whole name"]],
     "lib/srd/authored-effects-more.ts#bypass": [["identity", 1, "a carried line's own name, textKey'd, against the focus a feature names (Alchemical Savant's alchemist's supplies): the line itself, by its whole name"]],
     "lib/srd/authored-feature-defs.ts#whole": [["key", 1, "two entries of ODM's own table under the same match terms (textKey'd already), merged into one"]],
     "lib/dm/defender-dodge.ts#whole": [["identity", 2, "the Steel Defender by its summon form and its own command label: textKey on both sides (engine vocabulary)"]],
@@ -29,8 +31,6 @@
     "lib/dm/summon-reactions.ts#partial": [["key", 1, "the running turn's weapon-hit marks by their prefix (WEAPON_HIT and the enemy id, attack-swing.ts)"]],
     "lib/dm/thunderbolt-strike.ts#whole": [["identity", 1, "a damage type of the blow by its whole name (textKey on both sides), and the feature by holdsFeature"]],
     "lib/dm/reaction-kinds.ts#whole": [["identity", 1, "a one-attack edge mark on the sheet by its whole key (textKey of the stored condition against the mark's own key)"]],
-    "lib/dm/magic-users-nemesis.ts#whole": [["identity", 1, "the castings of one spell this turn, by the spell's whole name (textKey on both sides)"]],
-    "lib/dm/magic-users-nemesis.ts#keyed": [["key", 1, "a sheet's conditionMeta by the condition key it was written under"]],
     "lib/dm/pet-command.ts#whole": [["identity", 6, "a pet of the owner's record by its whole name or form (textKey on both sides), a feature by isNamed, and the record's own condition labels"]],
     "lib/dm/pet-command.ts#partial": [["key", 1, "a Bond of Fang and Scale feature already carrying its essence choice, \"Bond of Fang and Scale (Fire)\" (the builder's pick form)"]],
     "lib/dm/pet-command.ts#whole-single": [["key", 1, "the pet record the change is for, by its stored name"]],
@@ -1896,8 +1896,8 @@
     "lib/dm/reaction-refund.ts#keyed": [["key",4,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/reaction-refund.ts#whole": [["identity",1,"condition instances by whole name or key"],["identity",1,"a name by whole name"],["key",1,"the sheet fields an audit patch wrote (patchKeys) against the fields the gap replay carries"]],
     "lib/dm/reaction-spells.ts#first": [["key",1,"Counterspell's ability by class id"]],
-    "lib/dm/reaction-spells.ts#partial": [["key",1,"damage types"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "lib/dm/reaction-spells.ts#whole": [["identity",1,"a reaction spell by its whole name"],["key",1,"damage types"],["identity",1,"an innate spell by whole name"]],
+    "lib/dm/reaction-spells.ts#partial": [["key", 1, "damage types"], ["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/dm/reaction-spells.ts#whole": [["identity", 1, "a reaction spell by its whole name"], ["key", 1, "damage types"]],
     "lib/dm/reaction-tools.ts#whole": [["key",1,"answered reaction labels"]],
     "lib/dm/readied-kinds.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/readied-spell.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],

@@ -29,6 +29,7 @@ import {
   type BattleMap,
 } from "@/lib/db/battle-maps";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
+import { recordTeleport } from "@/lib/dm/last-save";
 import { publishFx } from "@/lib/dm/fx";
 import { buildingSkin, drawBuilding, holdsBuilding, type BuildingPlan } from "@/lib/battlemap/building";
 import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
@@ -393,6 +394,10 @@ export function handleTeleportToken(
   }
   const from = { x: token.x, y: token.y };
   placeToken(token.id, args.x, args.y);
+  // On record for what answers a teleport (last-save.ts recordTeleport).
+  if (token.refId) {
+    recordTeleport(campaign.id, { id: token.refId, name: token.name }, from, token.kind === "enemy");
+  }
   publishBattleMapUpdate(campaign.id);
   publishFx(campaign.id, planTeleportFx({ from, to: { x: args.x, y: args.y }, tokenId: token.id }));
   return {

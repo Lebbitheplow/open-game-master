@@ -33,6 +33,7 @@ export const TRIGGERS = [
   "the foe forced a save the holder made",
   "the foe tried to charm the holder",
   "the foe cast a spell at the holder",
+  "a foe teleported",
   "the foe's spell hurt the holder through a save",
   "a hit with advantage on the holder",
   "the ally hit a foe",
@@ -391,6 +392,13 @@ async function step(rig, scene, name, notes) {
       return forced([19], { dc: 5, condition: "frightened" });
     case "the foe tried to charm the holder":
       return forced([1], { dc: 25, condition: "charmed" });
+    case "a foe teleported": {
+      // A teleport on its stat block, made on its own turn (Magic-User's Nemesis).
+      kit.setEnemy(scene.near.id, { stats: { spells: ["Misty Step"] } });
+      rig.foesTurn(scene);
+      const at = kit.token(scene.near.id);
+      return world.invoke("move_token", { token: scene.near.id, x: at.x + 2, y: at.y + 2, teleport: true, spell: "Misty Step" });
+    }
     case "the foe cast a spell at the holder":
     case "the foe's spell hurt the holder through a save":
       // A spell on its stat block, so the cast is its own.

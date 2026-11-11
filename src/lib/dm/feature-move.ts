@@ -16,6 +16,7 @@ import { blocksMove, tileAt, tileIndex, TILE_FEET } from "@/lib/battlemap/types"
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { publishFx } from "@/lib/dm/fx";
+import { recordTeleport } from "@/lib/dm/last-save";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
@@ -69,6 +70,9 @@ export function planFeatureMove(
       const from = { x: token.x, y: token.y };
       if (input.teleport) {
         placeToken(token.id, input.square.x, input.square.y);
+        if (token.refId) {
+          recordTeleport(campaign.id, { id: token.refId, name: token.name }, from, token.kind === "enemy");
+        }
         publishFx(campaign.id, planTeleportFx({ from, to: input.square, tokenId: token.id }));
       } else {
         // Carried, not walked: the turn's movement is not spent.

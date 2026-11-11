@@ -47,7 +47,8 @@ export type TriggerKind =
   | "surge"
   | "wind_step"
   | "rage_entered"
-  | "heal_roll";
+  | "heal_roll"
+  | "teleport";
 
 // One trigger. `characterId` is the character it befell (who saved, whose pet
 // was hurt, who surged); `forcer` the creature that did it (forced the save,
@@ -266,7 +267,9 @@ export function markSaveTurned(campaignId: string, id: string) {
 //                     `fromFeet` (map-tools.ts move_token, recordMovesNear)
 //   heal_roll         `forcer` rolled a spell's healing dice for `characterId`
 //                     (heal-spell.ts; ar-ws-empowered-healing.ts)
-export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near" | "heal_roll";
+//   teleport          `forcer` teleported from `square` (map-tools.ts
+//                     handleTeleportToken, feature-move.ts): an enemy, with `enemy`
+export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near" | "heal_roll" | "teleport";
 export function recordTrigger(
   campaignId: string,
   record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "square" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet" | "rollId" | "hpBefore">>,
@@ -284,6 +287,14 @@ export function recordCast(campaignId: string, caster: Ref, spell: string, level
   for (const id of targets) {
     recordTrigger(campaignId, { kind: "cast", characterId: id, forcer: caster, spell, level, targets, enemy: false });
   }
+}
+
+// A creature's teleport, with the square it left: what answers a teleport
+// (Magic-User's Nemesis) puts it back there. Every door a token teleports
+// through writes it (map-tools.ts handleTeleportToken, feature-move.ts).
+// Written only in a fight, as every record is.
+export function recordTeleport(campaignId: string, mover: Ref, from: { x: number; y: number }, enemy: boolean) {
+  recordTrigger(campaignId, { kind: "teleport", forcer: mover, square: from, enemy });
 }
 
 // A roll a Bardic Inspiration die made succeed (forced-save.ts settleHeldDie,

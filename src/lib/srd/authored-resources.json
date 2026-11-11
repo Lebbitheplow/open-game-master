@@ -1486,7 +1486,7 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction forcing a creature that casts a spell within 60 feet to make a Wisdom save against the ranger's spell save DC or lose the spell. Spend it right after the creature's spell (targetEnemyId for the caster when several cast): the server rolls the save and, on a failure, undoes the spell on every character it was cast at (its damage comes back, its conditions end). With no casting on record it is refused. A creature's teleport keeps no record: rule that one at the table."
+   "guidance": "A reaction forcing a creature that casts a spell within 60 feet to make a Wisdom save against the ranger's spell save DC or lose the spell. Against a spell, spend it BEFORE resolving the creature's spell, as Counterspell is called (targetEnemyId for the caster, variant for the spell it is casting): the server rolls the save and, on a failure, the slot and the action are spent and the cast is refused. Against a teleport, spend it right after the creature teleports (no variant): on a failure the creature is back where it stood. With neither it is refused."
   },
   {
    "id": "sub_ethereal_step",
@@ -1977,8 +1977,8 @@
    "uses": 1,
    "ability": "int",
    "recharge": "long",
-   "action": "reaction",
-   "guidance": "A reaction adding the artificer's Intelligence modifier to an ability check or saving throw by them or a creature they can see within 30 feet. A player's own check or save waits on a card that offers this, so do not spend it for them there. Use it here for a saving throw a creature forced that has just failed and could not wait (targetCharacterId for an ally's): the server adds the modifier to that roll and, when it reaches the DC, gives back what the failure cost. With no failed save on record it is refused."
+   "guidance": "A reaction adding the artificer's Intelligence modifier to an ability check or saving throw by them or a creature they can see within 30 feet, before the roll's outcome lands. The server offers it itself: a player's check or save, a save a creature forces on them included, waits on a card the artificer's player answers, and a roll that cannot wait (a companion's, a creature's spell on a seat an agent plays) stops first for an artificer watching the fight. Never spend it here: a bare spend is refused.",
+   "passive": true
   },
   {
    "id": "art_right_tool",

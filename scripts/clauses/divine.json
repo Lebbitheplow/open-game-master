@@ -4622,10 +4622,22 @@
   "sha": "b01e02bee243",
   "clauses": [
    {
-    "c": "A reaction forces a caster or teleporter within 60 feet to make a Wisdom save or lose the spell",
+    "c": "A reaction forces a caster",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Magic-User's Nemesis#save-or-lose",
-    "by": "src/lib/dm/magic-users-nemesis.ts planMagicUsersNemesis (through reaction-counters.ts planCounterReaction and the cast row of src/lib/srd/trigger-table.ts): the use answers a creature's casting on record within 60 feet, rolls its Wisdom save against the ranger's spell save DC and on a failure undoes the spell on every character it was cast at; refused with no casting on record. A creature's teleport keeps no record and is ruled at the table (the counter's guidance says so)"
+    "by": "src/lib/dm/magic-users-nemesis.ts planMagicUsersNemesis (through reaction-counters.ts planCounterReaction) with src/lib/dm/casting-answered.ts checkCasting / wasteCasting, the window Counterspell uses: the use names the creature and the spell it is casting before the spell resolves, rolls its Wisdom save against the ranger's spell save DC and on a failure spends the slot and the action, so the cast that follows is refused"
+   },
+   {
+    "c": "or teleporter",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Magic-User's Nemesis#teleporter",
+    "by": "src/lib/dm/last-save.ts recordTeleport, written by map-tools.ts handleTeleportToken and feature-move.ts (the doors a token teleports through), answered by src/lib/dm/magic-users-nemesis.ts through the teleport row of src/lib/srd/trigger-table.ts: on a failed Wisdom save the creature is put back on the square it left"
+   },
+   {
+    "c": "within 60 feet to make a Wisdom save or lose the spell",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Magic-User's Nemesis#save-or-lose",
+    "by": "src/lib/dm/magic-users-nemesis.ts planMagicUsersNemesis (through reaction-counters.ts planCounterReaction) with src/lib/dm/casting-answered.ts checkCasting / wasteCasting, the window Counterspell uses: the use names the creature and the spell it is casting before the spell resolves, rolls its Wisdom save against the ranger's spell save DC and on a failure spends the slot and the action, so the cast that follows is refused"
    },
    {
     "c": "once per short or long rest",

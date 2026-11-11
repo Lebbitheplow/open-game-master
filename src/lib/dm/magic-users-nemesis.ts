@@ -1,93 +1,106 @@
 // Magic-User's Nemesis (Monster Slayer 11): "A reaction forces a caster or
 // teleporter within 60 feet to make a Wisdom save or lose the spell."
 //
-// The use answers the record of a creature's casting (cast-at-player.ts
-// recordTrigger "cast", the row in src/lib/srd/trigger-table.ts), so with no
-// spell on record it is refused and nothing is spent. A creature's spell has
-// landed by the time a reaction can answer it (the engine resolves it where
-// it is cast), so "lose the spell" is the spell undone on every character it
-// was cast at: the damage it dealt through its save handed back and the
-// conditions it laid taken off (undoSpellOn, which Spell Thief shares). Before
-// this the use and the reaction were spent and the spell stood.
+// A reaction that stops an effect acts before the effect lands. The casting
+// half rides the window Counterspell uses (src/lib/dm/casting-answered.ts):
+// the call names the creature and the spell it is casting (targetEnemyId, and
+// the spell in `variant`) before the spell is resolved, the creature makes its
+// Wisdom save against the ranger's spell save DC, and on a failure the spell
+// is wasted as a countered one is: its slot or use and the action it was cast
+// with are spent, and the engine refuses the cast that would have followed.
+// Until round 2 of the wave-2 repair the use answered the cast's record and
+// undid the spell after it had landed.
 //
-// A teleport by a creature keeps no record a reaction can answer, so that
-// half of the sentence is still the GM's to rule at the table.
-// Planned before the use is spent; must not import mutations.ts.
+// A teleport is instant, so it is answered from its record (last-save.ts
+// recordTeleport, written at every door a token teleports through): on a
+// failed save the creature is back on the square it left, and what the
+// teleport cost it stays spent ("its teleport fails and is wasted").
+//
+// With neither a casting named nor a teleport on record the use is refused
+// and nothing is spent. Planned before the use is spent; must not import
+// mutations.ts.
 
 import type { Campaign } from "@/lib/db/campaigns";
+import { getBattleMapForEncounter, getTokenByRef, placeToken } from "@/lib/db/battle-maps";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { publishPersisted } from "@/lib/events";
-import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { getActiveBoard, getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { castingCost, checkCasting, wasteCasting } from "@/lib/dm/casting-answered";
 import { rollEnemySave } from "@/lib/dm/forced-save";
-import { kindOf, openSaves, openTriggers, type LastSave } from "@/lib/dm/last-save";
+import { openTriggers } from "@/lib/dm/last-save";
+import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { openTriggersFor, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import { computeSheetDerived } from "@/lib/srd";
-import { isConditionNamed } from "@/lib/srd/feature-names";
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { textKey } from "@/lib/language/text-logic";
 
 export const MAGIC_USERS_NEMESIS_ID = "sub_magic_users_nemesis";
 const NAME = "Magic-User's Nemesis";
 
-export type SpellUndone = { name: string; dealt: number; hp: number; laid: string[] };
+type Plan = { apply: () => Record<string, unknown> };
+type Input = { campaign: Campaign; turnId: string; sheet: CharacterSheet; targetEnemyId?: string; variant?: string };
 
-// A creature's spell undone on one character it was cast at this turn: the
-// damage it dealt through its save comes back (the save record it rode,
-// last-save.ts noteSaveDamage) and the conditions its caster laid go. What
-// goes through here: every reaction that makes a spell already resolved have
-// no effect (Spell Thief on the rogue alone, Magic-User's Nemesis on all).
-export function undoSpellOn(campaign: Campaign, targetId: string, casterId: string): SpellUndone | null {
-  const now = getSheetById(targetId);
-  if (!now) {
-    return null;
-  }
-  const dealt = openSaves(campaign.id).filter((record) => record.characterId === targetId && record.forcer.id === casterId && record.damage).at(-1)?.damage?.amount ?? 0;
-  const meta = (now.conditionMeta ?? {}) as ConditionMetaMap;
-  const laid = now.conditions.filter((name) => meta[name]?.source === casterId);
-  const hp = Math.min(effectiveMaxHp(now), now.currentHp + dealt);
-  const woke = now.currentHp <= 0 && hp > 0;
-  const cleared = removeConditions(now.conditions, now.conditionMeta, [...laid, ...(woke ? now.conditions.filter((name) => isConditionNamed(name, UNCONSCIOUS)) : [])]);
-  const updated = patchSheet(targetId, { currentHp: hp, conditions: cleared.conditions, conditionMeta: cleared.meta, ...(woke ? { deathSaves: null } : {}) });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-  }
-  return { name: now.name, dealt, hp, laid };
+function wisdomSave(input: Input, creature: EncounterEnemy) {
+  const derived = computeSheetDerived(input.sheet);
+  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
+  const save = rollEnemySave(input.campaign.id, creature, "wis", dc, { magical: true, record: { turn: getDmTurn(input.turnId) ?? undefined, detail: `${creature.displayName}: WIS save against ${input.sheet.name}'s ${NAME}` } });
+  return { failed: !save.success, line: `${creature.displayName} Wisdom save ${save.total ?? "failed"} against DC ${dc}: ${save.success ? "made" : "failed"}.` };
 }
 
-type Plan = { apply: () => Record<string, unknown> };
-
-export function planMagicUsersNemesis(campaign: Campaign, turnId: string, ranger: CharacterSheet, ask: TriggerAsk): Plan | ToolError {
+// The teleport on record this use answers: the latest by a creature within 60
+// feet (the one the call names, when it names one), with the square it left.
+function teleportAnswered(input: Input, ask: TriggerAsk): { creature: EncounterEnemy; from: { x: number; y: number } } | null {
   const spec = triggerSpecFor(ask.name, { counterId: ask.counterId });
   const event = spec ? openTriggersFor(ask, spec).at(-1) : undefined;
-  const caster: EncounterEnemy | null = event?.creatureId ? getEnemy(event.creatureId) : null;
-  // The castings of that creature this turn: one record for each character
-  // its spell was cast at.
-  const casts: LastSave[] = caster ? openTriggers(campaign.id).filter((record) => kindOf(record) === "cast" && record.forcer.id === caster.id && Boolean(record.characterId)) : [];
-  const spell = casts.at(-1)?.spell ?? "the spell";
-  if (!caster || caster.status !== "alive" || !casts.length) {
-    return { error: `${NAME} answers a creature casting a spell within 60 feet of ${ranger.name}, and the server has none on record this turn. Nothing was spent.`, refused: "rules" };
+  const creature = event?.creatureId ? getEnemy(event.creatureId) : null;
+  const from = event ? openTriggers(input.campaign.id).find((record) => record.id === event.id)?.square : undefined;
+  return creature && creature.status === "alive" && from ? { creature, from } : null;
+}
+
+export function planMagicUsersNemesis(input: Input, ask: TriggerAsk): Plan | ToolError {
+  const { campaign, sheet: ranger } = input;
+  const spell = (input.variant ?? "").trim();
+  // A call that names a spell answers a casting; one that names none answers
+  // the teleport on record, when there is one.
+  const jump = spell ? null : teleportAnswered(input, ask);
+  if (jump) {
+    return {
+      apply: () => {
+        const save = wisdomSave(input, jump.creature);
+        if (!save.failed) {
+          return { save: `${save.line} Its teleport stands.` };
+        }
+        const board = getActiveBoard(campaign.id);
+        const map = board ? getBattleMapForEncounter(board.id) : null;
+        const token = map ? getTokenByRef(map.id, jump.creature.id) : null;
+        if (token) {
+          placeToken(token.id, jump.from.x, jump.from.y);
+          publishBattleMapUpdate(campaign.id);
+        }
+        return { save: save.line, applied: `${jump.creature.displayName}'s teleport fails and is wasted: it is back at (${jump.from.x},${jump.from.y}), and what the teleport cost it stays spent.` };
+      },
+    };
+  }
+  if (!spell && !input.targetEnemyId?.trim()) {
+    return {
+      error: `${NAME} answers a creature casting a spell within 60 feet of ${ranger.name}, before the spell is resolved (targetEnemyId, and the spell it is casting in variant), or a creature that has just teleported there, and the server has neither. Nothing was spent.`,
+      refused: "rules",
+    };
+  }
+  const casting = checkCasting({ encounter: getActiveEncounter(campaign.id), sheet: ranger, targetEnemyId: input.targetEnemyId, spell }, NAME, "variant");
+  if ("error" in casting) {
+    return casting;
   }
   return {
     apply: () => {
-      const derived = computeSheetDerived(ranger);
-      const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
-      const save = rollEnemySave(campaign.id, caster, "wis", dc, { magical: true, record: { turn: getDmTurn(turnId) ?? undefined, detail: `${caster.displayName}: WIS save against ${ranger.name}'s ${NAME}` } });
-      if (save.success) {
-        return { save: `${caster.displayName} Wisdom save ${save.total} against DC ${dc}: made. ${spell} takes its course.` };
+      const save = wisdomSave(input, casting.enemy);
+      if (!save.failed) {
+        return { save: save.line, applied: `${casting.enemy.displayName}'s ${casting.spell} goes ahead; resolve it as it is cast.` };
       }
-      const targets = [...new Set(casts.filter((record) => textKey(record.spell ?? "") === textKey(casts.at(-1)?.spell ?? "")).map((record) => record.characterId))];
-      const undone = targets.map((id) => undoSpellOn(campaign, id, caster.id)).filter((entry): entry is SpellUndone => entry !== null);
+      wasteCasting(campaign.id, casting);
       return {
-        save: `${caster.displayName} Wisdom save ${save.total ?? "failed"} against DC ${dc}: failed.`,
-        applied: [
-          `${spell} fails and is wasted.`,
-          ...undone.map((entry) => `It has no effect on ${entry.name}${entry.dealt ? `: ${entry.dealt} damage comes back (HP ${entry.hp})` : ""}${entry.laid.length ? `${entry.dealt ? ", and" : ":"} ${entry.laid.join(", ")} end${entry.laid.length === 1 ? "s" : ""}` : ""}.`),
-        ],
+        save: save.line,
+        applied: `${casting.enemy.displayName}'s ${casting.spell} fails and is wasted: the ${casting.level ? `level-${casting.level} slot` : "casting"} and ${castingCost(casting)} are spent, and the server will refuse the cast. Do not resolve the spell.`,
       };
     },
   };

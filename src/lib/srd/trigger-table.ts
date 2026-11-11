@@ -35,6 +35,7 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //                Bardic Inspiration die of `creatureId`, its bard
 //   moved_near   `creatureId` moved to within `feet` of `characterId`, from `fromFeet`
 //   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
+//   teleport     `creatureId` teleported (an enemy, with `enemy`)
 export type TriggerEventKind =
   | "hit"
   | "miss"
@@ -52,7 +53,8 @@ export type TriggerEventKind =
   | "echo_destroyed"
   | "inspired_success"
   | "moved_near"
-  | "heal_roll";
+  | "heal_roll"
+  | "teleport";
 
 export type TriggerEvent = {
   id: string;
@@ -161,9 +163,8 @@ export type TriggerOn =
   // mark; `against`: a save against that condition.
   // `failed`: only one they failed (Unstable Backlash).
   | { kind: "save_on_self"; prey?: string; against?: string; failed?: boolean }
-  // A save a creature forced that the holder, or a creature within the reach,
-  // failed (Flash of Genius).
-  | { kind: "save_failed_near"; rangeFt: number }
+  // A creature teleported and stands within the reach (Magic-User's Nemesis).
+  | { kind: "teleport"; rangeFt: number }
   // A creature died: within the reach, of these types, slain by the holder, or the one under the mark.
   | { kind: "death"; rangeFt?: number; types?: string[]; byHolder?: boolean; marked?: string }
   // A creature (an enemy, with `enemy`) ended its turn within the reach.
@@ -219,7 +220,10 @@ const WRITTEN: Record<string, TriggerSpec> = {
   sub_cosmic_omen: { on: [{ kind: "roll_near", rangeFt: 30 }], what: "an attack roll or a saving throw made within 30 feet of them" },
   sub_restore_balance: { on: [{ kind: "roll_near", rangeFt: 60, edge: true }], what: "a roll made with advantage or disadvantage within 60 feet of them" },
   sub_violent_attraction: { on: [{ kind: "hit_seen", rangeFt: 60 }], what: "a weapon attack that hit, made by a creature within 60 feet of them" },
-  sub_magic_users_nemesis: { on: [{ kind: "cast", rangeFt: 60 }], what: "a creature casting a spell within 60 feet of them" , aimsAt: true },
+  // The casting half rides the window Counterspell uses, before the spell
+  // resolves (magic-users-nemesis.ts, casting-answered.ts): only a teleport is
+  // on record.
+  sub_magic_users_nemesis: { on: [{ kind: "teleport", rangeFt: 60 }], what: "a creature teleporting within 60 feet of them" , aimsAt: true },
   sub_spell_thief: { on: [{ kind: "cast", atHolder: true }], what: "a spell a creature has just cast at them" , aimsAt: true },
   hurl_through_hell: { on: [{ kind: "own_hit" }], what: "a creature they have hit with an attack this turn" , aimsAt: true },
   // Arcane Shot is no row here: its spend asks for the arrow itself (a bow's
@@ -233,7 +237,6 @@ const WRITTEN: Record<string, TriggerSpec> = {
     what: "a death save of theirs that has just succeeded, or a creature they have just stabilized with spare the dying",
   },
   sub_reclaim_potential: { on: [{ kind: "own_echo_destroyed" }], what: "their echo, just destroyed by damage" },
-  art_flash_of_genius: { on: [{ kind: "save_failed_near", rangeFt: 30 }], what: "a saving throw they or a creature within 30 feet of them has just failed" },
   sub_infectious_inspiration: { on: [{ kind: "inspired_success", rangeFt: 60 }], what: "a roll a creature within 60 feet of them has just made succeed with their Bardic Inspiration die" },
   // Authored reactions (src/lib/srd/authored-effects-data*.ts), taken with use_reaction.
   "perfected armor": { on: [{ kind: "turn_end", rangeFt: 30 }], what: "a creature ending its turn within 30 feet of them" , aimsAt: true },
@@ -330,8 +333,8 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
       return event.kind === "wind_step" && self(event.characterId);
     case "save_on_self":
       return event.kind === "save" && self(event.characterId) && Boolean(event.creatureId) && (!on.failed || event.success === false) && (!on.prey || event.creatureId === ctx.quarry(on.prey)) && (!on.against || textKey(event.against ?? "") === textKey(on.against));
-    case "save_failed_near":
-      return event.kind === "save" && event.success === false && Boolean(event.creatureId) && reach(event.characterId, on.rangeFt);
+    case "teleport":
+      return event.kind === "teleport" && event.enemy === true && reach(event.creatureId, on.rangeFt);
     case "death":
       return (
         event.kind === "death" &&
