@@ -38,13 +38,6 @@ const TRIGGER_ON_TRUST = {
 const KNOWN = {
   "trigger:cleric/Order Domain/Voice of Authority": TRIGGER_ON_TRUST,
   "trigger:fighter/Cavalier/Hold the Line": TRIGGER_ON_TRUST,
-  // Staged since wave 2 (the tentacle's area laid at the holder's square): the
-  // engine refuses with nothing spent, and the Hand still deals the card.
-  "reach:warlock/The Fathomless/Guardian Coil[tentacle of the deep]": {
-    severity: "low",
-    where: "src/lib/battlemap/hand-react.ts (inReach reads distances from the holder; the view gives it none from the holder's own area on the board)",
-    note: "Guardian Coil reaches a creature within 10 feet of the tentacle (src/lib/dm/zone-reach.ts feetFromOwnZone, which the engine reads). The Hand's reaction card is dealt for an ally farther from it; pressing it is refused with nothing spent. The Hand needs the feet from the holder's area in the player's map view (a payload field, so a server feature flag) to withhold the card.",
-  },
 };
 // rowId -> why the generator cannot stage this row.
 const SKIP = {

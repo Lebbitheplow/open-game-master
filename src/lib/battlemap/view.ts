@@ -12,6 +12,7 @@ import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { ownZoneFeet } from "@/lib/dm/zone-reach";
 import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
@@ -646,7 +647,9 @@ export function buildPlayerMapView(
             return Boolean(other && unseenByConditions(encounter.id, sheet, other, { hidden: false }));
           };
           return {
-            feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
+            // With them, the feet from an area the character keeps on the
+            // board to each creature and to themselves (zone-reach.ts).
+            feet: { ...Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])), ...ownZoneFeet(encounter, sheet, [sheet.id, ...others.map((token) => token.refId)]) },
             unseen: others
               .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
               .filter((token) => blocked(token) || !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))

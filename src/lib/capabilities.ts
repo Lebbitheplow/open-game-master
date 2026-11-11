@@ -264,6 +264,12 @@ export const SERVER_FEATURES = {
   // class. An older host drops the fields unread (the class falls back to
   // the wizard's list), so the editor offers none of them there.
   customSpellLists: true,
+  // The player's map view carries, in `feet`, how far each creature stands
+  // from an area the viewer's character keeps on the board
+  // (src/lib/battlemap/zone-feet.ts): the Hand withholds Guardian Coil's
+  // card beyond the tentacle's 10 feet. An older host sends none and the
+  // card is dealt as before, the engine judging the reach.
+  ownZoneFeet: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
