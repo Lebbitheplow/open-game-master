@@ -180,11 +180,30 @@ const ASK_TAG =
 const ASK_INDIRECT =
   /^[\p{L}'’-]+\s+(?:[\p{L}]+ly\s+)?(?:ask|asks|asked|inquire|inquires|wonder|wonders)\b(?:\s+(?!(?:to|for)\b)[\p{L}'’-]+){0,3}?\s+(?:what|whether|if|how|why|where|who|whom|when|which|about)\b(?![^]*\b(?:and|then|but)\b)[^]*$/iu;
 
+// One word of whom or what is listened to: never a joining word, which
+// starts a second act ("I listen to her, and then bribe him"), nor "me" or
+// "us" ("You listen to me" is an order, and one meant to sway).
+const HEARD_WORD = String.raw`(?!(?:and|then|but|or|me|us)\b)\p{L}[\p{L}'-]*`;
+// The ways a table writes listening: "I listen to her story", "I hear him
+// out", "I let her finish", "I keep quiet", "I motion for him to go on".
+// The first reader knew only "listen" with "to him", "to her" or "to
+// them", and "I listen to the captain" or "I hear him out" still rolled
+// Persuasion toward the one talking (issue #896).
+const HEARING_VERB = String.raw`(?:(?:listen|listens|listened)(?:\s+(?:closely|carefully|quietly|intently|along))?(?:\s+to\s+(?:what\s+(?:he|she|they|you|it)\s+(?:has|have|had)\s+to\s+say|(?:the|his|her|their|this|that|my|our)\s+${HEARD_WORD}(?:\s+${HEARD_WORD})?|${HEARD_WORD}))?(?:\s+(?:closely|carefully|quietly|intently))?|(?:hear|hears|heard)\s+${HEARD_WORD}\s+out|(?:let|lets)\s+${HEARD_WORD}\s+(?:talk|speak|finish|continue|explain|go\s+on)|(?:keep|keeps|kept|stay|stays|stayed|remain|remains|remained|fall|falls|fell)\s+(?:quiet|silent)|(?:say|says|said)\s+nothing|(?:nod|nods|nodded)\s+along|(?:wait|waits|waited)\s+for\s+${HEARD_WORD}\s+to\s+(?:finish|continue|go\s+on|speak|talk)|(?:gesture|gestures|gestured|motion|motions|motioned|wave|waves|waved|nod|nods|nodded)\s+for\s+${HEARD_WORD}\s+to\s+(?:continue|go\s+on|keep\s+talking|speak|talk|explain))`;
 // The English words a character settles in to hear someone out with, or
 // says they speak with: "I sit and say", "Kara leans back and listens", "I
-// tell Borin". Said alone they ask nothing and try nothing.
-const SETTLE_VERB = String.raw`(?:\p{L}+ly\s+)?(?:(?:sit|sits|sat)(?:\s+(?:down|back))?|(?:lean|leans|leaned)\s+(?:back|in|forward)|(?:nod|nods|nodded)|(?:settle|settles|settled)(?:\s+(?:in|back))?|(?:smile|smiles|smiled)|(?:listen|listens|listened)(?:\s+(?:closely|carefully|quietly|intently))?(?:\s+to\s+(?:him|her|them))?|say|says|said|reply|replies|replied|answer|answers|answered|(?:tell|tells|told)\s+[\p{L}'-]+)`;
-const SETTLE = String.raw`[\p{L}'-]+\s+${SETTLE_VERB}(?:\s*,?\s+(?:and\s+then|and|then)\s+${SETTLE_VERB})*`;
+// tell Borin", "I lean in to listen". Said alone they ask nothing and try
+// nothing.
+const SETTLE_VERB = String.raw`(?:(?:\p{L}+ly|just|simply|only)\s+)?(?:${HEARING_VERB}|(?:(?:sit|sits|sat)(?:\s+(?:down|back))?|(?:lean|leans|leaned)\s+(?:back|in|forward)|(?:settle|settles|settled)(?:\s+(?:in|back))?)(?:\s+\p{L}+ly)?(?:\s+to\s+(?:listen|hear\s+${HEARD_WORD}\s+out))?|(?:nod|nods|nodded)|(?:smile|smiles|smiled)|say|says|said|reply|replies|replied|answer|answers|answered|(?:tell|tells|told)\s+[\p{L}'-]+)`;
+// The one settling in is the speaker or their character, never "you":
+// "You sit down and listen" tells someone else what to do.
+const SETTLE = String.raw`(?!you\b)[\p{L}'-]+\s+${SETTLE_VERB}(?:\s*,?\s+(?:and\s+then|and|then)\s+${SETTLE_VERB})*`;
+const HEARING = new RegExp(`\\b${HEARING_VERB}`, "iu");
+// A word that only answers before the rest ("Alright, go on", "Sure, I'm
+// listening"), or a whole sentence of one ("Okay. Go on.").
+const INTERJECTION = String.raw`(?:okay|ok|alright|all\s+right|sure|fine|very\s+well|well|yes|aye|right|hmm+|mm+)`;
+const LEADING_INTERJECTION = new RegExp(`^${INTERJECTION}\\s*,?\\s+(?=\\S)`, "iu");
+const ONLY_INTERJECTION = new RegExp(`^${INTERJECTION}[\\s,.!…]*$`, "iu");
 // Words that only invite the other to go on talking: "I'm all ears", "Go
 // on", "Tell me more", with a name or "please" beside them. "Go on, give me
 // the key" and "I'm all ears, but you pay first" say more, and are not this.
@@ -226,19 +245,23 @@ function sentenceKinds(text: string, english: boolean, hearing: boolean): Senten
     }
     // Speech marks, double or single, are only where the words were said:
     // 'I sit and say, "I'm all ears."' reads as I sit and say, I'm all ears.
-    const plain = part
+    const quoted = part
       .replace(/[’‘]/g, "'")
       .replace(/["“”]/g, " ")
       .replace(/(^|\s)'|'(?=[\s,.!…]|$)/g, "$1 ")
       .replace(/\s+/g, " ")
       .trim();
+    if (ONLY_INTERJECTION.test(quoted)) {
+      return "settle";
+    }
+    const plain = quoted.replace(LEADING_INTERJECTION, "");
     const heard = HEARS.exec(plain);
     if (heard) {
       const called = (heard.groups?.called ?? "").split(",").map((word) => word.trim()).filter(Boolean);
       return called.every((word) => CALLED.test(word)) ? "listen" : null;
     }
     if (SETTLES.test(plain)) {
-      return /\blisten/i.test(plain) ? "listen" : "settle";
+      return HEARING.test(plain) ? "listen" : "settle";
     }
     return null;
   });

@@ -108,6 +108,29 @@ for (const text of [
   'I nod. "Tell me more."',
   "Kara settles in and listens closely.",
   "I'm listening. What happened to the travelers?",
+  // The ways a table writes it beyond "I listen to him".
+  "I listen to her story.",
+  "I sit quietly and listen to what she has to say.",
+  "Kara listens to Borin.",
+  "I sit down and listen to the old man.",
+  "I listen carefully to the captain.",
+  "I just listen.",
+  "I hear him out.",
+  "I'll hear you out.",
+  "I let him talk.",
+  "I let her finish.",
+  "I keep quiet and listen.",
+  "I stay quiet and let him speak.",
+  "I say nothing and listen.",
+  "I wait for him to finish.",
+  "I nod along.",
+  "I lean in to listen.",
+  "I motion for him to go on.",
+  "I gesture for her to continue.",
+  "Alright, go on.",
+  "Sure, go ahead.",
+  "Okay, I'm listening.",
+  "Okay. Go on.",
 ]) {
   assert.equal(onlyAsksOrListens(text), true, text);
   assert.equal(onlyAsked([{ content: text, card: null }], true), true, text);
@@ -124,6 +147,23 @@ for (const text of [
   "I lean in and say, \"Fifty is an insult. Make it a hundred.\"",
   "I'm all ears. Now lower the price.",
   "Go on, and lower the price.",
+  // Listening and then pressing, or listening as an order, is an attempt.
+  "I listen to her story and then tell her she's lying.",
+  "I listen, then offer him ten gold.",
+  "I tell him to listen to me.",
+  "Listen, we can pay you double.",
+  "Listen to me, Borin. You owe us.",
+  "You listen to me.",
+  "You sit down and listen.",
+  "I hear him out, then threaten him.",
+  "I let him talk, then call him a liar.",
+  "I'm listening, but make it quick or we walk.",
+  "Listen here, you little rat.",
+  "I listen to her, and convince her to come with us.",
+  "I listen to the guard and then bribe him.",
+  "Keep talking and I'll cut your tongue out.",
+  "Okay. Fifty, and not a copper more.",
+  "Sure.",
 ]) {
   assert.equal(onlyAsksOrListens(text), false, text);
 }
