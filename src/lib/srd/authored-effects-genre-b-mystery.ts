@@ -93,6 +93,12 @@ export const GENRE_B_MYSTERY_AUTHORED: GenreRow[] = [
   },
 
   // ---- alienist ----
+  // "During a short rest, one creature you counsel regains an extra hit die of
+  // HP and ends one fear or charm effect"; Depth Analysis: "two creatures per
+  // rest and also removes one level of exhaustion". The short rest applies
+  // both as it ends.
+  row("Talking Cure", ["alienist"], { heldBy: { file: "src/lib/dm/rest-tools.ts", call: "talkingCure(" } }),
+  row("Depth Analysis", ["alienist"], { heldBy: { file: "src/lib/dm/genre-b-mystery-rest.ts", call: "Depth Analysis" } }),
   // "1/long rest, a willing or restrained creature answers three questions
   // truthfully under trance (WIS save resists if unwilling)."
   spend("Hypnotic Induction", ["alienist"], "mystery_hypnotic_induction", undefined, mystery("hypnotic", "enemy")),

@@ -7,7 +7,7 @@
 import { helpReachTiles } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { sizeForRace } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
@@ -17,6 +17,7 @@ import { grappleHandsProblem } from "@/lib/dm/cast-rules";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { hideRefusal } from "@/lib/dm/hide-traits";
+import { spendVanish, VANISH } from "@/lib/srd/genre-b-mystery";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -70,7 +71,18 @@ export function hide(
   if (seen) {
     return seen;
   }
+  // Vanish let a watched grifter hide: that Hide costs a use, which the
+  // bonus-action route has charged or this does (src/lib/srd/genre-b-mystery.ts).
+  const vanished = hideRefusal(campaign, encounter.id, sheet, { plain: true }) !== null;
+  const vanishUsed = sheet.resources?.[VANISH]?.used ?? 0;
   spend();
+  if (vanished) {
+    const paid = spendVanish((getSheetById(sheet.id) ?? sheet).resources, vanishUsed);
+    if (paid) {
+      patchSheet(sheet.id, { resources: paid });
+    }
+    costs.vanish = "Vanish: hidden in plain sight, for one of its uses.";
+  }
   // A Stealth check like any other (src/lib/dm/contest-roll.ts): noisy
   // armor, Reliable Talent, a held inspiration die, Guidance.
   const stealth = rollCharacterCheck(campaign, sheet, { skill: "stealth" }, `${sheet.name}: Stealth to hide`);

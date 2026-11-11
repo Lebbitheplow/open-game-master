@@ -355,7 +355,67 @@ await run("Ferrywoman's Due: an undead that fails its CHA save is laid to rest a
   assert.equal(free.ok, false, "a character under no possession was released");
 });
 
+// ---- the grifter ----
+
+await run("Vanish: a grifter watched in the open hides all the same, for a use each time, and is refused once the uses are gone; without the feature the watcher's clear view refuses the Hide", async () => {
+  const row = feature("grifter", "Vanish", 18);
+  const hero = rig.holder(row);
+  await rig.fight(hero);
+  const hideAs = async (bonus) => {
+    rig.myTurn(hero);
+    world.patch(hero.id, { conditions: [], conditionMeta: {} });
+    clearDice();
+    dice(19);
+    const out = await world.invoke("take_action", { characterId: hero.id, action: "hide", ...(bonus ? { bonus: true } : {}), reason: "test" });
+    clearDice();
+    return out;
+  };
+  rig.must(await hideAs(true), "a bonus-action Hide in plain sight");
+  assert.equal(used(hero, "mystery_vanish"), 1, "the Hide in plain sight spent no use, or two");
+  rig.must(await hideAs(false), "a Hide in plain sight with the action");
+  assert.equal(used(hero, "mystery_vanish"), 2, "a Hide in plain sight with the action spent no use");
+  rig.must(await hideAs(true), "the third Hide in plain sight");
+  assert.equal(used(hero, "mystery_vanish"), 3);
+  const spent = await hideAs(false);
+  assert.equal(spent.ok, false, "a grifter with no Vanish left hid in plain sight");
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, mystery_vanish: { max: 3, used: 0 } } });
+  const off = await rig.without(hero, row, () => hideAs(false));
+  assert.equal(off.ok, false, "without Vanish the watched grifter hid in plain sight");
+});
+
 // ---- the alienist ----
+
+await run("Talking Cure: a short rest gives the alienist's most troubled companion an extra hit die of hit points and ends their fear; Depth Analysis counsels two and takes a level of exhaustion off each", async () => {
+  const row = feature("alienist", "Talking Cure", 1);
+  const hero = rig.holder(row);
+  const rest = async () => {
+    world.patch(ally.id, { currentHp: 40, conditions: ["frightened"], conditionMeta: { frightened: { rounds: 9000 } } });
+    clearDice();
+    dice(6, 6, 6, 6);
+    rig.must(await world.invoke("take_rest", { kind: "short" }), "take_rest short");
+    clearDice();
+    return { hp: hp(ally), afraid: world.sheet(ally.id).conditions.includes("frightened") };
+  };
+  const { on, off } = await rig.both(hero, row, rest);
+  // A fighter's d10 on a 6, with CON 16 (+3).
+  assert.equal(on.hp - off.hp, 9, `the counselled ally ended the rest at ${on.hp}, and at ${off.hp} with no alienist's cure`);
+  assert.equal(on.afraid, false, "the counselled ally is still frightened");
+  assert.equal(off.afraid, true, "the staged fear ends with any short rest");
+  rig.reset();
+
+  const deep = rig.holder(feature("alienist", "Depth Analysis", 11));
+  const second = world.addHero({ user: world.addUser("second"), name: "Second", class: "fighter", level: 5, abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, maxHp: 100, portrait: { url: "/uploads/test.png" } });
+  for (const who of [ally, second]) world.patch(who.id, { currentHp: 40, exhaustion: 2 });
+  clearDice();
+  dice(6, 6, 6, 6);
+  rig.must(await world.invoke("take_rest", { kind: "short" }), "take_rest short");
+  clearDice();
+  for (const who of [ally, second]) {
+    assert.equal(world.sheet(who.id).exhaustion, 1, `${world.sheet(who.id).name} kept both levels of exhaustion`);
+    assert.ok(hp(who) >= 49, `${world.sheet(who.id).name} ended the rest at ${hp(who)}`);
+  }
+  assert.equal(world.sheet(deep.id).exhaustion ?? 0, 0);
+});
 
 await run("Hypnotic Induction: an unrestrained creature in a fight is refused with nothing spent; a restrained one saves (WIS) or answers, and no condition is laid; Master of the Couch takes a hostile creature as it stands", async () => {
   const hero = rig.holder(feature("alienist", "Hypnotic Induction", 6));

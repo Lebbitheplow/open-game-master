@@ -42,6 +42,7 @@ import { authoredRestTempHp } from "@/lib/dm/authored-turns";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { talkingCure } from "@/lib/dm/genre-b-mystery-rest";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
 // rests restore HP, slots, and half the hit dice. Every sheet write is
@@ -440,7 +441,8 @@ export function handleTakeRest(
   // Arcane Recovery / Natural Recovery: a wizard or druid gets slots back on
   // a short rest, once per day, spending the tracked use.
   const recovered = applySlotRecovery(campaign, turnId, sheets, reason);
-  const resilience = authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id));
+  // Talking Cure: an alienist counsels a companion through the rest (genre-b-mystery-rest.ts).
+  const resilience = [...authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, sheets.map((sheet) => sheet.id))];
 
   tableNote(
     campaign,

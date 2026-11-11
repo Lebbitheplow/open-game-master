@@ -519,11 +519,10 @@
   "clauses": [
    {
     "c": "During a short rest, one creature you counsel regains an extra hit die of HP and ends one fear or charm effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Talking Cure#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Talking Cure: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-rest.ts talkingCure, asked by src/lib/dm/rest-tools.ts as a short rest ends (the patient's own hit die + CON regained and not spent, one fear or charm ended)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Talking Cure#0:unhooked; scripts/test-genre-b-mystery-features.mjs Talking Cure: a short rest gives the alienist's most troubled companion an extra hit die of hit points and ends their fear"
    }
   ]
  },
@@ -716,11 +715,10 @@
   "clauses": [
    {
     "c": "Your Talking Cure works on two creatures per rest and also removes one level of exhaustion",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Depth Analysis#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Depth Analysis: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "by": "src/lib/dm/genre-b-mystery-rest.ts talkingCure (two patients, a level of exhaustion off each)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Depth Analysis#0:unhooked; scripts/test-genre-b-mystery-features.mjs Talking Cure: a short rest gives the alienist's most troubled companion an extra hit die of hit points and ends their fear; Depth Analysis counsels two and takes a level of exhaustion off each"
    }
   ]
  },
@@ -1368,8 +1366,7 @@
   "clauses": [
    {
     "c": "Hide as a bonus action even in plain sight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Vanish#0:bonus_route",
+    "is": "held",
     "k": "bonus_route",
     "p": {
      "actions": [
@@ -1377,8 +1374,8 @@
      ],
      "plainSight": true
     },
-    "observed": "hide as a bonus action: Holder cannot hide: Goblin 1 sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.",
-    "where": "src/lib/dm/action-tools.ts take_action hide (a hider in plain sight is refused whatever feature they hold)"
+    "by": "src/lib/srd/genre-b-mystery.ts vanishesInPlainSight, read by src/lib/dm/hide-traits.ts hideRefusal (the engine and the Hand); src/lib/dm/combat-actions.ts hide spends a use for a Hide made in plain sight",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Vanish#0:bonus_route; scripts/test-genre-b-mystery-features.mjs Vanish: a grifter watched in the open hides all the same, for a use each time, and is refused once the uses are gone"
    },
    {
     "c": "3/long rest",
