@@ -67,7 +67,7 @@ const DAMAGE = new Set<string>(DAMAGE_GLYPHS);
 export function glyphFromMech(mech: SpellMech | null | undefined): SpellGlyph | null {
   if (!mech) return null;
   if (mech.damageType) {
-    const type = mech.damageType.toLowerCase();
+    const type = textKey(mech.damageType);
     return PHYSICAL.has(type) ? "physical" : DAMAGE.has(type) ? (type as SpellGlyph) : null;
   }
   if (mech.resolution === "heal" || mech.revive) return "heal";
