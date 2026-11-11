@@ -9,6 +9,7 @@
 // Pure: the sheet, the spell's facts and the turn budget come in as values,
 // so scripts/test-cast-rules.mjs walks every branch without a database.
 
+import { resourceName } from "@/lib/srd/class-resources";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { castsWithHandsFull } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
@@ -185,6 +186,14 @@ export function grantedCastOf(sheet: Caster, spell: string, facts: SpellFacts | 
 // option's misty step, issue #833) is not refused: a slot pays.
 function grantUseProblem(sheet: Caster, grant: GrantedCast, spell: string): ToolError | null {
   const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0 && !grant.slotsToo && grant.cost && grant.counter) {
+    // A cast priced in a shared pool (a monk's ki, mt-mr-casts.ts).
+    const pool = sheet.resources?.[grant.counter];
+    return {
+      error: `${sheet.name} casts ${spell} through ${grant.source} for ${grant.cost} ${resourceName(grant.counter)}, and has ${pool ? pool.max - pool.used : 0} left. It comes back after a ${grant.rest ?? "long"} rest.`,
+      refused: "rules",
+    };
+  }
   if (uses && uses.left <= 0 && !grant.slotsToo) {
     const times = uses.max === 1 ? "once" : `${uses.max} times`;
     return {

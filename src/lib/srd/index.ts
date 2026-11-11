@@ -19,6 +19,7 @@ import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
+import { kiCastAbility } from "@/lib/srd/mt-mr-casts";
 import { featSpellAbility, type FeatSpellSheet } from "@/lib/srd/feat-spells";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
 import type {
@@ -636,7 +637,12 @@ function classListsHold(casting: DerivedSheet["spellcasting"], spell: string): b
 // it (issue #833): the feat's that taught it, else the race's (a tiefling's
 // Charisma, a workshop option's own), or null for the class's.
 function grantedSpellAbility(sheet: DerivedSheet, spell: string): Ability | null {
-  return featSpellAbility(sheet as FeatSpellSheet, spell) ?? racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell));
+  return (
+    featSpellAbility(sheet as FeatSpellSheet, spell) ??
+    racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell)) ??
+    // A monk's ki cast, whose DC is the ki save DC (mt-mr-casts.ts), unless a class of theirs holds the spell.
+    (classListsHold(sheet.spellcasting, spell) ? null : kiCastAbility((sheet as { features?: Array<{ name: string }> }).features, spell))
+  );
 }
 
 export type CastingSheet<T extends DerivedSheet = DerivedSheet> = T & { spellcasting: NonNullable<T["spellcasting"]> };

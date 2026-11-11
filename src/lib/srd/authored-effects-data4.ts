@@ -241,11 +241,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
 
   // ---- monk ----
-  "monk::Shadow Arts": {
-    subclass: "Way of Shadow",
-    narrated:
-      "Spells cast with 2 ki (darkness, darkvision, pass without trace, silence): the cast tools with the ki spent by use_resource. Minor illusion at will: a monk keeps no spell list, so the GM casts it when asked, as for a non-caster's racial cantrip.",
-  },
   "monk::Sun Shield": {
     subclass: "Way of the Sun Soul",
     effects: [{ kind: "retaliate", formula: (_level, mods) => 5 + (mods.wis ?? 0), type: "radiant", melee: true, note: "The bright light it sheds is the GM's to place." }],

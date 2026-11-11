@@ -54,6 +54,45 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
     light(kit, "bright");
   });
 
+  // Shadow Arts: the four spells cast by their own tool for 2 ki each, with
+  // no slot, no spell list and no component pouch; nothing else, and nobody
+  // else.
+  const cast = (who, spell, extra = {}) => world.invoke("use_spell_slot", { characterId: who.id, spell, ...extra });
+  await probe("shadow-arts-ki-casts", async () => {
+    await kit.endFight();
+    r.setUsed(shadow, "ki", 0);
+    world.patch(shadow.id, { conditions: [], conditionMeta: {}, concentratingOn: null });
+    const dark = await cast(shadow, "Darkness");
+    assert.equal(dark.ok, true, dark.error);
+    assert.equal(r.used(shadow, "ki"), 2, "2 ki for darkness");
+    for (const spell of ["Darkvision", "Pass without Trace", "Silence"]) {
+      const out = await cast(shadow, spell);
+      assert.equal(out.ok, true, `${spell}: ${out.error}`);
+    }
+    assert.equal(r.used(shadow, "ki"), 8, "2 ki each");
+    r.setUsed(shadow, "ki", r.max(shadow, "ki") - 1);
+    const dry = await cast(shadow, "Darkness");
+    assert.equal(dry.ok, false, `with 1 ki left: ${show(dry)}`);
+    assert.equal(r.used(shadow, "ki"), r.max(shadow, "ki") - 1, "and the refusal spent no ki");
+    r.setUsed(shadow, "ki", 0);
+    assert.equal((await cast(shadow, "Invisibility")).ok, false, "invisibility is none of the four");
+    const kensei = hero("monk", "Way of the Kensei", 11, BARE);
+    assert.equal((await cast(kensei, "Darkness")).ok, false, "a monk of another way casts no darkness");
+  });
+  await probe("shadow-arts-minor-illusion", async () => {
+    await kit.endFight();
+    r.setUsed(shadow, "ki", 0);
+    // A known cantrip keeps its components ("a bit of fleece"): a pouch.
+    const POUCH = { equipment: [{ name: "Component pouch", qty: 1 }] };
+    world.patch(shadow.id, POUCH);
+    const out = await cast(shadow, "Minor Illusion");
+    world.patch(shadow.id, BARE);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(r.used(shadow, "ki"), 0, "a cantrip: no ki");
+    const kensei = hero("monk", "Way of the Kensei", 11, POUCH);
+    assert.equal((await cast(kensei, "Minor Illusion")).ok, false, "a monk of another way does not know it");
+  });
+
   await probe("cloak-of-shadows", async () => {
     const [enemy] = await stage(shadow);
     light(kit, "bright");
@@ -103,6 +142,61 @@ await test("the Hand reads the light on its square only from a host that offers 
   await probe("elemental-disciplines-known", () => {
     const known = [3, 6, 11, 17].map((level) => options.optionSlotsFor("monk", "Way of the Four Elements", level, "discipline") ?? options.optionSlotsFor("monk", "Way of the Four Elements", level, "elemental discipline"));
     assert.deepEqual(known, [2, 3, 4, 5], `disciplines known at 3, 6, 11, 17: ${JSON.stringify(known)}`);
+  });
+}
+
+// ---- Way of the Four Elements: the disciplines that cast ----
+{
+  const r = await openRig();
+  const { world, kit, hero, stage, foe, show } = r;
+  const fs = await import("node:fs");
+  const options = await import("../src/lib/srd/options.ts");
+  const casts = await import("../src/lib/srd/mt-mr-casts.ts");
+  const listed = JSON.parse(fs.readFileSync(new URL("../src/lib/srd/options.json", import.meta.url), "utf8")).options.filter((option) => option.k === "discipline");
+  const discipline = (name) => ({ name: `Discipline: ${name}`, description: "" });
+  const adept = hero("monk", "Way of the Four Elements", 6, { ...BARE, abilities: { wis: 18 } });
+  world.patch(adept.id, { features: [...world.sheet(adept.id).features, discipline("Clench of the North Wind"), discipline("Fist of Four Thunders")] });
+  const hold = (enemy) => r.forced(2, () => world.invoke("cast_at_enemy", { characterId: adept.id, targetEnemyId: enemy.id, spell: "Hold Person", saveAbility: "wis", level: 2 }));
+
+  // "Spell save DC and attacks use your ki save DC": hold person, cast with
+  // 3 ki and no slot, asks its save against 8 + proficiency + Wisdom.
+  await probe("discipline-ki-save-dc", async () => {
+    const [enemy] = await stage(adept);
+    const out = await hold(enemy);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(r.used(adept, "ki"), 3, "Clench of the North Wind: 3 ki");
+    assert.equal(foe(enemy).conditionMeta.paralyzed?.saveEnds?.dc, 8 + prof(6) + 4, `the ki save DC (Wisdom 18): ${show(out)}`);
+    // The table of casts is the options' own text.
+    for (const option of listed) {
+      const told = /^Spend (\d+) ki to cast (.+?)( on yourself)?\.$/.exec(option.d);
+      const row = casts.DISCIPLINE_CASTS[option.n];
+      if (!told) {
+        assert.equal(row, undefined, `${option.n} casts no spell by its text, and has a row`);
+        continue;
+      }
+      assert.ok(row, `${option.n} ("${option.d}") has no row`);
+      assert.deepEqual([row.cost, row.spell.toLowerCase(), Boolean(row.selfOnly)], [Number(told[1]), told[2], Boolean(told[3])], option.n);
+    }
+  });
+
+  // "Of a level your ki can pay for": a discipline's ki is its price, and its
+  // level opens it; "up to the most powerful ones" at 17th.
+  await probe("discipline-ki-and-level", async () => {
+    const [enemy] = await stage(adept);
+    r.setUsed(adept, "ki", r.max(adept, "ki") - 2);
+    const dry = await hold(enemy);
+    assert.equal(dry.ok, false, `with 2 ki left a 3-ki discipline: ${show(dry)}`);
+    assert.equal(r.used(adept, "ki"), r.max(adept, "ki") - 2, "and the refusal spent no ki");
+    const at = (level) => ({ classLevel: () => level, features: [], cantrips: [] });
+    const gate = (name, level) => options.optionReqProblem(listed.find((option) => option.n === name), at(level));
+    assert.ok(gate("Clench of the North Wind", 5), "a 3-ki discipline was open at 5th level");
+    assert.equal(gate("Clench of the North Wind", 6), null);
+    assert.ok(gate("Flames of the Phoenix", 10), "a 4-ki discipline was open at 10th level");
+    assert.equal(gate("Flames of the Phoenix", 11), null);
+    for (const name of ["Breath of Winter", "Eternal Mountain Defense", "River of Hungry Flame", "Wave of Rolling Earth"]) {
+      assert.ok(gate(name, 16), `${name} was open at 16th level`);
+      assert.equal(gate(name, 17), null, `${name} at 17th level`);
+    }
   });
 }
 

@@ -2141,15 +2141,15 @@
   "clauses": [
    {
     "c": "Spend 2 ki to cast darkness, darkvision, pass without trace or silence",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; narrated (src/lib/srd/authored-effects-data4.ts monk::Shadow Arts: \"Spells cast with 2 ki ... : the cast tools with the ki spent by use_resource.\"): whether cast_spell takes a monk's ki for a spell the monk has no slot for was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCastsHeld (granted-casts.ts grantedCastsOf, cost 2 of the ki counter)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-arts-ki-casts"
    },
    {
     "c": "and you know minor illusion",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; src/lib/srd/authored-effects-data4.ts monk::Shadow Arts: \"a monk keeps no spell list, so the GM casts it when asked\": a cantrip the text gives with no door of its own"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCantripsHeld (granted-casts.ts grantedCastsOf)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-arts-minor-illusion"
    }
   ]
  },
@@ -2227,9 +2227,9 @@
    },
    {
     "c": "spell save DC and attacks use your ki save DC",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no discipline cast was staged to read its DC"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCastAbility (src/lib/srd/index.ts grantedSpellAbility)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-save-dc"
    }
   ]
  },
@@ -2247,9 +2247,9 @@
    },
    {
     "c": "of a level your ki can pay for",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ki cost cap of a discipline's spell level was not staged"
+    "is": "held",
+    "by": "src/lib/srd/granted-casts.ts grantUses (a cast's cost of the ki counter); src/lib/srd/options.ts optionReqProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-and-level"
    }
   ]
  },
@@ -2281,9 +2281,9 @@
    },
    {
     "c": "up to the most powerful ones",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the level gate on each discipline's prerequisite was not read"
+    "is": "held",
+    "by": "src/lib/srd/options.ts optionReqProblem (req \"level 17\")",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-and-level"
    }
   ]
  },

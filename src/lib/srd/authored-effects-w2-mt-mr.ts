@@ -11,6 +11,13 @@ const DRACONIC_CHOICES = ["Acid", "Cold", "Fire", "Lightning", "Poison", "Bludge
 
 export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   // ---- monk ----
+  // "Spend 2 ki to cast darkness, darkvision, pass without trace or silence,
+  // and you know minor illusion": grants the cast guard reads, the ki spent
+  // by the spell's own tool (src/lib/srd/mt-mr-casts.ts).
+  "monk::Shadow Arts": {
+    subclass: "Way of Shadow",
+    heldBy: { file: "src/lib/srd/granted-casts.ts", call: "kiCastsHeld(" },
+  },
   // An action, as the published feature: invisible while the monk's square is
   // dim or dark, until they attack, cast or step into light.
   "monk::Cloak of Shadows": {

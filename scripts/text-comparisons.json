@@ -20,6 +20,7 @@
     "lib/srd/authored-effects-w2-mt-mr.ts#str-list": [["key",1,"Draconic Strike's choices: damage types, the engine's vocabulary"]],
     "lib/dm/mt-mr-offers-logic.ts#str-list": [["key",1,"skill ids (Intimidation, Persuasion), as the roll stores them"]],
     "lib/dm/mt-mr-offers.ts#str-eq": [["key",1,"the psychic blade's name on an attack record, the engine's own word"]],
+    "lib/srd/mt-mr-casts.ts#str-list": [["english-source",1,"reference: the four SRD spells Shadow Arts casts"],["key",1,"a feature's source field (race, background)"]],
     "lib/srd/mt-mr-unarmed.ts#str-list": [["key",1,"Draconic Strike's damage types, the engine's vocabulary"]],
     "lib/srd/mt-mr-kensei.ts#str-list": [["english-source",1,"reference: the four Way of the Kensei features whose training grant picks a kensei weapon"]],
     "lib/dm/mt-mr-spends.ts#str-eq": [["key",1,"a variant word of use_resource (no poison)"],["english-source",1,"reference: the feature name move_token carries for Shadow Step's teleport"]],
