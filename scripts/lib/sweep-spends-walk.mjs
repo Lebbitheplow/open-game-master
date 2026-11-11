@@ -56,7 +56,7 @@ export const TRIGGERS = [
 // read where it was: they are for the uses that answer a kill or a step.
 // "The holder smote a foe" is for what comes right after a Divine Smite
 // (Inspiring Smite), after every staging an earlier spend was read at.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt", "a spell lies on the holder", "the holder holds a spirit tale", "no fight, tools in the holder's hands", "an item attuned to the holder", "no fight, the holder's choices unmade"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder smote a foe", "the ally entered a spectral flame", "the holder sneak attacked a foe", "the ally at 0 died", "the holder hit a foe with a chosen kensei weapon", "the holder struck unarmed, a chosen kensei weapon in hand", "the holder bought a Flurry of Blows", "the holder carries a soul trinket", "the holder sneak attacked a foe with a psychic blade", "the holder ran at a foe and hit it", "the holder frightened", "the holder clawed a foe while raging", "the holder shot a foe with a longbow", "the holder's wild surge is the teleport", "the holder's wild surge is the spirit", "the holder's wild surge is the bolt", "the holder's surge rolled twice", "a spell lies on the holder", "the holder holds a spirit tale", "no fight, tools in the holder's hands", "an item attuned to the holder", "no fight, the holder's choices unmade"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -303,6 +303,14 @@ async function step(rig, scene, name, notes) {
         if (!chosen.ok) return chosen;
       }
       world.clearDice();
+      refresh();
+      return { ok: true };
+    }
+    // A Controlled Chaos surge's two rolls of the wild magic table, kept on
+    // the sheet for the pick (src/lib/dm/ar-ws-wild-surge.ts).
+    case "the holder's surge rolled twice": {
+      const now = world.sheet(holder);
+      world.patch(holder, { conditions: [...now.conditions.filter((entry) => entry !== "controlled chaos"), "controlled chaos"], conditionMeta: { ...now.conditionMeta, "controlled chaos": { faces: [1, 2] } } });
       refresh();
       return { ok: true };
     }
@@ -699,7 +707,13 @@ export function cardIntents(scene, card) {
           ? { targetId: scene.holder.id, targetKind: "self" }
           : {};
   const picks = card.choice?.options?.length ? card.choice.options.slice(0, 3).map((option) => ({ [card.choice.arg]: option.value })) : [{}];
-  return picks.map((pick) => ({ ...card.intent, ...aim, ...pick }));
+  // A card that waits for a second creature (HandShares.min: Infectious
+  // Fury's attack names the creature struck) goes with one, as the Hand
+  // sends it only then (hand-play.ts handReady).
+  const shares = (card.shares?.min ?? 0) > 1 && aim.targetId && scene.far
+    ? { shares: [{ id: aim.targetId, name: aim.targetName, count: 1 }, { id: scene.far.id, name: scene.far.name, count: 1 }] }
+    : {};
+  return picks.map((pick) => ({ ...card.intent, ...aim, ...shares, ...pick }));
 }
 
 // One card played the way the Hand sends it: its own call.

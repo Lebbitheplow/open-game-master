@@ -9,6 +9,7 @@
 //
 // Pure.
 import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
+import { CHAOS_PICK } from "@/lib/srd/ar-ws-wild-surge-table";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 // A spell paid for with sorcery points in place of a slot is the cast guard's
@@ -120,6 +121,15 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // spent it is the surge Tides names: the table is rolled and the use comes
   // back (src/lib/dm/ar-ws-wild-surge.ts; the table is the app's own,
   // src/lib/srd/ar-ws-wild-surge-table.ts).
+  // "Whenever you roll on the Wild Magic Surge table, you can roll twice and
+  // use either number": the surge rolls the table twice for a holder and
+  // leaves both on the sheet (CHAOS_PICK); the sorcerer's own card or call
+  // names the one used (src/lib/dm/ar-ws-wild-surge.ts pickChaos). The earlier
+  // row left the second roll and the pick to the GM.
+  "sorcerer::Controlled Chaos": {
+    subclass: "Wild Magic",
+    spends: [{ name: "Controlled Chaos", action: "none", gate: { condition: CHAOS_PICK, because: "picks between the two wild magic rolls a surge has just made" }, does: { kind: "chaos_pick" } }],
+  },
   "sorcerer::Wild Magic Surge": {
     subclass: "Wild Magic",
     spends: [

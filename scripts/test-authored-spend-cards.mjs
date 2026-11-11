@@ -89,8 +89,10 @@ await test("There is a spend with a counter of its own name to check.", () => {
 });
 
 // Arcane Jolt either burns the creature hit or heals one near it: a card for
-// each, so each posts the target it needs.
-const AIMS = { "Arcane Jolt": 2 };
+// each, so each posts the target it needs. Infectious Fury's damage and its
+// forced attack are a card each too, the attack taking the creature struck as
+// a second pick (hand-subclass.ts forcedVictim).
+const AIMS = { "Arcane Jolt": 2, "Infectious Fury": 2 };
 
 await test("Each such spend is one card (Arcane Jolt one per aim), sent by its name.", () => {
   for (const build of builds) {

@@ -94,6 +94,28 @@ export function probes(rig, shared) {
     const darts = await call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Magic Missile", damageType: "thunder" }, [1, 1, 1]);
     assert.equal(darts.ok, true, darts.error);
     assert.ok(before - hp() > 0, `Magic Missile as thunder: ${show(darts).slice(0, 160)}`);
+    // A spell attack through pc_attack: Acid Arrow's acid as Shatter's
+    // thunder, both of 2nd level in the book. The attack's own type was kept
+    // before, whatever damageType the call sent.
+    withBook([...SCRIBE_BOOK, "Thunderwave", "Acid Arrow", "Shatter"]);
+    kit.freshTurn();
+    kit.setEnemy(enemy.id, { stats: { ...foe(enemy).stats, immune: "acid, fire, force" } });
+    const arrow = (extra) => call("pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Acid Arrow", ...extra }, [19, 2, 2, 2, 2]);
+    before = hp();
+    const acid = await arrow({});
+    assert.equal(acid.ok, true, acid.error);
+    assert.equal(before - hp(), 0, "Acid Arrow's own acid against a creature immune to acid");
+    kit.freshTurn();
+    before = hp();
+    const thunder = await arrow({ damageType: "thunder" });
+    assert.equal(thunder.ok, true, thunder.error);
+    assert.equal(before - hp(), 8, `Acid Arrow as thunder (4d4 of 2 each): ${show(thunder).slice(0, 200)}`);
+    kit.freshTurn();
+    const second = () => sheet(who).spellcasting.slots[2].used;
+    const usedSecond = second();
+    const cold2 = await arrow({ damageType: "cold" });
+    assert.equal(cold2.ok, false, "cold from a 2nd-level slot, with no 2nd-level cold spell in the book");
+    assert.equal(second(), usedSecond, "the refusal spends no slot");
     // A wizard of another school: the type sent is nothing to the server.
     const war = holder("wizard", "War Magic");
     const [other] = await stage(war);

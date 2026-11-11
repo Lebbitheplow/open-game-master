@@ -1289,7 +1289,7 @@
     "c": "When you cast a wizard spell with a slot you can change its damage type to one found in another spell in your book of the slot's level",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: awakened-type",
-    "by": "src/lib/dm/ar-ws-awakened.ts awakenedDamageType, asked by the one cast guard (src/lib/dm/cast-guard.ts castSpell, swapType) for the type cast_at_enemy (damageType) and aoe_damage (type) were given; the tools deal the type it answers (castDamageType). A type no other spell of the slot's level in the book deals is refused with nothing spent."
+    "by": "src/lib/dm/ar-ws-awakened.ts awakenedDamageType, asked by the one cast guard (src/lib/dm/cast-guard.ts castSpell, swapType) for the type cast_at_enemy (damageType), aoe_damage (type) and a pc_attack spell attack (damageType, src/lib/dm/pc-attack-spell.ts) were given; the tools deal the type it answers (castDamageType, and the attack's profile). A type no other spell of the slot's level in the book deals is refused with nothing spent."
    },
    {
     "c": "once per long rest you can cast a ritual spell from the book at its normal casting time rather than adding 10 minutes",
@@ -1462,8 +1462,9 @@
   "clauses": [
    {
     "c": "Roll twice on the wild magic table and pick either result.",
-    "is": "left",
-    "why": "the authored table (src/lib/srd/authored-effects*.ts, sorcerer::Controlled Chaos) writes: \"Rolling the wild magic table twice and choosing is the GM's roll on that narrated table.\""
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: controlled-chaos",
+    "by": "src/lib/dm/ar-ws-wild-surge.ts wildSurge (a holder's surge rolls the table twice and keeps both on the condition controlled chaos) and pickChaos (use_resource Controlled Chaos with the roll as variant applies that entry); the Hand's card picks it (hand-subclass.ts chaos_pick)"
    }
   ]
  },
@@ -1502,7 +1503,7 @@
    {
     "c": "If you replace that spell later, it must become a cleric spell.",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor). Ruling: a cleric spell of any level the sorcerer has slots for",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor), and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). Ruling: a cleric spell of any level the sorcerer has slots for",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-affinity-swap"
    }
   ]
@@ -1537,7 +1538,7 @@
     "c": "Spend 1 sorcery point to reroll healing dice for yourself or an ally, once per turn.",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: empowered-healing-door",
-    "by": "authored spend Empowered Healing (does reroll_heal, 1 sorcery point, no cost of the turn): src/lib/dm/ar-ws-empowered-healing.ts rerollHealing answers the heal_roll trigger record heal-spell.ts writes (last-save.ts, trigger-table.ts: this turn, rolled by the sorcerer or a creature within 5 feet). Rulings: the dice rolled again are those showing half their faces or less, or the lowest N when amount says; the new roll stands, higher or lower; once a turn on the fight turn marks; in a fight only, as every trigger record is"
+    "by": "authored spend Empowered Healing (does reroll_heal, 1 sorcery point, no cost of the turn): src/lib/dm/ar-ws-empowered-healing.ts rerollHealing answers the heal_roll trigger record heal-spell.ts writes (last-save.ts, trigger-table.ts: this turn, rolled by the sorcerer or a creature within 5 feet). Rulings: the dice rolled again are those showing half their faces or less, or the lowest N when amount says; the new roll stands, higher or lower; once a turn on the fight turn marks; out of a fight the last healing roll is kept as the one calm record of its kind (last-save.ts recordCalmTrigger) and rolled again once"
    }
   ]
  },
@@ -1877,7 +1878,7 @@
    {
     "c": "swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts). The text now states the level and the lists",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts), and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). The text now states the level and the lists",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-swap"
    }
   ]
@@ -2020,7 +2021,7 @@
    {
     "c": "swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor. The text now states the level and the lists",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). The text now states the level and the lists",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-swap"
    }
   ]

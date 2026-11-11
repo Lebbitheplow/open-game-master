@@ -35,7 +35,7 @@ import { recordTrigger } from "@/lib/dm/last-save";
 import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
-import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
+import type { Ability, CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -110,6 +110,51 @@ export function endEcho(campaignId: string, sheetId: string, why: string): strin
   }
   if (tokens.length) published(campaignId);
   return sheet && (tokens.length || marks.length) ? `${sheet.name}'s echo is gone: ${why}.` : null;
+}
+
+// One echo destroyed (1 hit point: a hit, or damage an area deals it): the
+// one `pick` names by its token, else the one nearest the creature `pick`
+// names (Shadow Martyr's ally), else the older. With Legion of One the other
+// stays out, and the knight's mark goes only with the last. Every door that
+// destroys an echo goes through here; endEcho is for all of them at once.
+export function destroyEcho(campaignId: string, sheetId: string, pick: { refId?: string; nearRef?: string }, why: string): string | null {
+  const board = boardOf(campaignId);
+  const tokens = board ? echoTokens(board.map.id, sheetId) : [];
+  if (tokens.length <= 1) {
+    return endEcho(campaignId, sheetId, why);
+  }
+  const near = pick.nearRef && board ? getTokenByRef(board.map.id, pick.nearRef) : null;
+  const named = pick.refId ? tokens.find((token) => token.refId === pick.refId) : undefined;
+  const gone = named ?? (near ? [...tokens].sort((a, b) => apart(a, near) - apart(b, near))[0] : tokens[0]);
+  removeTokenByRef(board!.map.id, gone.refId);
+  published(campaignId);
+  const sheet = getSheetById(sheetId);
+  return `${sheet?.name ?? "The knight"}'s echo at (${gone.x},${gone.y}) is destroyed (${why}); the other stays.`;
+}
+
+// An area's save asked of an echo standing in it (aoe-damage.ts, for each echo
+// the blast's squares hold: aoe-shape.ts creaturesInBlast): "If it has to make
+// a saving throw, it uses your saving throw bonus for the roll." With 1 hit
+// point any damage destroys it: a failed save, or a made one that still
+// halves the damage. It is immune to every condition, so an area that only
+// lays one leaves it standing.
+export function echoAreaSave(
+  campaign: Campaign,
+  turn: DmTurn | null,
+  refId: string,
+  input: { ability: Ability; dc: number; damage: number; halfOnSave: boolean; label: string },
+): Record<string, unknown> | null {
+  const owner = echoOwnerOf({ kind: "prop", refId });
+  const sheet = owner ? getSheetById(owner) : null;
+  if (!sheet) {
+    return null;
+  }
+  const mod = computeSheetDerived(sheet).saves[input.ability];
+  const roll = rollCard(campaign, turn, sheet.id, "custom", `${sheet.name}'s echo: ${input.ability.toUpperCase()} save against ${input.label}`, `1d20${mod >= 0 ? "+" : ""}${mod}`, null);
+  const saved = roll.total >= input.dc;
+  const destroyed = input.damage > 0 && (!saved || input.halfOnSave);
+  const line = destroyed ? destroyEcho(campaign.id, sheet.id, { refId }, `${input.label} caught it`) : null;
+  return { target: `${sheet.name}'s echo`, save: roll.total, dc: input.dc, saved, destroyed, ...(line ? { note: line } : {}) };
 }
 
 // The settle points' sweep (rage-bound.ts endRageBound's callers: a turn's

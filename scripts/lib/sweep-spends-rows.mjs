@@ -91,6 +91,8 @@ export async function tableRows(rig) {
       ...(gate.pet === "beast_companion" ? ["the holder's companion summoned"] : gate.pet === "drake" ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" || does?.kind === "wild_magic_surge" ? [`pool down: ${does.pool}`] : []),
       ...(does?.kind === "scribe_scroll" ? ["a spell in the holder's book"] : []),
+      // Controlled Chaos picks between the two rolls a surge left on the sheet.
+      ...(does?.kind === "chaos_pick" ? ["the holder's surge rolled twice"] : []),
       // A choice that changes only on a casting (Transmuter's Stone): the
       // holder's own option chosen again changes nothing and is refused, so
       // the change is opened by the casting its row names.

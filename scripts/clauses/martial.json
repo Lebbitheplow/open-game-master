@@ -3663,7 +3663,7 @@
    {
     "c": "A bonus action makes you spectral for 10 minutes with a 10-foot fly speed and the ability to move through creatures and objects",
     "is": "held",
-    "by": "src/lib/battlemap/types.ts MANIFESTED_WINGS (the 10-foot flying speed); src/lib/battlemap/passage.ts passableTiles spectral (every creature's space and every prop's; a wall is the building, SRD 5.1 Objects)",
+    "by": "src/lib/battlemap/types.ts MANIFESTED_WINGS (the 10-foot flying speed); src/lib/battlemap/passage.ts passableTiles spectral (every creature's space and every prop's) and objectTiles (every door, locked or secret too, and every window or low wall, crossed as difficult terrain and never stopped in; a wall is the building, SRD 5.1 Objects)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ghost-walk-spectral"
    },
    {

@@ -16,7 +16,10 @@
 // by the sorcerer's list or the spells known; the swap is recorded on the
 // sheet (ar-ws-spell-swap-record.ts), so the spell swapped in is the origin's
 // from then on (free of the count, always known, and replaceable again). The
-// level-up's offer says so in its spells note (level-up-options.ts).
+// level-up's offer says so in its spells note (level-up-options.ts), and the
+// level-up dialog offers the swap as a pick (originSwapOffer). The library's
+// level-up sheet does not: it saves a whole sheet, which cannot carry a swap
+// record in (legality/features.ts).
 //
 // Rulings, where the text leaves a choice:
 //   - A request carries one `levelUpForget`, so a level replaces either one of
@@ -36,6 +39,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { subclassSpellListsFor, subclassSpellsFor } from "@/lib/srd/features";
 import type { SpellFacts } from "@/lib/srd/legality/types";
 import { dedupeNames, spellOnCasterList, type CasterView } from "@/lib/srd/spell-prep";
+import { bundledSpellFacts, bundledSpellNames, bundledSpellSchool } from "@/lib/srd/spell-facts";
+import type { ChangeOffer } from "@/lib/srd/level-up-changes";
 
 type SwapRule = {
   feature: string;
@@ -136,6 +141,62 @@ function misfit(rule: SwapRule, spell: SpellFacts, level: number | null, top: nu
     return `it is not on the ${rule.listed} spell list`;
   }
   return null;
+}
+
+// The swap as the level-up dialog offers it (LevelUpDialog.tsx, through
+// LevelUpChangePick): each origin spell this level may replace, with the
+// spells that may take its place, judged by misfit, the rule the door judges
+// by, so the dialog offers only what originSwap takes. `candidates` are the
+// spells the browser knows (bundledSwapSpells); `held` every spell the caster
+// holds now, which the door would not read as new. Null when there is no swap.
+export function originSwapOffer(
+  view: Origin,
+  input: { top: number; held: readonly string[]; candidates: readonly SpellFacts[]; spellOf: (name: string) => SpellFacts | null },
+): ChangeOffer | null {
+  const rule = ruleFor(view.classId, view.subclass);
+  const slots = swappableSpells(view);
+  if (!rule || !slots.length) {
+    return null;
+  }
+  // The origin's own spells come free with the level, so the door skips them as new.
+  const taken = new Set([...input.held, ...slots.map((slot) => slot.current)].map(textKey));
+  const open = input.candidates.filter((spell) => !taken.has(textKey(spell.name)));
+  const optionsFor: Record<string, string[]> = {};
+  for (const slot of slots) {
+    const level = input.spellOf(slot.original)?.level ?? null;
+    optionsFor[slot.current] = rule.sameLevel && level === null ? [] : open.filter((spell) => !misfit(rule, spell, level, input.top)).map((spell) => spell.name);
+  }
+  const froms = slots.map((slot) => slot.current).filter((name) => optionsFor[name].length);
+  if (!froms.length) {
+    return null;
+  }
+  const options = dedupeNames(froms.flatMap((name) => optionsFor[name]));
+  return {
+    kind: "replace",
+    label: rule.feature,
+    froms,
+    options,
+    optionsFor,
+    shown: {},
+    note: `The new spell must be ${rule.say}, and it stays free of your spells known.`,
+  };
+}
+
+// The request a swap picked in the dialog sends: the spell given up in
+// levelUpForget, and its replacement first among levelUpSpells, as originSwap
+// takes the first new spell that fits (another new spell may fit as well).
+export function originSwapRequest(swap: SpellSwap, spells: readonly string[]): { levelUpForget: string; levelUpSpells: string[] } {
+  return { levelUpForget: swap.from, levelUpSpells: dedupeNames([swap.to, ...spells]) };
+}
+
+// Every spell the bundled checklist knows, as the swap's rule reads one.
+let bundled: SpellFacts[] | null = null;
+export function bundledSwapSpells(): SpellFacts[] {
+  bundled ??= bundledSpellNames().flatMap((name) => {
+    const facts = bundledSpellFacts(name);
+    return facts ? [{ name: facts.name, level: facts.level, classes: facts.classes, school: bundledSpellSchool(facts.name) }] : [];
+  });
+  return bundled;
 }
 
 export type OriginSwap =

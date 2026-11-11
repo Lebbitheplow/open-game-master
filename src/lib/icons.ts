@@ -107,6 +107,16 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/stone-rune": { kind: "option", slug: "rune-stone-rune" },
   "feature/storm-rune": { kind: "option", slug: "rune-storm-rune" },
   "feature/prophetic-state": { kind: "option", slug: "rune-storm-rune" },
+  // The door cards (src/lib/battlemap/hand-feature-doors.ts) and Alter
+  // Memories wear their kin's paintings: the pact boon's own for the blade,
+  // a caster's feat for War Caster, the psi warrior's mind for Telekinetic,
+  // the spell that rewrites a memory.
+  "feature/pact-of-the-blade": { kind: "option", slug: "pact-boon-pact-of-the-blade" },
+  "feature/war-caster": { kind: "feat", slug: "battle-caster" },
+  "feature/telekinetic": { kind: "feature", slug: "telekinetic-adept" },
+  "feature/alter-memories": { kind: "spell", slug: "modify-memory" },
+  // Controlled Chaos's pick of two surges wears its kin's: Tides of Chaos.
+  "feature/controlled-chaos": { kind: "feature", slug: "tides-of-chaos" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

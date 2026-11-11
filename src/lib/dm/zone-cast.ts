@@ -27,7 +27,7 @@ import { darknessWithin, layZone, type SpellZone, type ZoneCasterKind } from "@/
 import { spaceOf } from "@/lib/dm/board-reach";
 import { LIGHT_SPELLS, zoneKey, zoneOwnKey, zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { holdGasesBack } from "@/lib/battlemap/zones-walls";
-import { castFromMind } from "@/lib/dm/scribe-mind";
+import { castFromElsewhere } from "@/lib/dm/cast-origin";
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -133,9 +133,9 @@ export function placementReachProblem(campaign: Campaign, input: { casterId: str
     return null;
   }
   const own = layFrom(map, caster, { ...input, facts: input.facts }, rangeFeet);
-  // A Scribes wizard's spell laid from their spellbook mind's space
-  // (scribe-mind.ts castFromMind), when it does not reach from their own.
-  return own && castFromMind({ encounterId: encounter!.id, casterId: input.casterId, facts: input.facts, reachesFrom: (mind) => layFrom(map, mind, { ...input, facts: input.facts! }, rangeFeet) === null }) ? null : own;
+  // A spell laid from another square when it does not reach from their own
+  // (cast-origin.ts: a Scribes wizard's spellbook mind, a wildfire spirit).
+  return own && castFromElsewhere({ encounterId: encounter!.id, casterId: input.casterId, facts: input.facts, reachesFrom: (from) => layFrom(map, from, { ...input, facts: input.facts! }, rangeFeet) === null }) ? null : own;
 }
 
 // The square's range and clear path from `from`: the caster's own token, or

@@ -7,7 +7,7 @@ import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim
 import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
 import { layWard } from "@/lib/dm/ar-ws-bastion";
 import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
-import { wildSurge } from "@/lib/dm/ar-ws-wild-surge";
+import { pickChaos, wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
@@ -78,6 +78,7 @@ import { surgeSpend } from "@/lib/dm/mt-fb-wild-surge";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { mrSpend } from "@/lib/dm/mt-mr-spends";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
@@ -166,6 +167,8 @@ export function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: nu
   if (!encounter || amount <= 0) {
     return { damage: 0 };
   }
+  // A Beguiling Arrow's charm ends when its ally deals the creature damage.
+  beguilingBroken(ctx.campaign.id, ctx.sheet.id, enemy.id);
   if (ctx.turn) {
     const sheets = listSheets(ctx.campaign.id);
     const applied = applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, sheets, new Map(sheets.map((entry) => [entry.id, entry])), type, { magical: true });
@@ -787,6 +790,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return toggleLight(ctx, does);
     case "wild_magic_surge":
       return wildSurge(ctx, does);
+    case "chaos_pick":
+      return pickChaos(ctx);
     case "damage_ward":
       return layWard(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).

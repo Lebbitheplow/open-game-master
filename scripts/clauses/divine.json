@@ -4100,7 +4100,7 @@
    {
     "c": "While the spirit is out, your fire and healing spells gain 1d8, and you may cast them from the spirit's position",
     "is": "held",
-    "by": "src/lib/dm/feature-summons-dra.ts summonWildfireSpirit (the spirit is a creature on the board) + the spell_rider of authored-effects-data-b.ts",
+    "by": "src/lib/dm/feature-summons-dra.ts summonWildfireSpirit (the spirit is a creature on the board) + the spell_rider of authored-effects-data-b.ts; a fire or healing spell that does not reach from the druid is measured from the spirit's token (src/lib/dm/cast-origin.ts castFromElsewhere, asked by cast-reach.ts, zone-cast.ts and pc-attack-plan.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: ro::druid::Enhanced Bond#fire-heal-spirit-place"
    }
   ]

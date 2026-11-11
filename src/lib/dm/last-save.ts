@@ -278,6 +278,37 @@ export function recordTrigger(
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);
 }
 
+// A record out of a fight, where no turn keeps one: the newest of its kind
+// stands until it is answered or another of the kind is written. Only what a
+// feature answers out of a fight is written here (a healing roll Empowered
+// Healing rolls again, ar-ws-empowered-healing.ts); every reader of the
+// fight's records reads one encounter's, so these are seen by none of them.
+// A fight's first record clears it (append keeps that encounter's alone).
+export const CALM = "";
+// The kinds kept out of a fight (reaction-triggers.ts triggerRefusal asks these).
+export const CALM_KINDS: readonly string[] = ["heal_roll"];
+
+export function recordCalmTrigger(
+  campaignId: string,
+  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "spell" | "rollId" | "hpBefore">>,
+): LastSave | null {
+  if (getActiveEncounter(campaignId) || !CALM_KINDS.includes(record.kind)) {
+    return null;
+  }
+  const kept = readRow(campaignId).filter((entry) => entry.encounterId === CALM && kindOf(entry) !== record.kind);
+  const made: LastSave = { ability: "con", characterId: "", ...record, id: randomUUID(), encounterId: CALM, turn: CALM, at: nowIso() };
+  writeRow(campaignId, [...kept, made].slice(-KEPT));
+  return made;
+}
+
+// The open record of this kind out of a fight, or null (and null in one).
+export function calmTrigger(campaignId: string, kind: RecordedKind): LastSave | null {
+  if (getActiveEncounter(campaignId)) {
+    return null;
+  }
+  return readRow(campaignId).filter((entry) => entry.encounterId === CALM && kindOf(entry) === kind && !(entry.answered ?? []).length).at(-1) ?? null;
+}
+
 // A character's spell at the characters it targets (cast-buff.ts, heal): one
 // record per target, so a reaction the target takes (Voice of Authority)
 // answers the casting that named them. A spell of no slot level is a cantrip

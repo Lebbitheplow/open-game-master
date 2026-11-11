@@ -444,7 +444,7 @@ export function buildPlayerMapView(
     if (budgetLeft > 0) {
       const occupied = occupiedTiles(map, tokens, myToken, footprintLookup(enemiesById));
       // The same passage the move route allows (src/lib/battlemap/passage.ts).
-      const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter), anyGround: crossesAnyGround(encounter, sheet) }), map, "pc");
+      const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, drawnTerrain: map.drawnTerrain, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter), anyGround: crossesAnyGround(encounter, sheet) }), map, "pc");
       const reach = (limit: number, moveTraits: typeof traits) =>
         [...reachableTiles(map.terrain, map.width, map.height, occupied, myToken, limit, 1, myToken.movement === "fly", moveTraits).entries()];
       const costs = reach(budgetLeft, traits);

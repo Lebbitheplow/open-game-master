@@ -16,7 +16,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { ACTION_SURGED, RAGE_ENTERED, WEAPON_HIT, WIND_STEP } from "@/lib/dm/action-budget";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { attackerFoeId, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
-import { answerSave, kindOf, openTriggers, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, CALM_KINDS, calmTrigger, kindOf, openTriggers, type LastSave, type RecordedKind } from "@/lib/dm/last-save";
 import { eventOfRecord, nothingToAnswer, openFor, quarryOf, triggerSpecFor, type TriggerEvent, type TriggerSpec } from "@/lib/srd/trigger-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -148,6 +148,10 @@ export function triggerRefusal(ask: TriggerAsk): ToolError | null {
   const spec = triggerSpecOf(ask);
   if (!spec) return null;
   if (!getActiveEncounter(ask.campaignId)) {
+    // A record kept out of a fight, where no turn keeps one (last-save.ts
+    // recordCalmTrigger: a healing roll Empowered Healing rolls again). The
+    // feature that answers it reads the record itself, with no reach to measure.
+    if (spec.on.some((on) => CALM_KINDS.includes(on.kind) && calmTrigger(ask.campaignId, on.kind as RecordedKind))) return null;
     return { error: `${ask.name} answers ${spec.what}, which happens in a fight; there is no active encounter. Nothing was spent.`, refused: "rules" };
   }
   if (openTriggersFor(ask, spec).length) return null;

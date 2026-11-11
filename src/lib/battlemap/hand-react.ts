@@ -34,6 +34,7 @@ import {
 import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
 import { dealtByTrigger, triggerCards } from "@/lib/battlemap/hand-react-triggers";
 import { wardCards } from "@/lib/battlemap/hand-ar-ws-ward";
+import { mantleStrideCards } from "@/lib/battlemap/hand-feature-doors";
 import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
@@ -552,6 +553,8 @@ export function reactionCards(
   cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach), unseen));
   // A ward of Bastion of Law the character carries, spent off an open blow (hand-ar-ws-ward.ts).
   cards.push(...wardCards(sheet, turn, hits));
+  // The move a Glamour bard's mantle lends (hand-feature-doors.ts).
+  cards.push(...mantleStrideCards(sheet, turn));
   return cards;
 }
 

@@ -271,7 +271,7 @@ export async function POST(
   // And the spell areas on the board: difficult ground, Spirit Guardians (zone-rules.ts).
   const traits = withZoneSteps(pcMoveTraits({
     width: map.width,
-    theme: map.theme,
+    theme: map.theme, drawnTerrain: map.drawnTerrain,
     tokens,
     mover: token,
     sheet,

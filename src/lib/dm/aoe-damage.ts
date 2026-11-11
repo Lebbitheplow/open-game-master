@@ -2,6 +2,8 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { abilityAreaShape, areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { spellFactsFor } from "@/lib/content";
@@ -182,6 +184,8 @@ export function handleAoeDamage(
     ? boardCatch({ authors: spellAuthorsFor(campaign), encounterId: encounter.id, caster: blastCaster, spell: args.spell, runsAs: engineSpell.runsAs, slotLevel: args.level, placement: zonePlacement(args) })
     : null;
   let caughtByArea = false;
+  // The Echo Knight's echoes the blast's squares hold (mt-fb-echo.ts echoAreaSave).
+  let echoesCaught: string[] = [];
   if (blastCaster && onBoard && args.spell) {
     const { caught, blast: blastArea } = onBoard;
     // What bars the cast itself (no slot, not their turn) is said before a
@@ -202,6 +206,7 @@ export function handleAoeDamage(
         return { error: `${args.spell} laid there catches nobody: no creature stands in its ${blastArea.feet}-foot ${blastArea.shape}. Ask the player where to aim it. Nothing was spent.`, retry: true };
       }
       caughtByArea = Boolean(caught.enemyIds.length || caught.characterIds.length);
+      echoesCaught = "echoes" in caught && Array.isArray(caught.echoes) ? caught.echoes : [];
       for (const id of [...caught.enemyIds, ...caught.characterIds]) {
         addRef(id);
       }
@@ -602,6 +607,8 @@ export function handleAoeDamage(
   };
   // Enemy saves roll silently from stat blocks; results ride the table.
   for (const [index, enemy] of enemyTargets.entries()) {
+    // A Beguiling Arrow's charm ends on its ally's damage or forced save.
+    if (charmedCaster) beguilingBroken(campaign.id, charmedCaster.id, enemy.id);
     // The creature's conditions decide the save as a character's would.
     // Stinking Cloud cannot touch a creature immune to poison.
     const untouched = plan ? spellAutoSave(plan.mech, enemy) : null;
@@ -808,6 +815,11 @@ export function handleAoeDamage(
       coverOf: saveCover,
     }),
   );
+
+  for (const refId of echoesCaught) {
+    const echo = echoAreaSave(campaign, turn, refId, { ability, dc: saveDc, damage: total, halfOnSave, label: args.spell ?? "the area" });
+    if (echo) results.push(echo);
+  }
 
   // Sleet Storm: whoever concentrates in it saves or loses the spell.
   const shaken = plan

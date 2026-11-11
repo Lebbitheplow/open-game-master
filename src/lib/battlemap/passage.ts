@@ -11,7 +11,7 @@
 import { climbsFreely } from "@/lib/srd/feat-combat";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
-import { moveTraitsFrom, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
+import { moveTraitsFrom, TERRAIN, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { sizeForRace } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { movesThroughEverything } from "@/lib/dm/ar-ws-umbral-logic";
@@ -101,6 +101,9 @@ export function pcMoveTraits(input: {
   // What the board was drawn for (BattleMap.theme), for the traits that ask
   // what the difficult ground is made of (Earth Walk).
   theme?: string;
+  // The board as drawn (BattleMap.drawnTerrain), door glyphs and all: the
+  // doors and windows a Ghost Walk passes through (objectTiles).
+  drawnTerrain?: string;
   // Mobile on a turn its holder Dashed (src/lib/dm/ar-wbf-feat-turn.ts
   // crossesAnyGround): difficult terrain costs no extra.
   anyGround?: boolean;
@@ -118,20 +121,35 @@ export function pcMoveTraits(input: {
   // Earth Walk (earth genasi): difficult ground of earth or stone costs no
   // extra movement (src/lib/srd/mt-species-traits.ts).
   const earthen = hasEarthWalk(input.sheet) && earthUnderfoot(input.theme) ? { landStride: true } : {};
+  // Umbral Form's holder and a Phantom on its Ghost Walk both pass.
+  const everything = movesThroughEverything(input.sheet.conditions) || (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GHOST_WALK));
+  const spaces = passableTiles({
+    width: input.width,
+    tokens: input.tokens,
+    mover: input.mover,
+    footprintOf: input.footprintOf,
+    sizeOf: (token) => (token.id === input.mover.id ? moverSize : token.kind === "enemy" ? input.enemySize(token.refId) : undefined),
+    nimble: hasHalflingNimbleness(input.sheet.features),
+    everything,
+    ...(input.sideOf ? { sideOf: input.sideOf } : {}),
+  });
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
     ...earthen,
     ...(input.anyGround ? { anyGround: true } : {}),
-    passable: passableTiles({
-      width: input.width,
-      tokens: input.tokens,
-      mover: input.mover,
-      footprintOf: input.footprintOf,
-      sizeOf: (token) => (token.id === input.mover.id ? moverSize : token.kind === "enemy" ? input.enemySize(token.refId) : undefined),
-      nimble: hasHalflingNimbleness(input.sheet.features),
-      // Umbral Form's holder and a Phantom on its Ghost Walk both pass.
-      everything: movesThroughEverything(input.sheet.conditions) || (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GHOST_WALK)),
-      ...(input.sideOf ? { sideOf: input.sideOf } : {}),
-    }),
+    passable: everything && input.drawnTerrain ? new Set([...spaces, ...objectTiles(input.drawnTerrain)]) : spaces,
   };
+}
+
+// The board's objects a mover through "creatures and objects" passes as
+// difficult terrain and never stops in, as a creature's space: every door,
+// a locked or secret one included (scene.ts walls it in the terrain the
+// engine runs), and every low wall, a window or a fence (building.ts). A wall
+// is the building, and stops it (SRD 5.1, Objects: "not a building").
+export function objectTiles(drawnTerrain: string): number[] {
+  const out: number[] = [];
+  for (let index = 0; index < drawnTerrain.length; index += 1) {
+    if (drawnTerrain[index] === TERRAIN.door || drawnTerrain[index] === TERRAIN.lowwall) out.push(index);
+  }
+  return out;
 }
