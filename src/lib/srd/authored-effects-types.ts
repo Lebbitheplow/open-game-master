@@ -499,6 +499,10 @@ export type SpendDoes =
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
   | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // A scroll of a spell from the holder's book, named in the variant, of
+  // these levels and cast with an action, written onto their pack (Master
+  // Scrivener: src/lib/dm/ar-ws-scrivener.ts).
+  | { kind: "scribe_scroll"; minLevel: number; maxLevel: number }
   // A creature the holder charmed saves or loses hours of memory, as many as
   // the call's amount, at most the ability modifier plus one; the mark it
   // then carries says how many (Alter Memories: src/lib/dm/ar-ws-alter-memories.ts).

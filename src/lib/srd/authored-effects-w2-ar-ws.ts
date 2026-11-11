@@ -59,4 +59,15 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "After a long rest you can create a magic scroll of a 1st- or 2nd-level
+  // wizard spell from your book with a casting time of an action": the spell
+  // is the variant, the scroll a row on the pack (src/lib/dm/ar-ws-scrivener.ts).
+  // Written out of a fight, when a rest ends, and by name: the Hand has no
+  // card that names a spell from the book, so the player says it and the GM
+  // calls it; the scroll itself is a card (hand-items.ts).
+  "wizard::Master Scrivener": {
+    subclass: "Order of Scribes",
+    counter: "sub_master_scrivener",
+    spends: [{ name: "Master Scrivener", pool: { id: "sub_master_scrivener" }, action: "none", fight: "out", does: { kind: "scribe_scroll", minLevel: 1, maxLevel: 2 } }],
+  },
 };

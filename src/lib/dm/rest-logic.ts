@@ -9,6 +9,7 @@ import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isMulticlass, slotTableFor } from "@/lib/srd/multiclass";
 import { settlePreparation } from "@/lib/srd/spell-prep";
 import { restVanished } from "@/lib/srd/ar-ws-spellbook";
+import { withoutConjuredAtLongRest } from "@/lib/srd/ar-ws-conjured";
 import { attunementProblem } from "@/lib/srd/magic-items";
 import type { CharacterSheet, FullPatchSheetInput, HitDicePool } from "@/lib/schemas/sheet";
 
@@ -81,6 +82,12 @@ export function longRestPatch(
       ...sheet.hitDice,
       spent: Math.max(0, sheet.hitDice.spent - recovered),
     };
+  }
+  // A Master Scrivener's scroll "vanishes ... when you finish a long rest",
+  // and no Arcane Abeyance bead outlasts the night (src/lib/srd/ar-ws-conjured.ts).
+  const lasting = withoutConjuredAtLongRest(sheet.equipment);
+  if (lasting) {
+    patch.equipment = lasting;
   }
   // Bound creatures rest with their owner: a night restores a downed
   // companion or drake to full (a vanished familiar is already gone).

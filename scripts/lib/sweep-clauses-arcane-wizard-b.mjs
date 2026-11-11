@@ -2,7 +2,7 @@
 // Graviturgy Magic and Order of Scribes (scripts/clauses/arcane.json; run by
 // test-enforce-sweep-clauses-arcane-wizard.mjs).
 import assert from "node:assert/strict";
-import { MOD, prof } from "./sweep-clauses-arcane.mjs";
+import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
 export const SCRIBE_BOOK = ["Magic Missile", "Shield", "Detect Magic", "Scorching Ray", "Fireball", "Lightning Bolt", "Fly", "Ice Storm", "Cone of Cold", "Chain Lightning"];
@@ -10,11 +10,12 @@ const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, roll, stage } = rig;
-  const { friend, mage, drain, uses, rests, movesSomething, buysAnother } = shared;
+  const { friend, mage, drain, uses, rests, buysAnother } = shared;
   rig.outfit("wizard", "War Magic", { spells: ["Magic Missile", "Hold Person", "Counterspell"], acOverride: false });
   rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Hold Person"], cantrips: ["Fire Bolt"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
   // A scribe's book: 29 spell levels, more than One with the Word's 3d6 can ask.
   rig.outfit("wizard", "Order of Scribes", { spells: SCRIBE_BOOK });
+  rig.outfit("wizard", "Chronurgy Magic", { spells: ["Hold Person", "Magic Missile", "Fireball", "Cone of Cold"], cantrips: ["Fire Bolt"] });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
   const chr = () => holder("wizard", "Chronurgy Magic");
@@ -196,7 +197,68 @@ export function probes(rig, shared) {
       await uses(["wizard", "Chronurgy Magic"], "sub_momentary_stasis", { 6: Math.max(1, MOD.int) })();
       await stasisRest();
     },
-    abeyance: movesSomething(["wizard", "Chronurgy Magic"], "Arcane Abeyance"),
+    // The wizard casts the spell into a bead (use_spell_slot with storeIn):
+    // the slot, the action and the use of Arcane Abeyance are paid, the spell
+    // does nothing now, and the bead is on the pack of the creature named,
+    // holding the spell at the slot's level with the wizard's save DC and
+    // attack bonus for an hour. Whoever holds it casts from it with no slot of
+    // their own, and it is gone once cast or when the hour is over. A slot
+    // above 4th level, a cantrip, a second bead with the use spent, a bare
+    // use_resource and a wizard without the feature are refused, nothing spent.
+    abeyance: async () => {
+      const { getClock } = await import("../../src/lib/db/clock.ts");
+      const who = chr();
+      const [enemy] = await stage(who, { others: [friend()] });
+      const beads = (holds) => sheet(holds).equipment.filter((item) => item.conjured?.kind === "bead");
+      const paid = () => [sheet(who).spellcasting.slots[2].used, sheet(who).spellcasting.slots[5].used, counter(who, "sub_arcane_abeyance").used, budget()?.actionUsed ?? false, beads(who).length + beads(friend()).length];
+      const store = (args) => call("use_spell_slot", { characterId: who.id, storeIn: "Arcane Abeyance", ...args });
+      for (const [why, args] of [["a slot of 5th level", { spell: "Fireball", level: 5 }], ["a spell of 5th level", { spell: "Cone of Cold" }], ["a cantrip", { spell: "Fire Bolt" }]]) {
+        const out = await store(args);
+        assert.equal(out.ok, false, `${why} goes into a bead: ${show(out).slice(0, 120)}`);
+        assert.match(out.error, /Nothing was spent/, why);
+      }
+      const bare = await spend(who, "Arcane Abeyance");
+      assert.equal(bare.ok, false, "a bare use_resource spends the use and stores nothing");
+      assert.deepEqual(paid(), [0, 0, 0, false, 0], "[2nd-level slots, 5th-level slots, uses, action, beads] after the refusals");
+      // Hold Person from a 3rd-level slot would be level 3; from its own, level 2.
+      const out = await store({ spell: "Hold Person", storeInCharacterId: friend().id });
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(paid(), [1, 0, 1, true, 1], "[2nd-level slots, 5th-level slots, uses, action, beads] once it is stored");
+      const [bead] = beads(friend());
+      const dc = spellDc("wizard", 20);
+      assert.deepEqual(bead.storedSpells, [{ spell: "Hold Person", level: 2, saveDc: dc, attackBonus: dc - 8, abilityMod: MOD.int, by: sheet(who).name }], "the spell at its slot's level, with the wizard's numbers");
+      assert.equal(bead.conjured.until - getClock(world.campaignId).instant, 60, "the minutes the bead has left");
+      assert.deepEqual([foe(enemy).conditions.includes("paralyzed"), sheet(who).concentratingOn ?? null], [false, null], "[the foe held, the wizard concentrating]: the spell has no effect now");
+      kit.freshTurn();
+      const again = await store({ spell: "Magic Missile" });
+      assert.equal(again.ok, false, "a second bead with the use spent");
+      assert.equal(sheet(who).spellcasting.slots[1].used, 0, "the refused second bead spent a slot");
+      // The fighter breaks it on their own turn: no slot of theirs, the wizard's DC.
+      kit.giveTurn(friend().id);
+      kit.freshTurn();
+      const broken = await call("use_item", { characterId: friend().id, item: bead.name });
+      assert.equal(broken.ok, true, broken.error);
+      assert.deepEqual([broken.result.spellCast, broken.result.spellLevel, broken.result.saveDc], ["Hold Person", 2, dc], "[spell, level, save DC] read from the bead");
+      const held = await call("cast_at_enemy", { characterId: friend().id, targetEnemyId: enemy.id, spell: "Hold Person" }, [1]);
+      assert.equal(held.ok, true, held.error);
+      assert.ok(foe(enemy).conditions.includes("paralyzed"), `the foe failed the save against the bead's Hold Person: ${show(held).slice(0, 160)}`);
+      assert.equal(beads(friend()).length, 0, "the bead is gone once its spell is cast");
+      // Its hour: there at 59 minutes, gone at 60.
+      await kit.endFight();
+      world.patch(friend().id, { concentratingOn: null });
+      rig.refill(who);
+      assert.equal((await store({ spell: "Magic Missile" })).ok, true, "a bead out of a fight");
+      assert.equal(beads(who).length, 1);
+      assert.equal((await call("pass_time", { amount: 59, unit: "minutes" })).ok, true);
+      assert.equal(beads(who).length, 1, "the bead at 59 minutes");
+      assert.equal((await call("pass_time", { amount: 1, unit: "minutes" })).ok, true);
+      assert.equal(beads(who).length, 0, "the bead when its hour is over");
+      // A wizard of another school has no bead to fill.
+      const other = await call("use_spell_slot", { characterId: war().id, spell: "Magic Missile", storeIn: "Arcane Abeyance" });
+      assert.equal(other.ok, false, "a war mage stores a spell in a bead");
+      assert.equal(sheet(war()).spellcasting.slots[1].used, 0);
+      rig.refill(who);
+    },
     "abeyance-rest": rests(["wizard", "Chronurgy Magic"], "sub_arcane_abeyance", "short"),
     "convergent-miss": async () => {
       await hit(chr());
@@ -339,7 +401,64 @@ export function probes(rig, shared) {
       await mindRest();
     },
     "mind-slot": buysAnother(["wizard", "Order of Scribes"], "Manifest Mind", "sub_manifest_mind", "spell slot"),
-    scrivener: movesSomething(["wizard", "Order of Scribes"], "Master Scrivener"),
+    // The spend writes a scroll of the spell named onto the pack; reading it
+    // casts the spell one level higher (Scorching Ray's fourth ray at 3rd
+    // level, the Spell Scroll table's +7 for that level) and uses it up; one
+    // left unread is gone after a long rest. A spell above 2nd level, one not
+    // in the book, one cast with a reaction, no spell named, a second scroll
+    // with the use spent, and a scroll in the middle of a fight are refused.
+    scrivener: async () => {
+      const who = scr();
+      const { vanished: _old, ...casting } = sheet(who).spellcasting;
+      void _old;
+      world.patch(who.id, { spellcasting: { ...casting, prepared: SCRIBE_BOOK, known: SCRIBE_BOOK } });
+      const scrolls = () => sheet(who).equipment.filter((item) => item.conjured?.kind === "scroll");
+      const uses = () => counter(who, "sub_master_scrivener").used;
+      const write = (variant) => spend(who, "Master Scrivener", variant ? { variant } : {});
+      const [enemy] = await stage(who);
+      const fighting = await write("Magic Missile");
+      assert.equal(fighting.ok, false, "a scroll written in the middle of a fight");
+      await kit.endFight();
+      rig.refill(who);
+      for (const [why, variant] of [["a 3rd-level spell", "Fireball"], ["a spell not in the book", "Burning Hands"], ["a spell cast with a reaction", "Shield"], ["no spell named", ""]]) {
+        const out = await write(variant);
+        assert.equal(out.ok, false, `${why}: ${show(out).slice(0, 120)}`);
+        assert.match(out.error, /Nothing was spent/, why);
+      }
+      assert.deepEqual([uses(), scrolls().length], [0, 0], "[uses spent, scrolls] after the refusals");
+      const out = await write("Scorching Ray");
+      assert.equal(out.ok, true, out.error);
+      const [scroll] = scrolls();
+      assert.deepEqual([uses(), scroll?.spell, scroll?.tags], [1, "Scorching Ray", ["scroll"]], "[uses spent, the scroll's spell, its tags]");
+      assert.equal((await write("Magic Missile")).ok, false, "a second scroll before the next long rest");
+      // Read in a fight: an action, no slot, cast at 3rd level.
+      const [foe2] = await stage(who);
+      const slots = JSON.stringify(sheet(who).spellcasting.slots);
+      const read = await call("use_item", { characterId: who.id, item: scroll.name });
+      assert.equal(read.ok, true, read.error);
+      assert.deepEqual([read.result.spellCast, read.result.spellLevel, read.result.attackBonus, budget().actionUsed], ["Scorching Ray", 3, 7, true], "[spell, level it is cast at, the scroll's attack bonus, the action]");
+      assert.equal(scrolls().length, 0, "the scroll is used up as it is read");
+      // Four rays at 3rd level, where its own 2nd gives three.
+      let rays = 0;
+      for (let ray = 0; ray < 5; ray += 1) {
+        const shot = await call("pc_attack", { characterId: who.id, targetEnemyId: foe2.id, spell: "Scorching Ray" }, [15, 3, 3]);
+        if (!shot.ok) break;
+        rays += 1;
+      }
+      assert.equal(rays, 4, "rays of a Scorching Ray read from the scrivener's scroll");
+      assert.equal(JSON.stringify(sheet(who).spellcasting.slots), slots, "no spell slot of the reader's is spent");
+      void enemy;
+      // A scroll left unread vanishes when the wizard finishes a long rest.
+      await kit.endFight();
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await rig.rest("long");
+      assert.equal((await write("Magic Missile")).ok, true, "a new scroll after the long rest");
+      assert.equal(scrolls().length, 1);
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+      await rig.rest("long");
+      assert.equal(scrolls().length, 0, "the unread scroll after the next long rest");
+      assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+    },
     "word-arcana": async () => {
       await kit.endFight();
       assert.equal((await roll(scr(), { kind: "skill_check", skill: "arcana", dc: 10 })).d20s, 2, "d20s thrown for a 14th-level scribe's Arcana check");
@@ -426,10 +545,8 @@ export function probes(rig, shared) {
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
     "bladesong-concentration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/concentration.ts (the bladesong's bonus to the save is not read)", note: "The stored text gives no number (\"a concentration-save bonus\"); the feature it condenses adds the Intelligence modifier.", fix: "Add the Intelligence modifier to a bladesinger's concentration saves, and state it in the text." },
     "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },
-    abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
-    scrivener: { severity: "low", kind: "rule-missing", where: `${RES} sub_master_scrivener (a counter with guidance)`, note: "No scroll is made; the +1 level casting has nothing to ride.", fix: "Write a scroll onto the sheet that the cast tools read one level higher and a long rest removes." },
   };
   return { PROBES, KNOWN };
 }

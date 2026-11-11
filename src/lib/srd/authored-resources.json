@@ -1346,7 +1346,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "Store a spell of 4th level or lower in a bead that any creature can break to cast it, using the wizard's spellcasting numbers."
+   "passive": true,
+   "guidance": "The wizard casts a spell with a slot of 4th level or lower into a bead: use_spell_slot with the spell, its level and storeIn 'Arcane Abeyance' (storeInCharacterId for whoever is handed the bead). The slot and the action are paid, the spell has no effect now, and this use is spent with it. Whoever holds the bead breaks it with use_item and resolves the spell with its own tool, at the wizard's save DC and attack bonus; the bead fades after an hour."
   },
   {
    "id": "sub_violent_attraction",
@@ -1427,7 +1428,9 @@
    "ability": null,
    "recharge": "long",
    "action": "none",
-   "guidance": "After a long rest, a scroll of a 1st- or 2nd-level wizard spell from the book with a casting time of an action; it is cast as one level higher and vanishes once cast or at the next long rest."
+   "passive": true,
+   "options": true,
+   "guidance": "After a long rest, out of a fight: use_resource 'Master Scrivener' with variant the name of a 1st- or 2nd-level spell from the wizard's book that is cast with an action. The server writes the scroll onto their pack; reading it (use_item) casts the spell one level higher, and it vanishes once read or at the next long rest."
   },
   {
    "id": "sub_one_with_the_word",

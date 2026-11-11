@@ -4,6 +4,7 @@
 
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim";
+import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -614,6 +615,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return textKey(does.form) === textKey(DANCING_ITEM) ? summonDancingItem(ctx.campaign, sheet, ctx.held.level) : summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
     case "create_item":
       return createItem(ctx, does);
+    // Master Scrivener's scroll (src/lib/dm/ar-ws-scrivener.ts).
+    case "scribe_scroll":
+      return scribeScroll(ctx, does);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

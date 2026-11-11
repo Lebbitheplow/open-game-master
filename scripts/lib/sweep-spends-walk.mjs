@@ -233,6 +233,14 @@ async function step(rig, scene, name, notes) {
       world.patch(holder, { equipment: shield(true) });
       return out;
     }
+    case "a spell in the holder's book": {
+      // A 1st-level spell cast with an action, written in the book and
+      // prepared, for a spend that copies one out of it (Master Scrivener).
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      world.patch(holder, { spellcasting: { ...casting, prepared: [...new Set([...(casting.prepared ?? []), "Magic Missile"])], ...(casting.spellbook ? { spellbook: [...new Set([...casting.spellbook, "Magic Missile"])] } : {}) } });
+      return { ok: true };
+    }
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);

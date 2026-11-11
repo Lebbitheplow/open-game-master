@@ -86,6 +86,7 @@ export async function tableRows(rig) {
       ...(item?.afterSpellDamage ? ["the holder's spell hurt the foe"] : []),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
+      ...(does?.kind === "scribe_scroll" ? ["a spell in the holder's book"] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];
@@ -97,6 +98,8 @@ export async function tableRows(rig) {
           : does.kind === "flames" && !does.healOnly ? ["burn", "heal"]
           // Performance of Creation makes the item named: one the pack prices low.
           : does.kind === "create_item" ? ["Hourglass"]
+          // Master Scrivener copies the spell named from the book (staged there).
+          : does.kind === "scribe_scroll" ? ["Magic Missile"]
           : does.variants ? [undefined, ...Object.keys(does.variants)]
             : does.typeFromVariant ? does.typeFromVariant
               : [undefined];

@@ -41,6 +41,8 @@ import { creditStoredSpell, putInRing, storeRefusal, storerNamed } from "@/lib/d
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { storeInBead } from "@/lib/dm/ar-ws-abeyance";
+import { isBeadSlot } from "@/lib/srd/ar-ws-conjured";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -68,6 +70,10 @@ export function storeSpell(
   request: StoreRequest,
   cast: (input: { spell: string; level?: number; dryRun?: boolean; storing: CastStoring }) => CastResult,
 ): ToolResult {
+  // An Arcane Abeyance bead is made by the cast that fills it (ar-ws-abeyance.ts).
+  if (isBeadSlot(request.storeIn)) {
+    return storeInBead(campaign, turnId, caster, holder, request, cast);
+  }
   const ring = storerNamed(holder, request.storeIn);
   if (!ring) {
     return { error: `${holder.name} carries no Ring of Spell Storing named "${request.storeIn}". Nothing was spent.`, retry: true };
