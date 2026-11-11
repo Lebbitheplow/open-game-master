@@ -516,7 +516,7 @@ export function reactionCards(
         const card = base(
           `${textKey(reaction.name).replace(/\s+/g, "-")}:save~${save.id}`,
           reaction.name,
-          `${self} failed a ${save.ability.toUpperCase()} save${save.forcer ? ` against ${save.forcer}` : ""}`,
+          `${self} failed a save${save.forcer ? ` against ${save.forcer}` : ""}`,
           "none",
           { card: "reaction", feature: reaction.name, variant: "save" },
           { rules: `+${does.orSave} on the save just failed.${does.cantripsOnly ? " Only cantrips until the end of your next turn." : ""}` },

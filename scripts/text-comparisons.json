@@ -14,8 +14,13 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/ar-ws-deflection.ts#str-eq": [["key", 1, "the call's variant word and the engine's statuses and kinds (engine vocabulary)"]],
+    "lib/dm/ar-ws-deflection.ts#re-word": [["english-source", 2, "the roll detail line the engine writes"]],
+    "lib/dm/ar-ws-deflection.ts#toLowerCase": [["key", 1, "ability abbreviation read back from the engine's own roll detail"]],
+    "lib/dm/ar-ws-deflection.ts#\\b": [["key", 2, "the engine's own roll detail string"]],
     "lib/dm/hit-save.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/ar-ws-alter-memories.ts#toUpperCase": [["display",5,"ability abbreviations shown"]],
+    "lib/dm/ar-ws-deflection.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/spell-damage-mark.ts#str-includes": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],
     "lib/dm/pc-damage.ts#str-list": [["key", 1, "weapon properties (engine vocabulary)"]],
     "lib/srd/feat-ac.ts#str-includes": [["key", 1, "weapon properties (engine vocabulary)"]],
@@ -1303,7 +1308,7 @@
     "lib/dm/cast-materials.ts#toLowerCase": [["key",1,"class id"],["table-language",1,"meaning reader: a material line (pack rows, homebrew spells' free text) and inventory item names compared word by word, in English"]],
     "lib/dm/cast-materials.ts#toUpperCase": [["display",1,"capitalised word"]],
     "lib/dm/cast-rules.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/cast-rules.ts#str-eq": [["key",16,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/cast-rules.ts#str-eq": [["key",17,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cast-rules.ts#str-list": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cast-rules.ts#toLowerCase": [["key",7,"class id; condition label (engine vocabulary)"]],
     "lib/dm/cast-slot-choice.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
