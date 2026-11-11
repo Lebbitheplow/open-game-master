@@ -27,7 +27,7 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { getSheetById } from "@/lib/db/sheets";
 import { featureSpellReachFeet } from "@/lib/dm/ar-wbf-bard-casting-logic";
-import { castFromMind } from "@/lib/dm/scribe-mind";
+import { castFromElsewhere } from "@/lib/dm/cast-origin";
 
 const FEET_PER_TILE = 5;
 
@@ -66,9 +66,9 @@ export function spellReachProblem(input: {
     return null;
   }
   const own = reachFrom(input, facts, input.casterId);
-  // A Scribes wizard's spell cast from their spellbook mind's space
-  // (scribe-mind.ts castFromMind), when it does not reach from their own.
-  return own && castFromMind({ encounterId: input.encounterId, casterId: input.casterId, facts, reachesFrom: (mind) => reachFrom(input, facts, mind.refId) === null }) ? null : own;
+  // A spell cast from another square when it does not reach from their own
+  // (cast-origin.ts: a Scribes wizard's spellbook mind, a wildfire spirit).
+  return own && castFromElsewhere({ encounterId: input.encounterId, casterId: input.casterId, facts, reachesFrom: (from) => reachFrom(input, facts, from.refId) === null }) ? null : own;
 }
 
 // The spell's range and clear path measured from `fromRef`'s token: the

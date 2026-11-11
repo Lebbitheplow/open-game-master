@@ -50,7 +50,7 @@ import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { spellWardOn } from "@/lib/dm/cast-reach";
 import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
-import { castFromMind } from "@/lib/dm/scribe-mind";
+import { castFromElsewhere } from "@/lib/dm/cast-origin";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
@@ -276,10 +276,11 @@ export function planPcAttack(input: {
     longRangeTiles: profile.longRangeTiles,
   };
   let rangeError = input.skipReach || built.conjured ? null : checkPcAttackRange(encounter.id, sheet.id, enemy.id, reachOptions);
-  // A Scribes wizard's attack-roll spell cast from their spellbook mind's
-  // space when it does not reach from their own (scribe-mind.ts).
+  // An attack-roll spell cast from another square when it does not reach
+  // from their own (cast-origin.ts: a Scribes wizard's spellbook mind, a
+  // wildfire spirit).
   const mindAt = rangeError && kind === "spell" && args.spell
-    ? castFromMind({ encounterId: encounter.id, casterId: sheet.id, facts: spellFactsFor(args.spell, spellAuthorsFor(campaign)), reachesFrom: (mind) => checkPcAttackRange(encounter.id, sheet.id, enemy.id, { ...reachOptions, from: mind }) === null })
+    ? castFromElsewhere({ encounterId: encounter.id, casterId: sheet.id, facts: spellFactsFor(args.spell, spellAuthorsFor(campaign)), reachesFrom: (from) => checkPcAttackRange(encounter.id, sheet.id, enemy.id, { ...reachOptions, from }) === null })
     : null;
   if (mindAt) {
     rangeError = null;

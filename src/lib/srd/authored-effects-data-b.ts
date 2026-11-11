@@ -101,7 +101,7 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         damageTypes: ["fire"],
         healing: true,
         gate: { condition: "wildfire spirit" },
-        note: "Casting from the spirit's space is the GM's to place.",
+        note: "A fire or healing spell that does not reach from the druid is cast from the spirit's space (cast-origin.ts).",
       },
     ],
   },

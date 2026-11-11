@@ -329,7 +329,16 @@ export const RO_DRUID_B = {
       rig.world.patch(hurt.id, { currentHp: 50 });
       rig.kit.freshTurn();
       const heal = await rig.call("heal", { characterId: hurt.id, casterId: who.id, spell: "Cure Wounds", level: 1 }, [4, 4]);
-      return { summoned, made: made.length, pets: (rig.world.sheet(who.id).pets ?? []).length, flame: rig.diceIn(flame.damage, 8), healed: rig.hp(hurt) - 50, heal };
+      const healed = rig.hp(hurt) - 50;
+      // "you may cast them from the spirit's position": Cure Wounds, a touch
+      // spell, on the cleric 35 feet from the druid and beside the spirit
+      // (src/lib/dm/cast-origin.ts castFromElsewhere).
+      rig.world.patch(hurt.id, { currentHp: 50 });
+      if (made[0]) rig.kit.place(made[0].id, 5, 11);
+      rig.kit.place(hurt.id, 5, 12);
+      rig.kit.freshTurn();
+      const far = await rig.call("heal", { characterId: hurt.id, casterId: who.id, spell: "Cure Wounds", level: 1 }, [4, 4]);
+      return { summoned, made: made.length, pets: (rig.world.sheet(who.id).pets ?? []).length, flame: rig.diceIn(flame.damage, 8), healed, heal, far: far.ok, farError: String(far.error ?? "").slice(0, 160) };
     };
     const out = await cast(true);
     const plain = await cast(false);
@@ -339,6 +348,7 @@ export const RO_DRUID_B = {
         assert.deepEqual([out.flame, plain.flame], [3, 2], "Produce Flame's 2d8 at 6th level, and the bond's 1d8 while the spirit is out");
         assert.deepEqual([out.healed, plain.healed], [4 + wis(6) + 4, 4 + wis(6)], "Cure Wounds' 1d8 + Wisdom, and the bond's 1d8 while the spirit is out");
         assert.ok(out.made > 0 || out.pets > 0, "the wildfire spirit is a condition on the druid, with no place on the board to cast from");
+        assert.deepEqual([out.far, plain.far], [true, false], `a touch spell from the spirit's square, and none with no spirit out: ${out.farError}`);
       },
     };
   },
