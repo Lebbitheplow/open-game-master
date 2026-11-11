@@ -688,6 +688,7 @@ export function describeSheet(
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         size: sizeForRace(sheet.race),
+        wearer: sheet,
       })
     : null;
   const loadLine = load

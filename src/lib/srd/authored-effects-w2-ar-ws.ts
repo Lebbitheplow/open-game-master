@@ -38,4 +38,25 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "School of Enchantment",
     spends: [{ name: "Alter Memories", action: "action", gm: true, does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
   },
+  // "Halve or double a creature's or object's weight for a minute": a creature
+  // of either side (src/lib/dm/ar-ws-buff-aim.ts). The earlier row took an ally
+  // only, and a foe named for it was dropped for the wizard. The condition's
+  // speed and Strength rolls are in authored-conditions.ts, its carrying
+  // capacity in src/lib/srd/ar-ws-density.ts.
+  "wizard::Adjust Density": {
+    subclass: "Graviturgy Magic",
+    spends: [
+      {
+        name: "Adjust Density",
+        action: "action",
+        does: {
+          kind: "buff",
+          target: "creature",
+          condition: "adjusted density (lighter)",
+          variants: { lighter: "adjusted density (lighter)", halve: "adjusted density (lighter)", heavier: "adjusted density (heavier)", double: "adjusted density (heavier)" },
+          rounds: 10,
+        },
+      },
+    ],
+  },
 };

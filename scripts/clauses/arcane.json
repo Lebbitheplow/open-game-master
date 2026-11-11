@@ -1159,8 +1159,9 @@
   "clauses": [
    {
     "c": "Halve or double a creature's or object's weight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-enemy",
+    "by": "src/lib/dm/ar-ws-buff-aim.ts buffAim and strayBuffTarget, through src/lib/dm/authored-spend-effects.ts (buff); row src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Adjust Density (target creature). A creature of either side: the enemy named, else the ally named, else the wizard; a target a buff cannot use is refused with nothing spent. An object's weight is the GM's to narrate: no object stands on the board."
    },
    {
     "c": "for a minute",
@@ -1176,9 +1177,9 @@
    },
    {
     "c": "carrying capacity",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: encumbrance was not weighed under the condition"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: density-carry",
+    "by": "src/lib/srd/ar-ws-density.ts densityCarryFactor, read by src/lib/srd/encumbrance.ts encumbranceFor and src/lib/dm/load-rules.ts liftLimits. Ruling: the text says the capacity changes and not which way, so it goes the way the Strength checks do: doubled with the weight doubled, halved with it halved."
    },
    {
     "c": "and Strength checks",

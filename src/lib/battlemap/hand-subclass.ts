@@ -44,7 +44,7 @@ export const pickLabel = (value: string) => value.replace(/^./, (c) => c.toUpper
 function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "buff") {
     // A quarry (Hexblade's Curse) marks a creature, and the engine asks which.
-    return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" ? "ally" : "self";
+    return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" || does.target === "creature" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
   // The creatures of the player's choice: aimed at one, the others added.
@@ -183,7 +183,8 @@ export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: s
 // burns a creature or heals one (Arcane Jolt: "either deal an extra 2d6 force
 // damage to the target, or ... restores a number of hit points equal to 2d6"),
 // one at an enemy and one at an ally, so each posts the target it needs.
-type Aim = { variant?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
+// `key`: what tells two aims of one spend apart on the card's id when no variant does.
+type Aim = { variant?: string; key?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
 
 function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Aim[] {
   if (does.kind === "flames") {
@@ -205,6 +206,12 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
     }
   }
   const lines = linesOf(does);
+  // A creature of either side (Adjust Density, src/lib/dm/ar-ws-buff-aim.ts):
+  // one card at an ally or the holder, one at a foe, so each posts the target
+  // the engine reads for it.
+  if (does.kind === "buff" && does.target === "creature") {
+    return [{ target: "ally", dice: lines.dice, heals: false }, { key: "foe", label: "foe", target: "enemy", dice: lines.dice, heals: false }];
+  }
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
 }
 
@@ -243,7 +250,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   return aims.map((aim) => {
     const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
     const card: HandCard = {
-      id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
+      id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${(aim.variant ?? aim.key) && aims.length > 1 ? `:${aim.variant ?? aim.key}` : ""}`,
       type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),

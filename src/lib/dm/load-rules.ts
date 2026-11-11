@@ -17,6 +17,7 @@
 
 import { itemWeightByName } from "@/lib/content";
 import { carryMultiplier, encumbranceFor, type CarriedItem } from "@/lib/srd/encumbrance";
+import { densityCarryFactor } from "@/lib/srd/ar-ws-density";
 import { sizeForRace } from "@/lib/srd";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -69,6 +70,7 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
-  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined);
+  // Adjust Density doubles or halves both (src/lib/srd/ar-ws-density.ts).
+  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined) * densityCarryFactor(sheet.conditions);
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

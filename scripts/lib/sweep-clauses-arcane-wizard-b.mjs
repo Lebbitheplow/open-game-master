@@ -248,11 +248,53 @@ export function probes(rig, shared) {
       assert.equal(await keep("adjusted density (heavier)"), "highest", "doubled weight: advantage on Strength checks");
       assert.equal(await keep("adjusted density (lighter)"), "lowest", "halved weight: disadvantage");
     },
+    // A creature of either side: the foe named carries it for the minute and
+    // walks 10 feet slower or faster, the wizard nothing; with no creature
+    // named it is the wizard's own; and a target the buff cannot use is
+    // refused with the action unspent, for this buff and for any other.
     "density-enemy": async () => {
+      const { enemySpeedTiles } = await import("../../src/lib/dm/enemy-speed.ts");
       const [enemy] = await stage(gra(), { others: [friend()] });
+      const density = (list) => list.filter((name) => name.startsWith("adjusted density"));
+      const walks = enemySpeedTiles(foe(enemy));
       const out = await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, variant: "heavier" });
       if (!out.ok) throw new Error(out.error);
-      assert.ok(foe(enemy).conditions.some((name) => name.startsWith("adjusted density")), `aimed at a creature of the other side, it lands elsewhere: ${show(out).slice(0, 150)}`);
+      assert.deepEqual(density(foe(enemy).conditions), ["adjusted density (heavier)"], `aimed at a creature of the other side: ${show(out).slice(0, 150)}`);
+      assert.equal(foe(enemy).conditionMeta["adjusted density (heavier)"].rounds, 10, "a minute");
+      assert.deepEqual(density(sheet(gra()).conditions), [], "nothing lands on the wizard");
+      assert.equal(budget().actionUsed, true, "the action");
+      assert.equal(enemySpeedTiles(foe(enemy)), walks - 2, "doubled weight: 10 feet slower");
+      // Halved on the next turn: the doubling goes as the halving lands.
+      kit.freshTurn();
+      assert.equal((await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, variant: "halve" })).ok, true);
+      assert.deepEqual(density(foe(enemy).conditions), ["adjusted density (lighter)"], "halved, no longer doubled");
+      assert.equal(enemySpeedTiles(foe(enemy)), walks + 2, "halved weight: 10 feet faster");
+      // Two creatures named, and a creature that is not there: nothing spent.
+      kit.freshTurn();
+      const before = JSON.stringify([foe(enemy).conditions, sheet(friend()).conditions, sheet(gra()).conditions]);
+      const both = await spend(gra(), "Adjust Density", { targetEnemyId: enemy.id, targetCharacterId: friend().id, variant: "heavier" });
+      assert.equal(both.ok, false, "a foe and an ally named together");
+      assert.match(both.error, /Nothing was spent/);
+      assert.equal((await spend(gra(), "Adjust Density", { targetEnemyId: "nobody-here", variant: "heavier" })).ok, false, "a creature that is not in the fight");
+      assert.equal(JSON.stringify([foe(enemy).conditions, sheet(friend()).conditions, sheet(gra()).conditions]), before, "a refusal lays nothing");
+      assert.equal(budget()?.actionUsed ?? false, false, "a refusal spends no action");
+      // No creature named: the wizard's own weight.
+      assert.equal((await spend(gra(), "Adjust Density", { variant: "double" })).ok, true);
+      assert.deepEqual(density(sheet(gra()).conditions), ["adjusted density (heavier)"]);
+      world.patch(gra().id, { conditions: [], conditionMeta: {} });
+      // Any buff: a sorcerer's own wings named for a foe, or for a friend, were
+      // laid on the sorcerer; now refused, the bonus action unspent.
+      const soul = holder("sorcerer", "Divine Soul");
+      await stage(soul, { others: [friend()] });
+      const [other] = world.enemies().filter((entry) => entry.status === "alive");
+      for (const stray of [{ targetEnemyId: other.id }, { targetCharacterId: friend().id }]) {
+        const wings = await spend(soul, "Otherworldly Wings", stray);
+        assert.equal(wings.ok, false, `Otherworldly Wings with ${Object.keys(stray)[0]}: ${show(wings).slice(0, 120)}`);
+        assert.match(wings.error, /Nothing was spent/);
+        assert.deepEqual([sheet(soul).conditions.includes("otherworldly wings"), budget()?.bonusUsed ?? false], [false, false], "[winged, bonus action spent] after the refusal");
+      }
+      assert.equal((await spend(soul, "Otherworldly Wings")).ok, true, "with no target it is theirs");
+      world.patch(soul.id, { conditions: [], conditionMeta: {} });
     },
     "attraction-hit": async () => {
       const [enemy] = await stage(gra(), { others: [friend()], first: friend() });
@@ -337,7 +379,6 @@ export function probes(rig, shared) {
     "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
-    "density-enemy": { severity: "medium", kind: "rule-wrong", where: `${DATA} wizard::Adjust Density (buff target "ally"), src/lib/dm/authored-spend-effects.ts (a targetEnemyId the buff cannot use falls back to the holder)`, note: "The wizard meant to slow a foe and is told they have slowed themselves; the action is spent.", fix: "Let the buff take a creature of either side, and refuse a target it cannot use instead of falling back to the holder." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
     scrivener: { severity: "low", kind: "rule-missing", where: `${RES} sub_master_scrivener (a counter with guidance)`, note: "No scroll is made; the +1 level casting has nothing to ride.", fix: "Write a scroll onto the sheet that the cast tools read one level higher and a long rest removes." },
     "word-vanish": { severity: "low", kind: "rule-missing", where: "src/lib/dm/reaction-counters.ts One with the Word (the price is told, not taken)", note: "The reaction prevents the damage for free.", fix: "Roll the 3d6 and mark spells of that many levels as gone until 1d6 long rests pass." },

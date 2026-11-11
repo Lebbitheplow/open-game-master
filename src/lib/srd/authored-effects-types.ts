@@ -314,7 +314,14 @@ export type SpendDoes =
       hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
-      target?: "self" | "ally" | "enemy" | "allies";
+      // "creature": a creature of either side (Adjust Density: "a creature's
+      // ... weight"): the enemy named in targetEnemyId, else the ally named in
+      // targetCharacterId, else the holder.
+      target?: "self" | "ally" | "enemy" | "allies" | "creature";
+      // The mark lasts until the holder's long rest, not a count of rounds
+      // (Awakened Spellbook's ritual at its normal casting time, kept until
+      // a ritual uses it: src/lib/dm/ar-ws-swift-ritual.ts).
+      untilLongRest?: boolean;
       // An ally other than the holder ("a willing creature other than
       // yourself": Blessing of the Trickster): the holder is no target.
       othersOnly?: boolean;

@@ -280,6 +280,7 @@ export function attackSituation(input: {
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
+        wearer: sheet,
       })
     : null;
   if (load?.disadvantage && load.note) {
