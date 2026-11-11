@@ -1125,7 +1125,7 @@
   "source": "src/lib/srd/authored-feats.json",
   "group": "feat",
   "level": null,
-  "sha": "7b6b1bb931e2",
+  "sha": "360ccbfab7a4",
   "clauses": [
    {
     "c": "Increase your Constitution or Wisdom by 1, to a maximum of 20, and gain proficiency with cook's utensils.",
@@ -1140,10 +1140,28 @@
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.meal"
    },
    {
-    "c": "and an hour's work makes treats that grant temporary hit points",
-    "is": "gap",
-    "read_only": true,
-    "why": "not built: the text states no number of treats and no amount of temporary hit points, so there is nothing to build from without writing numbers into the feat (w2-ar-wbf-handoff.jsonl)"
+    "c": "and with an hour's work as you finish a long rest you make a number of treats equal to your proficiency bonus",
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts chef_treats: as many uses as the proficiency bonus, back with a long rest and not a short one",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.treats"
+   },
+   {
+    "c": "that keep for 8 hours",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-treats.ts treatsRefusal, asked by use_resource (src/lib/dm/resource-tools.ts) before anything is spent: more than 8 hours on the campaign's clock after the cook's long rest ended, the treats have spoiled",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.treats"
+   },
+   {
+    "c": "a creature eats one as a bonus action",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-treats.ts turnPayer, read by use_resource (src/lib/dm/mutations.ts) for the turn's charge: in a fight the eater's own turn pays its bonus action, and an eater whose turn it is not is refused with the treat kept",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.treats"
+   },
+   {
+    "c": "and gains temporary hit points equal to your proficiency bonus.",
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts chef_treats effect temp_hp: the cook's proficiency bonus, never stacking with temporary hit points already held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.treats"
    }
   ]
  },

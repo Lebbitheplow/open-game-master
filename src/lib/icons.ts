@@ -37,6 +37,7 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // of their kin.
   "feature/luck-points": { kind: "feature", slug: "bend-luck" },
   "feature/inspiring-leader": { kind: "feature", slug: "combat-inspiration" },
+  "feature/chefs-treats": { kind: "spell", slug: "heroes-feast" },
   // A feature's second spend wears the feature's own painting (issue 233).
   "feature/activate-cannon": { kind: "feature", slug: "eldritch-cannon" },
   "feature/move-spirit-totem": { kind: "feature", slug: "spirit-totem" },

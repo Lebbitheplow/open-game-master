@@ -50,6 +50,7 @@ import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { turnPayer } from "@/lib/dm/ar-wbf-feat-treats";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
@@ -1464,7 +1465,8 @@ function dmMutation(
       }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
-      const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
+      // A Chef's treat is the eater's bonus action (ar-wbf-feat-treats.ts).
+      const charge = prepareResourceCharge(campaign, turnPayer(counter?.id, sheet, target), resourceName, optionCharge);
       if ("error" in charge) {
         return { result: charge };
       }

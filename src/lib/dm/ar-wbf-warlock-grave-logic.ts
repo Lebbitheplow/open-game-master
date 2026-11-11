@@ -21,7 +21,8 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
 export const GRAVE_TOUCHED = "Grave Touched";
-const GRAVE_KEY = `rider:${GRAVE_TOUCHED.toLowerCase()}`;
+// The key claimOncePerTurnRiders writes for this rider (pc-attack-damage.ts).
+const GRAVE_KEY = "rider:grave touched";
 const DREAD = "form of dread";
 
 type GraveSheet = { features?: ReadonlyArray<{ name: string }>; feats?: readonly string[]; conditions: string[] };

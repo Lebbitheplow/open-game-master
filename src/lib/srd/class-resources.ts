@@ -504,6 +504,21 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
       "Inspiring Leader (or Level Up's Rallying Speaker): ten minutes of rallying words give up to six friendly creatures within 30 feet who can hear and understand them temporary hit points equal to the speaker's level plus Charisma modifier; one use per creature (targetCharacterId), and a creature cannot benefit again until it finishes a rest.",
   },
   {
+    id: "chef_treats",
+    match: ["chef"],
+    exact: true,
+    displayName: "Chef's Treats",
+    // "a number of treats equal to your proficiency bonus", made as a long
+    // rest ends; what the 8 hours and the eater's bonus action ask is
+    // src/lib/dm/ar-wbf-feat-treats.ts.
+    maxFor: (level) => 2 + Math.floor((Math.max(1, level) - 1) / 4),
+    recharge: "long",
+    action: "bonus",
+    effect: { kind: "temp_hp", dice: (level) => `${2 + Math.floor((Math.max(1, level) - 1) / 4)}` },
+    guidance:
+      "Chef: the treats made as a long rest ends, as many as the cook's proficiency bonus, keeping 8 hours. The creature that eats one (targetCharacterId, else the cook) gains temporary hit points equal to the cook's proficiency bonus, for the eater's own bonus action in a fight.",
+  },
+  {
     id: "second_wind",
     classIds: ["fighter"],
     match: ["second wind"],

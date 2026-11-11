@@ -21,6 +21,7 @@
     "lib/dm/ar-wbf-bard-dice-logic.ts#toLowerCase": [["key",1,"ODM's own condition label \"bardic inspiration (dN)\" and its die notation (engine vocabulary)"]],
     "lib/dm/ar-wbf-feat-rally.ts#toLowerCase": [["key",1,"a counter id and ODM's own condition label (engine vocabulary)"]],
     "lib/dm/ar-wbf-feat-turn.ts#str-eq": [["key",1,"ODM's own turn mark and feature names the engine writes (engine vocabulary)"]],
+    "lib/dm/ar-wbf-warlock-grave-logic.ts#str-eq": [["key",2,"a damage type's own key (necrotic), asked of pc_attack through textKey and read off the attack's profile: engine vocabulary"]],
     "lib/dm/ar-wbf-warlock-ward.ts#toUpperCase": [["display",3,"ability abbreviation shown in a roll note"]],
     "lib/dm/hit-save.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/spell-damage-mark.ts#str-includes": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],

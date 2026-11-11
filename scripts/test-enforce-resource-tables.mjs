@@ -267,15 +267,16 @@ await test("every counter id is unique, so no definition hides another", () => {
   // made from their ids and sized from the race (issue #833,
   // src/lib/srd/racial-grants.ts). And the wizard's two Signature Spells and Overchannel's count of uses
   // (src/lib/dm/caster-features.ts).
-  // And the feats' five (issue #147): Lucky's points, Inspiring Leader's
-  // uses, and Inner Resilience's, Martial Adept's and Metamagic Adept's
-  // pour-ins to the class counters (src/lib/srd/feat-combat.ts).
+  // And the feats' six (issue #147): Lucky's points, Inspiring Leader's
+  // uses, Chef's treats (src/lib/dm/ar-wbf-feat-treats.ts), and Inner
+  // Resilience's, Martial Adept's and Metamagic Adept's pour-ins to the
+  // class counters (src/lib/srd/feat-combat.ts).
   // And the warlock's One with Shadows, an action with no limit
   // (src/lib/dm/one-with-shadows.ts, issue #570).
   // And a Draconic sorcerer's three, played as often as the points allow:
   // Elemental Affinity's resistance, Dragon Wings and Draconic Presence
   // (src/lib/dm/draconic-spends.ts, issue #833).
-  assert.equal(RESOURCE_DEFS.length, 29 + AUTHORED.length + GENRE.length + 3 + 5 + 1 + 3);
+  assert.equal(RESOURCE_DEFS.length, 29 + AUTHORED.length + GENRE.length + 3 + 6 + 1 + 3);
 });
 
 await test("every authored and genre row is structurally legal", () => {

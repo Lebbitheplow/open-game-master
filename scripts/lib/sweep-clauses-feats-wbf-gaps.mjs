@@ -363,4 +363,62 @@ export function gapProbes(rig, P) {
     assert.deepEqual(tried.plain, { blade: 400, blast: 400, sight: 400, second: 400, held: [] }, "a wizard without the feat owes no invocation");
     assert.deepEqual(tried.holder, { blade: 400, blast: 400, sight: 200, second: 400, held: ["Invocation: Devil's Sight"] }, "Eldritch Adept: one invocation, its prerequisites met");
   };
+
+  // Chef's treats: as many as the proficiency bonus (+3 at 5th level), each
+  // 3 temporary hit points for the eater's own bonus action, made by a long
+  // rest and spoiled 8 hours after it.
+  P["feat.chef.treats"] = async () => {
+    const { getClock, setClock } = await import("../../src/lib/db/clock.ts");
+    const t = await rig.table();
+    const cook = t.hero({ class: "fighter", level: 5, feats: ["Chef"] });
+    const friend = t.hero({ class: "fighter", level: 5 });
+    const treats = () => t.sheet(cook).resources.chef_treats;
+    assert.deepEqual(treats(), { max: 3, used: 0 }, "treats at 5th level: the proficiency bonus");
+    assert.equal(t.sheet(friend).resources.chef_treats, undefined, "a fighter without the feat holds none");
+    const eat = (who) => t.invoke("use_resource", { characterId: cook.id, resource: "Chef's Treats", ...(who ? { targetCharacterId: who.id } : {}) });
+    const temp = (who) => t.sheet(who).tempHp ?? 0;
+    // Out of a fight nothing times a bonus action: the friend eats one.
+    const calm = await eat(friend);
+    assert.equal(calm.ok, true, calm.error);
+    assert.deepEqual([temp(friend), treats().used], [3, 1], "[the friend's temporary hit points, treats eaten]");
+    t.patch(friend, { tempHp: 0 });
+    // In a fight, on the cook's turn: the friend's bonus action is not theirs to take.
+    await t.fight([cook, friend]);
+    const off = await eat(friend);
+    assert.equal(off.ok, false, "a friend ate a treat on the cook's turn");
+    assert.deepEqual([temp(friend), treats().used], [0, 1], "the refusal gave hit points or spent a treat");
+    assert.equal(t.budget()?.bonusUsed ?? false, false, "the refusal spent the cook's bonus action");
+    const own = await eat(null);
+    assert.equal(own.ok, true, own.error);
+    assert.deepEqual([temp(cook), t.budget().bonusUsed], [3, true], "the cook eats one for their own bonus action");
+    // On the friend's own turn their bonus action pays.
+    t.kit.giveTurn(friend.id);
+    t.freshTurn();
+    const theirs = await eat(friend);
+    assert.equal(theirs.ok, true, theirs.error);
+    assert.deepEqual([temp(friend), t.budget().bonusUsed, treats().used], [3, true, 3], "[the friend's temporary hit points, their bonus action spent, treats eaten]");
+    t.freshTurn();
+    const none = await eat(friend);
+    assert.equal(none.ok, false, "a fourth treat of three");
+    // A short rest makes none; a long rest makes them all again.
+    await t.kit.endFight();
+    await t.rest("short");
+    assert.equal(treats().used, 3, "a short rest made treats");
+    await t.rest("long");
+    assert.equal(treats().used, 0, "the long rest makes the treats");
+    // 8 hours on the clock from the end of that rest.
+    const clock = getClock(t.world.campaignId);
+    const made = clock.longRests?.[cook.id];
+    assert.equal(typeof made, "number", "the staging: the clock holds the end of the cook's long rest");
+    t.patch(friend, { tempHp: 0 });
+    setClock(t.world.campaignId, { ...clock, instant: made + 9 * 60 });
+    const late = await eat(friend);
+    assert.equal(late.ok, false, "a treat eaten 9 hours after it was made");
+    assert.match(String(late.error), /spoiled/);
+    assert.deepEqual([temp(friend), treats().used], [0, 0], "the spoiled treat gave hit points or was spent");
+    setClock(t.world.campaignId, { ...getClock(t.world.campaignId), instant: made + 7 * 60 });
+    const fresh = await eat(friend);
+    assert.equal(fresh.ok, true, `7 hours after it was made: ${fresh.error}`);
+    assert.equal(temp(friend), 3);
+  };
 }

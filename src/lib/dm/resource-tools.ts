@@ -11,6 +11,7 @@ import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildS
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
+import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -641,6 +642,11 @@ export function computeUseResource(
       const rallied = rallyRefusal(def.id, target);
       if (rallied) {
         return rallied;
+      }
+      // Chef's treats keep 8 hours from the cook's long rest (ar-wbf-feat-treats.ts).
+      const spoiled = treatsRefusal(campaign.id, def.id, sheet);
+      if (spoiled) {
+        return spoiled;
       }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
       const total = Math.max(
