@@ -122,7 +122,7 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
   const footprintOf = footprintLookup(enemiesById);
   const traits = pcMoveTraits({
     width: map.width,
-    theme: map.theme,
+    theme: map.theme, drawnTerrain: map.drawnTerrain,
     tokens,
     mover: token,
     sheet: ctx.sheet,

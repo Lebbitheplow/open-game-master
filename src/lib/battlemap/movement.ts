@@ -64,8 +64,10 @@ function stepOnto(
   const ch = tileAt(terrain, width, nx, ny);
   const base = zoneStepOf(traits)(fromIdx, idx, moveCost(ch, traits));
   if (footprint === 1) {
+    // A wall the mover passes through (a door or a window to a Ghost Walk,
+    // passage.ts objectTiles) is crossed as a creature's space is.
     if (blocksMoveFor(ch, flying)) {
-      return null;
+      return passable?.has(idx) ? { cost: Math.max(base, 2), stop: false } : null;
     }
     if (occupied.has(idx) && idx !== goalIdx) {
       return passable?.has(idx) ? { cost: Math.max(base, 2), stop: false } : null;

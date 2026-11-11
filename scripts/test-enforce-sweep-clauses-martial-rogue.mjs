@@ -441,6 +441,19 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(through().has(at), true, "spectral, the rogue passes through the creature's space");
     assert.equal(fly(), 10, "a 10-foot flying speed");
     assert.equal(r.sheet(ghost).conditionMeta["ghost walk"]?.rounds, 100, "for 10 minutes");
+    // "Through creatures and objects": a locked door (the terrain the engine
+    // runs walls it) and a window (a low wall) are crossed as difficult
+    // terrain and never stopped in; a wall, the building, still stops the
+    // rogue. Neither was crossed before (passage.ts objectTiles).
+    const { reachableTiles } = await import("../src/lib/battlemap/movement.ts");
+    const drawn = "....." + "#+#|#" + ".....";
+    const run = "....." + "###|#" + ".....";
+    const mover = { ...kit.token(ghost.id), x: 2, y: 0 };
+    const reach = (sheet) => reachableTiles(run, 5, 3, new Set(), mover, 6, 1, false, pcMoveTraits({ width: 5, drawnTerrain: drawn, tokens: [mover], mover, sheet, footprintOf: () => 1, enemySize: () => "medium" }));
+    const spectral = reach(r.sheet(ghost));
+    assert.deepEqual([spectral.has(2 * 5 + 1), spectral.has(2 * 5 + 3), spectral.has(5 + 1), spectral.has(5 + 2)], [true, true, false, false], "[past the door, past the window, stopped in the door, through the wall]");
+    const calm = reach({ ...r.sheet(ghost), conditions: [] });
+    assert.deepEqual([calm.has(2 * 5 + 1), calm.has(2 * 5 + 3)], [false, false], "with no Ghost Walk the door and the window stop the rogue");
   });
 
   await probe("tokens-save-advantage", async () => {
