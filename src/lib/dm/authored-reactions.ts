@@ -11,6 +11,7 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { regainSlot, swapPlaces } from "@/lib/dm/genre-b-steampunk-reactions";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -423,7 +424,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       let reduction: number;
       let rolled = "";
-      if (does.amount === "half") {
+      if (does.whole) {
+        reduction = swing.raw;
+      } else if (does.amount === "half") {
         reduction = Math.ceil(swing.raw / 2);
       } else if (does.amount === "ward") {
         // Projected Ward: the Arcane Ward takes what it can hold (arcane-ward.ts).
@@ -439,7 +442,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         reduction = Math.max(0, rollCard(ctx.campaign, ctx.turn, holder.id, "custom", `${holder.name}: ${reaction.name}`, expression, null).total);
         rolled = `${expression}: ${reduction}`;
       }
-      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" ? "half" : reduction) : entry));
+      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" && !does.whole ? "half" : reduction) : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       // Vengeful Ancestors: what Spirit Shield prevented strikes the attacker.
       const reflected: Record<string, unknown> = {};
@@ -451,7 +454,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           publishEncounter(ctx.campaign.id);
         }
       }
-      return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
+      // Capacitor Soul: the slot the absorbed charge gives back (genre-b-steampunk-reactions.ts).
+      const regained = does.regainSlot ? regainSlot(ctx.campaign, holder.id, does.regainSlot) : null;
+      return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...(regained ? { regained } : {}), ...reflected };
     }
     case "ac_vs_hit": {
       let bonus: number;
@@ -658,7 +663,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const share = share_ ? Math.floor(raw / 2) : raw;
       // The damage lands on the paladin as it was dealt: nothing reduces it.
       const taken = applyPcDamage(ctx.campaign, ctx.turn.id, getSheetById(ctx.sheet.id) ?? ctx.sheet, { amount: share, reason: `${reaction.name} for ${ally.name}` });
+      // Intercept Protocol: the two trade places (genre-b-steampunk-reactions.ts).
+      const swapped = does.swap && encounter ? swapPlaces(ctx.campaign, encounter.id, ctx.sheet.id, ally.id) : null;
       return {
+        ...(swapped ? { swapped } : {}),
         applied: share_ === "split"
           ? `${ctx.sheet.name} takes ${share} of the ${raw} damage and ${ally.name} keeps ${kept}: ${settled.given} hit points come back to ${ally.name}.`
           : `${ctx.sheet.name} takes ${share === raw ? `the ${raw} damage` : `half of the ${raw} damage (${share})`} meant for ${ally.name}, whose ${settled.given} hit points come back.`,

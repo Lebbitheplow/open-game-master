@@ -77,7 +77,9 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // ---- steampunk ----
   row("Acid Resistant Apron", ["alchemist"], { effects: [{ kind: "resist", types: ["acid", "poison"] }] }),
   row("Grounded Stance", ["aether_channeler"], { effects: [{ kind: "resist", types: ["lightning"] }] }),
-  row("Lightning Rod", ["aether_channeler"], { effects: [{ kind: "immune_damage", types: ["lightning"] }] }),
+  // "Galvanic Discharge is always active": every melee hit shocks, with no
+  // charge to spend (a charged hit is the charge's own, authored-effects-genre-b-steampunk.ts).
+  row("Lightning Rod", ["aether_channeler"], { effects: [{ kind: "immune_damage", types: ["lightning"] }, { kind: "retaliate", formula: "1d8", type: "lightning", melee: true, gate: { notCondition: "galvanic discharge" } }] }),
   // "Advantage on saves against poison gas and drowning".
   row("Pressure Seal", ["steam_knight"], { effects: [{ kind: "save_adv", against: ["poisoned", "poison"] }] }),
   row("Reinforced Boiler", ["steam_knight"], { effects: [{ kind: "resist", types: ["fire"] }] }),
@@ -178,7 +180,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
     },
   },
   // "double your speed and gain an extra action each turn for 1 minute".
-  spend("Full Throttle", ["steam_knight"], "steampunk_full_throttle", undefined, { kind: "buff", condition: "full throttle", rounds: 10 }),
+  // "take 3d10 fire when it ends": the debt the minute leaves (src/lib/dm/genre-b-steampunk-ends.ts).
+  spend("Full Throttle", ["steam_knight"], "steampunk_full_throttle", undefined, { kind: "buff", condition: "full throttle", rounds: 10, debt: "boiler strain" }),
   // "1/rest, reduce all damage you take this round by your CON modifier" (the cut: genre-b-combat.ts genreDamageCut).
   spend("Hardened", ["road_warrior"], "post_apocalyptic_hardened", undefined, { kind: "buff", condition: "hardened", rounds: 1 }),
   // "1/rest, your tuned weapon deals +2d8 lightning on one hit; the target

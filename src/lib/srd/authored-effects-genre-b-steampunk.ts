@@ -7,8 +7,32 @@
 //
 // Pure data; no database.
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+import { GALVANIC } from "@/lib/srd/genre-b-steampunk-conditions";
 
 export const GENRE_B_STEAMPUNK_AUTHORED: GenreRow[] = [
+  // "1/rest, charge your skin for 1 minute: the next creature that touches or
+  // melee-hits you takes 1d8 lightning": the charge is a mark the first melee
+  // hit spends (src/lib/dm/genre-b-steampunk-ends.ts spendRetaliateMark); a
+  // touch that is no attack is the GM's to shock by apply_damage. Lightning
+  // Rod's "always active" is that feature's own row.
+  {
+    feature: "Galvanic Discharge",
+    classes: ["aether_channeler"],
+    entry: {
+      subclass: "genre",
+      counter: "steampunk_galvanic_discharge",
+      effects: [{ kind: "retaliate", formula: "1d8", type: "lightning", melee: true, spends: GALVANIC, gate: { condition: GALVANIC } }],
+      spends: [{ name: "Galvanic Discharge", pool: { id: "steampunk_galvanic_discharge" }, action: "none", does: { kind: "buff", condition: GALVANIC, rounds: 10 } }],
+    },
+  },
+  // "1/long rest, reaction when a lightning or aether effect hits you: absorb
+  // it, taking no damage, and regain a 1st-level slot": aether is lightning on
+  // the SRD engine, as the channeler's own arts are.
+  {
+    feature: "Capacitor Soul",
+    classes: ["aether_channeler"],
+    entry: { subclass: "genre", counter: "steampunk_capacitor_soul", reactions: [{ name: "Capacitor Soul", pool: { id: "steampunk_capacitor_soul" }, does: { kind: "reduce", amount: "half", whole: true, who: "self", types: ["lightning"], regainSlot: 1 } }] },
+  },
   // "1/long rest, ignore being disarmed": what the gadgeteer let fall is in
   // their hand again and the disarmed mark is gone, at no cost of the turn;
   // refused, nothing spent, when they are not disarmed

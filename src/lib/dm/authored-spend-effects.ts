@@ -293,9 +293,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
       // answered ok and landed nothing.
       if (!does.target || does.target === "self" || does.target === "ally") {
-        const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
+        const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition) && !(does.debt && isConditionNamed(entry, does.debt)));
         patch = {
-          conditions: [...kept, condition],
+          conditions: [...kept, condition, ...(does.debt ? [does.debt] : [])],
           conditionMeta: { ...sheet.conditionMeta, [condition]: { ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }), ...(quarry ? { quarry: quarry.id } : {}) } },
           ...(tempHp > sheet.tempHp ? { tempHp } : {}),
         };

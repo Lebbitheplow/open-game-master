@@ -2,7 +2,7 @@
 // the stagings a spend may need before it is accepted, the doors it is
 // played through, and how an accepted call is judged.
 import { readChanges, signature, statesMechanic } from "./sweep-spends.mjs";
-import { STEAMPUNK_OWN_TURN, steampunkStep } from "./sweep-spends-steampunk.mjs";
+import { STEAMPUNK_OWN_TURN, STEAMPUNK_TRIGGERS, steampunkStep } from "./sweep-spends-steampunk.mjs";
 
 // ---- stagings ----
 
@@ -275,6 +275,7 @@ export async function staged(rig, scene, key) {
 
 // What a steampunk counter answers on its holder's own turn, after the rest.
 OWN_TURN.push(...STEAMPUNK_OWN_TURN);
+TRIGGERS.push(...STEAMPUNK_TRIGGERS);
 
 // ---- doors ----
 

@@ -184,7 +184,8 @@ export type AuthoredEffect = Base &
       }
     // A creature that hits the holder takes damage back.
     // `attacks`: only a hit by an attack whose name holds one of these words.
-    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[] }
+    // `spends`: the holder's mark the blow uses up (Galvanic Discharge's charge).
+    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[]; spends?: string }
     // Enemies starting their turn near the holder take damage (Aura of
     // Conquest: only frightened ones).
     | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean }
@@ -348,6 +349,10 @@ export type SpendDoes =
       sight?: boolean;
       // An area laid with the condition (src/lib/dm/genre-b-zones.ts): Dawnlight's light.
       zone?: GenreZoneSpec;
+      // A second, untimed mark laid on the holder with the condition and left
+      // behind when it ends, for what the ending costs (Full Throttle's boiler
+      // strain, src/lib/dm/genre-b-steampunk-ends.ts).
+      debt?: string;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -543,7 +548,9 @@ export type ReactionDoes =
   // "ward": the holder's Arcane Ward takes what it can (Projected Ward).
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
+  // `whole`: the whole blow, whatever `amount` says (Capacitor Soul), and
+  // `regainSlot`: the holder then regains one expended spell slot of that level.
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number }
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
@@ -570,7 +577,8 @@ export type ReactionDoes =
   // (Penance Shared); "split", each takes half (Blood Bond).
   // `resistFrom`: from this class level the holder resists what it takes
   // (Protective Bond with Expansive Bond).
-  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number }
+  // `swap`: the two trade places on the board (Intercept Protocol).
+  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; swap?: boolean }
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";

@@ -146,13 +146,13 @@
       "levels": {
         "1": [
           { "n": "Conduit Body", "d": "Casts sorcerer-list spells as aetheric arts using CHA; sparks visibly arc across you when you cast." },
-          { "n": "Galvanic Discharge", "d": "1/rest, a creature that touches or melee-hits you takes 1d8 lightning." }
+          { "n": "Galvanic Discharge", "d": "1/rest, charge your skin for 1 minute: the next creature that touches or melee-hits you takes 1d8 lightning." }
         ],
         "2": [{ "n": "Static Sense", "d": "Detect active machines, aether lines, and charged creatures within 30 ft." }],
         "3": [{ "n": "Grounded Stance", "d": "Resistance to lightning damage." }],
         "5": [{ "n": "Surge Casting", "d": "2/rest, cast a cantrip as a bonus action after casting a leveled art." }],
         "7": [{ "n": "Power the Works", "d": "Your touch runs any machine without fuel for 1 hour, CHA-mod uses per long rest." }],
-        "9": [{ "n": "Capacitor Soul", "d": "1/long rest, absorb a lightning or aether effect targeting you: negate it and regain a 1st-level slot." }],
+        "9": [{ "n": "Capacitor Soul", "d": "1/long rest, reaction when a lightning or aether effect hits you: absorb it, taking no damage, and regain a 1st-level slot." }],
         "11": [{ "n": "Storm Step", "d": "1/rest, turn to crackling energy and move 30 ft through creatures and objects as a bonus action." }],
         "13": [{ "n": "Overcharge", "d": "1/long rest, a damaging art rolls maximum dice; you take 1d10 lightning backlash." }],
         "15": [{ "n": "Aetheric Battery", "d": "1/long rest, regain expended slot levels equal to your CHA modifier." }],

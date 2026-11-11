@@ -48,6 +48,7 @@ import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMa
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { genreBOnKill } from "@/lib/dm/genre-b-kills";
+import { spendRetaliateMark } from "@/lib/dm/genre-b-steampunk-ends";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
@@ -247,6 +248,9 @@ export function authoredAfterHit(
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
       lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
+    }
+    if (effect.spends) {
+      spendRetaliateMark(campaign, target.id, effect.spends);
     }
   }
   return lines;
