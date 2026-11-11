@@ -52,29 +52,11 @@ import { containsPhrase } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { afflictionStress } from "@/lib/dm/afflictions";
+// The marks that end when their holder is incapacitated (Hexblade's Curse).
+import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 
 // A sheet holds this many conditions at once (the stored list's own cap).
 export const MAX_CONDITIONS = 15;
-
-// The holder's own conditions that end when they are incapacitated
-// (Hexblade's Curse: ConditionMeta endsIfIncapacitated). Returns the names
-// that ended.
-function endIncapacitationHeld(sheetId: string): string[] {
-  const fresh = getSheetById(sheetId);
-  if (!fresh) {
-    return [];
-  }
-  const meta = (fresh.conditionMeta ?? {}) as ConditionMetaMap;
-  const held = Object.entries(meta)
-    .filter(([, entry]) => (entry as ConditionMeta | undefined)?.endsIfIncapacitated)
-    .map(([name]) => name);
-  if (!held.length) {
-    return [];
-  }
-  const cleared = removeConditions(fresh.conditions, meta, held);
-  patchSheet(sheetId, { conditions: cleared.conditions, conditionMeta: cleared.meta });
-  return held;
-}
 
 // The SRD's conditions, and the content's own when the pack is there.
 function knownConditions(): string[] {

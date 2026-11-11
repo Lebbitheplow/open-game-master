@@ -48,6 +48,7 @@ import { summonImmunities, summonResistances, summonVulnerabilities } from "@/li
 import { summonAfterDamage } from "@/lib/dm/summon-store";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
+import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 
@@ -481,6 +482,12 @@ export function applyPcDamage(
   const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true, input.nonlethal === true && !input.disintegrate);
   // Unconscious at 0 is incapacitated: a grapple they held ends.
   const letGo = math.dropped ? releaseGrapplesHeldBy(campaign, sheet.id) : [];
+  // And a mark held only while its holder can act ends, as it does when a
+  // condition incapacitates them: a dead warlock's Hexblade's Curse stood
+  // for its minute (ar-wbf-warlock-marks.ts).
+  if (math.dropped && endIncapacitationHeld(sheet.id).length) {
+    publishSheet(campaign, sheet.id);
+  }
   // Concentration: damage forces the CON save server-side. A form that broke
   // took the blow too, so the save is against all of it.
   const concentrationInfo = concentrationDamageHook(
