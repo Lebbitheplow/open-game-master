@@ -125,7 +125,8 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
         glyph: "ui-key",
         // A reset signs its account out everywhere, so an admin who reset
         // their own would lose the page before reading the new password
-        // (#909). Their own password is changed in Settings.
+        // (#909). Their own password is changed in Settings, or in a world
+        // one of the apps hosts, kept by the app.
         disabled: busy || user.id === meId,
         onSelect: () => void resetPassword(user),
       },

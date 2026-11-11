@@ -6,6 +6,7 @@ import {
   getUserById,
   setUserPassword,
 } from "@/lib/db/users";
+import { isDeviceWorld } from "@/lib/server-env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,13 @@ export async function POST(
   }
   if (target.id === admin.id) {
     return Response.json(
-      { error: "You can't reset your own password: it would sign you out. Change it in Settings." },
+      {
+        // A world one of the apps hosts has no Password section in Settings:
+        // the app keeps the host's password, so there is nothing to change.
+        error: isDeviceWorld()
+          ? "You can't reset your own password: it would sign you out of your own world."
+          : "You can't reset your own password: it would sign you out. Change it in Settings.",
+      },
       { status: 400 },
     );
   }
