@@ -7,7 +7,8 @@
 //   Stone's Endurance (VGtM goliath): the damage less 1d12 + Constitution.
 //   Swarming Dispersal (Swarmkeeper 15): resistance to that damage.
 //   One with the Word (Order of Scribes 14): none of it, while the Manifest
-//     Mind is out; 3d6 spell levels leave the book until 1d6 long rests pass.
+//     Mind is out; 3d6 spell levels leave the book until 1d6 long rests pass
+//     (taken and counted back by the server: ar-ws-word.ts).
 //   Warding Maneuver (Cavalier 3): 1d8 on the AC of the one hit (the
 //     fighter, or a creature within 5 feet), and resistance if it still hits.
 //   Necrotic Husk (Undead warlock 10): 1 hit point instead of 0, 2d10 + the
@@ -43,6 +44,10 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
+import { planSpellThief } from "@/lib/dm/spell-thief";
+import { MAGIC_USERS_NEMESIS_ID, planMagicUsersNemesis } from "@/lib/dm/magic-users-nemesis";
+import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
+import { payTheWord } from "@/lib/dm/ar-ws-word";
 
 export const MANIFEST_MIND = "manifest mind";
 // The marker a use that recharges over several long rests leaves, with the
@@ -59,6 +64,9 @@ type Input = {
   // The creature the call names, for a use that answers one (a caster, the
   // creature a hit landed on).
   targetEnemyId?: string;
+  // The call's variant, for a use whose price the player has a say in (One
+  // with the Word: the spells to lose first).
+  variant?: string;
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
 };
@@ -116,10 +124,21 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
   const ask = def ? { campaignId: campaign.id, reactor: sheet, name: def.displayName, counterId: input.defId, targetEnemyId: input.targetEnemyId, label: answerKey(input.defId, sheet.id) } : null;
   // Its effect is the counter's own, applied by use_resource. The trigger is
   // not marked answered: the spent reaction, or the turn's cost, shuts its card.
+  // Magic-User's Nemesis answers a casting before the spell resolves, which
+  // leaves no record yet, or a teleport on record (magic-users-nemesis.ts).
+  if (ask && input.defId === MAGIC_USERS_NEMESIS_ID) {
+    return planMagicUsersNemesis(input, ask);
+  }
   if (ask && triggerSpecOf(ask)) {
     const unanswered = triggerRefusal(ask);
     if (unanswered) return unanswered;
-    return null;
+    // Spell Thief's effect is the save it forces and the spell undone
+    // (src/lib/dm/spell-thief.ts).
+    if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
+    // Restore Balance, Violent Attraction and Accursed Specter act on the
+    // record they answer (arcane-triggered.ts); the other triggered
+    // counters' effect is their own fx.
+    return planArcaneTrigger(input, ask);
   }
   const turn = getDmTurn(input.turnId);
   if ((input.defId === "sub_necrotic_husk" || input.defId === "sub_strength_before_death") && !droppedByFreshHit(campaign.id, sheet)) {
@@ -177,9 +196,10 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
           const cleared = removeConditions(now.conditions, now.conditionMeta, [MANIFEST_MIND]);
           patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
           publishSheet(campaign, sheet.id);
+          // The price, taken from the book (src/lib/dm/ar-ws-word.ts).
           return {
             applied: `All of that damage is prevented: ${settled.given} hit points come back. HP ${settled.hp}. The Manifest Mind is dismissed.`,
-            spellbook: `Spells of ${sheet.name}'s choice with ${levels} or more spell levels between them vanish from the book until 1d6 long rests pass, and cannot be cast meanwhile. The player names them; the lead takes them off the sheet's book.`,
+            ...payTheWord(campaign, turn, sheet, levels, input.variant),
           };
         },
       };

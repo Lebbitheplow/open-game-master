@@ -8,8 +8,13 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
+import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
+import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
+import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
-import { recordSave } from "@/lib/dm/last-save";
+import { takeFate } from "@/lib/dm/fate-turn";
+import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -21,11 +26,12 @@ import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
-import { heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
+import { bardOfHeldDie, heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allySaveAura } from "@/lib/dm/aura";
+import { allyInitiativeAura } from "@/lib/dm/divine-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
 import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -49,17 +55,32 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { authoredEnemySave } from "@/lib/dm/authored-saves";
+import { exaltedAllyAdvantage } from "@/lib/dm/exalted-aura";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
+import { preyEscapeDie } from "@/lib/dm/prey-escape";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
+import { unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
+import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
+import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
 // this kind of roll, and the table's encumbrance rule.
 export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: string) {
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
+  // An ally's Aura of the Sentinel on initiative (divine-auras.ts): every
+  // initiative roll comes through here, so the ally's bonus is read once.
+  const sentinel = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  // Exalted Champion's allies (exalted-aura.ts): advantage on Wisdom and death saves.
+  const exalted = kind === "saving_throw" ? exaltedAllyAdvantage(campaign.id, sheet) : null;
   return {
     ...(aura ? { saveBonus: aura.bonus, saveNote: aura.note } : {}),
+    ...(exalted ? { allyAdvantage: exalted } : {}),
+    // A Spirit Totem's aura the roller stands in (spirit-totem.ts).
+    ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { totemAdvantage: spiritTotemRollAdvantage(campaign.id, sheet) } : {}),
+    ...(sentinel ? { initiativeBonus: sentinel.bonus, initiativeNote: sentinel.note } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
@@ -77,6 +98,12 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     fearOutOfSight:
       kind !== "saving_throw" &&
       fearAsRolled(getActiveBoard(campaign.id)?.id ?? null, sheet.id, sheet.conditions, sheet.conditionMeta).length < sheet.conditions.length,
+    // Emboldening Bond's d4, once a turn, beside another bonded creature
+    // (emboldening-bond.ts): a check, a save or initiative (a Dexterity check).
+    bondDie: bondRider(campaign.id, sheet),
+    // Supernatural Defense's 1d6 on a check to escape the prey's grapple
+    // (prey-escape.ts); rolls.ts adds it to a check named against the hold.
+    escapeDie: kind === "skill_check" || kind === "ability_check" ? preyEscapeDie(sheet) : null,
   };
 }
 
@@ -113,13 +140,15 @@ export function spendRollCarriers(campaignId: string, sheetId: string, spent: st
   if (!sheet) {
     return;
   }
-  const { conditions, meta } = removeConditions(
+  const { conditions, meta: cleared } = removeConditions(
     sheet.conditions,
     sheet.conditionMeta,
     spent.split("|"),
   );
   // Inspiration is a counter, not a condition (src/lib/dm/roll-riders.ts).
   const carriers = spent.split("|");
+  // Emboldening Bond's die stamps its turn on the bond, which stays.
+  const meta = bondStamped(campaignId, { conditions, conditionMeta: cleared }, carriers) ?? cleared;
   let resources = carriers.includes(INSPIRATION_SPEND) ? spendInspirationCounter(sheet.resources) : undefined;
   // A luck point is a counter too (Lucky).
   if (carriers.includes(LUCK_SPEND)) {
@@ -162,8 +191,16 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
     if (!die || settled.total + sidesOf(die.die) < dc) {
       continue;
     }
+    const bard = held === heldBardicDie && sheet ? bardOfHeldDie(sheet) : null;
     settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
-    spendRollCarriers(campaignId, sheetId, die.condition);
+    // Unfailing Inspiration: a die that left the roll short is kept.
+    if (!sheet || !unfailingDieKept(sheet, die.condition, settled.total, dc)) {
+      spendRollCarriers(campaignId, sheetId, die.condition);
+    }
+    // A Bardic Inspiration die that made the roll succeed (Infectious Inspiration).
+    if (sheet && bard && settled.total >= dc) {
+      recordInspiredSuccess(campaignId, { id: sheet.id, name: sheet.name }, bard, attack ? "attack" : "save or check");
+    }
   }
   return settled;
 }
@@ -181,7 +218,7 @@ export function settleAttackDie(campaignId: string, sheet: Pick<CharacterSheet, 
 
 // What a spent carrier is called on the event log.
 function carrierWords(carrier: string): string {
-  return carrier === INSPIRATION_SPEND ? "Inspiration" : carrier === LUCK_SPEND ? "a luck point" : carrier;
+  return carrier === INSPIRATION_SPEND ? "Inspiration" : carrier === LUCK_SPEND ? "a luck point" : carrier === BOND_SPEND ? "Emboldening Bond's d4" : carrier;
 }
 
 export type ForcedSave = {
@@ -314,11 +351,18 @@ export function rollCharacterSave(
   extra?: SaveExtra,
 ): ForcedSave {
   const sheet = getSheetById(stale.id) ?? stale;
+  // Slayer's Counter's attack hit at the stop before this save
+  // (slayers-counter-mark.ts): it succeeds with no roll.
+  if (from && takeCounteredSave(sheet.id, from.id)) {
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, true, resists?.against, dc);
+    return { success: true, total: null, autoFailed: false, notes: ["Slayer's Counter: the attack hit, so this save succeeds with no roll"] };
+  }
   const shieldSave = single && ability === "dex" ? shieldMasterSaveBonus(sheet) : 0;
   const covered = saveCoverBonus(campaign.id, sheet.id, ability, extra);
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
+  // Land's Stride: advantage against Entangle and its kind (mt-srd-druid.ts).
+  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {
@@ -366,10 +410,18 @@ export function rollCharacterSave(
     outcome = settled(throwSave());
     noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck set on this save at the stop (fate-turn.ts).
+  outcome = takeFate(campaign.id, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
   // Flash of Genius or Favored by the Gods set on this save at the stop.
   const helped = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, dc);
   if (helped) {
     outcome = helped.outcome;
+  }
+  // A charge of an artificer's Armor of Magical Strength on a Strength save
+  // it would fail (src/lib/dm/infusion-charges.ts).
+  const strength = magicalStrengthSave(campaign, sheet, ability, outcome.total, dc);
+  if (strength) {
+    outcome = { ...outcome, total: outcome.total + strength.bonus };
   }
   const roll = insertRoll({
     campaignId: campaign.id,
@@ -390,7 +442,7 @@ export function rollCharacterSave(
   // (Vigilant Rebuke a success, Slayer's Counter the forcing, Hellish Rebuke
   // the damage through it: src/lib/dm/last-save.ts).
   if (from) {
-    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against);
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against, dc);
   }
   return {
     success: outcome.total >= dc,
@@ -403,6 +455,7 @@ export function rollCharacterSave(
       ...(shieldSave ? [`Shield Master: +${shieldSave} (the shield) on a Dexterity save against an effect that targets only them`] : []),
       ...coverNote(covered),
       ...(moteLine ? [moteLine] : []),
+      ...(strength ? [strength.note] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
       ...(helped ? [helped.line] : []),
     ],
@@ -446,6 +499,8 @@ export function rollEnemySave(
   // enemy's save is on the record like every other roll.
   options: {
     magical?: boolean;
+    // Against a Channel Divinity option (Elder Champion's disadvantage, authored-saves.ts).
+    channel?: boolean;
     advantage?: boolean;
     disadvantage?: boolean;
     record?: { turn?: DmTurn; detail: string };
@@ -463,8 +518,17 @@ export function rollEnemySave(
     // to measure it from (SaveExtra).
     cover?: number;
     origin?: SaveOrigin;
+    // The damage the spell deals ("fire", "fire, radiant"), for a lean that
+    // holds against some types only (Corona of Light, authored-saves.ts).
+    damageType?: string;
   } = {},
 ): ForcedSave {
+  // A Beguiling Arrow's charm ends when its ally forces the creature to save
+  // ("or forces it to make a saving throw"): every save a character's effect
+  // forces names that character as its origin.
+  if (options.origin && "ref" in options.origin) {
+    beguilingBroken(campaignId, options.origin.ref, enemy.id);
+  }
   // A character fighting the party, seen as a foe (sheet-foe.ts), saves as
   // the character it is: proficiency, auras, Bless and its dice card.
   const asSheet = isSheetFoe(enemy) ? getSheetById(enemy.id) : null;
@@ -503,7 +567,7 @@ export function rollEnemySave(
   // counts on its saves exactly as it would on a character's.
   const riders = conditionRollRiders(enemy.conditions, "save", ability);
   // Authored subclass features (Magical Ambush, Hound of Ill Omen, Unsettling Words): authored-saves.ts.
-  const authored = authoredEnemySave(campaignId, enemy, { magical: options.magical });
+  const authored = authoredEnemySave(campaignId, enemy, { channel: options.channel, magical: options.magical, damageType: options.damageType });
   const resistsMagic = options.magical === true && hasTrait(enemy.stats, "magicResistance");
   const against = conditionSaveLean(enemy.stats, options.against);
   // Sunlight Weakness: its saves are at disadvantage in sunlight.
@@ -534,6 +598,9 @@ export function rollEnemySave(
     outcome = rollExpression(expression, undefined, { purpose });
     noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${enemy.displayName} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck a watcher set on this save: a success made
+  // one less than the Difficulty Class, or a d4 taken off it.
+  outcome = takeFate(campaignId, purpose, enemy.displayName, outcome, dc)?.outcome ?? outcome;
   if (options.record) {
     const roll = insertRoll({
       campaignId,

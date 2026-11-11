@@ -13,17 +13,17 @@
 import { getActiveEncounter, listEnemies, orderEntryId, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
-import { ACTION_SURGED, WEAPON_HIT, WIND_STEP } from "@/lib/dm/action-budget";
+import { ACTION_SURGED, RAGE_ENTERED, WEAPON_HIT, WIND_STEP } from "@/lib/dm/action-budget";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { attackerFoeId, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
-import { answerSave, kindOf, openTriggers, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, CALM_KINDS, calmTrigger, kindOf, openTriggers, type LastSave, type RecordedKind } from "@/lib/dm/last-save";
 import { eventOfRecord, nothingToAnswer, openFor, quarryOf, triggerSpecFor, type TriggerEvent, type TriggerSpec } from "@/lib/srd/trigger-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 
 // The running turn's marks as triggers: what its owner hit, whether they
-// surged or used Step of the Wind. Read off the budget, so nothing else writes them.
+// surged, used Step of the Wind or entered their rage. Read off the budget, so nothing else writes them.
 function turnMarks(encounter: Encounter): LastSave[] {
   const budget = encounter.turnBudget;
   if (!budget || budget.round !== encounter.round) return [];
@@ -38,6 +38,7 @@ function turnMarks(encounter: Encounter): LastSave[] {
     }
     if (mark === ACTION_SURGED) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "surge", forcer: { id: owner.id, name: owner.name } }];
     if (mark === WIND_STEP) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "wind_step", forcer: { id: owner.id, name: owner.name } }];
+    if (mark === RAGE_ENTERED) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "rage_entered", forcer: { id: owner.id, name: owner.name } }];
     return [];
   });
 }
@@ -86,6 +87,12 @@ export function triggerEvents(campaignId: string): TriggerEvent[] {
 function unplaced(encounterId: string, a: string, b: string): boolean {
   const map = getBattleMapForEncounter(encounterId);
   return !map || !getTokenByRef(map.id, a) || !getTokenByRef(map.id, b);
+}
+
+// The creature under the holder's mark (Slayer's Prey), as a trigger row reads
+// it: named on their own condition, or carrying the mark with them as its source.
+export function quarryFor(encounterId: string, holder: CharacterSheet, mark: string): string | null {
+  return quarryOf(holder, mark) ?? markedBy(encounterId, holder.id, mark);
 }
 
 function markedBy(encounterId: string, holderId: string, mark: string): string | null {
@@ -141,6 +148,10 @@ export function triggerRefusal(ask: TriggerAsk): ToolError | null {
   const spec = triggerSpecOf(ask);
   if (!spec) return null;
   if (!getActiveEncounter(ask.campaignId)) {
+    // A record kept out of a fight, where no turn keeps one (last-save.ts
+    // recordCalmTrigger: a healing roll Empowered Healing rolls again). The
+    // feature that answers it reads the record itself, with no reach to measure.
+    if (spec.on.some((on) => CALM_KINDS.includes(on.kind) && calmTrigger(ask.campaignId, on.kind as RecordedKind))) return null;
     return { error: `${ask.name} answers ${spec.what}, which happens in a fight; there is no active encounter. Nothing was spent.`, refused: "rules" };
   }
   if (openTriggersFor(ask, spec).length) return null;

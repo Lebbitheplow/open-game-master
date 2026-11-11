@@ -1,7 +1,12 @@
 import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layout";
+import { withStartingCharges } from "@/lib/srd/item-charge-rules";
+import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
-import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -383,12 +388,14 @@ function withItemWeights(equipment: CharacterSheet["equipment"]): CharacterSheet
 
 // Attunement the rules deny (a fourth item, a second copy, an item that
 // needs none, one whose text keeps this character out) is taken off here,
-// whatever path wrote the pack.
+// whatever path wrote the pack. An item whose charges are dice gets its
+// starting count rolled here too (item-charge-rules.ts withStartingCharges),
+// so every door that adds a row writes it with its charges.
 function capAttunement(
   equipment: CharacterSheet["equipment"],
   wearer: Wearer,
 ): CharacterSheet["equipment"] {
-  return settleAttunement(equipment, wearer);
+  return settleAttunement(equipment.map((item) => withStartingCharges(item, (expression) => rollExpression(expression).total)), wearer);
 }
 
 export function createSheet(
@@ -922,6 +929,8 @@ export function patchSheet(
   // raises the current hit points with it (SRD 5.1, Aid).
   if (patch.conditions !== undefined || patch.conditionMeta !== undefined) {
     const before = maxHpRiders(existing.conditions, existing.conditionMeta as ConditionMetaMap);
+    // Inured to Undeath: no drain lands on a holder (src/lib/dm/ar-ws-inured.ts).
+    Object.assign(next, keptFromDrain(existing, next));
     const after = maxHpRiders(next.conditions, next.conditionMeta as ConditionMetaMap);
     const bonusDelta = after.bonus - before.bonus;
     const drainDelta = after.drain - before.drain;
@@ -937,6 +946,27 @@ export function patchSheet(
     // A Dominate starting or ending moves the character's side (side-watch.ts).
     noteDominationShift(existing.campaignId, existing, next);
   }
+  // A fall unconscious ends a rage and a sacred weapon, whichever route laid
+  // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
+  if (asleep.length) {
+    const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
+    next.conditions = awake.conditions;
+    next.conditionMeta = awake.meta;
+  }
+  // A druid knocked out in a beast's shape is back in their own.
+  if (next.wildShape?.kind === "wildshape" && fellUnconscious(existing.conditions, next.conditions)) {
+    next.wildShape = null;
+  }
+  // A Berserker's rage sets charm and fear aside, and its end gives them back.
+  const suspended = rageSuspension(next);
+  if (suspended) {
+    next.conditions = suspended.conditions;
+    next.conditionMeta = suspended.conditionMeta as typeof next.conditionMeta;
+  }
+  // A warlock's pact weapon out of their hands, and what a death takes with
+  // it (mt-srd-pact.ts).
+  const pactStrays = settlePact(sheetId, existing, next);
   // A flyer knocked prone, or held or exhausted to a speed of 0, falls
   // (flight-watch.ts).
   noteGrounding(existing.campaignId, existing, next);
@@ -1044,6 +1074,11 @@ export function patchSheet(
       sheetId,
     );
   touchCampaign(existing.campaignId);
+  // The minute apart ran out, or the warlock died: the pact weapon is gone
+  // from wherever it lies (mt-srd-pact.ts).
+  if (pactStrays) {
+    vanishStrays(existing.campaignId, sheetId);
+  }
 
   return getSheetById(sheetId);
 }

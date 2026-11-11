@@ -105,6 +105,9 @@ export type AttackProfile = {
   properties?: string[];
   // Human-readable notes for the tool result ("Archery: +2 to hit").
   riderNotes: string[];
+  // Thrown, it comes back to the hand: never spent from the sheet (Elemental
+  // Cleaver's infused weapon; a named one is gear-ground.ts returnsToHand).
+  returns?: boolean;
   // A magic weapon, bonus or not: its blows pass resistance to nonmagical
   // attacks.
   magicWeapon?: boolean;
@@ -351,6 +354,14 @@ export type AttackStance = {
   // with the unarmed strike (UNARMED_STRIKE_KEY), from
   // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
   worn?: WornWeaponRider[];
+  // Way of the Kensei: the weapons that count as monk weapons for this monk,
+  // by name key, and whether they count as magical (One with the Blade;
+  // src/lib/srd/mt-mr-kensei.ts kenseiStance).
+  kensei?: { weapons: string[]; magical: boolean };
+  // What a monk's subclass makes of the unarmed strike: another ability's
+  // modifier when it is higher, and the damage dealt in place of bludgeoning
+  // (Arms of the Astral Self, Draconic Strike; src/lib/srd/mt-mr-unarmed.ts).
+  unarmedForm?: { mod?: number; ability?: string; damageType?: string; source: string };
 };
 
 // SRD 5.1 monk weapons: shortswords and any simple melee weapon that has
@@ -429,7 +440,10 @@ export function weaponAttackProfile(
     // their own die, and DEX when it beats Strength.
     const martial = resolved.unarmed ? martialArtsDie : null;
     const useDex = Boolean(martial) && derived.abilityMods.dex > derived.abilityMods.str;
-    const mod = useDex ? derived.abilityMods.dex : derived.abilityMods.str;
+    const ownMod = useDex ? derived.abilityMods.dex : derived.abilityMods.str;
+    const shaped = resolved.unarmed ? stance.unarmedForm : undefined;
+    const swapped = shaped?.mod !== undefined && shaped.mod > ownMod;
+    const mod = swapped && shaped?.mod !== undefined ? shaped.mod : ownMod;
     // A worn item's bonus to unarmed strikes (Demon Armor's gauntlets, a
     // homebrew pair of wraps). This branch once answered 0 whatever was worn,
     // so no item could reach a fist.
@@ -454,19 +468,24 @@ export function weaponAttackProfile(
     // A thrown melee weapon keeps its own type (a longsword's edge still
     // cuts); a bow or a crossbow swung in melee is a club.
     const from = resolved.improvisedFrom;
-    const damageType = form?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
+    const damageType = form?.damageType ?? shaped?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
+    if (shaped && (swapped || (shaped.damageType && damageType === shaped.damageType))) {
+      notes.push(`${shaped.source}: ${[swapped ? `with ${shaped.ability ?? "another ability"}` : "", damageType === shaped.damageType ? `${shaped.damageType} damage` : ""].filter(Boolean).join(", ")}`);
+    }
     return {
       weapon: resolved.displayName,
       toHit: mod + fist.attack + (resolved.unarmed ? derived.proficiencyBonus : 0),
       damageExpression: withModifier(dice, offHandModifier(mod, stance) + fist.damage),
       damageType,
       ranged: false,
-      thrown: !resolved.unarmed,
+      // A worn item's fist may be thrown (Arcane Propulsion Armor's
+      // gauntlets, 20/60, back on the hand at once).
+      thrown: !resolved.unarmed || Boolean(form?.thrown),
       reachTiles: 1,
-      rangeTiles: 4,
+      rangeTiles: form?.thrown ? Math.round(form.thrown.rangeFt / 5) : 4,
       // "An improvised thrown weapon has a normal range of 20 feet and a
       // long range of 60 feet."
-      ...(resolved.unarmed ? {} : { longRangeTiles: 12 }),
+      ...(form?.thrown ? { longRangeTiles: Math.round(form.thrown.longRangeFt / 5) } : resolved.unarmed ? {} : { longRangeTiles: 12 }),
       proficient: resolved.unarmed,
       improvised: !resolved.unarmed,
       ability: useDex ? "dex" : "str",
@@ -483,7 +502,8 @@ export function weaponAttackProfile(
   const properties = srd.properties ?? [];
   // A monk weapon in a monk's hands: DEX when it beats Strength and the
   // Martial Arts die when it beats the weapon's own (SRD 5.1, Martial Arts).
-  const monkWeapon = Boolean(martialArtsDie) && isMonkWeapon(srd);
+  const kensei = Boolean(stance.kensei?.weapons.includes(textKey(srd.name)));
+  const monkWeapon = Boolean(martialArtsDie) && (isMonkWeapon(srd) || kensei);
   const finesse = properties.includes("finesse") || monkWeapon;
   const thrown = properties.includes("thrown");
   const ranged = srd.kind === "ranged";
@@ -581,7 +601,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 || wornTotals.attack > 0 ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) ? { magicWeapon: true } : {}),
   };
 }
 

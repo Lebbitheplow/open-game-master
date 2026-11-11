@@ -70,7 +70,7 @@ export function approachForAttack(
   if (!enemy || !map || !me || !them) {
     return null;
   }
-  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id) });
+  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id), ownTurn: ownTurnOf(encounter, sheet.id) });
   // A weapon a spell made moves itself to strike (issue 659): its caster
   // never walks for it.
   if ("error" in built || built.profile.ranged || built.conjured) {

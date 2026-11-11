@@ -11,6 +11,7 @@ import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
+import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 
 export {
   DAMAGE_TYPES,
@@ -71,10 +72,27 @@ export type ConditionMeta = {
   // Held while its source stands within this many feet: ends when the source
   // is down, dead or incapacitated, or farther (src/lib/dm/condition-leash.ts).
   leashFeet?: number;
+  // The leash only ends the condition past its feet; the creature may walk off (Panache).
+  leashEnds?: boolean;
+  // Lasts while this barbarian rages: "until the rage ends" (Call the Hunt,
+  // Ancestral Protectors), src/lib/dm/rage-bound.ts.
+  whileRagingOf?: string;
+  // The weapon the effect rides (Sacred Weapon): gone from the sheet, the
+  // effect ends (src/lib/dm/mt-srd-unconscious.ts).
+  weapon?: string;
+  // Ends when its holder ends a turn farther than this from the source, or
+  // out of its sight (Intimidating Presence), src/lib/dm/mt-srd-barbarian.ts.
+  turnEndBeyondFeet?: number;
+  // Ends once the creature holding it is both blinded and deafened: it can
+  // no longer see or hear its source (src/lib/dm/ar-ws-senses-logic.ts).
+  endsUnsensed?: boolean;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.
   quarry?: string;
+  // Ends when its holder is incapacitated (Hexblade's Curse: "or you are
+  // incapacitated"), as concentration does (set-condition.ts).
+  endsIfIncapacitated?: boolean;
   // Flesh to Stone: the saves counted at the ends of the creature's turns
   // (src/lib/dm/spell-turn-end.ts).
   tally?: { passed: number; failed: number };
@@ -88,6 +106,9 @@ export type ConditionMeta = {
   // Ends when the creature finishes a long rest (a succubus's Draining Kiss,
   // a wight's Life Drain): src/lib/dm/rest-logic.ts.
   untilLongRest?: boolean;
+  // Ends when the rest it was raised for ends, short or long (Hearth of
+  // Moonlight and Shadow: "until the rest ends"): src/lib/dm/rest-logic.ts.
+  untilRestEnds?: boolean;
   // Each character a creature has withstood, where one mark answers several
   // (Instinctive Charm).
   sources?: string[];
@@ -111,6 +132,12 @@ export type ConditionMeta = {
   // read at its turn's end for a regurgitation; and the feet of movement out
   // of its corpse.
   swallow?: { turns?: Record<string, number>; escapeFeet?: number };
+  // A Cloud Rune knight's answers at the stops before hits' damage (cloud-rune.ts).
+  cloudTurns?: Array<{ attackerId: string; struckId: string; swing: number; onto: string | null }>;
+  // The clock instant (in-world minutes) the running hour of a commanding
+  // charm began at: Command Undead's hourly save
+  // (src/lib/dm/ar-ws-command-hours.ts).
+  hourFrom?: number;
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry
@@ -131,7 +158,7 @@ const MAX_HP_BONUS = [
   { family: "aid", match: /^aided \(\+(\d+)\)$/i },
   { family: "heroes' feast", match: /^heroes' feast \(\+(\d+)\)$/i },
 ];
-const MAX_HP_DRAIN = /^max hp reduced \(-(\d+)\)$/i;
+export const MAX_HP_DRAIN = /^max hp reduced \(-(\d+)\)$/i;
 
 export function maxHpRiders(
   conditions: string[],
@@ -351,14 +378,16 @@ function has(conditions: string[], names: string[]): string | null {
 // (attack-light.ts sensesReaching measures it on the board): blindsight
 // perceives without eyes, so neither blindness nor invisibility stops it;
 // truesight sees the invisible.
-export type PastSight = { blindsight?: boolean; truesight?: boolean };
+// `invisible`: a sense that shows the invisible and nothing more reaches it
+// (Revelation in Flesh's 60 feet, src/lib/dm/ar-ws-revelation.ts).
+export type PastSight = { blindsight?: boolean; truesight?: boolean; invisible?: boolean };
 
 // Whether a viewer sees an invisible creature: See Invisibility or True
 // Seeing among its conditions, or blindsight or truesight that reaches it.
 // The one rule an attack roll, a Dodge, "a creature you can see" and an
 // opportunity attack all read.
 export function seesInvisible(viewerConditions: string[], senses: PastSight = {}): boolean {
-  return Boolean(senses.blindsight || senses.truesight || conditionSeesInvisible(viewerConditions));
+  return Boolean(senses.blindsight || senses.truesight || senses.invisible || conditionSeesInvisible(viewerConditions));
 }
 
 // Why the conditions keep one creature from seeing another, or null: it is
@@ -449,6 +478,9 @@ export function attackContext(input: {
   // blindsight swung blind.
   attackerSenses?: PastSight;
   targetSenses?: PastSight;
+  // The target holds the Alert feat: "an attacker hidden from your sight
+  // gets no advantage against you merely because you cannot see it".
+  targetAlert?: boolean;
 }): { advantage: AdvantageState; sources: AdvantageState[]; autoCrit: boolean; notes: string[] } {
   // Every source is kept for the caller to merge with its own: advantage
   // and disadvantage cancel once, over all of them (SRD 5.1), so a
@@ -467,14 +499,20 @@ export function attackContext(input: {
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
   if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
-    sources.push("advantage");
-    notes.push("attacker is invisible: advantage");
+    if (input.targetAlert) notes.push("attacker is invisible: no advantage against an Alert target");
+    else {
+      sources.push("advantage");
+      notes.push("attacker is invisible: advantage");
+    }
   }
   // Attacking from hiding: advantage, and the attack gives the position
   // away (the caller clears the condition).
   if (has(input.attackerConditions, ["hidden"])) {
-    sources.push("advantage");
-    notes.push("attacker is hidden: advantage, and the attack reveals them");
+    if (input.targetAlert) notes.push("attacker is hidden: no advantage against an Alert target, and the attack reveals them");
+    else {
+      sources.push("advantage");
+      notes.push("attacker is hidden: advantage, and the attack reveals them");
+    }
   }
 
   // An unconscious creature has fallen prone, whether or not anything wrote
@@ -840,7 +878,9 @@ export function effectiveMaxHp(sheet: {
       max += (modOf(set) - modOf(sheet.abilities.con)) * sheet.level;
     }
   }
-  return exhaustionMaxHp(sheet.exhaustion ?? 0, max);
+  // Inured to Undeath: a maximum that cannot be reduced is not halved
+  // (ar-ws-inured-logic.ts).
+  return (sheet.exhaustion ?? 0) >= 4 && maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
 }
 
 // Advantage effect of exhaustion on a d20 roll: level 1+ = disadvantage on

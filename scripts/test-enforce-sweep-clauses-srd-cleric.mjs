@@ -158,6 +158,27 @@ P["cleric.divine-strike.once-per-turn"] = async () => {
 
 // The ledger (scripts/clauses/srd-classes.json) holds every clause's
 // verdict; a KNOWN entry is only for a clause it has wrong, and none is now.
+// A summoned skeleton is a sheet whose record says what it is.
+const SKELETON = { spell: "Animate Dead", casterName: "the staging", form: "Skeleton", creatureType: "undead", size: "Medium", cr: 0.25, attacks: [], attacksPerTurn: 1, resist: "", concentration: false, castId: "probe" };
+
+P["cleric.channel-divinity-preserve-life.undead"] = async () => {
+  const t = await rig.table();
+  const who = cleric(t, 2);
+  const living = t.hero({ class: "fighter", level: 5 });
+  const dead = t.hero({ class: "fighter", level: 5 });
+  await t.fight([who, living, dead]);
+  t.kit.place(dead.id, 5, 6);
+  t.patch(living, { currentHp: 10 });
+  t.patch(dead, { currentHp: 5 });
+  (await import("../src/lib/db/sheets.ts")).setSheetSummon(dead.id, { ...SKELETON, casterId: who.id });
+  assert.equal(t.sheet(dead).summon?.creatureType, "undead", "the staging: the sheet is an undead");
+  // Named, and the most hurt: it is passed over, and the living ally healed.
+  const out = await t.use(who, "channel divinity", { variant: "preserve life", targetCharacterId: dead.id });
+  assert.equal(t.sheet(dead).currentHp, 5, `Preserve Life healed an undead (${out.ok ? "accepted" : out.error})`);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.sheet(living).currentHp, 20, "the living ally was not healed with it");
+};
+
 const KNOWN = {};
 
 await runProbesKnown("scripts/test-enforce-sweep-clauses-srd-cleric.mjs", P, KNOWN);

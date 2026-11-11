@@ -22,7 +22,9 @@ import { chosenOptions } from "@/lib/srd/options";
 import { innateSpellsFor, racialCantripAbility } from "@/lib/srd/racial-grants";
 import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 import { asciiSlugOf, textKey } from "@/lib/language/text-logic";
-import { counterCastsHeld } from "@/lib/srd/counter-casts";
+import { counterCastsHeld, type FreeLimit } from "@/lib/srd/counter-casts";
+import { kiCantripsHeld, kiCastsHeld } from "@/lib/srd/mt-mr-casts";
+import { featureCastsHeld } from "@/lib/srd/mt-fb-casts";
 
 export type GrantedCast = {
   // The invocation or trait that grants the cast.
@@ -33,6 +35,10 @@ export type GrantedCast = {
   slot: "free" | "slot";
   // The counter of its uses, when the grant has one.
   counter?: string;
+  // What one cast takes from a counter other uses share (a monk's ki:
+  // Shadow Arts' 2, a discipline's own; src/lib/srd/mt-mr-casts.ts). Absent:
+  // the counter is the grant's own, one use a cast.
+  cost?: number;
   // How many uses the counter holds, and the rest that refills it (a
   // race's spell, issue #833); absent is once a long rest.
   uses?: number;
@@ -48,8 +54,13 @@ export type GrantedCast = {
   selfOnly?: boolean;
   // No material component is needed.
   noMaterial?: boolean;
+  // What the free use is held to (src/lib/srd/counter-casts.ts freeLimit).
+  freeLimit?: FreeLimit;
   // What the GM still holds of the grant.
   note?: string;
+  // Cast as a ritual and no other way (Spirit Seeker: "Ritual casting of
+  // beast sense and speak with animals"; src/lib/srd/mt-fb-casts.ts).
+  ritualOnly?: boolean;
 };
 
 type InvocationSpell = Omit<GrantedCast, "source" | "counter"> & { invocation: string };
@@ -142,9 +153,22 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       ...(row.castAt ? { castAt: row.castAt } : {}),
       ...(row.selfOnly ? { selfOnly: true } : {}),
       ...(row.noMaterial ? { noMaterial: true } : {}),
+      ...(row.ability ? { ability: row.ability } : {}),
+      ...(row.freeLimit ? { freeLimit: row.freeLimit } : {}),
       ...(row.note ? { note: row.note } : {}),
     });
   }
+  // A monk's ki casts (src/lib/srd/mt-mr-casts.ts): no slot, no material
+  // component, the ki their own cost, Wisdom their ability.
+  for (const cast of kiCastsHeld(sheet.features ?? [])) {
+    out.push({ source: cast.source, spell: cast.spell, slot: "free", counter: "ki", cost: cast.cost, rest: "short", ability: "wis", noMaterial: true, ...(cast.selfOnly ? { selfOnly: true } : {}) });
+  }
+  for (const cantrip of kiCantripsHeld(sheet.features ?? [])) {
+    out.push({ source: cantrip.source, spell: cantrip.spell, slot: "free", ability: "wis" });
+  }
+  // A subclass feature's spells for a class with no Spellcasting of its own
+  // (a totem warrior's rituals, a giant's or an archer's cantrip).
+  out.push(...featureCastsHeld(sheet.features ?? []));
   const cantripAbility = racialCantripAbility(sheet.race);
   for (const cantrip of racialCantripsOf(sheet.racialChoices)) {
     out.push({ source: "the race's cantrip", spell: cantrip, slot: "free", ...(cantripAbility ? { ability: cantripAbility } : {}) });
@@ -164,11 +188,18 @@ type Counters = Record<string, { max: number; used: number }> | undefined;
 // spell an author added since the last level change), or one sized before
 // the author changed the count, is read at the grant's size, never as at
 // will or as one use. Null for a grant with no counter.
-export function grantUses(resources: Counters, grant: Pick<GrantedCast, "counter" | "uses">): { max: number; used: number; left: number } | null {
+export function grantUses(resources: Counters, grant: Pick<GrantedCast, "counter" | "uses" | "cost">): { max: number; used: number; left: number } | null {
   if (!grant.counter) {
     return null;
   }
   const state = resources?.[grant.counter];
+  if (grant.cost) {
+    // Priced in a shared pool: the casts the pool still pays for, of those
+    // it pays for when full. A sheet without the pool has none.
+    const max = Math.floor((state?.max ?? 0) / grant.cost);
+    const left = Math.floor(Math.max(0, (state?.max ?? 0) - (state?.used ?? 0)) / grant.cost);
+    return { max, used: max - left, left };
+  }
   const max = Math.max(1, grant.uses ?? state?.max ?? 1);
   const used = Math.min(state?.used ?? 0, max);
   return { max, used, left: max - used };
@@ -176,10 +207,15 @@ export function grantUses(resources: Counters, grant: Pick<GrantedCast, "counter
 
 // The resources with one of the grant's uses spent, its counter written at
 // the grant's own size.
-export function spendGrantUse<T extends Counters>(resources: T, grant: Pick<GrantedCast, "counter" | "uses">): NonNullable<T> {
+export function spendGrantUse<T extends Counters>(resources: T, grant: Pick<GrantedCast, "counter" | "uses" | "cost">): NonNullable<T> {
   const uses = grantUses(resources, grant);
   if (!uses || !grant.counter) {
     return (resources ?? {}) as NonNullable<T>;
+  }
+  const pool = grant.cost ? resources?.[grant.counter] : undefined;
+  if (grant.cost && pool) {
+    // The pool's own size stands; the cast takes its cost from it.
+    return { ...(resources ?? {}), [grant.counter]: { max: pool.max, used: Math.min(pool.max, pool.used + grant.cost) } } as NonNullable<T>;
   }
   return { ...(resources ?? {}), [grant.counter]: { max: uses.max, used: Math.min(uses.max, uses.used + 1) } } as NonNullable<T>;
 }

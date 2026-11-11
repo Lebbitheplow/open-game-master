@@ -3,12 +3,10 @@
 // reads that one and this one wakes the turn loop.
 
 import { getCampaignById } from "@/lib/db/campaigns";
-import { dropHeldCalls, getDmTurn, getPendingRoll, listPendingForTurn, publicPendingRoll, resolvePendingWatch, saveDmTurn, takeHeldCalls, watchChoiceOf, type PendingRoll } from "@/lib/db/dm-turns";
-import { runWithShift } from "@/lib/dm/chronal-shift";
-import { runWithForetold } from "@/lib/dm/foresight";
-import { clearWatchAnswered, markWatchAnswered, runHeldCallNow } from "@/lib/dm/held-call";
+import { dropHeldCalls, getDmTurn, getPendingRoll, listPendingForTurn, publicPendingRoll, resolvePendingWatch, saveDmTurn, takeHeldCalls, type PendingRoll } from "@/lib/db/dm-turns";
+import { backstopTurn } from "@/lib/dm/backstop-calls";
+import { resumeBackstop, runWatchedCalls } from "@/lib/dm/backstop-resume";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
-import { runInTurnScope } from "@/lib/dm/job-control";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { tableBreakOn } from "@/lib/dm/table-break";
 import { resumeDmTurn } from "@/lib/dm/turn";
@@ -26,8 +24,15 @@ export function answerWatch(pendingId: string, face: number | null, answer: { ch
     enqueueDmJob(answered.campaignId, () => runHeldMove(answered.id), { kind: "turn" });
     return true;
   }
-  if (!listPendingForTurn(answered.turnId).some((entry) => entry.status === "pending")) {
+  const pendings = listPendingForTurn(answered.turnId);
+  if (!pendings.some((entry) => entry.status === "pending")) {
     const { campaignId, turnId } = answered;
+    // A creature's turn the server plays after the narration (the backstop,
+    // backstop-calls.ts) goes on without a model call.
+    if (backstopTurn(pendings)) {
+      enqueueDmJob(campaignId, () => resumeBackstop(campaignId, turnId), { kind: "turn" });
+      return true;
+    }
     // A person's console call the stop held has no model turn to run it
     // (L856 of the 2026-11-09 gap sweep: Portent had no door at a table a
     // person runs): it runs here, on the watcher's answer, and the turn closes.
@@ -49,25 +54,7 @@ async function runPersonsStop(pending: PendingRoll) {
   if (!campaign || !turn || !stop || !pending.characterId) {
     return;
   }
-  const watcherId = pending.characterId;
-  const picked = watchChoiceOf(stop);
-  const shifting = Boolean(stop.power) && stop.power !== "portent";
-  for (const [at, call] of stop.calls.entries()) {
-    const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
-    if (at === 0) {
-      markWatchAnswered(campaign.id, call.tape ?? []);
-    }
-    try {
-      await runInTurnScope(turn.id, () =>
-        runWithShift(campaign.id, shift, () => runWithForetold(campaign, turn.id, choice, async () => runHeldCallNow(campaign, turn, { name: call.name, rawArguments: call.rawArguments, toolCallId: call.id ?? null }))),
-      );
-    } catch (error) {
-      console.error(`[foresight] a held ${call.name} threw:`, error);
-    } finally {
-      clearWatchAnswered(campaign.id);
-    }
-  }
+  await runWatchedCalls(campaign, turn, pending.characterId, stop);
   dropHeldCalls(pending.id);
   saveDmTurn(turn);
   resumeHumanTurn(turn.id);

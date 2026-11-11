@@ -22,7 +22,9 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { recordCast } from "@/lib/dm/last-save";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
@@ -32,11 +34,13 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
+import { noteHealingRoll } from "@/lib/dm/ar-ws-empowered-healing";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
+import { factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagic";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
@@ -87,7 +91,11 @@ export function castHealingSpell(
   cast: Cast,
 ): HealSpellOutcome | null {
   const authors = spellAuthorsFor(campaign);
-  const facts = spellFactsFor(input.spell, authors);
+  // The caster as they stand now, with the Metamagic they paid for this
+  // spell: Distant Spell's range and Twinned Spell's second creature
+  // (mt-srd-metamagic.ts).
+  const paying = getSheetById(input.caster.id) ?? input.caster;
+  const facts = factsAsCast(paying, spellFactsFor(input.spell, authors));
   if (!facts) {
     // Not a spell anybody published or the table wrote: heal by the amount.
     return null;
@@ -157,7 +165,8 @@ export function castHealingSpell(
   const units = mech?.healPool ? (input.amount ?? 0) : 1;
   if (casting && !casting.paid) {
     const asked = mech?.healPool ? casting.hitPoints : casting.creatures;
-    const reach = castShares(mech, { spellLevel: facts.level, slotLevel: plannedSlot, casterLevel: caster.level });
+    const own = castShares(mech, { spellLevel: facts.level, slotLevel: plannedSlot, casterLevel: caster.level });
+    const reach = own + (mech?.healPool ? 0 : twinExtra(paying, { facts, shares: own, slotLevel: plannedSlot }));
     if (asked > reach) {
       return {
         error: `One casting of ${name} reaches ${reach} ${mech?.healPool ? "hit points" : reach === 1 ? "creature" : "creatures"}, and heal's targets ask ${asked}. Nothing was spent. List what one casting reaches; another casting is its own heal call.`,
@@ -196,12 +205,15 @@ export function castHealingSpell(
     return { done: { ok: true, spell: name, target: target.name, healed: 0, ...(paid.slot ? { slot: paid.slot } : {}), ...castToNoEffect(ward) } };
   }
   const slotLevel = typeof paid.slotLevel === "number" ? paid.slotLevel : facts.level;
+  // The casting at the creature it heals, on record (last-save.ts): what
+  // answers a spell aimed at an ally (Voice of Authority) reads it.
+  recordCast(campaign.id, { id: caster.id, name: caster.name }, name, slotLevel ?? 0, [target.id]);
   if (mech?.healPool) {
     // What is left of the pool bounds this share (cast-guard.ts open casts).
     const amount = typeof paid.uses === "number" ? paid.uses : (input.amount ?? 0);
     return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.` };
   }
-  const shared = paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : "";
+  const shared = `${paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : ""}${paid.metamagic ? ` ${String(paid.metamagic)}` : ""}`;
 
   if (mech?.healing) {
     const amount = mech.healing.flat + (mech.healing.perSlotLevel ?? 0) * Math.max(0, slotLevel - facts.level);
@@ -257,6 +269,8 @@ export function castHealingSpell(
       result: outcome,
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+    // The dice Empowered Healing may roll again (ar-ws-empowered-healing.ts).
+    noteHealingRoll(campaign, { roll, caster, target, spell: name });
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns
@@ -277,6 +291,11 @@ export function castHealingSpell(
       }
       riders.push(`Blessed Healer: ${caster.name} regains ${currentHp - self.currentHp}`);
     }
+  }
+  // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
+  const broken = spellBreaker(campaign, caster, target.id, slotLevel);
+  if (broken) {
+    riders.push(broken);
   }
   return {
     amount: Math.max(1, amount),
@@ -335,46 +354,15 @@ function revive(
     spell: input.spell,
     ...(input.level !== undefined ? { level: input.level } : {}),
     via: "heal",
+    // Who is returned to life: Warrior of the Gods asks it (cast-guard.ts).
+    revives: target.id,
     reason: input.reason || `${name} on ${target.name}`,
   });
   if (typeof paid.error === "string") {
     return toolError(paid);
   }
-  const before = getSheetById(target.id) ?? target;
-  // "Being raised from the dead reduces a creature's exhaustion level by 1"
-  // (SRD 5.1, Conditions, Exhaustion), so one who died of the sixth level
-  // comes back at the fifth. The maximum below is read at the new level.
-  const exhaustion = Math.max(0, (before.exhaustion ?? 0) - 1);
-  const fresh = { ...before, exhaustion };
-  const woke = wakeConditions(fresh);
-  const hp = rule.hp === "all" ? effectiveMaxHp(fresh) : 1;
-  // Coming back is an ordeal (Raise Dead, Resurrection): -4 to attack rolls
-  // and saving throws, one less after each long rest.
-  const ordeal = rule.ordeal ? "returned from death (-4)" : null;
-  const conditions = ordeal && !woke.conditions.includes(ordeal) ? [...woke.conditions, ordeal] : woke.conditions;
-  const lifted = (before.exhaustion ?? 0) > exhaustion;
-  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}) };
-  const updated = patchSheet(fresh.id, patch);
-  const entry = insertSheetAudit({
-    campaignId: campaign.id,
-    characterId: fresh.id,
-    turnId,
-    kind: "death_state",
-    delta: { revived: name, currentHp: hp, ...(lifted ? { exhaustion } : {}) },
-    reason: `${name} cast by ${input.caster.name}`,
-    seq: allocateSeq(campaign.id),
-    before,
-    patch,
-  });
-  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: fresh.name });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-    // Back among the living, they know whoever the party met while they lay
-    // dead (issue 657): those bonds opened for the living heroes only.
-    if (openJoinerBonds(campaign, updated)) {
-      publishEphemeral(campaign.id, "relationships_updated", {});
-    }
-  }
+  const back = returnToLife(campaign, turnId, target, { hp: rule.hp, ordeal: rule.ordeal === true, name, reason: `${name} cast by ${input.caster.name}` });
+  const { hp, fresh, ordeal, lifted, exhaustion } = back;
   return {
     done: {
       ok: true,
@@ -388,4 +376,54 @@ function revive(
       note: `${target.name} returns to life with ${hp} hit point${hp === 1 ? "" : "s"}; narrate it.`,
     },
   };
+}
+
+// One dead creature returned to life, every way the table does it (a spell's
+// revive here, Hand of Ultimate Mercy in src/lib/dm/ultimate-mercy.ts): the
+// exhaustion level death lifts, the conditions it wakes from, the hit points
+// it comes back with, the audit row and the bonds it missed. `hp` is "one",
+// "all" (Resurrection) or a number already rolled.
+export function returnToLife(
+  campaign: Campaign,
+  turnId: string,
+  target: CharacterSheet,
+  rule: { hp: "one" | "all" | number; ordeal: boolean; name: string; reason: string },
+): { hp: number; fresh: CharacterSheet; ordeal: string | null; lifted: boolean; exhaustion: number } {
+  const name = rule.name;
+  const before = getSheetById(target.id) ?? target;
+  // "Being raised from the dead reduces a creature's exhaustion level by 1"
+  // (SRD 5.1, Conditions, Exhaustion), so one who died of the sixth level
+  // comes back at the fifth. The maximum below is read at the new level.
+  const exhaustion = Math.max(0, (before.exhaustion ?? 0) - 1);
+  const fresh = { ...before, exhaustion };
+  const woke = wakeConditions(fresh);
+  const hp = rule.hp === "all" ? effectiveMaxHp(fresh) : rule.hp === "one" ? 1 : Math.max(1, Math.min(effectiveMaxHp(fresh), rule.hp));
+  // Coming back is an ordeal (Raise Dead, Resurrection): -4 to attack rolls
+  // and saving throws, one less after each long rest.
+  const ordeal = rule.ordeal ? "returned from death (-4)" : null;
+  const conditions = ordeal && !woke.conditions.includes(ordeal) ? [...woke.conditions, ordeal] : woke.conditions;
+  const lifted = (before.exhaustion ?? 0) > exhaustion;
+  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}) };
+  const updated = patchSheet(fresh.id, patch);
+  const entry = insertSheetAudit({
+    campaignId: campaign.id,
+    characterId: fresh.id,
+    turnId,
+    kind: "death_state",
+    delta: { revived: name, currentHp: hp, ...(lifted ? { exhaustion } : {}) },
+    reason: rule.reason,
+    seq: allocateSeq(campaign.id),
+    before,
+    patch,
+  });
+  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: fresh.name });
+  if (updated) {
+    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    // Back among the living, they know whoever the party met while they lay
+    // dead (issue 657): those bonds opened for the living heroes only.
+    if (openJoinerBonds(campaign, updated)) {
+      publishEphemeral(campaign.id, "relationships_updated", {});
+    }
+  }
+  return { hp, fresh, ordeal, lifted, exhaustion };
 }

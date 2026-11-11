@@ -33,7 +33,13 @@ const { isWornGear } = await import("../src/components/sheet/sheet-state.ts");
 const { RESOURCE_DEFS } = await import("../src/lib/srd/class-resources.ts");
 const { AUTHORED_TABLE } = await import("../src/lib/srd/authored-effects.ts");
 const { AUTHORED_DATA_CHANNEL } = await import("../src/lib/srd/authored-effects-channel.ts");
-const CHANNEL_OPTIONS = new Set(Object.values(AUTHORED_DATA_CHANNEL).flatMap((entry) => (entry.spends ?? []).map((spend) => spend.name)));
+// Every option the Channel Divinity pool pays for, whichever table holds its
+// row (the channel table, or a later package's): the Hand dresses any of them
+// in the pool's painting while it has none of its own (hand-subclass.ts).
+const CHANNEL_OPTIONS = new Set([
+  ...Object.values(AUTHORED_DATA_CHANNEL).flatMap((entry) => (entry.spends ?? []).map((spend) => spend.name)),
+  ...Object.values(AUTHORED_TABLE).flatMap((entry) => (entry.spends ?? []).filter((spend) => spend.pool?.id === "channel_divinity").map((spend) => spend.name)),
+]);
 
 let passed = 0;
 function test(name, fn) {

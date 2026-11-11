@@ -287,7 +287,9 @@ await test("Bardic Inspiration is a die another creature holds and spends on one
   assert.deepEqual(world.sheet(bard.id).resources.bardic_inspiration, { max: 3, used: 1 });
   // A d8 at bard 5, held for 10 minutes (100 rounds).
   assert.deepEqual(world.sheet(friend.id).conditions, ["bardic inspiration (d8)"]);
-  assert.deepEqual(world.sheet(friend.id).conditionMeta, { "bardic inspiration (d8)": { rounds: 100 } });
+  // The bard is kept as the die's source, so a roll it makes succeed is theirs
+  // (Infectious Inspiration answers that record, last-save.ts).
+  assert.deepEqual(world.sheet(friend.id).conditionMeta, { "bardic inspiration (d8)": { rounds: 100, source: bard.id } });
 
   // One die at a time: a second is refused and costs the bard nothing.
   await refusedUnchanged(
@@ -344,13 +346,16 @@ await test("an unspent inspiration die is gone after 10 minutes", async () => {
 
 await test("Channel Divinity at cleric 2 is once between rests", async () => {
   const table = await openTable();
-  const cleric = table.addHero({ class: "cleric", level: 2 });
-  assert.equal((await spend(table, cleric.id, "Channel Divinity")).ok, true);
-  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity"));
+  // Spent through an option (gap study WAVE2 D1: a bare Channel Divinity
+  // spend names none and is refused): Knowledge of the Ages works out of a fight.
+  const cleric = table.addHero({ class: "cleric", subclass: "Knowledge Domain", level: 2 });
+  const option = { variant: "arcana" };
+  assert.equal((await spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option)).ok, true);
+  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option));
   assert.equal((await table.invoke("take_rest", { kind: "short" })).ok, true);
   assert.deepEqual(table.sheet(cleric.id).resources.channel_divinity, { max: 1, used: 0 });
-  assert.equal((await spend(table, cleric.id, "Channel Divinity")).ok, true);
-  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity"));
+  assert.equal((await spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option)).ok, true);
+  await refusedUnchanged(table, cleric.id, () => spend(table, cleric.id, "Channel Divinity: Knowledge of the Ages", option));
 });
 
 // ---- findings ----

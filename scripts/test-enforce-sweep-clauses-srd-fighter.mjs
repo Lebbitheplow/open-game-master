@@ -2,7 +2,7 @@
 // clause text and the verdict live in scripts/clauses/srd-classes.json; this
 // file holds how each clause that names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -159,4 +159,21 @@ P["fighter.superior-critical.crit-18"] = async () => {
   assert.equal(diceIn(plain.damage), 1, "a 17 is no critical hit");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-fighter.mjs", P);
+// Most saves are failed on someone else's turn: the reroll costs nothing of
+// the fighter's own.
+P["fighter.indomitable-1-use.off-turn"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 9 });
+  const [foe] = await t.fight([who]);
+  t.foesTurn(foe);
+  const failed = await t.roll(who, { kind: "saving_throw", ability: "wis", dc: 15 }, [2]);
+  assert.equal(failed.stored?.success, false, "the staging: the save fails on the foe's turn");
+  const reroll = await t.use(who, "Indomitable", {}, [18]);
+  assert.equal(reroll.ok, true, `Indomitable was refused off the fighter's turn: ${reroll.error}`);
+  assert.equal(t.used(who, "indomitable"), 1);
+  const [again] = t.lastRolls(1);
+  assert.equal(again.kind, "saving_throw");
+  assert.equal(again.success, true, "the reroll (18 on the die) stands");
+};
+
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-fighter.mjs", P);

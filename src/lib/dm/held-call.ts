@@ -35,13 +35,18 @@ import {
   type DmTurn,
   type HeldRollCall,
   type PendingRoll,
+  type WatchChoice,
+  type WatchPower,
+  type WatchStop,
 } from "@/lib/db/dm-turns";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { DiceTapeCursor, nextDecided } from "@/lib/dm/held-call-logic";
+import { settleAfterCall } from "@/lib/dm/ar-ws-after-call";
 import type { RollTag } from "@/lib/dice-script-logic";
 
 // What a roll that must wait asks for: the card it parks.
@@ -72,6 +77,9 @@ type Trial = {
   watchTag?: RollTag;
   watchTapeAt?: number;
   watchers?: boolean;
+  // A stop made after a die (stopAfterThrow): opens its own card once the
+  // run is rolled back.
+  reopen?: (held: HeldCallSpecShape) => string | null;
   decided: DecidedRoll[];
   used: Set<number>;
   feed: DiceTapeCursor;
@@ -87,7 +95,13 @@ declare global {
   // Tables whose next held call is a watch stop's, already answered.
   var __odmWatchAnswered: Map<string, Array<[number, number]>> | undefined;
   var __odmAnyoneWatching: ((campaignId: string) => boolean) | undefined;
+  // foresight.ts openStopFor, registered there: a watch stop's card for one
+  // watcher, holding these calls. Its id.
+  var __odmOpenStop: ((campaign: Campaign, turnId: string, calls: readonly HeldCallSpecShape[], found: OpenedStop, line: string) => string) | undefined;
 }
+
+// What a stop asks of its watcher (foresight.ts openStopFor).
+export type OpenedStop = { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[]; hit?: WatchStop["hit"] };
 
 type HeldCallSpecShape = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 
@@ -138,6 +152,36 @@ export function parkHeldCall(park: HeldPark, tapeAt = tapeMark()): never {
   }
   trial.park ??= { ...park, tapeAt };
   throw new HeldRollParked(park.note);
+}
+
+// A stop made inside the call after its dice have begun: a hit held before
+// its damage is rolled (the Cloud Rune, cloud-rune.ts), where a stop before
+// the call's first d20 would come before anyone knows it hits. The faces
+// drawn so far go on the stop's tape, so the answered call throws them again
+// the same and reaches the same hit. Only inside a held call, and not once a
+// player's roll has landed in it: the stop keeps the tape, not their dice.
+// Nor under a Portent number or a Chronal Shift armed on the call: the face
+// they put on a d20 is no chance draw, so the tape would not carry it.
+export function canStopAfterThrow(): boolean {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || trial.decided.length || trial.park || trial.watchStop || !globalThis.__odmOpenStop) {
+    return false;
+  }
+  const armed = armedNow(trial.campaignId);
+  return !armed.faces && !armed.shifts;
+}
+
+// Stops the call here for `stop.watcher` (canStopAfterThrow first). Never returns.
+export function stopAfterThrow(campaign: Campaign, turn: DmTurn, stop: OpenedStop, line: string): never {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || !canStopAfterThrow()) {
+    throw new Error("stopAfterThrow where no stop can be made");
+  }
+  trial.watched = true;
+  trial.watchStop = stop.watcher.id;
+  trial.watchTapeAt = trial.drawn.length;
+  trial.reopen = (held) => globalThis.__odmOpenStop?.(campaign, turn.id, [held], stop, line) ?? null;
+  throw new HeldRollParked("waiting on a watcher");
 }
 
 export type HeldCallSpec = { name: string; rawArguments: string; toolCallId: string | null };
@@ -229,7 +273,8 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   try {
     getDatabase().transaction(() => {
       try {
-        result = run();
+        // And what the call left for its end (ar-ws-after-call.ts).
+        result = settleAfterCall(trial, run());
       } catch (error) {
         if (!(error instanceof HeldRollParked) || (!trial.park && !trial.watchStop)) {
           failed = { error };
@@ -285,7 +330,7 @@ function parkWatch(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: 
   const tag = trial.watchTag;
   const tape = trial.drawn.slice(0, trial.watchTapeAt ?? 0);
   const held = { ...(call.toolCallId ? { id: call.toolCallId } : {}), name: call.name, rawArguments: call.rawArguments, ...(tape.length ? { tape } : {}) };
-  const stop = tag ? (globalThis.__odmWatchStop?.(campaign, turn, held, tag) ?? null) : null;
+  const stop = trial.reopen ? trial.reopen(held) : tag ? (globalThis.__odmWatchStop?.(campaign, turn, held, tag) ?? null) : null;
   const answer: ToolResult = { ok: true, parked: true, note: "Waiting on a player watching for Portent before the roll." };
   PARKED.add(answer);
   if (stop) {
@@ -343,10 +388,21 @@ export type HeldRunner = (campaign: Campaign, turn: DmTurn, call: HeldCallSpec) 
 
 declare global {
   var __odmHeldRunner: HeldRunner | undefined;
+  // Calls the server makes itself, under a name no GM tool has (the
+  // enemy-turn backstop, backstop-calls.ts): run again by their own runner.
+  var __odmNamedHeldRunners: Map<string, HeldRunner> | undefined;
 }
 
 export function registerHeldRunner(runner: HeldRunner) {
   globalThis.__odmHeldRunner = runner;
+}
+
+export function registerNamedHeldRunner(name: string, runner: HeldRunner) {
+  (globalThis.__odmNamedHeldRunners ??= new Map()).set(name, runner);
+}
+
+function runnerFor(name: string): HeldRunner | undefined {
+  return globalThis.__odmNamedHeldRunners?.get(name) ?? globalThis.__odmHeldRunner;
 }
 
 // A held roll has landed: the call runs again with it, and what it answered
@@ -361,7 +417,7 @@ export function runHeldAgain(
 ): { roll: StoredRoll | null; answer: ToolResult | null } {
   const call = pending.carry?.call;
   const turn = getDmTurn(pending.turnId);
-  const runner = globalThis.__odmHeldRunner;
+  const runner = call ? runnerFor(call.name) : undefined;
   if (!call || !turn || !runner || !pending.characterId) {
     return { roll: null, answer: null };
   }
@@ -416,6 +472,6 @@ export function clearWatchAnswered(campaignId: string) {
 // A call a watch stop held, run now that the watcher has answered, held in
 // turn so a roll inside it may still wait on its player.
 export function runHeldCallNow(campaign: Campaign, turn: DmTurn, call: HeldCallSpec): ToolResult | null {
-  const runner = globalThis.__odmHeldRunner;
+  const runner = runnerFor(call.name);
   return runner ? (runHeld(campaign, turn, call, () => runner(campaign, turn, call)) as ToolResult) : null;
 }

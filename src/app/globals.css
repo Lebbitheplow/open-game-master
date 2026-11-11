@@ -1517,6 +1517,12 @@ html[data-theme="light"] .skeleton-block {
   background: linear-gradient(180deg, rgba(74, 52, 8, 0.95), rgba(138, 101, 20, 0.85));
   box-shadow: 0 0 14px rgba(212, 171, 58, 0.22), 0 2px 5px rgba(4, 2, 12, 0.5) inset;
 }
+/* The track is drawn 24px tall; a finger gets 40: on a touch screen the switch
+   takes a press from 8px above and below it, with nothing drawn there (the
+   Deploy dialog's "In a legendary creature's lair" on a phone). */
+@media (pointer: coarse) {
+  .kit-switch::before { content: ""; position: absolute; inset: -0.5rem -0.25rem; }
+}
 .kit-switch:disabled { opacity: 0.5; cursor: not-allowed; }
 .kit-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(212, 171, 58, 0.3); }
 .kit-switch-knob {

@@ -20,7 +20,6 @@ const RULING = {
 const SKIP = {
   "831-you-can-see:barbarian::Mighty Impel/Mighty Impel": "its \"you can see\" is the space the creature is moved to, not the creature (\"move it to an unoccupied space you can see within 30 feet of you\"); the generator's pattern caught the wrong noun.",
   "831-within-feet:barbarian::Mighty Impel/Mighty Impel": "its first \"within\" is \"within your reach\"; the 30 feet is where the creature lands.",
-  "831-within-feet:warlock::Master of Hexes/Master of Hexes": "its 30 feet is measured from the creature that died (\"another creature you can see within 30 feet of it\"), which is gone from the board when the curse moves.",
   "832-gm-form-lists-enemies-only": "a property of the console's form (a field of kind \"enemies\" lists the encounter's enemies); the tool takes a character fighting for the foes by id, and only the browser harness can open the form.",
   "809-foretold-number-on-the-sheet": "who may read another seat's sheet is the sheet route's business as another member; left to the modelio package's leak rows, which walk every payload a seat receives.",
   "856-lucky-and-bardic-watch": "a design note for a follow-up, superseded by the after-the-roll choice (#848, src/lib/dm/after-roll-logic.ts); nothing of its own to hold.",
@@ -33,6 +32,7 @@ const { kit } = table;
 const TEXT = authoredText();
 const text = (key) => `"${TEXT.get(key)?.text ?? "?"}" (src/lib/srd/subclasses.json, ${key})`;
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
+const { triggerSpecFor } = await import("../src/lib/srd/trigger-table.ts");
 const show = (out) => (out.ok ? JSON.stringify(out.result).slice(0, 260) : String(out.error));
 
 const friend = table.hero({ class: "fighter", subclass: "Champion" });
@@ -193,6 +193,31 @@ const openGate = (who, gate = {}) => {
   world.patch(who.id, { conditions });
 };
 
+// A spend that answers the death of the creature under the holder's mark
+// (Master of Hexes: "When the creature cursed by your Hexblade's Curse dies"):
+// the mark is laid on a second foe beside the holder by their own spend, and
+// that foe is slain by their own blow through pc_attack, so the spend has the
+// death record it answers. The mark's name, or null for any other spend.
+const markedDeath = (spend) => triggerSpecFor(spend.name)?.on.find((on) => on.kind === "death" && on.marked)?.marked ?? null;
+async function stageFor(who, spend, classId) {
+  const mark = markedDeath(spend);
+  if (!mark) return (await stage(who, 1))[0];
+  const [target, victim] = await stage(who, 2);
+  kit.place(victim.id, 6, 6);
+  const lays = authoredRows().filter((row) => row.classId === classId).flatMap((entry) => entry.entry.spends ?? []).find((other) => {
+    const names = other.does.kind !== "buff" ? [] : Array.isArray(other.does.condition) ? other.does.condition.map(([, value]) => value) : [other.does.condition];
+    return names.some((value) => value === mark || value?.startsWith(`${mark} (`));
+  });
+  const laid = lays ? await world.invoke("use_resource", { characterId: who.id, resource: lays.name, targetEnemyId: victim.id }) : null;
+  if (!laid?.ok) throw new Error(`the rig: the mark "${mark}" could not be laid: ${laid?.error ?? "no spend lays it"}`);
+  kit.setEnemy(victim.id, { currentHp: 1 });
+  world.dice(18, 5);
+  const blow = await world.invoke("pc_attack", { characterId: who.id, targetEnemyId: victim.id, weapon: "Longsword" });
+  world.clearDice();
+  if (!blow.ok || foe(victim.id).currentHp > 0) throw new Error(`the rig: the marked creature did not die: ${show(blow)}`);
+  return target;
+}
+
 // The same walk for "within N feet": every spend aimed at one creature whose
 // own words give a reach refuses a creature beyond it, with nothing spent.
 const reachRows = [];
@@ -222,7 +247,17 @@ for (const { entry, spend, words, feet } of reachRows) {
       if (!picked.ok) throw new Error(`the rig: ${choose.name} (${option}) was refused: ${picked.error}`);
     }
     const args = (enemy) => ({ characterId: who.id, resource: spend.name, targetEnemyId: enemy.id, ...(spend.does.variants ? { variant: Object.keys(spend.does.variants)[0] } : {}) });
+    // Master of Hexes: "another creature you can see within 30 feet of it".
+    // Its reach is from the creature that died, which stageFor leaves slain
+    // on (6,6): the creature the curse moves to stands `apart` squares from
+    // that square.
+    const marked = markedDeath(spend);
     const setUp = async (apart) => {
+      if (marked) {
+        const target = await stageFor(who, spend, entry.classId);
+        kit.place(target.id, 6 + apart, 6);
+        return target;
+      }
       const [enemy] = await table.stage([who, friend], { first: who });
       kit.place(who.id, 1, 5);
       kit.place(friend.id, 1, 6);
@@ -232,6 +267,14 @@ for (const { entry, spend, words, feet } of reachRows) {
       return enemy;
     };
     const near = await setUp(1);
+    if (spend.afterWeaponHit) {
+      // A spend that rides a weapon hit goes to the creature the hit landed on
+      // (Wolf Takedown): the control lands one first.
+      world.dice(18, 3, 3, 3);
+      const hit = await world.invoke("pc_attack", { characterId: who.id, targetEnemyId: near.id });
+      world.clearDice();
+      if (!hit.ok) throw new Error(`the rig: the weapon hit ${spend.name} rides was refused: ${hit.error}`);
+    }
     world.dice(1, 1, 1, 1);
     const control = await world.invoke("use_resource", args(near));
     world.clearDice();
@@ -243,6 +286,14 @@ for (const { entry, spend, words, feet } of reachRows) {
     world.clearDice();
     assert.equal(out.ok, false, `a creature ${feet + 15} feet away is taken: ${show(out)}`);
     assert.equal(table.ledger(who), before, "the refusal spent something");
+    if (marked) {
+      // From the dead creature, not from the warlock: with the warlock 45 feet
+      // off, a creature 5 feet from where it died is still taken.
+      const beside = await setUp(1);
+      kit.place(who.id, 15, 6);
+      const moved = await world.invoke("use_resource", args(beside));
+      assert.equal(moved.ok, true, `a creature 5 feet from where the cursed one died, the warlock 45 feet off: ${moved.error}`);
+    }
   });
 }
 
@@ -254,14 +305,14 @@ for (const { entry, spend, words } of sightRows) {
   }, async () => {
     const who = table.hero({ class: entry.classId, subclass: entry.entry.subclass });
     const args = (enemy) => ({ characterId: who.id, resource: spend.name, targetEnemyId: enemy.id, ...(does(spend).variants ? { variant: Object.keys(does(spend).variants)[0] } : {}) });
-    const [seen] = await stage(who, 1);
+    const seen = await stageFor(who, spend, entry.classId);
     openGate(who, spend.gate);
     if (does(spend).types?.length) kit.setEnemy(seen.id, { stats: { type: does(spend).types[0] } });
     world.dice(1, 1, 1, 1);
     const control = await world.invoke("use_resource", args(seen));
     world.clearDice();
     assert.equal(control.ok, true, `on a creature in plain sight the spend is refused, so this row proves nothing: ${control.error}`);
-    const [hidden] = await stage(who, 1);
+    const hidden = await stageFor(who, spend, entry.classId);
     openGate(who, spend.gate);
     if (does(spend).types?.length) kit.setEnemy(hidden.id, { stats: { type: does(spend).types[0] } });
     kit.setEnemy(hidden.id, { conditions: ["invisible"] });

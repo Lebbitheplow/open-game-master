@@ -1,17 +1,22 @@
 // A deed one character does with no fight on: a word with someone, a chase's
-// exchange, a swing at a door, a purchase, a lift, a day's work, a check the
-// GM asks for. The character has to be able to act, as canAct says for a
-// fight: the dead do nothing, and SRD 5.1 says of the unconscious and the
-// petrified that the creature "is incapacitated (see the condition), can't
-// move or speak, and is unaware of its surroundings".
+// exchange, a swing at a door, a lift, a stow in the party stash, a day's
+// work, a check the GM asks for. The character has to be able to act, as
+// canAct says for a fight: the dead do nothing, and SRD 5.1 says of the
+// unconscious and the petrified that the creature "is incapacitated (see the
+// condition), can't move or speak, and is unaware of its surroundings".
 //
 // Before this, use_item, use_resource, cast_buff, heal, haggle and stabilize
 // each asked canAct, and the rest asked nothing or only whether the character
-// was dead: a dead hero persuaded the fence, won a chase's exchange and sold a
-// dagger (findings doors-13 and doors-14 of the 2026-11-09 gap sweep). Every
-// door the GM's calls come through asks here first (invoke-dispatch.ts for the
-// console and connected agents, turn.ts for the AI's own calls): a new deed
-// tool is one line in DEEDS. In a fight the fight's own gates decide.
+// was dead: a dead hero persuaded the fence and won a chase's exchange
+// (findings of the 2026-11-09 gap sweep, doors-13 and doors-14). Every door the GM's calls
+// come through asks here first (invoke-dispatch.ts for the console and
+// connected agents, turn.ts for the AI's own calls): a new deed tool is one
+// line in DEEDS. In a fight the fight's own gates decide.
+//
+// A trade is not among them: the GM settles a fallen friend's purchases and
+// sales for whoever holds the purse, a ruling held at both doors by
+// scripts/test-enforce-sweep-doors-block-quiet.mjs. A dead hero's dagger sold
+// at the GM's word is that ruling at work, not a defect.
 
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";

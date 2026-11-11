@@ -10,6 +10,8 @@ import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import type { Advantage } from "@/lib/dice";
 import type { TurnBudget } from "@/lib/dm/action-budget";
+import { wieldsOnlyMonkWeapons } from "@/lib/dm/mt-srd-monk";
+import { attackedWith } from "@/lib/dm/mt-srd-ranger";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { resourceLeft } from "@/lib/dm/attack-rules";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
@@ -46,11 +48,11 @@ const hasFeature = (sheet: Pick<CharacterSheet, "features">, name: string) =>
 const hasCondition = (sheet: Pick<CharacterSheet, "conditions">, name: string) =>
   sheet.conditions.some((entry) => entry.trim().toLowerCase() === name);
 
-// Martial Arts works only while the monk wears no armor and carries no
-// shield (SRD 5.1, Martial Arts).
+// Martial Arts works only while the monk wears no armor, carries no shield
+// and holds no weapon that is not a monk weapon (SRD 5.1, Martial Arts).
 export function martialArtsApplies(sheet: CharacterSheet): boolean {
   const worn = acBreakdownFor(sheet);
-  return !worn.armorName && !worn.shieldName;
+  return !worn.armorName && !worn.shieldName && wieldsOnlyMonkWeapons(sheet);
 }
 
 export type AttackOptions = {
@@ -96,6 +98,10 @@ export function checkAttackOptions(input: {
   besideEarlierTarget?: (earlierId: string) => boolean;
   creaturesBeside?: (earlierId: string) => string[];
   targetId?: string;
+  // The target's size, and how many feet it stands from another creature
+  // (null off the board): a run's bonus attack and Curving Shot's 60 feet.
+  targetSize?: string;
+  feetFrom?: (otherId: string) => number | null;
 }): { refused: ToolError } | { options: AttackOptions } {
   const { sheet, args, profile, kind, atRange, derived, budget } = input;
   const weaponAttack = kind === "weapon" || kind === "natural";
@@ -140,7 +146,7 @@ export function checkAttackOptions(input: {
       const featBonus = greatWeapon ? "Great Weapon Master" : featBonusAttack(sheet, budget, { weaponAttack, melee: meleeWeapon, weapon: profile.base });
       // Battle Magic, War Magic, Sudden Strike, Telekinetic Master...
       // (src/lib/srd/authored-effects.ts).
-      const authored = featBonus ? { ok: true } : authoredBonusAttackProblem(sheet, budget);
+      const authored = featBonus ? { ok: true } : authoredBonusAttackProblem(sheet, budget, { id: input.targetId, size: input.targetSize });
       // War Priest, Unwavering Mark, Hungry Jaws, Pistol and Blade
       // (src/lib/dm/feature-bonus-attacks.ts).
       const own = "refused" in authored ? featureBonusAttack({ sheet, budget, profile, melee: meleeWeapon, targetId: input.targetId, mods: derived.abilityMods }) : null;
@@ -161,6 +167,11 @@ export function checkAttackOptions(input: {
         const missed = budget.oncePerTurn.find((key) => key.startsWith(CURVING_SHOT))?.slice(CURVING_SHOT.length);
         if (missed && input.targetId === missed) {
           return { refused: { error: `${sheet.name}: Curving Shot sends the missed arrow at a different target, not the creature it missed.`, retry: true } };
+        }
+        // "a different target within 60 feet of the original target".
+        const apart = missed ? (input.feetFrom?.(missed) ?? null) : null;
+        if (apart !== null && apart > 60) {
+          return { refused: { error: `${sheet.name}: Curving Shot sends the missed arrow at a target within 60 feet of the creature it missed, and this one stands ${apart} feet from it.`, refused: "rules" } };
         }
         options.featureBonus = { feature: "Curving Shot", noAmmo: true };
       }
@@ -239,6 +250,7 @@ function hordeBreakerProblem(input: {
   sheet: CharacterSheet;
   budget: TurnBudget | null;
   weaponAttack: boolean;
+  profile: AttackProfile;
   args: { bonusAttack?: AnyBonusAttack; offHand?: boolean };
   besideEarlierTarget?: (earlierId: string) => boolean;
   creaturesBeside?: (earlierId: string) => string[];
@@ -264,7 +276,12 @@ function hordeBreakerProblem(input: {
   if (!earlier.length) {
     return { error: "Horde Breaker's extra attack follows a weapon attack on another creature this turn; attack that creature first.", retry: true };
   }
-  if (input.besideEarlierTarget && !earlier.some((id) => input.besideEarlierTarget?.(id))) {
+  // "another attack with the same weapon" (mt-srd-ranger.ts).
+  const sameWeapon = earlier.filter((id) => attackedWith(budget, id, input.profile.weapon));
+  if (!sameWeapon.length) {
+    return { error: `Horde Breaker's extra attack is made with the same weapon as the attack it follows, and ${sheet.name} has attacked no other creature with ${input.profile.weapon} this turn. They can make it with the weapon they attacked with.`, retry: true };
+  }
+  if (input.besideEarlierTarget && !sameWeapon.some((id) => input.besideEarlierTarget?.(id))) {
     const beside = [...new Set(earlier.flatMap((id) => input.creaturesBeside?.(id) ?? []))];
     return {
       error: beside.length

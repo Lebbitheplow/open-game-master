@@ -85,10 +85,8 @@ const ACKNOWLEDGED = new Set([
   "Unarmored Defense",
   // Artificer. The specialist marker and the tool/attunement perks are
   // narrated from the sheet, exactly like the other subclass markers and
-  // proficiency grants above. "Infuse Item" is the gateway to a real pick
-  // list (src/lib/srd/options.json), and the infusions themselves carry the
-  // mechanics; the feature naming the list does not.
-  "Artificer Specialist", "Infuse Item", "Magical Tinkering", "Tool Expertise",
+  // proficiency grants above.
+  "Artificer Specialist", "Magical Tinkering", "Tool Expertise",
   "Magic Item Adept", "Magic Item Savant", "Magic Item Master",
   "Soul of Artifice",
 ]);
@@ -425,6 +423,15 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "One skill proficiency of your choice",
     "Long-Limbed (5 extra feet of reach on melee attacks on your turn)",
     "Surprise Attack (2d6 extra damage on a surprised creature in the first round)",
+    // Cast by nature from the row's innateSpells, as Infernal Legacy and Drow
+    // Magic are (src/lib/srd/racial-grants.ts): the cantrip at will, each
+    // levelled spell a counter of its own, where one shared counter with
+    // nothing behind it stood before.
+    "Firbolg Magic (detect magic and disguise self, 1/short rest each)",
+    "Reach to the Blaze (produce flame, then burning hands 1/long rest from 3rd level)",
+    "Call to the Wave (shape water, then create or destroy water 1/long rest from 3rd level)",
+    "Mingle with the Wind (levitate 1/long rest from 3rd level)",
+    "Merge with Stone (pass without trace 1/long rest from 3rd level)",
   ]);
   const uncovered = [];
   for (const race of races) {
@@ -456,7 +463,7 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
     "steampunk_vitriol_ampoule",
     "sub_call_the_hunt", "sub_searing_vengeance",
     "sub_accursed_specter", "sub_genies_vessel", "sub_favored_by_the_gods",
-    "sub_violent_attraction", "sub_magic_users_nemesis",
+    "sub_violent_attraction",
     // 10d10 psychic after a hit: damage_enemy carries it (no save to roll).
     "hurl_through_hell",
     // Its 2d12 per spell level is rolled by the cast itself, not by a

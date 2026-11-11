@@ -22,8 +22,16 @@ import { classLevelOf } from "@/lib/srd/trait-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { mrAttackOffers, mrCheckOffers, type MrCheck, type MrSwing } from "@/lib/dm/mt-mr-offers-logic";
+import { combatInspirationOption } from "@/lib/dm/ar-wbf-bard-dice-logic";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath" | "combat_inspiration"
+  // The monk and rogue subclasses' (src/lib/dm/mt-mr-offers-logic.ts).
+  | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence"
+  // Convergent Future and Bend Luck (src/lib/dm/fate-turn-logic.ts).
+  | "convergent_future" | "bend_luck"
+  // The Storm Rune's prophetic state (src/lib/dm/mt-fb-runes.ts).
+  | "prophetic_state";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -110,6 +118,17 @@ function heldDie(sheet: Pick<CharacterSheet, "conditions">, name: "bardic inspir
 export const heldBardicDie = (sheet: Pick<CharacterSheet, "conditions">) => heldDie(sheet, "bardic inspiration");
 export const heldOwnLuckDie = (sheet: Pick<CharacterSheet, "conditions">) => heldDie(sheet, "dark one's own luck");
 
+// The bard whose Bardic Inspiration die the sheet holds (the condition's
+// `source`, written as the die is given), for the record a roll it turns into
+// a success leaves (last-save.ts recordInspiredSuccess). Null for a die given
+// before the source was kept, or none held.
+export function bardOfHeldDie(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): string | null {
+  const held = heldBardicDie(sheet);
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { source?: unknown } | undefined>;
+  const source = held ? meta[held.condition]?.source : null;
+  return typeof source === "string" && source ? source : null;
+}
+
 // A Creation bard's mote bursts when its die is spent on a roll the server
 // throws at once (src/lib/dm/authored-mote.ts): a character holding one rolls
 // as they always did, so the mote is not lost in the wait.
@@ -172,7 +191,8 @@ function favoredOption(sheet: CharacterSheet, taken: Set<AfterRollId>, reaches: 
 
 export function afterRollOptions(
   sheet: CharacterSheet,
-  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[]; reactionFree?: boolean },
+  // `check`: the skill or tool of a check, for the features that read it (mt-mr-offers-logic.ts).
+  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[]; reactionFree?: boolean; check?: MrCheck },
 ): AfterRollOption[] {
   const { outcome, dc } = roll;
   if (!canWaitOnRoll(roll.kind) || !leadD20(outcome) || (dc !== null && outcome.total >= dc)) {
@@ -202,6 +222,7 @@ export function afterRollOptions(
   if (favored) {
     options.push(favored);
   }
+  options.push(...mrCheckOffers(sheet, { kind: roll.kind, total: outcome.total, natural: outcome.natural, dc, taken, reactionFree: roll.reactionFree !== false, check: roll.check }));
   return options;
 }
 
@@ -213,7 +234,8 @@ export function afterRollOptions(
 export function afterAttackOptions(
   sheet: CharacterSheet,
   // `wrathDice`: the hit would roll lightning or thunder dice (destructive-wrath-logic.ts rollsWrathDice).
-  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; wrathDice?: boolean },
+  // `swing`: the weapon and the turn, for the features that read them (mt-mr-offers-logic.ts).
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; wrathDice?: boolean; swing?: MrSwing },
 ): AfterRollOption[] {
   const { outcome, ac } = roll;
   const natural = outcome.natural;
@@ -225,6 +247,8 @@ export function afterAttackOptions(
     return [
       ...(roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : []),
       ...(roll.wrathDice && !taken.has("destructive_wrath") ? destructiveWrathOption(sheet) : []),
+      // A Valor bard's die on the hit's damage (ar-wbf-bard-dice-logic.ts).
+      ...(!taken.has("combat_inspiration") ? combatInspirationOption(sheet) : []),
     ];
   }
   const options: AfterRollOption[] = [];
@@ -256,6 +280,7 @@ export function afterAttackOptions(
   if (favored) {
     options.push(favored);
   }
+  options.push(...mrAttackOffers(sheet, { total: outcome.total, natural, ac, taken }, roll.swing));
   return options;
 }
 
@@ -329,7 +354,8 @@ export function answeredLine(id: AfterRollId, helper: string, roller: string, be
   if (id === "chronal_shift") {
     return `${helper} used Chronal Shift: ${roller} rolled again (${before} became ${after}), and the new roll stands.`;
   }
-  return `${helper} used ${id === "war_gods_blessing" ? "War God's Blessing" : "Flash of Genius"}: ${roller}'s roll went from ${before} to ${after}.`;
+  const feature = id === "war_gods_blessing" ? "War God's Blessing" : id === "convergent_future" ? "Convergent Future" : id === "bend_luck" ? "Bend Luck" : "Flash of Genius";
+  return `${helper} used ${feature}: ${roller}'s roll went from ${before} to ${after}.`;
 }
 
 // A wizard's Chronal Shift offered on another character's roll.

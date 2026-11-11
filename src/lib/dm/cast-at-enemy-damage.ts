@@ -6,6 +6,8 @@
 
 import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
@@ -13,11 +15,12 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { rollCard } from "@/lib/dm/action-common";
 import { rollAgainst } from "@/lib/roll-labels";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
-import { authoredOnKill } from "@/lib/dm/authored-hooks";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
 import { splitDamageExpression, typedRollExpression, typedShares, type SpellDicePart } from "@/lib/dm/aoe-parts";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
+import { empoweredLine, empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
@@ -43,6 +46,9 @@ export function landSpellDamage(input: {
   damageExpression: string;
   damageType: string | undefined;
   spellLevel: number;
+  // The slot the casting spent: the level the spell is of for a kill
+  // (Grim Harvest, ar-ws-harvest.ts).
+  slotLevel?: number | null;
   halfOnSave: boolean;
   saved: boolean;
   base: Record<string, unknown>;
@@ -104,10 +110,22 @@ export function landSpellDamage(input: {
   // The card shows the dice as rolled; the save halves or stops what lands.
   // A maximized blow rolls no dice, so it has no card.
   const shared = sharedRoll !== undefined && !plantMaximum ? (parts.length > 1 && input.sharedSecond !== undefined ? [sharedRoll - input.sharedSecond, input.sharedSecond] : [sharedRoll]) : null;
-  const outcome = shared || parts.every((part) => part.atMaximum)
+  const rolls = !(shared || parts.every((part) => part.atMaximum));
+  const empowered = rolls ? empoweredRoll(campaign, sheet.id) : {};
+  const outcome = !rolls
     ? null
-    : rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name });
-  const shares = shared ?? typedShares(outcome, parts);
+    : // Empowered Spell paid for this cast throws its low dice again (mt-srd-metamagic.ts).
+      rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name }, empowered);
+  if (outcome && empowered.empower) {
+    base.empowered = empoweredLine(empowered.empower);
+  }
+  // Spell Bombardment: a die at its highest number is rolled again, once a
+  // turn (src/lib/dm/ar-ws-bombardment.ts).
+  const burst = outcome ? spellBombardment({ campaign, turn, sheet, outcome, spell: spellName }) : null;
+  if (burst) {
+    base.spellBombardment = burst.note;
+  }
+  const shares = shared ?? typedShares(burst?.outcome ?? outcome, parts);
   const rolledTotal = shares.reduce((sum, share) => sum + share, 0);
   const total = rolledTotal + riders.flat + riders.flatSecond;
   const halves = halfOnSave || riders.potentCantrip;
@@ -137,6 +155,8 @@ export function landSpellDamage(input: {
     base.potentCantrip = "Potent Cantrip: the save still takes half.";
   }
   if (damageDealt > 0) {
+    // Power Surge reads it (spell-damage-mark.ts).
+    markSpellDamage(campaign.id, sheet.id, enemy.id, spell, facts?.classes);
     const applied = typedParts && harmFloor === null
       ? landTypedParts({
           campaign,
@@ -174,8 +194,8 @@ export function landSpellDamage(input: {
     if (blessing) {
       base.darkOnesBlessing = blessing;
     }
-    // Touch of Death, Keeper of Souls on the kill (authored-hooks.ts).
-    const onKill = applied.dead && encounter ? authoredOnKill(campaign, encounter, enemy, sheet.id, false, { level: spellLevel, school: spellSchoolFor(spell, authors) }) : [];
+    // Grim Harvest, Keeper of Souls on the kill (ar-ws-harvest.ts).
+    const onKill = applied.dead && encounter ? spellKill(campaign, encounter, enemy, sheet.id, { spell, spellLevel, slotLevel: input.slotLevel }) : [];
     if (onKill.length) {
       base.subclassFeatures = onKill;
     }

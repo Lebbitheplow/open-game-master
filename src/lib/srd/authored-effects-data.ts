@@ -28,6 +28,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       { kind: "bonus_route", action: "dash", gate: { ...RAGING, choice: "eagle" } },
       { kind: "oa_disadv", gate: { ...RAGING, choice: "eagle" } },
       { kind: "speed", amount: 15, gate: { ...RAGING, choice: "elk" } },
+      { kind: "jump", long: 10, high: 3, gate: { ...RAGING, choice: "tiger" } },
       { kind: "pack_adv", rangeFt: 5, gate: { ...RAGING, choice: "wolf" } },
     ],
   },
@@ -35,13 +36,28 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "Path of the Totem Warrior",
     spends: [{ name: "Aspect of the Beast", fight: "out", does: { kind: "choose", options: TOTEMS } }],
     effects: [
+      // "Bear. ... your carrying capacity (including maximum load and maximum
+      // lift) is doubled": read by the one carry reader (carry-jump-effects.ts
+      // authoredCarryFactor), so the load refusal, the encumbrance tiers and
+      // the lift all double. The lift alone doubled before.
+      { kind: "carry_factor", factor: 2, gate: { choice: "bear" } },
       {
         kind: "check_adv",
         abilities: ["str"],
         about: "push_pull_lift_break",
         gate: { choice: "bear" },
-        note: "Eagle's sight, Elk's travel pace and Wolf's tracking pace are narrated; Tiger's two skills are picked with the subclass's training (subclass-training.ts).",
+        note: "Eagle's mile-away sight is narrated; Tiger's two skills are picked with the subclass's training (subclass-training.ts).",
       },
+      // "Dim light doesn't impose disadvantage on your Wisdom (Perception) checks."
+      { kind: "dim_sight", gate: { choice: "eagle" } },
+      // "the travel pace of you and up to ten companions within 60 feet of you
+      // is doubled". The party travels together, so a party of eleven or
+      // fewer is within the 60 feet the march keeps.
+      { kind: "travel", doubles: { companions: 10 }, gate: { choice: "elk" } },
+      // "you can track other creatures while traveling at a fast pace, and you
+      // can move stealthily while traveling at a normal pace". Tracking is a
+      // Survival check no pace refuses; the normal pace is the one to lift.
+      { kind: "travel", stealthAt: "normal", gate: { choice: "wolf" } },
     ],
   },
   "barbarian::Totemic Attunement": {
@@ -56,7 +72,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         aliases: ["Totemic Attunement Elk"],
         action: "bonus",
         gate: { ...RAGING, choice: "elk" },
-        does: { kind: "save_effect", save: "str", dcAbility: "str", dice: "1d12+str", type: "bludgeoning", condition: "prone", rangeFt: 5 },
+        does: { kind: "save_effect", save: "str", dcAbility: "str", dice: "1d12+str", type: "bludgeoning", condition: "prone", rangeFt: 5, maxSize: "Large" },
       },
       // Wolf: a bonus action after a melee weapon hit knocks a Large or
       // smaller creature prone.
@@ -65,19 +81,21 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         aliases: ["Totemic Attunement Wolf"],
         action: "bonus",
         gate: { ...RAGING, choice: "wolf" },
-        // The creature beside the barbarian is knocked prone, no save: it was
-        // a note the GM had to act on.
-        does: { kind: "buff", target: "enemy", condition: "prone", rounds: 10, rangeFt: 5 },
+        // "knock a Large or smaller creature prone as a bonus action when you
+        // hit it with a melee weapon attack": the creature a melee weapon
+        // attack hit this turn, no save.
+        afterWeaponHit: true,
+        does: { kind: "buff", target: "enemy", condition: "prone", rounds: 10, rangeFt: 5, maxSize: "Large" },
       },
     ],
     effects: [
       { kind: "guard_aura", rangeFt: 5, gate: { ...RAGING, choice: "bear" } },
-      { kind: "move", fly: "walk", gate: { ...RAGING, choice: "eagle" }, note: "Falling at the end of the turn with nothing holding the barbarian up is the GM's to hold." },
+      { kind: "move", fly: "walk", gate: { ...RAGING, choice: "eagle" }, note: "Ending the turn in the air with nothing else holding the barbarian up, they fall prone (src/lib/dm/fall-landing.ts eagleBurstFalls)." },
       {
         kind: "bonus_attack",
         after: "attack",
         gate: { ...RAGING, choice: "tiger" },
-        note: "Only after moving at least 20 feet straight toward a Large or smaller target; the GM keeps to that.",
+        run: { feet: 20, maxSize: "Large" },
       },
     ],
   },
@@ -93,6 +111,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Spirit Shield",
         gate: RAGING,
+        // "an ally you can see within 30 feet".
+        sees: "target",
         does: {
           kind: "reduce",
           amount: [[6, "2d6"], [10, "3d6"], [14, "4d6"]],
@@ -108,7 +128,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     spends: [
       // The environment, chosen once and changed at a new level: "Storm Aura
       // (Desert)", read by the aura, Storm Soul and Raging Storm.
-      { name: "Storm Environment", aliases: ["Storm Aura environment"], fight: "out", does: { kind: "choose", options: ["Desert", "Sea", "Tundra"] } },
+      { name: "Storm Environment", aliases: ["Storm Aura environment"], fight: "out", does: { kind: "choose", options: ["Desert", "Sea", "Tundra"], changeAt: "level" } },
       { name: "Storm Aura", action: "bonus", gate: RAGING, does: { kind: "storm_aura" } },
     ],
   },
@@ -175,15 +195,22 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "natural_weapon",
         gate: RAGING,
         weapon: { name: "Tail", dice: "1d8", type: "piercing", reach: true },
-        note: "The tail's reaction (1d8 to AC against one attack) and keeping to one form per rage are the GM's to hold.",
+      },
+    ],
+    // "when a creature you can see within 10 feet hits you, a reaction adds
+    // 1d8 to your AC against that attack": the tail's, so it is the weapon
+    // this rage grew (or grows now).
+    reactions: [
+      {
+        name: "Form of the Beast",
+        aliases: ["Tail", "Tail Swipe"],
+        gate: RAGING,
+        sees: "attacker",
+        does: { kind: "ac_vs_hit", amount: { die: "1d8" }, attackerWithinFt: 10, beastForm: "Tail" },
       },
     ],
   },
-  "barbarian::Unstable Backlash": {
-    subclass: "Path of Wild Magic",
-    narrated:
-      "Rerolls the Wild Surge table, whose effects are narrated; use_reaction spends the reaction from the sheet's feature.",
-  },
+  // Unstable Backlash: src/lib/srd/authored-effects-w2-mt-fb.ts.
   // Bigby Presents: Giant's Power and Giant's Havoc at 3rd, Elemental Cleaver
   // at 6th, Mighty Impel at 10th, Demiurgic Colossus at 14th. Giant's Power's
   // cantrip is the option chosen; a barbarian keeps no spell list, so the
@@ -206,16 +233,22 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   "barbarian::Elemental Cleaver": {
     subclass: "Path of the Giant",
     // Chosen on entering the rage, and changed with a bonus action in it.
-    spends: [{ name: "Elemental Cleaver", does: { kind: "choose", options: ELEMENTS.map(([name]) => name) } }],
-    effects: ELEMENTS.map(([name, type]) => ({
-      kind: "rider" as const,
-      dice: [[6, "1d6"], [14, "2d6"]] as Array<[number, string]>,
-      type,
-      when: "weapon" as const,
-      requiresCondition: "raging",
-      gate: { choice: name },
-      note: "The infused weapon's own damage turns to the element too, and it gains thrown (20/60); a bonus action changes the element.",
-    })),
+    // "a bonus action changes the element": free at a rest, a bonus action in
+    // a fight.
+    spends: [{ name: "Elemental Cleaver", action: "bonus", does: { kind: "choose", options: ELEMENTS.map(([name]) => name) } }],
+    effects: ELEMENTS.flatMap(([name, type]) => [
+      {
+        kind: "rider" as const,
+        dice: [[6, "1d6"], [14, "2d6"]] as Array<[number, string]>,
+        type,
+        when: "weapon" as const,
+        requiresCondition: "raging",
+        gate: { choice: name },
+      },
+      // "its damage becomes that type ... and it gains the thrown property
+      // (20/60), returning to your hand after a throw".
+      { kind: "infuse" as const, type, rangeFt: 20, longRangeFt: 60, gate: { ...RAGING, choice: name } },
+    ]),
   },
   "barbarian::Mighty Impel": {
     subclass: "Path of the Giant",
@@ -229,8 +262,11 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
           save: "str",
           dcAbility: "str",
           rangeFt: 10,
-          onFail:
-            "is moved to an unoccupied space the barbarian can see within 30 feet of them: move its token with move_token (forced). It must be Medium or smaller (Large or smaller from 14th level), and one left in the air falls and lands prone",
+          // "Medium or smaller creature", Large or smaller from 14th level
+          // (Demiurgic Colossus), thrown "to an unoccupied space you can see
+          // within 30 feet of you": mt-fb-spend.ts throwFoe.
+          maxSize: [[10, "Medium"], [14, "Large"]],
+          throws: { feet: 30 },
         },
       },
     ],
@@ -248,6 +284,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
 
   // ---- bard ----
+  // The die on a damage roll is its holder's choice on the card their hit
+  // waits on (src/lib/dm/ar-wbf-bard-dice-logic.ts); the reaction is the AC.
   "bard::Combat Inspiration": {
     subclass: "College of Valor",
     reactions: [{ name: "Combat Inspiration", usedBy: "inspired", does: { kind: "ac_vs_hit", amount: "bardic" } }],
@@ -273,9 +311,11 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "bard::Blade Flourish": {
     subclass: "College of Swords",
+    effects: [{ kind: "attack_turn_speed", feet: 10 }],
     spends: [
       // "when you hit a creature with a weapon attack" (XGtE): after the hit.
-      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
+      // Master's Flourish (14): with no die left, a d6 pays.
+      { name: "Blade Flourish", pool: { id: "bardic_inspiration", freeDie: { feature: "Master's Flourish", die: "d6" } }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
     ],
   },
   "bard::Psychic Blades": {
@@ -285,6 +325,9 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         name: "Psychic Blades",
         pool: { id: "bardic_inspiration" },
         oncePerTurn: true,
+        // "Spend a Bardic Inspiration die on a weapon hit": only after the
+        // bard's weapon hit this turn, on the creature it struck.
+        afterWeaponHit: true,
         does: { kind: "die_damage", dice: [[3, "2d6"], [5, "3d6"], [10, "5d6"], [15, "8d6"]], type: "psychic" },
       },
     ],
@@ -314,13 +357,15 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "Light Domain",
     spends: [
       {
+        // An action of its own, as often as the cleric likes: neither the
+        // feature's words nor the published feature make it a Channel
+        // Divinity option, and it took a use of one.
         name: "Corona of Light",
-        pool: { id: "channel_divinity" },
         action: "action",
         does: { kind: "buff", condition: "corona of light", rounds: 10 },
       },
     ],
-    effects: [{ kind: "enemy_save", when: "near", rangeFt: 60, anyCaster: true, gate: { condition: "corona of light" } }],
+    effects: [{ kind: "enemy_save", when: "near", rangeFt: 60, anyCaster: true, damageTypes: ["fire", "radiant"], gate: { condition: "corona of light" } }],
   },
   "cleric::Dampen Elements": {
     subclass: "Nature Domain",
@@ -345,7 +390,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Blessing of the Trickster",
         action: "action",
-        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600 },
+        // "Touch a willing creature other than yourself": within 5 feet.
+        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600, rangeFt: 5 },
       },
     ],
   },
@@ -366,16 +412,21 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "cleric::Blessing of the Forge": {
     subclass: "Forge Domain",
+    counter: "sub_blessing_of_the_forge",
     spends: [
       {
+        // "After a long rest ... until you use the feature again": once a
+        // long rest (its counter), and the new blessing takes the old one off
+        // (src/lib/dm/authored-spend-divine.ts forgeBlessing).
         name: "Blessing of the Forge",
         fight: "out",
+        pool: { id: "sub_blessing_of_the_forge" },
         does: {
-          kind: "buff",
-          target: "ally",
-          condition: "blessing of the forge (armor)",
-          variants: { armor: "blessing of the forge (armor)", weapon: "blessing of the forge (+1)" },
-          rounds: 14400,
+          kind: "variants",
+          options: {
+            armor: { does: { kind: "forge_blessing", condition: "blessing of the forge (armor)", family: "blessing of the forge", rounds: 14400 } },
+            weapon: { does: { kind: "forge_blessing", condition: "blessing of the forge (+1)", family: "blessing of the forge", rounds: 14400 } },
+          },
         },
       },
     ],
@@ -396,7 +447,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "cleric::Circle of Mortality": {
     subclass: "Grave Domain",
-    effects: [{ kind: "heal_max", note: "Spare the Dying at 30 feet as a bonus action is narrated." }],
+    // Spare the Dying at 30 feet as a bonus action: src/lib/dm/stabilize.ts.
+    effects: [{ kind: "heal_max" }],
   },
   "cleric::Keeper of Souls": {
     subclass: "Grave Domain",
@@ -444,7 +496,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Protective Bond",
         usedBy: "party",
-        does: { kind: "take_for_ally", rangeFt: [[6, 30], [17, 60]], resistFrom: 17 },
+        does: { kind: "take_for_ally", rangeFt: [[6, 30], [17, 60]], resistFrom: 17, bond: "emboldening bond", teleport: true },
       },
     ],
   },

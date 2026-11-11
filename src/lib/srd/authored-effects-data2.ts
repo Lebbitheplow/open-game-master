@@ -13,6 +13,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         name: "Shadow Step",
         action: "bonus",
+        // "Between two patches of dim light or darkness": the square left
+        // (here) and the one landed on (map-tools.ts featureLandingRefusal).
+        needs: "shadows",
         does: { kind: "buff", condition: "shadow step", rounds: 1, teleportFeet: 60 },
       },
     ],
@@ -43,13 +46,15 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "monk::Intoxicated Frenzy": {
     subclass: "Way of the Drunken Master",
-    effects: [{ kind: "flurry", strikes: 5, note: "Each extra strike is meant for a different creature; the GM keeps to that." }],
+    // Each strike past the flurry's own two goes to a creature no other
+    // strike of it was aimed at (src/lib/dm/mt-mr-turn.ts flurryStrikeRefusal).
+    effects: [{ kind: "flurry", strikes: 5 }],
   },
   // Agile Parry: after an unarmed strike in the Attack action while holding a
   // kensei melee weapon, +2 AC until the monk's next turn, for no action.
   "monk::Path of the Kensei": {
     subclass: "Way of the Kensei",
-    spends: [{ name: "Agile Parry", aliases: ["Path of the Kensei"], action: "none", fight: "in", does: { kind: "buff", condition: "agile parry", rounds: 1 } }],
+    spends: [{ name: "Agile Parry", aliases: ["Path of the Kensei"], action: "none", fight: "in", needs: "unarmed_in_action", does: { kind: "buff", condition: "agile parry", rounds: 1 } }],
   },
   "monk::Kensei's Shot": {
     subclass: "Way of the Kensei",
@@ -72,7 +77,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         kind: "natural_weapon",
         weapon: { name: "Radiant Sun Bolt", aliases: ["sun bolt"], dice: [[1, "1d4"], [5, "1d6"], [11, "1d8"], [17, "1d10"]], type: "radiant", ranged: true, rangeFt: 30 },
-        note: "Its bonus-action pair of bolts for 1 ki after the Attack action is Flurry of Blows' place; the GM allows it.",
+        // Its bonus-action pair of bolts for 1 ki after the Attack action is
+        // Flurry of Blows' place: a flurry strike may be a bolt
+        // (src/lib/dm/mt-mr-turn.ts sunBoltStrike).
       },
     ],
   },
@@ -81,8 +88,10 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Searing Arc Strike",
-        pool: { id: "ki", perUnit: true, max: 11 },
+        // "After the Attack action, spend 2 ki or more."
+        pool: { id: "ki", perUnit: true, min: 2, max: 11 },
         action: "bonus",
+        needs: "attack_action",
         does: {
           kind: "aoe_report",
           dice: "3d6",
@@ -112,6 +121,8 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
           dcAbility: "wis",
           type: "radiant",
           area: "a 20-foot sphere within 150 feet",
+          noHalf: true,
+          rangeFt: 150,
         },
       },
     ],
@@ -133,6 +144,12 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "monk::Arms of the Astral Self": {
     subclass: "Way of the Astral Self",
+    // While the arms last: unarmed strikes reach 5 feet farther, and a
+    // Strength save uses Wisdom when it is higher.
+    effects: [
+      { kind: "reach", tiles: 1, unarmed: true, gate: { condition: "arms of the astral self" } },
+      { kind: "save_swap", save: "str", use: "wis", checks: true, gate: { condition: "arms of the astral self" } },
+    ],
     spends: [
       {
         name: "Arms of the Astral Self",
@@ -169,13 +186,15 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
         when: "weapon",
         oncePerTurn: true,
         requiresCondition: "arms of the astral self",
+        // "While both your arms and visage are summoned."
+        gate: { condition: "visage of the astral self" },
       },
     ],
     reactions: [
       {
         name: "Body of the Astral Self",
         aliases: ["Deflect Energy"],
-        gate: { condition: "arms of the astral self" },
+        gate: { condition: "arms of the astral self", conditions: ["visage of the astral self"], because: "needs the arms and the visage of the astral self both summoned" },
         does: {
           kind: "reduce",
           amount: (_level, mods) => `1d10+${mods.wis ?? 0}`,
@@ -196,22 +215,6 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       },
     ],
   },
-  // Explosive Fury: when Aspect of the Wyrm is activated, creatures of the
-  // monk's choice in its 10-foot aura save on Dexterity or take 3d10 of the
-  // Draconic Strike type. Augment Breath's bigger cone and Blindsight are the
-  // DM's to place.
-  "monk::Ascendant Aspect": {
-    subclass: "Way of the Ascendant Dragon",
-    spends: [
-      {
-        name: "Explosive Fury",
-        aliases: ["Ascendant Aspect"],
-        action: "none",
-        gate: { condition: "aspect of the wyrm" },
-        does: { kind: "aoe_report", dice: "3d10", save: "dex", dcAbility: "wis", type: "acid, cold, fire, lightning or poison (the Draconic Strike type)", area: "each creature of the monk's choice in the 10-foot aura" },
-      },
-    ],
-  },
 
   // ---- paladin ----
   "paladin::Aura of Warding": {
@@ -226,7 +229,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     ],
     effects: [
       { kind: "turn_heal", when: "start", formula: "10", gate: { condition: "elder champion" } },
-      { kind: "enemy_save", when: "near", rangeFt: 10, gate: { condition: "elder champion" } },
+      { kind: "enemy_save", when: "near", rangeFt: 10, channel: true, gate: { condition: "elder champion" } },
     ],
   },
   "paladin::Relentless Avenger": {
@@ -249,7 +252,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
           kind: "buff",
           condition: "avenging angel",
           rounds: 600,
-          burst: { save: "wis", dcAbility: "spell", rangeFt: 30, condition: "frightened", mark: "menaced by an avenging angel", rounds: 10 },
+          burst: { save: "wis", dcAbility: "spell", rangeFt: 30, condition: "frightened", mark: "menaced by an avenging angel", rounds: 10, endsOnDamage: true, aura: true },
         },
       },
     ],
@@ -267,7 +270,8 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
         type: "psychic",
         rangeFt: AURA_REACH,
         frightenedOnly: true,
-        note: "Their speed of 0 is the frightened creature's to keep; the board does not stop it.",
+        // Its speed is 0 while it stands in the aura (src/lib/dm/aura-hold.ts).
+        holdsSpeed: true,
       },
     ],
   },
@@ -305,13 +309,20 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "paladin::Emissary of Redemption": {
     subclass: "Oath of Redemption",
     effects: [
-      { kind: "resist", types: "all", gate: { notCondition: "emissary lapsed" } },
+      { kind: "resist", types: "all", fromCreatures: true, gate: { notCondition: "emissary lapsed" } },
       { kind: "retaliate", formula: "half_dealt", type: "radiant", gate: { notCondition: "emissary lapsed" } },
     ],
   },
   "paladin::Aura of Alacrity": {
     subclass: "Oath of Glory",
-    effects: [{ kind: "speed", amount: 10, note: "The allies' 10 feet within 5 feet of the paladin are narrated." }],
+    effects: [
+      {
+        kind: "speed",
+        amount: 10,
+        allies: { rangeFt: [[7, 5], [18, 10]], condition: "aura of alacrity" },
+        note: "An ally who starts their turn within 5 feet of the paladin (10 from 18th level), while the paladin is up, has 10 more feet of speed that turn; the server lays it.",
+      },
+    ],
   },
   "paladin::Glorious Defense": {
     subclass: "Oath of Glory",
@@ -321,13 +332,14 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     ],
   },
   // Advantage on Charisma checks (the condition), once a turn a missed
-  // weapon attack hits instead (the DM rules the hit), and a reaction that
-  // rerolls a failed save.
+  // weapon attack hits instead (src/lib/dm/attack-swing.ts judgeSwing), and a
+  // reaction that rerolls a failed save. Once a long rest, or again for a
+  // 5th-level spell slot (the pool's slotFallback).
   "paladin::Living Legend": {
     subclass: "Oath of Glory",
     counter: "sub_living_legend",
     spends: [
-      { name: "Living Legend", pool: { id: "sub_living_legend" }, action: "bonus", does: { kind: "buff", condition: "living legend", rounds: 10 } },
+      { name: "Living Legend", pool: { id: "sub_living_legend", slotFallback: 5 }, action: "bonus", does: { kind: "buff", condition: "living legend", rounds: 10 } },
       { name: "Living Legend Reroll", aliases: ["Living Legend save"], action: "reaction", gate: { condition: "living legend" }, does: { kind: "reroll_save" } },
     ],
   },
@@ -335,7 +347,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "cleric::Warding Flare": {
     subclass: "Light Domain",
     counter: "sub_warding_flare",
-    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, sees: "attacker", does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
+    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, sees: "both", does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
   },
   "warlock::Entropic Ward": {
     subclass: "The Great Old One",
@@ -402,8 +414,10 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "paladin::Dread Lord": {
     subclass: "Oathbreaker",
     counter: "sub_dread_lord",
+    // The 30-foot gloom that dims bright light goes on the board with the
+    // condition and follows the paladin (src/lib/battlemap/zones-features.ts).
     spends: [
-      { name: "Dread Lord", pool: { id: "sub_dread_lord" }, action: "action", does: { kind: "buff", condition: "dread lord", rounds: 10 } },
+      { name: "Dread Lord", pool: { id: "sub_dread_lord" }, action: "action", does: { kind: "buff", condition: "dread lord", rounds: 10, zone: "Dread Lord" } },
     ],
     // Only an enemy frightened of the oathbreaker takes the aura's 4d10.
     effects: [
@@ -415,7 +429,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "ranger::Ranger's Companion": {
     subclass: "Beast Master",
     narrated:
-      "The beast is a companion sheet the GM fields (pet-tools); its proficiency bonus and hit points are set when it is made.",
+      "The beast is a companion record the GM fields (pet-tools); its proficiency bonus (AC, attacks, damage, its saves and skills) and hit points are set when it is made (pet-build.ts), and it dodges until commanded (pet-command.ts).",
   },
   "ranger::Shadowy Dodge": {
     subclass: "Gloom Stalker",
@@ -427,7 +441,9 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         name: "Planar Warrior",
         action: "bonus",
-        does: { kind: "buff", condition: [[3, "planar warrior"], [11, "planar warrior (2d8)"]], rounds: 1 },
+        // "Choose one creature you can see": the mark names it (quarry), so the
+        // force rides the hit on that creature alone.
+        does: { kind: "buff", condition: [[3, "planar warrior"], [11, "planar warrior (2d8)"]], rounds: 1, quarry: true },
       },
     ],
   },
@@ -437,18 +453,21 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "ranger::Slayer's Prey": {
     subclass: "Monster Slayer",
-    spends: [{ name: "Slayer's Prey", action: "bonus", does: { kind: "buff", condition: "slayer's prey", mark: "slayer's prey (marked)", rounds: 600 } }],
+    // The ranger's condition names the creature (quarry), so the 1d6 rides
+    // only "your first hit against it" (attack-damage-riders.ts onQuarry).
+    spends: [{ name: "Slayer's Prey", action: "bonus", does: { kind: "buff", condition: "slayer's prey", mark: "slayer's prey (marked)", rounds: 600, quarry: true } }],
     effects: [
       { kind: "rider", dice: "1d6", type: "", when: "weapon", oncePerTurn: true, requiresCondition: "slayer's prey" },
     ],
   },
   "ranger::Supernatural Defense": {
     subclass: "Monster Slayer",
-    effects: [{ kind: "save_die_vs", die: "1d6", mark: "slayer's prey (marked)", note: "Its 1d6 on a check to escape the prey's grapple is the GM's to add." }],
+    effects: [{ kind: "save_die_vs", die: "1d6", mark: "slayer's prey (marked)", note: "Its 1d6 on a check to escape the prey's grapple rides a check named against that hold (src/lib/dm/prey-escape.ts)." }],
   },
   "ranger::Slayer's Counter": {
     subclass: "Monster Slayer",
-    reactions: [{ name: "Slayer's Counter", does: { kind: "attack", rangeFt: 5 } }],
+    // "If the attack hits, your save automatically succeeds."
+    reactions: [{ name: "Slayer's Counter", does: { kind: "attack", rangeFt: 5, turnsSave: true } }],
   },
   "ranger::Beguiling Twist": {
     subclass: "Fey Wanderer",

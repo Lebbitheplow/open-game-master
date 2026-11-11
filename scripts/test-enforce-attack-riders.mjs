@@ -206,8 +206,12 @@ await test("Sneak Attack: once per turn, and again on the next", async () => {
   const first = await kit.swing(rogue.id, enemy.id, [15, 4, 1, 2, 3], { weapon: "Shortsword" });
   assert.equal(dieCount(first.damage, 6), 4);
   // The once-a-turn use is spent, and the hit is marked on the creature it
-  // struck (weapon-hit:<id>, which the reactions that answer a weapon hit read).
-  assert.deepEqual([...world.encounter().turnBudget.oncePerTurn].sort(), ["sneak_attack", `weapon-hit:${enemy.id}`].sort());
+  // struck (weapon-hit:<id>, which the reactions that answer a weapon hit
+  // read; sneak-hit:<id>, the creature the Sneak Attack struck, which Sudden
+  // Strike's second one and what answers a Sneak Attack read; charged:<id>:<feet>,
+  // how far the run that ended in this melee attack brought them toward it,
+  // none here, which a spend that rides a charge reads: src/lib/srd/mt-fb-run.ts).
+  assert.deepEqual([...world.encounter().turnBudget.oncePerTurn].sort(), [`charged:${enemy.id}:0`, "sneak_attack", `sneak-hit:${enemy.id}`, `weapon-hit:${enemy.id}`].sort());
   const off = await kit.swing(rogue.id, enemy.id, [15, 4, 1, 2, 3], { weapon: "Shortsword", offHand: true });
   assert.equal(off.ok, true, off.error);
   assert.equal(off.unused, 3);

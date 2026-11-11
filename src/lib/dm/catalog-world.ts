@@ -1,6 +1,7 @@
 // The world, the people in it, and the story: what a DM does outside a
 // fight and outside the party's own sheets. Names match the tool names the
 // AI DM is offered exactly.
+import { NATURAL_TERRAINS, type NaturalTerrain } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FORM } from "@/lib/dm/catalog-roll";
 import { DEED_SEVERITIES } from "@/lib/dm/companion-values-logic";
 
@@ -20,6 +21,10 @@ import {
 } from "@/lib/dm/catalog-vocab";
 import { REQUEST_ROLL_ADJUDICATION } from "@/lib/dm/catalog-roll";
 import { WHISPER_MAX_CHARS } from "@/lib/dm/whisper-limits";
+
+// The Travel form's names for the kinds of land Natural Explorer reads: one
+// for each, so a kind added to NATURAL_TERRAINS fails the build here.
+const LAND_LABELS: Record<NaturalTerrain, string> = { arctic: "Arctic", coast: "Coast", desert: "Desert", forest: "Forest", grassland: "Grassland", mountain: "Mountain", swamp: "Swamp", underdark: "Underdark" };
 
 // The console form's words for a deed's severity (issue 503).
 const SEVERITY_LABELS: Record<(typeof DEED_SEVERITIES)[number], string> = { minor: "Minor", serious: "Serious", atrocity: "Atrocity" };
@@ -114,6 +119,9 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
       { name: "hours", label: "Or hours", kind: "number", min: 1, max: 48, help: "One stretch of marching." },
       { name: "miles", label: "Or miles", kind: "number", min: 1, max: 200, help: "The server works out the hours the pace and the ground need." },
       { name: "terrain", label: "Ground", kind: "select", options: [{ value: "normal", label: "Normal" }, { value: "difficult", label: "Difficult (half the distance)" }] },
+      // Natural Explorer reads the land crossed against a ranger's favored
+      // terrain (world-tools.ts travel `land`): left blank, no ranger's applies.
+      { name: "land", label: "Kind of land", kind: "select", options: NATURAL_TERRAINS.map((value) => ({ value, label: LAND_LABELS[value] })), help: "For a ranger's Natural Explorer: pick it when the road crosses a ranger's favored terrain. Leave blank otherwise." },
       {
         name: "pace",
         label: "Pace",

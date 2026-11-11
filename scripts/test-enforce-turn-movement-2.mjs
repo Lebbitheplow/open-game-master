@@ -212,6 +212,13 @@ await test("Mounting costs half the rider's speed during their own move; the AI 
   assert.equal(console.ok, true, `the console lost its free hand: ${console.error}`);
   assert.equal(kit.token(brom.id).movedThisRound, before, "the console's off-turn mount charged movement to a turn that is not running");
   assert.doesNotMatch(JSON.stringify(console.result ?? console), /taken from this turn.s movement/);
+  // Nothing was taken, so nothing is reported as spent: the result said
+  // "Mounting cost half their movement" and carried movementSpent.
+  assert.doesNotMatch(JSON.stringify(console.result ?? console), /movementSpent|Mounting cost/, "the console's uncharged mount reported movement spent");
+  const off2 = await world.invoke("dismount", { characterId: brom.id });
+  assert.equal(off2.ok, true, `the console lost its free hand: ${off2.error}`);
+  assert.equal(kit.token(brom.id).movedThisRound, before, "the console's off-turn dismount charged movement");
+  assert.doesNotMatch(JSON.stringify(off2.result ?? off2), /movementSpent|costs half their movement/, "the console's uncharged dismount reported movement spent");
 });
 
 await test("Mounting is the rider's move: a stunned rider is refused at the console and the AI's door alike, and nothing is charged.", async () => {

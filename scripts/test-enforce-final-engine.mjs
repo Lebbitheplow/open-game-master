@@ -228,11 +228,24 @@ await test("Form of the Beast: while raging the barbarian attacks with claws (1d
   kit.place(enemy.id, 5, 7);
   const far = await kit.swing(beast.id, enemy.id, [18, 4], { weapon: "claws" });
   assert.equal(far.ok, false, "claws reach 5 feet");
+  // Form of the Beast grows one natural weapon a rage, chosen as the rage
+  // begins (src/lib/dm/mt-fb-beast.ts): the rage that grew the claws has no
+  // tail, and the tail and the bite each come with a rage of their own. All
+  // three were pinned inside one rage here before that was built.
+  const sameRage = await kit.swing(beast.id, enemy.id, [18, 4], { weapon: "tail" });
+  assert.equal(sameRage.ok, false, "a tail in the rage that grew the claws");
+  const rageAgain = async () => {
+    world.patch(beast.id, { conditions: [], conditionMeta: {} });
+    kit.freshTurn();
+    const again = await spend(beast, "Rage");
+    assert.equal(again.ok, true, again.error);
+  };
+  await rageAgain();
   const tail = await kit.swing(beast.id, enemy.id, [18, 4], { weapon: "tail" });
   assert.equal(tail.ok, true, `the tail reaches 10 feet: ${tail.error}`);
   assert.equal(diceOf(tail.damage, 8), 1);
-  kit.freshTurn();
   kit.place(enemy.id, 5, 6);
+  await rageAgain();
   world.patch(beast.id, { currentHp: 20 });
   const bite = await kit.swing(beast.id, enemy.id, [18, 4], { weapon: "bite" });
   assert.equal(bite.ok, true, bite.error);

@@ -33,9 +33,10 @@ function eventOfHit(hit: PublicLastHit): TriggerEvent {
 
 const costOf = (action: string | undefined): HandCost => (action === "reaction" ? "reaction" : action === "bonus" ? "bonus" : action === "none" ? "free" : "action");
 
-function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean }): HandCard {
+function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean; anyTurn?: boolean }): HandCard {
   const { event, spec } = input;
-  const target: HandTarget = input.onAlly ? "ally" : spec.aimsAt && event.creatureId ? "enemy" : "none";
+  // `aimEnemy`: the player picks the creature (Master of Hexes' new quarry).
+  const target: HandTarget = input.onAlly ? "ally" : input.aimEnemy || (spec.aimsAt && event.creatureId) ? "enemy" : "none";
   const base: HandCard = {
     id: `reaction:${textKey(input.name).replace(/\s+/g, "-")}:${event.id}`,
     type: "ward",
@@ -62,7 +63,10 @@ function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: 
     prompt: `${event.creatureName}: ${spec.what}`,
     ...(event.creatureId ? { answers: { characterId: event.characterId || sheet.id, attackerId: event.creatureId, attacker: event.creatureName } } : {}),
   };
-  const kind = input.cost === "reaction" ? "reaction" : input.cost === "bonus" ? "bonus" : input.cost === "free" ? "free" : "action";
+  // `anyTurn`: a spend that costs nothing of the turn and answers a record on
+  // anyone's turn (Empowered Healing after an ally's healing roll) is asked as
+  // a reaction is, and spends none (ar-ws-empowered-healing.ts asks the same).
+  const kind = input.cost === "reaction" || input.anyTurn ? "reaction" : input.cost === "bonus" ? "bonus" : input.cost === "free" ? "free" : "action";
   return gated(base, standingGate(sheet, turn, kind), costGate(input.cost, turn, sheet, input.name));
 }
 
@@ -107,6 +111,15 @@ export function triggerCards(
     }
   }
   for (const held of heldAuthored(sheet)) {
+    // A spend that opens with its trigger (Master of Hexes): dealt while the
+    // record it answers is open, never on the holder's own turn without one.
+    for (const spend of held.entry.spends ?? []) {
+      const spec = triggerSpecFor(spend.name);
+      if (!spec || !gateHolds(spend.gate, sheet, held)) continue;
+      for (const event of openFor(spec, events, context(triggerKey(textKey(spend.name), sheet.id))).slice(-1)) {
+        cards.push(card(sheet, turn, { id: spend.name, name: spend.name, cost: costOf(spend.action), spec, event, intent: { card: "feature", resourceId: spend.name }, rules: `${spend.name} answers ${spec.what}.`, resource: "", aimEnemy: spend.does.kind === "buff" && Boolean(spend.does.quarry), anyTurn: spend.does.kind === "reroll_heal" }));
+      }
+    }
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
       // A bond's reaction for the pet's own damage (Reflexive Resistance for the
@@ -125,6 +138,13 @@ export function triggerCards(
       if (!spec || (pool && "id" in pool && (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) < (pool.amount ?? 1))) continue;
       for (const event of openFor(spec, events, context(triggerKey(textKey(reaction.name), sheet.id))).slice(-2)) {
         if (reaction.sees === "attacker" && event.creatureId && unseen?.has(event.creatureId)) continue;
+        // Slayer's Counter is made before the save: the Hand's player was asked
+        // at the stop the server makes for it (src/lib/dm/foresight.ts), and a
+        // card after the save has landed would only be refused.
+        if (does.kind === "attack" && does.turnsSave) continue;
+        // An attack made with the reaction reaches only so far (Slayer's
+        // Counter's weapon attack), as authored-reactions.ts refuses it beyond.
+        if (does.kind === "attack" && does.rangeFt && event.creatureId && !near(event.creatureId, does.rangeFt)) continue;
         cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec, event, intent: { card: "reaction", feature: reaction.name }, rules: `${reaction.name} answers ${spec.what}.`, resource: "" }));
       }
     }

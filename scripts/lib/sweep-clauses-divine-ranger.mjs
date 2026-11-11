@@ -88,7 +88,12 @@ export const RANGER = {
     const who = rig.hero("ranger", "Gloom Stalker", 3);
     const rolled = await rig.call("request_roll", { characterId: who.id, kind: "initiative", reason: "a fight" }, [10]);
     const [foe] = await rig.fight(who);
-    const speed = rig.srd.speedFor(rig.world.sheet(who.id));
+    // The speed the turn moves at is the move budget's (src/lib/battlemap/view.ts
+    // pcMoveBudget), which the board and the move route read; the sheet's own
+    // speed (speedFor) knows nothing of the turn. The check read that static
+    // number, or a budget field no turn has.
+    const view = await rig.load("lib/battlemap/view.ts");
+    const speed = view.pcMoveBudget(rig.world.campaignId, rig.world.encounter(), rig.kit.map(), rig.world.sheet(who.id), rig.kit.token(who.id)).speed;
     const first = await rig.kit.swing(who.id, foe.id, [18, 4, 5]);
     const budget = rig.budget();
     const second = await rig.kit.swing(who.id, foe.id, [18, 4, 5]);
@@ -96,10 +101,10 @@ export const RANGER = {
     return {
       initiative: () => assert.equal(rolled.result.total, 10 + 2 + wis(3), `initiative on a 10 with Dexterity +2 and Wisdom +${wis(3)}: ${rolled.result.total}`),
       "extra-attack": () => {
-        assert.equal(second.ok, true, `on the first turn of the fight a 3rd-level Gloom Stalker's second attack: ${second.error.slice(0, 160)}`);
+        assert.equal(second.ok, true, `on the first turn of the fight a 3rd-level Gloom Stalker's second attack: ${(second.error ?? "").slice(0, 160)}`);
         assert.equal(rig.diceIn(second.damage, 8), 2, `it rolled ${second.damage?.expression}: the longsword's d8 and 1d8 more`);
       },
-      speed: () => assert.equal(budget?.speedBonus ?? speed, 40, `on the first turn the ranger's speed reads ${speed} (budget ${brief(budget, 160)})`),
+      speed: () => assert.equal(speed, 40, `on the first turn the ranger's speed reads ${speed} (budget ${brief(budget, 160)})`),
     };
   },
 
@@ -133,7 +138,7 @@ export const RANGER = {
       another: () => {
         assert.equal(one.result.hit, false);
         assert.equal(two.ok, true, two.error);
-        assert.equal(three.ok, true, `after a miss and a hit with Extra Attack's two attacks, the one more the miss allows: ${three.error.slice(0, 200)}; the row is narrated: "the GM calls pc_attack again for it."`);
+        assert.equal(three.ok, true, `after a miss and a hit with Extra Attack's two attacks, the one more the miss allows: ${(three.error ?? "").slice(0, 200)}; the row is narrated: "the GM calls pc_attack again for it."`);
       },
     };
   },
@@ -208,23 +213,38 @@ export const RANGER = {
     return {
       third: () => {
         assert.equal(one.ok && two.ok, true, one.error || two.error);
-        assert.equal(three.ok, true, `after striking two different creatures, the attack at a third: ${three.error.slice(0, 200)}; the row is narrated: "the GM allows them."`);
+        assert.equal(three.ok, true, `after striking two different creatures, the attack at a third: ${(three.error ?? "").slice(0, 200)}; the row is narrated: "the GM allows them."`);
       },
-      teleport: () => assert.equal(far.ok, true, `a longsword at a creature 15 feet off, 10 feet of teleport away: ${far.error.slice(0, 160)}`),
+      teleport: () => assert.equal(far.ok, true, `a longsword at a creature 15 feet off, 10 feet of teleport away: ${(far.error ?? "").slice(0, 160)}`),
     };
   },
 
   "ranger::Hunter's Sense": async (rig) => {
     const who = rig.hero("ranger", "Monster Slayer", 3);
-    await rig.fight(who);
-    const out = await rig.spend(who, "Hunter's Sense");
+    const [foe, hidden] = await rig.fight(who, { enemies: 2 });
+    rig.kit.setEnemy(foe.id, { currentHp: 300, stats: { ...rig.enemy(foe.id).stats, immune: "poison", resist: "fire", vulnerable: "radiant" } });
+    rig.kit.setEnemy(hidden.id, { currentHp: 300, conditions: ["invisible"], conditionMeta: { invisible: { rounds: 10 } } });
+    const unseen = await rig.spend(who, "Hunter's Sense", { targetEnemyId: hidden.id });
+    const usedUnseen = rig.res(who, "sub_hunters_sense")?.used ?? null;
+    const out = await rig.spend(who, "Hunter's Sense", { targetEnemyId: foe.id });
     const budget = rig.budget();
+    const usedAfter = rig.res(who, "sub_hunters_sense")?.used ?? null;
     rig.reset();
     const facts = await rig.counterFacts("ranger", "Monster Slayer", 3, "sub_hunters_sense");
     return {
       action: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(budget?.actionUsed, true);
+      },
+      // Gap study WAVE2 D3: the creature's stat block, the use spent; one the
+      // ranger cannot see is refused, spending nothing.
+      reveals: () => {
+        assert.equal(out.ok, true, out.error);
+        assert.deepEqual([out.result.immunities, out.result.resistances, out.result.vulnerabilities], ["poison", "fire", "radiant"]);
+        assert.equal(usedAfter, 1);
+        assert.equal(unseen.ok, false, "an invisible creature was read");
+        assert.match(unseen.error, /cannot see/);
+        assert.equal(usedUnseen, 0, "the refusal spent a use");
       },
       uses: () => assert.equal(facts.max, wis(3), `${facts.max} uses at 3rd level (Wisdom +${wis(3)}, proficiency +2)`),
       "long-rest": () => assert.deepEqual([facts.afterShort, facts.afterLong], [facts.max, 0]),
@@ -255,7 +275,55 @@ export const RANGER = {
 
   "ranger::Magic-User's Nemesis": async (rig) => {
     const facts = await rig.counterFacts("ranger", "Monster Slayer", 11, "sub_magic_users_nemesis");
-    return { rest: () => assert.deepEqual([facts.max, facts.afterShort, facts.afterLong], [1, 0, 0]) };
+    // A creature is about to cast Sacred Flame at an ally. The ranger's
+    // reaction comes before the spell resolves, as Counterspell's does: the
+    // caster saves (Wisdom, the ranger's spell DC) or loses the spell, and the
+    // cast that follows is refused. `face`: the caster's d20.
+    const answer = async (face) => {
+      rig.reset();
+      const who = rig.hero("ranger", "Monster Slayer", 11);
+      const ally = rig.hero("cleric", "Life Domain", 11);
+      const [foe] = await rig.fight(who);
+      rig.kit.place(ally.id, 4, 6);
+      rig.kit.setEnemy(foe.id, { stats: { spells: ["Sacred Flame"] } });
+      rig.foesTurn(foe);
+      const bare = await rig.spend(who, "Magic-User's Nemesis");
+      const out = await rig.spend(who, "Magic-User's Nemesis", { targetEnemyId: foe.id, variant: "Sacred Flame" }, [face]);
+      const cast = await rig.call("cast_at_player", { characterId: ally.id, spell: "Sacred Flame", saveAbility: "dex", dc: 25, damage: "1d8", damageType: "radiant", casterEnemyId: foe.id }, [2, 6]);
+      return { bare: bare.ok, ok: out.ok || out.error, cast: cast.ok, hp: rig.hp(ally), used: rig.res(who, "sub_magic_users_nemesis")?.used, reacted: rig.reacted(who) };
+    };
+    const lost = await answer(1);
+    const kept = await answer(20);
+    // A creature teleports 15 feet (Misty Step, on its block); the ranger's
+    // reaction answers the teleport on record, and a failed save puts the
+    // creature back on the square it left.
+    const jump = async (face) => {
+      rig.reset();
+      const who = rig.hero("ranger", "Monster Slayer", 11);
+      const [foe] = await rig.fight(who);
+      rig.kit.setEnemy(foe.id, { stats: { spells: ["Misty Step"] } });
+      rig.foesTurn(foe);
+      const from = rig.kit.token(foe.id);
+      const none = await rig.spend(who, "Magic-User's Nemesis", { targetEnemyId: foe.id });
+      const moved = await rig.call("move_token", { token: foe.id, x: 8, y: 8, teleport: true, spell: "Misty Step" });
+      const out = await rig.spend(who, "Magic-User's Nemesis", { targetEnemyId: foe.id }, [face]);
+      const now = rig.kit.token(foe.id);
+      return { none: none.ok, moved: moved.ok || moved.error, ok: out.ok || out.error, back: now.x === from.x && now.y === from.y, used: rig.res(who, "sub_magic_users_nemesis")?.used };
+    };
+    const foiled = await jump(1);
+    const away = await jump(20);
+    rig.note("nemesis", [lost, kept, foiled, away]);
+    return {
+      rest: () => assert.deepEqual([facts.max, facts.afterShort, facts.afterLong], [1, 0, 0]),
+      "save-or-lose": () => {
+        assert.deepEqual(lost, { bare: false, ok: true, cast: false, hp: 100, used: 1, reacted: true }, `with no casting named it is refused; a caster that fails its Wisdom save loses the spell before it lands, and the cast that follows is refused: ${JSON.stringify(lost)}`);
+        assert.deepEqual([kept.ok, kept.cast, kept.hp, kept.used], [true, true, 94, 1], `a caster that makes the save casts its spell: ${JSON.stringify(kept)}`);
+      },
+      teleporter: () => {
+        assert.deepEqual(foiled, { none: false, moved: true, ok: true, back: true, used: 1 }, `with no teleport on record it is refused; a teleporter that fails its Wisdom save is back where it stood: ${JSON.stringify(foiled)}`);
+        assert.deepEqual([away.ok, away.back, away.used], [true, false, 1], `a teleporter that makes the save stays where it went: ${JSON.stringify(away)}`);
+      },
+    };
   },
 
   "ranger::Dreadful Strikes": async (rig) => {
@@ -420,9 +488,21 @@ export const RANGER = {
     const bite = await scene.attack([18, 4, 4]);
     const rolls = rig.lastRolls(6).filter((entry) => entry.kind === "attack" || entry.kind === "damage").map((entry) => entry.expression);
     const cost = rig.budget();
-    const infused = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id });
+    // "When another creature within 30 feet of it that it can see hits with a
+    // weapon attack": the drake's own bite is no trigger, the ranger's
+    // longsword is, and the reaction spent is the drake's.
+    const ownBite = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id });
+    await rig.kit.swing(scene.who.id, scene.foe.id, [18, 4]);
+    const beforeInfusion = rig.enemy(scene.foe.id).currentHp;
+    const infused = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id }, [4]);
+    const infusion = { took: beforeInfusion - rig.enemy(scene.foe.id).currentHp, rangersReaction: rig.reacted(scene.who) };
+    const twice = await rig.react(scene.who, "Infused Strikes", { targetEnemyId: scene.foe.id }, [4]);
     await rig.kit.endFight();
+    const slotsUsed = () => Object.values(rig.world.sheet(scene.who.id).spellcasting?.slots ?? {}).reduce((sum, slot) => sum + slot.used, 0);
+    const slotsBefore = slotsUsed();
     const second = await rig.call("summon_pet", { characterId: scene.who.id, kind: "drake", form: "drake", essence: "cold", name: "Rime" });
+    // With the free summoning spent, the lowest slot pays (pet-command.ts).
+    const slotPaid = slotsUsed() - slotsBefore;
     const afterSecond = rig.res(scene.who, "sub_drake_companion");
     rig.note("drake", [scene.called.ok, scene.called.error, brief(scene.pet, 420), counter, bite.ok, bite.error, rolls, cost, infused.ok, infused.error.slice(0, 160), second.ok, second.error, afterSecond]);
     const hpOf = (pet) => pet?.maxHp ?? pet?.hp?.max ?? pet?.hp;
@@ -436,17 +516,23 @@ export const RANGER = {
         assert.ok(rolls.some((expression) => /1d6\+2\b/.test(expression)), `the bite rolled ${rolls}: 1d6 + the proficiency bonus`);
       },
       "bonus-command": () => assert.ok(cost?.bonusUsed === true && cost?.actionUsed !== true, `commanding the drake cost ${brief(cost, 120)}`),
-      "once-a-long-rest": () => assert.ok(counter?.used === 1 && (!second.ok || afterSecond?.used > 1), `summoning the drake left the feature's counter at ${brief(counter)}, and a second summoning the same day was ${second.ok ? "taken" : "refused"} (${brief(afterSecond)}): nothing holds it to once a long rest or a spell slot`),
-      "infused-strikes": () => assert.equal(infused.ok, true, `use_reaction "Infused Strikes": ${infused.error.slice(0, 200)}`),
+      "once-a-long-rest": () => assert.ok(counter?.used === 1 && (!second.ok || afterSecond?.used > 1 || slotPaid === 1), `summoning the drake left the feature's counter at ${brief(counter)}, and a second summoning the same day was ${second.ok ? "taken" : "refused"} (${brief(afterSecond)}): nothing holds it to once a long rest or a spell slot`),
+      "infused-strikes": () => {
+        assert.equal(ownBite.ok, false, "the drake infused its own bite");
+        assert.equal(infused.ok, true, `use_reaction "Infused Strikes": ${infused.error.slice(0, 200)}`);
+        assert.deepEqual(infusion, { took: 4, rangersReaction: false }, "1d6 (a 4) of the drake's essence on the creature the ranger hit, with the drake's reaction and not the ranger's");
+        assert.equal(twice.ok, false, "the drake took a second reaction in the round");
+      },
     };
   },
 
   "ranger::Drake's Breath": async (rig) => {
     const facts = await rig.counterFacts("ranger", "Drakewarden", 11, "sub_drakes_breath");
     const who = rig.hero("ranger", "Drakewarden", 15);
-    await rig.fight(who);
+    const [foe] = await rig.fight(who);
     rig.setUsed(who, "sub_drakes_breath", 1);
-    const bought = await rig.spend(who, "Drake's Breath", { level: 3 });
+    // The breath catches a creature: the spend rolls its save, so it names one.
+    const bought = await rig.spend(who, "Drake's Breath", { level: 3, variant: "fire", targetEnemyIds: [foe.id] }, Array(11).fill(3));
     const slot = rig.world.sheet(who.id).spellcasting.slots["3"].used;
     rig.note("breath", [facts, bought.ok, bought.error.slice(0, 200), slot]);
     return {

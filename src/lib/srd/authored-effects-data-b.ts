@@ -35,6 +35,9 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         name: "Halo of Spores",
         // "a creature you can see": the creature struck (authored-reactions.ts strike_back).
         sees: "attacker",
+        // Spreading Spores: "you can't use Halo of Spores' reaction while the
+        // cube lasts" (the druid carries "spreading spores" while it does).
+        gate: { notCondition: "spreading spores" },
         does: {
           kind: "strike_back",
           amount: [[2, "1d4"], [6, "1d6"], [10, "1d8"], [14, "1d10"]],
@@ -82,7 +85,10 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         aliases: ["Wildfire Spirit"],
         pool: { id: "wild_shape" },
         action: "action",
-        does: { kind: "buff", condition: "wildfire spirit", rounds: 600 },
+        // The spirit joins the table as a creature beside the druid and burns
+        // what stands around its arrival (src/lib/dm/feature-summons-dra.ts);
+        // the condition is what Enhanced Bond and Blazing Revival read.
+        does: { kind: "wildfire_spirit", condition: "wildfire spirit", rounds: 600 },
       },
     ],
   },
@@ -95,7 +101,7 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         damageTypes: ["fire"],
         healing: true,
         gate: { condition: "wildfire spirit" },
-        note: "Casting from the spirit's space is the GM's to place.",
+        note: "A fire or healing spell that does not reach from the druid is cast from the spirit's space (cast-origin.ts).",
       },
     ],
   },
@@ -107,7 +113,15 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         name: "Cauterizing Flames",
         pool: { id: "sub_cauterizing_flames" },
         action: "reaction",
-        does: { kind: "flames", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" },
+        // On a creature standing in one of the druid's spectral flames
+        // (src/lib/dm/cauterizing-flames.ts): heal it or burn it.
+        does: {
+          kind: "variants",
+          options: {
+            heal: { does: { kind: "cauterizing", mode: "heal", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" } },
+            burn: { does: { kind: "cauterizing", mode: "burn", formula: (_level, mods) => `2d10+${mods.wis ?? 0}`, type: "fire" } },
+          },
+        },
       },
     ],
   },
@@ -170,13 +184,17 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   "fighter::Unwavering Mark": {
     subclass: "Cavalier",
     counter: "sub_unwavering_mark",
-    effects: [{ kind: "mark", condition: "unwavering mark", effect: "disadv_others", melee: true }],
+    // "until the end of your next turn. While it is within 5 feet of you".
+    effects: [{ kind: "mark", condition: "unwavering mark", effect: "disadv_others", melee: true, untilNextTurnEnds: true, rangeFt: 5 }],
   },
+  // "Creatures provoke an opportunity attack from you when they move 5 feet or
+  // more while within your reach, and a creature you hit with an opportunity
+  // attack has its speed reduced to 0": the opportunity engine's own trigger
+  // and hit (opportunity.ts, opportunity-strike.ts). It was a reaction taken
+  // on the call's word, with no creature having moved.
   "fighter::Hold the Line": {
     subclass: "Cavalier",
-    reactions: [
-      { name: "Hold the Line", does: { kind: "attack", rangeFt: 5, onHitCondition: { name: "held in place", rounds: 1 } } },
-    ],
+    heldBy: { file: "src/lib/dm/opportunity.ts", call: "movesWithinReachAt(" },
   },
   "fighter::Vigilant Defender": {
     subclass: "Cavalier",
@@ -184,7 +202,15 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   },
   "fighter::Elegant Courtier": {
     subclass: "Samurai",
-    effects: [{ kind: "save_swap", save: "wis", use: "cha", note: "The Persuasion proficiency is applied to the sheet at the pick." }],
+    // "Add your Wisdom modifier to Persuasion checks and gain proficiency in
+    // Wisdom saving throws (Intelligence or Charisma if you already have it)":
+    // the row swapped Charisma in for Wisdom on the save and added nothing to
+    // the check. The option is for a fighter who already saves on Wisdom.
+    spends: [{ name: "Elegant Courtier", fight: "out", does: { kind: "choose", options: ["Intelligence", "Charisma"] } }],
+    effects: [
+      { kind: "check_bonus", skills: ["persuasion"], ability: "wis" },
+      { kind: "save_prof", abilities: ["wis"], elseOneOf: ["int", "cha"] },
+    ],
   },
   "fighter::Tireless Spirit": {
     subclass: "Samurai",
@@ -192,16 +218,18 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   },
   "fighter::Rapid Strike": {
     subclass: "Samurai",
-    effects: [{ kind: "rapid_strike", note: "The extra attack's target is the same creature; the GM keeps to that." }],
+    // "one more attack against the same target": the last attack left of the
+    // action is owed to that creature (authored-attacks.ts rapidStrikeOwed).
+    effects: [{ kind: "rapid_strike" }],
   },
-  // The echo is kept as a mark on the knight while it lasts (a bonus action
-  // manifests it), so what needs it out can ask: Shadow Martyr sends it into a
-  // hit only while it is out, and the hit that destroys it takes the mark off
-  // (authored-reactions.ts echo_takes_hit). Its square on the board and the 30
-  // feet it may stray are the GM's to place (pull request handoff).
+  // The echo is a token on the board and a mark on the knight while it lasts
+  // (src/lib/dm/mt-fb-echo.ts): the mark is what needs it out asks (Shadow
+  // Martyr sends it into a hit only while it is out, and the hit that destroys
+  // it takes the mark off, authored-reactions.ts echo_takes_hit), the token is
+  // its square, the 30 feet it may stray and where its attacks reach from.
   "fighter::Manifest Echo": {
     subclass: "Echo Knight",
-    spends: [{ name: "Manifest Echo", action: "bonus", does: { kind: "buff", condition: ECHO_OUT, rounds: 600 } }],
+    spends: [{ name: "Manifest Echo", action: "bonus", does: { kind: "echo" } }],
   },
   "fighter::Shadow Martyr": {
     subclass: "Echo Knight",
@@ -249,7 +277,13 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
             // "When you deal damage to a target with your Psionic Strike"
             // (TCoE): it follows the hit, on the creature hit.
             thrust: {
-              does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5, onFail: "may instead be pushed 10 feet (move_token forced)" },
+              does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5 },
+              action: "none",
+              afterWeaponHit: true,
+            },
+            // "or pushed 10 feet": the same save, the creature moved instead.
+            push: {
+              does: { kind: "save_effect", save: "str", dcAbility: "int", rangeFt: 5, pushes: { feet: 10 } },
               action: "none",
               afterWeaponHit: true,
             },
@@ -310,9 +344,12 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         does: { kind: "buff", condition: "giant's might (1d10)", rounds: 10 },
       },
     ],
+    // "can make you Huge with 5 extra feet of reach", while the might lasts.
+    effects: [{ kind: "reach", tiles: 1, gate: { condition: "giant's might (1d10)" } }],
   },
   "fighter::Inspiring Surge": {
     subclass: "Banneret",
-    reactions: [{ name: "Inspiring Surge", usedBy: "party", does: { kind: "attack", rangeFt: 5 } }],
+    // "use a reaction to make one weapon attack; two allies from 18th level".
+    reactions: [{ name: "Inspiring Surge", usedBy: "party", does: { kind: "attack", rangeFt: 5, weaponRange: true, answers: [[10, "1"], [18, "2"]] } }],
   },
 };

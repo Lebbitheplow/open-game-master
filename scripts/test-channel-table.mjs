@@ -112,7 +112,13 @@ await test("Order's Demand charms every foe in reach that fails until the end of
   const meta = foe(near.id).conditionMeta.charmed;
   assert.equal(meta.untilTurnEndOf, order.id);
   assert.equal(meta.endsOnDamage, true);
-  assert.match(JSON.stringify(out.result), /drop what it is holding/);
+  // "You can also cause any of the charmed creatures to drop what they are
+  // holding when they fail the saving throw": the drop is laid as the
+  // disarmed mark on the creature that failed (authored-effects-channel.ts),
+  // where a line telling the GM to do it was pinned before.
+  assert.ok(foe(near.id).conditions.includes("disarmed"), JSON.stringify(foe(near.id).conditions));
+  assert.equal(foe(beside.id).conditions.includes("disarmed"), false, "the one that saved keeps its grip");
+  assert.match(JSON.stringify(out), /is charmed, and is disarmed/);
 });
 
 await test("Cloak of Shadows makes the cleric invisible until their next turn ends, and an attack ends it.", async () => {

@@ -16,6 +16,8 @@ import { SpeedField } from "@/app/admin/SpeedField";
 import { apiSpeedEligibility } from "@/lib/speed-tier";
 import { describeEndpoint } from "@/lib/dm/sampling-logic";
 import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
+import type { ToolCallHealth } from "@/lib/tool-call-health";
+import { ToolsDroppedLine } from "@/app/admin/ToolsDroppedLine";
 import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
 import { AdminPlayerAgentsSection } from "@/app/admin/AdminPlayerAgentsSection";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
@@ -93,6 +95,8 @@ export function AdminSettingsPanel() {
   const [deviceWorld, setDeviceWorld] = useState(false);
   // What the last Fast calls ran at, per role (issue 255).
   const [speedNotes, setSpeedNotes] = useState<Partial<Record<SpeedChannel, SpeedNote>>>({});
+  // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
+  const [toolHealth, setToolHealth] = useState<ToolCallHealth | null>(null);
   // A phone cannot run Ollama or a local ComfyUI install; the desktop shell
   // can, so the PC keeps the local-AI fields.
   const phoneWorld = deviceWorld && shellHost()?.platform === "android";
@@ -108,6 +112,7 @@ export function AdminSettingsPanel() {
           setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
           setDeviceWorld(Boolean(data.deviceWorld));
           setSpeedNotes(data.speedStatus ?? {});
+          setToolHealth(data.toolCallHealth ?? null);
         }
       });
   }, []);
@@ -541,6 +546,7 @@ export function AdminSettingsPanel() {
             />
           </div>
         ) : null}
+        <ToolsDroppedLine health={toolHealth} />
         <BackendProbe
           which="story"
           baseUrl={config.text.customBaseUrl}

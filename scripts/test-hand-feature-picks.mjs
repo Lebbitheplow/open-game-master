@@ -42,7 +42,18 @@ const card = (who, name) => deriveHand(world.sheet(who.id), FRESH_TURN, {}).find
 const CARDS = [
   ["druid", "Circle of the Shepherd", "Spirit Totem", { Bear: "spirit totem: bear", Hawk: "spirit totem: hawk", Unicorn: "spirit totem: unicorn" }],
   ["druid", "Circle of Stars", "Starry Form", { Archer: "starry form: archer", Chalice: "starry form: chalice", Dragon: "starry form: dragon" }],
-  ["monk", "Way of the Ascendant Dragon", "Aspect of the Wyrm", { Frighten: "aspect of the wyrm: frighten", Ward: "aspect of the wyrm: ward" }],
+  // The ward resists one damage type, chosen as the aura is raised (acid,
+  // cold, fire, lightning or poison): a pick per type, and the condition
+  // names it (mt-mr-dragon.ts aspectOfTheWyrm). One bare "Ward" was pinned
+  // here before the type was built.
+  ["monk", "Way of the Ascendant Dragon", "Aspect of the Wyrm", {
+    Frighten: "aspect of the wyrm: frighten",
+    "Ward acid": "aspect of the wyrm: ward (acid)",
+    "Ward cold": "aspect of the wyrm: ward (cold)",
+    "Ward fire": "aspect of the wyrm: ward (fire)",
+    "Ward lightning": "aspect of the wyrm: ward (lightning)",
+    "Ward poison": "aspect of the wyrm: ward (poison)",
+  }],
   ["monk", "Way of the Drunken Master", "Drunkard's Luck", { Attack: "drunkard's luck (attack)", Check: "drunkard's luck (check)", Save: "drunkard's luck (save)" }],
   ["sorcerer", "Wild Magic", "Tides of Chaos", { Attack: "tides of chaos (attack)", Check: "tides of chaos (check)", Save: "tides of chaos (save)" }],
   ["wizard", "Graviturgy Magic", "Adjust Density", { Lighter: "adjusted density (lighter)", Heavier: "adjusted density (heavier)" }],
@@ -102,6 +113,8 @@ await test("Blessing of the Trickster goes to a creature other than the cleric: 
   }
   await stage(cleric);
   world.patch(friend.id, { conditions: [], conditionMeta: {} });
+  // "Touch a willing creature": the friend beside the cleric.
+  kit.place(friend.id, 4, 5);
   const out = await world.invoke("use_resource", { characterId: cleric.id, resource: "Blessing of the Trickster", targetCharacterId: friend.id });
   assert.equal(out.ok, true, out.error);
   assert.ok(world.sheet(friend.id).conditions.includes("blessing of the trickster"));

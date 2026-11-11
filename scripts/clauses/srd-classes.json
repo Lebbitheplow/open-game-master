@@ -11,9 +11,9 @@
       },
       {
         "c": "You can have as many as your Intelligence modifier.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the count of tinkered objects"
+        "is": "held",
+        "by": "use_resource Magical Tinkering counts each object imbued on the artificer and refuses one past the Intelligence modifier (one at least) until one is ended (src/lib/dm/mt-srd-artificer.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.magical-tinkering.count"
       }
     ]
   },
@@ -25,9 +25,9 @@
     "clauses": [
       {
         "c": "Your ability to cast spells: which list you learn from, how many spells you can have ready, and the slots you spend to cast them.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the artificer is ODM's (no SRD page); its gloss names the spell list, the prepared count and the slots, none staged here"
+        "is": "held",
+        "by": "the artificer's slots by level (half a caster's, rounded up, from 1st), the Intelligence modifier and half the level ready (one at least), the class's own list, and a cast that spends a slot and needs the spell ready (src/lib/srd/spell-prep.ts, src/lib/dm/cast-guard.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.spellcasting"
       }
     ]
   },
@@ -35,13 +35,61 @@
     "source": "src/lib/help/srd-features.json",
     "group": "artificer",
     "level": 2,
-    "sha": "12d676a95fce",
+    "sha": "57a3dbab4eab",
     "clauses": [
       {
-        "c": "You know a list of infusions and can imbue mundane gear with them after a long rest, turning ordinary items into magic ones for your party.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the infusions known and imbued after a long rest"
+        "c": "You know four infusions at 2nd level, six at 6th, eight at 10th, ten at 14th and twelve at 18th.",
+        "is": "held",
+        "by": "the picks the builder and the level-up open by artificer level (src/lib/srd/options.ts GRANTS, kind infusion; optionSlotsFor)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.known"
+      },
+      {
+        "c": "At the end of a long rest, out of a fight, you lay them in nonmagical items you carry: two items at a time, three from 6th level, four from 10th, five from 14th, six from 18th.",
+        "is": "held",
+        "by": "src/lib/dm/infuse-item.ts infuseItemSpend (use_resource Infuse Item, the counter art_infuse_item of authored-resources.json refilled by a long rest and gated by src/lib/srd/counter-rules.ts, the Hand's pick from src/lib/srd/infusion-picks.ts), the mark on the item's row (`infusion`, src/lib/schemas/sheet.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
+      },
+      {
+        "c": "An item bears one infusion and each infusion is in one item; past your limit the oldest ends.",
+        "is": "held",
+        "by": "src/lib/dm/infuse-item.ts infuseItemSpend: the same infusion elsewhere and the item's old one end, and past infusedItemsMax (src/lib/srd/infusions.ts) the oldest by its instant",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
+      },
+      {
+        "c": "An infusion ends when you forget it, and as many days after your death as your Intelligence modifier (one at least).",
+        "is": "held",
+        "by": "src/lib/dm/infuse-item.ts settleInfusions, run by the clock each time it moves (src/lib/db/clock.ts advanceClock)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.lays"
+      },
+      {
+        "c": "Each infused item is a magic item: the Enhanced ones give +1 (+2 from 10th level) to a weapon, armor class or spell attacks, Radiant Weapon, Repeating Shot and Returning Weapon +1 to attacks and damage, Repulsion Shield +1 AC, Resistant Armor a resistance, and a replica is its item.",
+        "is": "held",
+        "by": "the infusion's row read by the magic item finders every item engine asks (src/lib/srd/infusions.ts infusionGearDef and infusionMagicDef, through src/lib/srd/magic-gear.ts gearDefFor and src/lib/srd/magic-items.ts matchMagicItem): the weapon bonus at the attack (attack-logic.ts), the armor's at the AC (armor.ts armorOfRow), the worn riders (magicItemRiders), attunement as the item's own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.effects"
+      },
+      {
+        "c": "Charges refill at dawn: four on Mind Sharpener, Radiant Weapon and Repulsion Shield (1d4), six on Armor of Magical Strength (1d6), one on Spell-Refueling Ring.",
+        "is": "held",
+        "by": "the infusion's charge rule (src/lib/srd/infusions.ts INFUSIONS, read by src/lib/srd/item-charge-rules.ts chargeRuleOf and refilled by src/lib/dm/item-charges.ts rechargeAtDawn)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.effects"
+      },
+      {
+        "c": "Helm of Awareness, Arcane Propulsion Armor, Repeating Shot, Mind Sharpener, Armor of Magical Strength, Radiant Weapon, Repulsion Shield and Spell-Refueling Ring do what their entries in the Infusion list say.",
+        "is": "held",
+        "by": "initiative and surprise (trait-rules.ts initiativeAdvantage, encounter-open.ts hasAlert), speed (srd/index.ts speedFor), the gauntlets' thrown fist (infusions.ts infusionMagicDef, attack-logic.ts), Repeating Shot (gear-attack.ts dropProperties, pc-attack-plan.ts makesOwnAmmunition), src/lib/dm/infusion-charges.ts (concentration.ts, forced-save.ts, light-timers.ts carriedLight, item-use.ts chargedItemUse) and src/lib/dm/infusion-reactions.ts (use_reaction)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.rules"
+      },
+      {
+        "c": "Enhanced Arcane Focus's spell attacks ignore half cover.",
+        "is": "held",
+        "by": "src/lib/dm/pc-attack-plan.ts, beside Spell Sniper's cover (infusionWorn)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.focus"
+      },
+      {
+        "c": "Homunculus Servant and Boots of the Winding Path do what their entries say.",
+        "is": "held",
+        "by": "src/lib/dm/infusion-servant.ts (formHomunculus through spawnSummons, laid by infuse-item.ts and dismissed with its infusion; windingPath through srd-feature-spends.ts and the feature move door, src/lib/dm/feature-move.ts, over the squares src/lib/db/battle-maps.ts moveToken keeps)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.infuse-item.servants"
       }
     ]
   },
@@ -69,9 +117,9 @@
     "clauses": [
       {
         "c": "With tinker's tools and an hour's work you conjure any set of artisan's tools you need, once per rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+        "is": "held",
+        "by": "src/lib/dm/mt-srd-artificer.ts rightToolForTheJob (srd-feature-spends.ts): thieves' or artisan's tools in hand asked, an hour on the clock out of a fight, the set put in the pack and the last set taken out, the once-a-rest use spent by the server",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.right-tool.makes-tools"
       }
     ]
   },
@@ -117,9 +165,8 @@
       },
       {
         "c": "and you craft common and uncommon items in a quarter of the usual time and cost",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: crafting time and cost"
+        "is": "left",
+        "why": "the GM's: SRD 5.1 has no rule for crafting a magic item (its downtime Crafting makes nonmagical objects, which is what the downtime tool does: src/lib/dm/lifestyle.ts), so there is no time or cost of a common or uncommon magic item to quarter"
       }
     ]
   },
@@ -127,13 +174,13 @@
     "source": "src/lib/help/srd-features.json",
     "group": "artificer",
     "level": 11,
-    "sha": "bdfa495d1472",
+    "sha": "567cc9534eda",
     "clauses": [
       {
-        "c": "After a long rest you store a 1st or 2nd-level artificer spell in an item, and whoever holds it can cast it a number of times based on your Intelligence.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the stored spell and its uses"
+        "c": "After a long rest you store a 1st or 2nd-level artificer spell of one action in a weapon or spellcasting focus you carry, and whoever holds it can cast it with your numbers, twice your Intelligence modifier in times (once at least).",
+        "is": "held",
+        "by": "src/lib/dm/spell-storing-item.ts spellStoringItemSpend (the spell on the item's row with its uses), cast through use_item as a Ring of Spell Storing's (src/lib/srd/spell-storing.ts isStoringItem), each casting counted down by src/lib/dm/ring-store.ts takeFromRing",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.spell-storing-item.casts"
       }
     ]
   },
@@ -151,9 +198,9 @@
       },
       {
         "c": "and you ignore all class, race, spell and level requirements on using them",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an item's class requirement waived"
+        "is": "held",
+        "by": "from 14th level an item's class, race and spellcaster requirements are set aside when the artificer attunes (src/lib/srd/mt-srd-artificer.ts ignoresItemRequirements, in magic-items.ts mayAttune); no item of the table asks for a level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.magic-item-savant.requirements"
       }
     ]
   },
@@ -178,10 +225,16 @@
     "sha": "da64ad1a4704",
     "clauses": [
       {
-        "c": "You gain +1 to every saving throw per attuned magic item, and you can end one attunement as a reaction to drop to 1 hit point instead of 0.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: +1 to saves per attuned item, and the attunement ended to stay at 1 hit point"
+        "c": "You gain +1 to every saving throw per attuned magic item",
+        "is": "held",
+        "by": "every save gains +1 for each attuned item on the sheet of an artificer with the feature (src/lib/srd/mt-srd-artificer.ts soulOfArtificeBonus, in computeSheetDerived)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.soul-of-artifice.saves"
+      },
+      {
+        "c": "and you can end one attunement as a reaction to drop to 1 hit point instead of 0.",
+        "is": "held",
+        "by": "src/lib/dm/soul-of-artifice.ts soulHold in pc-damage.ts, before the death engine sees the drop; the Hand card readies which attunement ends",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.soul-of-artifice.reaction"
       }
     ]
   },
@@ -260,12 +313,9 @@
       },
       {
         "c": "It ends early if you are knocked unconscious",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.unconscious",
-        "where": "src/lib/dm/set-condition.ts (the unconscious condition landing on a raging character)",
-        "severity": "medium",
-        "kind": "state-lifecycle",
-        "note": "held on the 0 hit point path only (test-enforce-damage-types: rage ends when the barbarian drops to 0 hit points)"
+        "is": "held",
+        "by": "the unconscious condition landing by any route ends the rage at the sheet's write (src/lib/dm/mt-srd-unconscious.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.unconscious"
       },
       {
         "c": "or if your turn ends and you haven't attacked a hostile creature since your last turn or taken damage since then",
@@ -275,11 +325,9 @@
       },
       {
         "c": "You can also end your rage on your turn as a bonus action.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.end-bonus",
-        "where": "src/lib/dm/resource-tools.ts use_resource (rage), src/lib/battlemap/hand-class.ts",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "use_resource rage variant 'end': the bonus action, no use spent (src/lib/dm/mt-srd-barbarian.ts endRage)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.end-bonus"
       },
       {
         "c": "Once you have raged the number of times shown for your barbarian level in the Rages column of the Barbarian table",
@@ -517,12 +565,9 @@
       },
       {
         "c": "if you are surprised at the beginning of combat and aren't incapacitated, you can act normally on your first turn, but only if you enter your rage before doing anything else on that turn",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.feral-instinct.surprised-rage",
-        "where": "src/lib/dm/encounter-tools.ts start_encounter (surprisedIds) and entryActs; src/lib/dm/can-act.ts isSurprised",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the first sentence (advantage on initiative) is held; the second has no code: Feral Instinct is read only by initiativeAdvantage"
+        "is": "held",
+        "by": "a surprised barbarian who can rage keeps the first turn under 'feral instinct (rage first)': nothing but the rage until it is entered (mt-srd-barbarian.ts feralInstinctOpening)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.feral-instinct.surprised-rage"
       }
     ]
   },
@@ -766,12 +811,9 @@
       },
       {
         "c": "When your rage ends, you suffer one level of exhaustion",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.exhaustion",
-        "where": "src/lib/dm/frenzy.ts settleFrenzies and its callers (a fight's end, each round wrap)",
-        "severity": "medium",
-        "kind": "state-lifecycle",
-        "note": "held when the rage ends inside a fight (the level lands at the next round wrap)"
+        "is": "held",
+        "by": "a rage the clock ends outside a fight settles its frenzy into a level of exhaustion (condition-tick.ts tickClockConditions)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.exhaustion"
       }
     ]
   },
@@ -801,12 +843,9 @@
       },
       {
         "c": "If you are charmed or frightened when you enter your rage, the effect is suspended for the duration of the rage.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.mindless-rage.suspended",
-        "where": "src/lib/dm/resource-tools.ts (entering a rage); src/lib/srd/trait-rules.ts featureConditionImmunities",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the first sentence is held: set_condition refuses charmed and frightened on a raging Berserker"
+        "is": "held",
+        "by": "a raging Berserker's charm and fear are set aside at the sheet's write and given back as the rage ends (mt-srd-unconscious.ts rageSuspension)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.mindless-rage.suspended"
       }
     ]
   },
@@ -836,11 +875,9 @@
       },
       {
         "c": "choose one creature that you can see",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sight",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "refused for a creature the barbarian cannot see, nothing spent",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sight"
       },
       {
         "c": "within 30 feet of you",
@@ -850,11 +887,9 @@
       },
       {
         "c": "If the creature can see or hear you",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sees-or-hears",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "a creature that can neither see nor hear the barbarian is not menaced, nothing spent",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sees-or-hears"
       },
       {
         "c": "it must succeed on a Wisdom saving throw (DC equal to 8 + your proficiency bonus + your Charisma modifier)",
@@ -870,19 +905,15 @@
       },
       {
         "c": "On subsequent turns, you can use your action to extend the duration of this effect on the frightened creature until the end of your next turn.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.extend",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence (the `held` branch) and the untilTurnEndOf reader in src/lib/dm/turn-end.ts",
-        "severity": "medium",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "the action on a later turn lays the fear again until the end of the next turn, no new save",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.extend"
       },
       {
         "c": "This effect ends if the creature ends its turn out of line of sight or more than 60 feet away from you.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.ends-far",
-        "where": "src/lib/dm/turn-end.ts (the frightened creature's own turn end)",
-        "severity": "low",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "the fear carries turnEndBeyondFeet 60 and ends when its creature ends a turn beyond it or out of sight (mt-srd-barbarian.ts endPresenceOutOfReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.ends-far"
       },
       {
         "c": "If the creature succeeds on its saving throw, you can't use this feature on that creature again for 24 hours.",
@@ -941,15 +972,15 @@
       },
       {
         "c": "You know two cantrips of your choice from the bard spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.cantrips-known"
       },
       {
         "c": "You learn additional bard cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Bard table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.cantrips-known"
       },
       {
         "c": "The Bard table shows how many spell slots you have to cast your bard spells of 1st level and higher.",
@@ -959,51 +990,51 @@
       },
       {
         "c": "To cast one of these spells, you must expend a slot of the spell's level or higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a cast spends a slot of the spell's level or higher, and a long rest refills them (the class tables' slot suites cover the shared rule, not this class's text)"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.slot-or-higher"
       },
       {
         "c": "You regain all expended spell slots when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a cast spends a slot of the spell's level or higher, and a long rest refills them (the class tables' slot suites cover the shared rule, not this class's text)"
+        "is": "held",
+        "by": "take_rest long (every slot back)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.long-rest-slots"
       },
       {
         "c": "For example, if you know the 1st-level spell *cure wounds* and have a 1st-level and a 2nd-level spell slot available, you can cast *cure wounds* using either slot.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a cast spends a slot of the spell's level or higher, and a long rest refills them (the class tables' slot suites cover the shared rule, not this class's text)"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.slot-or-higher"
       },
       {
         "c": "You know four 1st-level spells of your choice from the bard spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.spells-known"
       },
       {
         "c": "The Spells Known column of the Bard table shows when you learn more bard spells of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.spells-known"
       },
       {
         "c": "Each of these spells must be of a level for which you have spell slots, as shown on the table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "a spell learned on a level is held to the top slot level (src/lib/srd/level-up-spells.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.bard.new-spell-level"
       },
       {
         "c": "For instance, when you reach 3rd level in this class, you can learn one new spell of 1st or 2nd level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.bard.spells-known"
       },
       {
         "c": "Additionally, when you gain a level in this class, you can choose one of the bard spells you know and replace it with another spell from the bard spell list, which also must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "one spell known replaced on a level, by a bard spell of a level with slots; two refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.bard.swap-one"
       },
       {
         "c": "Charisma is your spellcasting ability for your bard spells.",
@@ -1078,18 +1109,15 @@
       },
       {
         "c": "within 60 feet of you",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.within-60-feet",
-        "where": "src/lib/dm/mutations.ts use_resource (Bardic Inspiration: the target's distance is not read)",
-        "severity": "medium",
-        "kind": "rule-wrong",
-        "note": "An ally 70 feet away is given the die."
+        "is": "held",
+        "by": "refused beyond 60 feet on the board, nothing spent (mt-srd-reach.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.within-60-feet"
       },
       {
         "c": "who can hear you",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a deafened ally or a silenced bard"
+        "is": "held",
+        "by": "a deafened creature is refused, nothing spent (mt-srd-reach.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.bardic-inspiration.hears"
       },
       {
         "c": "That creature gains one Bardic Inspiration die, a d6.",
@@ -1183,9 +1211,9 @@
       },
       {
         "c": "who can hear your performance",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a deafened ally at the rest"
+        "is": "held",
+        "by": "a deafened creature spending a hit die adds no song die (mt-srd-bard.ts hearsSong)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.song-of-rest.hears"
       },
       {
         "c": "regain hit points at the end of the short rest by spending one or more Hit Dice, each of those creatures regains an extra 1d6 hit points",
@@ -1243,9 +1271,9 @@
       },
       {
         "c": "At 10th level, you can choose another two skill proficiencies to gain this benefit.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the second pair at 10th level"
+        "is": "held",
+        "by": "two more Expertise picks are owed at 10th level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.bard.expertise"
       }
     ]
   },
@@ -1293,9 +1321,9 @@
       },
       {
         "c": "As an action, you can start a performance that lasts until the end of your next turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the action and the end of the bard's next turn"
+        "is": "held",
+        "by": "use_resource Countercharm: the action, the advantage on the bard and friends within 30 feet until the end of the bard's next turn (src/lib/dm/mt-srd-bard.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.countercharm.performance"
       },
       {
         "c": "During that time, you and any friendly creatures within 30 feet of you have advantage on saving throws against being frightened or charmed.",
@@ -1305,15 +1333,15 @@
       },
       {
         "c": "A creature must be able to hear you to gain this benefit.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: hearing, and the early end on incapacitated or silenced"
+        "is": "held",
+        "by": "a deafened friend is left out of the performance",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.countercharm.hears"
       },
       {
         "c": "The performance ends early if you are incapacitated or silenced or if you voluntarily end it (no action required).",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: hearing, and the early end on incapacitated or silenced"
+        "is": "held",
+        "by": "the performance ends the moment the bard is incapacitated (the incapacity watch), as a turn ends with them silenced, and by variant 'end' for no action",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.countercharm.ends-early"
       }
     ]
   },
@@ -1359,9 +1387,9 @@
     "clauses": [
       {
         "c": "At 10th level, you can choose another two skill proficiencies to gain this benefit.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the second pair at 10th level"
+        "is": "held",
+        "by": "two more Expertise picks are owed at 10th level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.bard.expertise"
       }
     ]
   },
@@ -1428,9 +1456,9 @@
     "clauses": [
       {
         "c": "You learn two additional spells from any classes at 14th level and again at 18th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 14th-level pair"
+        "is": "held",
+        "by": "two spells from any class's list at 14th, of a level the bard casts",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.bard.magical-secrets"
       }
     ]
   },
@@ -1476,9 +1504,9 @@
     "clauses": [
       {
         "c": "You learn two additional spells from any classes at 14th level and again at 18th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 18th-level pair"
+        "is": "held",
+        "by": "two more spells from any class's list at 18th",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.bard.magical-secrets"
       }
     ]
   },
@@ -1522,9 +1550,9 @@
       },
       {
         "c": "The creature is immune if it can't hear you or if it's immune to being charmed.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a creature immune to charm or one that cannot hear"
+        "is": "held",
+        "by": "refused, nothing spent, against a deafened creature or one immune to being charmed (src/lib/dm/mt-srd-reach.ts cuttingWordsImmunity)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-bard.mjs: bard.cutting-words.immune"
       }
     ]
   },
@@ -1894,8 +1922,8 @@
       },
       {
         "c": "that can see or hear you",
-        "is": "gap",
-        "by": "dm/feature-spends.ts turnUndead (no sight or hearing check: a blinded and deafened undead is turned)",
+        "is": "held",
+        "by": "an undead blind to the cleric and deafened is not turned (mt-srd-reach.ts seesOrHears, every turning)",
         "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-turn-undead.sees-or-hears"
       },
       {
@@ -2232,6 +2260,10 @@
     },
     "clauses": [
       {
+        "c": "Also starting at 1st level, your healing spells are more effective.",
+        "is": "flavor"
+      },
+      {
         "c": "Whenever you use a spell of 1st level or higher to restore hit points to a creature, the creature regains additional hit points equal to 2 + the spell's level.",
         "is": "held",
         "by": "dm/heal-spell.ts",
@@ -2279,12 +2311,9 @@
       },
       {
         "c": "You can't use this feature on an undead or a construct.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "a sheet whose record says undead or construct is passed over (mt-srd-reach.ts undeadOrConstruct)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-cleric.mjs: cleric.channel-divinity-preserve-life.undead"
       }
     ]
   },
@@ -2391,27 +2420,23 @@
     "clauses": [
       {
         "c": "You know Druidic, the secret language of druids.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Druidic language on the sheet"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "You can speak the language and use it to leave hidden messages.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Druidic language on the sheet"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "You and others who know this language automatically spot such a message.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hidden message and its DC 15 Perception check"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       },
       {
         "c": "Others spot the message's presence with a successful DC 15 Wisdom (Perception) check but can't decipher it without magic.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hidden message and its DC 15 Perception check"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       }
     ]
   },
@@ -2428,15 +2453,15 @@
       },
       {
         "c": "At 1st level, you know two cantrips of your choice from the druid spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.cantrips-known"
       },
       {
         "c": "You learn additional druid cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Druid table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.cantrips-known"
       },
       {
         "c": "The Druid table shows how many spell slots you have to cast your druid spells of 1st level and higher.",
@@ -2446,51 +2471,51 @@
       },
       {
         "c": "To cast one of these druid spells, you must expend a slot of the spell's level or higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.slot-or-higher"
       },
       {
         "c": "You regain all expended spell slots when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "take_rest long (every slot back)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.long-rest-slots"
       },
       {
         "c": "You prepare the list of druid spells that are available for you to cast, choosing from the druid spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "the sheet's route prepares a druid spell of a level with slots, and refuses one off the list or above it",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.prepares-from-list"
       },
       {
         "c": "When you do so, choose a number of druid spells equal to your Wisdom modifier + your druid level (minimum of one spell).",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (modifier + level, minimum one)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.prepared-count"
       },
       {
         "c": "The spells must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "the sheet's route prepares a druid spell of a level with slots, and refuses one off the list or above it",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.prepares-from-list"
       },
       {
         "c": "For example, if you are a 3rd-level druid, you have four 1st-level and two 2nd-level spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "the slot table the example reads: four 1st and two 2nd at 3rd level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.slots-example"
       },
       {
         "c": "With a Wisdom of 16, your list of prepared spells can include six spells of 1st or 2nd level, in any combination.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (modifier + level, minimum one)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.prepared-count"
       },
       {
         "c": "If you prepare the 1st-level spell *cure wounds*, you can cast it using a 1st-level or 2nd-level slot.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Wisdom modifier + druid level) and its example"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.druid.slot-or-higher"
       },
       {
         "c": "Casting the spell doesn't remove it from your list of prepared spells.",
@@ -2500,15 +2525,14 @@
       },
       {
         "c": "You can also change your list of prepared spells when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the list changed on a long rest and the minute per level it takes"
+        "is": "held",
+        "by": "a spell chosen for the list waits and is ready when the long rest finishes",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.long-rest-change"
       },
       {
         "c": "Preparing a new list of druid spells requires time spent in prayer and meditation: at least 1 minute per spell level for each spell on your list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the list changed on a long rest and the minute per level it takes"
+        "is": "left",
+        "why": "the long rest's hours hold it: a spell chosen for the list waits (pending) until a long rest is finished and is ready only then (spells.wizard.long-rest-change, spells.druid.long-rest-change), and no shorter stretch of the clock prepares one; the minute a spell level within that rest is not counted apart"
       },
       {
         "c": "Wisdom is your spellcasting ability for your druid spells, since your magic draws upon your devotion and attunement to nature.",
@@ -2563,12 +2587,9 @@
     "clauses": [
       {
         "c": "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-spends-srd.mjs: counter:wild_shape#NEEDS_PICK",
-        "recorded_by": "spends (spends-needs-pick-counter-wild-shape)",
-        "where": "src/lib/dm/feature-spends.ts (Wild Shape)",
-        "severity": "medium",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the action and a use for a beast named in form; a bare use is refused with the beasts the druid can take",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.pick"
       },
       {
         "c": "You can use this feature twice.",
@@ -2630,27 +2651,27 @@
       },
       {
         "c": "You can stay in a beast shape for a number of hours equal to half your druid level (rounded down).",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the shape ends after half the druid level in hours on the clock, and another use takes it again",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.hours"
       },
       {
         "c": "You then revert to your normal form unless you expend another use of this feature.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the shape ends after half the druid level in hours on the clock, and another use takes it again",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.hours"
       },
       {
         "c": "You can revert to your normal form earlier by using a bonus action on your turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "asking for Wild Shape while shaped reverts for the bonus action and no use (src/lib/srd/counter-rules.ts counterCost)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.revert-bonus"
       },
       {
         "c": "You automatically revert if you fall unconscious, drop to 0 hit points, or die.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the unconscious condition landing by any route reverts the druid at the sheet's write (src/lib/dm/mt-srd-unconscious.ts fellUnconscious), and the form's hit points gone reverts them",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.revert-unconscious"
       },
       {
         "c": "While you are transformed, the following rules apply:",
@@ -2662,87 +2683,86 @@
       },
       {
         "c": "You also retain all of your skill and saving throw proficiencies, in addition to gaining those of the creature.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the form's listed skills and saves are proficiencies on the druid's own bonus, and a higher printed bonus is used instead (src/lib/srd/index.ts; the skills are in src/lib/srd/srd-creatures.json)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.proficiencies"
       },
       {
         "c": "If the creature has the same proficiency as you and the bonus in its stat block is higher than yours, use the creature's bonus instead of yours.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the form's listed skills and saves are proficiencies on the druid's own bonus, and a higher printed bonus is used instead (src/lib/srd/index.ts; the skills are in src/lib/srd/srd-creatures.json)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.proficiencies"
       },
       {
         "c": "If the creature has any legendary or lair actions, you can't use them.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the form's record carries its block's attacks and no legendary or lair action",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.no-legendary"
       },
       {
         "c": "When you transform, you assume the beast's hit points and Hit Dice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the form has the beast's hit points, damage comes off them, and the druid returns to their own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.hit-points"
       },
       {
         "c": "When you revert to your normal form, you return to the number of hit points you had before you transformed.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the form has the beast's hit points, damage comes off them, and the druid returns to their own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.hit-points"
       },
       {
         "c": "However, if you revert as a result of dropping to 0 hit points, any excess damage carries over to your normal form.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "10 damage with 1 hit point left in the form carries 9 to the druid, who stays up",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.excess-damage"
       },
       {
         "c": "For example, if you take 10 damage in animal form and have only 1 hit point left, you revert and take 9 damage.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "10 damage with 1 hit point left in the form carries 9 to the druid, who stays up",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.excess-damage"
       },
       {
         "c": "As long as the excess damage doesn't reduce your normal form to 0 hit points, you aren't knocked unconscious.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "10 damage with 1 hit point left in the form carries 9 to the druid, who stays up",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.excess-damage"
       },
       {
         "c": "Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "a concentration spell and its effect stay through the change",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.concentration"
       },
       {
         "c": "You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "a class feature (Nature's Ward) still holds in the form",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.features-kept"
       },
       {
         "c": "However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "a worn form sees by its block's senses alone, for the attack's sight and the board's (src/lib/srd/mt-srd-form-senses.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.senses"
       },
       {
         "c": "You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the equipment merges: the form's AC and attacks stand, a carried weapon is refused in the form, and all of it is back with the druid's own shape",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.equipment-merged"
       },
       {
         "c": "Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "left",
+        "why": "the GM's: the engine merges the equipment into the form (druid.wild-shape.equipment-merged); whether a piece is practical for the new form to wear is the GM's call by the text, ruled by hand"
       },
       {
         "c": "Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shape's duration, the reverts (bonus action, 0 hit points, excess damage), the kept proficiencies and features, the senses and the equipment"
+        "is": "held",
+        "by": "the equipment merges: the form's AC and attacks stand, a carried weapon is refused in the form, and all of it is back with the druid's own shape",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.wild-shape.equipment-merged"
       },
       {
         "c": "Equipment that merges with the form has no effect until you leave the form.",
@@ -2816,9 +2836,8 @@
       },
       {
         "c": "For every 10 years that pass, your body ages only 1 year.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: aging has no clock a sheet carries"
+        "is": "left",
+        "why": "docs/rules-coverage.md, The long tail: \"Passive / roleplay features (\"Druidic\", \"Timeless Body\", \"Thieves' Cant\", \"Tongue of the Sun and Moon\"): narrated from the sheet.\""
       }
     ]
   },
@@ -2837,9 +2856,9 @@
       },
       {
         "c": "You can perform the somatic and verbal components of a druid spell while in a beast shape, but you aren't able to provide material components.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the material component refused in a beast shape"
+        "is": "held",
+        "by": "a spell that still asks its caster for a material is refused in a beast shape, at the cast guard and on the Hand's card (src/lib/dm/mt-srd-druid.ts beastShapeMaterialProblem, in cast-rules.ts castComponents)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.beast-spells.material"
       }
     ]
   },
@@ -2858,15 +2877,15 @@
       },
       {
         "c": "Additionally, you can ignore the verbal and somatic components of your druid spells, as well as any material components that lack a cost and aren't consumed by a spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "recorded by the hand sweep as hand-archdruid-components (scripts/test-enforce-sweep-hand-druid*.mjs): the component waiver is not run here"
+        "is": "held",
+        "by": "cast-rules.ts componentsAsCast: no verbal, somatic or costless material for an Archdruid's druid spells, in either shape; a priced material is still asked for",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.archdruid.components"
       },
       {
         "c": "You gain this benefit in both your normal shape and your beast shape from Wild Shape.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+        "is": "held",
+        "by": "cast-rules.ts componentsAsCast: no verbal, somatic or costless material for an Archdruid's druid spells, in either shape; a priced material is still asked for",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.archdruid.components"
       }
     ]
   },
@@ -2879,9 +2898,9 @@
     "clauses": [
       {
         "c": "When you choose this circle at 2nd level, you learn one additional druid cantrip of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the extra cantrip in the Land druid's count"
+        "is": "held",
+        "by": "a Land druid's cantrip count is one more from 2nd level (src/lib/srd/class-spell-grants.ts classSpellGrants extraCantrips)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.land-bonus-cantrip"
       }
     ]
   },
@@ -2910,9 +2929,9 @@
       },
       {
         "c": "You can't use this feature again until you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the once-a-long-rest limit"
+        "is": "held",
+        "by": "one use: a second short rest recovers nothing, a long rest gives it back",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.natural-recovery.once"
       },
       {
         "c": "For example, when you are a 4th-level druid, you can recover up to two levels worth of spell slots.",
@@ -2953,267 +2972,267 @@
       },
       {
         "c": "Once you gain access to a circle spell, you always have it prepared, and it doesn't count against the number of spells you can prepare each day.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: always prepared, outside the prepared count, and a druid spell for the druid"
+        "is": "held",
+        "by": "the terrain's spells are castable with the prepared list full and take no place on it (src/lib/srd/features.ts subclassSpellsFor), one off the druid list included",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.circle-spells-ready"
       },
       {
         "c": "If you gain access to a spell that doesn't appear on the druid spell list, the spell is nonetheless a druid spell for you.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: always prepared, outside the prepared count, and a druid spell for the druid"
+        "is": "held",
+        "by": "the terrain's spells are castable with the prepared list full and take no place on it (src/lib/srd/features.ts subclassSpellsFor), one off the druid list included",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.druid.circle-spells-ready"
       },
       {
         "c": "**Table- Arctic Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                     |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | hold person, spike growth         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | sleet storm, slow                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | freedom of movement, ice storm    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | commune with nature, cone of cold |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Coast Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                      |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | mirror image, misty step           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | water breathing, water walk        |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | control water, freedom of movement |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | conjure elemental, scrying         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Desert Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | blur, silence                                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | create food and water, protection from energy |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | blight, hallucinatory terrain                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | insect plague, wall of stone                  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Forest Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | barkskin, spider climb           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | call lightning, plant growth     |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | divination, freedom of movement  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | commune with nature, tree stride |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Grassland Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                    |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | invisibility, pass without trace |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | daylight, haste                  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | divination, freedom of movement  |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | dream, insect plague             |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Mountain Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                   |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | spider climb, spike growth      |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | lightning bolt, meld into stone |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | stone shape, stoneskin          |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | passwall, wall of stone         |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "**Table- Swamp Circle Spells**",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| Druid Level | Circle Spells                        |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 3rd         | acid arrow, darkness                 |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 5th         | water walk, stinking cloud           |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 7th         | freedom of movement, locate creature |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       },
       {
         "c": "| 9th         | insect plague, scrying               |",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the seven terrain tables row by row"
+        "is": "held",
+        "by": "src/lib/srd/features.ts subclassSpellsFor (the chosen terrain's table, by level)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.circle-spells.tables"
       }
     ]
   },
@@ -3232,15 +3251,15 @@
       },
       {
         "c": "You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "the board's plants are its nonmagical difficult ground (undergrowth), which Land's Stride crosses at no extra cost (src/lib/battlemap/types.ts moveTraitsFrom landStride); no nonmagical plant on the board deals damage, so there is none to take",
+        "probe": "scripts/test-enforce-monster-traits.mjs: Land's Stride: nonmagical difficult terrain costs a druid or ranger no extra movement"
       },
       {
         "c": "In addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the *entangle* spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "a save the engine rolls against Entangle, Wall of Thorns or Grasping Vine is rolled with advantage (src/lib/dm/mt-srd-druid.ts landsStrideClaim, at forced-save.ts rollCharacterSave)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.lands-stride.entangle"
       }
     ]
   },
@@ -3290,9 +3309,9 @@
       },
       {
         "c": "On a successful save, the creature is immune to this effect for 24 hours.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 24-hour immunity after a save"
+        "is": "held",
+        "by": "a beast that made its save carries 'unmoved by nature's sanctuary' for the day and rolls no second save (src/lib/dm/srd-defenses.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-druid.mjs: druid.natures-sanctuary.day"
       },
       {
         "c": "The creature is aware of this effect before it makes its attack against you.",
@@ -3623,13 +3642,9 @@
       },
       {
         "c": "you can reroll a saving throw that you fail",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-spends-srd.mjs: counter:indomitable#OWN_TURN_ONLY",
-        "where": "src/lib/dm/feature-spends.ts (Indomitable priced as an own-turn spend)",
-        "severity": "high",
-        "kind": "timing-window",
-        "note": "held on the fighter's own turn (test-enforce-feature-uses F:L11); the spends sweep found it refused off their turn, which is when most saves are failed",
-        "recorded_by": "spends (spends-indomitable-own-turn-only)"
+        "is": "held",
+        "by": "the reroll of a save failed on another creature's turn, costing nothing of the fighter's own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-fighter.mjs: fighter.indomitable-1-use.off-turn"
       },
       {
         "c": "If you do so, you must use the new roll",
@@ -3947,11 +3962,9 @@
       },
       {
         "c": "while you are unarmed or wielding only monk weapons",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.only-monk-weapons",
-        "where": "src/lib/dm/attack-logic.ts (where Martial Arts is switched on: armor and shield are read, the other hand's weapon is not)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "a longsword in hand ends Martial Arts for the unarmed strike too (src/lib/dm/mt-srd-monk.ts wieldsOnlyMonkWeapons)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.martial-arts.only-monk-weapons"
       },
       {
         "c": "and you aren't wearing armor or wielding a shield",
@@ -4132,12 +4145,9 @@
       },
       {
         "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
-        "is": "gap",
-        "read_only": true,
-        "why": "no code reads the 9th level step (grep 'vertical', 'liquids' under src/lib finds nothing); the board has no heights to stage a wall, and crossing water at walking cost was not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the board's water and climbs cost a 9th level monk what open ground does (src/lib/battlemap/types.ts moveTraitsFrom); a wall with no climb drawn has no height on the board and is the GM's",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.unarmored-movement.surfaces"
       }
     ]
   },
@@ -4210,11 +4220,9 @@
       },
       {
         "c": "if it is small enough for you to hold in one hand and you have at least one hand free",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.free-hand",
-        "where": "src/lib/dm/reaction-tools.ts (Deflect Missiles' throw back)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "with no hand free, or a missile too large for one hand, nothing is thrown back and no ki is spent (mt-srd-monk.ts catchProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.deflect-missiles.free-hand"
       },
       {
         "c": "you can spend 1 ki point to make a ranged attack with the weapon or piece of ammunition you just caught, as part of the same reaction",
@@ -4390,11 +4398,9 @@
       },
       {
         "c": "you can use your action",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.action",
-        "where": "src/lib/dm/feature-hooks.ts stillnessOfMind",
-        "severity": "medium",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "the action is priced as any uncounted feature's (combat-features.ts priceTheAction)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.stillness-of-mind.action"
       },
       {
         "c": "to end one effect on yourself that is causing you to be charmed",
@@ -4420,12 +4426,9 @@
     "clauses": [
       {
         "c": "At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.",
-        "is": "gap",
-        "read_only": true,
-        "why": "see monk::Unarmored Movement: no code reads it, not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the board's water and climbs cost a 9th level monk what open ground does (src/lib/battlemap/types.ts moveTraitsFrom)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.unarmored-movement.surfaces"
       }
     ]
   },
@@ -4547,12 +4550,9 @@
       },
       {
         "c": "In addition, you no longer need food or water.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.timeless-body.no-food",
-        "where": "src/lib/dm/supplies.ts (who the dawn's ration and water are asked of)",
-        "severity": "low",
-        "kind": "rule-missing",
-        "note": "reachable only at a table with the supplies variant on"
+        "is": "held",
+        "by": "the supplies variant's dawn skips a monk of 15th level (mt-srd-monk.ts needsNoFoodOrWater)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.timeless-body.no-food"
       }
     ]
   },
@@ -4770,11 +4770,9 @@
       },
       {
         "c": "which last for a number of days equal to your monk level",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.days",
-        "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm (rounds: 14400)",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "the vibrations' rounds are a day's times the monk level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.days"
       },
       {
         "c": "The vibrations are harmless unless you use your action to end them.",
@@ -4807,20 +4805,15 @@
       },
       {
         "c": "You can have only one creature under the effect of this feature at a time.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.one-at-a-time",
-        "where": "src/lib/dm/srd-feature-spends.ts quiveringPalm",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "setting new vibrations ends the earlier creature's harmlessly",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.one-at-a-time"
       },
       {
         "c": "You can choose to end the vibrations harmlessly without using an action.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: use_resource Quivering Palm on a creature already carrying the vibrations always prices the action and rolls the save (src/lib/dm/srd-feature-spends.ts quiveringPalm); the only way to drop them unspent is the GM's clear_condition on the enemy",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "variant 'end': no action, no save, no damage",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-monk.mjs: monk.quivering-palm.end-harmlessly"
       }
     ]
   },
@@ -4896,12 +4889,9 @@
       },
       {
         "c": "As an action, you can touch a creature",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.touch",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool with targetCharacterId)",
-        "severity": "medium",
-        "kind": "rule-wrong",
-        "note": "the action is charged; the reach is not checked"
+        "is": "held",
+        "by": "a touch: refused beyond 5 feet on the board, nothing spent (src/lib/dm/mt-srd-reach.ts); the action",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.touch"
       },
       {
         "c": "and draw power from the pool to restore a number of hit points to that creature, up to the maximum amount remaining in your pool",
@@ -4911,29 +4901,21 @@
       },
       {
         "c": "Alternatively, you can expend 5 hit points from your pool of healing to cure the target of one disease or neutralize one poison affecting it.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool), src/lib/srd/class-resources.ts lay_on_hands",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "written as guidance only: lay_on_hands guidance \"Spend 5 instead to cure one disease or neutralize one poison.\""
+        "is": "held",
+        "by": "use_resource Lay on Hands with a cure named: 5 points for each poison neutralized or disease cured, several in one action (src/lib/dm/mt-srd-paladin.ts layOnHandsCure)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure"
       },
       {
         "c": "You can cure multiple diseases and neutralize multiple poisons with a single use of Lay on Hands, expending hit points separately for each one.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure",
-        "where": "src/lib/dm/resource-tools.ts (heal_pool)",
-        "severity": "medium",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "use_resource Lay on Hands with a cure named: 5 points for each poison neutralized or disease cured, several in one action (src/lib/dm/mt-srd-paladin.ts layOnHandsCure)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.cure"
       },
       {
         "c": "This feature has no effect on undead and constructs.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no hero, companion or pet on a sheet carries a creature type the heal could read; an undead summon healed through targetCharacterId was not staged",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "refused for a sheet whose record says undead or construct, nothing spent (mt-srd-reach.ts undeadOrConstruct)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.lay-on-hands.undead"
       }
     ]
   },
@@ -5474,12 +5456,9 @@
       },
       {
         "c": "you can use your action to end one spell on yourself or on one willing creature that you touch",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.cleansing-touch.ends-spell",
-        "where": "src/lib/srd/class-resources.ts cleansing_touch (effect: narrative)",
-        "severity": "low",
-        "kind": "rule-missing",
-        "note": "written reason: the counter's guidance, \"An action that ends one spell on the paladin or on a willing creature they touch. Clear what the spell left with clear_condition.\""
+        "is": "held",
+        "by": "the action and a use end one spell on the paladin or a creature within 5 feet, named in variant when several lie on them (mt-srd-paladin.ts cleansingTouch)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.cleansing-touch.ends-spell"
       },
       {
         "c": "You can use this feature a number of times equal to your Charisma modifier (a minimum of once).",
@@ -5546,12 +5525,9 @@
       },
       {
         "c": "The weapon also emits bright light in a 20-foot radius and dim light 20 feet beyond that.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: staging the board's light around a condition needs a dark map; no hook for 'sacred weapon' was found under src/lib/battlemap (grep)",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the paladin's token carries bright light 20 feet and dim 20 more for the minute (mt-srd-paladin.ts shedLight)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.light"
       },
       {
         "c": "If the weapon is not already magical, it becomes magical for the duration.",
@@ -5566,11 +5542,9 @@
       },
       {
         "c": "If you are no longer holding or carrying this weapon, or if you fall unconscious, this effect ends.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.ends-unconscious",
-        "where": "src/lib/dm/pc-damage.ts (what a drop to 0 hit points clears)",
-        "severity": "low",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "ends at the sheet's write as the paladin falls unconscious or the weapon it names leaves the sheet (src/lib/dm/mt-srd-unconscious.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.channel-divinity-sacred-weapon.ends-unconscious"
       }
     ]
   },
@@ -5687,12 +5661,9 @@
       },
       {
         "c": "you are always under the effects of a *protection from evil and good* spell",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.purity-of-spirit.protection",
-        "where": "src/lib/dm/attack-logic.ts (who attacks at disadvantage), src/lib/srd/trait-rules.ts sourcedConditionImmunity",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the charm and fear half is held (test-enforce-feature-uses F:L21: Purity of Spirit keeps a fiend's fear off)"
+        "is": "held",
+        "by": "an attack against the paladin reads 'protected from evil and good' always (mt-srd-paladin.ts withStandingProtection); the charm and fear refused are trait-rules.ts sourcedConditionImmunity",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.purity-of-spirit.protection"
       }
     ]
   },
@@ -5722,12 +5693,9 @@
       },
       {
         "c": "For 1 minute, bright light shines from you in a 30-foot radius, and dim light shines 30 feet beyond that.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: the minute is held by the condition's rounds; the light itself needs a dark map to stage and no reader of 'holy nimbus' was found under src/lib/battlemap (grep)",
-        "where": "",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "the paladin's token carries bright light 30 feet and dim 30 more for the minute (mt-srd-paladin.ts shedLight)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-paladin.mjs: paladin.holy-nimbus.light"
       },
       {
         "c": "Whenever an enemy creature starts its turn in the bright light, the creature takes 10 radiant damage.",
@@ -5861,45 +5829,41 @@
       },
       {
         "c": "While traveling for an hour or more in your favored terrain, you gain the following benefits:",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "travel takes the land crossed (`land`): on a leg of an hour or more in a traveller's favored terrain, difficult ground does not halve the group's distance (src/lib/dm/mt-srd-ranger.ts naturalExplorerGuide)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "Difficult terrain doesn't slow your group's travel.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "travel takes the land crossed (`land`): on a leg of an hour or more in a traveller's favored terrain, difficult ground does not halve the group's distance (src/lib/dm/mt-srd-ranger.ts naturalExplorerGuide)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "Your group can't become lost except by magical means.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "docs/rules-coverage.md: \"Foraging and navigation | narrated by design | DMG rules, not SRD 5.1\": the SRD 5.1 has no rule for getting lost or for what foraging finds, so there is no number for the feature to change"
       },
       {
         "c": "Even when you are engaged in another activity while traveling (such as foraging, navigating, or tracking), you remain alert to danger.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "the SRD 5.1 has no travel activities that take a traveller's attention off danger: every traveller's passive Perception counts whatever they are doing (check_notice), so there is no alertness lost for the feature to keep (docs/rules-coverage.md)"
       },
       {
         "c": "If you are traveling alone, you can move stealthily at a normal pace.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "held",
+        "by": "a Stealth check in the favored terrain is not refused at a normal pace when the last stretch marched was the ranger's alone (mt-srd-ranger.ts stealthyAlone, at roll-gates.ts marchStealthProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.natural-explorer.travel"
       },
       {
         "c": "When you forage, you find twice as much food as you normally would.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "docs/rules-coverage.md: \"Foraging and navigation | narrated by design | DMG rules, not SRD 5.1\": the SRD 5.1 has no rule for getting lost or for what foraging finds, so there is no number for the feature to change"
       },
       {
         "c": "While tracking other creatures, you also learn their exact number, their sizes, and how long ago they passed through the area.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the travel benefits in the favored terrain (pace, lost, alert, stealth alone, double forage, track details)"
+        "is": "left",
+        "why": "what a trail tells is the GM's answer to the Survival check (request_roll about 'tracking'); the number, sizes and age of what passed are narration, not state the table holds"
       },
       {
         "c": "You choose additional favored terrain types at 6th and 10th level.",
@@ -5942,21 +5906,21 @@
       },
       {
         "c": "You gain a +2 bonus to attack rolls you make with ranged weapons.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Archery's +2 on a ranger's ranged attack"
+        "is": "held",
+        "by": "Archery's +2 on a ranged weapon's attack roll, none on a melee weapon's",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.archery"
       },
       {
         "c": "While you are wearing armor, you gain a +1 bonus to AC.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Defense's +1 AC on a ranger in armor"
+        "is": "held",
+        "by": "Defense's +1 AC in armor, none without",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.defense"
       },
       {
         "c": "When you engage in two-weapon fighting, you can add your ability modifier to the damage of the second attack.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Two-Weapon Fighting's modifier on the off-hand damage"
+        "is": "held",
+        "by": "the ability modifier on the off-hand attack's damage",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.fighting-style.two-weapon"
       }
     ]
   },
@@ -5983,51 +5947,51 @@
       },
       {
         "c": "To cast one of these spells, you must expend a slot of the spell's level or higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.slot-or-higher"
       },
       {
         "c": "You regain all expended spell slots when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "take_rest long (every slot back)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.long-rest-slots"
       },
       {
         "c": "For example, if you know the 1st-level spell *animal friendship* and have a 1st-level and a 2nd-level spell slot available, you can cast *animal friendship* using either slot.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.slot-or-higher"
       },
       {
         "c": "You know two 1st-level spells of your choice from the ranger spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.spells-known"
       },
       {
         "c": "The Spells Known column of the Ranger table shows when you learn more ranger spells of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.spells-known"
       },
       {
         "c": "Each of these spells must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "a spell learned on a level is held to the top slot level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.ranger.new-spell-level"
       },
       {
         "c": "For instance, when you reach 5th level in this class, you can learn one new spell of 1st or 2nd level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.ranger.spells-known"
       },
       {
         "c": "Additionally, when you gain a level in this class, you can choose one of the ranger spells you know and replace it with another spell from the ranger spell list, which also must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "one spell known replaced on a level, by a ranger spell of a level with slots; two refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.ranger.swap-one"
       },
       {
         "c": "Wisdom is your spellcasting ability for your ranger spells, since your magic draws on your attunement to nature.",
@@ -6101,15 +6065,15 @@
       },
       {
         "c": "For 1 minute per level of the spell slot you expend, you can sense whether the following types of creatures are present within 1 mile of you (or within up to 6 miles if you are in your favored terrain): aberrations, celestials, dragons, elementals, fey, fiends, and undead.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the minutes per slot level, the mile (six in favored terrain) and the creature types sensed"
+        "is": "held",
+        "by": "the slot named is spent and the awareness is a condition on the clock for a minute a level of it; the answer names the seven kinds, the mile (six in favored terrain) and that it tells neither number nor place (src/lib/dm/srd-feature-spends.ts primevalAwareness)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.primeval-awareness.minutes"
       },
       {
         "c": "This feature doesn't reveal the creatures' location or number.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the minutes per slot level, the mile (six in favored terrain) and the creature types sensed"
+        "is": "held",
+        "by": "the slot named is spent and the awareness is a condition on the clock for a minute a level of it; the answer names the seven kinds, the mile (six in favored terrain) and that it tells neither number nor place (src/lib/dm/srd-feature-spends.ts primevalAwareness)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.primeval-awareness.minutes"
       }
     ]
   },
@@ -6175,15 +6139,15 @@
       },
       {
         "c": "You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "the board's plants are its nonmagical difficult ground (undergrowth), which Land's Stride crosses at no extra cost (src/lib/battlemap/types.ts moveTraitsFrom landStride); no nonmagical plant on the board deals damage, so there is none to take",
+        "probe": "scripts/test-enforce-monster-traits.mjs: Land's Stride: nonmagical difficult terrain costs a druid or ranger no extra movement"
       },
       {
         "c": "In addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the *entangle* spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: thorny plants and the save against entangle-like plants"
+        "is": "held",
+        "by": "a save the engine rolls against Entangle, Wall of Thorns or Grasping Vine is rolled with advantage (src/lib/dm/mt-srd-druid.ts landsStrideClaim, at forced-save.ts rollCharacterSave)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.lands-stride.entangle"
       }
     ]
   },
@@ -6236,9 +6200,9 @@
       },
       {
         "c": "Once you move or take an action or a reaction, you must camouflage yourself again to gain this benefit.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the camouflage lost on a move, an action or a reaction"
+        "is": "held",
+        "by": "the camouflage ends at the doors a character moves and acts through (src/lib/dm/mt-srd-camouflage.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hide-in-plain-sight.lost"
       }
     ]
   },
@@ -6273,9 +6237,8 @@
       },
       {
         "c": "Also, you can't be tracked by nonmagical means, unless you choose to leave a trail.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: tracking has no roll against the ranger's trail on the board"
+        "is": "left",
+        "why": "no creature tracks a character by a roll the engine makes: a pursuer finding the ranger's trail is the GM's story, so there is no check for the feature to refuse"
       }
     ]
   },
@@ -6298,9 +6261,9 @@
       },
       {
         "c": "You are also aware of the location of any invisible creature within 30 feet of you, provided that the creature isn't hidden from you and you aren't blinded or deafened.",
-        "is": "gap",
-        "read_only": true,
-        "why": "recorded by the hand sweep as hand-preview-unseen for the card; the 30-foot awareness itself not run"
+        "is": "held",
+        "by": "ODM never makes anyone guess a square: an invisible creature's token stays where it stands for every attacker, so the ranger knows where it is (the Blindsense clause's own ground), and attacks it with no disadvantage",
+        "probe": "scripts/test-enforce-tail-attacks.mjs: Feral Senses: a ranger attacking an invisible creature rolls without disadvantage."
       }
     ]
   },
@@ -6352,15 +6315,15 @@
       },
       {
         "c": "When you hit a creature with a weapon attack, the creature takes an extra 1d8 damage if it's below its hit point maximum.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "1d8 on a weapon hit against a creature below its hit point maximum, none at the maximum",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.colossus-slayer"
       },
       {
         "c": "You can deal this extra damage only once per turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "the second hit of the turn adds no d8, the next turn's first does",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.colossus-slayer-once"
       },
       {
         "c": "***Giant Killer***.",
@@ -6368,9 +6331,9 @@
       },
       {
         "c": "When a Large or larger creature within 5 feet of you hits or misses you with an attack, you can use your reaction to attack that creature immediately after its attack, provided that you can see the creature.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "the reaction attack after a Large creature's hit or miss within 5 feet; refused for a Medium creature and for one the ranger cannot see (src/lib/dm/reaction-attacks.ts giantKillerOpen)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.giant-killer"
       },
       {
         "c": "***Horde Breaker***.",
@@ -6378,9 +6341,9 @@
       },
       {
         "c": "Once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target and within range of your weapon.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Colossus Slayer's 1d8 once a turn, Giant Killer's reaction, Horde Breaker's second attack, each staged on its own"
+        "is": "held",
+        "by": "once a turn, a different creature within 5 feet of the first, with the weapon the first was attacked with (src/lib/dm/mt-srd-ranger.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.hunters-prey.horde-breaker"
       }
     ]
   },
@@ -6403,9 +6366,9 @@
       },
       {
         "c": "When a creature hits you with an attack, you gain a +4 bonus to AC against all subsequent attacks made by that creature for the rest of the turn.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Multiattack Defense on a ranger (the monster trait of the same name has its own test)"
+        "is": "held",
+        "by": "+4 AC against the later swings of the creature that hit, gone the next turn",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.defensive-tactics.multiattack-defense"
       },
       {
         "c": "You have advantage on saving throws against being frightened.",
@@ -6444,27 +6407,27 @@
       },
       {
         "c": "You can use your action to make a ranged attack against any number of creatures within 10 feet of a point you can see within your weapon's range.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one ranged attack roll for each creature within 10 feet of the first target, a melee weapon refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.volley"
       },
       {
         "c": "You must have ammunition for each target, as normal, and you make a separate attack roll for each target.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "an arrow for each target where ammunition is counted, the shot refused with none left",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.volley-ammunition"
       },
       {
         "c": "***Whirlwind Attack***.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one melee attack roll for each creature within 5 feet, none twice",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.whirlwind"
       },
       {
         "c": "You can use your action to make a melee attack against any number of creatures within 5 feet of you, with a separate attack roll for each target.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Volley and Whirlwind Attack, an attack roll for each creature in the area"
+        "is": "held",
+        "by": "the action, one melee attack roll for each creature within 5 feet, none twice",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.multiattack.whirlwind"
       }
     ]
   },
@@ -6487,9 +6450,9 @@
       },
       {
         "c": "When a hostile creature misses you with a melee attack, you can use your reaction to force that creature to repeat the same attack against another creature (other than itself) of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Stand Against the Tide's repeated attack against another creature"
+        "is": "held",
+        "by": "the reaction repeats a melee miss against another creature; refused against the attacker itself and after a hit",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-ranger.mjs: ranger.superior-hunters-defense.stand-against-the-tide"
       },
       {
         "c": "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you.",
@@ -6914,13 +6877,9 @@
       },
       {
         "c": "Alternatively, if you fail an ability check, you can treat the d20 roll as a 20.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-spends-srd.mjs: counter:stroke_of_luck#SPENT_FOR_NOTHING",
-        "where": "src/lib/dm/rolls.ts request_roll (no strokeOfLuck there), src/lib/srd/class-resources.ts stroke_of_luck",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the attack half is an engine option on pc_attack; the check half has no door: request_roll takes no strokeOfLuck, and use_resource Stroke of Luck after a failed check spends the use and leaves the check failed (run here: total 5 against DC 25 stays a failure, 0/1 left)",
-        "recorded_by": "spends (spends-spent-for-nothing-counter-stroke-of-luck)"
+        "is": "held",
+        "by": "use_resource Stroke of Luck answers the rogue's last roll when it is a failed ability check: the d20 read as a 20 against the check's DC (src/lib/dm/mt-srd-rogue.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.stroke-of-luck.check"
       },
       {
         "c": "Once you use this feature, you can't use it again until you finish a short or long rest.",
@@ -6950,11 +6909,9 @@
       },
       {
         "c": "you can use the bonus action granted by your Cunning Action to make a Dexterity (Sleight of Hand) check",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.fast-hands.sleight",
-        "where": "src/lib/dm/combat-actions.ts take_action (which actions a bonus action may be)",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "an improvised Sleight of Hand check as a Thief's bonus action (src/lib/dm/action-price.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-rogue.mjs: rogue.fast-hands.sleight"
       },
       {
         "c": "use your thieves' tools to disarm a trap or open a lock",
@@ -7109,15 +7066,15 @@
       },
       {
         "c": "At 1st level, you know four cantrips of your choice from the sorcerer spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.cantrips-known"
       },
       {
         "c": "You learn additional sorcerer cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Sorcerer table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.cantrips-known"
       },
       {
         "c": "The Sorcerer table shows how many spell slots you have to cast your sorcerer spells of 1st level and higher.",
@@ -7127,51 +7084,51 @@
       },
       {
         "c": "To cast one of these sorcerer spells, you must expend a slot of the spell's level or higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.slot-or-higher"
       },
       {
         "c": "You regain all expended spell slots when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "take_rest long (every slot back)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.long-rest-slots"
       },
       {
         "c": "For example, if you know the 1st-level spell *burning hands* and have a 1st-level and a 2nd-level spell slot available, you can cast *burning hands* using either slot.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.slot-or-higher"
       },
       {
         "c": "You know two 1st-level spells of your choice from the sorcerer spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.spells-known"
       },
       {
         "c": "The Spells Known column of the Sorcerer table shows when you learn more sorcerer spells of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.spells-known"
       },
       {
         "c": "Each of these spells must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "a spell learned on a level is held to the top slot level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.sorcerer.new-spell-level"
       },
       {
         "c": "For instance, when you reach 3rd level in this class, you can learn one new spell of 1st or 2nd level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.sorcerer.spells-known"
       },
       {
         "c": "Additionally, when you gain a level in this class, you can choose one of the sorcerer spells you know and replace it with another spell from the sorcerer spell list, which also must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column and the swap on a level-up"
+        "is": "held",
+        "by": "one spell known replaced on a level, by a sorcerer spell of a level with slots; two refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.sorcerer.swap-one"
       },
       {
         "c": "Charisma is your spellcasting ability for your sorcerer spells, since the power of your magic relies on your ability to project your will into the world.",
@@ -7378,84 +7335,81 @@
       },
       {
         "c": "You gain two of the following Metamagic options of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: two options at 3rd, one more at 10th and 17th, counted on the sheet"
+        "is": "held",
+        "by": "two options at 3rd level, a third at 10th, a fourth at 17th",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.sorcerer.metamagic-count"
       },
       {
         "c": "You gain another one at 10th and 17th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: two options at 3rd, one more at 10th and 17th, counted on the sheet"
+        "is": "held",
+        "by": "two options at 3rd level, a third at 10th, a fourth at 17th",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.sorcerer.metamagic-count"
       },
       {
         "c": "You can use only one Metamagic option on a spell when you cast it, unless otherwise noted.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: one option a spell"
+        "is": "held",
+        "by": "a second option paid before the spell is cast is refused, spending nothing (src/lib/dm/mt-srd-metamagic.ts secondOptionProblem, at resource-tools.ts computeUseResource)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.one-option"
       },
       {
         "c": "When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell's full force.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "To do so, you spend 1 sorcery point and choose a number of those creatures up to your Charisma modifier (minimum of one creature).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "A chosen creature automatically succeeds on its saving throw against the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Careful Spell not run on its own: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Careful Spell paid: the characters the sorcerer's area catches, the ones named in sparedCharacterIds or all of them, up to the Charisma modifier (one at least) and never the sorcerer, succeed on the save with no roll and take what a success takes (src/lib/dm/mt-srd-metamagic.ts carefulIds, at aoe-spell.ts and aoe-characters.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.careful"
       },
       {
         "c": "When you cast a spell that has a range of 5 feet or greater, you can spend 1 sorcery point to double the range of the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Distant Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Distant Spell paid: the spell's range is doubled and a touch spell reaches 30 feet, on every cast path (mt-srd-metamagic.ts factsAsCast, at cast-at-enemy.ts, cast-buff.ts, aoe-spell.ts, aoe-damage.ts, heal-spell.ts, cast-guard.ts and cast-reach.ts spellAttackReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.distant"
       },
       {
         "c": "When you cast a spell that has a range of touch, you can spend 1 sorcery point to make the range of the spell 30 feet.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Distant Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Distant Spell paid: the spell's range is doubled and a touch spell reaches 30 feet, on every cast path (mt-srd-metamagic.ts factsAsCast, at cast-at-enemy.ts, cast-buff.ts, aoe-spell.ts, aoe-damage.ts, heal-spell.ts, cast-guard.ts and cast-reach.ts spellAttackReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.distant"
       },
       {
         "c": "When you roll damage for a spell, you can spend 1 sorcery point to reroll a number of the damage dice up to your Charisma modifier (minimum of one).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell paid: the spell's damage roll throws again the dice that fell below their average, lowest first and up to the Charisma modifier (one at least), and the new faces stand (mt-srd-metamagic.ts empoweredRoll, src/lib/dice.ts empower, at cast-at-enemy-damage.ts, aoe-damage.ts and attack-swing.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.empowered"
       },
       {
         "c": "You must use the new rolls.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell paid: the spell's damage roll throws again the dice that fell below their average, lowest first and up to the Charisma modifier (one at least), and the new faces stand (mt-srd-metamagic.ts empoweredRoll, src/lib/dice.ts empower, at cast-at-enemy-damage.ts, aoe-damage.ts and attack-swing.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.empowered"
       },
       {
         "c": "You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Empowered Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Empowered Spell is the one option accepted beside another (mt-srd-metamagic.ts secondOptionProblem)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.one-option"
       },
       {
         "c": "When you cast a spell that has a duration of 1 minute or longer, you can spend 1 sorcery point to double its duration, to a maximum duration of 24 hours.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Extended Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Extended Spell paid: what the spell lays lasts twice as long, 24 hours at most, when it lasts a minute or longer: a buff's condition (cast-buff.ts) and the condition a failed save lays (cast-at-enemy.ts, aoe-damage.ts), through mt-srd-metamagic.ts extendedRounds",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.extended"
       },
       {
         "c": "When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 3 sorcery points to give one target of the spell disadvantage on its first saving throw made against the spell.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.heightened",
-        "where": "src/lib/dm/resource-tools.ts metamagicPrice (Heightened Spell: 3 points spent, nothing handed to the next save)",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "After the 3 points the creature's save against Hold Person is one d20. The spends sweep recorded the points as spent for nothing (a ruling); this is the run that shows the save untouched."
+        "is": "held",
+        "by": "the option paid rides the next spell cast at a creature: its save is rolled with disadvantage and the mark is used (mt-srd-metamagic.ts heightenedSave, at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.heightened"
       },
       {
         "c": "When you cast a spell that has a casting time of 1 action, you can spend 2 sorcery points to change the casting time to 1 bonus action for this casting.",
@@ -7465,21 +7419,21 @@
       },
       {
         "c": "When you cast a spell, you can spend 1 sorcery point to cast it without any somatic or verbal components.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Subtle Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "the option paid takes the verbal and somatic components off the next spell cast, at the cast guard and on the Hand's card (mt-srd-metamagic.ts subtleSpellPaid, in cast-rules.ts componentsAsCast), and is used by that cast",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.subtle"
       },
       {
         "c": "When you cast a spell that targets only one creature and doesn't have a range of self, you can spend a number of sorcery points equal to the spell's level to target a second creature in range with the same spell (1 sorcery point if the spell is a cantrip).",
-        "is": "gap",
-        "read_only": true,
-        "why": "Twinned Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Twinned Spell paid: a spell that takes one creature at the slot it is cast from and has no range of self takes a second creature (never the first again), for the spell's level in sorcery points (1 for a cantrip) whatever the spend named; a spell that cannot be twinned gives the points back (mt-srd-metamagic.ts settleTwin and twinExtra, at cast-guard.ts, cast-buff.ts and heal-spell.ts; secondTargetProblem at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.twinned"
       },
       {
         "c": "To be eligible, a spell must be incapable of targeting more than one creature at the spell's current level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "Twinned Spell not run: the spends sweep's ruling spends-spent-for-nothing-counter-sorcery-points (scripts/test-enforce-sweep-spends-srd.mjs: counter:sorcery_points#SPENT_FOR_NOTHING): the option's points are spent and its effect is the GM's; only Quickened Spell has an engine"
+        "is": "held",
+        "by": "Twinned Spell paid: a spell that takes one creature at the slot it is cast from and has no range of self takes a second creature (never the first again), for the spell's level in sorcery points (1 for a cantrip) whatever the spend named; a spell that cannot be twinned gives the points back (mt-srd-metamagic.ts settleTwin and twinExtra, at cast-guard.ts, cast-buff.ts and heal-spell.ts; secondTargetProblem at cast-at-enemy.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-sorcerer.mjs: sorcerer.metamagic.twinned"
       },
       {
         "c": "For example, *magic missile* and *scorching ray* aren't eligible, but *ray of frost* and *chromatic orb* are.",
@@ -7497,9 +7451,9 @@
     "clauses": [
       {
         "c": "You gain another one at 10th and 17th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the option count at 10th"
+        "is": "held",
+        "by": "a third option at 10th level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.sorcerer.metamagic-count"
       }
     ]
   },
@@ -7513,9 +7467,9 @@
     "clauses": [
       {
         "c": "You gain another one at 10th and 17th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the option count at 17th"
+        "is": "held",
+        "by": "a fourth option at 17th level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.sorcerer.metamagic-count"
       }
     ]
   },
@@ -7765,15 +7719,15 @@
       },
       {
         "c": "You know two cantrips of your choice from the warlock spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.warlock.cantrips-known"
       },
       {
         "c": "You learn additional warlock cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Warlock table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.warlock.cantrips-known"
       },
       {
         "c": "The Warlock table shows how many spell slots you have to cast your warlock spells of 1st through 5th level.",
@@ -7813,33 +7767,33 @@
       },
       {
         "c": "At 1st level, you know two 1st-level spells of your choice from the warlock spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column, the slot-level cap on a new spell, and the swap"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.warlock.spells-known"
       },
       {
         "c": "The Spells Known column of the Warlock table shows when you learn more warlock spells of your choice of 1st level and higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column, the slot-level cap on a new spell, and the swap"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.warlock.spells-known"
       },
       {
         "c": "A spell you choose must be of a level no higher than what's shown in the table's Slot Level column for your level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column, the slot-level cap on a new spell, and the swap"
+        "is": "held",
+        "by": "a spell learned on a level is held to the pact slot level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.warlock.new-spell-level"
       },
       {
         "c": "When you reach 6th level, for example, you learn a new warlock spell, which can be 1st, 2nd, or 3rd level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column, the slot-level cap on a new spell, and the swap"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (the Spells Known column)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.warlock.spells-known"
       },
       {
         "c": "Additionally, when you gain a level in this class, you can choose one of the warlock spells you know and replace it with another spell from the warlock spell list, which also must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the spells-known column, the slot-level cap on a new spell, and the swap"
+        "is": "held",
+        "by": "one spell known replaced on a level, by a warlock spell of a level with slots; two refused",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.warlock.swap-one"
       },
       {
         "c": "Charisma is your spellcasting ability for your warlock spells, so you use your Charisma whenever a spell refers to your spellcasting ability.",
@@ -7896,9 +7850,9 @@
       },
       {
         "c": "When you gain certain warlock levels, you gain additional invocations of your choice, as shown in the Invocations Known column of the Warlock table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "the Invocations Known column: recorded by the builder sweep as builder-levelup-offer-unmet-prereqs for the level-up offer; the count itself not run here"
+        "is": "held",
+        "by": "the Invocations Known column, level by level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.warlock.invocations-count"
       },
       {
         "c": "Additionally, when you gain a level in this class, you can choose one of the invocations you know and replace it with another invocation that you could learn at that level.",
@@ -7943,81 +7897,80 @@
       },
       {
         "c": "Additionally, when you take the Attack action, you can forgo one of your own attacks to allow your familiar to make one attack with its reaction.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the familiar's attack for a forgone attack"
+        "is": "held",
+        "by": "a Pact of the Chain familiar attacks with its reaction, once a turn, in place of one of the warlock's attacks of the Attack action (src/lib/dm/pet-attack-cost.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-chain.familiar-attack"
       },
       {
         "c": "You can use your action to create a pact weapon in your empty hand.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "You can choose the form that this melee weapon takes each time you create it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "You are proficient with it while you wield it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "use_resource Pact of the Blade with the form in variant makes the pact weapon: the action, a melee form of the table, a hand free for it, and an equipment row marked as the pact's that the warlock swings with proficiency (src/lib/dm/mt-srd-warlock.ts pactOfTheBlade; src/lib/srd/pact-weapon.ts isPactWeapon, read at pc-attack-profile.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.create"
       },
       {
         "c": "This weapon counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "a Pact of the Blade warlock's melee weapon strikes as magical: a creature resistant to nonmagical attacks takes its full damage (src/lib/dm/pc-attack-damage.ts, src/lib/srd/pact-weapon.ts pactWeaponAttack)",
+        "probe": "scripts/test-enforce-srd-classes.mjs: CLS-14"
       },
       {
         "c": "Your pact weapon disappears if it is more than 5 feet away from you for 1 minute or more.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "the weapon the pact made is gone when its warlock makes another, dismisses it (no action) or dies, and a minute after it leaves their equipment: the minute is a condition on the clock, forgotten when the weapon is taken back, and its end removes the row from the ground and from whoever holds it (src/lib/dm/mt-srd-pact.ts settlePact and vanishStrays, in patchSheet). The 5 feet is read as the weapon being out of the warlock's keeping: a row has no square of its own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.vanish"
       },
       {
         "c": "It also disappears if you use this feature again, if you dismiss the weapon (no action required), or if you die.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "the weapon the pact made is gone when its warlock makes another, dismisses it (no action) or dies, and a minute after it leaves their equipment: the minute is a condition on the clock, forgotten when the weapon is taken back, and its end removes the row from the ground and from whoever holds it (src/lib/dm/mt-srd-pact.ts settlePact and vanishStrays, in patchSheet). The 5 feet is read as the weapon being out of the warlock's keeping: a row has no square of its own",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.vanish"
       },
       {
         "c": "You can transform one magic weapon into your pact weapon by performing a special ritual while you hold the weapon.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You perform the ritual over the course of 1 hour, which can be done during a short rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You can then dismiss the weapon, shunting it into an extradimensional space, and it appears whenever you create your pact weapon thereafter.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "You can't affect an artifact or a sentient weapon in this way.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "left",
+        "why": "the GM's: no SRD 5.1 weapon is an artifact or sentient, and no field of an equipment row says a homebrew one is, so the ritual (use_resource Pact of the Blade, variant 'bond <weapon>') binds any magic weapon in hand and the GM withholds it from such a weapon by hand"
       },
       {
         "c": "The weapon ceases being your pact weapon if you die, if you perform the 1-hour ritual on a different weapon, or if you use a 1-hour ritual to break your bond to it.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "The weapon appears at your feet if it is in the extradimensional space when the bond breaks.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the pact weapon (its creation, proficiency, magic, disappearance and the bound magic weapon)"
+        "is": "held",
+        "by": "variant 'bond <weapon>' binds a magic weapon in hand over an hour on the clock, never in a fight; it is then the pact weapon and no other blade is; 'dismiss' stows it and creating the pact weapon brings it back; a second bond or 'break bond' or a death ends the first, and a stowed weapon appears at the warlock's feet (mt-srd-warlock.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-blade.bond"
       },
       {
         "c": "Your patron gives you a grimoire called a Book of Shadows.",
@@ -8049,21 +8002,21 @@
       },
       {
         "c": "If you lose your Book of Shadows, you can perform a 1-hour ceremony to receive a replacement from your patron.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       },
       {
         "c": "This ceremony can be performed during a short or long rest, and it destroys the previous book.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       },
       {
         "c": "The book turns to ash when you die.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a lost Book of Shadows and its replacement"
+        "is": "held",
+        "by": "use_resource Book of Shadows is the hour's ceremony, never in a fight: a new book on the sheet, the previous one destroyed wherever it lies, and a death takes the book (mt-srd-warlock.ts bookOfShadows, mt-srd-pact.ts settlePact)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.pact-of-the-tome.book"
       }
     ]
   },
@@ -8076,15 +8029,15 @@
     "clauses": [
       {
         "c": "At 11th level, your patron bestows upon you a magical secret called an arcanum.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the arcanum pick from the 6th-level list"
+        "is": "held",
+        "by": "one warlock spell of 6th level at 11th, of 7th at 13th, 8th at 15th and 9th at 17th, each with its one use; no second of a level, none off the list, none a level early",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.warlock.mystic-arcanum"
       },
       {
         "c": "Choose one 6th-level spell from the warlock spell list as this arcanum.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the arcanum pick from the 6th-level list"
+        "is": "held",
+        "by": "one warlock spell of 6th level at 11th, of 7th at 13th, 8th at 15th and 9th at 17th, each with its one use; no second of a level, none off the list, none a level early",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.warlock.mystic-arcanum"
       },
       {
         "c": "You can cast your arcanum spell once without expending a spell slot.",
@@ -8100,9 +8053,9 @@
       },
       {
         "c": "At higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th-level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 7th, 8th and 9th arcana"
+        "is": "held",
+        "by": "one warlock spell of 6th level at 11th, of 7th at 13th, 8th at 15th and 9th at 17th, each with its one use; no second of a level, none off the list, none a level early",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-picks.mjs: picks.warlock.mystic-arcanum"
       },
       {
         "c": "You regain all uses of your Mystic Arcanum when you finish a long rest.",
@@ -8225,9 +8178,9 @@
       },
       {
         "c": "Once you use this feature, you can't use it again until you finish a short or long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the short-rest limit"
+        "is": "held",
+        "by": "one use, back on a short rest",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.dark-ones-own-luck.rest"
       }
     ]
   },
@@ -8252,9 +8205,9 @@
       },
       {
         "c": "Damage from magical weapons or silver weapons ignores this resistance.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a magical or silvered weapon's damage against the resistance"
+        "is": "held",
+        "by": "damage flagged magical goes through the chosen resistance (src/lib/dm/pc-defenses.ts); a silvered weapon's blow is sent with the same flag, the one the GM's tools carry for a weapon such resistance does not stop",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-warlock.mjs: warlock.fiendish-resilience.magical-weapons"
       }
     ]
   },
@@ -8382,27 +8335,27 @@
       },
       {
         "c": "At 1st level, you know three cantrips of your choice from the wizard spell list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.cantrips-known"
       },
       {
         "c": "You learn additional wizard cantrips of your choice at higher levels, as shown in the Cantrips Known column of the Wizard table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the cantrips-known column"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts cantripCapOf (the builder cap and the server sheet check)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.cantrips-known"
       },
       {
         "c": "At 1st level, you have a spellbook containing six 1st-level wizard spells of your choice.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: six spells in a new wizard's book"
+        "is": "held",
+        "by": "a first wizard level writes six 1st-level spells in the book, no seventh, none of 2nd level, and cantrips are kept apart from it",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.first-book"
       },
       {
         "c": "Your spellbook is the repository of the wizard spells you know, except your cantrips, which are fixed in your mind.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: six spells in a new wizard's book"
+        "is": "held",
+        "by": "a first wizard level writes six 1st-level spells in the book, no seventh, none of 2nd level, and cantrips are kept apart from it",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.first-book"
       },
       {
         "c": "The Wizard table shows how many spell slots you have to cast your wizard spells of 1st level and higher.",
@@ -8412,51 +8365,51 @@
       },
       {
         "c": "To cast one of these spells, you must expend a slot of the spell's level or higher.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.slot-or-higher"
       },
       {
         "c": "You regain all expended spell slots when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the slot spent and the long rest's refill, read for this class"
+        "is": "held",
+        "by": "take_rest long (every slot back)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.long-rest-slots"
       },
       {
         "c": "You prepare the list of wizard spells that are available for you to cast.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "the sheet's route prepares only what the book holds, up to the top slot level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.prepares-from-book"
       },
       {
         "c": "To do so, choose a number of wizard spells from your spellbook equal to your Intelligence modifier + your wizard level (minimum of one spell).",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (modifier + level, minimum one)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.prepared-count"
       },
       {
         "c": "The spells must be of a level for which you have spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "the sheet's route prepares only what the book holds, up to the top slot level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.prepares-from-book"
       },
       {
         "c": "For example, if you're a 3rd-level wizard, you have four 1st-level and two 2nd-level spell slots.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "the slot table the example reads: four 1st and two 2nd at 3rd level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.slots-example"
       },
       {
         "c": "With an Intelligence of 16, your list of prepared spells can include six spells of 1st or 2nd level, in any combination, chosen from your spellbook.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "src/lib/srd/spell-prep.ts spellCapOf (modifier + level, minimum one)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.prepared-count"
       },
       {
         "c": "If you prepare the 1st-level spell *magic missile*, you can cast it using a 1st-level or a 2nd-level slot.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prepared count (Intelligence modifier + wizard level) from the book, and its example"
+        "is": "held",
+        "by": "use_spell_slot (a slot below the spell refused, above it spent)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-casting.mjs: casting.wizard.slot-or-higher"
       },
       {
         "c": "Casting the spell doesn't remove it from your list of prepared spells.",
@@ -8466,15 +8419,14 @@
       },
       {
         "c": "You can change your list of prepared spells when you finish a long rest.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the list changed on a long rest and the minute per level"
+        "is": "held",
+        "by": "a spell chosen for the list waits and is ready when the long rest finishes",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.long-rest-change"
       },
       {
         "c": "Preparing a new list of wizard spells requires time spent studying your spellbook and memorizing the incantations and gestures you must make to cast the spell: at least 1 minute per spell level for each spell on your list.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the list changed on a long rest and the minute per level"
+        "is": "left",
+        "why": "the long rest's hours hold it: a spell chosen for the list waits (pending) until a long rest is finished and is ready only then (spells.wizard.long-rest-change, spells.druid.long-rest-change), and no shorter stretch of the clock prepares one; the minute a spell level within that rest is not counted apart"
       },
       {
         "c": "Intelligence is your spellcasting ability for your wizard spells, since you learn your spells through dedicated study and memorization.",
@@ -8526,15 +8478,15 @@
       },
       {
         "c": "Each time you gain a wizard level, you can add two wizard spells of your choice to your spellbook for free.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: two spells to the book a level"
+        "is": "held",
+        "by": "a level adds two spells to the book, no third, each of a level with slots",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.two-a-level"
       },
       {
         "c": "Each of these spells must be of a level for which you have spell slots, as shown on the Wizard table.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: two spells to the book a level"
+        "is": "held",
+        "by": "a level adds two spells to the book, no third, each of a level with slots",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-spells.mjs: spells.wizard.two-a-level"
       },
       {
         "c": "On your adventures, you might find other spells that you can add to your spellbook.",
@@ -8629,15 +8581,14 @@
       },
       {
         "c": "If you want to cast either spell at a higher level, you must expend a spell slot as normal.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a slot spent above the lowest level, and the 8-hour exchange"
+        "is": "held",
+        "by": "the mastered spell at its own level spends nothing; named at a higher level it spends that slot",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-wizard.mjs: wizard.spell-mastery.higher-slot"
       },
       {
         "c": "By spending 8 hours in study, you can exchange one or both of the spells you chose for different spells of the same levels.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a slot spent above the lowest level, and the 8-hour exchange"
+        "is": "left",
+        "why": "the exchange is a change of the sheet's own pick (the two spells the feature names), made on the sheet once the 8 hours of study have passed on the GM's clock (pass_time); no tool rewrites a class pick in play"
       }
     ]
   },
@@ -8672,9 +8623,9 @@
       },
       {
         "c": "If you want to cast either spell at a higher level, you must expend a spell slot as normal.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a slot spent above 3rd"
+        "is": "held",
+        "by": "the signature spell at 4th level spends a 4th-level slot and leaves its free use; at 3rd it spends the use and no slot",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-wizard.mjs: wizard.signature-spells.higher-slot"
       }
     ]
   },
@@ -8687,9 +8638,9 @@
     "clauses": [
       {
         "c": "Beginning when you select this school at 2nd level, the gold and time you must spend to copy an evocation spell into your spellbook is halved.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: copying a spell has no door that prices it"
+        "is": "held",
+        "by": "learn_spell copies an evocation spell for half the gold and half the hours (src/lib/dm/learn-rules.ts copyCost)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-wizard.mjs: wizard.evocation-savant.copy"
       }
     ]
   },
@@ -8781,15 +8732,15 @@
       },
       {
         "c": "Each time you use this feature again before finishing a long rest, the necrotic damage per spell level increases by 1d12.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the extra d12 on each further use, and the necrotic ignoring resistance"
+        "is": "held",
+        "by": "the second use since a long rest costs 2d12 necrotic a spell level, the third 3d12, through necrotic resistance; a long rest starts the count again",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-wizard.mjs: wizard.overchannel.repeat"
       },
       {
         "c": "This damage ignores resistance and immunity.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the extra d12 on each further use, and the necrotic ignoring resistance"
+        "is": "held",
+        "by": "the second use since a long rest costs 2d12 necrotic a spell level, the third 3d12, through necrotic resistance; a long rest starts the count again",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-wizard.mjs: wizard.overchannel.repeat"
       },
       {
         "c": ">**Your Spellbook**",

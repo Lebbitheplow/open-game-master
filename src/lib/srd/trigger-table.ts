@@ -27,7 +27,34 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   pet_damage   `characterId`'s pet took damage
 //   weapon_hit   `characterId` hit `creatureId` with a weapon on their turn
 //   surge        `characterId` used Action Surge this turn; wind_step: Step of the Wind
-export type TriggerEventKind = "hit" | "miss" | "save" | "death" | "turn_end" | "turn_start" | "cast" | "pet_damage" | "weapon_hit" | "surge" | "wind_step";
+//   rage_entered `characterId` entered their rage this turn
+//   steadied     `characterId` was steadied (a death save succeeding, or
+//                stabilized) by `creatureId`, `how` saying which
+//   echo_destroyed   `characterId`'s echo was destroyed by `creatureId`
+//   inspired_success `characterId` made a roll (`how`) succeed with the
+//                Bardic Inspiration die of `creatureId`, its bard
+//   moved_near   `creatureId` moved to within `feet` of `characterId`, from `fromFeet`
+//   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
+//   teleport     `creatureId` teleported (an enemy, with `enemy`)
+export type TriggerEventKind =
+  | "hit"
+  | "miss"
+  | "save"
+  | "death"
+  | "turn_end"
+  | "turn_start"
+  | "cast"
+  | "pet_damage"
+  | "weapon_hit"
+  | "surge"
+  | "wind_step"
+  | "rage_entered"
+  | "steadied"
+  | "echo_destroyed"
+  | "inspired_success"
+  | "moved_near"
+  | "heal_roll"
+  | "teleport";
 
 export type TriggerEvent = {
   id: string;
@@ -48,6 +75,11 @@ export type TriggerEvent = {
   amount?: number;
   type?: string;
   enemy?: boolean;
+  // A cast's slot level (0 for a cantrip).
+  level?: number;
+  how?: string;
+  feet?: number;
+  fromFeet?: number;
   answered: string[];
 };
 
@@ -61,13 +93,18 @@ export type TriggerRecordView = {
   forcerId: string;
   forcer: string;
   success?: boolean;
+  dc?: number;
   against?: string;
   damage?: { amount: number; type: string; spell?: boolean };
   petName?: string;
   creatureType?: string;
   killerId?: string | null;
   spell?: string;
+  level?: number;
   enemy?: boolean;
+  how?: string;
+  feet?: number;
+  fromFeet?: number;
   answered?: string[];
 };
 
@@ -90,6 +127,10 @@ export function eventOfRecord(record: TriggerRecordView): TriggerEvent {
     ...(record.petName ? { petName: record.petName } : {}),
     ...(record.damage ? { amount: record.damage.amount, type: record.damage.type } : {}),
     ...(record.enemy !== undefined ? { enemy: record.enemy } : {}),
+    ...(record.level !== undefined ? { level: record.level } : {}),
+    ...(record.how ? { how: record.how } : {}),
+    ...(record.feet !== undefined ? { feet: record.feet } : {}),
+    ...(record.fromFeet !== undefined ? { fromFeet: record.fromFeet } : {}),
     answered: record.answered ?? [],
   };
 }
@@ -120,19 +161,39 @@ export type TriggerOn =
   | { kind: "own_wind_step" }
   // A save a creature forced on the holder; `prey`: the creature under that
   // mark; `against`: a save against that condition.
-  | { kind: "save_on_self"; prey?: string; against?: string }
+  // `failed`: only one they failed (Unstable Backlash).
+  | { kind: "save_on_self"; prey?: string; against?: string; failed?: boolean }
+  // A creature teleported and stands within the reach (Magic-User's Nemesis).
+  | { kind: "teleport"; rangeFt: number }
   // A creature died: within the reach, of these types, slain by the holder, or the one under the mark.
   | { kind: "death"; rangeFt?: number; types?: string[]; byHolder?: boolean; marked?: string }
   // A creature (an enemy, with `enemy`) ended its turn within the reach.
   | { kind: "turn_end"; rangeFt: number; enemy?: boolean }
   // The creature whose turn it is began it within the reach.
   | { kind: "turn_start"; rangeFt: number }
-  // A creature cast a spell within the reach; `atHolder`: aimed at the holder.
-  | { kind: "cast"; rangeFt?: number; atHolder?: boolean }
+  // A creature cast a spell within the reach; `atHolder`: aimed at the holder;
+  // `byFeatureHolder`: cast by the feature's holder (Voice of Authority's
+  // cleric, the ally taking the reaction); `minLevel`: of that slot level or higher.
+  | { kind: "cast"; rangeFt?: number; atHolder?: boolean; byFeatureHolder?: boolean; minLevel?: number }
   // The holder's pet took damage.
   | { kind: "pet_damage" }
   // The feature's holder used Action Surge (the reactor is an ally within the reach).
-  | { kind: "surge"; rangeFt: number };
+  | { kind: "surge"; rangeFt: number }
+  // The holder entered their rage this turn (Call the Hunt).
+  | { kind: "own_rage_entered" }
+  // A steadying: `role` "steadied" when the holder was the one steadied (their
+  // own death save succeeding), "steadier" when they stabilized another;
+  // `how`: only these ways ("death save", "spare the dying", "medicine", "kit").
+  | { kind: "steadied"; role: "steadied" | "steadier"; how?: string[] }
+  // The holder's echo was destroyed (Reclaim Potential).
+  | { kind: "own_echo_destroyed" }
+  // A creature within the reach other than the holder made a roll succeed with
+  // the holder's Bardic Inspiration die (Infectious Inspiration).
+  | { kind: "inspired_success"; rangeFt?: number }
+  // A creature moved from beyond `rangeFt` of the holder to within it (Halo of Spores).
+  | { kind: "moved_near"; rangeFt: number }
+  // A spell's healing dice rolled by the holder or a creature within the reach (Empowered Healing).
+  | { kind: "heal_roll"; rangeFt: number };
 
 export type TriggerSpec = {
   on: TriggerOn[];
@@ -159,16 +220,31 @@ const WRITTEN: Record<string, TriggerSpec> = {
   sub_cosmic_omen: { on: [{ kind: "roll_near", rangeFt: 30 }], what: "an attack roll or a saving throw made within 30 feet of them" },
   sub_restore_balance: { on: [{ kind: "roll_near", rangeFt: 60, edge: true }], what: "a roll made with advantage or disadvantage within 60 feet of them" },
   sub_violent_attraction: { on: [{ kind: "hit_seen", rangeFt: 60 }], what: "a weapon attack that hit, made by a creature within 60 feet of them" },
-  sub_magic_users_nemesis: { on: [{ kind: "cast", rangeFt: 60 }], what: "a creature casting a spell within 60 feet of them" , aimsAt: true },
+  // The casting half rides the window Counterspell uses, before the spell
+  // resolves (magic-users-nemesis.ts, casting-answered.ts): only a teleport is
+  // on record.
+  sub_magic_users_nemesis: { on: [{ kind: "teleport", rangeFt: 60 }], what: "a creature teleporting within 60 feet of them" , aimsAt: true },
   sub_spell_thief: { on: [{ kind: "cast", atHolder: true }], what: "a spell a creature has just cast at them" , aimsAt: true },
   hurl_through_hell: { on: [{ kind: "own_hit" }], what: "a creature they have hit with an attack this turn" , aimsAt: true },
-  sub_arcane_shot: { on: [{ kind: "own_hit" }], what: "an arrow of theirs that hit this turn" , aimsAt: true },
+  // Arcane Shot is no row here: its spend asks for the arrow itself (a bow's
+  // hit this turn, or one attack of the Attack action for the two options with
+  // no attack roll; src/lib/dm/mt-fb-arcane-shot.ts).
   sub_accursed_specter: { on: [{ kind: "death", byHolder: true, types: ["humanoid"] }], what: "a humanoid they have just slain" },
   sub_wings_unfurled: { on: [{ kind: "own_wind_step" }], what: "their Step of the Wind this turn" },
+  sub_call_the_hunt: { on: [{ kind: "own_rage_entered" }], what: "the rage they have just entered" },
+  sub_defy_death: {
+    on: [{ kind: "steadied", role: "steadied", how: ["death save"] }, { kind: "steadied", role: "steadier", how: ["spare the dying"] }],
+    what: "a death save of theirs that has just succeeded, or a creature they have just stabilized with spare the dying",
+  },
+  sub_reclaim_potential: { on: [{ kind: "own_echo_destroyed" }], what: "their echo, just destroyed by damage" },
+  sub_infectious_inspiration: { on: [{ kind: "inspired_success", rangeFt: 60 }], what: "a roll a creature within 60 feet of them has just made succeed with their Bardic Inspiration die" },
   // Authored reactions (src/lib/srd/authored-effects-data*.ts), taken with use_reaction.
   "perfected armor": { on: [{ kind: "turn_end", rangeFt: 30 }], what: "a creature ending its turn within 30 feet of them" , aimsAt: true },
+  // The Stone Rune's charm, on a creature in the fight's other side: the
+  // reaction lays it on a foe (authored-reactions.ts save_condition).
+  "stone rune": { on: [{ kind: "turn_end", rangeFt: 30, enemy: true }], what: "a creature ending its turn within 30 feet of them", aimsAt: true },
   skirmisher: { on: [{ kind: "turn_end", rangeFt: 5, enemy: true }], what: "an enemy ending its turn within 5 feet of them" },
-  "halo of spores": { on: [{ kind: "turn_start", rangeFt: 10 }], what: "a creature starting its turn within 10 feet of them" , aimsAt: true },
+  "halo of spores": { on: [{ kind: "turn_start", rangeFt: 10 }, { kind: "moved_near", rangeFt: 10 }], what: "a creature moving into a space within 10 feet of them or starting its turn there" , aimsAt: true },
   "tokens of the departed": DIES_NEAR(30),
   opportunist: { on: [{ kind: "struck_by_other", rangeFt: 5 }], what: "a creature within 5 feet of them that another creature has just hit" , aimsAt: true },
   "slayer's counter": { on: [{ kind: "save_on_self", prey: "slayer's prey" }], what: "a save forced on them by the creature under their Slayer's Prey" , aimsAt: true },
@@ -176,9 +252,12 @@ const WRITTEN: Record<string, TriggerSpec> = {
   "beguiling defenses": { on: [{ kind: "save_on_self", against: "charmed" }], what: "a creature's attempt to charm them, a save against being charmed it forced" , aimsAt: true },
   "feedback loop": { on: [{ kind: "damaged" }], what: "damage a creature has just dealt them" , aimsAt: true },
   "the mark burns back": { on: [{ kind: "damaged", spell: true }], what: "damage a creature has just dealt them with a spell" , aimsAt: true },
+  "voice of authority": { on: [{ kind: "cast", atHolder: true, byFeatureHolder: true, minLevel: 1 }], what: "a spell of 1st level or higher their cleric has just cast that targets them" },
+  "unstable backlash": { on: [{ kind: "damaged" }, { kind: "save_on_self", failed: true }], what: "damage they have just taken, or a save they have just failed" },
   "duelist's flourish": { on: [{ kind: "missed", melee: true }], what: "a melee attack that has just missed them" , aimsAt: true },
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
+  "empowered healing": { on: [{ kind: "heal_roll", rangeFt: 5 }], what: "healing dice they or a creature within 5 feet of them rolled for a spell this turn" },
 };
 
 // Raging Storm's environments each wait for their own thing.
@@ -256,7 +335,9 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
     case "own_wind_step":
       return event.kind === "wind_step" && self(event.characterId);
     case "save_on_self":
-      return event.kind === "save" && self(event.characterId) && Boolean(event.creatureId) && (!on.prey || event.creatureId === ctx.quarry(on.prey)) && (!on.against || textKey(event.against ?? "") === textKey(on.against));
+      return event.kind === "save" && self(event.characterId) && Boolean(event.creatureId) && (!on.failed || event.success === false) && (!on.prey || event.creatureId === ctx.quarry(on.prey)) && (!on.against || textKey(event.against ?? "") === textKey(on.against));
+    case "teleport":
+      return event.kind === "teleport" && event.enemy === true && reach(event.creatureId, on.rangeFt);
     case "death":
       return (
         event.kind === "death" &&
@@ -270,11 +351,41 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
     case "turn_start":
       return event.kind === "turn_start" && !self(event.creatureId ?? "") && reach(event.creatureId, on.rangeFt);
     case "cast":
-      return event.kind === "cast" && Boolean(event.creatureId) && !self(event.creatureId ?? "") && (!on.atHolder || self(event.characterId)) && reach(event.creatureId, on.rangeFt);
+      return (
+        event.kind === "cast" &&
+        Boolean(event.creatureId) &&
+        !self(event.creatureId ?? "") &&
+        (!on.atHolder || self(event.characterId)) &&
+        (!on.byFeatureHolder || (Boolean(ctx.featureHolderId) && event.creatureId === ctx.featureHolderId)) &&
+        (on.minLevel === undefined || (event.level ?? 0) >= on.minLevel) &&
+        reach(event.creatureId, on.rangeFt)
+      );
     case "pet_damage":
       return event.kind === "pet_damage" && self(event.characterId) && (event.amount ?? 0) > 0;
     case "surge":
       return event.kind === "surge" && event.characterId === (ctx.featureHolderId ?? ctx.holderId) && reach(event.characterId, on.rangeFt);
+    case "own_rage_entered":
+      return event.kind === "rage_entered" && self(event.characterId);
+    case "steadied":
+      return (
+        event.kind === "steadied" &&
+        (on.role === "steadied" ? self(event.characterId) : self(event.creatureId ?? "") && !self(event.characterId)) &&
+        (!on.how || on.how.includes(event.how ?? ""))
+      );
+    case "own_echo_destroyed":
+      return event.kind === "echo_destroyed" && self(event.characterId);
+    case "inspired_success":
+      return event.kind === "inspired_success" && self(event.creatureId ?? "") && !self(event.characterId) && reach(event.characterId, on.rangeFt);
+    case "moved_near":
+      return (
+        event.kind === "moved_near" &&
+        self(event.characterId) &&
+        Boolean(event.creatureId) &&
+        (event.feet ?? Infinity) <= on.rangeFt &&
+        (event.fromFeet ?? Infinity) > on.rangeFt
+      );
+    case "heal_roll":
+      return event.kind === "heal_roll" && reach(event.creatureId, on.rangeFt);
   }
 }
 

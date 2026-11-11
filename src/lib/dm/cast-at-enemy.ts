@@ -8,8 +8,11 @@
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
-import { describeConditionDuration } from "@/lib/dm/condition-logic";
+import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { z } from "zod";
 import { placeSpellZone } from "@/lib/dm/zone-cast";
@@ -19,7 +22,7 @@ import { coverFor } from "@/lib/dm/attack-spatial";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, recordEncounterTarget } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyConditions, recordEncounterTarget } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression } from "@/lib/dice";
@@ -44,12 +47,16 @@ import { planSpellFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { charmedBy } from "@/lib/dm/enemy-profile";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
+import { majestyFailsSave } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castDamageType } from "@/lib/dm/ar-ws-awakened";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { landSpellDamage } from "@/lib/dm/cast-at-enemy-damage";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { areaShareProblem, markRepeatStruck, openAreaCast, recordAreaShare, repeatStrikeProblem } from "@/lib/dm/area-casting";
+import { castShares } from "@/lib/srd/spell-mechanics";
 // What the spell does beyond damage and condition (src/lib/dm/spell-riders.ts).
 import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip } from "@/lib/dm/spell-riders";
 import { layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
@@ -166,6 +173,9 @@ export function handleCastAtEnemy(
   if (charmedBy(sheet.conditions, sheet.conditionMeta, enemy.id)) {
     return { error: `${sheet.name} is charmed by ${enemy.displayName} and cannot target it with harmful magic. Nothing was spent; pick another target.`, refused: "rules" };
   }
+  // A Beguiling Arrow's charm ends when the ally it charmed the creature by
+  // casts at it: harm or a save either way (mt-fb-arrow-riders.ts).
+  beguilingBroken(campaign.id, sheet.id, enemy.id);
   // A caster Etherealness or Maze took away reaches nobody here (spell-planes.ts).
   const away = castingHold(sheet);
   if (away) {
@@ -221,7 +231,8 @@ export function handleCastAtEnemy(
   if (redirect) {
     return redirect;
   }
-  const facts = spellFactsFor(args.spell, authors);
+  // The range as this caster casts it (Distant Spell: mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet, spellFactsFor(args.spell, authors));
   const mech = resolvedMech?.mech ?? null;
   const corrections: string[] = [];
   // A name the server does not know is read against the sheet first: a typo
@@ -250,7 +261,7 @@ export function handleCastAtEnemy(
         : "A successful save means no effect (the pack says so).",
     );
   }
-  const damageType = mech?.damageType ?? args.damageType;
+  let damageType = mech?.damageType ?? args.damageType;
   const spellName = resolvedMech?.name ?? facts?.name ?? args.spell;
   const spellLevel = resolvedMech?.spellLevel ?? facts?.level ?? 1;
   // What the spell rolls from the slot the caller named; checked here so a
@@ -363,6 +374,12 @@ export function handleCastAtEnemy(
   if (area) {
     return area;
   }
+  // A casting that takes one creature and holds one more (Twinned Spell)
+  // takes a second creature, never the first again (mt-srd-metamagic.ts).
+  const again = repeating ? null : secondTargetProblem(openAreaCast(encounter, sheet.id, spellName), castShares(mech, { spellLevel, slotLevel: args.level ?? null, casterLevel: sheet.level }), spellName, target);
+  if (again) {
+    return again;
+  }
 
   // The cast itself, through the one guard (src/lib/dm/cast-guard.ts): who
   // may cast, what they hold, the slot of the spell's own level when none is
@@ -377,6 +394,8 @@ export function handleCastAtEnemy(
       ...(args.level ? { level: args.level } : {}),
       // Magic Missile: the darts named, or every dart the casting holds.
       ...(mech?.darts ? { uses: args.darts ?? 20 } : {}),
+      // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
+      ...(args.damageType ? { swapType: args.damageType } : {}),
       via,
       reason: (args.reason ?? "").slice(0, 200),
     }),
@@ -389,6 +408,7 @@ export function handleCastAtEnemy(
   if (beam) {
     noteBeamAction(campaign.id, sheet.id);
   }
+  damageType = castDamageType(sheet, cast, { name: spellName, asked: args.damageType, own: mech?.damageType, second: mech?.secondType, level: facts?.level ?? null, authors });
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : undefined;
   // The darts this call throws: what the casting still held, in a fight.
   const darts = mech?.darts && typeof cast.uses === "number" ? cast.uses : args.darts;
@@ -412,6 +432,8 @@ export function handleCastAtEnemy(
     ...(cast.droppedConcentration ? { droppedConcentration: cast.droppedConcentration } : {}),
     ...(cast.shares ? { shares: cast.shares } : {}),
     ...(cast.continuing ? { continuing: cast.continuing } : {}),
+    // What a Metamagic option paid did to this cast (mt-srd-metamagic.ts).
+    ...(cast.metamagic ? { metamagic: cast.metamagic } : {}),
   };
   // A Flaming Sphere is cast onto the board, not at a creature: it appears
   // beside the one named, and nobody saves until a creature ends its turn
@@ -460,14 +482,27 @@ export function handleCastAtEnemy(
   // lasting effects (src/lib/dm/forced-save.ts). Auto-hit spells (Magic
   // Missile, Heat Metal) and spells that allow none (Power Word Stun) skip it.
   let saved = false;
-  const noSave = autoHit || Boolean(mechCondition?.noInitialSave) || mechCondition?.hpAtMost !== undefined;
+  // Read Thoughts: "The target automatically fails its saving throw against
+  // the spell", and the reading ends with the casting (read-thoughts.ts).
+  const readFails = isSuggestion(spellName) && thoughtsReadBy(enemy, sheet.id);
+  if (readFails) {
+    const reading = enemy.conditions.find((entry) => isConditionNamed(entry, READ_THOUGHTS)) ?? READ_THOUGHTS;
+    const cleared = removeConditions(enemy.conditions, enemy.conditionMeta as ConditionMetaMap, [reading]);
+    patchEnemyConditions(enemy.id, cleared.conditions, cleared.meta as typeof enemy.conditionMeta);
+    base.readThoughts = `${enemy.displayName}, whose thoughts ${sheet.name} reads, fails the save against ${spellName}.`;
+  }
+  const noSave = autoHit || readFails || Boolean(mechCondition?.noInitialSave) || mechCondition?.hpAtMost !== undefined;
   // Stinking Cloud cannot touch a creature immune to poison.
   const untouched = spellAutoSave(mech, enemy);
+  // Mantle of Majesty: the creature the bard charmed rolls no save.
+  const majesty = majestyFailsSave(sheet, spellName, charmedBy(enemy.conditions, enemy.conditionMeta as Parameters<typeof charmedBy>[1], sheet.id));
   if (noSave) {
     base.autoHit = true;
   } else if (untouched) {
     saved = true;
     Object.assign(base, { saved: true, dc, note: untouched });
+  } else if (majesty) {
+    Object.assign(base, { autoFailed: majesty, dc, saved: false });
   } else {
     // A legendary creature spends a resistance on a failure that would bind
     // it, decided at the save so the damage follows the success too
@@ -480,7 +515,11 @@ export function handleCastAtEnemy(
       // Cover between the caster and the target counts on a DEX save,
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.
       cover: mech?.ignoresCover ? 0 : coverFor(encounter.id, sheet.id, enemy.id),
+      // Corona of Light leans only against fire and radiant spells.
+      ...(damageType ? { damageType } : {}),
       ...spellSaveOptions(mech, enemy),
+      // Heightened Spell paid for this cast (mt-srd-metamagic.ts).
+      ...heightenedSave(campaign, sheet.id),
       record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${spellName}` },
     });
     saved = save.success;
@@ -522,6 +561,7 @@ export function handleCastAtEnemy(
         damageExpression,
         damageType,
         spellLevel,
+        slotLevel,
         halfOnSave,
         saved,
         base,
@@ -573,9 +613,10 @@ export function handleCastAtEnemy(
   }
   if (binds && !saved) {
     const rounds = mechCondition ? undefined : args.rounds;
-    const meta = mechCondition
+    // Extended Spell paid for this cast doubles what it lays (mt-srd-metamagic.ts).
+    const meta = extendedMeta(sheet, mechCondition
       ? conditionMetaFor(mechCondition, picked?.rules ?? {}, source, { ability, dc }, enemy.id)
-      : spellConditionMeta({ rounds, saveEnds: !rounds }, source, { ability, dc });
+      : spellConditionMeta({ rounds, saveEnds: !rounds }, source, { ability, dc }));
     // A word's extra condition lasts as that condition does, not as the
     // spell: Grovel's prone until it stands, Halt's stop to the end of the
     // creature's next turn.

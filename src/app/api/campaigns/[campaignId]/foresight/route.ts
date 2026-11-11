@@ -42,12 +42,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
         ? "Flash of Genius"
         : holdsFeature(sheet, "favored by the gods")
           ? "Favored by the Gods"
-          : null;
+          : holdsFeature(sheet, "convergent future")
+            ? "Convergent Future"
+            : holdsFeature(sheet, "bend luck")
+              ? "Bend Luck"
+              : null;
   // Portent wants a number left; the others are watched for while the
   // character holds them, and a stop is only made while a use (and the
   // reaction, where it costs one) is there to spend (foresight.ts).
   if (parsed.data.on && !power) {
-    return Response.json({ error: `${sheet.name} holds no foretold number, Chronal Shift, Flash of Genius or Favored by the Gods.` }, { status: 409 });
+    return Response.json({ error: `${sheet.name} holds no foretold number, Chronal Shift, Flash of Genius, Favored by the Gods, Convergent Future or Bend Luck.` }, { status: 409 });
   }
   const updated = setSheetWatching(sheet.id, parsed.data.on && encounter ? encounter.id : null);
   if (updated) {

@@ -11,6 +11,11 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
+
+// The turn-budget mark a pet's attack leaves (Bestial Fury, Exceptional
+// Training read it).
+export const petAttackedKey = (name: string) => `pet-attacked:${textKey(name)}`;
 
 // What commanding a pet's attack costs its owner in a fight (SRD 5.1 and
 // the subclasses' own text): a Beast Master's companion takes the ranger's
@@ -38,7 +43,18 @@ export function petAttackCost(
   }
   let spent;
   let economy: string;
-  if (pet.kind === "familiar") {
+  // The turn's mark that this creature attacked: Bestial Fury's second
+  // attack follows it, and Exceptional Training's bonus command is refused
+  // after it (src/lib/dm/pet-command.ts).
+  const attacked = petAttackedKey(pet.name);
+  const furyKey = `pet-fury:${textKey(pet.name)}`;
+  // Bestial Fury (Beast Master 11): "Your companion makes two attacks when
+  // you command it to attack": the second costs nothing more.
+  const fury = pet.kind === "beast_companion" && holdsFeature(sheet, "Bestial Fury") && budget.oncePerTurn.includes(attacked) ? claimOncePerTurn(budget, furyKey) : null;
+  if (fury) {
+    spent = { ok: true as const, budget: fury };
+    economy = `${pet.name} makes its second attack of the command (Bestial Fury).`;
+  } else if (pet.kind === "familiar") {
     const once = claimOncePerTurn(budget, `familiar:${textKey(pet.name)}`);
     if (!once) {
       return { error: `${pet.name} has already attacked with its reaction this turn.`, refused: "rules" };
@@ -55,7 +71,7 @@ export function petAttackCost(
   if (!spent.ok) {
     return toolError(spent);
   }
-  const priced = spent.budget;
+  const priced = spent.budget.oncePerTurn.includes(attacked) ? spent.budget : { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, attacked] };
   return {
     commit: () => {
       const live = getActiveEncounter(encounter.campaignId) ?? encounter;

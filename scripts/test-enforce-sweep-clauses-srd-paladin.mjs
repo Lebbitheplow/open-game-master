@@ -3,7 +3,7 @@
 // scripts/clauses/srd-classes.json; this file holds how each clause that
 // names it is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -57,6 +57,24 @@ P["paladin.lay-on-hands.cure"] = async () => {
   if (!out.ok) out = await t.use(who, "lay on hands", { amount: 5, variant: "cure", targetCharacterId: ally.id });
   assert.equal(t.has(ally, "poisoned"), false, `5 points of the pool did not neutralize the poison (${out.ok ? `accepted: ally at ${t.sheet(ally).currentHp} hit points, still poisoned` : out.error})`);
   assert.equal(t.used(who, "lay_on_hands"), 5);
+  // "multiple diseases and ... multiple poisons with a single use ...
+  // expending hit points separately for each one": a disease that has set in
+  // and a poison, 10 points, one action.
+  const t2 = await rig.table();
+  const healer = paladin(t2, 5);
+  const sick = t2.hero({ class: "fighter", level: 5 });
+  const caught = await t2.invoke("afflict", { characterId: sick.id, kind: "disease", name: "Sight Rot", save: false });
+  assert.equal(caught.ok, true, caught.error);
+  const days = await t2.invoke("pass_time", { amount: 2, unit: "days" });
+  assert.equal(days.ok, true, days.error);
+  const ill = t2.sheet(sick).conditions.filter((entry) => entry !== "poisoned");
+  assert.ok(ill.length, "the staging: the disease has set in");
+  t2.patch(sick, { conditions: [...t2.sheet(sick).conditions, "poisoned"] });
+  const one = await t2.use(healer, "lay on hands", { amount: 10, variant: "cure", targetCharacterId: sick.id });
+  assert.equal(one.ok, true, one.error);
+  assert.equal(t2.used(healer, "lay_on_hands"), 10, "5 points for each");
+  assert.equal(t2.has(sick, "poisoned"), false, "the poison stayed");
+  assert.deepEqual(t2.sheet(sick).conditions.filter((entry) => ill.includes(entry)), [], "the disease stayed");
 };
 
 P["paladin.sacred-oath.oaths"] = async () => {
@@ -153,6 +171,16 @@ P["paladin.channel-divinity-sacred-weapon.ends-unconscious"] = async () => {
   assert.equal(down.ok, true, down.error);
   assert.ok(t.has(who, "unconscious"));
   assert.equal(t.has(who, mark), false, "the paladin fell unconscious and the weapon is still sacred");
+  // "If you are no longer holding or carrying this weapon": the longsword
+  // leaves the sheet, and the effect goes with it.
+  const t2 = await rig.table();
+  const second = devotion(t2, 3);
+  await t2.fight([second]);
+  assert.equal((await t2.use(second, "channel divinity", { variant: "sacred weapon" })).ok, true);
+  const held = t2.sheet(second).conditions.find((entry) => /sacred weapon/i.test(entry));
+  assert.ok(held, "the staging: the weapon is sacred");
+  t2.patch(second, { equipment: [] });
+  assert.equal(t2.has(second, held), false, "the weapon is gone from the paladin and the effect is still on them");
 };
 
 P["paladin.aura-of-devotion.charmed"] = async () => {
@@ -204,4 +232,55 @@ P["paladin.holy-nimbus.once"] = async () => {
   assert.equal(third.ok, false, "a short rest gave Holy Nimbus back");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-paladin.mjs", P);
+// The light a token carries on the board, in tiles (the board's vision reads
+// it: src/lib/battlemap/los.ts litTiles).
+async function carried(t, who) {
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  const token = maps.getTokenByRef(t.kit.map().id, who.id);
+  return { bright: token.lightRadius, dim: token.lightDimRadius, minutes: token.lightMinutes };
+}
+
+P["paladin.channel-divinity-sacred-weapon.light"] = async () => {
+  const t = await rig.table();
+  const who = devotion(t, 3);
+  await t.fight([who]);
+  assert.equal((await carried(t, who)).bright, 0, "the staging: the paladin carries no light");
+  const out = await t.use(who, "channel divinity", { variant: "sacred weapon" });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(await carried(t, who), { bright: 4, dim: 8, minutes: 1 }, "bright light 20 feet, dim 20 feet beyond, for the minute");
+};
+
+P["paladin.holy-nimbus.light"] = async () => {
+  const t = await rig.table();
+  const who = devotion(t, 20);
+  await t.fight([who]);
+  const out = await t.use(who, "holy nimbus");
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(await carried(t, who), { bright: 6, dim: 12, minutes: 1 }, "bright light 30 feet, dim 30 feet beyond, for the minute");
+};
+
+// A summoned skeleton is a sheet whose record says what it is.
+const SKELETON = { spell: "Animate Dead", casterName: "the staging", form: "Skeleton", creatureType: "undead", size: "Medium", cr: 0.25, attacks: [], attacksPerTurn: 1, resist: "", concentration: false, castId: "probe" };
+
+P["paladin.lay-on-hands.undead"] = async () => {
+  const t = await rig.table();
+  const who = paladin(t, 5);
+  const living = t.hero({ class: "fighter", level: 5 });
+  const dead = t.hero({ class: "fighter", level: 5 });
+  await t.fight([who, living, dead]);
+  t.kit.place(dead.id, 5, 6);
+  t.patch(living, { currentHp: 10 });
+  t.patch(dead, { currentHp: 10 });
+  // The record a spell that makes a creature writes (src/lib/dm/summon-store.ts).
+  (await import("../src/lib/db/sheets.ts")).setSheetSummon(dead.id, { ...SKELETON, casterId: who.id });
+  assert.equal(t.sheet(dead).summon?.creatureType, "undead", "the staging: the sheet is an undead");
+  const refused = await t.use(who, "lay on hands", { amount: 10, targetCharacterId: dead.id });
+  assert.equal(refused.ok, false, "Lay on Hands healed an undead");
+  assert.equal(t.sheet(dead).currentHp, 10);
+  assert.equal(t.used(who, "lay_on_hands"), 0, "the refused touch spent the pool");
+  const healed = await t.use(who, "lay on hands", { amount: 10, targetCharacterId: living.id });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(t.sheet(living).currentHp, 20);
+};
+
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-paladin.mjs", P);

@@ -5,6 +5,7 @@
 // the attack's profile and options are known. The budget is a copy; nothing
 // is stored until pc-attack.ts stores it.
 
+import { markAttackedWith } from "@/lib/dm/mt-srd-ranger";
 import { MELEE_ATTACKED, SECOND_BONUS_ATTACK } from "@/lib/dm/feature-bonus-attacks";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { evadesOpportunityAttacksAfterMelee, isPolearm, MOBILE_ATTACKED, ONE_HANDED_ATTACKED, POLEARM_READY } from "@/lib/srd/feat-combat";
@@ -12,6 +13,7 @@ import { ACTION_SURGED, attacksLeft, spendAction, spendAttack, type SpendResult,
 import { usesLeft } from "@/lib/dm/bonus-routes";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
+import { flurryStrikeRefusal, holdsRow, sunBoltStrike, swingMarks } from "@/lib/dm/mt-mr-turn";
 import { loadingProblem, withLoadingFired } from "@/lib/dm/attack-rules";
 import { withClawsExtra } from "@/lib/dm/authored-attacks";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
@@ -138,12 +140,18 @@ export function spendAttackEconomy(input: {
         : kind === "spell"
           ? // The cast guard charges the casting time in pc-attack.ts.
             { ok: true as const, budget }
-          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike", flurry: args.flurryStrike === true });
+          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike" || sunBoltStrike(sheet, profile.weapon), flurry: args.flurryStrike === true });
     if (!spend.ok) {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }
     flurryStrike = (spend.budget.flurryStrikes ?? 0) < flurryBefore;
-    budget = spend.budget;
+    // The monk and rogue subclasses' marks on the swing, and Intoxicated
+    // Frenzy's different creatures (mt-mr-turn.ts).
+    const frenzy = flurryStrike ? flurryStrikeRefusal(sheet, budget, enemyId) : null;
+    if (frenzy) {
+      return { refused: frenzy };
+    }
+    budget = swingMarks(spend.budget, { unarmed: profile.weapon === "Unarmed strike", inAttackAction: usesAttackAction && !flurryStrike, flurryStrike, enemyId, psychicBlade: textKey(profile.weapon) === "psychic blade" });
     // Form of the Beast's claws: one more claw attack in the Attack action,
     // once a turn (src/lib/dm/authored-attacks.ts).
     if (usesAttackAction) {
@@ -177,9 +185,13 @@ export function spendAttackEconomy(input: {
     if (hasHordeBreaker(sheet) && !budget.oncePerTurn.includes(`${ATTACKED}${enemyId}`)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, `${ATTACKED}${enemyId}`] };
     }
+    if (hasHordeBreaker(sheet) && weaponAttack) {
+      budget = markAttackedWith(budget, enemyId, profile.weapon);
+    }
     // Mobile and Skirmisher: the creature attacked in melee makes no
     // opportunity attack against them this turn (opportunity.ts).
-    if (!profile.ranged && evadesOpportunityAttacksAfterMelee(sheet) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
+    // Fancy Footwork is the same rule for a Swashbuckler (mt-mr-turn.ts).
+    if (!profile.ranged && (evadesOpportunityAttacksAfterMelee(sheet) || holdsRow(sheet, "rogue::Fancy Footwork")) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, `${MOBILE_ATTACKED}${enemyId}`] };
     }
     if (usesAttackAction) {

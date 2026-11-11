@@ -66,18 +66,21 @@ ollama create qwen3.6-dm -f models/qwen3.6-dm.Modelfile
 ### Context window
 
 The storyteller needs a context window of at least 24K tokens to narrate and
-32K to run fights; 48K or more is recommended. The GM's instructions and the
+40K to run fights; 48K or more is recommended. The GM's instructions and the
 compact tool set come to about 15K tokens for a lone level 1 hero before any
 story is told, and about 20K for a party of four (a caster's spell rules and
 each hero's sheet add to them); a fight's rules and turn order add about 6K
-more. Every request is fitted to the window the backend really has
+more. A four-hero fight measures about 30K, so 40K leaves room for a
+tokenizer that counts more than the app's estimate (characters divided by
+four), for the later calls of a turn and for a longer story. Every request is
+fitted to the window the backend really has
 ([request-fit.ts](../src/lib/dm/request-fit.ts)):
 
 | Window | What plays |
 |---|---|
 | under 24K | a lone low-level hero narrates on the compact tool set; a larger party is offered only the essential tools (a roll, a question, a note, a whisper); too small for the instructions, a turn is refused with a note naming the fix |
 | 24K (`-c 24576`) | narration, exploration and checks on the compact tool set, for a party of four; a fight turn can be refused for room |
-| 32K (`-c 32768`) | fights too, on the compact tool set, with only the last few turns in view |
+| 40K (`-c 40960`) | fights too, on the compact tool set, with only the last few turns in view |
 | 48K (`-c 49152`) | everything, on the trimmed tool set, with recent turns in view |
 | 64K (`-c 65536`) | the default: the full tool set and a long transcript |
 

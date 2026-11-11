@@ -39,7 +39,7 @@ export const SPOTS = {
 export const STATES = [
   "fresh", "action-spent", "bonus-spent", "reaction-spent", "zero-hp", "stunned", "prone", "grappled",
   "blinded", "darkness", "silenced", "no-free-hand", "raging", "concentrating", "foe-30ft", "foe-100ft",
-  "foe-invisible", "out-of-fight", "hit-on-hero", "hit-on-ally", "failed-save",
+  "foe-invisible", "out-of-fight", "hit-on-hero", "hit-on-ally", "failed-save", "ally-dead",
 ];
 
 // The creature types a refused card is tried against before the refusal is

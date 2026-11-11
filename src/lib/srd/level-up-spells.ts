@@ -32,6 +32,7 @@ import { thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-ca
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
+import { originSwap } from "@/lib/dm/ar-ws-origin-swap";
 
 // A name no list carries: a 2024-only spell says so, anything else is unknown.
 function unknownSpell(name: string, list: string): string {
@@ -104,7 +105,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
     spellbook: [...before.spellbook],
     ...(input.features ? { features: input.features } : {}),
   };
-  const granted = grantedSpellsOf(after);
+  let granted = grantedSpellsOf(after);
   const isGranted = (name: string) => has(granted, name);
   // The Mystic Arcanum is the warlock's tables', read for whatever counts
   // as one: the warlock, a workshop class on its list, or a pact caster with
@@ -135,7 +136,17 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
       }
     }
     const forget = (picks.forget ?? "").trim();
-    if (forget) {
+    // One of a sorcerer origin's own spells given up (a Divine Soul's affinity
+    // spell, a psionic or clockwork spell) is replaced under its feature's
+    // rule and stays free of the count (src/lib/dm/ar-ws-origin-swap.ts).
+    const swapped = forget ? originSwap({ before, after, forget, top, spellOf: input.spellOf }) : null;
+    if (swapped && "error" in swapped) {
+      return { error: swapped.error };
+    }
+    if (swapped) {
+      Object.assign(after, { features: swapped.features, known: swapped.known, prepared: swapped.prepared, cantrips: swapped.cantrips });
+      granted = grantedSpellsOf(after);
+    } else if (forget) {
       if (after.style !== "known" || !has(before.known, forget)) {
         return { error: `${forget} is not a spell this character knows, so it cannot be given up for another.` };
       }

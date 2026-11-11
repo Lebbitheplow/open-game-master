@@ -13,11 +13,15 @@
 //
 // This module must not import mutations.ts (which imports it).
 // Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
+import { ragesBeyondDeath } from "@/lib/dm/mt-fb-rage-death-logic";
 import "@/lib/dm/faithful-summons";
 import { immersedResistance } from "@/lib/dm/underwater";
 import { deathWardPatch } from "@/lib/dm/spell-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { soulHold } from "@/lib/dm/soul-of-artifice";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
@@ -26,6 +30,7 @@ import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
+import { masteryOfDeathHold } from "@/lib/dm/mastery-of-death";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
 import {
   damageAdjust,
@@ -38,7 +43,9 @@ import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
+import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
@@ -46,6 +53,7 @@ import { summonImmunities, summonResistances, summonVulnerabilities } from "@/li
 import { summonAfterDamage } from "@/lib/dm/summon-store";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
+import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 
@@ -61,6 +69,9 @@ export type PcDamageInput = {
   // From a spell, a magic weapon or strikes that count as magical, so
   // resistance to nonmagical attacks does not apply.
   magical?: boolean;
+  // From an attack (a weapon's or a creature's own), not a trap or a fall:
+  // Heavy Armor Master's "damage from nonmagical attacks is reduced by 3".
+  attack?: boolean;
   // From a spell: Spell Resistance and Aura of Warding resist it, and so
   // does a form or a summoned creature whose block resists "damage from
   // spells".
@@ -88,6 +99,10 @@ export type PcDamageInput = {
   // Features whose resistance does not hold against this blow (Emissary of
   // Redemption against a creature the paladin attacked).
   exceptFeatures?: string[];
+  // No creature dealt it: a fall, a trap, a hazard, or the GM's apply_damage
+  // with no attacker. A resistance to damage "dealt by other creatures"
+  // (Emissary of Redemption) does not meet it.
+  noCreature?: boolean;
   reason?: string;
 };
 
@@ -96,14 +111,19 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature">;
 
 export type BlowDefenses = {
   resisted: string;
   immune: string;
   vulnerable: string;
   flags: { magical: boolean; spell: boolean; silvered?: boolean; adamantine?: boolean; goodWielder?: boolean };
+  // Taken off the bludgeoning, piercing or slashing of the blow before
+  // resistance (Heavy Armor Master, src/lib/srd/feat-effects.ts).
+  reduceWeapon: number;
 };
+
+const WEAPON_TYPES = new Set(["bludgeoning", "piercing", "slashing"]);
 
 // The defenses a character meets a blow with: their own resistances, an
 // ally's aura (Aura of Warding, Shielding Storm), a summoned creature's block,
@@ -125,17 +145,22 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   const shape = sheet.wildShape;
   const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
   const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);
   // Inside Silence, thunder does nothing (zone-rules.ts).
   const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaignId, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
   const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");
+  // SRD 5.1, Heavy Armor Master: "While you are wearing heavy armor,
+  // bludgeoning, piercing, and slashing damage that you take from nonmagical
+  // weapons is reduced by 3." A creature's own form keeps no armor.
+  const reduceWeapon = input.attack && !shape ? heavyArmorMasterReduction(sheet, { wearingHeavyArmor: wearsHeavyArmor(sheet.equipment), damageType: "bludgeoning", magical: input.magical === true }) : 0;
   return {
     resisted,
     immune,
     vulnerable,
+    reduceWeapon,
     flags: { magical: input.magical === true, spell: input.spell === true, silvered: input.silvered, adamantine: input.adamantine, goodWielder: input.goodWielder },
   };
 }
@@ -152,10 +177,18 @@ export function meetDefenses(
   absorbed: number,
 ): { amount: number; note: string | null; met: Array<{ amount: number; type: string; note: string | null }> | null } {
   const { resisted, immune, vulnerable, flags } = defenses;
+  // The reduction comes off the first weapon-typed part, once a blow.
+  let cut = defenses.reduceWeapon ?? 0;
+  const reduced = (part: { amount: number; type: string }) => {
+    if (!cut || !WEAPON_TYPES.has(textKey(part.type))) return part;
+    const off = Math.min(cut, part.amount);
+    cut -= off;
+    return { ...part, amount: part.amount - off };
+  };
   const met = parts?.length
-    ? partsPast(parts, absorbed).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
+    ? partsPast(parts, absorbed).map(reduced).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
     : null;
-  const overflow = amount - absorbed;
+  const overflow = met ? 0 : reduced({ amount: amount - absorbed, type: type ?? "" }).amount;
   const adjusted = met
     ? { amount: met.reduce((sum, part) => sum + part.amount, 0), note: met.map((part) => part.note).filter(Boolean).join("; ") || null }
     : overflow > 0
@@ -436,10 +469,39 @@ export function applyPcDamage(
   if (grave) {
     return tookIt(grave);
   }
+  // Mastery of Death: a ki point keeps the monk at 1 hit point
+  // (src/lib/dm/mastery-of-death.ts).
+  const now = getSheetById(sheet.id) ?? sheet;
+  const mastery = masteryOfDeathHold(now, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(now)));
+  if (mastery) {
+    patchSheet(sheet.id, mastery);
+    audit(campaign, turnId, now, "apply_damage", { masteryOfDeath: true, ki: 1 }, reason, mastery);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(now)}`, masteryOfDeath: `${sheet.name} should have fallen, but Mastery of Death spends 1 ki to keep them at 1 hit point.` });
+  }
+  // Soul of Artifice: the artificer's reaction ends a readied attunement and
+  // keeps them at 1 hit point (src/lib/dm/soul-of-artifice.ts).
+  const soulSheet = getSheetById(sheet.id) ?? sheet;
+  const encounterNow = getActiveEncounter(campaign.id);
+  const soul = soulHold(soulSheet, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(soulSheet)), !encounterNow?.reactionsUsed.includes(sheet.id));
+  let soulInfo: Record<string, unknown> = {};
+  if (soul && "patch" in soul) {
+    patchSheet(sheet.id, soul.patch);
+    if (encounterNow) {
+      markReactionUsed(encounterNow, sheet.id);
+    }
+    audit(campaign, turnId, soulSheet, "apply_damage", { soulOfArtifice: soul.item }, reason, soul.patch);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(soulSheet)}`, soulOfArtifice: `${sheet.name} should have fallen, but Soul of Artifice ends the attunement to ${soul.item} with their reaction and keeps them at 1 hit point.` });
+  } else if (soul) {
+    soulInfo = { soulOfArtifice: soul.why };
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
-  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING)) {
+  // Nor does a zealot raging beyond death (mt-fb-rage-death-logic.ts): 0 hit
+  // points does not knock them unconscious, so the rage goes on.
+  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING) && !ragesBeyondDeath(sheet)) {
     const now = getSheetById(sheet.id) ?? sheet;
     const cleared = removeConditions(now.conditions, now.conditionMeta, [RAGING]);
     const patch: FullPatchSheetInput = {
@@ -458,6 +520,12 @@ export function applyPcDamage(
   const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true, input.nonlethal === true && !input.disintegrate);
   // Unconscious at 0 is incapacitated: a grapple they held ends.
   const letGo = math.dropped ? releaseGrapplesHeldBy(campaign, sheet.id) : [];
+  // And a mark held only while its holder can act ends, as it does when a
+  // condition incapacitates them: a dead warlock's Hexblade's Curse stood
+  // for its minute (ar-wbf-warlock-marks.ts).
+  if (math.dropped && endIncapacitationHeld(sheet.id).length) {
+    publishSheet(campaign, sheet.id);
+  }
   // Concentration: damage forces the CON save server-side. A form that broke
   // took the blow too, so the save is against all of it.
   const concentrationInfo = concentrationDamageHook(
@@ -469,6 +537,7 @@ export function applyPcDamage(
   return {
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
+    ...soulInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,

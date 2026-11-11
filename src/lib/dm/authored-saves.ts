@@ -32,7 +32,7 @@ import type { Advantage } from "@/lib/dice";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
 import { removeConditions, sightBlockedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 
@@ -80,7 +80,8 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
   if (!from || !to || off(from) || off(to)) {
     return true;
   }
-  return hasLineOfSightBetween(sightTerrainFor(map), map.width, spaceOf(from), spaceOf(to));
+  // `self`: an area its own caster sees through does not stand in their way (zones.ts seenThroughBy).
+  return hasLineOfSightBetween(sightTerrainFor(map, { self: fromRef }), map.width, spaceOf(from), spaceOf(to));
 }
 
 // Why a character cannot see a creature for a feature whose text says "you
@@ -155,7 +156,9 @@ function fielded(campaignId: string): CharacterSheet[] {
 export function authoredEnemySave(
   campaignId: string,
   enemy: EncounterEnemy,
-  options: { magical?: boolean } = {},
+  // `channel`: a save against a Channel Divinity option, which an enemy_save
+  // row with `channel` answers as it answers a spell (Elder Champion).
+  options: { magical?: boolean; damageType?: string; channel?: boolean } = {},
 ): { sources: Advantage[]; notes: string[] } {
   const sources: Advantage[] = [];
   const notes: string[] = [];
@@ -168,9 +171,12 @@ export function authoredEnemySave(
       spent.push(condition);
     }
   }
-  if (encounter && options.magical) {
+  if (encounter && (options.magical || options.channel)) {
     for (const holder of fielded(campaignId)) {
       for (const { effect, held } of activeAuthored(holder, "enemy_save")) {
+        if (!options.magical && !effect.channel) {
+          continue;
+        }
         const mine = holder.id === actorId;
         if (effect.when === "hidden") {
           if (mine && hasCondition(holder, "hidden")) {
@@ -184,7 +190,11 @@ export function authoredEnemySave(
             notes.push(`${held.feature}: disadvantage on the save against ${holder.name}'s spell`);
           }
         } else if (effect.when === "near") {
-          if ((effect.anyCaster || mine) && withinFeet(encounter.id, holder.id, enemy.id, effect.rangeFt ?? 10)) {
+          // Corona of Light: "disadvantage on saving throws against any
+          // spell that deals fire or radiant damage"; before this every
+          // spell's save in the light was at disadvantage.
+          const typed = !effect.damageTypes || effect.damageTypes.some((type) => words(options.damageType ?? "").map(textKey).includes(type));
+          if (typed && (effect.anyCaster || mine) && withinFeet(encounter.id, holder.id, enemy.id, effect.rangeFt ?? 10)) {
             sources.push("disadvantage");
             notes.push(`${held.feature}: disadvantage on the save within ${effect.rangeFt ?? 10} feet of ${holder.name}`);
           }
@@ -192,7 +202,7 @@ export function authoredEnemySave(
       }
       // Eldritch Strike: the fighter's mark, spent by the save against their spell.
       for (const { effect, held } of activeAuthored(holder, "mark")) {
-        if (effect.effect !== "save_disadv" || holder.id !== actorId) {
+        if (effect.effect !== "save_disadv" || holder.id !== actorId || !options.magical) {
           continue;
         }
         const mark = sourcedMark(enemy, effect.condition);

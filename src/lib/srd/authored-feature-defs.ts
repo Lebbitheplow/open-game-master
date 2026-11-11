@@ -21,9 +21,10 @@ export function authoredFeatureDefs(): Array<{
         kind: "weapon_damage_rider";
         dice: (level: number) => string;
         type: string;
-        when: "weapon" | "melee" | "ranged";
+        when: "weapon" | "melee" | "ranged" | "attack";
         oncePerTurn?: boolean;
         requiresCondition?: string;
+        weapon?: string;
       }
   >;
   guidance: string;
@@ -52,6 +53,7 @@ export function authoredFeatureDefs(): Array<{
               when: effect.when,
               ...(effect.oncePerTurn ? { oncePerTurn: true } : {}),
               ...(effect.requiresCondition ? { requiresCondition: effect.requiresCondition } : {}),
+              ...(effect.weapon ? { weapon: effect.weapon } : {}),
             },
           ],
           guidance,
@@ -59,6 +61,18 @@ export function authoredFeatureDefs(): Array<{
       }
     }
   }
-  return out;
+  // One entry for each name: the table answers a feature with its first
+  // matching entry, so a second effect under the same name (the
+  // Infiltrator's launcher rider beside Powered Steps) hid the first.
+  const merged: typeof out = [];
+  for (const entry of out) {
+    const seen = merged.find((other) => other.match.length === entry.match.length && other.match.every((term, index) => term === entry.match[index]));
+    if (seen) {
+      seen.effects.push(...entry.effects);
+    } else {
+      merged.push({ ...entry, effects: [...entry.effects] });
+    }
+  }
+  return merged;
 }
 

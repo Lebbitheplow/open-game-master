@@ -28,6 +28,7 @@
 
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
+import { needsNoFoodOrWater } from "@/lib/dm/mt-srd-monk";
 import { characterSave, lifestyleOf } from "@/lib/dm/between-io";
 import { livedLifestyle, purseOf } from "@/lib/dm/lifestyle";
 import { afterMeal, lifestyleFeeds, type Hunger } from "@/lib/dm/supplies-logic";
@@ -132,7 +133,7 @@ export function upkeepAtDawns(
   const next = { ...hunger };
   const waterRation = getClock(campaignId).waterRation;
   for (const stale of listSheets(campaignId)) {
-    if (stale.deathSaves?.dead) {
+    if (stale.deathSaves?.dead || needsNoFoodOrWater(stale)) {
       continue;
     }
     let sheet = stale;

@@ -10,17 +10,18 @@ import { isIncapacitated } from "@/lib/dm/condition-logic";
 
 type Held = { conditions: string[]; deathSaves?: { dead?: boolean } | null };
 
-let answer: ((campaignId: string, sheetId: string) => void) | null = null;
+// Every rule that answers a fall registers itself (Faithful Summons, a
+// bard's Countercharm ending): each is called, in the order registered.
+const answers: Array<(campaignId: string, sheetId: string) => void> = [];
 // One answer per character per handler, however many rows it wrote.
 const due = new Set<string>();
 
 export function onIncapacity(listener: (campaignId: string, sheetId: string) => void) {
-  answer = listener;
+  answers.push(listener);
 }
 
 export function noteIncapacity(campaignId: string, sheetId: string, before: Held | null, after: Held | null) {
-  const listener = answer;
-  if (!campaignId || !listener || due.has(sheetId) || !after || after.deathSaves?.dead) {
+  if (!campaignId || !answers.length || due.has(sheetId) || !after || after.deathSaves?.dead) {
     return;
   }
   if (!isIncapacitated(after.conditions) || (before && isIncapacitated(before.conditions))) {
@@ -31,10 +32,12 @@ export function noteIncapacity(campaignId: string, sheetId: string, before: Held
     due.delete(sheetId);
     // A script that closed its database the moment it finished must not
     // take the process down.
-    try {
-      listener(campaignId, sheetId);
-    } catch {
-      // Nothing to undo: the rows are written.
+    for (const listener of answers) {
+      try {
+        listener(campaignId, sheetId);
+      } catch {
+        // Nothing to undo: the rows are written.
+      }
     }
   });
 }

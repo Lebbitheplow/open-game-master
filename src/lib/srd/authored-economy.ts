@@ -7,6 +7,8 @@
 import { activeAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isNamed } from "@/lib/srd/feature-names";
+import { chargedFeet } from "@/lib/srd/mt-fb-run";
+import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 
 // An arrow missed this turn ("curving-shot:<enemyId>"): Curving Shot may
 // reroll it at another creature.
@@ -26,6 +28,9 @@ export const NO_BONUS_ATTACK_FEATURE = "No feature of theirs grants a bonus-acti
 export function authoredBonusAttackProblem(
   sheet: AuthoredSheet,
   budget: { attacksMade: number; castThisAction?: boolean; oncePerTurn?: string[] } | null,
+  // The creature the attack is aimed at, when the caller knows it: a bonus
+  // attack a run buys is made against the creature run at (`run`).
+  target?: { id?: string; size?: string },
 ): { feature: string } | { refused: ToolError } {
   const offers = activeAuthored(sheet, "bonus_attack");
   if (!offers.length) {
@@ -36,8 +41,10 @@ export function authoredBonusAttackProblem(
   const castWithAction = Boolean(budget?.castThisAction);
   const levelled = (budget?.oncePerTurn ?? []).includes("spell:levelled");
   for (const { effect, held } of offers) {
-    const ready =
-      effect.after === "attack"
+    const ran = !effect.run || (chargedFeet(budget?.oncePerTurn, target?.id) >= effect.run.feet && (!target?.size || sizeRank(target.size) <= sizeRank(effect.run.maxSize)));
+    const ready = !ran
+      ? false
+      : effect.after === "attack"
         ? (budget?.attacksMade ?? 0) > 0 && !castWithAction
         : effect.after === "telekinesis"
           ? isNamed(sheet.concentratingOn ?? "", "telekinesis")
@@ -51,8 +58,9 @@ export function authoredBonusAttackProblem(
     }
   }
   const first = offers[0];
-  const when =
-    first.effect.after === "attack"
+  const when = first.effect.run
+    ? `after they move at least ${first.effect.run.feet} feet straight toward a ${first.effect.run.maxSize} or smaller creature right before a melee weapon attack against it, and is made against that creature`
+    : first.effect.after === "attack"
       ? "after they take the Attack action"
       : first.effect.after === "telekinesis"
         ? "while they concentrate on telekinesis"

@@ -3,6 +3,7 @@ import { legendaryCountIn } from "@/lib/dm/ability-entries";
 import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { findMonsterAbility, normalizeAbilityLedgers, type AbilityLedger, type MonsterAbility } from "@/lib/dm/monster-abilities";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import type { TurnBudget } from "@/lib/dm/action-budget";
 import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
@@ -57,6 +58,11 @@ export type LegendaryState = {
   // began a new round, which the turn's table note says once the narration
   // is in.
   handoff?: { turnId: string; enemyIds: string[]; wrapped?: boolean; dying?: string[] };
+  // The backstop stopped on a held roll (src/lib/dm/backstop-calls.ts): the
+  // DM turn it belongs to, and where the close of that turn goes on once the
+  // roll is in: the whole close again (`narration`, the pass came first in
+  // it), or only the rest of the pass and the wake after it (`follow`).
+  backstop?: { turnId: string; then: "narration" | "follow" };
   // The enemies that have taken a bonus action in `round` (Nimble Escape's
   // Disengage or Hide).
   bonus?: { round: number; ids: string[] };
@@ -121,6 +127,12 @@ export type LegendaryState = {
   // until they act, last-hit.ts), by that turn's key: one reaction for the
   // pass (held-turn.ts).
   lateReacted?: { turn: string; ids: string[] };
+  // What the turn the pointer last left spent, kept past its end
+  // (encounter-tools.ts advancePointer): a call that ends its own turn (a
+  // Fathomless Plunge taking the warlock out of the order passes it on,
+  // settleTurn) still shows the action it paid, read where the live budget
+  // has gone to the next creature.
+  endedTurn?: TurnBudget;
 };
 
 export type LegendaryPurchaseRecord = {
@@ -163,6 +175,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const handoff = (record.handoff && typeof record.handoff === "object" ? record.handoff : null) as Record<string, unknown> | null;
   const heldMove = (record.heldMove && typeof record.heldMove === "object" ? record.heldMove : null) as Record<string, unknown> | null;
   const bonus = (record.bonus && typeof record.bonus === "object" ? record.bonus : null) as Record<string, unknown> | null;
+  const backstop = (record.backstop && typeof record.backstop === "object" ? record.backstop : null) as Record<string, unknown> | null;
   const idle = (record.idle && typeof record.idle === "object" ? record.idle : null) as Record<string, unknown> | null;
   const rest = (record.rest && typeof record.rest === "object" ? record.rest : null) as Record<string, unknown> | null;
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
@@ -198,6 +211,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
           },
         }
       : {}),
+    ...(backstop && typeof backstop.turnId === "string" ? { backstop: { turnId: backstop.turnId, then: backstop.then === "follow" ? ("follow" as const) : ("narration" as const) } } : {}),
     ...(bonus ? { bonus: { round: Number(bonus.round) || 0, ids: stringList(bonus.ids) } } : {}),
     ...(stringList(record.due).length ? { due: stringList(record.due) } : {}),
     ...(stringList(record.lost).length ? { lost: stringList(record.lost) } : {}),
@@ -235,6 +249,9 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(typeof record.turnStart === "string" && record.turnStart ? { turnStart: record.turnStart } : {}),
     ...(lateReacted && typeof lateReacted.turn === "string" && stringList(lateReacted.ids).length
       ? { lateReacted: { turn: lateReacted.turn, ids: stringList(lateReacted.ids) } }
+      : {}),
+    ...(record.endedTurn && typeof record.endedTurn === "object" && typeof (record.endedTurn as { ownerId?: unknown }).ownerId === "string"
+      ? { endedTurn: record.endedTurn as TurnBudget }
       : {}),
   };
 }

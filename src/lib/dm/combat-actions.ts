@@ -5,6 +5,7 @@
 // these with the `spend` that pays for it once nothing refuses.
 
 import { helpReachTiles } from "@/lib/srd/feat-combat";
+import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -139,7 +140,8 @@ export function help(
   if (foe && encounter) {
     const apart = tilesBetween(encounter.id, sheet.id, foe.id);
     // Tactical Support: the creature may be 30 feet away (feat-combat.ts).
-    const reach = helpReachTiles(sheet);
+    // Master of Tactics: "at up to 30 feet" for a Mastermind (mt-mr-turn.ts).
+    const reach = Math.max(helpReachTiles(sheet), holdsRow(sheet, "rogue::Master of Tactics") ? 6 : 0);
     if (apart !== null && (apart > reach || wallBetween(encounter.id, sheet.id, foe.id))) {
       return {
         error: `${sheet.name} is ${apart * 5} ft from ${foe.displayName}; Help on an attack is against a creature within ${reach * 5} ft of the helper. They move next to it first, or help an ability check instead.`,
@@ -174,6 +176,9 @@ export function contest(
   // A die bought for the Athletics check (Grappling Strike's Superiority
   // Die), paid once the contest's own checks pass, or its refusal.
   checkDie?: () => { die: string; label: string } | ToolError,
+  // Squares a push carries past the shove's own 5 feet (Charger's shove
+  // after a straight run: src/lib/dm/ar-wbf-feat-turn.ts chargerShove).
+  pushFurther = 0,
 ): ToolResult {
   const action = args.action as "grapple" | "shove";
   if (!encounter) {
@@ -265,7 +270,17 @@ export function contest(
   const condition = action === "grapple" ? "grappled" : "prone";
   if (action === "shove" && args.shove === "push") {
     // Five feet straight away from the shover, when the square is free.
-    const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+    let pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+    let feet = 5;
+    // Each further square on the same line, until something is in the way.
+    for (let more = 0; pushed.moved && more < pushFurther; more += 1) {
+      const next = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+      if (!next.moved) {
+        break;
+      }
+      pushed = next;
+      feet += 5;
+    }
     return {
       ok: true,
       action,
@@ -273,7 +288,7 @@ export function contest(
       contest: contested,
       success: true,
       applied: pushed.moved
-        ? `${enemy.displayName} is shoved 5 feet back to (${pushed.at.x},${pushed.at.y}). The server moved its token; the push provokes nothing.`
+        ? `${enemy.displayName} is shoved ${feet} feet back to (${pushed.at.x},${pushed.at.y}). The server moved its token; the push provokes nothing.`
         : `${enemy.displayName} is shoved but has nowhere to go: ${pushed.reason}. It stays where it is.`,
     };
   }

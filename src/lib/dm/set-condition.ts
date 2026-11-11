@@ -52,6 +52,8 @@ import { containsPhrase } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { afflictionStress } from "@/lib/dm/afflictions";
+// The marks that end when their holder is incapacitated (Hexblade's Curse).
+import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 
 // A sheet holds this many conditions at once (the stored list's own cap).
 export const MAX_CONDITIONS = 15;
@@ -472,8 +474,10 @@ export function handleSetCondition(
   if (isIncapacitated([normalized])) {
     const spell = breakConcentration(campaign, turnId, sheet.id, `became ${normalized}`);
     const released = releaseGrapplesHeldBy(campaign, sheet.id);
+    const ended = endIncapacitationHeld(sheet.id);
     lost = {
       ...(spell ? { concentrationBroken: `${sheet.name} loses concentration on ${spell}.` } : {}),
+      ...(ended.length ? { featureEnded: `${sheet.name}'s ${ended.join(" and ")} ends.` } : {}),
       ...(released.length
         ? { grappleEnded: `${sheet.name} lets go of ${released.join(", ")}.` }
         : {}),

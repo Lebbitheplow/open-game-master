@@ -195,11 +195,21 @@ test("the passive defs are the ones something else spends", () => {
   // Sentinel at Death's Door is spent by its reaction, when a critical offers it.
   // Searing Vengeance is spent in place of a death save (searing-vengeance.ts).
   // Faithful Summons is spent by the incapacity watch as the druid falls (faithful-summons.ts).
+  // Lunar Boons is spent by a Metamagic option meeting its spell at the cast (ar-ws-lunar-boons.ts).
   // WAVE1 R10: a pool spent only through another tool refuses a bare spend
   // (sorcery points, Lucky's points, Hurl Through Hell, Psionic Energy, the
   // drake, the after-roll counters), and a counter whose use is a spell is
   // spent by the cast (src/lib/srd/counter-casts.ts, Mystic Arcanum).
-  assert.deepEqual(passive, ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_glorious_defense", "sub_undying_sentinel", "art_restorative_reagents", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // WAVE2 D4: Superiority Dice too, spent by the maneuver that names it
+  // (src/lib/dm/maneuver-die.ts) or by use_resource with the maneuver named.
+  // Flash of Genius is spent on the card a check or save waits on, or at the
+  // watch stop before a roll that cannot wait (after-roll.ts, foresight.ts).
+  // Arcane Abeyance is spent by the cast that fills its bead (use_spell_slot
+  // with storeIn, src/lib/dm/ar-ws-abeyance.ts); Master Scrivener by its
+  // authored spend, with the spell to copy as the variant. Manifest Mind
+  // casting is spent by the spell cast from the mind's space
+  // (src/lib/dm/scribe-mind.ts castFromMind).
+  assert.deepEqual(passive, ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_superiority_dice", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_blessing_of_the_forge", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_lunar_boons", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_arcane_abeyance", "sub_manifest_mind_casts", "sub_master_scrivener", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_draconic_presence", "sub_glorious_defense", "sub_undying_sentinel", "art_flash_of_genius", "art_restorative_reagents", "art_chemical_mastery_restoration", "art_chemical_mastery_heal", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {
@@ -230,7 +240,6 @@ const NAMES_A_COST = /\b(?:bonus[- ]action|reaction|an action|action:)/i;
 const CHARGED_ELSEWHERE = {
   ki: "each use (Flurry, Patient Defense, Step of the Wind) costs its own",
   channel_divinity: "each option costs its own",
-  sub_superiority_dice: "each maneuver costs its own",
   cyberpunk_surge_momentum: "the cantrip's cast is the cost",
   horror_the_rite_remembers: "the cantrip's cast is the cost",
   post_apocalyptic_surge_of_change: "the cantrip's cast is the cost",
@@ -249,8 +258,8 @@ const CHARGED_ELSEWHERE = {
   sub_embodiment_of_the_law: "the enchantment spell's cast is the cost (the use marks it for the bonus action)",
 };
 
-// Sorcery points, Lucky's points, Psionic Energy, Telekinetic Master and
-// Waxing and Waning left the list above as passive: a pool spent only through
+// Sorcery points, Lucky's points, Psionic Energy, Telekinetic Master,
+// Waxing and Waning and Superiority Dice (WAVE2 D4) left the list above as passive: a pool spent only through
 // another call refuses a bare spend (WAVE1 R10), and a counter whose use is a
 // spell is spent by the cast (src/lib/srd/counter-casts.ts).
 test("every feature whose text names a cost carries it", () => {

@@ -37,6 +37,7 @@ import { speedFor } from "@/lib/srd";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 
@@ -55,6 +56,7 @@ function walkOf(campaign: Campaign, encounter: Encounter | null, sheet: Characte
   const footprintOf = footprintLookup(enemiesById);
   const traits = pcMoveTraits({
     width: map.width,
+    theme: map.theme, drawnTerrain: map.drawnTerrain,
     tokens,
     mover: token,
     sheet,
@@ -87,9 +89,20 @@ export function healArea(ctx: SpendContext, does: HealArea): ToolError | { resul
   const walks = does.rangeFt === "move";
   const walk = walks ? walkOf(campaign, encounter, sheet, party) : null;
   const rangeFt = typeof does.rangeFt === "number" ? does.rangeFt : effectiveSpeed(sheet.conditions, speedFor(sheet));
-  const targets = walk
+  const inReach = walk
     ? walk.order.map((id) => party.find((entry) => entry.id === id)!)
     : party.filter((entry) => entry.id === sheet.id || walks || !encounter || withinFeet(encounter.id, sheet.id, entry.id, rangeFt));
+  // "Creatures of your choice" (Turn the Tide): the one named, when one is;
+  // every hurt ally in reach healed whoever was named was the bug.
+  const named = does.chosen && ctx.args.targetCharacterId ? textKey(ctx.args.targetCharacterId) : null;
+  const targets = named ? inReach.filter((entry) => entry.id === ctx.args.targetCharacterId || textKey(entry.name) === named) : inReach;
+  if (named && !targets.length) {
+    // Said in words a player reads too (the Hand shows the refusal): "only
+    // nobody are" was the sentence when no one in reach was hurt.
+    const open = inReach.map((entry) => `${entry.name} (${entry.id})`).join(", ");
+    const within = open ? `of the characters it heals, only ${open} ${inReach.length === 1 ? "is" : "are"} within ${rangeFt} feet` : `nobody it heals is within ${rangeFt} feet`;
+    return { error: `${ctx.spend.name} cannot heal ${ctx.args.targetCharacterId}: ${within}. Nothing was spent.`, retry: true };
+  }
   if (!targets.length) {
     const who = does.belowHalf ? "at or under half their hit points" : "hurt";
     const reach = walks ? `${sheet.name} can walk past in ${rangeFt} feet` : `within ${rangeFt} feet${does.othersOnly ? ` of ${sheet.name}` : ""}`;

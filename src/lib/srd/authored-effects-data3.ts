@@ -36,7 +36,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "rogue::Master of Tactics": {
     subclass: "Mastermind",
-    effects: [{ kind: "bonus_route", action: "help", note: "Helping at up to 30 feet is the GM's to allow." }],
+    // The 30 feet are combat-actions.ts (holdsRow "rogue::Master of Tactics").
+    effects: [{ kind: "bonus_route", action: "help" }],
   },
   "rogue::Misdirection": {
     subclass: "Mastermind",
@@ -67,7 +68,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "rogue::Steady Eye": {
     subclass: "Inquisitive",
     effects: [
-      { kind: "check_adv", skills: ["perception", "investigation"], note: "The engine does not measure the half-speed move; the GM withholds it after a longer one." },
+      // "After moving no more than half your speed on your turn": the roll
+      // door writes the board's count as a condition of the moment
+      // (src/lib/dm/mt-mr-checks.ts withMovementFacts).
+      { kind: "check_adv", skills: ["perception", "investigation"], gate: { notCondition: "moved past half speed" } },
     ],
   },
   "rogue::Eye for Weakness": {
@@ -91,14 +95,26 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "rogue::Sudden Strike": {
     subclass: "Scout",
-    effects: [{ kind: "bonus_attack", after: "attack", note: "A second Sneak Attack on another creature is the GM's to allow." }],
+    // The second Sneak Attack of a turn, against another creature, is
+    // pc-attack-plan.ts secondSneakKey.
+    effects: [{ kind: "bonus_attack", after: "attack" }],
   },
   // A soul trinket held: advantage on Constitution saves and on death saves
   // (the "soul trinket" condition row), no resistance.
   "rogue::Tokens of the Departed": {
     subclass: "Phantom",
+    // The trinkets are counted, up to the proficiency bonus (mt-mr-trinkets.ts).
     reactions: [{ name: "Tokens of the Departed", does: { kind: "gain_condition", condition: "soul trinket", rounds: 14400 } }],
     effects: [{ kind: "save_adv", ability: "con", gate: { condition: "soul trinket" } }],
+    spends: [
+      {
+        name: "Question a Spirit",
+        action: "action",
+        // No gate: the trinket it destroys is asked by the resolver and by
+        // the card (mt-mr-hand.ts), so the spend is open only once one is held.
+        does: { kind: "mr", id: "question_spirit" },
+      },
+    ],
   },
   "rogue::Psionic Power (Soulknife)": {
     subclass: "Soulknife",
@@ -313,7 +329,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Guardian Coil",
         gate: { condition: "tentacle of the deep" },
-        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", rangeFt: 30 },
+        // "When you or a creature you can see takes damage while within 10
+        // feet of the tentacle": measured from the tentacle's zone.
+        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", nearZone: { spell: "tentacle of the deeps", feet: 10 } },
       },
     ],
   },
@@ -330,17 +348,28 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [
       { name: "Genie Kind", aliases: ["Patron Kind", "Genie's Kind"], fight: "out", does: { kind: "choose", options: ["Dao", "Djinni", "Efreeti", "Marid"] } },
       // Bottled Respite: "As an action, you can magically vanish and enter
-      // your vessel", for up to twice the proficiency bonus in hours.
-      { name: "Bottled Respite", pool: { id: "sub_genies_vessel" }, action: "action", does: { kind: "buff", condition: "in the genie's vessel", rounds: 2400 } },
+      // your vessel", for up to twice the proficiency bonus in hours: 1,200
+      // rounds (two hours) for each point of the warlock's own bonus.
+      // From 10th level (Sanctuary Vessel) "up to five willing creatures
+      // within 30 feet can come in with you": the party within 30 feet, five
+      // at most, each inside under the warlock's name (the condition's
+      // source), which the short rest and the Hit Dice inside read
+      // (src/lib/dm/genie-vessel.ts). Below it, the warlock alone.
+      {
+        name: "Bottled Respite",
+        pool: { id: "sub_genies_vessel" },
+        action: "action",
+        does: { kind: "buff", target: "allies", condition: "in the genie's vessel", rounds: 2400, roundsPerProf: 1200, rangeFt: 30, count: (level) => (level >= 10 ? 5 : 0) },
+      },
     ],
     effects: GENIE_KINDS.map(([kind, type]) => ({
       kind: "rider" as const,
       dice: "prof",
       type,
-      when: "weapon" as const,
+      // "a hit with an attack roll": a weapon's or a spell's.
+      when: "attack" as const,
       oncePerTurn: true,
       gate: { choice: kind },
-      note: "Genie's Wrath rides any attack roll that hits, a spell attack too; the GM adds it to a spell's.",
     })),
   },
   "warlock::Elemental Gift": {
@@ -376,7 +405,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "warlock::Radiant Soul": {
     subclass: "The Celestial",
-    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], note: "One radiant or fire damage roll of the spell, against one of its targets." }],
+    effects: [{ kind: "spell_rider", dice: "cha", damageTypes: ["radiant", "fire"], oneTarget: true, note: "One radiant or fire damage roll of the spell, against one of its targets." }],
   },
   // Hexblade's Curse: the warlock's condition marks the cursed creature
   // (its meta's quarry): +proficiency damage and a critical hit on 19-20
@@ -389,12 +418,14 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Hexblade's Curse",
         pool: { id: "sub_hexblades_curse" },
         action: "bonus",
-        // "curse a creature you can see within 30 feet of you".
+        // "curse a creature you can see within 30 feet of you", "or until
+        // ... you are incapacitated".
         does: {
           kind: "buff",
           quarry: true,
           sight: true,
           rangeFt: 30,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -404,7 +435,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "warlock::Hex Warrior": {
     subclass: "The Hexblade",
     spends: [{ name: "Hex Warrior Weapon", aliases: ["Hex Warrior"], fight: "out", does: { kind: "choose", options: HEX_WEAPONS } }],
-    effects: [{ kind: "weapon_ability", ability: "cha", note: "With Pact of the Blade, every pact weapon too; the GM names it as the hex weapon." }],
+    effects: [{ kind: "weapon_ability", ability: "cha", pactWeapons: true }],
   },
   "warlock::Armor of Hexes": {
     subclass: "The Hexblade",
@@ -416,11 +447,13 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Master of Hexes",
         action: "none",
+        takesBackCurseHeal: true,
         // "to another creature you can see within 30 feet of it".
         does: {
           kind: "buff",
           quarry: true,
           sight: true,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -435,7 +468,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "The Undead",
     effects: [
       { kind: "resist", types: ["bludgeoning", "piercing", "slashing"], gate: { condition: "spirit projection" } },
-      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects, the healing in Form of Dread and the spells without components are the GM's to apply." },
+      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects and the healing in Form of Dread are the GM's to apply." },
     ],
   },
 
@@ -478,14 +511,23 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           rangeFt: 5,
           // "choose a creature that you can see within 5 feet of you".
           sight: true,
-          onFail: "is also incapacitated with speed 0 until the end of the wizard's next turn; the wizard's action extends it",
+          senses: "see_or_hear",
+          // "with speed 0 and incapacitated": an incapacitated creature takes
+          // no turn, so its speed is never spent.
+          alsoCondition: "incapacitated",
+          untilNextTurnEnds: true,
+          endsOnDamage: true,
+          leashFeet: 5,
+          oncePerCreature: true,
         },
       },
     ],
   },
   "wizard::Instinctive Charm": {
     subclass: "School of Enchantment",
-    reactions: [{ name: "Instinctive Charm", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
+    // "When a creature you can see within 30 feet of you makes an attack roll
+    // against you": the attacker in sight (sees).
+    reactions: [{ name: "Instinctive Charm", sees: "attacker", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
   },
   "wizard::Illusory Reality": {
     subclass: "School of Illusion",
@@ -537,7 +579,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "wizard::Convergent Future": {
     subclass: "Chronurgy Magic",
-    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1 } }],
+    // "a creature you can see within 60 feet": the attacker's roll, made within reach.
+    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1, rangeFt: 60 } }],
   },
   "wizard::Adjust Density": {
     subclass: "Graviturgy Magic",
@@ -554,6 +597,14 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         },
       },
     ],
+  },
+  // The mind is a token on the board and a condition on the wizard while it
+  // lasts (src/lib/dm/scribe-mind.ts): the condition is what One with the
+  // Word asks, the token is the square its spells are cast from. Free once a
+  // long rest, then a spell slot of any level.
+  "wizard::Manifest Mind": {
+    subclass: "Order of Scribes",
+    spends: [{ name: "Manifest Mind", pool: { id: "sub_manifest_mind", slot: true }, action: "bonus", does: { kind: "mind" } }],
   },
   "wizard::Wizardly Quill": {
     subclass: "Order of Scribes",
@@ -574,8 +625,23 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         does: { kind: "temp_hp", formula: (level) => level },
       },
     ],
+    // The armor's weapons are weapons of the feature (pc_attack weapon
+    // "Thunder Gauntlets" or "Lightning Launcher"), swung with Intelligence;
+    // the gauntlets' mark is laid by their hit alone, and the launcher's extra
+    // 1d6 rides its own hit once a turn. Before this neither could be swung.
     effects: [
-      { kind: "mark", condition: "thunder gauntlets", effect: "disadv_others", melee: true, gate: { choice: "guardian" } },
+      {
+        kind: "natural_weapon",
+        gate: { choice: "guardian" },
+        weapon: { name: "Thunder Gauntlets", aliases: ["thunder gauntlet", "gauntlets", "gauntlet"], dice: "1d8", type: "thunder", ability: "int" },
+      },
+      { kind: "mark", condition: "thunder gauntlets", effect: "disadv_others", melee: true, weapon: "Thunder Gauntlets", gate: { choice: "guardian" } },
+      {
+        kind: "natural_weapon",
+        gate: { choice: "infiltrator" },
+        weapon: { name: "Lightning Launcher", aliases: ["launcher"], dice: "1d6", type: "lightning", ranged: true, rangeFt: 90, longRangeFt: 300, ability: "int" },
+      },
+      { kind: "rider", dice: "1d6", type: "lightning", when: "ranged", oncePerTurn: true, weapon: "Lightning Launcher", gate: { choice: "infiltrator" } },
       { kind: "speed", amount: 5, gate: { choice: "infiltrator" } },
       { kind: "check_adv", skills: ["stealth"], gate: { choice: "infiltrator" } },
     ],
@@ -588,11 +654,16 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Perfected Armor",
         gate: { choiceOf: { feature: "Armor Model", value: "guardian" } },
         pool: { id: "sub_perfected_armor" },
-        does: { kind: "save_condition", save: "str", dcAbility: "spell", condition: "pulled by perfected armor" },
+        // "Pulled up to 25 feet toward you ... and if it ends within 5 feet of
+        // you, you can make a melee weapon attack against it as part of the reaction."
+        does: { kind: "save_condition", save: "str", dcAbility: "spell", condition: "pulled by perfected armor", pullFeet: 25, attackWithin: 5 },
       },
     ],
     effects: [
-      { kind: "mark", condition: "lit by perfected armor", effect: "attacked_adv", gate: { choiceOf: { feature: "Armor Model", value: "infiltrator" } } },
+      // "A creature your lightning launcher damages glows": the launcher's hit
+      // alone lays it (src/lib/srd/authored-conditions.ts reads its advantage
+      // and 1d6, authored-hooks.ts its disadvantage on attacks at the armorer).
+      { kind: "mark", condition: "lit by perfected armor", effect: "attacked_adv", weapon: "Lightning Launcher", gate: { choiceOf: { feature: "Armor Model", value: "infiltrator" } } },
     ],
   },
   "artificer::Arcane Firearm": {
@@ -611,15 +682,21 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Eldritch Cannon",
         aliases: ["Create Eldritch Cannon", "Create Cannon"],
-        pool: { id: "sub_eldritch_cannon" },
+        // "Once per long rest, or by expending a spell slot of 1st level or
+        // higher": the slot pays once the rest's cannon is made.
+        pool: { id: "sub_eldritch_cannon", slot: true },
         action: "action",
-        does: { kind: "buff", condition: "eldritch cannon", rounds: 600 },
+        // The cannon is a creature beside the artificer (AC 18, five times the
+        // artificer level hit points) and the area marking its square
+        // (src/lib/dm/feature-summons-dra.ts).
+        does: { kind: "eldritch_cannon", condition: "eldritch cannon", rounds: 600 },
       },
       {
         name: "Activate Cannon",
         aliases: ["Flamethrower", "Protector", "Activate Eldritch Cannon"],
         action: "bonus",
         gate: { condition: "eldritch cannon" },
+        nearZone: { zone: "eldritch cannon", feet: 60, label: "the cannon" },
         does: {
           kind: "variants",
           options: {
@@ -661,7 +738,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         pool: { id: "art_arcane_jolt" },
         oncePerTurn: true,
         afterWeaponHit: true,
-        does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force" },
+        does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force", healReachFt: 30 },
       },
     ],
   },
@@ -675,17 +752,35 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "Battle Smith",
     effects: [{ kind: "defender_upgrade", ac: 2 }],
   },
-  // Spirit Totem (XGtE): "As a bonus action, you can move the spirit up to 60
-  // feet to a point you can see" (issue 233).
+  // Spirit Totem: "call a spirit to a point within 60 feet for a minute (once
+  // per short or long rest), with a 30-foot aura you can move 60 feet as a
+  // bonus action" (issue 233). The spirit is a board area at the point
+  // (use_resource x and y, else the druid's square) that the aura's readers
+  // measure from (src/lib/dm/spirit-totem.ts); before this it was a condition
+  // on the druid alone and its move a note.
   "druid::Spirit Totem": {
     subclass: "Circle of the Shepherd",
+    counter: "sub_spirit_totem",
     spends: [
+      {
+        name: "Spirit Totem",
+        pool: { id: "sub_spirit_totem" },
+        action: "bonus",
+        does: {
+          kind: "variants",
+          options: {
+            bear: { does: { kind: "spirit_totem", spirit: "bear", rounds: 10 } },
+            hawk: { does: { kind: "spirit_totem", spirit: "hawk", rounds: 10 } },
+            unicorn: { does: { kind: "spirit_totem", spirit: "unicorn", rounds: 10 } },
+          },
+        },
+      },
       {
         name: "Move Spirit Totem",
         aliases: ["Move the Spirit", "Move Spirit"],
         action: "bonus",
         gate: { condition: "spirit totem" },
-        does: { kind: "note", text: "The spirit moves up to 60 feet to a point the druid can see, and its 30-foot aura moves with it." },
+        does: { kind: "spirit_totem_move" },
       },
     ],
   },

@@ -203,8 +203,9 @@
   "clauses": [
    {
     "c": "Action Surge also teleports you up to 30 feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-charge-teleport"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-charge-teleport",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts arcaneCharge (Action Surge credits the teleport, feature-teleport.ts)"
    }
   ]
  },
@@ -230,8 +231,9 @@
   "clauses": [
    {
     "c": "The prestidigitation or druidcraft cantrip",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-archer-lore-cantrip"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-archer-lore-cantrip",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts fighter::Arcane Archer Lore (choose) and src/lib/srd/mt-fb-casts.ts featureCastsHeld"
    },
    {
     "c": "proficiency in Arcana or Nature",
@@ -249,18 +251,21 @@
   "clauses": [
    {
     "c": "Once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-once-per-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-once-per-turn",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts fighter::Arcane Shot (oncePerTurn)"
    },
    {
     "c": "when you fire an arrow from a shortbow or longbow as part of the Attack action, you can apply one Arcane Shot option you know, deciding when the arrow hits unless the option makes no attack roll",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#TRIGGER_AS_CARD"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-on-the-arrow",
+    "by": "src/lib/dm/mt-fb-arcane-shot.ts arcaneShot (a bow's hit this turn, or one attack of the Attack action for Piercing and Seeking)"
    },
    {
     "c": "You know two options (Banishing, Beguiling, Bursting, Enfeebling, Grasping, Piercing, Seeking, Shadow) and learn another at 7th, 10th, 15th and 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-options"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-options",
+    "by": "src/lib/srd/options.ts GRANTS arcane_shot and src/lib/srd/options.json"
    },
    {
     "c": "you have two uses",
@@ -276,18 +281,21 @@
    },
    {
     "c": "the save DC is 8 + your proficiency bonus + your Intelligence modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-save-dc",
+    "by": "src/lib/dm/mt-fb-arcane-shot.ts arcaneShot (dc)"
    },
    {
     "c": "Beguiling, Bursting, Enfeebling, Grasping and Shadow deal 2d6 damage, Piercing and Seeking 1d6 and Banishing none",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-damage",
+    "by": "src/lib/srd/mt-fb-arcane-shot.ts shotDamage"
    },
    {
     "c": "at 18th level these become 4d6, 2d6 and 2d6 force",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_arcane_shot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-shot-18th",
+    "by": "src/lib/srd/mt-fb-arcane-shot.ts shotDamage (18th level)"
    }
   ]
  },
@@ -299,8 +307,9 @@
   "clauses": [
    {
     "c": "Arrows you fire from a shortbow or longbow",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: magic-arrow-arrows-only"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: magic-arrow-arrows-only",
+    "by": "src/lib/dm/pc-attack-damage.ts magicalStrikeApplies (Magic Arrow: a shortbow's or longbow's arrow)"
    },
    {
     "c": "count as magical",
@@ -324,8 +333,9 @@
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: curving-shot-60-feet"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: curving-shot-60-feet",
+    "by": "src/lib/dm/pc-attack-options.ts checkAttackOptions (feetFrom: the new target within 60 feet of the creature the arrow missed)"
    }
   ]
  },
@@ -371,15 +381,15 @@
    },
    {
     "c": "mounting costs only 5 feet of movement",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-mounting"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-mounting",
+    "by": "src/lib/dm/mount-tools.ts mountingFeet"
    },
    {
     "c": "you land on your feet from a fall of 10 feet or less",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-fall",
-    "read_only": true,
-    "stopped": "A hero's fall has no door of its own: the GM applies the damage and the prone condition by hand, so nothing can be run."
+    "by": "src/lib/dm/fall-landing.ts landsOnFeet, asked by mount-tools.ts where a rider thrown or brought down with the mount is laid prone: off a mount on the ground and not incapacitated, a Cavalier lands standing"
    }
   ]
  },
@@ -397,13 +407,15 @@
    },
    {
     "c": "until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-until-end-of-next-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-until-end-of-next-turn",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (untilNextTurnEnds: untilTurnEndOf)"
    },
    {
     "c": "While it is within 5 feet of you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-within-5-feet"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-within-5-feet",
+    "by": "src/lib/dm/authored-hooks.ts authoredIncomingAttack (the mark's withinFeet)"
    },
    {
     "c": "it has disadvantage on attack rolls that don't target you",
@@ -471,8 +483,9 @@
   "clauses": [
    {
     "c": "Creatures provoke an opportunity attack from you when they move 5 feet or more while within your reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:fighter::Hold the Line::Hold the Line#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: hold-the-line-moves-within-reach",
+    "by": "src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (movesWithinReachAt)"
    },
    {
     "c": "a creature you hit with an opportunity attack has its speed reduced to 0",
@@ -502,8 +515,9 @@
    },
    {
     "c": "when you move at least 10 feet in a straight line right before attacking a creature and hit it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: ferocious-charger-needs-a-charge"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: ferocious-charger-needs-a-charge",
+    "by": "src/lib/dm/mt-fb-charge.ts chargeRefusal (chargeFeet 10) and afterWeaponHit"
    },
    {
     "c": "it makes a Strength save (DC 8 + your proficiency bonus + your Strength modifier) or is knocked prone",
@@ -575,13 +589,15 @@
   "clauses": [
    {
     "c": "Add your Wisdom modifier to Persuasion checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-persuasion"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-persuasion",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredCheckBonus (check_bonus)"
    },
    {
     "c": "gain proficiency in Wisdom saving throws (Intelligence or Charisma if you already have it)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-wisdom-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-wisdom-save",
+    "by": "src/lib/srd/authored-effects.ts authoredSaveProficiencies (save_prof wis, elseOneOf int or cha)"
    }
   ]
  },
@@ -613,8 +629,9 @@
    },
    {
     "c": "against the same target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rapid-strike-same-target"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rapid-strike-same-target",
+    "by": "src/lib/dm/authored-attacks.ts rapidStrikeOwed"
    }
   ]
  },
@@ -669,21 +686,23 @@
    },
    {
     "c": "1 hit point and immunity to all conditions, uses your saving throw bonuses, and is destroyed if it ends your turn more than 30 feet from you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts (a prop token: enemyStrikesEcho rolls against AC 14 + proficiency and a hit destroys it; echoTurnEnd at turn-end.ts; endLostEchoes at the settle points)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-one-hit-point-and-leash",
+    "note": "A prop takes no condition and no area effect reaches it, so no save is ever asked of the echo: \"uses your saving throw bonuses\" has nothing to roll. A GM who catches it in an area takes it off with Manifest Echo variant dismiss."
    },
    {
     "c": "On your turn you can command it to move up to 30 feet without an action, swap places with it as a bonus action for 15 feet of your movement, and make any attack of the Attack action from its space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts moveEcho (map-tools.ts move_token), echoSpend variant swap, echoStrikeFrom (map-tools.ts checkPcAttackRange, pcAttackSpatials)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-move-swap-attack",
+    "note": "A melee attack is made from the nearer of the knight and the echo; a ranged attack stays the knight's."
    },
    {
     "c": "when a creature you can see within 5 feet of it moves at least 5 feet away from it, a reaction makes an opportunity attack as if you stood there",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (mt-fb-echo.ts echoTokens)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: manifest-echo-opportunity-attack"
    }
   ]
  },
@@ -695,8 +714,10 @@
   "clauses": [
    {
     "c": "Make one extra melee attack from your echo's space when you take the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_unleash_incarnation#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/turn-budget.ts grantActionAttack (authored-effects-w2-martial.ts fighter::Unleash Incarnation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unleash-incarnation-extra-attack",
+    "note": "The attack is one more of the Attack action, held while the echo is out; that it is melee and from the echo's space is the GM's to keep, as the echo has no square of its own (Manifest Echo#2)."
    },
    {
     "c": "a Constitution-modifier number of times per long rest",
@@ -747,8 +768,9 @@
   "clauses": [
    {
     "c": "When your echo is destroyed by damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_reclaim_potential#TRIGGER_AS_CARD"
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts sub_reclaim_potential own_echo_destroyed (authored-reactions.ts records it as Shadow Martyr's echo falls)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: reclaim-potential-temporary-hit-points"
    },
    {
     "c": "gain temporary hit points of 2d6 + your Constitution modifier",
@@ -768,18 +790,19 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Echo Knight",
   "level": 18,
-  "sha": "5356ec9231ec",
+  "sha": "50d879efe7b4",
   "clauses": [
    {
-    "c": "Regain a use of Unleash Incarnation on initiative",
-    "is": "gap",
+    "c": "When you roll initiative with no Unleash Incarnation uses left, you regain one",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Legion of One init_refill",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: legion-of-one-regains-on-initiative"
    },
    {
     "c": "manifest two echoes at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 787-echo-not-modelled",
-    "note": "The echo is not modelled: see manifest-echo-no-door."
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-echo.ts manifest (a second token, echo2)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: legion-of-one-two-echoes"
    }
   ]
  },
@@ -809,8 +832,9 @@
    },
    {
     "c": "as a bonus action you can regain one spent die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:fighter::Psionic Power (Psi Warrior)::Psionic Recovery#REPORTED_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: psionic-recovery",
+    "by": "src/lib/srd/authored-effects-data-b.ts Psionic Recovery (restore, a bonus action)"
    },
    {
     "c": "once per short or long rest",
@@ -867,8 +891,9 @@
    },
    {
     "c": "free once per short rest or by spending a die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-movement-free-use"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-movement-free-use",
+    "by": "src/lib/srd/authored-effects-data4.ts fighter::Telekinetic Movement (pool sub_telekinetic_movement, fallback sub_psionic_energy)"
    }
   ]
  },
@@ -876,7 +901,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Psi Warrior",
   "level": 7,
-  "sha": "476dc89306b0",
+  "sha": "1c2a48a63271",
   "clauses": [
    {
     "c": "Psi-Powered Leap lets you fly briefly as a bonus action",
@@ -885,16 +910,22 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-adept-leap-and-thrust"
    },
    {
-    "c": "Telekinetic Thrust can knock a Psionic Strike target prone",
+    "c": "Telekinetic Thrust forces a Psionic Strike target",
     "is": "held",
     "by": "src/lib/srd/authored-effects-data-b.ts fighter::Telekinetic Adept thrust variant afterWeaponHit: true, save_effect prone (refused with no hit this turn): src/lib/dm/authored-spends.ts",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-needs-a-strike"
    },
    {
-    "c": "or push it 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-save-not-in-text",
-    "note": "The push is a line of guidance (onFail: \"may instead be pushed 10 feet (move_token forced)\"); the save the engine rolls is not in the text."
+    "c": "to make a Strength save (DC 8 + your proficiency bonus + your Intelligence modifier) or be knocked prone",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Telekinetic Adept thrust (save_effect str, dcAbility int, prone)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-save"
+   },
+   {
+    "c": "or pushed 10 feet",
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-spend.ts pushFoe (the push variant: save_effect pushes 10 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-push"
    }
   ]
  },
@@ -912,8 +943,9 @@
    },
    {
     "c": "a reaction-free end to being charmed or frightened by spending a die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: guarded-mind-ends-a-condition"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: guarded-mind-ends-a-condition",
+    "by": "src/lib/dm/mt-fb-spend.ts cleanse (the Guarded Mind spend)"
    }
   ]
  },
@@ -921,7 +953,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Psi Warrior",
   "level": 15,
-  "sha": "329192b3acc9",
+  "sha": "3aad0a91083b",
   "clauses": [
    {
     "c": "A bonus action gives yourself and up to your Intelligence modifier in allies half cover for a minute",
@@ -936,9 +968,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force"
    },
    {
-    "c": "allies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force-range-not-in-text"
+    "c": "within 30 feet",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Bulwark of Force (rangeFt 30)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force-30-feet"
    }
   ]
  },
@@ -950,8 +983,9 @@
   "clauses": [
    {
     "c": "Cast telekinesis for free once per long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_telekinetic_master#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-master-free-cast",
+    "by": "src/lib/srd/counter-casts.ts sub_telekinetic_master (the cast spends the use)"
    },
    {
     "c": "make one weapon attack as a bonus action while concentrating on it",
@@ -989,12 +1023,39 @@
    },
    {
     "c": "Cloud, Fire, Frost, Stone, Hill and Storm",
-    "is": "flavor"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (fighter::Rune: ...)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runes-invoked"
    },
    {
-    "c": "each with a passive benefit and an invokable effect once per short or long rest",
-    "is": "gap",
+    "c": "each with a passive benefit",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (fighter::Rune: ...)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-carver-runes-do-nothing"
+   },
+   {
+    "c": "and an invokable effect once per short or long rest: Fire, Frost and Hill",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (sub_fire_rune, sub_frost_rune, sub_hill_rune)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runes-invoked"
+   },
+   {
+    "c": "Stone: a reaction as a creature ends its turn within 30 feet, charming it on a failed Wisdom save",
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"stone rune\" (turn_end, 30 feet) + src/lib/dm/mt-fb-runes.ts layHeldCharm + src/lib/dm/condition-tick.ts one effect, one save",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-stone-charm"
+   },
+   {
+    "c": "Cloud: a reaction as the knight or a creature within 30 feet is hit, turning the attack onto another creature",
+    "is": "held",
+    "by": "src/lib/dm/cloud-rune.ts cloudRuneAtHit (a stop at the hit before its damage, held-call.ts stopAfterThrow) + landTurnedBlow",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-cloud-turns-hit"
+   },
+   {
+    "c": "Storm: the prophetic state's reaction on the rolls of a creature within 60 feet",
+    "is": "held",
+    "by": "src/lib/dm/authored-reactions.ts disadv_vs_hit (anyAlly) + src/lib/dm/mt-fb-runes.ts propheticChoicesFor (after-roll.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-storm-prophetic-allies"
    }
   ]
  },
@@ -1029,8 +1090,9 @@
    },
    {
     "c": "to one damage roll per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn",
+    "by": "src/lib/dm/attack-damage-riders.ts heldConditionRiders (oncePerTurn, claimed by claimOncePerTurnRiders)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -1092,7 +1154,8 @@
   "clauses": [
    {
     "c": "Invoke each rune twice per short or long rest.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_*_rune scale [15, 2]",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-carver-runes-do-nothing"
    }
   ]
@@ -1111,8 +1174,9 @@
    },
    {
     "c": "can make you Huge with 5 extra feet of reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runic-juggernaut-reach"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runic-juggernaut-reach",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Runic Juggernaut (reach, gated on giant's might (1d10))"
    }
   ]
  },
@@ -1124,8 +1188,9 @@
   "clauses": [
    {
     "c": "Second Wind also heals up to three allies within 60 feet for your fighter level.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rallying-cry-heals-allies"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rallying-cry-heals-allies",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts rallyingCry"
    }
   ]
  },
@@ -1143,8 +1208,9 @@
    },
    {
     "c": "if you already have it, in your choice of Animal Handling, Insight, Intimidation or Performance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: royal-envoy-already-proficient"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: royal-envoy-already-proficient",
+    "by": "src/lib/srd/subclass-training.ts grantsForHeldTraining (skillOtherwise)"
    },
    {
     "c": "your proficiency bonus is doubled for any Persuasion check you make",
@@ -1162,8 +1228,9 @@
   "clauses": [
    {
     "c": "Action Surge also lets an ally",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:fighter::Inspiring Surge::Inspiring Surge#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-answers-a-surge",
+    "by": "src/lib/srd/trigger-table.ts inspiring surge (the surge on record)"
    },
    {
     "c": "within 60 feet",
@@ -1172,13 +1239,15 @@
    },
    {
     "c": "use a reaction to make one weapon attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-any-weapon"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-any-weapon",
+    "by": "src/lib/dm/authored-reactions.ts attack (weaponRange)"
    },
    {
     "c": "two allies from 18th level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-one-ally"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: inspiring-surge-one-ally",
+    "by": "src/lib/dm/mt-fb-surge.ts answersRefusal (answers: one, two from 18th)"
    }
   ]
  },
@@ -1190,10 +1259,9 @@
   "clauses": [
    {
     "c": "When you use Indomitable to reroll an Intelligence, Wisdom or Charisma saving throw and aren't incapacitated, you can choose one ally within 60 feet that also failed its save against the same effect; if it can see or hear you, it rerolls the save and must use the new roll.",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-indomitable-ally",
-    "read_only": true,
-    "stopped": "The reroll answers one effect's failed save on two characters at once; the row (indomitable_ally, rangeFt 60) is read by src/lib/dm/feature-spends.ts, and no suite stages the shared save."
+    "by": "src/lib/dm/feature-spends.ts bulwarkReroll: Indomitable's reroll of an Intelligence, Wisdom or Charisma save brings one ally within 60 feet who failed the same save with it, and a success lifts the effect that save ends"
    }
   ]
  },
@@ -1205,9 +1273,9 @@
   "clauses": [
    {
     "c": "Ritual casting of beast sense and speak with animals.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; the row is narrated (src/lib/srd/authored-effects-data.ts barbarian::Spirit Seeker: \"Ritual castings of beast sense and speak with animals: information and talk the GM narrates, no number in a fight.\") but whether cast_spell takes either spell as a ritual from a barbarian with no spell list was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (ritualOnly), src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-seeker-rituals"
    }
   ]
  },
@@ -1255,10 +1323,9 @@
    },
    {
     "c": "Tiger adds 10 feet to your long jump and 3 feet to your high jump",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totem-spirit-tiger-jump",
-    "stopped": "the jump helpers take a Strength score alone (src/lib/srd/jump.ts longJumpFeet(strength, runningStart)); no sheet reaches them, so a run cannot show the Tiger's 10 feet"
+    "by": "src/lib/srd/authored-mt-fb.ts authoredJump (src/lib/dm/jump-move.ts, src/lib/battlemap/view-moves.ts)"
    },
    {
     "c": "Wolf gives your allies advantage on melee attacks against any hostile creature within 5 feet of you",
@@ -1282,8 +1349,9 @@
    },
    {
     "c": "Bear doubles your carrying capacity",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-bear-carrying"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-bear-carrying",
+    "by": "src/lib/dm/load-rules.ts liftLimits (Aspect of the Beast (Bear))"
    },
    {
     "c": "gives advantage on Strength checks to push, pull, lift or break",
@@ -1298,27 +1366,27 @@
    },
    {
     "c": "dim light no longer hampers your Perception",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the engine was not shown to impose the dim-light disadvantage on Perception for anyone, so there was nothing to lift; no probe staged dim light"
+    "is": "held",
+    "by": "src/lib/dm/dim-sight.ts dimLightSpares (Eagle's dim_sight), read by rolls.ts and check_notice",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-eagle-dim-light"
    },
    {
     "c": "Elk doubles the travel pace of you and up to ten companions within 60 feet of you",
-    "is": "gap",
-    "read_only": true,
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-elk-travel",
-    "stopped": "the travel tool walks a prepared route's legs with the weather rolled; a doubled pace could only be read off a staged journey, which this suite does not build"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts authoredPaceFactor, in the travel tool's legs (world-tools.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-elk-travel"
    },
    {
     "c": "Tiger makes you proficient in two of Athletics, Acrobatics, Stealth and Survival",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-tiger-skills"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-tiger-skills",
+    "by": "src/lib/srd/mt-fb-training.ts optionTraining (two picks from the four, owed once Tiger is chosen)"
    },
    {
     "c": "Wolf lets you track at a fast pace and move stealthily at a normal pace",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the row note says it is narrated (src/lib/srd/authored-effects-data.ts barbarian::Aspect of the Beast), but a pace's Perception and Stealth penalties are numbers; no journey was staged"
+    "is": "held",
+    "by": "src/lib/dm/roll-gates.ts marchStealthProblem (authoredStealthAtNormal); no pace refuses a tracking check",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: aspect-of-the-beast-wolf-pace"
    }
   ]
  },
@@ -1330,9 +1398,9 @@
   "clauses": [
    {
     "c": "Cast commune with nature as a ritual",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; narrated (src/lib/srd/authored-effects-data.ts barbarian::Spirit Walker: \"A ritual commune with nature: information the GM gives, no number in a fight.\")"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (ritualOnly), src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-walker-ritual"
    },
    {
     "c": "the answer arrives as a spirit beast",
@@ -1366,14 +1434,15 @@
    },
    {
     "c": "though you fall if you end your turn in the air with nothing holding you up",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; the row leaves it to the GM (src/lib/srd/authored-effects-data.ts barbarian::Totemic Attunement: \"Falling at the end of the turn with nothing holding the barbarian up is the GM's to hold.\"), and a fall is damage and prone: a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/fall-landing.ts eagleBurstFalls (turn-end.ts): a barbarian aloft on the Eagle's flight alone, with no spell or item holding them up, lands prone as their turn ends",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-eagle-falls"
    },
    {
     "c": "Elk lets you pass through a Large or smaller creature's space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-elk-size"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-elk-size",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (save_effect maxSize Large)"
    },
    {
     "c": "as a bonus action, and it is knocked prone and takes 1d12 + your Strength modifier bludgeoning damage unless it succeeds on a Strength save (DC 8 + your proficiency bonus + your Strength modifier)",
@@ -1383,20 +1452,21 @@
    },
    {
     "c": "Tiger lets you make one melee weapon attack as a bonus action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only as the attack the gap probe totemic-attunement-tiger-needs-a-run was granted; no held probe"
+    "is": "held",
+    "by": "src/lib/srd/authored-economy.ts authoredBonusAttackProblem (bonus_attack after attack, gate tiger)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-bonus-attack"
    },
    {
     "c": "after moving at least 20 feet straight toward a Large or smaller target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-needs-a-run"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-needs-a-run",
+    "by": "src/lib/srd/authored-economy.ts authoredBonusAttackProblem (run: 20 feet, Large or smaller; src/lib/dm/mt-fb-charge.ts)"
    },
    {
     "c": "Wolf lets you knock a Large or smaller creature prone as a bonus action when you hit it with a melee weapon attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:barbarian::Totemic Attunement::Wolf Takedown#GUIDANCE_ONLY",
-    "recorded_by": "spends-guidance-only-spend-barbarian-totemic-attunement-wolf-takedown"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-wolf-takedown",
+    "by": "src/lib/srd/authored-effects-data.ts Wolf Takedown (afterWeaponHit, maxSize Large); src/lib/dm/mt-fb-spend.ts meleeHitRefusal"
    }
   ]
  },
@@ -1426,7 +1496,8 @@
    },
    {
     "c": "or until your rage ends",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (whileRagingOf), src/lib/dm/rage-bound.ts endRageBound",
     "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: ancestral-protectors-rage-ends"
    },
    {
@@ -1451,8 +1522,9 @@
    },
    {
     "c": "you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-shield-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-shield-sight",
+    "by": "src/lib/dm/authored-reactions.ts reduce (sees: target)"
    },
    {
     "c": "within 30 feet",
@@ -1476,9 +1548,9 @@
   "clauses": [
    {
     "c": "Cast augury or clairvoyance",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: a cast of either spell by a barbarian with no spell list"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_consult_the_spirits",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: consult-the-spirits-cast"
    },
    {
     "c": "once per short or long rest",
@@ -1488,9 +1560,9 @@
    },
    {
     "c": "using Wisdom, without a slot or components",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_consult_the_spirits (ability wis, noMaterial, slot free)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: consult-the-spirits-wisdom"
    }
   ]
  },
@@ -1522,14 +1594,15 @@
    },
    {
     "c": "changed when you gain a barbarian level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a level-up re-choice was not staged"
+    "is": "held",
+    "by": "src/lib/srd/level-up-changes.ts (the level-up's levelUpChanges; the Storm Environment spend refuses a change in play)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-environment-changes-at-level-up"
    },
    {
     "c": "When you enter your rage its 10-foot aura wakes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-wakes-with-rage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-wakes-with-rage",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts stormAuraWakes"
    },
    {
     "c": "and on each later turn of the rage a bonus action wakes it again",
@@ -1539,8 +1612,9 @@
    },
    {
     "c": "Desert: each other creature in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-desert-each-other-creature"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-desert-each-other-creature",
+    "by": "src/lib/dm/authored-spend-effects.ts stormAura (allies in the aura burn, sheltered by Shielding Storm)"
    },
    {
     "c": "takes 2 fire damage (3 at 5th level, 4 at 10th, 5 at 15th, 6 at 20th)",
@@ -1687,9 +1761,9 @@
   "clauses": [
    {
     "c": "A spell that restores you to life needs no material component.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: a revivify cast on a zealot with no diamond was not staged (src/lib/srd/authored-effects-data.ts4 barbarian::Warrior of the Gods narrated)"
+    "is": "held",
+    "by": "src/lib/dm/cast-guard.ts warriorOfTheGods, asked through heal-spell.ts revive (use_spell_slot's internal revives): a spell returning the dead zealot to life asks its caster no material component",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: warrior-of-the-gods-no-diamond"
    }
   ]
  },
@@ -1741,19 +1815,21 @@
   "clauses": [
    {
     "c": "While you rage, having 0 hit points doesn't knock you unconscious.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-stays-up"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-stays-up",
+    "by": "src/lib/dm/death.ts applyDamageDeathHook (ragingOnConditions) and src/lib/dm/vitals-logic.ts holdsOn"
    },
    {
     "c": "You still make death saving throws and suffer the usual effects of taking damage at 0 hit points",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only inside the gap probe rage-beyond-death-no-death (damage at 0 counted a failure); no held probe"
+    "is": "held",
+    "by": "src/lib/dm/death.ts (onDamageAtZero and rollDeathSave run for a zealot raging on)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-death-saves"
    },
    {
     "c": "but if you would die from failed death saves you don't die until your rage ends, and then only if you still have 0 hit points.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-no-death"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-no-death",
+    "by": "src/lib/dm/mt-fb-rage-death-logic.ts heldDeath and src/lib/dm/mt-fb-rage-death.ts fallAsRageEnds"
    }
   ]
  },
@@ -1765,8 +1841,9 @@
   "clauses": [
    {
     "c": "When you enter your rage, grow one natural weapon",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-one-weapon"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-one-weapon",
+    "by": "src/lib/dm/mt-fb-beast.ts beastFormRefusal and growBeastForm (the first weapon the rage uses)"
    },
    {
     "c": "until it ends",
@@ -1800,8 +1877,9 @@
    },
    {
     "c": "when a creature you can see within 10 feet hits you, a reaction adds 1d8 to your AC against that attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-tail-reaction"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: form-of-the-beast-tail-reaction",
+    "by": "src/lib/srd/authored-effects-data.ts barbarian::Form of the Beast reaction (ac_vs_hit, a d8, within 10 feet, the tail)"
    }
   ]
  },
@@ -1813,8 +1891,9 @@
   "clauses": [
    {
     "c": "Your natural weapons",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-natural-weapons-only"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-natural-weapons-only",
+    "by": "src/lib/dm/pc-attack-damage.ts magicalStrikeApplies (Bestial Soul: the feature's natural weapons)"
    },
    {
     "c": "count as magical",
@@ -1824,8 +1903,9 @@
    },
    {
     "c": "you can adapt to swim, climb or jump after each rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-adapt"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-adapt",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Bestial Soul (choose; swim and climb speeds)"
    }
   ]
  },
@@ -1843,9 +1923,9 @@
    },
    {
     "c": "a natural-weapon hit forces a Wisdom save: the target either attacks a creature of your choice or takes 2d12 psychic damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_infectious_fury#HANDS_BACK",
-    "recorded_by": "spends-hands-back-counter-sub-infectious-fury"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: infectious-fury",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Infectious Fury (afterNaturalHit; src/lib/dm/mt-fb-charge.ts naturalHitRefusal)"
    }
   ]
  },
@@ -1863,13 +1943,15 @@
    },
    {
     "c": "you can choose a number of other willing creatures you can see within 30 feet equal to your Constitution modifier (minimum one).",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    },
    {
     "c": "You gain 5 temporary hit points for each that accepts, and until the rage ends each of them can, once on each of its turns, roll a d6 and add it to the damage of an attack that hits.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    }
   ]
  },
@@ -1881,9 +1963,9 @@
   "clauses": [
    {
     "c": "As an action, sense spells and magic items within 60 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: what the action reveals is information the GM gives; no written ruling in the row (sub_magic_awareness has no fx)"
+    "is": "held",
+    "by": "src/lib/dm/sense-magic.ts magicAwareness: the spell areas, the spells creatures concentrate on or laid, and the magic items carried or on the floor within 60 feet and in sight, each spell with its school",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: magic-awareness-senses"
    },
    {
     "c": "a number of times per long rest equal to your proficiency bonus",
@@ -1901,13 +1983,15 @@
   "clauses": [
    {
     "c": "When you enter your rage, roll a d8 for a magical effect that lasts the rage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts rollSurge (called as the Rage is spent: mt-fb-counter-riders.ts)"
    },
    {
     "c": "(save DC 8 + your proficiency bonus + your Constitution modifier): 1, shadowy tendrils deal 1d12 necrotic damage to each creature of your choice within 30 feet that fails a Constitution save and give you 1d12 temporary hit points; 2, you teleport up to 30 feet, and again as a bonus action on later turns; 3, a spirit appears beside a creature within 30 feet and bursts at the end of the turn, dealing 1d6 force damage to each creature within 5 feet of it that fails a Dexterity save, and again as a bonus action on later turns; 4, a weapon you hold deals force damage and gains light and thrown (20/60), returning to your hand; 5, each creature that hits you with an attack roll takes 1d6 force damage; 6, you and your allies within 10 feet of you gain +1 AC; 7, the ground within 15 feet of you is difficult terrain for your enemies; 8, a bolt of light deals 1d6 radiant damage to a creature within 30 feet and blinds it until the start of your next turn unless it succeeds on a Constitution save, and again as a bonus action on later turns.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-table",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts applySurge (the eight effects; 4 and 5 as authored effects, 7 as the board's aura)"
    }
   ]
  },
@@ -1925,14 +2009,15 @@
    },
    {
     "c": "touch a creature and choose: for 10 minutes it adds a d3 to its attack rolls and ability checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-d3"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-d3",
+    "by": "src/lib/srd/condition-effects-tail.ts bolstering_magic (attackDie, checkDie 1d3) laid by the bolster variant"
    },
    {
     "c": "or it rolls a d3 and regains one expended spell slot of that level or lower (a creature can take the slot only once per long rest)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no caster ally staged with a spent slot"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-counters.ts regainSlot (SLOT_TAKEN until a long rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bolstering-magic-slot"
    }
   ]
  },
@@ -1944,8 +2029,9 @@
   "clauses": [
    {
     "c": "When you take damage or fail a save while raging, a reaction rerolls your Wild Surge effect.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: unstable-backlash-rerolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: unstable-backlash",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts barbarian::Unstable Backlash (resurge; trigger: src/lib/srd/trigger-table.ts)"
    }
   ]
  },
@@ -1957,8 +2043,9 @@
   "clauses": [
    {
     "c": "Whenever you roll on the wild magic table, roll twice and choose either effect; if both dice show the same number, choose any effect on the table.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: wild-surge-rolls-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: controlled-surge",
+    "by": "src/lib/dm/mt-fb-wild-surge.ts rollSurge and surgeSpend (two rolls pending, the Controlled Surge spend chooses)"
    }
   ]
  },
@@ -1982,9 +2069,9 @@
    },
    {
     "c": "cast with Wisdom",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a cast of the chosen cantrip by the barbarian was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-fb-casts.ts featureCastsHeld (the cantrip chosen, ability wis)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: giants-power-cast-with-wisdom"
    }
   ]
  },
@@ -2027,8 +2114,9 @@
    },
    {
     "c": "its damage becomes that type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-damage-type"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-damage-type",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredInfusion (infuse), read by src/lib/dm/pc-attack-profile.ts"
    },
    {
     "c": "it deals an extra 1d6 damage of it",
@@ -2038,19 +2126,21 @@
    },
    {
     "c": "and it gains the thrown property (20/60), returning to your hand after a throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-thrown"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-thrown",
+    "by": "src/lib/dm/pc-attack-profile.ts (infuse: thrown 20/60, returns)"
    },
    {
     "c": "Its benefits do not work for anyone else",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no other wielder of the infused weapon staged"
+    "is": "held",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredInfusion (read from the raging holder's own sheet in pc-attack-profile.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-nobody-else"
    },
    {
     "c": "a bonus action changes the element",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-change-costs-a-bonus-action"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-change-costs-a-bonus-action",
+    "by": "src/lib/srd/authored-effects-data.ts Elemental Cleaver (action bonus)"
    }
   ]
  },
@@ -2068,8 +2158,9 @@
    },
    {
     "c": "Medium or smaller creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-size"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-size",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (maxSize Medium, Large from 14th)"
    },
    {
     "c": "within your reach",
@@ -2079,8 +2170,9 @@
    },
    {
     "c": "and move it to an unoccupied space you can see within 30 feet of you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing",
+    "by": "src/lib/dm/mt-fb-spend.ts throwFoe"
    },
    {
     "c": "an unwilling creature avoids this with a Strength save (DC 8 + your proficiency bonus + your Strength modifier)",
@@ -2090,8 +2182,9 @@
    },
    {
     "c": "A creature left in the air falls and lands prone.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-fall",
+    "by": "src/lib/dm/mt-fb-spend.ts throwFoe (variant up: SRD 5.1 Falling)"
    }
   ]
  },
@@ -2103,8 +2196,9 @@
   "clauses": [
    {
     "c": "When you rage, your reach grows by 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: demiurgic-colossus-reach"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: demiurgic-colossus-reach",
+    "by": "src/lib/srd/authored-effects-more.ts authoredReachBonus (the widest reach held)"
    },
    {
     "c": "you can become Large or Huge (your choice) if there is room",
@@ -2113,9 +2207,9 @@
    },
    {
     "c": "Mighty Impel can move Large or smaller creatures",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run on its own: the probe mighty-impel-size shows a Huge creature thrown at 14th level, and a Large one at 14th was not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (Mighty Impel's ladder: Large from 14th)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-large-at-14th"
    },
    {
     "c": "and Elemental Cleaver's extra damage becomes 2d6",
@@ -2133,15 +2227,15 @@
   "clauses": [
    {
     "c": "Spend 2 ki to cast darkness, darkvision, pass without trace or silence",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; narrated (src/lib/srd/authored-effects-data4.ts monk::Shadow Arts: \"Spells cast with 2 ki ... : the cast tools with the ki spent by use_resource.\"): whether cast_spell takes a monk's ki for a spell the monk has no slot for was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCastsHeld (granted-casts.ts grantedCastsOf, cost 2 of the ki counter)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-arts-ki-casts"
    },
    {
     "c": "and you know minor illusion",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it; src/lib/srd/authored-effects-data4.ts monk::Shadow Arts: \"a monk keeps no spell list, so the GM casts it when asked\": a cantrip the text gives with no door of its own"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCantripsHeld (granted-casts.ts grantedCastsOf)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-arts-minor-illusion"
    }
   ]
  },
@@ -2159,9 +2253,9 @@
    },
    {
     "c": "between two patches of dim light or darkness",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe staged a lit square to see the step refused"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (shadows); src/lib/dm/mt-mr-spends.ts featureLandingRefusal",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: shadow-step-shadows"
    },
    {
     "c": "granting advantage on your next melee attack this turn",
@@ -2179,7 +2273,8 @@
   "clauses": [
    {
     "c": "Become invisible in dim light or darkness until you attack, cast, or step into light.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts cloakOfShadows, cloakIntoLight",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: cloak-of-shadows"
    }
   ]
@@ -2198,9 +2293,9 @@
    },
    {
     "c": "that another creature just hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:monk::Opportunist::Opportunist#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-monk-opportunist-opportunist"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (another creature's hit on record)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:monk::Opportunist::Opportunist#TRIGGER_UNCHECKED"
    }
   ]
  },
@@ -2218,9 +2313,9 @@
    },
    {
     "c": "spell save DC and attacks use your ki save DC",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no discipline cast was staged to read its DC"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-casts.ts kiCastAbility (src/lib/srd/index.ts grantedSpellAbility)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-save-dc"
    }
   ]
  },
@@ -2238,9 +2333,9 @@
    },
    {
     "c": "of a level your ki can pay for",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ki cost cap of a discipline's spell level was not staged"
+    "is": "held",
+    "by": "src/lib/srd/granted-casts.ts grantUses (a cast's cost of the ki counter); src/lib/srd/options.ts optionReqProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-and-level"
    }
   ]
  },
@@ -2272,9 +2367,9 @@
    },
    {
     "c": "up to the most powerful ones",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the level gate on each discipline's prerequisite was not read"
+    "is": "held",
+    "by": "src/lib/srd/options.ts optionReqProblem (req \"level 17\")",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: discipline-ki-and-level"
    }
   ]
  },
@@ -2300,12 +2395,14 @@
   "clauses": [
    {
     "c": "Flurry of Blows also grants the benefit of Disengage",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts flurryBought",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: drunken-technique-disengage"
    },
    {
     "c": "and 10 feet of extra movement",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts turnBonusTiles (src/lib/battlemap/view.ts pcMoveBudget)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: drunken-technique-movement"
    }
   ]
@@ -2352,13 +2449,14 @@
   "clauses": [
    {
     "c": "Flurry of Blows grants up to three extra attacks",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only as the strikes the gap probe intoxicated-frenzy-different-creatures was granted; their count was not held on its own"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts monk::Intoxicated Frenzy (flurry, strikes 5)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: intoxicated-frenzy-strikes"
    },
    {
     "c": "provided each one hits a different creature",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts flurryStrikeRefusal",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: intoxicated-frenzy-different-creatures"
    }
   ]
@@ -2371,15 +2469,15 @@
   "clauses": [
    {
     "c": "Choose two kensei weapons, one melee and one ranged, from simple or martial weapons without the heavy or special property (the longbow allowed), and one more at 6th, 11th and 17th level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the kensei weapon pick (its count by level, the heavy and special exclusions) was not staged through the builder"
+    "is": "held",
+    "by": "src/lib/srd/subclass-training.ts KENSEI_WEAPONS, weaponKinds (src/lib/srd/feat-grants.ts applyFeatGrants)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapon-picks"
    },
    {
     "c": "they count as monk weapons, and you are proficient with them",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-kensei.ts kenseiStance (src/lib/dm/attack-logic.ts weaponAttackProfile)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapons-are-monk-weapons"
    },
    {
     "c": "and with calligrapher's or painter's supplies",
@@ -2389,14 +2487,15 @@
    },
    {
     "c": "Agile Parry: when you make an unarmed strike as part of the Attack action while holding a kensei melee weapon",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (unarmed_in_action)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: agile-parry-needs-an-unarmed-strike"
    },
    {
     "c": "you gain +2 AC until the start of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the +2 of the Agile Parry buff was not read (the gap probe stops at its precondition)"
+    "is": "held",
+    "by": "src/lib/srd/authored-conditions.ts agile_parry (acBonus 2)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: agile-parry-ac"
    }
   ]
  },
@@ -2422,13 +2521,14 @@
   "clauses": [
    {
     "c": "Kensei weapons count as magical",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no kensei weapon hit staged against a creature resisting nonmagical blows"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-kensei.ts kenseiStance (magical)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: kensei-weapons-magical"
    },
    {
     "c": "and 1 ki adds your martial arts die to a hit's damage once per turn",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts deftStrike",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: one-with-the-blade-deft-strike"
    }
   ]
@@ -2447,9 +2547,9 @@
    },
    {
     "c": "for a minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the buff's ten rounds were not walked"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts monk::Sharpen the Blade (rounds 10)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: sharpen-the-blade-minute"
    }
   ]
  },
@@ -2461,9 +2561,9 @@
   "clauses": [
    {
     "c": "Reroll a missed monk-weapon attack once per turn.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Unerring Accuracy: \"Rerolling one missed monk weapon attack a turn: the GM calls pc_attack again for it.\"): a reroll is a roll, so a gap of kind rule-missing, with no after-the-roll offer"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrAttackOffers (the card a missed attack waits on)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: unerring-accuracy"
    }
   ]
  },
@@ -2481,9 +2581,9 @@
    },
    {
     "c": "usable with the Attack action and extendable with ki as a bonus action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; src/lib/srd/authored-effects-data2.ts monk::Radiant Sun Bolt note: \"Its bonus-action pair of bolts for 1 ki after the Attack action is Flurry of Blows' place; the GM allows it.\""
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts sunBoltStrike (a Flurry of Blows strike may be a bolt: pc-attack-parts.ts naturalAttack, pc-attack-spend.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: radiant-sun-bolt-ki-bolts"
    }
   ]
  },
@@ -2495,9 +2595,9 @@
   "clauses": [
    {
     "c": "After the Attack action, spend 2 ki or more as a bonus action to cast burning hands at a matching level.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Searing Arc Strike::Searing Arc Strike#HANDS_BACK",
-    "recorded_by": "spends-hands-back-spend-monk-searing-arc-strike-searing-arc-strike"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (attack_action); src/lib/dm/authored-spends.ts (pool.min)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: searing-arc-strike"
    }
   ]
  },
@@ -2509,9 +2609,9 @@
   "clauses": [
    {
     "c": "A 20-foot sphere within 150 feet deals 2d6 radiant on a failed Constitution save, up to 2d6 more per ki point spent.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Searing Sunburst::Searing Sunburst#HANDS_BACK",
-    "recorded_by": "spends-hands-back-spend-monk-searing-sunburst-searing-sunburst"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts aoe_report (noHalf, rangeFt)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: searing-sunburst"
    }
   ]
  },
@@ -2562,9 +2662,9 @@
    },
    {
     "c": "until the end of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the frightened condition's end was not walked"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts burst (untilNextTurnEnds)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hour-of-reaping-until-next-turn-ends"
    }
   ]
  },
@@ -2576,8 +2676,9 @@
   "clauses": [
    {
     "c": "Spend 1 ki to stay at 1 hit point instead of dropping to 0, as long as ki remains.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death",
+    "by": "src/lib/dm/mastery-of-death.ts masteryOfDeathHold, called from pc-damage.ts as the blow lands"
    }
   ]
  },
@@ -2627,7 +2728,8 @@
    },
    {
     "c": "within 5 feet",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-healing-5-feet"
    },
    {
@@ -2638,9 +2740,9 @@
    },
    {
     "c": "or replace one Flurry of Blows attack with it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a flurry strike traded for a heal was not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing (flurry)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-healing-flurry"
    }
   ]
  },
@@ -2666,9 +2768,9 @@
   "clauses": [
    {
     "c": "Hand of Healing also ends one condition; Hand of Harm can poison the target until the end of your next turn.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Physician's Touch: \"Hand of Healing also ends a disease or condition (end_condition), and Hand of Harm can poison the creature (set_condition poisoned): the GM applies them.\"): a condition and its end, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts physiciansTouch, handOfHarm",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: physicians-touch"
    }
   ]
  },
@@ -2680,9 +2782,9 @@
   "clauses": [
    {
     "c": "Flurry of Blows can heal without ki cost, and one of its attacks can carry Hand of Harm free.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Flurry of Healing and Harm: \"the GM spends nothing for them\"): the free use is a counter the engine still charges unless the GM skips the spend"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts handOfHealing; src/lib/dm/mt-mr-needs.ts needRefusal (flurry_harm)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: flurry-of-healing-and-harm"
    }
   ]
  },
@@ -2700,8 +2802,9 @@
    },
    {
     "c": "spend 5 ki to return a creature dead no more than 24 hours to life with 4d10 + Wisdom hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives",
+    "by": "src/lib/dm/ultimate-mercy.ts ultimateMercy (feature-spends.ts sub_wholeness_of_body_mercy), heal-spell.ts returnToLife"
    }
   ]
  },
@@ -2725,17 +2828,20 @@
    },
    {
     "c": "While they last you can use Wisdom for Strength checks and saves",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts authoredCheckSwap (the row's save_swap with checks)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-strength-checks"
    },
    {
     "c": "your unarmed strikes reach 5 feet farther",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredReachBonus (unarmed)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-reach"
    },
    {
     "c": "and those strikes can use Wisdom for attack and damage rolls and deal force damage",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-unarmed.ts unarmedForm (attack-logic.ts AttackStance.unarmedForm)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-wisdom"
    }
   ]
@@ -2754,9 +2860,9 @@
    },
    {
     "c": "Astral Sight (you see normally in darkness, magical or not, to 120 feet)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no magical darkness staged around the monk"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-senses.ts mrSensesOver (Devil's Sight's reading of magical darkness)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: astral-sight"
    },
    {
     "c": "Wisdom of the Spirit (advantage on Insight and Intimidation checks)",
@@ -2779,20 +2885,21 @@
   "clauses": [
    {
     "c": "While both your arms and visage are summoned",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the reaction row is gated on the arms alone (gate condition \"arms of the astral self\"), the visage not read; not staged without the visage"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts gateHolds (conditions)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy-needs-both"
    },
    {
     "c": "Deflect Energy (a reaction reduces acid, cold, fire, force, lightning or thunder damage you take by 1d10 + your Wisdom modifier)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy",
+    "by": "src/lib/dm/authored-reactions.ts case reduce (a self row with its own types answers damage of those types from no attack too) over src/lib/dm/last-hit.ts openEffect: apply_damage called on its own and a spell's save damage (cast-at-player.ts) keep a record a reaction to damage taken answers"
    },
    {
     "c": "Empowered Arms (once on each of your turns, when you hit with the arms, add one roll of your martial arts die to the damage)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the rider was not read off a hit"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts riderGateHolds (src/lib/dm/attack-damage-riders.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: empowered-arms"
    }
   ]
  },
@@ -2810,9 +2917,9 @@
    },
    {
     "c": "and an extra Arms attack when taking the Attack action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the attack count under the buff was not read"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts awakenedArmsAttacks (src/lib/dm/turn-budget.ts attacksAllowedFor)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: awakened-astral-self-attack"
    }
   ]
  },
@@ -2824,15 +2931,15 @@
   "clauses": [
    {
     "c": "Draconic Presence: when you fail a Charisma (Intimidation or Persuasion) check, a reaction rerolls it, and once this turns a failure into a success you can't do so again until a long rest.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Draconic Disciple: \"rerolling a failed Intimidation or Persuasion check are the GM's\"): a reroll is a roll, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrCheckOffers, src/lib/dm/mt-mr-offers.ts mrSpendAfterRoll (counter sub_draconic_presence)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: draconic-presence"
    },
    {
     "c": "Draconic Strike: your unarmed strikes can deal acid, cold, fire, lightning or poison damage instead of bludgeoning.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Draconic Disciple: \"Changing an unarmed strike's damage type ... are the GM's\"): a damage type against resistance is a number, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-unarmed.ts draconicStrikeType (the row's choose spend)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: draconic-strike-type"
    },
    {
     "c": "Tongue of Dragons: you learn Draconic, or another language if you know it.",
@@ -2850,8 +2957,10 @@
   "clauses": [
    {
     "c": "When you take the Attack action you can replace one attack with a 20-foot cone or a 30-foot line 5 feet wide of acid, cold, fire, lightning or poison: each creature in it makes a Dexterity save against your ki save DC or takes two rolls of your martial arts die (three from 11th level), half on a success.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_breath_of_the_dragon#HANDS_BACK",
+    "is": "held",
+    "by": "src/lib/dm/resource-turn.ts (replacesAttack: spendAttack), src/lib/dm/aoe-spend.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: breath-of-the-dragon-replaces-an-attack",
+    "note": "The sweep's TRIGGER_AS_CARD row for this counter reads \"When you take the Attack action\" as a trigger; the breath may be the action's first attack (DISPUTED in the handoff).",
     "recorded_by": "spends-hands-back-counter-sub-breath-of-the-dragon"
    },
    {
@@ -2882,9 +2991,9 @@
    },
    {
     "c": "spectral wings give you a flying speed equal to your walking speed until the end of the turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe uses Step of the Wind and then the wings, so the flying buff (fx buff flying, rounds 1), its speed and its end are not held"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts wingsUnfurled",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: wings-unfurled-fly"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2902,14 +3011,15 @@
   "clauses": [
    {
     "c": "A bonus action creates a 10-foot aura for a minute that either frightens enemies",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts wyrmFrightens (authored-turns.ts authoredTurnStart)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-frighten"
    },
    {
     "c": "or grants allies resistance to your damage type",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ward variant was not staged on an ally"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-mr.ts monk::Aspect of the Wyrm aura_resist (the ward's condition names the type)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-ward"
    },
    {
     "c": "once per long rest",
@@ -2919,9 +3029,9 @@
    },
    {
     "c": "or for 3 ki",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ki fallback was not staged"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm fallbackPool",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-ki"
    }
   ]
  },
@@ -2933,21 +3043,21 @@
   "clauses": [
    {
     "c": "Augment Breath: spending 1 ki when you use Breath of the Dragon makes it a 60-foot cone or a 90-foot line 5 feet wide that deals four rolls of your martial arts die.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: Breath of the Dragon hands its damage back (spends-hands-back-counter-sub-breath-of-the-dragon), so the augmented area has nothing to change"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts augmentedBreath (resource-tools.ts rollCounterSave)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: augment-breath"
    },
    {
     "c": "Blindsight: you can perceive your surroundings without sight to 10 feet.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: blindsight against a hidden or invisible creature within 10 feet was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-senses.ts mrSensesOver",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: ascendant-aspect-blindsight"
    },
    {
     "c": "Explosive Fury: when you activate Aspect of the Wyrm, each creature of your choice in its aura makes a Dexterity save against your ki save DC or takes 3d10 damage of a type you choose for Draconic Strike.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Ascendant Aspect::Explosive Fury#TRIGGER_AS_CARD",
-    "recorded_by": "spends-trigger-as-card-spend-monk-ascendant-aspect-explosive-fury"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts explosiveFury (rides Aspect of the Wyrm's activation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: explosive-fury"
    }
   ]
  },
@@ -3019,8 +3129,9 @@
   "clauses": [
    {
     "c": "When you hit a surprised creature, it makes a Constitution save against 8 + Dexterity + proficiency or takes double damage.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: death-strike-double",
+    "by": "src/lib/dm/death-strike.ts deathStrikeDoubles, attack-blow.ts landSwingBlow, pc-attack-damage.ts landBlow doubled"
    }
   ]
  },
@@ -3087,13 +3198,18 @@
   "clauses": [
    {
     "c": "Right after a creature casts a spell that targets you or includes you in its area, a reaction makes it save with its spellcasting ability modifier against your spell save DC.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
     "read_only": true,
     "stopped": "not run: no enemy spell was cast at the trickster to open the reaction"
    },
    {
     "c": "On a failure the spell has no effect on you, and if it is of 1st level or higher and of a level you can cast, you steal it: for 8 hours you know it and can cast it with your spell slots, and the creature can't cast it.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
+    "note": "The caster's own casting of the stolen spell is marked (spell stolen) for the GM, who plays the creature's spells.",
     "read_only": true,
     "stopped": "not run: no probe of this sweep stages it"
    },
@@ -3137,9 +3253,9 @@
    },
    {
     "c": "at up to 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; src/lib/srd/authored-effects-data2.ts rogue::Master of Tactics note: \"Helping at up to 30 feet is the GM's to allow.\" A range is a number: a gap of kind rule-missing, not staged"
+    "is": "held",
+    "by": "src/lib/dm/combat-actions.ts (Help's reach, holdsRow rogue::Master of Tactics)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: master-of-tactics-30-feet"
    }
   ]
  },
@@ -3197,7 +3313,8 @@
   "clauses": [
    {
     "c": "A creature you attack in melee cannot make opportunity attacks against you for the rest of your turn.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-spend.ts (the MOBILE_ATTACKED mark for a holder); src/lib/dm/opportunity.ts",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: fancy-footwork"
    }
   ]
@@ -3230,9 +3347,9 @@
   "clauses": [
    {
     "c": "A Persuasion check against a creature's Insight either charms it into following you peacefully or fixes its attention on you in a fight for a minute.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Panache: \"A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition.\"): a contest and a condition, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data4.ts rogue::Panache (insight_contest, Persuasion against Insight) lays goaded with the swashbuckler as its source for a minute, ended past 60 feet (condition-leash.ts leashEnds); src/lib/dm/goaded.ts is read by enemy-swing-odds.ts (disadvantage against anyone else) and opportunity.ts (no opportunity attack at anyone else). A creature that is not hostile is no row of a fight: its charm is the GM's",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: panache-goads"
    }
   ]
  },
@@ -3278,7 +3395,8 @@
   "clauses": [
    {
     "c": "When you make a Wisdom (Insight) check to tell whether a creature is lying",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredCheckFloor (the row's about \"lies\", asked for by authoredFloorKeys)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ear-for-deceit-lies-only"
    },
    {
@@ -3317,9 +3435,9 @@
    },
    {
     "c": "for a minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the mark's ten rounds were not walked"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts rogue::Insightful Fighting (rounds 10)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: insightful-fighting-minute"
    },
    {
     "c": "without needing advantage or an ally",
@@ -3343,7 +3461,8 @@
    },
    {
     "c": "after moving no more than half your speed on your turn",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-checks.ts withMovementFacts (the row's gate)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: steady-eye-half-speed"
    }
   ]
@@ -3356,9 +3475,9 @@
   "clauses": [
    {
     "c": "Sense illusions, shapechangers and other deceptions within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it: information the GM gives; sub_unerring_eye has no fx and no written ruling"
+    "is": "held",
+    "by": "src/lib/dm/sense-magic.ts unerringEye: illusion areas, creatures under deceiving magic and creatures that change shape within 30 feet and in sight, told without what they hide; refused while blinded or deafened",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: unerring-eye-senses"
    },
    {
     "c": "a Wisdom-modifier number of times per long rest",
@@ -3396,9 +3515,9 @@
    },
    {
     "c": "when an enemy ends its turn within 5 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:rogue::Skirmisher::Skirmisher#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-rogue-skirmisher-skirmisher"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a foe's turn ended beside the holder)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:rogue::Skirmisher::Skirmisher#TRIGGER_UNCHECKED"
    },
    {
     "c": "without provoking",
@@ -3475,7 +3594,8 @@
    },
    {
     "c": "and you can sneak attack twice per turn as long as it is against different targets",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts secondSneakKey (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: sudden-strike-second-sneak"
    }
   ]
@@ -3488,9 +3608,9 @@
   "clauses": [
    {
     "c": "After each rest, gain proficiency in one skill or tool of your choice.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Whispers of the Dead: \"One skill or tool proficiency chosen after each rest: the GM notes it for the day.\"): a proficiency is a number on every check of that skill, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data4.ts rogue::Whispers of the Dead (once a short rest, out of a fight): the skill or tool chosen is a lasting mark read by src/lib/srd/borrowed-proficiency.ts (computeSheetDerived's skills, roll-riders.ts tool checks), replaced by the next choice",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: whispers-of-the-dead"
    }
   ]
  },
@@ -3502,9 +3622,9 @@
   "clauses": [
    {
     "c": "After a sneak attack drops or wounds a creature, a second creature within 30 feet",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the spend follows any weapon hit this turn (afterWeaponHit), not a Sneak Attack's, and its die_damage row carries no rangeFt and does not refuse the creature first hit; no probe swings without Sneak Attack, names the first creature, or stands the second beyond 30 feet"
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts sneakAnswerFor (the turn's SNEAK_HIT mark, a second creature within 30 feet of the first), afterSneak on the die_damage row",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: wails-needs-a-sneak-attack"
    },
    {
     "c": "takes half your sneak attack dice in necrotic damage",
@@ -3528,15 +3648,15 @@
   "clauses": [
    {
     "c": "When a creature you can see dies within 30 feet of you, a reaction forms a Tiny soul trinket in your free hand",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:rogue::Tokens of the Departed::Tokens of the Departed#TRIGGER_UNCHECKED",
-    "recorded_by": "spends-trigger-unchecked-reaction-rogue-tokens-of-the-departed-tokens-of-the-departed"
+    "is": "held",
+    "by": "src/lib/dm/reaction-triggers.ts triggerRefusal (a creature's death on record)",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:rogue::Tokens of the Departed::Tokens of the Departed#TRIGGER_UNCHECKED"
    },
    {
     "c": "(you can hold up to your proficiency bonus of them)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the trinket is one condition, so a count of trinkets has no place to live; not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-trinkets.ts gainTrinket",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: soul-trinkets-count"
    },
    {
     "c": "While you carry one you have advantage on death saving throws and Constitution saving throws.",
@@ -3546,9 +3666,9 @@
    },
    {
     "c": "When you deal Sneak Attack damage you can destroy one to use Wails from the Grave without spending a use, and as an action you can destroy one to ask its spirit a question.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe destroys a trinket for a free Wails from the Grave use or asks its spirit a question"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts (pool.orTrinket); src/lib/dm/mt-mr-spends.ts questionSpirit",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: soul-trinket-spent"
    }
   ]
  },
@@ -3560,9 +3680,9 @@
   "clauses": [
    {
     "c": "A bonus action makes you spectral for 10 minutes with a 10-foot fly speed and the ability to move through creatures and objects",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: sub_ghost_walk has no fx; what the spend applies was not read"
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts MANIFESTED_WINGS (the 10-foot flying speed); src/lib/battlemap/passage.ts passableTiles spectral (every creature's space and every prop's) and objectTiles (every door, locked or secret too, and every window or low wall, crossed as difficult terrain and never stopped in; a wall is the building, SRD 5.1 Objects)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ghost-walk-spectral"
    },
    {
     "c": "free once per long rest",
@@ -3572,9 +3692,9 @@
    },
    {
     "c": "otherwise costs a soul trinket",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/dm/authored-spends.ts (pool.orTrinket, src/lib/dm/mt-mr-trinkets.ts destroyTrinket)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ghost-walk-trinket"
    }
   ]
  },
@@ -3585,10 +3705,16 @@
   "sha": "9f9cc868079d",
   "clauses": [
    {
-    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second, and at the end of a long rest a soul trinket appears in your hand if you have none.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Death's Friend: \"the GM applies the damage and the trinket\"): damage is a number, a gap of kind rule-missing"
+    "c": "When you use Wails from the Grave, you can deal its necrotic damage to the first creature as well as the second",
+    "is": "held",
+    "by": "src/lib/dm/sneak-answer.ts (afterSneak.firstToo: Death's Friend) and authored-spend-effects.ts die_damage",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-first-too"
+   },
+   {
+    "c": "at the end of a long rest a soul trinket appears in your hand if you have none.",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-trinkets.ts soulTrinketAtRestEnd (src/lib/dm/rest-tools.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-trinket-at-rest"
    }
   ]
  },
@@ -3606,9 +3732,9 @@
    },
    {
     "c": "(d6s, d8s from 5th level, d10s from 11th, d12s from 17th)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run for the Soulknife: the die size is read where a die is rolled, and no Soulknife spend rolls one (Psi-Bolstered Knack and Soul Blades are narrated)"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts psionicEnergyDie (Psychic Teleportation, src/lib/dm/mt-mr-spends.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psionic-energy-die"
    },
    {
     "c": "all regained on a long rest",
@@ -3618,9 +3744,9 @@
    },
    {
     "c": "as a bonus action you can regain one spent die, once per short or long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:rogue::Psionic Power (Soulknife)::Psionic Recovery#REPORTED_ONLY",
-    "recorded_by": "spends-reported-only-spend-rogue-psionic-power-soulknife-psionic-recovery"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts (restore)",
+    "probe": "scripts/test-enforce-sweep-spends-authored.mjs :: spend:rogue::Psionic Power (Soulknife)::Psionic Recovery#DEAD"
    }
   ]
  },
@@ -3632,9 +3758,9 @@
   "clauses": [
    {
     "c": "Spend a die to turn a failed check with a proficient skill or tool into a success if the die closes the gap.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Psi-Bolstered Knack: \"A Psionic Energy die added to a failed proficient check: the GM rolls it\"): an after-the-roll die with no offer, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrCheckOffers, src/lib/dm/mt-mr-offers.ts mrSpendAfterRoll",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psi-bolstered-knack"
    }
   ]
  },
@@ -3671,9 +3797,9 @@
    },
    {
     "c": "The blades keep these dice at every level.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run at a higher level than the final-engine test's"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts rogue::Psychic Blades (natural_weapon 1d6, second 1d4)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psychic-blades-dice-at-17"
    }
   ]
  },
@@ -3685,9 +3811,9 @@
   "clauses": [
    {
     "c": "Homing Strikes adds a die to a missed Psychic Blades attack, and Psychic Teleportation throws a blade to teleport yourself up to 10 times your die roll in feet.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Soul Blades: \"the GM rolls the die (the counter's) and moves the token\"): an attack roll's bonus and a move, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrAttackOffers (Homing Strikes); src/lib/dm/mt-mr-spends.ts psychicTeleport",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: homing-strikes"
    }
   ]
  },
@@ -3711,9 +3837,9 @@
    },
    {
     "c": "and otherwise for a die",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_psychic_veil fallbackPool",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psychic-veil-die"
    },
    {
     "c": "it ends if you deal damage or force a save",
@@ -3731,9 +3857,9 @@
   "clauses": [
    {
     "c": "A sneak attack with Psychic Blades can stun a creature for a minute on a failed Wisdom save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_rend_mind#HANDS_BACK",
-    "recorded_by": "spends-hands-back-counter-sub-rend-mind"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts rendMind",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: rend-mind"
    },
    {
     "c": "free once per long rest",
@@ -3743,9 +3869,9 @@
    },
    {
     "c": "and otherwise for three dice",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe of this sweep stages it"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-mr.ts rogue::Rend Mind (pool fallback sub_psionic_energy, 3)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: rend-mind-three-dice"
    }
   ]
  }

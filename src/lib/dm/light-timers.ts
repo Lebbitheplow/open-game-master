@@ -1,11 +1,13 @@
 import { expireBurntLights } from "@/lib/db/battle-maps";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { withMoonlight } from "@/lib/dm/ar-ws-moonlight-logic";
 import { publishFx } from "@/lib/dm/fx";
 import { publishEphemeral } from "@/lib/events";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { RADIANT_LIGHT, radiantWeaponLit } from "@/lib/srd/infusions";
 
 // Torch and lantern timers (docs/vtt-parity-implementation-plan.md 7.3).
 // A carried light is inferred from equipment; a torch burns an hour, a
@@ -60,9 +62,13 @@ function burningSource(equipment: EquipmentItem[]): { source: Source; burns: Equ
   return null;
 }
 
-export function carriedLight(sheet: Pick<CharacterSheet, "equipment">): CarriedLight {
+export function carriedLight(sheet: Pick<CharacterSheet, "equipment"> & { conditions?: readonly string[] }): CarriedLight {
   const found = burningSource(sheet.equipment);
-  return found ? { radius: found.source.radius, dim: found.source.dim, minutes: found.source.minutes } : { radius: 0, dim: 0, minutes: 0 };
+  // A Lunar sorcerer's moonlight is carried too (ar-ws-moonlight-logic.ts),
+  // and an artificer's Radiant Weapon lit in the hand: bright light 30 feet
+  // and dim 30 more, burning nothing (src/lib/dm/infusion-charges.ts).
+  const carried = withMoonlight(sheet, found ? { radius: found.source.radius, dim: found.source.dim, minutes: found.source.minutes } : { radius: 0, dim: 0, minutes: 0 });
+  return radiantWeaponLit(sheet) && carried.radius < RADIANT_LIGHT.radius ? RADIANT_LIGHT : carried;
 }
 
 // A light that burned down takes one of what it burned from the pack.

@@ -5,6 +5,7 @@
 // parked rolls in between. Nothing here decides a rule: a rule lives in the
 // stages, so it reaches both dice paths or neither.
 
+import { swingFacts } from "@/lib/dm/mt-mr-offers";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { createPendingRoll, dicePreferencesOf, getDmTurn, publicPendingRoll, type PendingAttack, type PendingRoll } from "@/lib/db/dm-turns";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
@@ -46,7 +47,7 @@ export function parkedTargetAc(campaignId: string, attack: PendingAttack): numbe
 }
 
 // Physical dice: park the to-hit roll for the player, with the attack's record.
-export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null = null) {
+export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null = null): PendingRoll {
   const { campaign, turn, sheet, enemy, profile } = plan;
   const pending = createPendingRoll({
     campaignId: campaign.id,
@@ -63,6 +64,7 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
     attack: attackRecord(plan, strike, mote),
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
+  return pending;
 }
 
 // The server's dice for a player whose rolls can wait (after-roll.ts
@@ -84,7 +86,7 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
   const critRange = record.critRange ?? 20;
   const thrown = shiftedThrow(plan, strike, ac, critRange);
   const options = [
-    ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id), melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) }),
+    ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id), melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(campaign.id, fresh, record) }),
     // A wizard or a War cleric beside them may answer the miss (after-roll.ts).
     ...allyChoicesFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
   ];

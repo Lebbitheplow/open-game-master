@@ -23,6 +23,7 @@ import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { conditionUntargetable } from "@/lib/srd/condition-effect-queries";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
+import { houndAttackRefusal } from "@/lib/dm/ar-ws-hound-quarry";
 
 export function gatePcAttack(input: {
   campaign: Campaign;
@@ -151,6 +152,11 @@ export function gatePcAttack(input: {
       : null);
   if (optionProblem) {
     return { refused: optionProblem };
+  }
+  // A Hound of Ill Omen attacks its quarry and no other (ar-ws-hound-quarry.ts).
+  const offQuarry = houndAttackRefusal(sheet, enemy);
+  if (offQuarry) {
+    return { refused: offQuarry };
   }
   // A charmed creature cannot attack the one who charmed it.
   const charmedAs = sheet.conditions.find((entry) => entry.trim().toLowerCase() === "charmed");

@@ -493,11 +493,25 @@ export function elementalAdeptType(sheet: ChoiceHolder): string | null {
   return ELEMENTAL_ADEPT_TYPES.includes(picked) ? picked : null;
 }
 
+// Every damage type the character's Elemental Adept names: "You can take this
+// feat more than once, choosing a different type each time", and each taking
+// writes its own feature. The builder's one pick stands in before the sheet
+// is made.
+export function elementalAdeptTypes(sheet: ChoiceHolder): string[] {
+  if (!holdsFeat(sheet, "Elemental Adept")) {
+    return [];
+  }
+  const named = (sheet.features ?? []).map((feature) => elementalAdeptFeatureOf(feature.name)).filter((element): element is string => element !== null);
+  const first = elementalAdeptType(sheet);
+  return [...new Set([...named, ...(first ? [first] : [])])];
+}
+
 // Whether a spell's damage of this type gets the feat: resistance ignored
-// and every 1 on its dice counted as a 2.
+// and every 1 on its dice counted as a 2. Any of the types the feat was taken
+// for answers (a second taking was read as the first alone).
 export function elementalAdeptApplies(sheet: ChoiceHolder, damageType: string | null | undefined): boolean {
-  const adept = elementalAdeptType(sheet);
-  return Boolean(adept && damageType && damageType.trim().toLowerCase() === adept);
+  const type = (damageType ?? "").trim().toLowerCase();
+  return Boolean(type) && elementalAdeptTypes(sheet).includes(type);
 }
 
 // The dice expression with a floor of 2 on every die ("8d6+2" to
@@ -595,6 +609,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "alert", "observant", "lucky", "dual wielder", "resilient", "battle caster", "spellbreaker", "diehard", "survivor", "rapid drinker",
     "durable", "medium armor master", "skirmisher", "mobile", "brutal attack", "piercer", "slasher", "crusher", "giant foe", "skulker", "actor", "grappler",
     "savage attacker", "poisoner", "athlete", "chef", "healer", "elven accuracy", "eldritch adept",
+    // Mounted Combatant: the mount's area save and the redirected blow (mount-area.ts, mount-combat.ts).
+    "mounted combatant",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic"].includes(name)) return "[cast tools]";
   return null;

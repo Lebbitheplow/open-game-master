@@ -40,11 +40,19 @@ export type GrantedAttack = {
   // A ranged one's range in feet (Starry Form's Archer 60, Crown of Stars
   // 120). A spell attack has no long range: past this it cannot reach.
   rangeFeet?: number;
+  // A melee one's reach in feet when it is not the 5 feet of a hand's
+  // swing: Dread Lord's shadows strike "a creature in the aura", any within
+  // 30 feet (pc-attack-profile.ts reachTiles, the Hand card's range).
+  reachFeet?: number;
   // The strike comes from something the spell made, not from its holder
   // (issue 659: Spiritual Weapon's floating weapon). Reach is measured from
   // the spell's area of that name on the board, which the strike may first
   // move `moveFeet`, and which appears within `rangeFeet` of its caster.
   from?: { zone: string; reachFeet: number; moveFeet: number; rangeFeet: number; label?: string };
+  // A condition a hit leaves on the creature struck until the start of the
+  // holder's next turn (Tentacle of the Deeps: its speed drops by 10 feet).
+  // The condition's own row holds what it does (src/lib/dm/ar-wbf-warlock-strike.ts).
+  leaves?: string;
 };
 
 export type ConditionEffectRow = {
@@ -131,6 +139,9 @@ export type ConditionEffectRow = {
   // enlarged +1d4). `type` "" = the attack's own damage type. A leading "-"
   // subtracts (reduced).
   onHitDice?: { dice: string; type: string };
+  // The hit's own weapon damage turns to this type while the dice ride it
+  // (Planar Warrior: "its weapon damage plus 1d8 force as force damage").
+  weaponDamageAs?: string;
   // The dice and type ride in the condition's own parentheses, as the cast
   // set them: "absorbed strike (2d6 fire)" (Absorb Elements by slot).
   paramOnHitDice?: boolean;
@@ -145,9 +156,19 @@ export type ConditionEffectRow = {
   // With marksTarget: the holder's attack rolls against the marked creature
   // score a critical hit on this natural roll or higher (Hexblade's Curse 19).
   critRangeVsMarked?: number;
+  // Attacks the holder's Attack action makes on top of what their features
+  // give (Invincible Conqueror: "an extra attack with the Attack action").
+  extraAttacks?: number;
+  // The holder's melee weapon attacks score a critical hit on this natural
+  // roll or higher (Invincible Conqueror: 19).
+  meleeCritRange?: number;
   // Held by the TARGET: the next attack roll against it spends it (Guiding
   // Bolt's advantage).
   consumedAgainst?: boolean;
+  // Held by the TARGET: an attack that hits it deals these extra dice
+  // (Perfected Armor's glow: "deals an extra 1d6 lightning damage if it
+  // hits"), read by src/lib/dm/attack-damage-riders.ts.
+  hitDiceAgainst?: { dice: string; type: string };
   // Concentration saves cannot roll below this total (Starry Form: Dragon).
   concentrationFloor?: number;
   grantedAttack?: GrantedAttack;
@@ -182,6 +203,9 @@ export type ConditionEffectRow = {
   // has truesight this far (src/lib/srd/condition-effects-last.ts).
   seesInvisible?: boolean;
   truesightFeet?: number;
+  // The holder sees nothing farther away than this (Shadow Arrow: 5 feet),
+  // whatever the light (src/lib/dm/attack-light.ts attackSight).
+  sightFeet?: number;
   // The holder's jump distances are multiplied (Jump: tripled).
   jumpMultiplier?: number;
   // The holder's speed is this, whatever it was (Gaseous Form's 10-foot

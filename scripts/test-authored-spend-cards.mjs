@@ -12,6 +12,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
+const { TRIGGERED_COUNTERS } = await import("../src/lib/srd/trigger-table.ts");
 const { test, finish } = suite("test-authored-spend-cards");
 const world = await openWorld({ campaign: { maxPlayers: 400 } });
 const kit = await combatKit(world);
@@ -19,6 +20,7 @@ const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { heldAuthored, gateHolds } = await import("../src/lib/srd/authored-effects.ts");
 const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { otherPrice } = await import("../src/lib/srd/counter-rules.ts");
 const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
 const { groupHand } = await import("../src/lib/battlemap/hand-groups.ts");
 const { splitHand } = await import("../src/lib/battlemap/hand-layout.ts");
@@ -72,7 +74,10 @@ for (const classId of Object.keys(classFeatures)) {
       (held.entry.spends ?? [])
         .filter((spend) => spend.fight !== "out" && spend.does.kind !== "choose" && spend.action !== "reaction" && gateHolds(spend.gate, sheet, held))
         // The ones this suite is about: a counter of the feature's own name.
-        .filter((spend) => spend.pool && resourceDef(spend.pool.id)?.displayName === spend.name),
+        .filter((spend) => spend.pool && resourceDef(spend.pool.id)?.displayName === spend.name)
+        // Not one dealt when its trigger opens (Call the Hunt on the rage just
+        // entered, hand-react-triggers.ts): the own-turn Hand holds no card of it.
+        .filter((spend) => !TRIGGERED_COUNTERS.includes(spend.pool.id)),
     );
     builds.push({ classId, subclass: subclass.name, hero, spends });
   }
@@ -84,8 +89,10 @@ await test("There is a spend with a counter of its own name to check.", () => {
 });
 
 // Arcane Jolt either burns the creature hit or heals one near it: a card for
-// each, so each posts the target it needs.
-const AIMS = { "Arcane Jolt": 2 };
+// each, so each posts the target it needs. Infectious Fury's damage and its
+// forced attack are a card each too, the attack taking the creature struck as
+// a second pick (hand-subclass.ts forcedVictim).
+const AIMS = { "Arcane Jolt": 2, "Infectious Fury": 2 };
 
 await test("Each such spend is one card (Arcane Jolt one per aim), sent by its name.", () => {
   for (const build of builds) {
@@ -107,7 +114,14 @@ await test("The card keeps its counter's id and uses line, so an arranged seat h
         assert.match(card.resource, /^Uses \d+\/\d+$/, label(build, spend));
       }
       const spent = { ...world.sheet(build.hero.id), resources: { ...world.sheet(build.hero.id).resources, [spend.pool.id]: { ...world.sheet(build.hero.id).resources[spend.pool.id], used: 99 } } };
+      // A counter whose text names another price the sheet can pay ("once
+      // per long rest or for 7 sorcery points") stays open with its uses spent.
+      const paysOtherwise = Boolean(otherPrice(resourceDef(spend.pool.id), spent));
       for (const card of deriveHand(spent, FRESH_TURN, {}).filter((entry) => entry.intent.card === "feature" && entry.intent.resourceId === spend.name)) {
+        if (paysOtherwise) {
+          assert.equal(card.disabled, null, `${label(build, spend)}: its other price pays, yet ${card.disabled}`);
+          continue;
+        }
         assert.ok(card.disabled && !card.disabled.includes(spend.pool.id.replace(/_/g, " ")), `${label(build, spend)}: ${card.disabled}`);
       }
     }
@@ -122,6 +136,9 @@ await test("Hidden Paths stays a bonus action: its card is open once the action 
   assert.equal(card.disabled, null);
 });
 
+// What the Creation bard's player types in the card's box.
+const CREATED = "Crowbar";
+
 await test("A card played as the Hand sends it does what the spend says: a capstone's condition lands.", async () => {
   const capstones = ["Elder Champion", "Avenging Angel", "Invincible Conqueror", "Living Legend", "Mortal Bulwark", "Exalted Champion", "Dread Lord"];
   const played = [];
@@ -129,12 +146,28 @@ await test("A card played as the Hand sends it does what the spend says: a capst
     for (const spend of build.spends) {
       // A spend that rides a weapon hit waits for one (Arcane Jolt, Wails
       // from the Grave: "after a sneak attack"); its own suite lands the hit.
-      if (spend.name === "Arcane Jolt" || spend.afterWeaponHit) continue;
+      // One that rides a natural weapon's hit likewise (Infectious Fury: the
+      // clause suite's infectious-fury probe lands the claws first).
+      // An Arcane Shot rides a bow's arrow and an option the archer chose
+      // (the clause suite's arcane-shot probes fire the arrow first).
+      if (spend.name === "Arcane Jolt" || spend.name === "Arcane Shot" || spend.afterWeaponHit || spend.afterNaturalHit) continue;
       const enemy = await stage(build.hero);
       // Psionic Recovery brings energy back, and is refused at a full pool.
       if (spend.name === "Psionic Recovery") {
         const { resources } = world.sheet(build.hero.id);
         world.patch(build.hero.id, { resources: { ...resources, sub_psionic_energy: { ...resources.sub_psionic_energy, used: 1 } } });
+      }
+      // Power Surge: "Once per turn when you deal damage to a creature or
+      // object with a wizard spell". The wizard's Magic Missile hurts the
+      // creature first, as the spends sweep stages it (sweep-spends-walk.mjs).
+      if (spend.afterSpellDamage) {
+        // These heroes are made with no spells: the wizard is given the one.
+        world.patch(build.hero.id, {
+          equipment: [{ name: "Component pouch", qty: 1 }],
+          spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Magic Missile"], known: ["Magic Missile"], cantrips: [] },
+        });
+        const cast = await play(build.hero, "cast_at_enemy", { characterId: build.hero.id, targetEnemyId: enemy.id, spell: "Magic Missile" });
+        assert.equal(cast.ok, true, `${label(build, spend)}: the staging's Magic Missile: ${cast.error}`);
       }
       const card = deriveHand(world.sheet(build.hero.id), FRESH_TURN, {}).find((entry) => entry.name === spend.name);
       const intent = {
@@ -143,13 +176,28 @@ await test("A card played as the Hand sends it does what the spend says: a capst
         ...(card.target === "ally" ? { targetId: build.hero.id, targetKind: "ally" } : {}),
         // A card with a pick posts the player's pick.
         ...(card.choice ? { [card.choice.arg]: card.choice.options[0].value } : {}),
+        // Performance of Creation: "Create a nonmagical item worth no more than
+        // 20 times your bard level as an action". Which item is the player's to
+        // say, so its card opens the box (compose) and the name typed there is
+        // the spend's variant; with none the engine asks for it, spending nothing.
+        ...(spend.does.kind === "create_item" ? { variant: CREATED } : {}),
       };
+      if (spend.does.kind === "create_item") {
+        assert.equal(card.compose, true, `${label(build, spend)}: the card must let the player name the item`);
+        const bare = directCardCall(card.intent, build.hero.id, { inFight: true });
+        const refused = await play(build.hero, bare.name, bare.args);
+        assert.equal(refused.ok, false, `${label(build, spend)}: made an item nobody named`);
+        assert.equal(world.sheet(build.hero.id).resources[spend.pool.id].used, 0, `${label(build, spend)}: the unnamed item spent the use`);
+      }
       const call = directCardCall(intent, build.hero.id, { inFight: true });
       assert.ok(call, `${label(build, spend)}: the card makes no call`);
       const out = await play(build.hero, call.name, call.args);
       assert.equal(out.ok, true, `${label(build, spend)}: ${out.error}`);
       const pool = world.sheet(build.hero.id).resources[spend.pool.id];
       assert.ok(pool.used > 0, `${label(build, spend)}: nothing spent`);
+      if (spend.does.kind === "create_item") {
+        assert.ok(world.sheet(build.hero.id).equipment.some((item) => item.name === CREATED), `${label(build, spend)}: the named item is not in the pack`);
+      }
       // "as a bonus action you can regain one spent die": the die is back,
       // not only the recovery's own use spent (it answered "1 die back" and
       // returned none).
@@ -206,6 +254,12 @@ await test("Cauterizing Flames is played from its cards: the fire card burns the
     const enemy = await stage(druid);
     kit.place(ally.id, 4, 5);
     world.patch(ally.id, { currentHp: 20 });
+    // Cauterizing Flames answers a creature standing in one of the druid's
+    // spectral flames (src/lib/dm/cauterizing-flames.ts): one under each, as
+    // two deaths there would leave them.
+    const flamesAt = [kit.token(enemy.id), kit.token(ally.id)].map((token) => ({ x: token.x, y: token.y, untilRound: 99 }));
+    const now = world.sheet(druid.id);
+    world.patch(druid.id, { conditions: [...now.conditions.filter((entry) => entry !== "spectral flames"), "spectral flames"], conditionMeta: { ...now.conditionMeta, "spectral flames": { flames: flamesAt } } });
     assert.equal(flames(FRESH_TURN).length, 2, "a card for each aim");
     const card = flames(offTurn).find((entry) => entry.intent.variant === variant);
     assert.ok(card, variant);
@@ -238,7 +292,7 @@ await test("use_reaction names the way a counted reaction with two ways goes, an
   await stage(druid);
   const asked = await world.invoke("use_reaction", { characterId: druid.id, feature: "Cauterizing Flames" });
   assert.equal(asked.ok, false);
-  assert.match(asked.error, /takes variant "heal" or "burn"/);
+  assert.match(asked.error, /needs a variant: heal or burn/);
   assert.equal(world.sheet(druid.id).resources.sub_cauterizing_flames.used, 0, "the refusal costs nothing");
 });
 

@@ -5,6 +5,7 @@
 // resolve it as each roll lands (pc-attack-parked.ts). A rule reads the record,
 // never the plan, so it reaches both paths or neither.
 
+import { conditionMeleeCritRange } from "@/lib/srd/condition-effects";
 import type { PendingAttack } from "@/lib/db/dm-turns";
 import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -45,6 +46,9 @@ export type DamageAsk = {
   // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
   feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
   rerollBelow: number;
+  // Empowered Spell on a spell attack's damage: how many low dice are thrown
+  // again (src/lib/dm/mt-srd-metamagic.ts, src/lib/dice.ts).
+  empower?: number;
   // Paid on the hit, resolved once the blow has landed.
   stunDc?: number;
   maneuver?: boolean;
@@ -95,6 +99,9 @@ export type AttackRecord = PendingAttack & {
   hitSpent?: string[];
   hitClaims?: string[];
   spell?: string;
+  // The slot that spell attack spent: the level the spell is of for a kill
+  // (Grim Harvest, ar-ws-harvest.ts).
+  spellSlot?: number;
   stunShot?: boolean;
   maneuver?: ManeuverRider;
   typeFeat?: DamageTypeFeat;
@@ -115,10 +122,14 @@ export type AttackRecord = PendingAttack & {
   // it lands, the server throws the damage too (pc-attack-parked.ts).
   serverDice?: boolean;
   // The attacks declared after this one in the same pc_attack call. They are
-  // made, in order, once this roll lands (pc-attack-parts.ts runQueuedParts),
-  // and what they did rides back with it (queuedResults).
-  queue?: { characterId: string; parts: Record<string, unknown>[] };
+  // made, in order, once this attack has landed (pc-attack-parts.ts
+  // runQueuedParts), and what they did rides back with it (queuedResults). A
+  // hit whose damage the player rolls hands the queue on to that damage roll
+  // (queueMovedTo, its id), whose record then holds the queue and its results;
+  // `toolCallId` is the call's, which the damage roll does not carry.
+  queue?: { characterId: string; parts: Record<string, unknown>[]; toolCallId?: string | null };
   queuedResults?: Record<string, unknown>[];
+  queueMovedTo?: string;
   critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
   extras?: {
     foeSlayer?: number;
@@ -146,7 +157,9 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
   const typeFeat = plan.weaponAttack ? damageTypeFeat(sheet, profile.damageType) : null;
   // Piercer: a piercing critical hit rolls one more of the weapon's dice.
   const critExtraDice = strike.critExtraDice + (typeFeat === "Piercer" ? 1 : 0);
-  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  // A condition's melee critical range (Invincible Conqueror's 19) rides
+  // melee weapon attacks only.
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies), plan.weaponAttack && !plan.atRange ? conditionMeleeCritRange(sheet.conditions) : 20);
   const critGear = gearCritRiders(profile, enemy.stats.type);
   const typedRiders = liveTypedRiders(plan.typedRiders, plan.droppedRiders);
   const ignoreBy = plan.elementalAdept ? "Elemental Adept" : poisonerIgnoresResistance(sheet, profile.damageType) ? "Poisoner" : null;
@@ -198,6 +211,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(plan.hitSpent.length ? { hitSpent: plan.hitSpent } : {}),
     ...(plan.hitClaims.length ? { hitClaims: plan.hitClaims } : {}),
     ...(plan.kind === "spell" && plan.args.spell ? { spell: plan.args.spell } : {}),
+    ...(plan.kind === "spell" && plan.spellSlotLevel ? { spellSlot: plan.spellSlotLevel } : {}),
     ...(critGear.suffix ? { critGear } : {}),
     ...(extras.stunShot ? { stunShot: true } : {}),
     ...(rider && plan.maneuver

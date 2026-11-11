@@ -34,6 +34,7 @@ import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { freeFromNet, NET_AC, NET_HP, netObject, nettedId } from "@/lib/dm/net-hold";
+import { vesselObject } from "@/lib/dm/genie-vessel";
 
 export const OBJECT_MATERIALS: ObjectMaterial[] = [
   "cloth", "paper", "rope", "crystal", "glass", "ice", "wood", "bone", "stone", "iron", "steel", "mithral", "adamantine",
@@ -126,18 +127,22 @@ export function damageObject(
   if (net && "error" in net) {
     return net;
   }
+  // A Genie warlock's vessel has its warlock's numbers (genie-vessel.ts).
+  const vessel = campaign && args.name && !section && !net ? vesselObject(campaign.id, args.name) : null;
   // Each section keeps its own damage between blows.
-  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : args.name;
+  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : vessel ? vessel.key : args.name;
   const record = campaign && kept ? objectRecord(campaign.id, kept) : null;
   const profile = objectProfile(args.material ?? "wood", args.size ?? "medium", args.fragile);
   // A section's numbers are its wall's; an object already named keeps the
   // numbers its first call decided; only a new one reads this call's.
-  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? record?.ac ?? args.ac ?? profile.ac;
-  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? record?.hp ?? args.hp ?? profile.hp;
+  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
+  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
   const threshold = record ? record.threshold : args.threshold;
   const already = record?.taken ?? 0;
   const restated =
-    record && !section && !net && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+    vessel && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+      ? `${vessel.owner}'s vessel is a Tiny object of their own numbers: AC ${ac} (their spell save DC), ${hp} HP (warlock level + proficiency bonus)`
+      : record && !section && !net && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `kept as it was first described: AC ${ac}, ${hp} HP${threshold ? `, damage threshold ${threshold}` : ""}`
       : null;
   if (record?.broken) {

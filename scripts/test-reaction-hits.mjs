@@ -764,9 +764,13 @@ await test("Shield takes back only the clubs: fire that landed between the two h
   assert.equal(hp(world, mira), 20, "both clubs miss AC 17; the fire stays");
   // The later hit is kept as the corrected fight has it: the fire found her
   // at 30 and left her at 20 before the second club.
-  const [, second] = openHits(world.campaignId, mira.id);
+  // The fire is a record of its own between the clubs now (last-hit.ts
+  // openEffect: damage from no attack is kept for a reaction to damage taken).
+  const [, second] = openHits(world.campaignId, mira.id).filter((hit) => hit.source === "attack");
   assert.equal(second.before.currentHp, 20, JSON.stringify(second.before));
   assert.equal(second.after.currentHp, 20);
+  const fire = openHits(world.campaignId, mira.id).find((hit) => hit.source === "effect");
+  assert.deepEqual([fire?.before.currentHp, fire?.after.currentHp], [30, 20], "the fire's own record is kept as the corrected fight has it");
 });
 
 await test("Shield takes back only the clubs: healing between the two hits stays", async () => {
@@ -802,7 +806,9 @@ await test("Shield replays the healing and the fire between two hits in the orde
   const out = await react(world, mira, "Shield");
   assert.equal(out.ok, true, out.error);
   assert.equal(hp(world, mira), 24, "the clubs miss, the healing finds her whole, the fire lands");
-  const [, second] = openHits(world.campaignId, mira.id);
+  // The fire is a record of its own between the clubs now (last-hit.ts
+  // openEffect: damage from no attack is kept for a reaction to damage taken).
+  const [, second] = openHits(world.campaignId, mira.id).filter((hit) => hit.source === "attack");
   assert.equal(second.before.currentHp, 24, JSON.stringify(second.before));
 });
 

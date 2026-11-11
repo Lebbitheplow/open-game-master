@@ -34,6 +34,8 @@ import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { noteShift, shiftArmedFor, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
+import { takeFate } from "@/lib/dm/fate-turn";
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -86,13 +88,13 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
     // A hit's own choices (Touch of Death) ride a pc_attack's record; an
     // attack thrown by another tool asks only about a miss.
     const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(
-      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath",
+      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath" && option.id !== "combat_inspiration",
     );
     return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange })];
   }
   const dc = typeof roll.dc === "number" ? roll.dc : null;
   return [
-    ...afterRollOptions(sheet, { kind: roll.kind, outcome, dc, reactionFree }),
+    ...afterRollOptions(sheet, { kind: roll.kind, outcome, dc, reactionFree, check: { skill: roll.kind === "skill_check" ? roll.detail : null } }),
     ...allyChoicesFor(campaign.id, sheet, { kind: roll.kind, outcome, dc }),
   ];
 }
@@ -110,8 +112,10 @@ export function initiativeWaits(campaign: Campaign, stale: CharacterSheet): bool
   return choicesFor(campaign, sheet, { kind: "initiative", expression: "1d20", detail: "initiative" }, lowest).length > 0;
 }
 
-export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll: CharacterRoll): RollResult {
+export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, asked: CharacterRoll): RollResult {
   const sheet = getSheetById(stale.id) ?? stale;
+  // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
+  const roll = asked.kind === "damage" ? asked : { ...asked, expression: tranceFloored(sheet, asked.expression) };
   const decided = takeDecided(sheet.id, roll.kind);
   if (decided) {
     return decided.raw && roll.adjust ? roll.adjust(decided.outcome) : decided.outcome;
@@ -184,5 +188,7 @@ function answerArmed(campaignId: string, who: string, tag: RollTag | undefined, 
     outcome = again();
     noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${who} rolled the ${words} again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
+  outcome = takeFate(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
   return takeSaveHelp(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
 }

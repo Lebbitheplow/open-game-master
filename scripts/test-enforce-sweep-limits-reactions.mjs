@@ -10,14 +10,9 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, everySubclass, limitsTable } from "./lib/sweep-limits-world.mjs";
 
-const KNOWN = {
-  "787-thirty-feet-to-the-drake": {
-    where: "src/lib/dm/pet-tools.ts summon_pet (a pet is a row on the owner's sheet, with no token) and src/lib/dm/authored-reactions.ts resist_instance rangeFt",
-    severity: "low",
-    note: "\"while you are within 30 feet of each other\" cannot be asked: the drake stands nowhere.",
-  },
-};
+const KNOWN = {};
 const RULING = {
+  "787-thirty-feet-to-the-drake": "maintainer ruling D2 (gap study wave 2): a pet has no token, it stands with its owner, so a range between a pet and its owner always holds and a range from the pet is measured from the owner's place (src/lib/dm/pet-place.ts); the drake is never beyond 30 feet of its ranger",
   "774-spell-damage": "the feature's own words (src/lib/srd/subclasses.json: \"an attacker who wounded someone near you\") and the published feature (\"deals damage with an attack\") both answer an attack; pull request #774 listed it as a limit, and it is the rule",
 };
 const SKIP = {
@@ -528,6 +523,9 @@ await row("787-fallen-knight-wording", {
 });
 
 const ranger = table.hero({ class: "ranger", subclass: "Drakewarden" });
+// Summoned between fights: in one, Drake Companion's summoning is the
+// ranger's action on their own turn (src/lib/dm/pet-command.ts).
+await kit.endFight();
 const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" });
 const drake = () => world.sheet(ranger.id).pets.find((pet) => pet.kind === "drake");
 
@@ -572,12 +570,18 @@ await row("787-thirty-feet-to-the-drake", {
   limit: "The 30 feet between ranger and drake isn't checked. Pets have no position here.",
   rule: text("ranger::Perfected Bond"),
 }, async () => {
-  const [enemy] = await table.stage([ranger, friend]);
-  beside(ranger, enemy);
-  const board = kit.map();
+  // Ruling D2: the drake stands with its ranger, so the 30 feet between them
+  // always hold, and a range from the drake is measured from the ranger's
+  // square: its bite at a creature far from the ranger is refused, nothing spent.
+  const [enemy] = await table.stage([ranger, friend], { first: ranger });
   const { listTokens } = await import("../src/lib/db/battle-maps.ts");
-  const petToken = listTokens(board.id).find((token) => token.refId !== ranger.id && /drake/i.test(`${token.label ?? ""} ${token.name ?? ""} ${token.kind ?? ""}`));
-  assert.ok(petToken, `the drake has no token on the board, so nothing can measure its 30 feet (tokens: ${listTokens(board.id).map((token) => token.kind ?? token.refKind ?? "?").join(",")})`);
+  const pets = listTokens(kit.map().id).filter((token) => token.refId !== ranger.id && /drake/i.test(`${token.name ?? ""}`));
+  assert.equal(pets.length, 0, "the drake has no token of its own");
+  kit.place(ranger.id, 1, 1);
+  kit.place(enemy.id, 12, 12);
+  const before = table.ledger(ranger);
+  const far = await world.invoke("pet_attack", { characterId: ranger.id, petName: drake().name, targetEnemyId: enemy.id });
+  assert.ok(far.ok === false && /stands with/.test(far.error ?? "") && table.ledger(ranger) === before, `a bite measured from the ranger's square, far off: ${show(far)}`);
 });
 
 await row("787-reaction-card-says-self", {

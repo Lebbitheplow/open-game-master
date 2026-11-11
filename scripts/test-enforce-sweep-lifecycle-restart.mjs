@@ -98,7 +98,9 @@ const REGISTRY = {
   "turn.ts:CARDS_OUT": { kind: PLUMBING, what: "one call's scratch" },
   "held-call.ts:PARKED": { kind: PLUMBING, what: "one call's scratch: which answers are a held call's park" },
   "held-call.ts:WATCHED": { kind: PLUMBING, what: "one call's scratch: the watch stop a held call's answer opened" },
+  "held-call.ts:__odmNamedHeldRunners": { kind: PLUMBING, what: "the runners of calls the server makes itself (the backstop's creature turns), registered at load: a restart registers them again" },
   "held-call.ts:__odmWatchAnswered": { kind: PLUMBING, what: "the next held call is a stop's own, already answered; a restart's taken flag answers the calls a stop held (turn.ts resumeDmTurn)" },
+  "ar-ws-after-call.ts:waiting": { kind: PLUMBING, what: "one call's scratch: what a held call left for its own end, landed or dropped inside that call's transaction, never across calls" },
   "turn.ts:toolsSentByTurn": { kind: PLUMBING, what: "the tools a running turn was sent" },
   "turn.ts:toolFieldsByName": { kind: PLUMBING, what: "a cache of each tool's parameter shapes for the argument door, built again from the tool catalogue when empty" },
 };

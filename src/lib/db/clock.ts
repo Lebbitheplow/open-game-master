@@ -2,12 +2,15 @@ import { tickEffectMinutes } from "@/lib/db/active-effects";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
+import { fadeBeads } from "@/lib/dm/ar-ws-bead-store";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
 import { poisonClockTick } from "@/lib/dm/affliction-poisons";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
+import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
+import { settleInfusions } from "@/lib/dm/infuse-item";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -63,7 +66,7 @@ export function advanceClock(
   // character id, with the copper a day their work covers (supplies.ts
   // upkeepAtDawns); only they are fed by it.
   options: { meal?: boolean; lifestyle?: Record<string, number> } = {},
-): { clock: CampaignClock; minutes: number; deathSaves: string[] } | ToolError {
+): { clock: CampaignClock; minutes: number; deathSaves: string[]; hourSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
   if ("error" in moved) {
@@ -122,9 +125,19 @@ export function advanceClock(
       deathSaves = tickClockConditions(campaign, moved.minutes, current.instant);
     }
   }
+  // Command Undead: a commanded undead of Intelligence 12 repeats its save
+  // as each hour ends, in a fight or out (src/lib/dm/ar-ws-command-hours.ts).
+  const hourSaves = commandedHourlySaves(campaignId, current.instant, moved.instant);
+  // An artificer's infusions outlast their death by days (infuse-item.ts).
+  const infusedIn = getCampaignById(campaignId);
+  if (infusedIn) {
+    settleInfusions(infusedIn, current.instant, moved.instant);
+  }
   // The same clock burns torches down and brings the calendar's days round
   // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
   gutterBurntLights(campaignId, moved.instant);
+  // And ends the hour of an Arcane Abeyance bead (ar-ws-bead-store.ts).
+  fadeBeads(campaignId, moved.instant);
   // Every dawn crossed refills the wands and staffs that regain at dawn,
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
@@ -151,7 +164,7 @@ export function advanceClock(
   if (turnId) {
     publishPersisted(campaignId, "clock_changed", { clock: after, move: clockTurnOf(campaignId, turnId) });
   }
-  return { clock: after, minutes: moved.minutes, deathSaves };
+  return { clock: after, minutes: moved.minutes, deathSaves, hourSaves };
 }
 
 // The whole clock as the turn found it and left it, from the campaign row

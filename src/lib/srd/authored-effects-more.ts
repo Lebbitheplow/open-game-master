@@ -19,6 +19,7 @@
 //   mote            rolls.ts, forced-save.ts (Mote of Potential)
 //   swarm_prone     authored-spend-more.ts (Mighty Swarm)
 
+import type { RollKey } from "@/lib/srd/roll-keys";
 import { standsCheaply } from "@/lib/srd/feat-combat";
 import { activeAuthored, resolveFormula, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import type { NaturalWeapon } from "@/lib/srd/authored-effects-types";
@@ -94,8 +95,10 @@ export function naturalWeaponGated(sheet: AuthoredSheet, name: string): string |
 
 // ---- reach, Sneak Attack, saves ----
 
-export function authoredReachBonus(sheet: AuthoredSheet): { tiles: number; feature: string } | null {
-  const found = activeAuthored(sheet, "reach")[0];
+export function authoredReachBonus(sheet: AuthoredSheet, unarmed = false): { tiles: number; feature: string } | null {
+  // The widest reach held, not the first: Demiurgic Colossus's 10 feet is
+  // Giant's Havoc's 5 grown, not a second 5 on top.
+  const found = activeAuthored(sheet, "reach").filter(({ effect }) => !effect.unarmed || unarmed).sort((a, b) => b.effect.tiles - a.effect.tiles)[0];
   return found ? { tiles: found.effect.tiles, feature: found.held.feature } : null;
 }
 
@@ -144,10 +147,14 @@ export function authoredSpellDice(
   sheet: AuthoredSheet & { level?: number },
   spell: { damageType?: string | null; secondType?: string | null; healing?: boolean; level?: number },
   mods: Record<string, number> = {},
-): { dice: string[]; diceSecond: string[]; notes: string[] } {
+): { dice: string[]; diceSecond: string[]; notes: string[]; oneTarget: Array<{ amount: number; second: boolean }> } {
   const dice: string[] = [];
   const diceSecond: string[] = [];
   const notes: string[] = [];
+  // The riders that land on one target only, as numbers (Radiant Soul's
+  // Charisma modifier): spell-damage-riders.ts adds them to the flat bonus,
+  // which an area spell gives its first creature alone.
+  const oneTarget: Array<{ amount: number; second: boolean }> = [];
   for (const { effect, held } of activeAuthored(sheet, "spell_rider")) {
     // Potent Spellcasting: cantrips only.
     if (effect.cantrips && spell.level !== 0) {
@@ -162,15 +169,25 @@ export function authoredSpellDice(
     const casterClasses = [textKey(sheet.class ?? ""), ...(sheet.classes ?? []).map((entry) => textKey(entry.id))];
     const listed = !effect.classes || casterClasses.some((entry) => effect.classes!.includes(entry));
     const wanted = effect.items;
-    const item = wanted ? (sheet.equipment ?? []).find((entry) => wanted.some((tag) => hasItemTag(entry, tag))) : null;
-    if (!typed || !listed || (wanted && !item)) {
+    const named = effect.itemNames?.map(textKey);
+    const item = wanted || named
+      ? (sheet.equipment ?? []).find((entry) => (wanted ?? []).some((tag) => hasItemTag(entry, tag)) || (named ?? []).includes(textKey(entry.name)))
+      : null;
+    if (!typed || !listed || ((wanted || named) && !item)) {
       continue;
     }
     const rolled = resolveFormula(effect.dice, held.level, mods);
-    (bySecond ? diceSecond : dice).push(rolled);
-    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}`);
+    const amount = Number(rolled);
+    if (effect.oneTarget && Number.isFinite(amount)) {
+      if (amount > 0) {
+        oneTarget.push({ amount, second: bySecond });
+      }
+    } else {
+      (bySecond ? diceSecond : dice).push(rolled);
+    }
+    notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}${effect.oneTarget ? " (one target)" : ""}`);
   }
-  return { dice, diceSecond, notes };
+  return { dice, diceSecond, notes, oneTarget };
 }
 
 // Grasping Tentacles: the spell whose concentration damage cannot break, and
@@ -199,15 +216,17 @@ export function authoredConcentrationGuard(
 
 // Whether this spell may strike a second creature within 5 feet of the first:
 // Improved Reaper (a 1st to 5th level necromancy spell), Reaper (a
-// necromancy cantrip), Moon Fire (sacred flame).
+// necromancy cantrip), Moon Fire (sacred flame). `anywhere`: the second creature
+// need not stand by the first (Split Enchantment, an enchantment spell of 1st
+// level or higher: "can target a second", with no distance between them).
 export function authoredTwinSpell(
   sheet: AuthoredSheet,
   spell: { name?: string | null; school?: string | null; level: number },
-): { feature: string } | null {
+): { feature: string; anywhere: boolean } | null {
   for (const { effect, held } of activeAuthored(sheet, "twin_spell")) {
     const named = !effect.spells || effect.spells.some((entry) => textKey(entry) === textKey(spell.name ?? ""));
     if (named && textKey(spell.school ?? "") === textKey(effect.school) && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
-      return { feature: held.feature };
+      return { feature: held.feature, anywhere: Boolean(effect.anywhere) };
     }
   }
   return null;
@@ -227,6 +246,9 @@ export function opportunityReactionKey(sheet: AuthoredSheet, sheetId: string, mo
   return activeAuthored(sheet, "oa_each_turn").length ? `${VIGILANT_PREFIX}${sheetId}:${moverId}` : sheetId;
 }
 export const VIGILANT_PREFIX = "vigilant:";
+// A pet's own reaction ("pet-reaction:<owner id>:<pet>", summon-reactions.ts),
+// given back as its owner's turn starts.
+export const PET_REACTION_PREFIX = "pet-reaction:";
 
 // The squares standing up from prone costs: half the speed, or the feature's
 // own price (Tipsy Sway: 5 feet).
@@ -237,6 +259,13 @@ export function standUpTiles(sheet: AuthoredSheet, speedTiles: number): number {
     return 1;
   }
   return found ? Math.max(0, Math.round(found.effect.feet / 5)) : Math.floor(speedTiles / 2);
+}
+
+// The feet a turn with the Attack action adds to the holder's walking speed
+// (Blade Flourish: "Whenever you take the Attack action on your turn, your
+// walking speed increases by 10 feet until the end of the turn").
+export function attackTurnSpeed(sheet: AuthoredSheet): number {
+  return activeAuthored(sheet, "attack_turn_speed").reduce((sum, found) => sum + found.effect.feet, 0);
 }
 
 export function holdsMote(sheet: AuthoredSheet): string | null {
@@ -281,14 +310,26 @@ export function authoredDamageAbility(
 
 // The lowest a d20 may count on a check with this skill (Silver Tongue's 10,
 // Ear for Deceit's 8), or 0.
-export function authoredCheckFloor(sheet: AuthoredSheet, skill: string): number {
+// `ability`: the check's ability, for a floor on every check of an ability
+// (Starry Form's Dragon). `about`: the circumstance the check names, for a
+// floor that holds only there (Ear for Deceit: a lie).
+export function authoredCheckFloor(sheet: AuthoredSheet, skill: string, ability?: string, about?: string): number {
   let floor = 0;
   for (const { effect } of activeAuthored(sheet, "check_floor")) {
-    if (effect.skills.some((entry) => textKey(entry) === textKey(skill))) {
+    const covered = effect.skills.some((entry) => textKey(entry) === textKey(skill)) || Boolean(ability && effect.abilities?.includes(ability as never));
+    if (covered && (!effect.about || effect.about === about)) {
       floor = Math.max(floor, effect.floor);
     }
   }
   return floor;
+}
+
+// The circumstance a floor reads, as the key a roll is asked for
+// (src/lib/srd/roll-keys.ts): an Inquisitive's Insight check names whether
+// it is about a lie, so the floor is never lost to an omission nor given to
+// a check about something else.
+export function authoredFloorKeys(sheet: AuthoredSheet): RollKey[] {
+  return activeAuthored(sheet, "check_floor").flatMap(({ effect }) => (effect.about ? [{ roll: "check" as const, skills: effect.skills, about: effect.about }] : []));
 }
 
 // Expert Divination: the slot level a casting gives back, or null. `slots`

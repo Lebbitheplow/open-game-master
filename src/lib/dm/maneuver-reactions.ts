@@ -20,8 +20,8 @@
 //     reaction, the die on that attack's damage.
 //
 // Called from use_reaction (src/lib/dm/reaction-tools.ts) and take_action
-// (src/lib/dm/action-tools.ts). The die is spent through use_resource, which
-// charges nothing for a plain spend.
+// (src/lib/dm/action-tools.ts). The die is spent through the shared door,
+// naming the maneuver (src/lib/dm/maneuver-die.ts).
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getEnemy } from "@/lib/db/encounters";
@@ -33,7 +33,7 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { attackerFoeId, cutBlow, freshLastHit, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { COMMANDED, GRAPPLING_STRIKE, MANEUVERED, SUPERIORITY_STRIKE, maneuverDieFor, markedDie, maneuverUse } from "@/lib/dm/maneuver-rules";
-import { applyDmMutation, audit } from "@/lib/dm/mutations";
+import { spendManeuverDie } from "@/lib/dm/maneuver-die";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -69,39 +69,13 @@ function clearMarks(campaign: Campaign, sheetId: string, names: string[]) {
   }
 }
 
-// One Superiority Die spent, or the refusal.
-function payDie(
-  campaign: Campaign,
-  turnId: string,
-  sheet: CharacterSheet,
-  label: string,
-  sheets: CharacterSheet[],
-  sheetsById: Map<string, CharacterSheet>,
-): ToolError | null {
-  const spent = applyDmMutation(
-    campaign,
-    turnId,
-    "use_resource",
-    JSON.stringify({ characterId: sheet.id, resource: "Superiority Dice", reason: label }),
-    sheets,
-    sheetsById,
-  ).result;
-  return typeof spent.error === "string" ? { ...toolError(spent), error: `${label}: ${spent.error}` } : null;
-}
-
-// The die for a Parry by one the blow dropped. The reaction was judged as they
-// stood before it (reaction-gate.ts), which use_resource, asked of a counter that
-// is no reaction of its own, reads as someone at 0 spending it by choice.
-function payDieAsTheyStood(campaign: Campaign, turnId: string, sheet: CharacterSheet, label: string): ToolError | null {
-  const state = sheet.resources.sub_superiority_dice;
-  if (!state || state.used >= state.max) {
-    return { error: `${label}: ${sheet.name} has no Superiority Dice left.`, refused: "rules" };
-  }
-  const patch = { resources: { ...sheet.resources, sub_superiority_dice: { max: state.max, used: state.used + 1 } } };
-  const updated = patchSheet(sheet.id, patch);
-  audit(campaign, turnId, sheet, "use_resource", { resource: "Superiority Dice", spent: 1 }, label, patch);
-  if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-  return null;
+// One Superiority Die spent, or the refusal: the shared door names the
+// maneuver (src/lib/dm/maneuver-die.ts). A Parry by one the blow dropped was
+// judged as they stood before it (reaction-gate.ts), and the door asks only
+// for a die left, so it pays the same either way.
+function payDie(campaign: Campaign, turnId: string, sheet: CharacterSheet, label: string): ToolError | null {
+  const refused = spendManeuverDie(campaign, turnId, sheet, label);
+  return refused ? { ...refused, error: `${label}: ${refused.error}` } : null;
 }
 
 // ---- use_reaction ----
@@ -141,7 +115,7 @@ function parry(ctx: Ctx): ToolResult {
   if (!record || index < 0) {
     return noHit(sheet.name, "Parry", "damage from a melee attack");
   }
-  const refused = sheet.currentHp > 0 ? payDie(campaign, ctx.turn.id, sheet, "Parry", ctx.sheets, ctx.sheetsById) : payDieAsTheyStood(campaign, ctx.turn.id, sheet, "Parry");
+  const refused = payDie(campaign, ctx.turn.id, sheet, "Parry");
   if (refused) {
     return { ...refused, error: `${refused.error} Nothing was spent.` };
   }
@@ -181,7 +155,7 @@ function reactionStrike(ctx: Ctx, label: "Riposte" | "Brace"): ToolResult {
     return { error: "Brace answers a creature moving into the fighter's reach: pass its targetEnemyId. Nothing was spent.", retry: true };
   }
   const before = getSheetById(sheet.id)?.resources;
-  const refused = payDie(campaign, ctx.turn.id, sheet, label, ctx.sheets, ctx.sheetsById);
+  const refused = payDie(campaign, ctx.turn.id, sheet, label);
   if (refused) {
     return { ...refused, error: `${refused.error} Nothing was spent.` };
   }
@@ -282,8 +256,6 @@ export function payGrapplingStrike(
   turnId: string,
   sheet: CharacterSheet,
   targetEnemyId: string | undefined,
-  sheets: CharacterSheet[],
-  sheetsById: Map<string, CharacterSheet>,
 ): { die: string } | ToolError {
   const mark = markOf(sheet, GRAPPLING_STRIKE);
   const die = mark ? markedDie(mark) : null;
@@ -295,7 +267,7 @@ export function payGrapplingStrike(
     const enemy = getEnemy(struck);
     return { error: `Grappling Strike grapples the creature the hit landed on${enemy ? ` (${enemy.displayName})` : ""}. Nothing was spent.`, retry: true };
   }
-  const refused = payDie(campaign, turnId, sheet, "Grappling Strike", sheets, sheetsById);
+  const refused = payDie(campaign, turnId, sheet, "Grappling Strike");
   if (refused) {
     return { ...refused, error: `${refused.error} Nothing was spent.` };
   }

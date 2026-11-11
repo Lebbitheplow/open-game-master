@@ -1,5 +1,7 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { noteRun } from "@/lib/dm/mt-fb-charge";
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
+import { cloakIntoLight } from "@/lib/dm/mt-mr-spends";
 import { tokenSides } from "@/lib/dm/combatant";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -18,6 +20,7 @@ import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { describeDistances } from "@/lib/battlemap/serialize";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { budgetApplies } from "@/lib/dm/action-budget";
+import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -244,12 +247,14 @@ export function walkCharacter(
   const traits = withZoneSteps(
     pcMoveTraits({
       width: map.width,
+      theme: map.theme, drawnTerrain: map.drawnTerrain,
       tokens,
       mover: token,
       sheet,
       footprintOf,
       enemySize: (refId) => enemiesById.get(refId)?.stats.size,
       sideOf: tokenSides(getActiveEncounter(campaign.id)),
+      anyGround: crossesAnyGround(encounter, sheet),
     }),
     map,
     "pc",
@@ -284,8 +289,15 @@ export function walkCharacter(
   }
   const spent = walk.spent * factor + standCost;
   moveToken(token.id, walk.at.x, walk.at.y, token.movedThisRound + (readied ? 0 : spent));
+  // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
+  if (!readied) {
+    noteRun(campaign.id, sheet, origin);
+  }
+  // A Charger's straight run is read off the walk (ar-wbf-feat-turn.ts).
+  noteStraightRun(encounter, sheet, origin, walkedSquares);
   // Moving ends One with Shadows' invisibility (one-with-shadows.ts).
   endShadowInvisibility(campaign.id, sheet.id, "moves");
+  cloakIntoLight(campaign.id, sheet.id);
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }

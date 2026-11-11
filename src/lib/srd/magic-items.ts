@@ -19,6 +19,7 @@
 //     its text lets attune (a Staff of Power: a sorcerer, warlock or wizard);
 //   - a second copy of the same item adds nothing.
 
+import { ignoresItemRequirements } from "@/lib/srd/mt-srd-artificer";
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { ATTUNEMENT_SLOTS, attunementSlotsFor } from "@/lib/srd/armor";
 import { countsAsWorn } from "@/lib/srd/wear-slots";
@@ -29,6 +30,7 @@ import { isWorkshopRow, magicItemBonus, rowName, type RowItem } from "@/lib/srd/
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
 import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
+import { bareReplica, infusionMagicDef, replicaOf } from "@/lib/srd/infusions";
 
 // The minimal item shape the magic-item engine reads: a name and its worn
 // state. The full EquipmentItem satisfies this. `gear.magic` is a homebrew
@@ -82,7 +84,9 @@ export type MagicItemEffect =
 // A worn item's rider on attacks with some weapons, with the item it is from.
 // What an item makes of the unarmed strike itself (SRD 5.1, Demon Armor: "a
 // damage die of 1d8" that deals "slashing damage").
-export type UnarmedForm = { die: string; damageType: string };
+// `thrown`: the strike may be thrown and comes back (an artificer's Arcane
+// Propulsion Armor's gauntlets, src/lib/srd/infusions.ts).
+export type UnarmedForm = { die: string; damageType: string; thrown?: { rangeFt: number; longRangeFt: number } };
 
 export type WornWeaponRider = { weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm; source: string };
 
@@ -152,6 +156,16 @@ for (const item of MAGIC_ITEMS) {
 // name (src/lib/srd/item-row.ts). A workshop entry's line is none of the
 // table's (isWorkshopRow): its magic is its own `gear.magic`.
 export function matchMagicItem(item: RowItem): MagicItemDef | null {
+  // An artificer's infusion makes the row a magic item (src/lib/srd/
+  // infusions.ts): a replica the item it replicates.
+  const replica = replicaOf(item);
+  if (replica) {
+    return magicItemNamed(replica) ?? bareReplica(replica);
+  }
+  const infused = infusionMagicDef(item);
+  if (infused) {
+    return infused;
+  }
   if (isWorkshopRow(item)) {
     return null;
   }
@@ -211,7 +225,8 @@ export function mayAttune(def: Pick<MagicItemDef, "attunedBy">, wearer: Wearer):
   if (!rule) {
     return true;
   }
-  const device = (wearer.features ?? []).some((f) => isNamed(f.name, "Use Magic Device"));
+  // Use Magic Device, and an artificer's Magic Item Savant (mt-srd-artificer.ts).
+  const device = (wearer.features ?? []).some((f) => isNamed(f.name, "Use Magic Device")) || ignoresItemRequirements(wearer);
   if (rule.classes?.length && !device) {
     const held = [textKey(wearer.class ?? ""), ...(wearer.classes ?? []).map((entry) => textKey(entry.id))];
     if (!rule.classes.some((name) => held.includes(name))) {

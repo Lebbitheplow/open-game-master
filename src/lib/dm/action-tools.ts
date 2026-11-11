@@ -14,12 +14,14 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { counterSpend, kiSpend } from "@/lib/dm/bonus-actions";
 import { ACTIONS, priceAction, type Price } from "@/lib/dm/action-price";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
+import { chargerShove } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
+import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
 import { readyAction, searchAction, objectAction } from "@/lib/dm/object-actions";
@@ -370,6 +372,12 @@ export function handleTakeAction(
     return handleMountAction(campaign, sheet, args.action);
   }
   const encounter = getActiveEncounter(campaign.id);
+  // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5
+  // feet of movement, no action and no check (ar-ws-squeeze.ts).
+  const slip = args.action === "escape" ? squeezeSlip(campaign, sheet, encounter) : null;
+  if (slip && "done" in slip) {
+    return slip.done;
+  }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
   // A pin is never readied (it is not among the readiable actions).
@@ -401,7 +409,7 @@ export function handleTakeAction(
   const allyDown = sheets.some((entry) => entry.id !== sheet.id && (getSheetById(entry.id) ?? entry).currentHp <= 0 && !(getSheetById(entry.id) ?? entry).deathSaves?.dead);
   const price: Price | ToolError = readied
     ? { budget: null }
-    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown });
+    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown, skill: args.skill });
   if ("error" in price) {
     return toolError(price);
   }
@@ -515,12 +523,17 @@ export function handleTakeAction(
         return { error: `${sheet.name} is charmed by ${aimed?.displayName ?? "that creature"} and cannot attack it: a ${args.action} is a melee attack. Nothing was spent; pick another target.`, refused: "rules" };
       }
       if (price.feature !== "Grappling Strike") {
-        return contest(campaign, turn, sheet, encounter, args, spend, costs);
+        // Charger's shove after a 10-foot straight run pushes 10 feet more.
+        const charge = chargerShove(encounter, sheet.id, price.feature);
+        if (charge) {
+          costs.charger = charge.note;
+        }
+        return contest(campaign, turn, sheet, encounter, args, spend, costs, undefined, charge?.tiles ?? 0);
       }
       // The Superiority Die rides the Athletics check; it is paid with the
       // bonus action, once the contest's own checks pass.
       return contest(campaign, turn, sheet, encounter, args, spend, costs, () => {
-        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId, sheets, sheetsById);
+        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId);
         return "error" in strike ? strike : { die: strike.die, label: "Grappling Strike" };
       });
     }
@@ -577,5 +590,5 @@ export function handleTakeAction(
   }
   };
   const outcome = resolveAction();
-  return "error" in outcome ? outcome : { ...costs, ...outcome };
+  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
 }

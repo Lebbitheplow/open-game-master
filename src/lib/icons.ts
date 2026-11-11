@@ -37,17 +37,40 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // of their kin.
   "feature/luck-points": { kind: "feature", slug: "bend-luck" },
   "feature/inspiring-leader": { kind: "feature", slug: "combat-inspiration" },
+  "feature/chefs-treats": { kind: "spell", slug: "heroes-feast" },
   // A feature's second spend wears the feature's own painting (issue 233).
   "feature/activate-cannon": { kind: "feature", slug: "eldritch-cannon" },
   "feature/move-spirit-totem": { kind: "feature", slug: "spirit-totem" },
+  "feature/spreading-spores": { kind: "feature", slug: "halo-of-spores" },
+  // The Beast Master's command card wears the painting of a hero and its beast.
+  "feature/exceptional-training": { kind: "feature", slug: "bonded-beast" },
   // The Echo Knight's echo (src/lib/srd/authored-effects-data-b.ts) wears its
   // sibling Unleash Incarnation's painting, a sword and its spectral double:
   // the catalogue's own prompt for it read only the duration.
   "feature/manifest-echo": { kind: "feature", slug: "unleash-incarnation" },
+  // The wave-2 cards with no painting of their own yet wear the closest kin's
+  // (the catalogue's prompts for most of them carry the name alone): a burst
+  // of speed, the mind's hand, the rage that grows the claws, a spirit asked,
+  // a healing hand, a ki strike, a step through space, a bolt of light, and
+  // wild magic's luck.
+  "feature/feline-agility": { kind: "action", slug: "dash" },
+  "feature/telekinetic-movement": { kind: "feature", slug: "telekinetic-adept" },
+  "feature/guarded-mind": { kind: "feature", slug: "stillness-of-mind" },
+  "feature/form-of-the-beast": { kind: "feature", slug: "rage" },
+  "feature/question-a-spirit": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/flurry-of-healing": { kind: "feature", slug: "hand-of-healing" },
+  "feature/deft-strike": { kind: "feature", slug: "ki-empowered-strikes" },
+  "feature/psychic-teleportation": { kind: "feature", slug: "misty-wanderer" },
+  "feature/wild-surge-teleport": { kind: "feature", slug: "misty-escape" },
+  "feature/wild-surge-spirit": { kind: "feature", slug: "summon-wildfire-spirit" },
+  "feature/wild-surge-bolt": { kind: "spell", slug: "guiding-bolt" },
+  "feature/controlled-surge": { kind: "feature", slug: "bend-luck" },
+  "feature/unstable-backlash": { kind: "feature", slug: "tides-of-chaos" },
   // The pick-lists issue #833 added wear the paintings of what they choose
   // for, not new art: a dragon for the sorcerer's ancestor, the ranger's and
   // the wizard's own features, the druid's circle.
   "family/option-dragon-ancestor": { kind: "spell", slug: "summon-draconic-spirit" },
+  "family/option-arcane-shot": { kind: "feature", slug: "arcane-shot" },
   "family/option-favored-enemy": { kind: "feature", slug: "favored-enemy" },
   "family/option-favored-terrain": { kind: "feature", slug: "natural-explorer" },
   "family/option-land-circle": { kind: "feature", slug: "druid-circle" },
@@ -59,6 +82,41 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/dragon-wings": { kind: "feature", slug: "wings-unfurled" },
   "feature/draconic-presence": { kind: "spell", slug: "fear" },
   "feature/elemental-affinity": { kind: "spell", slug: "protection-from-energy" },
+  // A Scribe's Awakened Spellbook (its ritual use, authored-effects-w2-ar-ws.ts)
+  // wears the painting of the same book's mind.
+  "feature/awakened-spellbook": { kind: "feature", slug: "manifest-mind" },
+  // Three sorcerer spends the fifth round of the arcane repair built wear
+  // paintings of their kin, not new art: the moon's own glyph for the light a
+  // Lunar sorcerer sheds (Lunar Boons' card is gone: the cast spends it), a
+  // healing spell for the healing dice rolled again, a ward for the ward.
+  "feature/lunar-empowerment": { kind: "feature", slug: "lunar-boons" },
+  "feature/empowered-healing": { kind: "spell", slug: "cure-wounds" },
+  "feature/bastion-of-law": { kind: "spell", slug: "warding-bond" },
+  // The dead's whispers, the spirits' tales and a swashbuckler's charm wear
+  // the paintings nearest them until they have their own.
+  "feature/whispers-of-the-dead": { kind: "feature", slug: "grave-whispers" },
+  "feature/tales-from-beyond": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/release-tale": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/panache": { kind: "spell", slug: "enthrall" },
+  // A rune's invocation wears the rune's own painting (option/rune-*), and
+  // the Storm Rune's prophetic state its rune's.
+  "feature/cloud-rune": { kind: "option", slug: "rune-cloud-rune" },
+  "feature/fire-rune": { kind: "option", slug: "rune-fire-rune" },
+  "feature/frost-rune": { kind: "option", slug: "rune-frost-rune" },
+  "feature/hill-rune": { kind: "option", slug: "rune-hill-rune" },
+  "feature/stone-rune": { kind: "option", slug: "rune-stone-rune" },
+  "feature/storm-rune": { kind: "option", slug: "rune-storm-rune" },
+  "feature/prophetic-state": { kind: "option", slug: "rune-storm-rune" },
+  // The door cards (src/lib/battlemap/hand-feature-doors.ts) and Alter
+  // Memories wear their kin's paintings: the pact boon's own for the blade,
+  // a caster's feat for War Caster, the psi warrior's mind for Telekinetic,
+  // the spell that rewrites a memory.
+  "feature/pact-of-the-blade": { kind: "option", slug: "pact-boon-pact-of-the-blade" },
+  "feature/war-caster": { kind: "feat", slug: "battle-caster" },
+  "feature/telekinetic": { kind: "feature", slug: "telekinetic-adept" },
+  "feature/alter-memories": { kind: "spell", slug: "modify-memory" },
+  // Controlled Chaos's pick of two surges wears its kin's: Tides of Chaos.
+  "feature/controlled-chaos": { kind: "feature", slug: "tides-of-chaos" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

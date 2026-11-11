@@ -237,6 +237,8 @@ export function settleLastHit(
 // order they landed: what changing that one changes (hit-replay-logic.ts).
 function chainFrom(campaignId: string, answers: Array<{ record: LastHit }>): LastHit[] {
   const ids = new Set(answers.map((answer) => hitIdOf(answer.record)));
+  // Damage from no attack (last-hit.ts openEffect) is a link of the chain
+  // like a hit: replayed as it was dealt, and kept as the corrected fight has it.
   const open = openHits(campaignId, answers[0].record.characterId);
   const from = open.findIndex((record) => ids.has(hitIdOf(record)));
   const chain = from >= 0 ? open.slice(from) : [];

@@ -209,10 +209,38 @@ export const equipmentItemSchema = z.object({
   // against the three attunements while it waits. Absent on every row
   // written before it.
   attuning: z.boolean().optional(),
+  // A warlock's pact weapon (SRD 5.1, Pact of the Blade): "conjured:<the
+  // warlock's sheet id>" for the weapon the pact made, which exists only
+  // while the pact holds it there; "bonded" for a magic weapon the ritual
+  // bound, "stowed" while that weapon is in its extradimensional space
+  // (src/lib/srd/pact-weapon.ts, src/lib/dm/mt-srd-pact.ts). Absent on every
+  // other row.
+  pact: z.string().trim().max(60).optional(),
   // Charges left on a charged magic item (a wand, a staff). Absent means
   // full: a row written before charges were kept starts with all of them
   // (src/lib/dm/item-charges.ts).
   charges: z.number().int().min(0).max(999).optional(),
+  // The clock's instant a rock gnome's Tinker device was made or last
+  // repaired (src/lib/dm/rock-gnome-tinker.ts): it works for 24 hours after.
+  // Absent on every other row.
+  madeAt: z.number().int().min(0).optional(),
+  // An artificer's infusion laid in the item (src/lib/srd/infusions.ts,
+  // src/lib/dm/infuse-item.ts): which, by whom, at what level and instant,
+  // the mundane weapon or suit it is built on, and its one choice (Resistant
+  // Armor's damage type, the item a replica is). `endsAt`: the instant it
+  // vanishes once its artificer is dead. Absent on every other row.
+  infusion: z
+    .object({
+      name: z.string().trim().min(1).max(60),
+      by: z.string().trim().min(1).max(80),
+      byName: z.string().trim().min(1).max(80),
+      level: z.number().int().min(1).max(30),
+      at: z.number().int().min(0),
+      base: z.object({ kind: z.enum(["weapon", "armor"]), name: z.string().trim().min(1).max(80) }).optional(),
+      choice: z.string().trim().min(1).max(80).optional(),
+      endsAt: z.number().int().min(0).optional(),
+    })
+    .optional(),
   // What a Ring of Spell Storing holds (src/lib/srd/spell-storing.ts): each
   // spell at the slot level it was cast from, with its caster's numbers.
   storedSpells: z
@@ -224,6 +252,10 @@ export const equipmentItemSchema = z.object({
         attackBonus: z.number().int().min(-10).max(50).optional(),
         abilityMod: z.number().int().min(-5).max(20).optional(),
         by: z.string().trim().min(1).max(80).optional(),
+        // An artificer's Spell-Storing Item: the castings left of its one
+        // spell, twice the artificer's Intelligence modifier when stored
+        // (src/lib/dm/spell-storing-item.ts). A ring's spell has none.
+        uses: z.number().int().min(1).max(20).optional(),
       }),
     )
     .max(5)
@@ -276,6 +308,11 @@ export const equipmentItemSchema = z.object({
   // The spell a spell scroll holds, by the name the spell lists use; what
   // reading it casts (src/lib/dm/consumables.ts).
   spell: z.string().trim().min(1).max(80).optional(),
+  // A thing a wizard's feature made that holds one spell and does not last
+  // (src/lib/srd/ar-ws-conjured.ts): an Arcane Abeyance bead, gone when the
+  // campaign clock reaches `until` (its minute); a Master Scrivener's scroll,
+  // gone at its holder's long rest. Absent on every other row.
+  conjured: z.object({ kind: z.enum(["bead", "scroll"]), until: z.number().int().min(0).optional() }).optional(),
   // A homebrew item's mechanics, snapshotted from the entry so the armour,
   // attack and magic-item engines read it exactly as they read SRD gear
   // (src/lib/homebrew/gear.ts). Refreshed on every sheet read; absent for
@@ -361,6 +398,19 @@ export const spellcastingSchema = z
     // A wizard's spellbook: every spell written in it, prepared or not. The
     // prepared list is drawn from it. Other classes leave it absent.
     spellbook: z.array(z.string().trim().min(1).max(80)).max(120).optional(),
+    // Spells gone from a wizard's book for a while (One with the Word,
+    // src/lib/srd/ar-ws-spellbook.ts): each with the lists it left and the
+    // long rests still to pass before it is written back.
+    vanished: z
+      .array(
+        z.object({
+          spell: z.string().trim().min(1).max(80),
+          from: z.array(z.enum(["spellbook", "prepared", "pending", "known"])).max(4),
+          rests: z.number().int().min(1).max(6),
+        }),
+      )
+      .max(120)
+      .optional(),
     // Per-class casting for multiclassed characters: each caster class
     // keeps its own ability and lists while `slots` becomes the SHARED
     // multiclass pool. Absent = single-class; the legacy fields above stay
@@ -613,6 +663,9 @@ export const patchSheetSchema = z.object({
   // The one spell a caster who knows their spells gives up for another at
   // a level-up.
   levelUpForget: z.string().trim().max(80).optional(),
+  // The held choices this level changes (Storm Aura's environment, an
+  // invocation replaced): src/lib/srd/level-up-changes.ts judges each.
+  levelUpChanges: z.array(z.object({ from: z.string().trim().min(1).max(80), to: z.string().trim().min(1).max(80) })).max(4).optional(),
   // The Ability Score Improvements taken with this level: two points each,
   // or a feat. Only as many as the class's new level owes.
   asiChoices: z.array(asiChoiceSchema).max(MAX_ASI_CHOICES).optional(),
@@ -695,6 +748,11 @@ export const wildShapeSchema = z
     type: z.string().trim().max(30).optional(),
     cr: z.number().min(0).max(30).optional(),
     saves: z.array(z.enum(["str", "dex", "con", "int", "wis", "cha"])).max(6).optional(),
+    // The skills its block lists with their printed bonuses, and its special
+    // senses in feet (SRD 5.1, Wild Shape: the creature's proficiencies are
+    // gained, and only the form's senses are used).
+    skills: z.record(z.string().trim().min(1).max(30), z.number().int().min(-10).max(30)).optional(),
+    senses: z.record(z.string().trim().min(1).max(30), z.number().int().min(0).max(1000)).optional(),
     resist: z.string().trim().max(200).optional(),
     immune: z.string().trim().max(200).optional(),
     vulnerable: z.string().trim().max(120).optional(),
@@ -734,6 +792,16 @@ export const petSchema = z.object({
   resist: z.string().trim().max(200).optional(),
   immune: z.string().trim().max(200).optional(),
   vulnerable: z.string().trim().max(120).optional(),
+  // What the bond makes of the creature beyond its block (src/lib/dm/
+  // pet-build.ts): a drake's size and wings (Bond of Fang and Scale), a
+  // companion's save and skill bonuses with the ranger's proficiency added
+  // (Ranger's Companion), and what it is doing ("dodging" while uncommanded,
+  // src/lib/dm/pet-command.ts). Absent on a pet stored before them.
+  size: z.string().trim().max(20).optional(),
+  fly: z.number().int().min(0).max(120).optional(),
+  saves: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
+  skills: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
+  conditions: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 

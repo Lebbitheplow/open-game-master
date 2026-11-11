@@ -11,7 +11,7 @@ import path from "node:path";
 import { suite } from "./enforce-harness.mjs";
 import { openSpendsRig, signature, statesMechanic } from "./sweep-spends.mjs";
 import { FAMILIES, opensWithTrigger, statedRecharge, tableRows } from "./sweep-spends-rows.mjs";
-import { staged, knock, replay, judge, cardIntents, playCard, untriggered, UNTRIGGERED, TRIGGERS, OWN_TURN, short } from "./sweep-spends-walk.mjs";
+import { staged, knock, replay, judge, cardIntents, playCard, untriggered, stopDoor, STOPPED, UNTRIGGERED, TRIGGERS, OWN_TURN, short } from "./sweep-spends-walk.mjs";
 import { KNOWN, RULINGS, SKIP } from "./sweep-spends-known.mjs";
 
 // ---- one row ----
@@ -232,6 +232,21 @@ export async function walkRow(rig, scene, row) {
     notes.push(offered.length ? `reaction card dealt on: ${[...new Set(offered)].join("; ")}` : "no reaction card on any staged trigger");
   }
 
+  // A reaction no door reaches after its trigger may be answered at the stop
+  // the trigger opens before it lands (sweep-spends-walk.mjs stopDoor).
+  if (!first?.accepted && !cardAccepted && !reacted) {
+    for (const base of STOPPED) {
+      const stopped = await stopDoor(rig, scene, reactor, base);
+      if (!stopped) continue;
+      (doors.stop ??= {})[base] = summary(stopped);
+      if (stopped.ok && stopped.read.counters.length) {
+        reacted = true;
+        notes.push(`answered at the stop ${base} opens: ${stopped.sig}`);
+        break;
+      }
+    }
+  }
+
   if (!first?.accepted && !cardAccepted && !reacted) {
     const said = first?.tries?.length ? [...new Set(first.tries.map((entry) => entry.error))].slice(0, 4).join(" | ") : notes.find((note) => note.startsWith("use_reaction refused")) ?? "";
     // A counter the engine spends on its own is refused by design.
@@ -247,7 +262,19 @@ export async function walkRow(rig, scene, row) {
     const state = scene.holder.resources[row.def.id];
     const level = scene.holder.level;
     const recharge = row.def.rechargeFor ? row.def.rechargeFor(level) : row.def.recharge;
-    if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers) {
+    // A row that names what a rest leaves held in place of a refill
+    // (restHolds: Power Surge's "After a long rest you have one ... and you
+    // gain one at the end of a short rest if you have none") is held to that
+    // rule, read from its own row: from every use spent, a long rest leaves
+    // `long` held and a short rest `shortIfNone`.
+    const holds = row.def.restHolds;
+    if (state && state.max > 0 && holds) {
+      const heldAfter = (kind) => state.max - rests[kind].used[row.def.id];
+      const want = (count) => Math.min(state.max, count ?? 0);
+      if (rests.long.ok && holds.long !== undefined && heldAfter("long") !== want(holds.long)) add("NO_REFILL", `its row says a long rest leaves ${holds.long} held (restHolds), and from ${state.max} spent it leaves ${heldAfter("long")}/${state.max}`);
+      if (rests.short.ok && heldAfter("short") !== want(holds.shortIfNone)) add("SHORT_REST_MISMATCH", `its row says a short rest begun with none leaves ${holds.shortIfNone ?? 0} held (restHolds), and from ${state.max} spent it leaves ${heldAfter("short")}/${state.max}`);
+      if (!rests.long.ok || !rests.short.ok) notes.push(`rest refused: ${rests.short.error ?? ""} ${rests.long.error ?? ""}`);
+    } else if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers) {
       if (rests.long.ok && rests.long.used[row.def.id] > 0) add("NO_REFILL", `spent to ${state.max}/${state.max}, a long rest leaves ${rests.long.used[row.def.id]} used`);
       if (rests.short.ok && (rests.short.used[row.def.id] === 0) !== (recharge === "short")) {
         add("SHORT_REST_MISMATCH", `its row says it comes back on a ${recharge} rest, and a short rest leaves ${rests.short.used[row.def.id]}/${state.max} used`);

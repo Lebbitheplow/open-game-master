@@ -10,6 +10,7 @@
 // Ray of Enfeeblement's hit is laid by the spell attack's riders
 // (src/lib/dm/spell-attack-riders.ts) through layEnfeeblement.
 
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
@@ -77,6 +78,11 @@ function usesStrength(enemy: EncounterEnemy, attack: EnemyAttack, ranged: boolea
 
 // The damage an enfeebled creature's blow deals.
 export function enfeebledBlow(enemy: EncounterEnemy, attack: EnemyAttack, ranged: boolean, amount: number): number {
+  // An Enfeebling Arrow halves every weapon attack's damage, not only the
+  // Strength ones (src/lib/dm/mt-fb-arcane-shot.ts lays the condition).
+  if (enemy.conditions.includes("enfeebling arrow")) {
+    return Math.floor(amount / 2);
+  }
   return enemy.conditions.includes("enfeebled") && usesStrength(enemy, attack, ranged) ? Math.floor(amount / 2) : amount;
 }
 
@@ -109,6 +115,8 @@ export function spellRetort(
       const rolled = rollCard(campaign, turn, target.id, "damage", rollAgainst("Fire Shield", live.displayName), "2d8", sheetAttacker(target)).total;
       const applied = applyEnemyDamage(campaign, turn, encounter, live, rolled, sheets, sheetsById, type, { magical: true, spell: true });
       lines.push(`${target.name}'s Fire Shield sears ${live.displayName} for ${applied.damageApplied ?? rolled} ${type} damage.`);
+      // The shield killed it: Grim Harvest for its bearer (ar-ws-harvest.ts).
+      lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Fire Shield" }) : []));
     }
   }
   const aura = target.conditions.find((entry) => entry.toLowerCase() === "holy aura");
@@ -170,6 +178,8 @@ export function curseBurn(
   }
   const caster = getSheetById(casterId);
   const rolled = rollCard(campaign, turn, caster?.id ?? null, "damage", rollAgainst("Bestow Curse", enemy.displayName), rider.dice, caster ? sheetAttacker(caster) : null).total;
-  applyEnemyDamage(campaign, turn, encounter, enemy, rolled, sheets, sheetsById, rider.type, { magical: true, spell: true });
-  return `Bestow Curse: ${rolled} necrotic more to ${enemy.displayName}.`;
+  const applied = applyEnemyDamage(campaign, turn, encounter, enemy, rolled, sheets, sheetsById, rider.type, { magical: true, spell: true });
+  // The curse's own necrotic killed it (ar-ws-harvest.ts).
+  const onKill = applied.dead ? spellKill(campaign, encounter, enemy, casterId, { spell: "Bestow Curse" }) : [];
+  return [`Bestow Curse: ${rolled} necrotic more to ${enemy.displayName}.`, ...onKill].join(" ");
 }

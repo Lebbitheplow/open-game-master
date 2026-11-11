@@ -25,6 +25,7 @@ import { hitDiceHealing, hitDicePlanExpression, shortRestDicePlan } from "@/lib/
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { healCeiling, hitDiceHealingFactor } from "@/lib/dm/afflictions";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { sanctuaryDieBonus } from "@/lib/dm/genie-vessel";
 
 export type HitDiceOutcome =
   | ToolError
@@ -63,6 +64,9 @@ export function spendHitDice(input: {
     return { error: `${sheet.name} has no hit dice left; they come back with a long rest.`, refused: "rules" };
   }
   const conMod = computeSheetDerived(sheet).abilityMods.con;
+  // Inside a Genie's Sanctuary Vessel each die restores the warlock's
+  // proficiency bonus more (genie-vessel.ts).
+  const sanctuary = sanctuaryDieBonus(sheet);
   // Multiclass sheets draw from their per-class pools, biggest die first
   // (the same order patchSheet reconciles the spent counter in).
   const expression = `${hitDicePlanExpression(shortRestDicePlan(sheet, count), conMod)}${
@@ -76,7 +80,7 @@ export function spendHitDice(input: {
     kind: "custom",
     detail: `short rest: ${count} hit ${count === 1 ? "die" : "dice"}${
       input.songDie ? ` + Song of Rest ${input.songDie}` : ""
-    }${input.chefDie ? ` + Chef ${input.chefDie}` : ""}`,
+    }${input.chefDie ? ` + Chef ${input.chefDie}` : ""}${sanctuary ? ` + Sanctuary Vessel ${sanctuary.bonus} a die` : ""}`,
     result: outcome,
   });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
@@ -86,7 +90,7 @@ export function spendHitDice(input: {
   // adds it (src/lib/srd/feat-combat.ts).
   const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0));
   const floored = hitDieHealingFloor(sheet, conMod);
-  const withFeat = floored ? Math.max(rolled, count * floored.floor) + count * floored.extra : rolled;
+  const withFeat = (floored ? Math.max(rolled, count * floored.floor) + count * floored.extra : rolled) + count * (sanctuary?.bonus ?? 0);
   const healed = Math.floor(withFeat * hitDiceHealingFactor(sheet));
   // Pale Tincture's damage is beyond what hit dice heal (afflictions.ts).
   const ceiling = healCeiling(campaign.id, sheet);

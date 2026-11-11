@@ -16,6 +16,7 @@ import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace,
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { classFeatureDescription, findCustomClass } from "@/lib/classes";
 import { backgroundWords, classWords, raceWords } from "@/lib/sheet-words";
@@ -689,6 +690,9 @@ export function describeSheet(
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         size: sizeForRace(sheet.race),
+        // The capacity the pack is refused by (Peerless Athlete doubles it).
+        carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   const loadLine = load

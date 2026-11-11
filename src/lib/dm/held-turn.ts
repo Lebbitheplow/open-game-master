@@ -32,15 +32,16 @@ import { publishPersisted } from "@/lib/events";
 import { endTurnStartHolds, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
 import { lateFor } from "@/lib/dm/last-hit";
-import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
-// The reactions a character's turn gives back: their own, and Vigilant
-// Defender's per-turn ones ("vigilant:<id>:<mover>").
+// The reactions a character's turn gives back: their own, Vigilant
+// Defender's per-turn ones ("vigilant:<id>:<mover>") and their pet's
+// ("pet-reaction:<id>:<pet>", summon-reactions.ts).
 function withoutReactionsOf(reactionsUsed: string[], id: string): string[] {
-  return reactionsUsed.filter((entry) => entry !== id && !entry.startsWith(`${VIGILANT_PREFIX}${id}:`));
+  return reactionsUsed.filter((entry) => entry !== id && !entry.startsWith(`${VIGILANT_PREFIX}${id}:`) && !entry.startsWith(`${PET_REACTION_PREFIX}${id}:`));
 }
 
 // The enemies of the pass before the held turn have had their turns, which

@@ -1,5 +1,8 @@
 import { evadesOpportunityAttacksAfterMelee, MOBILE_ATTACKED, polearmReachOpportunity } from "@/lib/srd/feat-combat";
+import { goadBarsOpportunity } from "@/lib/dm/goaded";
+import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
+import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter } from "@/lib/db/encounters";
@@ -7,7 +10,8 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { enemiesStrikeWalker } from "@/lib/dm/opportunity-sides";
-import { entersReachAt, leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { echoTokens } from "@/lib/dm/mt-fb-echo";
+import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/opportunity-reach-logic";
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -48,6 +52,7 @@ import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
@@ -98,8 +103,10 @@ export { entersReachAt, leavesReachAt };
 // Only a creature the reactor can see provokes it: a blinded reactor, an
 // invisible or hidden leaver, past the blindsight or truesight that reaches
 // it (attack-light.ts sensesReaching, the rule every sight check reads).
-const unseenBy = (encounterId: string, viewer: { id: string; conditions: string[]; senses: Senses }, seen: { id: string; conditions: string[] }) =>
-  Boolean(sightBlockedBy(viewer.conditions, seen.conditions, sensesReaching(encounterId, { refId: viewer.id, senses: viewer.senses }, { refId: seen.id })));
+// `at` is the tile the leaver left the reach from (opportunity-strike.ts
+// opportunitySight).
+const unseenBy = (encounterId: string, viewer: { id: string; conditions: string[]; senses: Senses }, seen: { id: string; conditions: string[] }, at: XY) =>
+  Boolean(sightBlockedBy(viewer.conditions, seen.conditions, sensesReaching(encounterId, { refId: viewer.id, senses: viewer.senses }, { refId: seen.id, at })));
 
 // Dodge is lost with the dodger's speed (SRD 5.1, Dodge): a grappled or
 // restrained dodger puts nobody at disadvantage.
@@ -157,6 +164,10 @@ export function resolveOpportunityAttacks(
     if (encounter.reactionsUsed.includes(enemy.id)) {
       continue;
     }
+    // Panache: no opportunity attack at anyone but the swashbuckler (goaded.ts).
+    if (goadBarsOpportunity(enemy, characterId)) {
+      continue;
+    }
     const token = getTokenByRef(map.id, enemy.id);
     if (!token) {
       continue;
@@ -178,19 +189,19 @@ export function resolveOpportunityAttacks(
     if (!sheet || sheet.currentHp <= 0) {
       break;
     }
-    if (unseenBy(encounter.id, { ...enemy, senses: enemySenses(enemy) }, sheet)) {
+    if (unseenBy(encounter.id, { ...enemy, senses: enemySenses(enemy) }, sheet, leftFrom)) {
       continue;
     }
     // Mobile (and Skirmisher): a creature they attacked in melee this turn
     // makes no opportunity attack against them (pc-attack-spend.ts marks it).
     const moverBudget = budgetFor(encounter, characterId, 1);
     if (moverBudget?.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemy.id}`)) {
-      notes.push(`${enemy.displayName} gets no opportunity attack on ${sheet.name}: ${evadesOpportunityAttacksAfterMelee(sheet) ?? "Mobile"} (attacked in melee this turn).`);
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} gets no opportunity attack on ${sheet.name}: ${evadesOpportunityAttacksAfterMelee(sheet) ?? "Mobile"} (attacked in melee this turn).`);
       continue;
     }
     // Only a creature it can see provokes it: in the dark, with no
     // darkvision and no light, the leaver slips away (attack-light.ts).
-    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: true });
+    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: true, moverAt: leftFrom });
     if (sight && !sight.attackerSees) {
       continue;
     }
@@ -203,7 +214,7 @@ export function resolveOpportunityAttacks(
     // only against an attacker they can see (attack-light.ts), as on
     // enemy_attack: an opportunity attack read neither.
     const context = attackContext({
-      ...attackSenses(encounter.id, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: sheet.id, senses: characterSenses(sheet) }),
+      ...attackSenses(encounter.id, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: sheet.id, senses: characterSenses(sheet), at: leftFrom }),
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: withLiveDodge(conditionsOf(sheet)),
       melee: true,
@@ -250,7 +261,7 @@ export function resolveOpportunityAttacks(
     const adjudicated = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc);
     if (!adjudicated.hit) {
       notes.push(
-        `${enemy.displayName} takes an opportunity attack as ${sheet.name} pulls away and misses (${hitOutcome.total} vs AC ${targetAc}).`,
+        `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away and misses (${hitOutcome.total} vs AC ${targetAc}).`,
       );
       continue;
     }
@@ -338,7 +349,7 @@ export function resolveOpportunityAttacks(
     const byType = Array.isArray(landed.damageByType) ? ` (${(landed.damageByType as string[]).join(", ")})` : typeof landed.resistance === "string" ? ` (${landed.resistance})` : "";
     const riderNote = Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : "";
     notes.push(
-      `${enemy.displayName} takes an opportunity attack as ${sheet.name} pulls away: ${
+      `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
       }${rolled} damage${byType}.${riderNote}`,
     );
@@ -410,6 +421,10 @@ export function resolvePcOpportunityAttacks(
   from: XY,
   to: XY,
   path?: XY[],
+  // The walker Disengaged: its walk draws nobody's swing but a Sentinel's
+  // (src/lib/srd/feat-moves.ts). Every caller passes it rather than skipping
+  // this door, or the Sentinel is skipped with everyone else.
+  disengaged = false,
 ): string[] {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -417,6 +432,12 @@ export function resolvePcOpportunityAttacks(
   }
   const map = getBattleMapForEncounter(encounter.id);
   if (!map) {
+    return [];
+  }
+  // SRD 5.1, Opportunity Attacks: "when a hostile creature that you can see
+  // moves out of your reach". A creature the GM keeps off the board is one
+  // no character sees, so it provokes nothing; the GM shows it to let it.
+  if (hiddenNow(encounter.id).has(enemyId)) {
     return [];
   }
   const steps = [from, ...(path?.length ? path : [to])];
@@ -430,6 +451,9 @@ export function resolvePcOpportunityAttacks(
 
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
+      continue;
+    }
+    if (disengaged && !strikesTheDisengaged(sheet)) {
       continue;
     }
     if (
@@ -463,8 +487,18 @@ export function resolvePcOpportunityAttacks(
     }
     // Polearm Master: a creature entering the polearm's reach provokes too.
     const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
-    if (!leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) && !entering) {
-
+    // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
+    // within the reach provokes too.
+    const within = holdsFeature(sheet, "Hold the Line") ? movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    // Manifest Echo: a creature that moves 5 feet or more away from the echo
+    // while within 5 feet of it provokes "as if you were in the echo's space"
+    // (mt-fb-echo.ts).
+    const fromEcho = echoTokens(map.id, sheet.id).map((echo) => leavesReachAt(steps, echo, 1, 1, moverFootprint)).find((left) => left !== null) ?? null;
+    // Where the walker is as the swing is made: the tile it left the reach
+    // from, the one it entered the polearm's reach at, the one it stepped to
+    // inside the reach, or the one it left the echo's side from.
+    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering ?? within ?? fromEcho;
+    if (!moverAt) {
       continue;
     }
 
@@ -472,12 +506,22 @@ export function resolvePcOpportunityAttacks(
     if (!enemy || enemy.status !== "alive" || (isSheetFoe(enemy) && enemy.currentHp <= 0)) {
       break;
     }
-    if (unseenBy(encounter.id, { ...sheet, senses: characterSenses(sheet) }, enemy)) {
+    if (unseenBy(encounter.id, { ...sheet, senses: characterSenses(sheet) }, enemy, moverAt)) {
       continue;
     }
     // Only a creature they can see provokes it (attack-light.ts).
-    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
+    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false, moverAt });
     if (sight && !sight.attackerSees) {
+      continue;
+    }
+    // War Caster: the spell they named is cast in the swing's place, null
+    // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint), reactionKey });
+    if (cast) {
+      notes.push(cast.note);
+      if (cast.dropped) {
+        break;
+      }
       continue;
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactionKey];
@@ -499,6 +543,7 @@ export function resolvePcOpportunityAttacks(
       resolved,
       adjacent: profile.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
+      moverAt,
     });
     notes.push(note);
     if (dropped) {
@@ -511,7 +556,7 @@ export function resolvePcOpportunityAttacks(
   }
   // A creature the party dominates walking away from its old allies: they
   // strike it as it goes (opportunity-sides.ts posts its own lines).
-  if (moverKind === "enemy") {
+  if (moverKind === "enemy" && !disengaged) {
     notes.push(...enemiesStrikeWalker(campaign.id, enemyId, steps, moverFootprint));
   }
   return notes;

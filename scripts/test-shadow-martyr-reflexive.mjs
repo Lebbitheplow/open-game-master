@@ -232,6 +232,9 @@ await test("Shadow Martyr: no reaction before 10th level, and use_resource point
 const RESIST = "sub_reflexive_resistance";
 const reflexive = (who, ally) => world.invoke("use_reaction", { characterId: who.id, feature: "Reflexive Resistance", ...(ally ? { targetCharacterId: ally.id } : {}) });
 const ranger = hero("ranger", "Drakewarden");
+// Summoning the drake is an action on the ranger's own turn in a fight: the
+// last case's fight is over before it is called.
+await kit.endFight();
 const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" });
 assert.equal(summoned.ok, true, summoned.error);
 
@@ -289,6 +292,47 @@ await test("Dampen Elements, the other reaction of its kind, still covers an all
   const open = [{ id: "h1", characterId: friend.id, hit: true, hits: 1, source: "attack", ranged: false, attacker: "Goblin", attackerId: "g", attack: "Firebolt", type: "fire", damage: 4, answered: [] }];
   const cards = reactionCards(world.sheet(cleric.id), { ...FRESH_TURN, myTurn: false }, open, world.sheets());
   assert.equal(cards.filter((card) => card.name === "Dampen Elements").length, 1);
+});
+
+// The echo's limits the fighter round left: with two echoes out (Legion of
+// One) Shadow Martyr took the mark and both tokens when the one sent into the
+// hit fell; an area never asked the echo's save; and a Beguiling Arrow's
+// charm held through its ally's area.
+const maps = await import("../src/lib/db/battle-maps.ts");
+const { BEGUILED } = await import("../src/lib/srd/mt-fb-arcane-shot.ts");
+const echoesOf = (who) => maps.listTokens(kit.map().id).filter((token) => token.kind === "prop" && token.refId.endsWith(who.id)).map((token) => token.refId.split(":")[0]).sort();
+const putEcho = (who, ref, x, y) => maps.insertToken({ mapId: kit.map().id, campaignId: world.campaignId, kind: "prop", refId: `${ref}:${who.id}`, name: "echo", x, y });
+
+await test("Shadow Martyr with two echoes out: only the one sent into the hit (the nearer the ally) is destroyed, and the mark stays.", async () => {
+  const [enemy] = await stage(knight, friend);
+  setUsed(knight, COUNTER, 0);
+  backReaction();
+  putEcho(knight, "echo", 4, 4);
+  putEcho(knight, "echo2", 9, 9);
+  await strike(enemy, friend);
+  const out = await martyr(knight, friend);
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(echoesOf(knight), ["echo2"], "the echo beside the ally took the hit; the far one stays");
+  assert.ok(world.sheet(knight.id).conditions.includes(ECHO_OUT), "an echo is still out");
+});
+
+await test("An area asks the echo standing in it for its knight's save: failed, it is destroyed; and the caster's area ends their Beguiling Arrow charm.", async () => {
+  const wizard = hero("wizard", "School of Evocation");
+  const [enemy] = await stage(knight, friend);
+  world.patch(wizard.id, { spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 } }, prepared: ["Fireball"], known: [], cantrips: [], spellbook: ["Fireball"] }, equipment: [{ name: "Component pouch", qty: 1 }] });
+  kit.place(wizard.id, 6, 5);
+  kit.place(enemy.id, 14, 12);
+  putEcho(knight, "echo", 14, 13);
+  world.patch(knight.id, { conditions: [ECHO_OUT], conditionMeta: { [ECHO_OUT]: { rounds: 600 } } });
+  kit.setEnemy(enemy.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: wizard.id, [BEGUILED]: true } } });
+  kit.giveTurn(wizard.id);
+  world.dice(2, 2, 2, 2, 2, 2, 2, 2, 20, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Fireball", atX: 14, atY: 12 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(echoesOf(knight), [], `the echo failed its Dexterity save: ${JSON.stringify(out.result).slice(0, 300)}`);
+  assert.ok(!world.sheet(knight.id).conditions.includes(ECHO_OUT), "the last echo gone, the mark goes");
+  assert.ok(!world.enemies()[0].conditions.includes("charmed"), "the wizard's Fireball ends the charm the arrow laid for them");
 });
 
 world.close();

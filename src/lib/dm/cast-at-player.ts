@@ -23,6 +23,7 @@ import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
 import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
+import { openEffect } from "@/lib/dm/last-hit";
 import { rollCard } from "@/lib/dm/action-common";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -34,6 +35,7 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
@@ -45,6 +47,8 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
 // ability or by a hazard (SRD 5.1, Saving Throws). The mirror of
@@ -373,6 +377,14 @@ export function handleCastAtPlayer(
     // A Globe of Invulnerability or an Antimagic Field around the target: the
     // spell is cast, its use spent, and does nothing to them (zone-rules.ts).
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: sheet.id, targetName: sheet.name, facts: args.spell ? spellFactsFor(args.spell, spellAuthorsFor(campaign)) : null });
+    // Among the Dead: an undead's harmful spell at this warlock alone asks
+    // the save its attack does, and a failure loses the spell. "This doesn't
+    // protect you from area effects": a spell with an area asks none, even
+    // resolved on one character (ar-wbf-warlock-ward.ts).
+    const aimed = prepared.spell ?? args.spell;
+    if (!ward && aimed && !spellAreaShape(aimed, spellAuthorsFor(campaign))) {
+      ward = authoredWardSave(campaign, turn, prepared.enemy, sheet, "spell").lost;
+    }
     use = prepared;
   }
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
@@ -544,8 +556,15 @@ export function handleCastAtPlayer(
     if (dealt > 0) {
       // Damage the caster dealt through the save, for what answers being damaged
       // by a creature (Hellish Rebuke: src/lib/dm/last-save.ts).
-      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell));
+      // With what a success would have spared, for a save turned after it
+      // landed (save-turned.ts): the same half-or-none rule, read as made.
+      const onSuccess = saveDamageTaken({ total: outcome.total, saved: true, halfOnSave, ability, sheet }).damage;
+      const spared = saved ? 0 : Math.max(0, dealt - (trapWard ? Math.floor(onSuccess / 2) : onSuccess));
+      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell), spared);
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
+      // Kept for a reaction to damage taken (last-hit.ts openEffect): a save's
+      // damage is no attack's, so until now Deflect Energy had nothing to answer.
+      const effect = openEffect(campaign.id, sheet.id);
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
         : typedParts
@@ -571,7 +590,10 @@ export function handleCastAtPlayer(
             sheets,
             sheetsById,
           ).result;
-      Object.assign(base, { damage: dealt, ...applied });
+      effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
+      // Thought Shield: the psychic damage a warlock took goes back to the caster.
+      const back = thoughtShieldBack(campaign, turn, sheet, use?.enemy.id, { amount: dealt, type: typedParts ? undefined : damageType, parts: typedParts ?? undefined, flags: { magical: use?.magical === true, spell: Boolean(use?.spell ?? args.spell) } }, sheets, sheetsById);
+      Object.assign(base, { damage: dealt, ...applied, ...back });
     } else {
       base.damage = 0;
     }

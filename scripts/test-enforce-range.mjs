@@ -127,7 +127,11 @@ await test("approach: too far to reach this turn, they close in as far as they c
   assert.equal(swing.unused, 2, "dice were rolled for an attack that never happened");
   assert.equal(kit.enemy(enemy.id).currentHp, 400);
   assert.equal(kit.token(hero.id).x, 11, "the hero did not close in by their speed");
-  assert.equal(world.encounter().turnBudget, null, "a walk is no attack made");
+  // The walk leaves its own mark on the turn (how far they ran in a line, for
+  // a feature that asks), so the turn has a budget now: it holds no attack.
+  const budget = world.encounter().turnBudget;
+  assert.equal(budget?.attacksMade ?? 0, 0, "a walk is no attack made");
+  assert.equal(budget?.actionUsed ?? false, false, "a walk took the action");
 });
 
 await test("approach walks nobody whose turn has no attack left: the swing is refused where they stand", async () => {

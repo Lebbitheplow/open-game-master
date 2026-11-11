@@ -14,6 +14,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { withSpellCheckBonus } from "@/lib/dm/ar-ws-spell-check";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -34,7 +35,9 @@ export type CharacterCheck = {
 
 // `charmedTarget`: the creature the check is aimed at, when this character
 // charmed it (rolls.ts: advantage on a Charisma check with it).
-type CheckAsked = { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string };
+// `spell`: the spell the check is made as part of (Counterspell, Dispel
+// Magic), for what a feature adds to such a check (ar-ws-spell-check.ts).
+type CheckAsked = { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string; spell?: string };
 
 // The check as the resolver builds it, before any die is rolled.
 // `keepHeldDie`: a held die is settled after the d20 (forced-save.ts
@@ -48,7 +51,7 @@ function resolveCheck(campaign: Campaign, sheet: CharacterSheet, check: CheckAsk
   const resolved = resolveRollExpression(
     { ...args, ...(check.advantage ? { advantage: check.advantage } : {}) },
     sheet,
-    { ...rollExtrasFor(campaign, sheet, args.kind), ...(check.charmedTarget ? { charmedTarget: check.charmedTarget } : {}), keepHeldDie },
+    { ...withSpellCheckBonus(rollExtrasFor(campaign, sheet, args.kind), campaign, sheet, check.spell), ...(check.charmedTarget ? { charmedTarget: check.charmedTarget } : {}), keepHeldDie },
   );
   return resolved;
 }

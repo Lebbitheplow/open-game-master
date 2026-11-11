@@ -8,6 +8,7 @@
 // point after 1d4 hours (src/lib/dm/death.ts rollStableTimer).
 //
 // This module must not import mutations.ts (which imports it).
+import { recordSteadied } from "@/lib/dm/last-save";
 import { catalogName } from "@/lib/srd/adventuring-gear";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -69,7 +70,8 @@ export function kitAfterUse(equipment: EquipmentItem[], row: EquipmentItem): { e
 // there is no board to read. A swallowed creature is out of every touch from
 // outside its swallower, board or no board, and touches nobody outside it
 // (swallow.ts).
-function outOfTouch(encounterId: string | undefined, healer: CharacterSheet, sheet: CharacterSheet): ToolError | null {
+// `reachFt`: Circle of Mortality casts Spare the Dying at 30 feet.
+function outOfTouch(encounterId: string | undefined, healer: CharacterSheet, sheet: CharacterSheet, reachFt = 5): ToolError | null {
   const inside = swallowCoverBetween(healer.id, sheet.id);
   if (inside) {
     return { error: `${inside} Nothing was spent.`, refused: "rules" };
@@ -81,8 +83,8 @@ function outOfTouch(encounterId: string | undefined, healer: CharacterSheet, she
     return null;
   }
   const feet = chebyshev(from.x, from.y, to.x, to.y) * 5;
-  return feet > 5
-    ? { error: `${healer.name} is ${feet} ft from ${sheet.name}; stabilizing needs them within 5 feet. Move ${healer.name} beside them first.`, retry: true }
+  return feet > reachFt
+    ? { error: `${healer.name} is ${feet} ft from ${sheet.name}; stabilizing needs them within ${reachFt} feet. Move ${healer.name} ${reachFt > 5 ? "closer" : "beside them"} first.`, retry: true }
     : null;
 }
 
@@ -148,7 +150,10 @@ export function handleStabilize(
   }
   // The healer spends their action on it, so they must have one to spend;
   // Field Surgeon and Triage make it a bonus action (issue 233).
-  const quick = ["Field Surgeon", "Triage"].find((name) => healer.features.some((feature) => textKey(feature.name) === textKey(name))) ?? null;
+  // Circle of Mortality (Grave Domain 1): "you can cast spare the dying at 30
+  // feet as a bonus action". Before this it was a touch and an action.
+  const circle = input.method === "spell" && healer.features.some((feature) => textKey(feature.name) === "circle of mortality");
+  const quick = ["Field Surgeon", "Triage"].find((name) => healer.features.some((feature) => textKey(feature.name) === textKey(name))) ?? (circle ? "Circle of Mortality" : null);
   const encounter = getActiveEncounter(campaign.id);
   // Off their turn, a healer who readied this: their reaction (readied-release.ts).
   const readied = readiedReleaseFor(healer, encounter, "stabilize");
@@ -165,7 +170,7 @@ export function handleStabilize(
       return heldOff;
     }
   }
-  const far = outOfTouch(encounter?.id, healer, sheet);
+  const far = outOfTouch(encounter?.id, healer, sheet, circle ? 30 : 5);
   if (far) {
     return far;
   }
@@ -275,6 +280,9 @@ export function handleStabilize(
   if (kitPatch) {
     write(campaign, turnId, healer, "use_item", { item: "healer's kit" }, reason, kitPatch);
   }
+  // The creature is steadied by the healer (last-save.ts): Defy Death answers
+  // one stabilized with spare the dying.
+  recordSteadied(campaign.id, sheet.id, { id: healer.id, name: healer.name }, method === "spell" ? "spare the dying" : method === "kit" ? "kit" : "medicine");
   // Healer: a creature stabilized with the kit also regains 1 hit point,
   // which wakes them (src/lib/srd/feat-combat.ts).
   if (method === "kit" && holdsFeat(healer, "Healer")) {

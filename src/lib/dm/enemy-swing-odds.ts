@@ -5,6 +5,8 @@
 // that explain it. Split from enemy-attack.ts, which rolls each swing of the
 // routine with what this returns. Nothing is spent or stored here.
 
+import { goadedAway } from "@/lib/dm/goaded";
+import { withStandingProtection } from "@/lib/dm/mt-srd-paladin";
 import type { Campaign } from "@/lib/db/campaigns";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -27,6 +29,10 @@ import type { underwaterSwing } from "@/lib/dm/underwater";
 import { conditionsOf, PRONE, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { holdsFeat } from "@/lib/srd/feat-effects";
+
+// The Clockwork Soul's trance (authored-resources.json sub_trance_of_order).
+const TRANCE_OF_ORDER = "trance of order";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -81,14 +87,18 @@ export function enemySwingOdds(input: {
   // Blindsight or truesight past an invisible or blinded side (attack-light.ts).
   const senses = attackSenses(encounterId, { refId: standing.id, senses: enemySenses(standing) }, { refId: target.id, senses: characterSenses(target) });
   const upright = input.standingTarget ? live.conditions.filter((entry) => !isConditionNamed(entry, UNCONSCIOUS) && !isConditionNamed(entry, PRONE)) : null;
+  // Alert: an attacker the character cannot see gains nothing by it.
+  const alert = holdsFeat(live, "Alert");
   const conditionContext = attackContext({
+    targetAlert: alert,
     ...senses,
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounterId, standing.id, standing.conditions, standing.conditionMeta),
     attackerType: standing.stats.type,
     // Dodge is lost with the dodger's speed, and a character at 0 hit
     // points is unconscious and prone whatever wrote the 0.
-    targetConditions: withLiveDodge(upright ?? conditionsOf(live)),
+    // Purity of Spirit stands as the spell would (mt-srd-paladin.ts).
+    targetConditions: withStandingProtection(live, withLiveDodge(upright ?? conditionsOf(live))),
     melee: !ranged,
     adjacent: distance === null ? !ranged : distance <= 1,
     // The AI names a circumstance the engine does not decide (pc-attack-options.ts).
@@ -111,7 +121,9 @@ export function enemySwingOdds(input: {
   const worn = enemyExhaustion(standing.conditions) >= 3;
   // Sunlight Sensitivity: disadvantage in direct sunlight (sunlight.ts).
   const sunlit = hasTrait(standing.stats, "sunlightSensitivity") && inDirectSunlight(campaign.id);
-  const light = lightOnAttack(sight, { attacker: standing.displayName, target: target.name });
+  const lit = lightOnAttack(sight, { attacker: standing.displayName, target: target.name });
+  // The light's advantage is the target not seeing the attacker: none for Alert.
+  const light = alert && sight?.targetSees === false ? { ...lit, sources: lit.sources.filter((source) => source !== "advantage") } : lit;
   // Chill Touch: an undead the caster struck attacks the caster at
   // disadvantage until the end of the caster's next turn (CHILL_TOUCH_DREAD,
   // src/lib/dm/spell-attack-riders.ts; an older row carries only the spell).
@@ -124,7 +136,9 @@ export function enemySwingOdds(input: {
   // Elusive (rogue 18): no attack roll against them has advantage while
   // they are not incapacitated.
   const liveTarget = live;
-  const elusive = hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions);
+  // Trance of Order (Clockwork Soul): "attacks against you cannot have
+  // advantage" while the trance holds, as Elusive's.
+  const elusive = (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) || liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER));
   // Authored subclass features (Among the Dead, Fungal Body, a guardian's mark): authored-hooks.ts.
   const authored = authoredIncomingAttack({ campaignId: campaign.id, encounterId, attacker: standing, target: liveTarget });
   const sources: Advantage[] = [
@@ -141,6 +155,8 @@ export function enemySwingOdds(input: {
     ...(underwater?.disadvantage ? ["disadvantage" as const] : []),
     // Bestow Curse on its attacks against the caster (spell-retort.ts).
     ...(cursedAgainst(standing, target.id) ? ["disadvantage" as const] : []),
+    // Goaded by another character (goaded.ts).
+    ...(goadedAway(standing, target.id) ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
     // An active effect on its attack rolls (set_effect): its advantage, and
@@ -161,6 +177,7 @@ export function enemySwingOdds(input: {
     ...(flanking ? ["flanking: advantage"] : []),
     ...(pack ? ["Pack Tactics: advantage"] : []),
     ...(chilled ? ["Chill Touch: an undead attacks its caster at disadvantage"] : []),
+    ...(goadedAway(standing, target.id) ? ["goaded: disadvantage on attacks at anyone but the one who goaded it"] : []),
     ...(underwater?.note ? [underwater.note] : []),
     ...(elusive && sources.includes("advantage") ? [`Elusive: no attack roll against ${target.name} has advantage`] : []),
     ...(input.defended ? [`Multiattack Defense: +4 AC against ${standing.displayName}'s later attacks this turn`] : []),
@@ -222,6 +239,8 @@ export function enemyRowSwingOdds(input: {
     [worn, "disadvantage", `exhaustion ${enemyExhaustion(standing.conditions)}: disadvantage on attack rolls`],
     [flanking, "advantage", "flanking: advantage"],
     [pack, "advantage", "Pack Tactics: advantage"],
+    // A goad a character laid: every other creature is "a target other than you" (goaded.ts).
+    [goadedAway(standing, target.id) !== null, "disadvantage", "goaded: disadvantage on attacks at anyone but the one who goaded it"],
     [effect.advantage, "advantage", ""],
     [effect.disadvantage, "disadvantage", ""],
   ];

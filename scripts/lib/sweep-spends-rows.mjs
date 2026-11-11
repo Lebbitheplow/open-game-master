@@ -67,6 +67,9 @@ export async function tableRows(rig) {
   // (Slayer's Counter answers the creature under Slayer's Prey).
   const { triggerSpecFor } = await import(new URL("lib/srd/trigger-table.ts", SRC).href);
   const preyOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "save_on_self" && on.prey ? [on.prey] : [])) : []);
+  // A spend that answers the death of the creature under a mark (Master of
+  // Hexes): that death staged, through the holder's own blow.
+  const markedDeathOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "death" && on.marked ? [on.marked] : [])) : []);
   const authoredRows = rig.authored.authoredRows();
   const rows = [];
 
@@ -76,11 +79,24 @@ export async function tableRows(rig) {
     return [
       ...(gate.raging ? ["the holder raging"] : []),
       ...(gate.condition ? [`condition: ${gate.condition}`] : []),
+      ...(gate.conditions ?? []).map((condition) => `condition: ${condition}`),
       ...(does?.vsMark ? [`mark: ${does.vsMark}`] : []),
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
       ...preyOf(item).map((mark) => `mark: ${mark}`),
+      ...markedDeathOf(item).map((mark) => `the creature under ${mark} died`),
+      ...(item?.afterSpellDamage ? ["the holder's spell hurt the foe"] : []),
+      // Empowered Healing answers a healing spell's dice rolled this turn.
+      ...(does?.kind === "reroll_heal" ? ["the holder's spell healed them"] : []),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
-      ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
+      ...(gate.pet === "beast_companion" ? ["the holder's companion summoned"] : gate.pet === "drake" ? ["the holder's drake summoned"] : []),
+      ...(does?.kind === "restore" || does?.kind === "wild_magic_surge" ? [`pool down: ${does.pool}`] : []),
+      ...(does?.kind === "scribe_scroll" ? ["a spell in the holder's book"] : []),
+      // Controlled Chaos picks between the two rolls a surge left on the sheet.
+      ...(does?.kind === "chaos_pick" ? ["the holder's surge rolled twice"] : []),
+      // A choice that changes only on a casting (Transmuter's Stone): the
+      // holder's own option chosen again changes nothing and is refused, so
+      // the change is opened by the casting its row names.
+      ...(does?.kind === "choose" && does.changeAfterCast ? ["the holder cast a spell that opens the choice"] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];
@@ -90,6 +106,10 @@ export async function tableRows(rig) {
       : does.kind === "choose" ? does.options
         : does.kind === "storm_aura" ? ["desert", "sea", "tundra"]
           : does.kind === "flames" && !does.healOnly ? ["burn", "heal"]
+          // Performance of Creation makes the item named: one the pack prices low.
+          : does.kind === "create_item" ? ["Hourglass"]
+          // Master Scrivener copies the spell named from the book (staged there).
+          : does.kind === "scribe_scroll" ? ["Magic Missile"]
           : does.variants ? [undefined, ...Object.keys(does.variants)]
             : does.typeFromVariant ? does.typeFromVariant
               : [undefined];
@@ -111,7 +131,7 @@ export async function tableRows(rig) {
       kind: "counter",
       name: def.displayName,
       def,
-      build: arrived ? { ...(backing ? { classId: backing.classId, subclass: backing.subclass, kind: arrived.kind, level: Math.max(arrived.level, backing.level) } : arrived), ...(pick ? { pick } : {}) } : null,
+      build: arrived ? { ...(backing ? { classId: backing.classId, subclass: backing.subclass, kind: arrived.kind, level: Math.max(arrived.level, backing.level), ...(arrived.features ? { features: arrived.features } : {}) } : arrived), ...(pick ? { pick } : {}) } : null,
       family: arrived?.kind ?? (/^(?:cyberpunk|dark_fantasy|horror|mystery|post_apocalyptic|steampunk)_/.test(def.id) ? "genre" : "srd"),
       typed: backing ? `authored ${backing.spend ? "spend" : "reaction"} "${item.does.kind}"` : def.effect.kind === "narrative" ? null : `counter effect "${def.effect.kind}"`,
       reaction: def.action === "reaction" || Boolean(backing?.reaction) || item?.action === "reaction",
@@ -146,7 +166,10 @@ export async function tableRows(rig) {
       name: item.name,
       item,
       authored: row,
-      build: { classId, subclass, kind: "authored", level, ...(pick ? { pick } : {}) },
+      // The row's own feature rides along: an option pick ("Rune: Fire Rune")
+      // no class table grants is held as the player who picked it holds it
+      // (a feature the sheet already has is not added twice, sweep-spends.mjs).
+      build: { classId, subclass, kind: "authored", level, features: [{ name: row.feature, source: "class", classId }], ...(pick ? { pick } : {}) },
       family: row.key.startsWith("genre::") ? "genre" : "srd",
       typed: does.kind === "note" ? null : `authored ${kind} "${does.kind}"`,
       reaction: kind === "reaction" || item.action === "reaction",

@@ -384,6 +384,14 @@ export async function runClauseSuite(suiteFile, modules) {
       await test(`${id}: ${rule}`, () => probe());
     }
   }
+  // The ledger read against the stored text, and every probe a clause names
+  // written somewhere (scripts/lib/clause-probes.mjs): a clause that points at
+  // a suite nobody wrote is run by nothing.
+  await test("the ledger is sound against the stored text, and every probe it names exists", async () => {
+    assert.deepEqual(ledgerProblems(), []);
+    const { probeProblems } = await import("./clause-probes.mjs");
+    assert.deepEqual(probeProblems("arcane.json").map(({ key, c, why }) => `${key} "${c.slice(0, 40)}": ${why}`), []);
+  });
   await test("every probe and every KNOWN entry answers a clause of the ledger", () => {
     assert.deepEqual(Object.keys(PROBES).filter((id) => !wanted.has(id)), [], "probes no clause names");
     assert.deepEqual(Object.keys(KNOWN).filter((id) => !wanted.has(id) || wanted.get(id)[0].clause.is !== "gap"), [], "KNOWN entries for clauses that are not gaps");

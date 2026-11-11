@@ -6,6 +6,7 @@
 // nothing is written and nothing is refused.
 
 import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
+import { bondRider } from "@/lib/dm/emboldening-bond";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -33,6 +34,7 @@ import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { sizeForRace } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
@@ -238,7 +240,7 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage, a mote's inspiration die
   // (attack-roll-extras.ts, which the Hand's cards print from too).
-  const attackRiders = attackRollExtras(sheet);
+  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet));
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
@@ -280,6 +282,9 @@ export function attackSituation(input: {
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
+        // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
+        carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   if (load?.disadvantage && load.note) {

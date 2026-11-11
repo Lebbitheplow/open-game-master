@@ -12,11 +12,15 @@
 //   creature takes extra necrotic damage equal to your Charisma modifier
 //   (minimum 1)."
 //
-// Before this nothing read the pact: a blade warlock made one mundane attack
-// a turn at every level. Nothing on a sheet says which weapon the pact made
-// (it takes any melee form with an action, and a magic weapon can be bound
-// to it), so a Pact of the Blade warlock's melee weapon is read as the pact
-// weapon. Pure, for the attack engines and the turn budget.
+// Which weapon is the pact weapon: the equipment row the feature marked
+// (`pact`: the weapon it conjured, or a magic weapon its ritual bonded; a
+// bonded weapon dismissed to its extradimensional space is "stowed" and in
+// nobody's hand). Creating, dismissing and bonding are use_resource "Pact of
+// the Blade" (src/lib/dm/mt-srd-warlock.ts). A sheet that carries no marked
+// row at all is read as it was before the mark existed (issue #570, CLS-12 to
+// CLS-14): the warlock's melee weapon is the pact weapon, so a table's blade
+// from before keeps its magic and its second attack. Pure, for the attack
+// engines and the turn budget.
 import { chosenOptions } from "@/lib/srd/options";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
@@ -33,15 +37,34 @@ export function holdsPactOfTheBlade(sheet: Features): boolean {
   return holdsOption(sheet, "pact_boon", "Pact of the Blade");
 }
 
+type Wielder = Features & { equipment: ReadonlyArray<EquipmentItem> };
+
+// The marks the feature leaves on a weapon's row (src/lib/schemas/sheet.ts).
+const isWeaponMark = (mark: string | undefined) => mark === "bonded" || mark === "stowed" || (mark ?? "").startsWith("conjured:");
+
+// Whether the weapon carried under this name is the warlock's pact weapon.
+// `melee`: what a sheet with no marked row is held to (the reading above); a
+// bonded magic weapon is the pact weapon whatever its kind.
+export function isPactWeapon(sheet: Wielder, weaponName: string, melee: boolean): boolean {
+  if (!holdsPactOfTheBlade(sheet)) {
+    return false;
+  }
+  const marked = sheet.equipment.filter((item) => isWeaponMark(item.pact));
+  if (!marked.length) {
+    return melee;
+  }
+  return marked.some((item) => item.pact !== "stowed" && textKey(item.name) === textKey(weaponName));
+}
+
 // Whether a weapon attack is made with the pact weapon: a melee weapon (not
 // an unarmed strike or an improvised one) in a Pact of the Blade warlock's
 // hand.
 export function pactWeaponAttack(
-  sheet: Features,
+  sheet: Wielder,
   kind: "weapon" | "spell" | "natural" | "granted",
-  profile: { ranged: boolean; unarmed?: boolean; improvised: boolean },
+  profile: { weapon: string; ranged: boolean; unarmed?: boolean; improvised: boolean },
 ): boolean {
-  return kind === "weapon" && !profile.ranged && !profile.unarmed && !profile.improvised && holdsPactOfTheBlade(sheet);
+  return kind === "weapon" && !profile.unarmed && !profile.improvised && isPactWeapon(sheet, profile.weapon, !profile.ranged);
 }
 
 // Thirsting Blade's second attack: the warlock holds the invocation and a
@@ -51,7 +74,7 @@ export function thirstingBladeAttacks(sheet: Features & { equipment: ReadonlyArr
   if (!holdsOption(sheet, "invocation", "Thirsting Blade") || !holdsPactOfTheBlade(sheet)) {
     return 0;
   }
-  return sheet.equipment.some((item) => item.equipped === true && matchWeapon(item)?.kind === "melee") ? 1 : 0;
+  return sheet.equipment.some((item) => item.equipped === true && isPactWeapon(sheet, item.name, matchWeapon(item)?.kind === "melee") && Boolean(matchWeapon(item))) ? 1 : 0;
 }
 
 // Lifedrinker's necrotic rider on a pact weapon hit: the Charisma modifier,

@@ -6,8 +6,11 @@
 // the quiver is only counted, the maneuver's pool and the smite's slot are
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
+import { secondSneakKey } from "@/lib/dm/mt-mr-turn";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
+import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -25,6 +28,7 @@ import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { checkPcAttackRange } from "@/lib/dm/map-tools";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
+import { graveTouchedType } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 import {
   claimOncePerTurnRiders,
   foldDamageRiders,
@@ -33,6 +37,7 @@ import {
 import { gatePcAttack } from "@/lib/dm/pc-attack-gate";
 import { checkAttackOptions, claimedAdvantage, type AttackOptions } from "@/lib/dm/pc-attack-options";
 import { spendAttackEconomy } from "@/lib/dm/pc-attack-spend";
+import { ambushAttackDie, distantStrikeRefusal } from "@/lib/dm/turn-extra-attacks-logic";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { buildAttackProfile, type BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { pickManeuver, type OnHitSpends } from "@/lib/dm/pc-attack-riders";
@@ -45,13 +50,15 @@ import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { spellWardOn } from "@/lib/dm/cast-reach";
 import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { castFromElsewhere } from "@/lib/dm/cast-origin";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
 import { textKey } from "@/lib/language/text-logic";
 import { acBreakdownFor } from "@/lib/srd";
 import { foeSlayerBonus } from "@/lib/dm/attack-features";
 import { carriesPoison, type OpenHandChoice } from "@/lib/dm/attack-onhit";
-import { rapidStrike, secondWeaponProblem } from "@/lib/dm/authored-attacks";
+import { rapidStrike, rapidStrikeOwed, secondWeaponProblem } from "@/lib/dm/authored-attacks";
 import { curseRider } from "@/lib/dm/spell-retort";
 import type { AmmoSpend } from "@/lib/srd/ammunition";
 import { spendAmmo } from "@/lib/srd/ammunition";
@@ -61,6 +68,7 @@ import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { infusionWorn, makesOwnAmmunition } from "@/lib/srd/infusions";
 
 // A Battle Master maneuver riding the swing.
 export type ManeuverPick = {
@@ -203,7 +211,7 @@ export function planPcAttack(input: {
   }
   const { enemy, giantKiller } = gate;
 
-  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id) });
+  const built = buildAttackProfile(campaign.id, sheet, args, { apart: tilesBetween(encounter.id, sheet.id, enemy.id), ownTurn: ownTurnOf(encounter, sheet.id) });
   if ("error" in built) {
     return { refused: built };
   }
@@ -242,8 +250,9 @@ export function planPcAttack(input: {
   // Ammunition, when the table asked for it: an empty quiver is a refused
   // attack, not a missed one. Only looked at here; the round leaves the
   // quiver in pc-attack.ts, once nothing else can refuse the shot.
+  // Repeating Shot makes its own ammunition (src/lib/srd/infusions.ts).
   const ammo =
-    campaign.gameSettings.variantRules.ammunition && profile.base
+    campaign.gameSettings.variantRules.ammunition && profile.base && !makesOwnAmmunition(sheet.equipment, profile.weapon)
       ? spendAmmo(sheet.equipment, { base: profile.base, name: profile.weapon }, sheet.name)
       : null;
   if (ammo && !ammo.ok) {
@@ -261,13 +270,23 @@ export function planPcAttack(input: {
   const conjured = conjuredPlan?.strike ?? null;
   // Battle-map positions are authoritative; players move their own tokens,
   // so an out-of-reach attack is refused rather than auto-approached.
-  const rangeError = input.skipReach || built.conjured ? null : checkPcAttackRange(encounter.id, sheet.id, enemy.id, {
+  const reachOptions = {
     ranged: profile.ranged,
     rangeTiles: profile.rangeTiles,
     reachTiles: profile.reachTiles,
     thrown: profile.thrown,
     longRangeTiles: profile.longRangeTiles,
-  });
+  };
+  let rangeError = input.skipReach || built.conjured ? null : checkPcAttackRange(encounter.id, sheet.id, enemy.id, reachOptions);
+  // An attack-roll spell cast from another square when it does not reach
+  // from their own (cast-origin.ts: a Scribes wizard's spellbook mind, a
+  // wildfire spirit).
+  const mindAt = rangeError && kind === "spell" && args.spell
+    ? castFromElsewhere({ encounterId: encounter.id, casterId: sheet.id, facts: spellFactsFor(args.spell, spellAuthorsFor(campaign)), reachesFrom: (from) => checkPcAttackRange(encounter.id, sheet.id, enemy.id, { ...reachOptions, from }) === null })
+    : null;
+  if (mindAt) {
+    rangeError = null;
+  }
   if (rangeError) {
     return { refused: rangeError };
   }
@@ -283,7 +302,7 @@ export function planPcAttack(input: {
     // Globe of Invulnerability or an Antimagic Field turns it too.
     (kind === "granted" && built.grantedSpell ? spellWardOn({ encounterId: encounter.id, casterId: sheet.id, targetId: enemy.id, targetName: enemy.displayName, facts: spellFactsFor(built.grantedSpell, spellAuthorsFor(campaign)) }) : null) ??
     spell.noEffect;
-  let geometry = attackGeometry(campaign.id, encounter.id, sheet.id, enemy, profile, conjured?.at);
+  let geometry = attackGeometry(campaign.id, encounter.id, sheet.id, enemy, profile, conjured?.at ?? mindAt ?? undefined);
   const { atRange } = geometry;
   // Antilife Shell: a living creature cannot reach through it in melee. Only
   // enemies' attacks asked it, so a character's sword went through. A weapon
@@ -301,6 +320,13 @@ export function planPcAttack(input: {
   const ignoresCover = (weaponAttack && atRange && shotIgnoresCover(sheet)) || (kind === "spell" && spellIgnoresCover(sheet));
   if (ignoresCover && geometry.cover) {
     featNotes.push(`${kind === "spell" ? "Spell Sniper" : coverFeatName(sheet)}: ${enemy.displayName}'s ${geometry.cover === 2 ? "half" : "three-quarters"} cover does not count`);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
+  }
+  // An artificer's Enhanced Arcane Focus, held and attuned: "spells ignore
+  // half cover" (src/lib/srd/infusions.ts).
+  const focus = kind === "spell" && geometry.cover === 2 ? infusionWorn(sheet.equipment, "Enhanced Arcane Focus") : null;
+  if (focus) {
+    featNotes.push(`${focus.name} (Enhanced Arcane Focus): ${enemy.displayName}'s half cover does not count`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
   }
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {
@@ -437,6 +463,11 @@ export function planPcAttack(input: {
     derived: built.derived,
     budget,
     targetId: enemy.id,
+    targetSize: enemy.stats.size,
+    feetFrom: (otherId) => {
+      const apart = tilesBetween(encounter.id, otherId, enemy.id);
+      return apart === null ? null : apart * 5;
+    },
     besideEarlierTarget: (earlierId) => {
       const apart = tilesBetween(encounter.id, earlierId, enemy.id);
       return apart === null || apart <= 1;
@@ -463,7 +494,9 @@ export function planPcAttack(input: {
     profile = { ...profile, damageExpression: polearmButtDamage(profile.damageExpression), damageType: "bludgeoning", heavy: false };
     featNotes.push("Polearm Master: the butt end, 1d4 bludgeoning, as the bonus action");
   } else if (options.bonusFeat === "Charger") {
-    if (args.charged) {
+    // The run is the caller's word, or the walk the board itself saw end in
+    // 10 feet on one heading (ar-wbf-feat-turn.ts).
+    if (args.charged || ranStraight(encounter, sheet.id)) {
       profile = { ...profile, damageExpression: `${profile.damageExpression}+5` };
       featNotes.push("Charger: +5 damage after a 10-foot straight charge");
     } else {
@@ -503,6 +536,15 @@ export function planPcAttack(input: {
         note: `${sheet.name} draws ${row.name}${throws ? " and throws it" : ""}: their free object interaction this turn`,
       };
     }
+  }
+  // A swing of the Attack action a ranger's archetype added: Distant
+  // Strike's goes at a third creature, Dread Ambusher's deals 1d8 more
+  // (src/lib/dm/turn-extra-attacks-logic.ts).
+  const madeBefore = budget?.attacksMade ?? 0;
+  const actionSwing = Boolean(budget) && weaponAttack && !grantedBonusAction && !args.offHand && !args.bonusAttack && !args.hordeBreaker;
+  const thirdOnly = actionSwing && budget ? distantStrikeRefusal(sheet, budget, encounter.round, madeBefore, attacksAllowedFor(sheet), enemy.displayName) : null;
+  if (thirdOnly) {
+    return { refused: { error: thirdOnly, refused: "rules" } };
   }
   // The part of the turn the attack spends (src/lib/dm/pc-attack-spend.ts).
   const spent = spendAttackEconomy({
@@ -570,10 +612,15 @@ export function planPcAttack(input: {
     kind,
     enemy,
     marked: marks.applies,
+    surprised: encounter.round === 1 && encounter.surprisedIds.includes(enemy.id),
   });
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
   const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);
   profile = gear.profile;
+  const ambush = actionSwing ? ambushAttackDie(sheet, encounter.round, madeBefore, attacksAllowedFor(sheet)) : null;
+  if (ambush) {
+    profile = { ...profile, damageExpression: `${profile.damageExpression}+${ambush}`, riderNotes: [...profile.riderNotes, `Dread Ambusher: +${ambush} on the first turn's extra attack`] };
+  }
   // Bestow Curse's necrotic rides its caster's hits on the cursed (spell-retort.ts).
   const curse = curseRider(enemy, sheet.id);
   if (curse) {
@@ -615,13 +662,28 @@ export function planPcAttack(input: {
     sources.push("advantage");
     context.notes.push(`${options.featureBonus.feature}: advantage on this attack`);
   }
+  // Mounted Combatant: advantage in melee against an unmounted creature
+  // smaller than the mount (src/lib/dm/ar-wbf-feat-doors.ts).
+  const ridden = mountedAdvantage(campaign.id, sheet, enemy, !profile.ranged);
+  if (ridden) {
+    sources.push("advantage");
+    context.notes.push(ridden);
+  }
   // Powerful Attacker's trade: the roll at disadvantage (feat-combat.ts).
   if (powerDisadvantage) {
     sources.push("disadvantage");
   }
   let advantage = mergeAdvantage(sources);
+  // The attack a Rapid Strike bought is owed to the creature it was traded on.
+  if (budget && weaponAttack && !(options.bonusAttack || args.offHand || grantedBonusAction)) {
+    const owed = rapidStrikeOwed(budget, enemy.id);
+    if ("refused" in owed) {
+      return { refused: owed.refused };
+    }
+    budget = owed.budget;
+  }
   if (args.rapidStrike) {
-    const traded = rapidStrike({ sheet, budget, advantage, weaponAttack, bonus: Boolean(options.bonusAttack || args.offHand || grantedBonusAction) });
+    const traded = rapidStrike({ sheet, budget, advantage, weaponAttack, targetId: enemy.id, bonus: Boolean(options.bonusAttack || args.offHand || grantedBonusAction) });
     if ("refused" in traded) {
       return { refused: traded.refused };
     }
@@ -664,12 +726,17 @@ export function planPcAttack(input: {
       sneak: sneak.sneak,
       sneakAttackDice: sneak.dice,
       featureRiders: folded.featureRiders,
+      secondSneak: secondSneakKey(sheet, riderBudget, enemy.id),
     });
     profile = claimed.profile;
     context.notes = claimed.notes;
     droppedRiders = claimed.droppedRiders;
     hitClaims = claimed.hitClaims;
   }
+  // Grave Touched: the hit's own damage made necrotic when asked, once a turn
+  // (ar-wbf-warlock-grave-logic.ts). The coat of poison below reads the blade.
+  const forged = profile.damageType;
+  ({ profile, hitClaims } = graveTouchedType({ sheet, profile, asked: args.damageType, budget: riderBudget, hitClaims, notes: context.notes }));
 
   return {
     conjured,
@@ -731,7 +798,7 @@ export function planPcAttack(input: {
       stunShot: args.stunShot === true && stunningSniperApplies(sheet, { weaponAttack, ranged: profile.ranged }),
       // Lucky's point on this roll, when one is left.
       luck: args.luck === true && luckPointsLeft(sheet.resources) > 0,
-      poison: carriesPoison(sheet, weaponAttack, profile.damageType),
+      poison: carriesPoison(sheet, weaponAttack, forged),
       giantKiller,
       reactionAttack: Boolean(input.reactionAttack),
       turnRiders,

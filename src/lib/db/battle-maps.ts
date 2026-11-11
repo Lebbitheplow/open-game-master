@@ -471,7 +471,33 @@ export function getTokenByRef(mapId: string, refId: string): BattleToken | null 
   return row ? mapToken(row) : null;
 }
 
+// The squares each token stood in since its turn's movement began, oldest
+// first (Boots of the Winding Path: "a space it occupied at some point during
+// the current turn", src/lib/dm/infusion-servant.ts). Kept by moveToken, the
+// walk's own door, and cleared where a turn's movement starts again; in
+// memory, as a move's undo is (src/lib/battlemap/move-undo.ts).
+declare global {
+  var __odmStoodIn: Map<string, Array<{ x: number; y: number }>> | undefined;
+}
+
+function stoodIn(): Map<string, Array<{ x: number; y: number }>> {
+  globalThis.__odmStoodIn ??= new Map();
+  return globalThis.__odmStoodIn;
+}
+
+export function squaresStoodIn(tokenId: string): Array<{ x: number; y: number }> {
+  return stoodIn().get(tokenId) ?? [];
+}
+
 export function moveToken(tokenId: string, x: number, y: number, movedThisRound: number) {
+  // A move that spends nothing of the turn (a token set down, the round's
+  // movement begun again) starts the record over.
+  const was = getToken(tokenId);
+  if (movedThisRound === 0) {
+    stoodIn().delete(tokenId);
+  } else if (was && (was.x !== x || was.y !== y)) {
+    stoodIn().set(tokenId, [...squaresStoodIn(tokenId), { x: was.x, y: was.y }]);
+  }
   keepRow("battle_tokens", tokenId);
   getDatabase()
     .prepare(`UPDATE battle_tokens SET x = ?, y = ?, moved_this_round = ?, updated_at = ? WHERE id = ?`)
@@ -554,6 +580,9 @@ export function resetRoundBudgets(mapId: string, round: number) {
   keepRow("battle_maps", mapId);
   const now = nowIso();
   const db = getDatabase();
+  for (const row of db.prepare(`SELECT id FROM battle_tokens WHERE map_id = ?`).all(mapId) as Array<{ id: string }>) {
+    stoodIn().delete(row.id);
+  }
   db.transaction(() => {
     db.prepare(`UPDATE battle_tokens SET moved_this_round = 0, updated_at = ? WHERE map_id = ?`).run(now, mapId);
     db.prepare(`UPDATE battle_maps SET round_marker = ?, updated_at = ? WHERE id = ?`).run(round, now, mapId);
@@ -566,6 +595,9 @@ export function resetRoundBudgets(mapId: string, round: number) {
 // brings its own.
 export function resetTurnBudgets(mapId: string, refIds: string[]) {
   keepRowsWhere("battle_tokens", `map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`, [mapId, ...refIds]);
+  for (const row of getDatabase().prepare(`SELECT id FROM battle_tokens WHERE map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`).all(mapId, ...refIds) as Array<{ id: string }>) {
+    stoodIn().delete(row.id);
+  }
   getDatabase()
     .prepare(
       `UPDATE battle_tokens SET moved_this_round = 0, updated_at = ? WHERE map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`,

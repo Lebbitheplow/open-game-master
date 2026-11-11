@@ -15,8 +15,9 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { matchResource, type ResourceAction } from "@/lib/srd/class-resources";
-import { ACTION_SURGED, spendAction } from "@/lib/dm/action-budget";
+import { withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
+import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
+import { ACTION_SURGED, RAGE_ENTERED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
@@ -59,11 +60,9 @@ export function prepareResourceCharge(
   if (!def?.action || !encounter || (encounter.kind ?? "fight") !== "fight") {
     return FREE;
   }
-  // ODM's rule: asking for Wild Shape while shaped drops the form and costs
-  // nothing (src/lib/dm/resource-tools.ts).
-  if (def.effect.kind === "wild_shape" && sheet.wildShape) {
-    return FREE;
-  }
+  // Asking for Wild Shape while shaped drops the form and spends no use
+  // (src/lib/dm/resource-tools.ts); in a fight it is the bonus action the
+  // SRD gives the early revert, which counterCost answers below.
   // The cost the Hand's card shows, from the same place (counter-rules.ts):
   // Combat Wild Shape (Circle of the Moon) makes the change a bonus action.
   const action = override ? def.action : counterCost(def, sheet);
@@ -82,8 +81,17 @@ export function prepareResourceCharge(
   if (readied) {
     return { commit: () => readied.release() };
   }
-  const able = canAct({ sheet, encounter, kind });
-  if (!able.ok) {
+  // Entering the rage is the one thing Feral Instinct's surprised first turn
+  // allows (mt-srd-barbarian.ts).
+  const entersRage = def.effect.kind === "condition" && def.effect.condition === RAGING;
+  // A use made at 0 hit points answers its own moment there (Defy Death, on a
+  // death save that has just succeeded: ResourceDef.atZeroHp). Its gate is
+  // the record it answers (reaction-triggers.ts), not its holder being up:
+  // in a fight the use was refused as "at 0 HP and cannot act", the one
+  // place its trigger can happen.
+  const downed = Boolean(def.atZeroHp) && sheet.currentHp <= 0 && !sheet.deathSaves?.dead;
+  const able = downed ? null : canAct({ sheet: entersRage ? withoutRageFirst(sheet) : sheet, encounter, kind });
+  if (able && !able.ok) {
     return toolError(able);
   }
   const heldOff = heldTurnRefusal(encounter, sheet);
@@ -119,16 +127,21 @@ export function prepareResourceCharge(
   if (!budget) {
     return FREE;
   }
-  const spent = spendAction(budget, action, def.displayName, sheet.name);
+  // One attack of the Attack action, not the whole action (Breath of the
+  // Dragon): a monk with Extra Attack still has the other swing.
+  const spent = def.replacesAttack && action === "action" ? spendAttack(budget, sheet.name) : spendAction(budget, action, def.displayName, sheet.name);
   if (!spent.ok) {
     return toolError(spent);
   }
+  // Entering a rage marks the turn, so what answers "when you enter your
+  // rage" (Call the Hunt) finds it on record (trigger-table.ts own_rage_entered).
+  const raging = def.effect.kind === "condition" && def.effect.condition === RAGING;
   return {
     commit: () => {
       // Read again: the spend itself may have written to the encounter.
       const live = getActiveEncounter(campaign.id);
       if (live) {
-        storeBudget(live, spent.budget);
+        storeBudget(live, raging && !spent.budget.oncePerTurn.includes(RAGE_ENTERED) ? { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, RAGE_ENTERED] } : spent.budget);
       }
       return {
         cost: action === "bonus" ? "their bonus action" : "their action",
@@ -153,7 +166,10 @@ export function castMarkCharge(
     return null;
   }
   const encounter = getActiveEncounter(campaign.id);
-  const budget = encounter && (encounter.kind ?? "fight") === "fight" ? encounter.turnBudget : null;
+  // The turn's budget as every door reads it: a turn nothing has been done
+  // in yet has no stored budget, and the raw read refused Embodiment of the
+  // Law as the first thing of the cleric's own turn.
+  const budget = encounter && (encounter.kind ?? "fight") === "fight" ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
   if (!budget || budget.ownerId !== sheet.id) {
     return { error: `${sheet.name} uses this on their own turn in a fight, as the spell it changes is cast. Nothing was spent.`, refused: "rules" };
   }
@@ -163,7 +179,7 @@ export function castMarkCharge(
   return {
     apply: () => {
       const live = getActiveEncounter(campaign.id);
-      const now = live?.turnBudget;
+      const now = live ? budgetFor(live, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
       if (live && now && now.ownerId === sheet.id && !now.oncePerTurn.includes(mark)) {
         storeBudget(live, { ...now, oncePerTurn: [...now.oncePerTurn, mark] });
       }

@@ -90,6 +90,11 @@ import { useArchetypeOptions, useWorldPack } from "@/app/characters/builder/useB
 import { TableScopeNote } from "@/app/characters/builder/TableScopeNote";
 import type { AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { levelUpChangeOffers, type LevelUpChange } from "@/lib/srd/level-up-changes";
+import { sheetCantrips } from "@/lib/srd/owed-picks-logic";
+import { LevelUpChangePick } from "./LevelUpChangePick";
+import { bundledSwapSpells, originSwapOffer, originSwapRequest } from "@/lib/dm/ar-ws-origin-swap";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 import { workshopClassList } from "@/lib/classes/workshop-registry";
 
@@ -144,6 +149,9 @@ export function LevelUpDialog({
   } | null>(null);
   // A caster who knows their spells may give one up for another.
   const [forgetPick, setForgetPick] = useState("");
+  // Or a sorcerer origin's own spell replaced under its feature's rule: the
+  // request carries one levelUpForget, so it is one or the other.
+  const [originPick, setOriginPick] = useState<LevelUpChange | null>(null);
   // How many cantrips the character's species gave, as the server counts
   // them: a homebrew species' are on no list here, and a table's sheet keeps
   // the race's features but not its picks, so the class's new cantrips were
@@ -306,6 +314,7 @@ export function LevelUpDialog({
     setSkillPick("");
     setAsiChoices([]);
     setForgetPick("");
+    setOriginPick(null);
   }
 
   const klass = chosenKlass ?? findClass(sheet.class);
@@ -359,6 +368,8 @@ export function LevelUpDialog({
   // being chosen this level-up if there is one, so a fighter who picks Battle
   // Master here is offered maneuvers in the same flow.
   const [optionPicks, setOptionPicks] = useState<string[]>([]);
+  // The held choices this level changes, one per offer (level-up-changes.ts).
+  const [changes, setChanges] = useState<Record<string, LevelUpChange>>({});
   const subclassLevel = subclassLevelFor(classChoice);
   const entrySubclass = chosenEntry?.subclass ?? "";
   const needsSubclass = subclassOwed({ id: classChoice, subclass: entrySubclass }, classLevelAfter);
@@ -401,7 +412,19 @@ export function LevelUpDialog({
     sheet.features,
   ).filter((slot) => !slot.chosen);
   const choicePicked = (label: string) => optionPicks.find((pick) => textKey(parseSubclassChoicePick(pick)?.label ?? "") === textKey(label));
-  const needsOptions = openSlots.some((slot) => slot.remaining > 0) || choicesDue.length > 0;
+  // An older host drops levelUpChanges unread: the picks show only where it reads them.
+  const capabilities = useCapabilities();
+  const changesHeard = hostOffers(capabilities, "levelUpChanges");
+  const changeOffers = useMemo(
+    () =>
+      !changesHeard ? [] : levelUpChangeOffers(sheet, classChoice, {
+        classLevel: (id) => nextClasses.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+        cantrips: sheetCantrips(sheet),
+      }),
+    [sheet, classChoice, nextClasses, changesHeard],
+  );
+  const changesSent = Object.values(changes).filter((change) => change.to);
+  const needsOptions = openSlots.some((slot) => slot.remaining > 0) || choicesDue.length > 0 || changeOffers.length > 0;
 
   function pickChoice(label: string, name: string) {
     const featureName = subclassChoicePickName(label, { name });
@@ -698,6 +721,40 @@ export function LevelUpDialog({
   const remainingCantrips = cantripRoom === null || !anyGroup ? cantripRoom : rooms.cantrips;
   const classPickKeys = new Set([...spellPicks, ...cantripPicks].map((name) => textKey(name)));
   const levelStyle = caster.style;
+  // A sorcerer origin's own spell this level may replace, offered with the
+  // spells its feature's rule lets take its place, as the route judges them
+  // (src/lib/dm/ar-ws-origin-swap.ts originSwapOffer). A spell already picked
+  // as a new spell is no replacement: the route would read it as both.
+  const originHeard = hostOffers(capabilities, "originSpellSwap");
+  const originCandidates = bundledSwapSpells();
+  const originOffer =
+    !originHeard || !showSpells || isNewClass
+      ? null
+      : originSwapOffer(
+          { classId: classChoice, subclass: effectiveSubclass, level: classLevelAfter, features: sheet.features },
+          {
+            top: maxCastable ?? 0,
+            held: [...knownList, ...pendingList, ...cantripList, ...spellPicks, ...cantripPicks],
+            candidates: originCandidates,
+            spellOf: (name) => originCandidates.find((spell) => textKey(spell.name) === textKey(name)) ?? null,
+          },
+        );
+  const originShown = originOffer?.kind === "replace" && originPick && originOffer.froms.includes(originPick.from) ? originPick : null;
+  const originSent = originShown && (originOffer?.kind === "replace" ? originOffer.optionsFor?.[originShown.from] ?? [] : []).includes(originShown.to) ? originShown : null;
+  // The spell known given up made room for one more pick; giving it back takes the room back.
+  function dropForget() {
+    if (forgetPick && remainingPicks !== null && spellPicks.length >= remainingPicks) {
+      setSpellPicks((current) => current.slice(0, -1));
+    }
+    setForgetPick("");
+  }
+  function pickOrigin(next: LevelUpChange | null) {
+    setSpellNote("");
+    if (next) {
+      dropForget();
+    }
+    setOriginPick(next);
+  }
   // Why a spell not yet picked cannot be picked now: every new spell or
   // cantrip for the level is chosen, or an Eldritch Knight's or Arcane
   // Trickster's school rule (as the server judges it). `short` is the tile's
@@ -848,10 +905,15 @@ export function LevelUpDialog({
           ...(expertiseLive.length ? { expertise: [...currentExpertise, ...expertiseLive] } : {}),
           // The group's picks go by name with the rest: the route judges each
           // against the feature's number (src/lib/srd/level-up-spells.ts).
-          ...(spellPicks.length || cantripPicks.length || anyChosen.length
-            ? { levelUpSpells: [...spellPicks, ...cantripPicks, ...anyChosen] }
-            : {}),
-          ...(forgetPick ? { levelUpForget: forgetPick } : {}),
+          ...(originSent
+            ? originSwapRequest(originSent, [...spellPicks, ...cantripPicks, ...anyChosen])
+            : {
+                ...(spellPicks.length || cantripPicks.length || anyChosen.length
+                  ? { levelUpSpells: [...spellPicks, ...cantripPicks, ...anyChosen] }
+                  : {}),
+                ...(forgetPick ? { levelUpForget: forgetPick } : {}),
+              }),
+          ...(changesSent.length ? { levelUpChanges: changesSent } : {}),
           ...(stylePicks.length || optionPicks.length
             ? {
                 features: [
@@ -1331,6 +1393,20 @@ export function LevelUpDialog({
                   {choicesDue.map((slot) => (
                     <SubclassChoicePick key={slot.label} slot={slot} picked={choicePicked(slot.label)} onPick={(name) => pickChoice(slot.label, name)} />
                   ))}
+                  {changeOffers.map((offer) => (
+                    <LevelUpChangePick
+                      key={offer.label}
+                      offer={offer}
+                      change={changes[offer.label] ?? null}
+                      onChange={(next) =>
+                        setChanges((current) => {
+                          const rest = { ...current };
+                          delete rest[offer.label];
+                          return next ? { ...rest, [offer.label]: next } : rest;
+                        })
+                      }
+                    />
+                  ))}
                   {openSlots
                     .filter((slot) => slot.remaining > 0 || slot.chosen.length > 0)
                     .map((slot) => (
@@ -1581,6 +1657,9 @@ export function LevelUpDialog({
                                     setSpellPicks((current) => current.slice(0, -1));
                                   }
                                   setForgetPick(picked ? "" : name);
+                                  if (!picked) {
+                                    setOriginPick(null);
+                                  }
                                 }}
                                 className={cn(
                                   "rounded-full border px-3 py-1 text-xs",
@@ -1596,6 +1675,7 @@ export function LevelUpDialog({
                       </div>
                     </div>
                   ) : null}
+                  {originOffer ? <LevelUpChangePick offer={originOffer} change={originShown} onChange={pickOrigin} /> : null}
                   <SpellBook
                     tiles={levelUpTiles}
                     maxLevel={maxCastable ?? 0}

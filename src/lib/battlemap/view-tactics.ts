@@ -22,6 +22,7 @@ import { unseenBecause } from "@/lib/dm/authored-saves";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { silenceAround } from "@/lib/dm/zone-rules";
+import { brightSquare } from "@/lib/dm/one-with-shadows";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -90,7 +91,7 @@ export function targetEdges(input: {
     };
     const enemy = getEnemy(enemyId);
     const senses = sheet && enemy ? attackSenses(encounterId, { refId: characterId, senses: characterSenses(sheet) }, { refId: enemyId, senses: enemySenses(enemy) }) : null;
-    if (senses && [senses.attackerSenses, senses.targetSenses].some((side) => side.blindsight || side.truesight)) {
+    if (senses && [senses.attackerSenses, senses.targetSenses].some((side) => side.blindsight || side.truesight || side.invisible)) {
       edges[enemyId].senses = { attacker: senses.attackerSenses, target: senses.targetSenses };
     }
   }
@@ -131,5 +132,9 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   if (hide) out.hide = hide.error;
   const silence = silenceAround(campaignId, sheet.id);
   if (silence !== null) out.silence = { by: silence };
+  // Bright light on the square: Steps of Night, One with Shadows, Shadow Step
+  // and Cloak of Shadows refuse.
+  const bright = brightSquare(campaignId, sheet);
+  if (bright) out.bright = bright;
   return out;
 }

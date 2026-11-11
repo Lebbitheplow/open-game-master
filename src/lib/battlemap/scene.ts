@@ -87,6 +87,10 @@ export type LightZone = {
   y1: number;
   ambient: AmbientLight;
   kind: ZoneKind;
+  // A patch that only dims: bright light in it is dim, dim light and
+  // darkness stay (Dread Lord's gloom, laid as a spell area: zones.ts
+  // zoneLights). Never stored on the map row; normalizeZones drops it.
+  dims?: boolean;
 };
 
 // Cue ids from src/lib/ambience/catalog.ts, or "" for "leave it alone".
@@ -437,7 +441,8 @@ export function toggleDoor(
 export function magicalDarknessAt(zones: LightZone[], x: number, y: number): boolean {
   let dark = false;
   for (const zone of zones) {
-    if (x >= zone.x0 && x <= zone.x1 && y >= zone.y0 && y <= zone.y1) {
+    // A patch that only dims (Dread Lord's gloom) lifts no darkness.
+    if (!zone.dims && x >= zone.x0 && x <= zone.x1 && y >= zone.y0 && y <= zone.y1) {
       dark = zone.kind === "magical_darkness";
     }
   }
@@ -448,7 +453,9 @@ export function ambientAt(zones: LightZone[], x: number, y: number, base: Ambien
   let ambient = base;
   for (const zone of zones) {
     if (x >= zone.x0 && x <= zone.x1 && y >= zone.y0 && y <= zone.y1) {
-      ambient = zone.ambient;
+      // A patch that only dims turns bright light dim and leaves the rest:
+      // Dread Lord's gloom lights no darkness.
+      ambient = zone.dims ? (ambient === "bright" ? "dim" : ambient) : zone.ambient;
     }
   }
   return ambient;

@@ -81,7 +81,7 @@ export async function handRig() {
   const handPlay = await src("lib/battlemap/hand-play.ts");
   const handReact = await src("lib/battlemap/hand-react.ts");
   const { turnFromEncounter } = await src("lib/battlemap/hand-table.ts");
-  const { handTargets } = await src("app/campaigns/[campaignId]/handTargets.ts");
+  const { handTargets, deadAllyTargets } = await src("app/campaigns/[campaignId]/handTargets.ts");
   const intentLogic = await src("lib/dm/intent-logic.ts");
   const { intentRefusal } = await src("lib/dm/intent-check.ts");
   const { directContextFor } = await src("lib/dm/direct-context.ts");
@@ -332,6 +332,10 @@ export async function handRig() {
         if (state !== "failed-save" && done.result.hit !== true) return `the foe's attack did not hit: ${JSON.stringify(done.result).slice(0, 160)}`;
         return null;
       }
+      case "ally-dead":
+        // The fallen ally has died: a card that returns the dead has its target.
+        world.patch(down.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+        return null;
       case "out-of-fight": {
         const ended = await world.invoke("end_encounter", { outcome: "truce" });
         return ended.ok ? null : `the fight would not end: ${ended.error}`;
@@ -361,7 +365,12 @@ export async function handRig() {
     const turn = turnFromEncounter(encounter, sheet, { myTurn: true });
     const authors = tableAuthors(world.campaignId);
     const hits = encounter?.lastHits ?? [];
-    const chips = encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter, view?.sight) : handTargets([], sheets, sheet.id, undefined);
+    // The dead allies' chips beside them, which only a card that takes the
+    // dead is aimed at (Hand.tsx deadTargets).
+    const chips = [
+      ...(encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter, view?.sight) : handTargets([], sheets, sheet.id, undefined)),
+      ...deadAllyTargets(sheets, sheet.id, encounter?.sides),
+    ];
     const creatures = encounter ? handTargets(encounter.enemies, sheets, sheet.id, undefined, encounter.sides) : [];
     const unseen = view?.unseen ? new Set(view.unseen) : undefined;
     const reactions = handReact.reactionCards(sheet, turn, hits, sheets, "you", view?.feet, encounter?.lastSaves, view?.feet ? creatures : undefined, view?.feet && unseen ? unseen : undefined);
@@ -394,6 +403,9 @@ export async function handRig() {
       if (fixed) return fixed;
     }
     if (card.intent.card === "basic" && card.intent.action === "stabilize") return byId(table.down.id);
+    // A card that takes the dead is aimed at a dead ally, as the aim bar
+    // offers it (the "ally-dead" state kills the fallen one); never the living.
+    if (card.takesTheDead) return deal.chips.find((chip) => chip.note === "dead") ?? null;
     switch (card.target) {
       case "enemy":
         return byId(table.near.id);
@@ -423,7 +435,13 @@ export async function handRig() {
 
   const budgetOf = (world, heroId) => {
     const encounter = world.encounter();
-    const own = encounter?.turnBudget?.ownerId === heroId ? encounter.turnBudget : null;
+    // A call that ended the hero's own turn (a Fathomless Plunge takes them out
+    // of the order, and the turn passes on) is read from that turn's record.
+    const holder = encounter?.order?.[encounter.turnIndex];
+    const passed = holder && !(holder.kind === "pc" && holder.characterId === heroId);
+    const own = encounter?.turnBudget?.ownerId === heroId
+      ? encounter.turnBudget
+      : passed && encounter?.legendary?.endedTurn?.ownerId === heroId ? encounter.legendary.endedTurn : null;
     return {
       action: Boolean(own?.actionUsed),
       bonus: Boolean(own?.bonusUsed),

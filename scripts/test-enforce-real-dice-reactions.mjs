@@ -21,6 +21,7 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { resolvePcOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
 const { parkedTargetAc } = await import("../src/lib/dm/pc-attack-parked.ts");
+const { entryDice } = await import("../src/lib/dice.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
 
 // Attacks at +6 with the sword and the bow, so a d20 of 7 is a 13.
@@ -94,8 +95,10 @@ async function tableSwing(hero, enemy, faces, args) {
   });
 }
 
-// Two attacks declared in one call, whose to-hit rolls park together, each
-// entered in turn. Returns both notes.
+// Two attacks declared in one call, each entered in turn: the second is made
+// and parked once the first has landed, its damage too (pc-attack-parts.ts
+// afterToHitLanded; a hit's damage is entered as all 1s). Returns both notes.
+// `between` runs after the second has parked and before its dice are entered.
 // `seen`: told the second part's parked roll, once its dice are entered.
 async function twoParts(hero, enemy, firstFaces, secondFaces, args, between = () => {}, seen = () => {}) {
   return withRealDice(hero, async () => {
@@ -103,9 +106,16 @@ async function twoParts(hero, enemy, firstFaces, secondFaces, args, between = ()
     const part = { targetEnemyId: enemy.id, ...args };
     const parked = await world.invoke("pc_attack", { characterId: hero.id, attacks: [part, part] });
     assert.equal(parked.ok, true, parked.error);
-    const [first, second] = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack" && !earlier.has(entry.id));
-    assert.ok(first && second, "both parts are parked");
+    const fresh = (kind) => listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === kind && !earlier.has(entry.id));
+    const [first, early] = fresh("attack");
+    assert.ok(first && !early, "the second part is parked before the first has landed");
     const firstNote = await land(hero, first, [firstFaces].flat());
+    const [blow] = fresh("damage");
+    if (blow) {
+      await land(hero, blow, entryDice(blow.expression).map(() => 1));
+    }
+    const [second] = fresh("attack");
+    assert.ok(second, "the second part was not made once the first had landed");
     between();
     const secondNote = await land(hero, second, [secondFaces].flat());
     seen(second);

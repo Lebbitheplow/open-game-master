@@ -8,6 +8,7 @@
 // on the other side (a creature the party dominates) is struck stat block
 // against stat block (src/lib/dm/enemy-strike.ts).
 
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -15,7 +16,7 @@ import { lashOutTarget } from "@/lib/dm/confusion";
 import { weaponNamed } from "@/lib/srd/weapons";
 import { readiedHolder } from "@/lib/dm/readied-release";
 import { hitTraitDice } from "@/lib/dm/side-allies";
-import { patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { z } from "zod";
@@ -38,6 +39,8 @@ import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
 import { canEnemyAct, markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
+import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
+import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
 import { hasteActionOpen, slowedOut } from "@/lib/dm/enemy-actions";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
@@ -48,16 +51,18 @@ import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
-import { applyPcDamage, type BlowFlags } from "@/lib/dm/pc-damage";
+import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { effectOutcome } from "@/lib/dm/effect-tools";
+import { hateAuraDamage } from "@/lib/dm/divine-auras";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { enemySwingOdds, hasFeatureNamed } from "@/lib/dm/enemy-swing-odds";
 import { openLastHit } from "@/lib/dm/last-hit";
-import { authoredAfterHit, authoredIncomingAttack, WARD_WITHSTOOD } from "@/lib/dm/authored-hooks";
-import { rollEnemySave } from "@/lib/dm/forced-save";
-import { critOnlyWhileUnconscious, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { authoredAfterHit } from "@/lib/dm/authored-hooks";
+import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import { naturesSanctuaryRefusal } from "@/lib/dm/srd-defenses";
@@ -70,12 +75,14 @@ import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
+import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sizeForRace } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -165,6 +172,9 @@ export function handleEnemyAttack(
   if (!encounter) {
     return { error: "No active encounter: enemy_attack works only in a fight. Call start_encounter first.", retry: true };
   }
+  // A mark that rode a rage now over goes before the odds are read
+  // (rage-bound.ts: Ancestral Protectors).
+  endRageBound(campaign.id);
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
@@ -220,6 +230,18 @@ export function handleEnemyAttack(
   const commanded = heldTurnRefusal(found, "attack");
   if (commanded) {
     return { error: commanded, refused: "rules", stop: "commanded" };
+  }
+  // An Echo Knight's echo, named as the board names it, is no combatant: the
+  // swing is rolled against its own armor class (mt-fb-echo.ts).
+  const atEcho = cast ? null : enemyStrikesEcho(campaign, turn, encounter, found, args.targetCharacterId, args.attack);
+  if (atEcho) {
+    return atEcho;
+  }
+  // A Spirit Projection's body left on the board: a blow at the warlock's
+  // own hit points, at advantage (spirit-projection.ts).
+  const atBody = cast ? null : enemyStrikesBody(campaign, turn, encounter, found, args.targetCharacterId, args.attack);
+  if (atBody) {
+    return atBody;
   }
   // The target is any combatant (src/lib/dm/combatant.ts): a character on
   // either side, or an enemy fighting on the other one (a creature the party
@@ -302,6 +324,12 @@ export function handleEnemyAttack(
   const unmounted = args.targetMount ? mountTargetProblem(campaign.id, target) : null;
   if (unmounted) {
     return { error: unmounted, retry: true };
+  }
+  // Mounted Combatant: the rider takes the attack aimed at the mount
+  // (src/lib/dm/ar-wbf-feat-doors.ts).
+  const riderTakes = args.targetMount ? riderTakesIt(target) : null;
+  if (riderTakes) {
+    args.targetMount = false;
   }
   // Swallowed: total cover against everything outside the creature that
   // swallowed them (swallow.ts).
@@ -459,7 +487,7 @@ export function handleEnemyAttack(
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on every swing, as it would on a character's attack.
   let riders = conditionRollRiders(standing.conditions, "attack");
-  const notes: string[] = [];
+  const notes: string[] = riderTakes ? [riderTakes] : [];
   if (stood) {
     notes.push(`${enemy.displayName} stands up (half its speed)`);
   }
@@ -542,6 +570,9 @@ export function handleEnemyAttack(
   let martialSpent = false;
   let dropped = false;
   let totalDamage = 0;
+  // What the target took of it, past its defenses: Emissary of Redemption
+  // answers "half the damage you take from it", not half the blow.
+  let takenTotal = 0;
   let targetHp: string | undefined;
   const damageTypes = new Set<string>();
   let lastSwing: { attack: EnemyAttack; ranged: boolean } | null = null;
@@ -705,14 +736,47 @@ export function handleEnemyAttack(
       return;
     }
 
+    // Aura of Hate: a fiend or undead within an oathbreaker's aura adds the
+    // paladin's Charisma to its melee weapon blows (divine-auras.ts).
+    const hate = ranged || attack.spellAttack ? null : hateAuraDamage(campaign.id, standing);
+    // An active effect's amount on its damage rolls (set_effect), once.
+    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus + (hate?.bonus ?? 0);
+    // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
+    const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
+    const flags: BlowFlags = {
+      // An attack, so Heavy Armor Master's reduction answers it (pc-damage.ts).
+      ...(attack.spellAttack ? {} : { attack: true }),
+      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
+      // and a blow the block prints as magical ("magical bludgeoning").
+      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // Emissary of Redemption holds nothing against a creature the paladin attacked.
+      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+    };
+    // The Cloud Rune (cloud-rune.ts): a knight's player turns the hit onto
+    // another creature before its damage is rolled, on the same roll, so the
+    // target was never hit. The blow keeps its own dice; what the target's
+    // place gave it (Martial Advantage, a critical for lying unconscious) is
+    // not the new creature's.
+    const turned = cloudRuneAtHit({ campaign, turn, encounter, attacker: standing, attackName: attack.name, struck: target, swing: index, rolled: hitOutcome.total });
+    if (turned) {
+      hitLog.swing(hitOutcome, targetAc(), { hit: false, crit: false, raw: 0, advantage, ranged, attack: attack.name });
+      const turnedCrit = natCrit && !authored.noCrit && !(turned.taker.kind === "sheet" && wornArmorTurnsCrits(turned.taker.sheet.equipment ?? []));
+      const turnedBase = effectDamage > 0 ? `${attack.damage}+${effectDamage}` : effectDamage < 0 ? `${attack.damage}-${-effectDamage}` : attack.damage;
+      const expression = turnedCrit
+        ? critDamageExpression(turnedBase, 0, { powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical, multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+        : turnedBase;
+      swings.push(landTurnedBlow({ campaign, turn, encounter, attacker: standing, attack, taker: turned.taker, knight: turned.knight, expression, crit: turnedCrit, shrink: shrunk, flags, rolled: hitOutcome.total, sheets, sheetsById }));
+      return;
+    }
+
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
     if (bonus.martial) {
       martialSpent = true;
     }
-    // An active effect's amount on its damage rolls (set_effect), once.
-    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus;
     const withTraits = bonus.dice.length ? `${attack.damage}+${bonus.dice.join("+")}` : attack.damage;
     const baseDamage = effectDamage > 0 ? `${withTraits}+${effectDamage}` : effectDamage < 0 ? `${withTraits}-${-effectDamage}` : withTraits;
     const damageExpression = crit
@@ -742,8 +806,6 @@ export function handleEnemyAttack(
     // immune to poison takes none of a bite's venom). A penalty can bring a
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
-    // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
-    const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
     const dealt = shrunk(blow.amount);
     // A critical that came only from the target lying unconscious at 0 within
     // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
@@ -764,15 +826,6 @@ export function handleEnemyAttack(
     const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
     // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
-    // What the blow is made of for the target's defenses, kept with the hit
-    // so a reaction's replay meets the same clauses (last-hit.ts flags).
-    const flags: BlowFlags = {
-      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
-      // and a blow the block prints as magical ("magical bludgeoning").
-      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
-      // Emissary of Redemption holds nothing against a creature the paladin attacked.
-      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
-    };
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {
@@ -786,7 +839,10 @@ export function handleEnemyAttack(
       ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
+    // Thought Shield: the psychic damage a warlock took goes back to the creature.
+    Object.assign(applied, thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById));
     totalDamage += dealt;
+    takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     previousHit = true;
     if (multiattackDefense) {
       defended = 4;
@@ -881,7 +937,7 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
+  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {
@@ -901,30 +957,3 @@ export function handleEnemyAttack(
   };
 }
 
-// Among the Dead (the Undying warlock): an undead that targets the warlock
-// with an attack first saves on Wisdom against their spell save DC. On a
-// failure the attack is lost; on a success the creature is immune for 24
-// hours.
-function authoredWardSave(
-  campaign: Campaign,
-  turn: DmTurn,
-  attacker: EncounterEnemy,
-  target: CharacterSheet,
-): { lost: string | null; note: string | null } {
-  const ward = authoredIncomingAttack({ campaignId: campaign.id, encounterId: "", attacker, target }).ward;
-  if (!ward) {
-    return { lost: null, note: null };
-  }
-  const save = rollEnemySave(campaign.id, attacker, ward.save as "wis", ward.dc, {
-    magical: true,
-    record: { turn, detail: `${attacker.displayName}: ${ward.save.toUpperCase()} save against ${ward.feature}` },
-  });
-  if (!save.success) {
-    return { lost: `${ward.feature}: ${attacker.displayName} fails its ${ward.save.toUpperCase()} save (DC ${ward.dc}) and cannot bring itself to attack ${target.name}; the attack is lost.`, note: null };
-  }
-  patchEnemyConditions(attacker.id, [...attacker.conditions.filter((entry) => textKey(entry) !== textKey(WARD_WITHSTOOD)), WARD_WITHSTOOD], {
-    ...(attacker.conditionMeta as ConditionMetaMap),
-    [WARD_WITHSTOOD]: { source: target.id, rounds: 14400 },
-  } as typeof attacker.conditionMeta);
-  return { lost: null, note: `${ward.feature}: ${attacker.displayName} makes its ${ward.save.toUpperCase()} save (DC ${ward.dc}) and is immune to it for 24 hours.` };
-}

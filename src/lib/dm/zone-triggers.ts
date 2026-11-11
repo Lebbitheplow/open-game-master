@@ -22,6 +22,7 @@ import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turn
 import { getBattleMap, getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, setEnemyConcentration, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -35,8 +36,10 @@ import { holdGasesBack } from "@/lib/battlemap/zones-walls";
 import { isQuake, quakeFissures, quakeShake } from "@/lib/dm/zone-quake";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
+import { bramblesAfterMove } from "@/lib/dm/mt-fb-arrow-riders";
+import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { saveDamageTaken } from "@/lib/srd/trait-rules";
+import { classLevelOf, saveDamageTaken } from "@/lib/srd/trait-rules";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { breakConcentration, clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { laySpellConditionsOnEnemy } from "@/lib/dm/spell-effects";
@@ -78,7 +81,12 @@ function diceOf(trigger: ZoneTrigger, row: ZoneRow, zone: SpellZone, times: numb
     return null;
   }
   const above = Math.max(0, (zone.slotLevel ?? row.level) - row.level);
-  const one = trigger.perSlot ? addDice(trigger.dice, trigger.perSlot, above) : trigger.dice;
+  // A die that grows with its caster's class level (Spreading Spores).
+  const ladder = trigger.byLevel;
+  const casterSheet = ladder && zone.casterKind === "pc" ? getSheetById(zone.casterId) : null;
+  const level = casterSheet && ladder ? classLevelOf(casterSheet, ladder.class) : 0;
+  const grown = ladder ? ladder.dice.filter(([from]) => level >= from).at(-1)?.[1] ?? trigger.dice : trigger.dice;
+  const one = trigger.perSlot ? addDice(grown, trigger.perSlot, above) : grown;
   if (times <= 1) {
     return one;
   }
@@ -162,13 +170,18 @@ function strike(
     }
     let dealt = 0;
     if (dice && (failed || (trigger.half && !trigger.damageOnFail))) {
-      const rolled = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by).total;
+      const thrown = rollCard(campaign, null, zone.casterKind === "pc" ? zone.casterId : null, "damage", rollAgainst(zone.spell, enemy.displayName), dice, by);
+      // Spell Bombardment on a character's standing spell (src/lib/dm/ar-ws-bombardment.ts).
+      const caster = zone.casterKind === "pc" ? getSheetById(zone.casterId) : null;
+      const rolled = ((caster ? spellBombardment({ campaign, turn: null, sheet: caster, outcome: thrown, spell: zone.spell }) : null)?.outcome ?? thrown).total;
       dealt = failed ? rolled : Math.floor(rolled / 2);
       if (dealt > 0) {
         const before = enemy.currentHp;
         // The area's caster is whose damage it is (acting-party.ts).
         lines.push(withActor({ kind: zone.casterKind === "pc" ? "sheet" : "enemy", ref: zone.casterId }, () => hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane)));
         dealt = Math.max(0, before - (getEnemy(enemy.id)?.currentHp ?? before));
+        // A character's area killed it (Grim Harvest, ar-ws-harvest.ts).
+        lines.push(...(zone.casterKind === "pc" && !row.mundane ? runningSpellKill(campaign, encounter, enemy, zone.casterId, { spell: zone.runsAs ?? zone.spell, slotLevel: zone.slotLevel }) : []));
       }
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;
@@ -353,6 +366,20 @@ function settle(campaign: Campaign, map: BattleMap, zones: SpellZone[]) {
 // the square it was caught on. `careful` is a walk made at half speed, which
 // enters caltrops and ball bearings with no save (zones-gear.ts).
 export function zonesAfterMove(
+  campaign: Campaign,
+  encounterId: string,
+  mover: { kind: string; refId: string },
+  start: XY,
+  walked: XY[],
+  options: { careful?: boolean } = {},
+): string[] {
+  // What clings to the mover tears as it moves, area or none (Grasping
+  // Arrow's brambles: mt-fb-arrow-riders.ts). Every walk and push comes here.
+  const torn = mover.kind === "enemy" && walked.length ? bramblesAfterMove(campaign, encounterId, mover.refId) : [];
+  return [...torn, ...areasAfterMove(campaign, encounterId, mover, start, walked, options)];
+}
+
+function areasAfterMove(
   campaign: Campaign,
   encounterId: string,
   mover: { kind: string; refId: string },

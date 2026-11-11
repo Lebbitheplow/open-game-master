@@ -1,5 +1,7 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { noteRun } from "@/lib/dm/mt-fb-charge";
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
+import { cloakIntoLight } from "@/lib/dm/mt-mr-spends";
 import { tokenSides } from "@/lib/dm/combatant";
 import { z } from "zod";
 import { actingSheetFor } from "@/lib/character-seat";
@@ -23,6 +25,8 @@ import { publishFx } from "@/lib/dm/fx";
 import { planDoorFx } from "@/lib/battlemap/fx-plan";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { budgetApplies } from "@/lib/dm/action-budget";
+import { aggressiveRefusal } from "@/lib/dm/mt-species-board";
+import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
@@ -267,12 +271,14 @@ export async function POST(
   // And the spell areas on the board: difficult ground, Spirit Guardians (zone-rules.ts).
   const traits = withZoneSteps(pcMoveTraits({
     width: map.width,
+    theme: map.theme, drawnTerrain: map.drawnTerrain,
     tokens,
     mover: token,
     sheet,
     footprintOf: footprintLookup(enemiesById),
     enemySize: (refId) => enemiesById.get(refId)?.stats.size,
     sideOf: tokenSides(encounter),
+    anyGround: crossesAnyGround(encounter, sheet),
   }), map, "pc", sheet.id);
   const reach = reachableTiles(
     map.terrain,
@@ -364,6 +370,12 @@ export async function POST(
   // them where they stop, so the grapple holds.
   // A companion wary of its commander will not walk out of a foe's reach
   // on their word (issue 503, src/lib/dm/party-conduct.ts).
+  // An orc's Aggressive Dash carries only toward a hostile creature they
+  // can see (src/lib/dm/mt-species-board.ts).
+  const rush = path && turnState ? aggressiveRefusal({ encounter, map, sheet, token, path, budgetTiles: budget, speedTiles: speedToTiles(speed), marks: turnState.oncePerTurn, traits }) : null;
+  if (rush) {
+    return Response.json({ error: rush }, { status: 409 });
+  }
   const refusedOrder = campaign && path && !readied ? riskyOrderGate(campaign, sheet, user.id, [from, ...path], turnState?.disengaged ?? false) : null;
   if (refusedOrder) {
     return Response.json({ error: refusedOrder }, { status: 409 });
@@ -403,9 +415,16 @@ export async function POST(
     carried = placed;
   }
   moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend));
+  // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
+  if (!scene && !readied) {
+    noteRun(campaignId, sheet, from);
+  }
+  // A Charger's straight run is read off the walk (ar-wbf-feat-turn.ts).
+  noteStraightRun(scene ? null : encounter, sheet, from, path);
   // Moving ends One with Shadows' invisibility (src/lib/dm/one-with-shadows.ts).
   if (!scene) {
     endShadowInvisibility(campaignId, sheet.id, "moves");
+    cloakIntoLight(campaignId, sheet.id);
   }
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);

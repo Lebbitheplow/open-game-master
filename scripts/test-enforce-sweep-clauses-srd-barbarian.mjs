@@ -4,7 +4,7 @@
 // as a gap() where it says the engine does not. The clause text and the
 // verdict live in the ledger; this file holds only how each is staged.
 import "./lib/enforce-world.mjs";
-import { runProbes } from "./lib/sweep-clauses-srd.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
 
 const rig = await clauseRig();
@@ -302,6 +302,13 @@ P["barbarian.mindless-rage.suspended"] = async () => {
   const during = await t.swing(who, foe, [10, 5]);
   assert.equal(during.ok, true, during.error);
   assert.equal(during.toHit.breakdown.terms[0].dice.length, 1, "the fear still gives disadvantage during the rage");
+  // Suspended, not ended: the rage over, the fear is back with its clock.
+  t.freshTurn();
+  const calm = await t.use(who, "rage", { variant: "end" });
+  assert.equal(calm.ok, true, calm.error);
+  assert.ok(t.has(who, "frightened"), `the rage ended and the fear it suspended did not come back (${t.sheet(who).conditions.join(", ") || "none"})`);
+  const after = await t.swing(who, foe, [10, 12, 5]);
+  assert.equal(after.toHit.breakdown.terms[0].dice.length, 2, "the fear given back costs no disadvantage");
 };
 
 // ---- Intimidating Presence ----
@@ -393,4 +400,4 @@ P["barbarian.intimidating-presence.unmoved"] = async () => {
   assert.equal(t.budget()?.actionUsed ?? false, false, "the refused use took the action");
 };
 
-await runProbes("scripts/test-enforce-sweep-clauses-srd-barbarian.mjs", P);
+await runOrSurvey("scripts/test-enforce-sweep-clauses-srd-barbarian.mjs", P);

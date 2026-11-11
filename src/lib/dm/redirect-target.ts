@@ -11,6 +11,9 @@
 //   nobody: the board does, and among creatures equally close the attacker
 //   chooses, so the call names one of them.
 //
+// (The Cloud Rune turns a hit before its damage is rolled, never after:
+// src/lib/dm/cloud-rune.ts.)
+//
 // Either way the attack now targets that creature, so its roll is set
 // against that creature's AC: a blow that beat the holder's AC can miss the
 // one it turns onto.

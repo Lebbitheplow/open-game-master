@@ -31,6 +31,15 @@ import fs from "node:fs";
 import { openWorld, seedDice } from "./enforce-world.mjs";
 import { combatKit, TRAINED } from "./enforce-combat.mjs";
 
+const { optionGrantFeatures } = await import("../../src/lib/srd/options.ts");
+const { AUTHORED_TABLE } = await import("../../src/lib/srd/authored-effects.ts");
+// An option pick that carries its own authored row (a Rune Knight's runes,
+// "fighter::Rune: Stone Rune"): held from the grant's first level, as a
+// player who picked it holds it.
+const OPTION_ROWS = optionGrantFeatures().filter((pick) => AUTHORED_TABLE[`${pick.classId}::${pick.name}`]);
+export const optionPicks = (build, level) =>
+  OPTION_ROWS.filter((pick) => pick.classId === build.classId && (!pick.subclass || pick.subclass === build.subclass) && level >= pick.level).map((pick) => ({ name: pick.name, source: "choice", classId: pick.classId }));
+
 const SRC = new URL("../../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
 const readJson = (file) => JSON.parse(fs.readFileSync(new URL(file, SRC), "utf8"));
@@ -189,7 +198,11 @@ const CASTING_ABILITY = {
   bard: "cha", cleric: "wis", druid: "wis", paladin: "cha", ranger: "wis", sorcerer: "cha", warlock: "cha", wizard: "int", artificer: "int",
 };
 // A pick the builder's owed choices write as a feature of its own.
-const EXTRA_FEATURES = { "Draconic Bloodline": ["Dragon Ancestor: Red"] };
+const EXTRA_FEATURES = {
+  "Draconic Bloodline": ["Dragon Ancestor: Red"],
+  // The Arcane Shot options a sheet knows are picks: every one, so each variant of the spend is walked.
+  "Arcane Archer": ["Banishing", "Beguiling", "Bursting", "Enfeebling", "Grasping", "Piercing", "Seeking", "Shadow"].map((name) => `Arcane Shot: ${name} Arrow`),
+};
 const slots = () => Object.fromEntries([1, 2, 3, 4, 5].map((level) => [String(level), { max: 3, used: 1 }]));
 
 export async function openSpendsRig() {
@@ -246,7 +259,11 @@ export async function openSpendsRig() {
       if (choose && !held.choice) picks.set(textKey(held.name), choose.does.options[0]);
     }
     if (build.pick) picks.set(textKey(build.pick.feature), build.pick.value);
-    const extra = EXTRA_FEATURES[build.subclass ?? ""] ?? [];
+    // An option pick the build carries (a Rune Knight's rune) that the new
+    // sheet did not keep: written as the sheet's patch writes it, so its
+    // counter is counted.
+    const kept = new Set(sheet.features.map((feature) => textKey(feature.name)));
+    const extra = [...(EXTRA_FEATURES[build.subclass ?? ""] ?? []), ...[...(build.features ?? []), ...optionPicks(build, build.level)].map((feature) => feature.name).filter((name, at, all) => !kept.has(textKey(name)) && all.findIndex((other) => textKey(other) === textKey(name)) === at)];
     if (picks.size || extra.length) {
       world.patch(hero.id, {
         features: [
@@ -365,6 +382,16 @@ export function readChanges(scene, changes) {
       continue;
     }
     if (change.table === "encounters" && /^(?:turn_budget|reactions_used)/.test(change.column)) {
+      // The cost property counts what a spend takes away. An Attack action
+      // that holds one more attack than it did (Unleash Incarnation: "make one
+      // extra melee attack from your echo's space when you take the Attack
+      // action") was given something, so a rise in attacksAllowed is the
+      // spend's effect; only a fall is a cost (the maintainer's ruling,
+      // /tmp/odm-gapstudy/MT-SPLIT.md).
+      if (change.path === "attacksAllowed" && Number(change.after) > Number(change.before ?? 0)) {
+        out.effects.push(change);
+        continue;
+      }
       if (/^reactions_used/.test(change.column) || COST_KEYS.test(change.path) || change.path === "") {
         // A budget written whole (null before): its grants count as effects.
         if (change.path === "" && change.after && typeof change.after === "object" && !Array.isArray(change.after)) {
@@ -403,6 +430,10 @@ export function signature(scene, tried) {
   const names = new Map([[scene.holder.id, "<holder>"], [scene.ally.id, "<ally>"], [scene.fallen.id, "<fallen>"], [scene.near.id, "<near>"], [scene.far.id, "<far>"]]);
   return `${tried.ok ? "ok" : tried.kind} | counters: ${part(read.counters)} | cost: ${part(read.cost)} | effects: ${part(read.effects)} | rolls ${read.rolls}`
     .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, "<time>")
+    // A summoned creature's companion user is named for a random id
+    // (db/users.ts createCompanionUser): two runs of the same spend differ
+    // there and nowhere else, as two ids do.
+    .replace(/companion-([a-z0-9_]+)-[0-9a-f]{1,8}/g, "companion-$1-<id>")
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => names.get(id) ?? "<id>");
 }
 

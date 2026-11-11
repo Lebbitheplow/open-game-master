@@ -6,6 +6,8 @@
 // pc-attack.ts, which decides and rolls the attack these dice belong to.
 // Nothing here refuses the attack.
 
+import { textKey } from "@/lib/language/text-logic";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
@@ -19,8 +21,10 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
+import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
+import { graveCurseFor } from "@/lib/dm/grave-curse";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { allyAdjacentToEnemy } from "@/lib/dm/map-tools";
 import { storeBudget } from "@/lib/dm/turn-budget";
@@ -34,6 +38,7 @@ import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isNamed } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 
 export type { FeatureRider } from "@/lib/dm/attack-damage-riders";
 
@@ -47,10 +52,12 @@ export function foldDamageRiders(input: {
   kind: AttackKind;
   // The target, for the riders that read it (Colossus Slayer, Demon
   // Armor's curse).
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; stats?: { type?: string } & Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
+  // Surprised, in the first round (attack-damage-riders.ts).
+  surprised?: boolean;
 }) {
   const { campaignId, sheet } = input;
   let profile = input.profile;
@@ -76,6 +83,11 @@ export function foldDamageRiders(input: {
       ...profile,
       damageExpression: `${profile.damageExpression}${onHit.suffix}`,
     };
+  }
+  // Planar Warrior: the weapon's own damage is force too, so a creature
+  // immune to slashing still takes it (it took only the 1d8 before).
+  if (onHit.damageAs) {
+    profile = { ...profile, damageType: onHit.damageAs };
   }
   for (const rider of featureRiders) {
     profile = {
@@ -181,6 +193,9 @@ export function claimOncePerTurnRiders(input: {
   sneak: boolean;
   sneakAttackDice: number;
   featureRiders: FeatureRider[];
+  // The key a second Sneak Attack of the turn claims, for a rogue who may
+  // make one (Sudden Strike, mt-mr-turn.ts secondSneakKey).
+  secondSneak?: string | null;
 }): { profile: AttackProfile; notes: string[]; droppedRiders: string[]; hitClaims: string[] } {
   const { budget } = input;
   let { profile, notes } = input;
@@ -188,7 +203,8 @@ export function claimOncePerTurnRiders(input: {
   const hitClaims: string[] = [];
   if (input.sneak) {
     // Sneak Attack is once per turn however many swings land.
-    const claimed = claimOncePerTurn(budget, "sneak_attack");
+    const key = budget.oncePerTurn.includes("sneak_attack") && input.secondSneak ? input.secondSneak : "sneak_attack";
+    const claimed = claimOncePerTurn(budget, key);
     if (!claimed) {
       profile = {
         ...profile,
@@ -202,7 +218,7 @@ export function claimOncePerTurnRiders(input: {
       );
       notes.push("Sneak Attack already used this turn: no extra dice");
     } else {
-      hitClaims.push("sneak_attack");
+      hitClaims.push(key);
     }
   }
   // Once-per-turn feature riders (Divine Strike) spend their turn slot the
@@ -289,7 +305,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     (plan.kind === "weapon" && conditionStrikesMagical(plan.sheet.conditions)) ||
     // A pact weapon "counts as magical" (SRD 5.1, Pact of the Blade).
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
-    magicalStrikeApplies(plan)
+    magicalStrikeApplies(plan) ||
+    // Mighty Summoner: a Shepherd's summoned beast or fey (mighty-summoner.ts).
+    summonStrikesAsMagic(plan.sheet)
   );
 }
 
@@ -309,6 +327,14 @@ function magicalStrikeApplies(plan: Pick<AttackPlan, "kind" | "profile" | "rider
       }
       if (isNamed(feature, "Primal Strike")) {
         return plan.kind === "natural";
+      }
+      // "Arrows you fire from a shortbow or longbow" (Magic Arrow) and "Your
+      // natural weapons" (Bestial Soul): a sword in the same hands is not one.
+      if (isNamed(feature, "Magic Arrow")) {
+        return plan.profile.ranged && ["shortbow", "longbow"].includes(textKey(plan.profile.base ?? ""));
+      }
+      if (isNamed(feature, "Bestial Soul")) {
+        return Boolean(authoredNaturalWeapon(plan.sheet, plan.profile.weapon));
       }
       return true;
     });
@@ -339,6 +365,11 @@ export function applyHitDamage(input: {
   critExtraDice: number;
 }): Record<string, unknown> {
   const { plan } = input;
+  // A spell attack that hurt the creature: Power Surge reads it
+  // (spell-damage-mark.ts).
+  if (plan.kind === "spell" && input.dealt > 0) {
+    markSpellDamage(plan.campaign.id, plan.sheet.id, plan.enemy.id, plan.args.spell);
+  }
   return landBlow({
     ...input,
     campaign: plan.campaign,
@@ -398,8 +429,17 @@ export function landBlow(input: {
   holdVictory?: boolean;
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
+  // Death Strike's failed save: the whole blow is doubled, every type of it,
+  // before any resistance meets it (src/lib/dm/death-strike.ts).
+  doubled?: boolean;
 }): Record<string, unknown> {
-  const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  const { campaign, turn, encounter, sheets, sheetsById, profile, damageOutcome, crit, critExtraDice, magical } = input;
+  const times = input.doubled ? 2 : 1;
+  const dealt = input.dealt * times;
+  // Path to the Grave: this hit meets a vulnerability to all of its damage,
+  // and the curse ends with it (src/lib/dm/grave-curse.ts).
+  const curse = isSheetFoe(input.enemy) ? null : graveCurseFor(input.enemy);
+  const enemy = curse?.enemy ?? input.enemy;
   // A silvered or adamantine weapon passes the resistances that name it.
   const material = profile.material ?? {};
   const nonlethal = input.nonlethal === true;
@@ -413,7 +453,7 @@ export function landBlow(input: {
   const parts = damageParts(damageOutcome, profile.damageType, input.typedRiders, {
     crit,
     trailingTerms: crit ? critExtraDice : 0,
-  });
+  }).map((part) => ({ ...part, amount: part.amount * times }));
   let applied: Record<string, unknown>;
   if (dealt <= 0) {
     applied = unharmed;
@@ -465,5 +505,5 @@ export function landBlow(input: {
       ...(input.adeptOthers?.length ? { ignoreTypes: { types: input.adeptOthers, by: "Elemental Adept" } } : {}),
     });
   }
-  return applied;
+  return curse ? { ...applied, graveCurse: curse.end() } : applied;
 }

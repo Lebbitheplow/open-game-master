@@ -16,6 +16,7 @@
 //
 // Pure: the single-class and the multiclass level-up are this one function,
 // and scripts/test-sheet-legality.mjs can drive it without a database.
+import { applyLevelUpChanges } from "@/lib/srd/level-up-changes";
 import type {
   AbilityScores,
   AsiChoice,
@@ -35,6 +36,7 @@ import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { applyFeatIncrease, featSaveProficiency, featsAsRun } from "@/lib/srd/feat-effects";
 import { applyFeatGrants, featGrantSpec } from "@/lib/srd/feat-grants";
 import { elementalAdeptFeatureName } from "@/lib/srd/feat-combat";
+import { featRepeatRefusal } from "@/lib/srd/feat-repeat";
 import { featSpellGrants, freeCastFeatures, withFeatSpells } from "@/lib/srd/feat-spells";
 import { chosenFightingStyles, fightingStyleChoices, newStyleFits } from "@/lib/srd/feature-effects";
 import { styleSlotFeatures } from "@/lib/srd/style-slots";
@@ -76,6 +78,7 @@ import {
   type SpellFacts,
 } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
 import { featChoice } from "@/lib/schemas/sheet";
 
 export type LevelUpContext = {
@@ -304,7 +307,11 @@ export function buildLevelUp(
       continue;
     }
     if (feats.some((feat) => textKey(feat) === textKey(choice.feat))) {
-      return refuse(`${sheet.name} already has ${choice.feat}; a feat is taken once.`);
+      // Taken once, but for the feat whose text allows another (feat-repeat.ts).
+      const again = featRepeatRefusal({ ...sheet, feats }, choice.feat, featChoice(request.featChoices, choice.feat));
+      if (again) {
+        return refuse(again);
+      }
     }
     const facts = context.featOf(choice.feat);
     if (!facts) {
@@ -495,6 +502,18 @@ export function buildLevelUp(
   }
 
 
+  // ---- the held choices this level changes (level-up-changes.ts) ----
+  if (request.levelUpChanges?.length) {
+    const changed = applyLevelUpChanges(sheet, classId, request.levelUpChanges, {
+      classLevel: (id) => classes.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+      cantrips: sheetCantrips(sheet),
+    });
+    if ("error" in changed) {
+      return refuse(changed.error);
+    }
+    sheet = { ...sheet, features: changed.features };
+  }
+
   // ---- features ----
   // The sheet's own features, and of the request's only the picks a class
   // feature opens; the regrant keeps as many of those as the classes have
@@ -642,6 +661,9 @@ export function buildLevelUp(
       if ("error" in learned) {
         return refuse(learned.error);
       }
+      // An origin's spell replaced with this level is recorded on the sheet
+      // (src/lib/dm/ar-ws-spell-swap-record.ts).
+      features = carrySwapRecords(features, learned.view.features, (name) => ({ name, source: "story" as const }));
       nextViews = views.some((view) => view.classId.toLowerCase() === classId)
         ? views.map((view) => (view.classId.toLowerCase() === classId ? learned.view : view))
         : [...views, learned.view];

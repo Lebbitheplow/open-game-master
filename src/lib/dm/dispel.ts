@@ -25,6 +25,7 @@ import { publishEncounter } from "@/lib/dm/enemy-damage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { gainPowerSurge } from "@/lib/dm/spell-damage-mark";
 
 const SRD_CONDITIONS = new Set([
   "blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated",
@@ -175,7 +176,7 @@ export function handleDispelMagic(
     const dc = 10 + level;
     // An ability check like any other (src/lib/dm/contest-roll.ts): Jack of
     // All Trades, Guidance, exhaustion, a held die and Lucky ride it.
-    const outcome = rollCharacterCheck(campaign, caster, { ability, dc }, `Check to dispel ${entry.spell}`);
+    const outcome = rollCharacterCheck(campaign, caster, { ability, dc, spell: "Dispel Magic" }, `Check to dispel ${entry.spell}`);
     if (outcome.rollId) {
       turn.rollIds.push(outcome.rollId);
     }
@@ -188,6 +189,8 @@ export function handleDispelMagic(
       lines.push(`${entry.spell} (level ${level}) holds: check ${outcome.total} vs DC ${dc}.`);
     }
   }
+  // Power Surge: a war mage gains a surge for a spell ended.
+  const surge = ended.length ? gainPowerSurge(campaign.id, caster.id) : null;
   if (ended.length) {
     if (enemy) {
       const fresh = getEnemy(enemy.id);
@@ -216,6 +219,7 @@ export function handleDispelMagic(
     ...(cast.cost ? { cost: cast.cost } : {}),
     dispelled: lines,
     ...(ended.length ? { ended } : {}),
+    ...(surge ? { powerSurge: surge } : {}),
     ...(kept.length ? { stillHeld: kept } : {}),
     // A target with no spell on it is still one the spell can be cast on:
     // the slot is spent and nothing ends.

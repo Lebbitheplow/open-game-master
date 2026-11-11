@@ -225,7 +225,7 @@ export type PublicLastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  source: "attack" | "fall" | "missile";
+  source: "attack" | "fall" | "missile" | "effect";
   // Whether any swing hit, and how many did.
   hit: boolean;
   hits: number;
@@ -328,7 +328,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     // the arrow it named.
     ranged: answered?.ranged ?? record.ranged,
     source: record.source,
-    hit: record.source === "fall" || record.swings.some((swing) => swing.hit),
+    hit: record.source === "fall" || record.source === "effect" || record.swings.some((swing) => swing.hit),
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     ...(critical ? { crit: { attack: critical.attack ?? record.attack, damage: critical.raw } } : {}),
@@ -490,6 +490,7 @@ function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbe
           forcer: save.forcer.name,
           ...(save.kind ? { kind: save.kind } : {}),
           ...(save.success !== undefined ? { success: save.success } : {}),
+          ...(save.dc !== undefined ? { dc: save.dc } : {}),
           ...(save.against ? { against: save.against } : {}),
           ...(save.damage ? { damage: save.damage } : {}),
           ...(save.petName ? { petName: save.petName } : {}),
@@ -497,6 +498,10 @@ function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbe
           ...(save.killerId !== undefined ? { killerId: save.killerId } : {}),
           ...(save.spell ? { spell: save.spell } : {}),
           ...(save.enemy !== undefined ? { enemy: save.enemy } : {}),
+          ...(save.level !== undefined ? { level: save.level } : {}),
+          ...(save.how ? { how: save.how } : {}),
+          ...(save.feet !== undefined ? { feet: save.feet } : {}),
+          ...(save.fromFeet !== undefined ? { fromFeet: save.fromFeet } : {}),
           ...(save.answered?.length ? { answered: save.answered } : {}),
         })),
       }

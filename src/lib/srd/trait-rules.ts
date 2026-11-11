@@ -25,6 +25,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { isDwarf } from "@/lib/srd/race-id";
 import { magicItemRiders } from "@/lib/srd/magic-items";
+import { infusionWorn, type InfusionMark } from "@/lib/srd/infusions";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 type FeatureLike = { name: string; source?: string; classId?: string };
@@ -40,7 +41,7 @@ export type TraitSheet = {
   conditions?: string[];
   // Worn magic items, for the ones that ride a save (Mantle of Spell
   // Resistance), with what judges who may attune to them.
-  equipment?: Array<{ name: string; slug?: string; equipped?: boolean; attuned?: boolean }>;
+  equipment?: Array<{ name: string; slug?: string; equipped?: boolean; attuned?: boolean; infusion?: InfusionMark | null }>;
   alignment?: string;
   spellcasting?: unknown;
 };
@@ -183,11 +184,14 @@ export function featureSkillProficiencies(sheet: TraitSheet): string[] {
   return holdsFeature(sheet, "Invocation: Beguiling Influence") ? ["deception", "persuasion"] : [];
 }
 
-// Initiative rolled with advantage: Feral Instinct (barbarian 7).
+// Initiative rolled with advantage: Feral Instinct (barbarian 7), an
+// artificer's Helm of Awareness worn and attuned (src/lib/srd/infusions.ts).
 export function initiativeAdvantage(sheet: TraitSheet): string | null {
-  return holdsFeature(sheet, "feral instinct")
-    ? "Feral Instinct: advantage on initiative"
-    : authoredInitiativeAdvantage(sheet);
+  if (holdsFeature(sheet, "feral instinct")) {
+    return "Feral Instinct: advantage on initiative";
+  }
+  const helm = infusionWorn(sheet.equipment ?? [], "Helm of Awareness");
+  return helm ? `${helm.name} (Helm of Awareness): advantage on initiative` : authoredInitiativeAdvantage(sheet);
 }
 
 // Indomitable Might (barbarian 18): a Strength check whose total is less than

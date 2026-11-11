@@ -5,5 +5,6 @@
 // scenes are in scripts/lib/sweep-clauses-divine-extra.mjs.
 import { runClauseSuite } from "./lib/sweep-clauses-divine.mjs";
 import { EXTRA } from "./lib/sweep-clauses-divine-extra.mjs";
+import { RO_EXTRA } from "./lib/sweep-clauses-divine-ro-C-extra.mjs";
 
-await runClauseSuite("test-enforce-sweep-clauses-divine-extra.mjs", EXTRA);
+await runClauseSuite("test-enforce-sweep-clauses-divine-extra.mjs", { ...EXTRA, ...RO_EXTRA });

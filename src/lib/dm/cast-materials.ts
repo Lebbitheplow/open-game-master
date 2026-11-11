@@ -23,6 +23,8 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
+import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -239,11 +241,15 @@ const CLASS_FOCUS: Record<string, string[]> = {
 // A material with no price needs a component pouch or the caster's focus.
 // The priced parts are the materialPlan's to find; an item's own spell (a
 // scroll, a wand) never asks (cast-guard.ts castFromItem).
-export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment">, facts: SpellFacts | null): ToolError | null {
+export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats">>, facts: SpellFacts | null): ToolError | null {
   if (!facts?.material || materialComponents(facts).length) {
     return null;
   }
-  if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch"))) {
+  // A Swords bard's wielded weapon, a Spirits bard's candle or deck
+  // (ar-wbf-bard-casting-logic.ts).
+  // A Genie warlock's vessel is their focus ("and your spellcasting focus",
+  // genie-vessel.ts).
+  if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch")) || subclassFocus(sheet) || holdsFeature(sheet, "Genie's Vessel")) {
     return null;
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());

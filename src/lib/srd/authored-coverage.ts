@@ -17,7 +17,7 @@ import { AUTHORED_TABLE, authoredRows } from "@/lib/srd/authored-effects";
 import { populateResources } from "@/lib/srd/class-resources";
 import { effectsFor } from "@/lib/srd/feature-effects";
 import { trainingFromText, trainingTableKeys } from "@/lib/srd/subclass-training";
-import { optionLabelsOpenedBy } from "@/lib/srd/options";
+import { optionFeatureKeys, optionLabelsOpenedBy } from "@/lib/srd/options";
 import { isThirdCasterFeature } from "@/lib/srd/third-caster";
 
 // The words that make a rules line mechanical. Issue 474's audit found
@@ -95,12 +95,20 @@ export function authoredCoverage(): AuthoredCoverage {
   }
   // The SRD subclasses' features (class-features.json) may carry a hook too
   // (the Land druid's terrain); they are named, not counted.
-  for (const [classId, table] of Object.entries((classFeaturesJson as unknown as { classes: Record<string, { subclasses: Array<{ levels: Record<string, string[]> }> }> }).classes)) {
+  for (const [classId, table] of Object.entries((classFeaturesJson as unknown as { classes: Record<string, { levels?: Record<string, string[]>; subclasses: Array<{ levels: Record<string, string[]> }> }> }).classes)) {
+    // A core class feature may carry a row too (Soul of Artifice's readying).
+    for (const name of Object.values(table.levels ?? {}).flat()) {
+      seen.add(`${classId}::${name}`.toLowerCase());
+    }
     for (const subclass of table.subclasses) {
       for (const name of Object.values(subclass.levels).flat()) {
         seen.add(`${classId}::${name}`.toLowerCase());
       }
     }
+  }
+  // A pick's own row ("fighter::Rune: Stone Rune", options.ts).
+  for (const key of optionFeatureKeys()) {
+    seen.add(key.toLowerCase());
   }
   out.stale = Object.keys(AUTHORED_TABLE).filter((key) => !seen.has(key.toLowerCase()));
   return out;
@@ -119,10 +127,16 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   save_swap: { file: "src/lib/srd/index.ts", call: "authoredSaveModifier(" },
   ac: { file: "src/lib/srd/index.ts", call: "authoredAcBonus(" },
   speed: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
+  // Peerless Athlete's capacity and jumps (src/lib/srd/carry-jump-effects.ts).
+  carry_factor: { file: "src/lib/dm/load-rules.ts", call: "authoredCarryFactor(" },
+  jump_feet: { file: "src/lib/dm/jump-reach.ts", call: "authoredJumpFeet(" },
+  dim_sight: { file: "src/lib/dm/dim-sight.ts", call: "authoredDimSight(" },
+  travel: { file: "src/lib/dm/world-tools.ts", call: "authoredPaceFactor(" },
   move: { file: "src/lib/srd/index.ts", call: "authoredSpeeds(" },
   init_adv: { file: "src/lib/srd/trait-rules.ts", call: "authoredInitiativeAdvantage(" },
   init_ability: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_adv: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredRollRiders(" },
+  check_bonus: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredCheckBonus(" },
   crit_immune: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
@@ -136,6 +150,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rest_temp_hp: { file: "src/lib/dm/rest-tools.ts", call: "authoredRestTempHp(" },
   rider: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   mark: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
+  hit_save: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
   guard_aura: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   pack_adv: { file: "src/lib/dm/pc-attack-situation.ts", call: "authoredAttackSituation(" },
   bonus_route: { file: "src/lib/dm/bonus-routes.ts", call: "authoredBonusRoute(" },
@@ -150,6 +165,8 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   // The final round's hooks (src/lib/srd/authored-effects-more.ts).
   natural_weapon: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredNaturalWeapon(" },
   reach: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredReachBonus(" },
+  infuse: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredInfusion(" },
+  jump: { file: "src/lib/dm/jump-reach.ts", call: "authoredJump(" },
   sneak_bonus: { file: "src/lib/dm/pc-attack-damage.ts", call: "authoredSneakBonus(" },
   save_die_vs: { file: "src/lib/dm/forced-save.ts", call: "authoredSaveDieVs(" },
   spell_rider: { file: "src/lib/srd/spell-damage-riders.ts", call: "authoredSpellDice(" },
@@ -158,6 +175,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rapid_strike: { file: "src/lib/dm/pc-attack-plan.ts", call: "rapidStrike(" },
   oa_each_turn: { file: "src/lib/dm/opportunity.ts", call: "opportunityReactionKey(" },
   stand_cost: { file: "src/lib/battlemap/view.ts", call: "standUpTiles(" },
+  attack_turn_speed: { file: "src/lib/battlemap/view.ts", call: "attackTurnSpeed(" },
   mote: { file: "src/lib/dm/resource-tools.ts", call: "holdsMote(" },
   swarm_prone: { file: "src/lib/dm/authored-spend-more.ts", call: "swarmKnocksProne(" },
   // The last round's (src/lib/dm/arcane-ward.ts, summon-cast.ts, summon-defender.ts).
@@ -173,6 +191,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   damage_ability: { file: "src/lib/dm/attack-damage-riders.ts", call: "authoredDamageAbility(" },
   init_prof: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_floor: { file: "src/lib/dm/rolls.ts", call: "authoredCheckFloor(" },
+  check_ability_mod: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredCheckMod(" },
   grim_harvest: { file: "src/lib/dm/authored-hooks.ts", call: 'activeAuthored(killer, "grim_harvest")' },
   slot_refund: { file: "src/lib/dm/cast-guard.ts", call: "authoredSlotRefund(" },
   summon_hp_per_hd: { file: "src/lib/dm/summon-cast.ts", call: "authoredSummonHitPoints(" },
@@ -180,6 +199,13 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   indomitable_ally: { file: "src/lib/dm/feature-spends.ts", call: 'activeAuthored(sheet, "indomitable_ally")' },
   spend: { file: "src/lib/dm/mutations.ts", call: "authoredFeatureSpend(" },
   reaction: { file: "src/lib/dm/reaction-tools.ts", call: "authoredReaction(" },
+  spell_check_prof: { file: "src/lib/dm/ar-ws-spell-check.ts", call: 'activeAuthored(sheet, "spell_check_prof")' },
+  max_hp_fixed: { file: "src/lib/dm/ar-ws-inured-logic.ts", call: 'activeAuthored(sheet, "max_hp_fixed")' },
+  summon_extra: { file: "src/lib/dm/summon-cast.ts", call: "thrallSpell(" },
+  summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
+  attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
+  cast_burst: { file: "src/lib/dm/ar-ws-heart-storm.ts", call: 'activeAuthored(caster, "cast_burst")' },
+  attacked_disadv_dark: { file: "src/lib/dm/ar-ws-lunar-empowerment.ts", call: 'activeAuthored(target, "attacked_disadv_dark")' },
 };
 
 export function authoredEffectKinds(): string[] {

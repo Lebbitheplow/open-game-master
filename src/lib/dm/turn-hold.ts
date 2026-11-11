@@ -14,7 +14,7 @@
 // waits, nor does a turn whose only watcher is the one ending it.
 
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { closeStandInTurn, openStandInTurn, takeHeldCalls, watchChoiceOf, type PendingRoll } from "@/lib/db/dm-turns";
+import { answeredAtStop, closeStandInTurn, openStandInTurn, takeHeldCalls, watchChoiceOf, type PendingRoll } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getActiveEncounter, saveEncounter, type Encounter } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
@@ -85,9 +85,11 @@ export async function runHeldMove(pendingId: string): Promise<void> {
   })();
   const watcherId = pending.characterId ?? "";
   const picked = watchChoiceOf(stop);
-  const shifting = Boolean(stop.power) && stop.power !== "portent";
+  // Slayer's Counter never stops a turn's end: it answers a save alone; nor
+  // does the Cloud Rune, which answers a hit.
+  const shifting = Boolean(stop.power) && stop.power !== "portent" && !answeredAtStop(stop.power);
   const choice = !shifting && stop.face !== null && watcherId ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-  const shift = shifting && stop.shift && picked && stop.power && stop.power !== "portent" && watcherId ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+  const shift = shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" && stop.power !== "cloud_rune" && watcherId ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
   const { endHeldOwnTurn } = await import("@/lib/dm/encounter-tools");
   const ran = await runWithShift(campaign.id, shift, () => runWithForetold(campaign, pending.turnId, choice, async () => endHeldOwnTurn(campaign.id, characterId)));
   const told = [ran.result.portent, ran.shift].filter((line): line is string => Boolean(line));

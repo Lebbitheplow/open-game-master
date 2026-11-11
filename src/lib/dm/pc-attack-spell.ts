@@ -48,6 +48,9 @@ export function checkAttackSpell(input: {
         spell: args.spell,
         ...(args.level ? { level: args.level } : {}),
         via: "attack",
+        // Awakened Spellbook's type for this casting, judged by the one guard
+        // as for cast_at_enemy and aoe_damage (ar-ws-awakened.ts).
+        ...(args.damageType ? { swapType: args.damageType } : {}),
         dryRun: true,
       }),
       sheets,
@@ -57,6 +60,10 @@ export function checkAttackSpell(input: {
       return { refused: toolError(check) };
     }
     spellSlotLevel = typeof check.slotLevel === "number" ? check.slotLevel : null;
+    // The book's type in place of the spell's own: the attack deals it.
+    if (typeof check.damageType === "string" && check.damageType) {
+      profile = { ...profile, damageType: check.damageType };
+    }
   }
   // Limited Magic Immunity (the rakshasa): a spell of its level or lower is
   // cast and has no effect on it (src/lib/dm/monster-traits.ts).
@@ -84,11 +91,12 @@ export function castAttackSpell(plan: AttackPlan): ToolError | null {
       spell: args.spell,
       ...(plan.spellSlotLevel ? { level: plan.spellSlotLevel } : {}),
       via: "attack",
+      ...(args.damageType ? { swapType: args.damageType } : {}),
     }),
     sheets,
     sheetsById,
   ).result;
-  for (const line of [cast.slot, cast.cost, cast.shares, cast.continuing, cast.droppedConcentration]) {
+  for (const line of [cast.slot, cast.cost, cast.shares, cast.continuing, cast.droppedConcentration, cast.metamagic, cast.awakenedSpellbook]) {
     if (typeof line === "string") {
       plan.context.notes.push(line);
     }

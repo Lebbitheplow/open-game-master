@@ -421,6 +421,10 @@ await test("CLS-11", async () => {
   const heightened = await world.invoke("use_resource", { characterId: sorcerer.id, resource: "Sorcery Points", variant: "Heightened Spell", amount: 1 });
   assert.equal(heightened.ok, true, heightened.error);
   assert.equal(world.sheet(sorcerer.id).resources.sorcery_points.used, 3);
+  // SRD 5.1, Metamagic: "You can use only one Metamagic option on a spell
+  // when you cast it". The Twinned Spell is paid on the next spell: the
+  // heightened one has been cast, and the mark it left is used.
+  world.patch(sorcerer.id, { conditions: [] });
   const twinned = await world.invoke("use_resource", { characterId: sorcerer.id, resource: "Sorcery Points", variant: "Twinned Spell", amount: 2 });
   assert.equal(twinned.ok, true, twinned.error);
   assert.equal(world.sheet(sorcerer.id).resources.sorcery_points.used, 5);

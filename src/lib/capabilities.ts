@@ -58,6 +58,13 @@ export type Capabilities = {
 // dropping it to its own pages over one button. Constant per release: a flag
 // only ever says this server's code has the thing.
 export const SERVER_FEATURES = {
+  // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
+  // an older host drops unread (Storm Aura's environment, an invocation).
+  levelUpChanges: true,
+  // A sorcerer origin's own spell replaced at a level-up: levelUpForget
+  // naming it, which an older host refuses as a spell the character does
+  // not know (src/lib/dm/ar-ws-origin-swap.ts).
+  originSpellSwap: true,
   // "Import an adventure PDF" in the workshop and in WorldForge: the
   // /api/pdf-imports routes, which an older host answers with a 404.
   pdfImport: true,
@@ -165,6 +172,11 @@ export const SERVER_FEATURES = {
   // questions. An older host drops start_encounter's building unread and opens
   // the fight on open ground, so they stay hidden there.
   fightInBuilding: true,
+  // How a prepared fight opens, asked as the GM deploys it (the Deploy
+  // dialog, DeployOpeningDialog.tsx): the deploy route's body. An older host
+  // reads no body and deploys the fight as prepared, so the dialog stays
+  // hidden there and Deploy deploys at once.
+  deployOpening: true,
   // A declaration's parts in one call (PR 749): the console's "Made with"
   // on an attack, a journey's Days and a blow's Blows. An older host strips
   // all three unread (a flurry strike swung as the Attack action's, one day
@@ -269,6 +281,18 @@ export const SERVER_FEATURES = {
   // class. An older host drops the fields unread (the class falls back to
   // the wizard's list), so the editor offers none of them there.
   customSpellLists: true,
+  // The light on the viewer's own square in the board view
+  // (`PlayerMapView.self.bright`, src/lib/battlemap/view-tactics.ts): the Hand
+  // shuts a card that works only in dim light or darkness (Shadow Step, Cloak
+  // of Shadows, Steps of Night, One with Shadows) while the square is bright. An older host sends no such
+  // field, so the Hand deals those cards there as it always did.
+  handSquareLight: true,
+  // The player's map view carries, in `feet`, how far each creature stands
+  // from an area the viewer's character keeps on the board
+  // (src/lib/battlemap/zone-feet.ts): the Hand withholds Guardian Coil's
+  // card beyond the tentacle's 10 feet. An older host sends none and the
+  // card is dealt as before, the engine judging the reach.
+  ownZoneFeet: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

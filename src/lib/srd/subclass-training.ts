@@ -21,6 +21,7 @@
 // (FeatChoicesFields): the picks are stored in featChoices under the
 // feature's name. Saving throws are the one kind a feat's spec has no
 // place for, and are applied here. Pure.
+import { optionTraining } from "@/lib/srd/mt-fb-training";
 import type { Ability, Proficiencies } from "@/lib/schemas/sheet";
 import { classFeaturesFor, subclassFeatureDescription } from "@/lib/srd/features";
 import { applyFeatGrants, type FeatChoices, type FeatGrantVerdict } from "@/lib/srd/feat-grants";
@@ -29,7 +30,7 @@ import { featSpellSpec } from "@/lib/srd/feat-spells";
 import { ARTISANS_TOOLS, GAMING_SETS } from "@/lib/srd/tool-choices";
 import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
-import { SRD_WEAPONS } from "@/lib/srd/weapons";
+import { SPECIAL_WEAPONS, SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { subclassChoiceTraining } from "@/lib/srd/subclass-choice-picks";
 import { SUBCLASS_CHOICE_RECORD, subclassChoiceRecordKey } from "@/lib/content/subclass-choices";
@@ -82,6 +83,7 @@ type TableEntry = {
   toolsFrom?: string[];
   pickWeapons?: number;
   weaponsFrom?: string[];
+  weaponKinds?: Array<"melee" | "ranged">;
   // "one skill from the list, or a language": a count shared by kinds.
   any?: number;
   anyKinds?: Array<"skills" | "languages" | "tools">;
@@ -120,6 +122,7 @@ function specOf(entry: TableEntry): FeatGrantSpec {
     toolsFrom: entry.toolsFrom ?? [],
     weapons: entry.pickWeapons ?? 0,
     weaponsFrom: entry.weaponsFrom ?? [],
+    ...(entry.weaponKinds ? { weaponKinds: entry.weaponKinds } : {}),
     any: entry.any ?? 0,
     anyKinds: entry.anyKinds ?? [],
   };
@@ -127,10 +130,14 @@ function specOf(entry: TableEntry): FeatGrantSpec {
 
 // A kensei weapon: a simple or martial weapon without the heavy or special
 // property, or the longbow (Xanathar's, Way of the Kensei).
+const SPECIAL_NAMES = new Set<string>(Object.values(SPECIAL_WEAPONS));
 const KENSEI_WEAPONS = SRD_WEAPONS.filter(
   (weapon) =>
     (weapon.category === "simple" || weapon.category === "martial") &&
-    !(weapon.properties ?? []).some((property) => /heavy|special/i.test(property)),
+    !(weapon.properties ?? []).some((property) => /heavy|special/i.test(property)) &&
+    // The table keeps no "special" property: the two weapons that have it
+    // are named (weapons.ts). The net and the lance were offered before.
+    !SPECIAL_NAMES.has(weapon.name),
 )
   .map((weapon) => weapon.name)
   .concat(SRD_WEAPONS.some((weapon) => weapon.name === "Longbow") ? ["Longbow"] : []);
@@ -204,6 +211,7 @@ const TABLE: Record<string, TableEntry> = {
   "monk|way of the kensei|path of the kensei": {
     pickWeapons: 2,
     weaponsFrom: KENSEI_WEAPONS,
+    weaponKinds: ["melee", "ranged"],
     pickTools: 1,
     toolsFrom: ["calligrapher's supplies", "painter's supplies"],
   },
@@ -392,6 +400,11 @@ export function subclassGrants(
         grants.push({ name, classId: entry.id, subclass, level, spec });
       }
     }
+  }
+  // An authored feature's option that trains (Aspect of the Beast's Tiger:
+  // src/lib/srd/mt-fb-training.ts), owed once the option is chosen.
+  for (const pick of features ? optionTraining(classes, features) : []) {
+    grants.push({ name: pick.name, classId: pick.classId, subclass: pick.subclass, level: pick.level, spec: specOf({ pickSkills: pick.pickSkills, skillsFrom: pick.skillsFrom }), optional: true });
   }
   const entries = classes.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
   for (const pick of features ? subclassChoiceTraining(entries, features, extras) : []) {

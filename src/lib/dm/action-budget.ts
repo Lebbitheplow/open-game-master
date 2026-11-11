@@ -97,6 +97,10 @@ export const CASTING_HELD = "casting:held";
 // The creatures a character's weapon hit on their own turn, one budget key each,
 // for the spend that rides such a hit (Arcane Jolt).
 export const WEAPON_HIT = "weapon-hit:";
+// The creature a hit carrying the turn's Sneak Attack struck: what answers a
+// Sneak Attack (Wails from the Grave) reads it, since any other weapon hit
+// leaves only WEAPON_HIT.
+export const SNEAK_HIT = "sneak-hit:";
 
 export function freshBudget(input: {
   ownerId: string;
@@ -227,6 +231,11 @@ export const ACTION_SURGED = "action surge";
 // Step of the Wind: "your jump distance is doubled for the turn"
 // (jump-move.ts reads it).
 export const WIND_STEP = "step of the wind";
+
+// The turn's mark that the barbarian entered their rage on it: what "when you
+// enter your rage" answers (Call the Hunt), read by reaction-triggers.ts
+// turnMarks. Written by the Rage spend's turn charge (resource-turn.ts).
+export const RAGE_ENTERED = "rage entered";
 
 // The whole actions this turn has spent: its own, and the one Action Surge
 // added once that is gone. Haste's restricted extra action is not one of them.

@@ -41,12 +41,19 @@ function HandShares({
   const others = targets.filter((target) => target.id !== aim.id);
   const left = rule.stack ? count(aim.id) - 1 : rule.count - list.length;
   const unit = (n: number) => `${rule.unit}${n === 1 ? "" : "s"}`;
-  const summary = rule.stack
-    ? `${aim.kind === "self" ? "You take" : `${aim.name} takes`} ${count(aim.id)} ${unit(count(aim.id))}.`
-    : `${left ? `${left} more may join ${aim.kind === "self" ? "you" : aim.name}.` : "Every place is taken."}`;
+  // Infectious Fury's attack: the second pick is whom the aimed creature
+  // attacks. Worded as "1 more may join", it read as a second target of the
+  // curse, and the card would not go until it was picked.
+  const struck = rule.attacks ? others.find((target) => count(target.id) > 0) : undefined;
+  const summary = rule.attacks
+    ? struck ? `${aim.name} attacks ${struck.name}.` : `Pick the creature ${aim.name} attacks.`
+    : rule.stack
+      ? `${aim.kind === "self" ? "You take" : `${aim.name} takes`} ${count(aim.id)} ${unit(count(aim.id))}.`
+      : `${left ? `${left} more may join ${aim.kind === "self" ? "you" : aim.name}.` : "Every place is taken."}`;
+  const label = rule.attacks ? `The creature ${aim.name} attacks` : rule.stack ? `Share out the ${unit(2)}` : "Who else it takes";
   return (
-    <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label={rule.stack ? `Share out the ${unit(2)}` : "Who else it takes"}>
-      <span className="text-[11px] uppercase tracking-wider text-stone-500">{rule.stack ? `${rule.count} ${unit(rule.count)}` : `Up to ${rule.count}`}</span>
+    <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label={label}>
+      <span className="text-[11px] uppercase tracking-wider text-stone-500">{rule.attacks ? "It attacks" : rule.stack ? `${rule.count} ${unit(rule.count)}` : `Up to ${rule.count}`}</span>
       <span key={summary} className="motion-pop text-xs text-stone-400">
         {summary}
       </span>
@@ -237,7 +244,9 @@ export function HandAimBar({
   // An area spell laid on a square picked on the board needs no creature
   // named: the area catches whoever stands in it.
   const areaPicked = hasPick(card.area, areaPick);
-  const ready = handReady(card, aim, { trigger: trigger ?? "", area: areaPick, ...(choice !== null ? { choice } : {}), mix });
+  // The shares go in too: Infectious Fury's attack waits for the creature it
+  // attacks (HandShares.min), and read without them its button never lit.
+  const ready = handReady(card, aim, { trigger: trigger ?? "", area: areaPick, ...(choice !== null ? { choice } : {}), mix, shares });
   // Once the card can go, its button is brought into view. On a short phone
   // the Hand scrolls in what the message box leaves it (hand.css), and the
   // button sat below the fold after the target was picked.
@@ -250,7 +259,8 @@ export function HandAimBar({
   const hint = needsTrigger
     ? "Say what you wait for."
     : areaPicked && !aim
-      ? `Laid ${describePick(card.area!, areaPick)}.`
+      // A move (Mantle of Inspiration's stride) goes to its square; an area is laid.
+      ? `${card.area?.move ? "Moving" : "Laid"} ${describePick(card.area!, areaPick)}.`
     : !needsTarget
     ? card.compose
       ? "Finish the line in the box below."
@@ -373,7 +383,10 @@ export function HandAimBar({
       ) : card.choice ? (
         <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] uppercase tracking-wider text-stone-500">{card.choice.label}</span>
-          <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={card.choice.label} data-pill-group>
+          {/* A long list (a pact weapon's forms, a stored spell) scrolls in
+              its own few rows: on a phone it pushed the card's button a
+              screen below the picks. The padding keeps a focus ring inside. */}
+          <div className="flex max-h-44 flex-wrap items-center gap-1.5 overflow-y-auto overscroll-contain p-0.5" role="radiogroup" aria-label={card.choice.label} data-pill-group>
             {card.choice.options.map((option, index) => {
               const on = option.value === (choice ?? card.choice?.fallback ?? card.choice?.options[0]?.value);
               return (

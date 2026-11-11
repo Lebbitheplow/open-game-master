@@ -371,7 +371,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "enemyIds", label: "Enemies caught", kind: "enemies" },
       { name: "targets", label: "Anyone else, by name", kind: "text", placeholder: "the cultist, Brother Aldo", help: "Comma separated, for a creature the pickers do not show." },
       { name: "overchannel", label: "Overchannel", kind: "boolean", help: "An evoker's maximum damage; the server rolls what a second use costs." },
-      { name: "sparedCharacterIds", label: "Sculpted allies", kind: "characters", help: "An evoker's Sculpt Spells: they succeed and take nothing. Empty spares every character caught." },
+      { name: "sparedCharacterIds", label: "Sculpted allies", kind: "characters", help: "An evoker's Sculpt Spells: they succeed and take nothing. A sorcerer's Careful Spell: they succeed. Empty spares every character caught." },
       ...AREA_PLACEMENT_FIELDS,
       REASON,
     ],

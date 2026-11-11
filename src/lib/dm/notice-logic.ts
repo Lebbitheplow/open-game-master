@@ -154,10 +154,12 @@ export function lightSeenBy(ambient: Light, carriesLight: boolean, darkvision: b
 // character's other disadvantages, since two of them are still one (SRD 5.1,
 // Advantage and Disadvantage). The fast pace is a flat penalty and stacks.
 // Something noticed by ear is not touched by the light.
+// `spared`: what spares this one's Perception the dim light (dim-sight.ts).
 export function sightPassiveShift(input: {
   pace?: "fast" | "normal" | "slow";
   light?: Light;
   byEar?: boolean;
+  spared?: string | null;
 }): { shift: number; blind: boolean; disadvantage: boolean; notes: string[] } {
   let shift = 0;
   const notes: string[] = [];
@@ -166,6 +168,10 @@ export function sightPassiveShift(input: {
     notes.push("fast pace: -5");
   }
   if (input.byEar) {
+    return { shift, blind: false, disadvantage: false, notes };
+  }
+  if (input.light === "dim" && input.spared) {
+    notes.push(`dim light: nothing (${input.spared})`);
     return { shift, blind: false, disadvantage: false, notes };
   }
   if (input.light === "dim") {

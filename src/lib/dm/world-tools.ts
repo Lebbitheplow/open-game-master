@@ -1,4 +1,5 @@
 import { turnLedger, writeTurnLedger } from "@/lib/dm/turn-marks";
+import { authoredPaceFactor } from "@/lib/srd/authored-effects";
 import { z } from "zod";
 import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
@@ -23,6 +24,8 @@ import { forcedMarchSaveDc, forcedMarchSpan, NORMAL_TRAVEL_HOURS, paceEffect, tr
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
+import { NATURAL_TERRAINS } from "@/lib/dm/roll-about";
+import { naturalExplorerGuide } from "@/lib/dm/mt-srd-ranger";
 import { advanceClock, getClock, recordMarch, setTravelPace, setWaterRation } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { refreshSky } from "@/lib/dm/sky";
@@ -194,6 +197,7 @@ export const worldTools: ToolDef[] = [
             enum: ["normal", "difficult"],
             description: "Difficult terrain (dense forest, deep swamp, steep mountains, ice) halves the distance covered. Default: 'normal'.",
           },
+          land: { type: "string", enum: [...NATURAL_TERRAINS], description: "The kind of land crossed, for Natural Explorer." },
           pace: {
             type: "string",
             enum: ["fast", "normal", "slow"],
@@ -521,6 +525,7 @@ const travelSchema = z.object({
   hours: z.coerce.number().int().min(0).max(48).optional(),
   miles: z.coerce.number().min(0.1).max(200).optional(),
   terrain: z.enum(["normal", "difficult"]).optional(),
+  land: z.enum(NATURAL_TERRAINS).optional(),
   pace: z.enum(["fast", "normal", "slow"]).optional(),
   characterIds: z.array(z.string()).optional(),
   water: z.enum(["plenty", "half", "none"]).optional(),
@@ -615,6 +620,8 @@ export function handlePassTime(
     ...(living.length ? { lifestyle: living } : {}),
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
+    // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.
+    ...(moved.hourSaves.length ? { hourlySaves: moved.hourSaves } : {}),
   };
 }
 
@@ -723,11 +730,21 @@ function travelStretch(
 ): ToolResult {
   const pace: TravelPace = args.pace ?? "normal";
   const effect = paceEffect(pace);
-  const terrain = args.terrain ?? "normal";
+  let terrain = args.terrain ?? "normal";
   // Miles or hours: whichever is given sets the other (SRD 5.1, Travel
   // Pace), at the weather the party sets out in.
   const before = getClock(campaign.id);
-  const leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor: before.weather ? weatherTravelFactor(before.weather) : 1 });
+  const weatherFactor = before.weather ? weatherTravelFactor(before.weather) : 1;
+  // The Elk's aspect doubles the party's pace (authored "travel").
+  const paceFactor = authoredPaceFactor(travellers);
+  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
+  // A ranger's favored terrain: its difficult ground does not slow the group
+  // on a leg of an hour or more (mt-srd-ranger.ts, Natural Explorer).
+  const guide = "error" in leg ? null : naturalExplorerGuide(travellers, args.land, terrain, leg.hours);
+  if (guide) {
+    terrain = "normal";
+    leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
+  }
   if ("error" in leg) {
     return leg;
   }
@@ -771,6 +788,9 @@ function travelStretch(
   weatherOutcome.miles = leg.miles;
   if (terrain === "difficult") {
     weatherNotes.push("Difficult terrain halves the distance.");
+  }
+  if (guide) {
+    weatherNotes.push(guide);
   }
   if (sky?.weather) {
     const factor = weatherTravelFactor(sky.weather);

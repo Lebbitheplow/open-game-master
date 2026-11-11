@@ -43,6 +43,7 @@ import { inPlay } from "@/lib/dm/roster";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import type { FatePower } from "@/lib/dm/fate-turn-logic";
 
 export const SHIFT_RANGE_FEET = 30;
 
@@ -64,6 +65,14 @@ export function playerAtTable(campaignId: string, sheet: Pick<CharacterSheet, "u
 // are able to take one.
 export function canReactNow(campaignId: string, sheet: CharacterSheet): boolean {
   return sheet.currentHp > 0 && !sheet.deathSaves?.dead && !incapacitatedBy(sheet.conditions) && reactionFreeFor(campaignId, sheet.id);
+}
+
+// Whether a stop can ask this character's own player: a seat with a card to
+// press, its player at the table, the character in the fight. A stop made for
+// one character alone (Slayer's Counter, foresight.ts) asks this; a seat it
+// does not reach keeps the reaction's answer after the roll.
+export function stopReaches(campaignId: string, sheet: CharacterSheet): boolean {
+  return rollsCanWait(sheet) && playerAtTable(campaignId, sheet) && inPlay(campaignId, sheet);
 }
 
 // Whether the wizard could spend Chronal Shift now, wherever the roll is: the
@@ -139,7 +148,9 @@ export type ShiftRoll = { tag: RollTag; reverse: "success" | "failure" };
 // What a stop arms: a Chronal Shift rolls the d20 again; the other two add to
 // a failed save.
 export type SaveHelp = "flash_of_genius" | "favored_by_the_gods";
-export type ArmedPower = "chronal_shift" | SaveHelp;
+// Convergent Future and Bend Luck are armed here too, and answered by
+// fate-turn.ts takeFate.
+export type ArmedPower = "chronal_shift" | SaveHelp | FatePower;
 type ArmedShift = { wizardId: string; rolls: readonly ShiftRoll[]; power: ArmedPower; used: boolean; note: string | null };
 
 declare global {
@@ -171,6 +182,19 @@ export function shiftArmedFor(campaignId: string, tag: RollTag | undefined): boo
   return Boolean(armed && !armed.used && tag && armed.rolls.some((roll) => tagFits(roll.tag, tag)));
 }
 
+// The armed answer for this roll, when one is armed, not yet used, and names
+// the roll: its power, whose it is, the way the roll must go for it to answer,
+// and `use` to mark it spent with the line the call's answer carries. For the
+// powers answered outside this file (fate-turn.ts).
+export function armedFor(campaignId: string, tag: RollTag | undefined): { power: ArmedPower; holderId: string; reverse: ShiftRoll["reverse"]; use: (line: string) => void } | null {
+  const armed = globalThis.__odmArmedShifts?.get(campaignId);
+  const roll = armed && !armed.used && tag ? armed.rolls.find((entry) => tagFits(entry.tag, tag)) : null;
+  if (!armed || !roll) {
+    return null;
+  }
+  return { power: armed.power, holderId: armed.wizardId, reverse: roll.reverse, use: (line) => { armed.used = true; armed.note = line; } };
+}
+
 // The roll site's question once it knows the outcome: does an armed shift
 // answer this roll? When it does it is paid for here, and the caller rolls
 // the d20 again and keeps the new roll. Returns the wizard's name, or null.
@@ -195,7 +219,7 @@ export function takeShift(campaignId: string, tag: RollTag | undefined, succeede
 // save comes back with the bonus on it. Null leaves the save as it was.
 export function takeSaveHelp(campaignId: string, tag: RollTag, saver: string, outcome: RollResult, dc: number): { outcome: RollResult; line: string } | null {
   const armed = globalThis.__odmArmedShifts?.get(campaignId);
-  if (!armed || armed.used || armed.power === "chronal_shift" || outcome.total >= dc || !armed.rolls.some((roll) => tagFits(roll.tag, tag))) {
+  if (!armed || armed.used || (armed.power !== "flash_of_genius" && armed.power !== "favored_by_the_gods") || outcome.total >= dc || !armed.rolls.some((roll) => tagFits(roll.tag, tag))) {
     return null;
   }
   const campaign = getCampaignById(campaignId);

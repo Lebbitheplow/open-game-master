@@ -84,3 +84,14 @@ export function handTargets(
     }));
   return [...enemyChips, ...sheetFoes, ...party];
 }
+
+// The dead of this character's own side, the only chips a card that takes the
+// dead is aimed at (src/lib/srd/dead-targets.ts): Revivify, Hand of Ultimate
+// Mercy. handTargets leaves them out, so no card for the living offers them.
+export function deadAllyTargets(sheets: CharacterSheet[], selfId: string | undefined, sides?: PublicEncounter["sides"]): HandTargetChip[] {
+  const sideOf = (id: string) => sides?.[id] ?? "party";
+  const mine = selfId ? sideOf(selfId) : "party";
+  return sheets
+    .filter((entry) => entry.id !== selfId && entry.deathSaves?.dead && sideOf(entry.id) === mine)
+    .map((entry) => ({ id: entry.id, name: entry.name, kind: "ally", conditions: entry.conditions, note: "dead" }));
+}

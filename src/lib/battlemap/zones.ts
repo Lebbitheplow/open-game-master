@@ -44,6 +44,10 @@ export type SpellZone = {
   untilRound: number | null;
   slotLevel: number | null;
   dc: number | null;
+  // The one creature that sees through this area as if it were not there (a
+  // Darkness its Shadow Magic caster paid for with sorcery points: "when you
+  // do you can see through that darkness", src/lib/dm/ar-ws-points-cast.ts).
+  seenThroughBy?: string;
   // Guardian of Faith: damage dealt so far.
   dealt?: number;
   // "<creature id>:enter" -> the turn it last suffered entering, so the area
@@ -125,6 +129,7 @@ export function normalizeSpellZones(raw: unknown, width: number, height: number)
       ...(int(source.dealt) ? { dealt: int(source.dealt) as number } : {}),
       ...(Object.keys(struck).length ? { struck } : {}),
       ...(source.named === true ? { named: true } : {}),
+      ...(typeof source.seenThroughBy === "string" && source.seenThroughBy ? { seenThroughBy: source.seenThroughBy.slice(0, 80) } : {}),
     });
     if (out.length >= MAX_ZONES) {
       break;
@@ -290,10 +295,13 @@ export function zoneStepCost(
   zones: SpellZone[],
   width: number,
   moverKind: string,
+  // The mover pays no extra for difficult ground (MoveTraits.anyGround); an
+  // area's other costs (halved speed, a headwind) stand.
+  anyGround = false,
 ): ((from: number, to: number, cost: number) => number) | null {
   const moving = zones.filter((zone) => {
     const row = rowOf(zone);
-    return Boolean(row && (row.difficult || row.halvesHostile || row.headwind));
+    return Boolean(row && ((row.difficult && !anyGround) || row.halvesHostile || row.headwind));
   });
   if (!moving.length) {
     return null;
@@ -306,7 +314,7 @@ export function zoneStepCost(
         continue;
       }
       const row = rowOf(zone) as ZoneRow;
-      if (row.difficult) {
+      if (row.difficult && !anyGround) {
         floor = Math.max(floor, row.difficult);
       }
       if (row.halvesHostile && hostileTo(zone, moverKind)) {
@@ -350,7 +358,12 @@ export type ZoneSenses = {
   truesight?: number;
   devilsSight?: number;
   tremorsense?: number;
+  // The viewer's id: an area seen through by its caster does not stop them.
+  self?: string;
 };
+
+// An area this viewer sees through as if it were not there.
+const seenThrough = (zone: SpellZone, senses: ZoneSenses): boolean => Boolean(zone.seenThroughBy) && zone.seenThroughBy === senses.self;
 
 // What stops a viewer's sight at a square: a heavily obscured area (Fog
 // Cloud, Stinking Cloud), magical darkness (unless truesight or Devil's
@@ -415,7 +428,7 @@ export function zoneBlocksSight(
     return false;
   }
   const line = lineCells(width, from, to);
-  return seeing.some((zone) => blinds(rowOf(zone) as ZoneRow, distance, senses) && line.some((cell) => zone.cells.includes(cell)));
+  return seeing.some((zone) => !seenThrough(zone, senses) && blinds(rowOf(zone) as ZoneRow, distance, senses) && line.some((cell) => zone.cells.includes(cell)));
 }
 
 // The squares that stop sight for the board's fog of war: heavy obscurement,
@@ -442,7 +455,7 @@ export function zoneSightTerrain(
       }
       continue;
     }
-    const darkSeen = row.darkness && ((senses.truesight ?? 0) > 0 || (senses.devilsSight ?? 0) > 0);
+    const darkSeen = row.darkness && ((senses.truesight ?? 0) > 0 || (senses.devilsSight ?? 0) > 0 || seenThrough(zone, senses));
     if ((row.obscured === "heavy" && !darkSeen) || row.opaque) {
       for (const cell of zone.cells) {
         tiles[cell] = TERRAIN.wall;
@@ -455,11 +468,20 @@ export function zoneSightTerrain(
 // Daylight's bright light and Darkness's magical dark, as the patches of
 // light the vision code already reads (src/lib/battlemap/scene.ts): the
 // area's bounding square, in the order the spells were cast.
-export function zoneLights(zones: SpellZone[], width: number): LightZone[] {
+// `viewer`: the patches as that creature sees them, without the darkness it
+// sees through.
+export function zoneLights(zones: SpellZone[], width: number, viewer?: string): LightZone[] {
   const out: LightZone[] = [];
   for (const zone of zones) {
     const row = rowOf(zone);
-    if (!row || (!row.light && !row.darkness) || !zone.cells.length) {
+    if (row?.dims && zone.cells.length) {
+      // Dread Lord's gloom dims only bright light and never lights the dark,
+      // so it is drawn row by row of its squares (the bounding square of a
+      // round aura would dim its corners too) as patches that dim.
+      out.push(...dimmingStrips(zone.cells, width));
+      continue;
+    }
+    if (!row || (!row.light && !row.darkness) || !zone.cells.length || (row.darkness && viewer !== undefined && seenThrough(zone, { self: viewer }))) {
       continue;
     }
     const xs = zone.cells.map((cell) => cell % width);
@@ -474,6 +496,24 @@ export function zoneLights(zones: SpellZone[], width: number): LightZone[] {
     });
   }
   return out;
+}
+
+// One patch per run of squares on a row: an area's own shape, as patches
+// that turn bright light dim (scene.ts ambientAt `dims`).
+function dimmingStrips(cells: number[], width: number): LightZone[] {
+  const sorted = [...cells].sort((a, b) => a - b);
+  const strips: LightZone[] = [];
+  for (const cell of sorted) {
+    const x = cell % width;
+    const y = Math.floor(cell / width);
+    const last = strips[strips.length - 1];
+    if (last && last.y0 === y && last.x1 === x - 1) {
+      last.x1 = x;
+    } else {
+      strips.push({ x0: x, y0: y, x1: x, y1: y, ambient: "dim", kind: "light", dims: true });
+    }
+  }
+  return strips;
 }
 
 // The areas of magical darkness with any square within `tiles` of the

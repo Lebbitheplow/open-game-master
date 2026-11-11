@@ -34,6 +34,8 @@ export type SrdCreature = {
   saves?: CreatureAbility[];
   // Special senses in feet (darkvision, blindsight, tremorsense, truesight).
   senses?: Record<string, number>;
+  // The skills the block lists, by skill id, with the printed bonus.
+  skills?: Record<string, number>;
   resist?: string;
   immune?: string;
   vulnerable?: string;

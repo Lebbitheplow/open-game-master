@@ -240,7 +240,12 @@ await test("A Flash of Genius whose artificer's reaction is spent is not offered
   assert.equal(getPendingRoll(again.id).status !== "pending", true, "one Let it stand answers both");
 });
 
-await test("Neither is a card in the Hand, and use_resource still takes them for a roll that cannot wait.", async () => {
+// "You can use your reaction to add your Intelligence modifier to the roll"
+// (Artificer 7): the modifier goes on the roll, so it is spent where a roll
+// waits (this card, or the stop before a roll that cannot wait for an
+// artificer watching the fight) and never by a call that names no roll. This
+// suite pinned the bare spend, which took the use and added nothing.
+await test("Neither is a card in the Hand, and a bare use_resource spend of Flash of Genius is refused with nothing spent.", async () => {
   await kit.endFight();
   world.patch(helper.id, { features: [...BLESSING.features, ...FLASH.features], resources: { ...BLESSING.resources, ...FLASH.resources } });
   const names = deriveHand(world.sheet(helper.id), FRESH_TURN, {}).map((card) => card.name);
@@ -248,7 +253,30 @@ await test("Neither is a card in the Hand, and use_resource still takes them for
     assert.ok(!names.includes(name), name);
   }
   const out = await world.invoke("use_resource", { characterId: helper.id, resource: "Flash of Genius" });
-  assert.equal(out.ok, true, out.error);
+  assert.equal(out.ok, false, "a bare spend of Flash of Genius was taken");
+  assert.equal(world.sheet(helper.id).resources.art_flash_of_genius.used, 0);
+});
+
+// A save a creature forces is the player's own roll (character-roll.ts): it
+// waits on the artificer's card before the damage lands, so nothing has to
+// be given back afterwards.
+await test("Flash of Genius: a save a creature forces on an ally waits on the artificer before its damage lands.", async () => {
+  const enemy = await stage(FLASH);
+  kit.setEnemy(enemy.id, { stats: { spells: ["Sacred Flame"] } });
+  const order = world.encounter();
+  const { saveEncounter } = await import("../src/lib/db/encounters.ts");
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.enemyId === enemy.id), turnBudget: null, reactionsUsed: [] });
+  // A 10 on the die with Dexterity +0: 10 against DC 12, and +3 makes it 13.
+  world.dice(10, 6);
+  await world.invoke("cast_at_player", { characterId: hero.id, spell: "Sacred Flame", saveAbility: "dex", dc: 12, damage: "1d8", damageType: "radiant", casterEnemyId: enemy.id });
+  assert.deepEqual(offered(), ["flash_of_genius"], "the forced save did not wait on the artificer");
+  assert.equal(world.sheet(hero.id).currentHp, 44, "the damage landed before the artificer answered");
+  const [pending] = open();
+  const out = await press(helper, pending.id, { use: "flash_of_genius", by: helper.id });
+  world.clearDice();
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(world.sheet(hero.id).currentHp, 44, "a save made good by Flash of Genius still cost its damage");
+  assert.equal(world.sheet(helper.id).resources.art_flash_of_genius.used, 1);
 });
 
 world.close();

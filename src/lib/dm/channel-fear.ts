@@ -122,6 +122,8 @@ export function channelFear(
     const type = String(enemy.stats.type ?? "");
     const save = rollEnemySave(campaign.id, enemy, "wis", dc, {
       magical: true,
+      // A Channel Divinity's save (Elder Champion reads it).
+      channel: true,
       resist: true,
       against: "frightened",
       disadvantage: Boolean(option.abjures && (containsPhrase(type, "fiend") || containsPhrase(type, "undead"))),

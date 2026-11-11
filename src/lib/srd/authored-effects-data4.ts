@@ -3,6 +3,7 @@
 // across every class (the shape of an entry: authored-effects-data.ts). Each
 // gets the hook that fits, or a `narrated` line saying why the DM holds it.
 
+import { WHISPERED_MARK, borrowedVariants } from "@/lib/srd/borrowed-proficiency";
 import type { AuthoredEntry, Formula } from "@/lib/srd/authored-effects-types";
 
 // Wild Magic Surge (Wild Magic sorcerer 1): after a sorcerer spell of 1st
@@ -17,8 +18,6 @@ const ALL_DAMAGE = [
   "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
 ];
 const PHYSICAL = ["bludgeoning", "piercing", "slashing"];
-// The martial arts die by monk level, plus the Wisdom modifier.
-const MARTIAL_WIS: Formula = (level, mods) => `1${level >= 17 ? "d10" : level >= 11 ? "d8" : level >= 5 ? "d6" : "d4"}+${mods.wis ?? 0}`;
 // A Psionic Energy die by class level, plus the Intelligence modifier.
 const PSIONIC_INT: Formula = (level, mods) => `1${level >= 17 ? "d12" : level >= 11 ? "d10" : level >= 5 ? "d8" : "d6"}+${mods.int ?? 0}`;
 // The subclass's spell table grants it, known or always prepared and free
@@ -27,13 +26,15 @@ const SPELL_TABLE = { file: "src/lib/srd/features.ts", call: "export function su
 
 export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   // ---- barbarian ----
+  // The rituals are cast with the spells' own tool, ritual true
+  // (src/lib/srd/mt-fb-casts.ts); what they reveal is the GM's to tell.
   "barbarian::Spirit Seeker": {
     subclass: "Path of the Totem Warrior",
-    narrated: "Ritual castings of beast sense and speak with animals: information and talk the GM narrates, no number in a fight.",
+    heldBy: { file: "src/lib/srd/granted-casts.ts", call: "featureCastsHeld(" },
   },
   "barbarian::Spirit Walker": {
     subclass: "Path of the Totem Warrior",
-    narrated: "A ritual commune with nature: information the GM gives, no number in a fight.",
+    heldBy: { file: "src/lib/srd/granted-casts.ts", call: "featureCastsHeld(" },
   },
   "barbarian::Vengeful Ancestors": {
     subclass: "Path of the Ancestral Guardian",
@@ -42,34 +43,34 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "barbarian::Warrior of the Gods": {
     subclass: "Path of the Zealot",
-    narrated: "A revival spell cast on the barbarian needs no material component: the caster's casting, not a number on this sheet.",
+    // A spell that returns the dead zealot to life costs its caster no
+    // material component (the diamonds of Revivify or Raise Dead).
+    heldBy: { file: "src/lib/dm/cast-guard.ts", call: "warriorOfTheGods(" },
   },
   "barbarian::Rage Beyond Death": {
     subclass: "Path of the Zealot",
-    narrated:
-      "The death engine drops a character at 0 hit points; while the zealot rages the GM keeps them acting and rolling death saves, and only the rage's end at 0 kills them.",
+    // Up at 0 hit points while raging, dying all the same, the death held off
+    // until the rage ends.
+    heldBy: { file: "src/lib/dm/death.ts", call: "ragesBeyondDeath(" },
   },
-  "barbarian::Wild Surge": {
-    subclass: "Path of Wild Magic",
-    narrated: "The d8 table's effect is rolled and narrated by the GM; its damage goes through aoe_damage and apply_damage, its AC through set_effect.",
-  },
-  "barbarian::Controlled Surge": {
-    subclass: "Path of Wild Magic",
-    narrated: "Rolling the wild magic table twice and choosing is the GM's roll on that narrated table.",
-  },
+  // Wild Surge and Controlled Surge: src/lib/srd/authored-effects-w2-mt-fb.ts.
 
   // ---- bard ----
+  // Blade Flourish's freeDie (authored-effects-data.ts): with no Bardic
+  // Inspiration left, the flourish rolls a d6 and spends nothing.
   "bard::Master's Flourish": {
     subclass: "College of Swords",
-    narrated: "A flourish paid with a d6 instead of a Bardic Inspiration die: the GM adds the d6 when Blade Flourish is spent with nothing from the pool.",
+    heldBy: { file: "src/lib/dm/authored-spends.ts", call: "spend.pool.freeDie" },
   },
   "bard::Silver Tongue": {
     subclass: "College of Eloquence",
     effects: [{ kind: "check_floor", skills: ["persuasion", "deception"], floor: 10 }],
   },
+  // The die this bard gives is marked where it is given (resource-tools.ts)
+  // and is not spent by a roll it leaves short (after-roll.ts, forced-save.ts).
   "bard::Unfailing Inspiration": {
     subclass: "College of Eloquence",
-    narrated: "An inspiration die that changed nothing is handed back: the GM restores the Bardic Inspiration condition when the roll it rode still failed.",
+    heldBy: { file: "src/lib/dm/ar-wbf-bard-dice-logic.ts", call: "unfailingDieKept(" },
   },
   "bard::Creative Crescendo": {
     subclass: "College of Creation",
@@ -77,8 +78,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "bard::Guiding Whispers": {
     subclass: "College of Spirits",
+    // The cantrip is the spell table's; its 60 feet for this bard are
+    // cast-reach.ts spellReachProblem (ar-wbf-bard-casting-logic.ts).
     heldBy: SPELL_TABLE,
-    narrated: "Guidance at a 60-foot reach is the GM's to allow.",
   },
   "bard::Spiritual Focus": {
     subclass: "College of Spirits",
@@ -90,13 +92,21 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         damageTypes: ALL_DAMAGE,
         healing: true,
         gate: { level: 6 },
-        note: "Cast through the spiritual focus; the GM keeps to that.",
+        // The focus itself (a candle, a deck, a talking board carried) is
+        // cast-materials.ts focusProblem (ar-wbf-bard-casting-logic.ts).
+        note: "Cast through the spiritual focus: a candle, a deck or a talking board the bard carries.",
       },
     ],
   },
+  // The server's own Spirit Tales table (src/lib/dm/spirit-tales.ts): a
+  // bonus action and a Bardic Inspiration die roll the tale, an action plays
+  // it on a creature within 30 feet.
   "bard::Tales from Beyond": {
     subclass: "College of Spirits",
-    narrated: "The Spirit Tales table is the GM's to roll and narrate; the Bardic Inspiration die it spends is the bard's counter.",
+    spends: [
+      { name: "Tales from Beyond", pool: { id: "bardic_inspiration" }, action: "bonus", does: { kind: "tell_tale" } },
+      { name: "Release Tale", aliases: ["Bestow Tale", "Spirit Tale"], action: "action", gate: { condition: "spirit tale", because: "a spirit tale held in mind (Tales from Beyond rolls one)" }, does: { kind: "release_tale" } },
+    ],
   },
   "bard::Mystical Connection": {
     subclass: "College of Spirits",
@@ -111,11 +121,12 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "cleric::Bonus Cantrip (Light)": { subclass: "Light Domain", heldBy: SPELL_TABLE },
   "cleric::Thunderbolt Strike": {
     subclass: "Tempest Domain",
-    narrated: "Pushing a Large or smaller creature 10 feet after lightning damage is a move_token (forced) the GM makes.",
+    heldBy: { file: "src/lib/dm/enemy-damage.ts", call: "thunderboltPush(" },
   },
   "cleric::Improved Duplicity": {
     subclass: "Trickery Domain",
-    narrated: "Up to four illusory duplicates of Invoke Duplicity: positions the GM places, each casting and flanking as the one did.",
+    // Invoke Duplicity's count of four (authored-spend-divine-clr.ts duplicity).
+    heldBy: { file: "src/lib/dm/authored-spend-divine-clr.ts", call: "\"Improved Duplicity\") ? 4" },
   },
   "cleric::Avatar of Battle": {
     subclass: "War Domain",
@@ -129,11 +140,13 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "cleric::Spell Breaker": {
     subclass: "Arcana Domain",
-    narrated: "Ending a spell on the creature a healing spell touched is an end_condition the GM makes, of a level no higher than the slot.",
+    heldBy: { file: "src/lib/dm/spell-breaker.ts", call: "spellBreaker(" },
   },
   "cleric::Arcane Mastery": {
     subclass: "Arcana Domain",
-    narrated: "The four wizard spells (6th to 9th level) are the cleric's choice; once chosen they are written onto the sheet as always prepared.",
+    // Four wizard spells of 6th to 9th level, picked off the cleric list and
+    // held on top of the prepared count (class-spell-grants.ts).
+    heldBy: { file: "src/lib/srd/class-spell-grants.ts", call: "clericGrants(" },
   },
 
   // ---- druid ----
@@ -153,21 +166,38 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         name: "Hearth of Moonlight and Shadow",
         action: "none",
         fight: "out",
-        does: { kind: "buff", target: "allies", condition: "hearth of moonlight and shadow", rounds: 4800, rangeFt: 30, count: "12" },
+        // "During a short or long rest ... until the rest ends": take_rest
+        // takes it off every creature inside (it outlasted the rest before).
+        does: { kind: "buff", target: "allies", condition: "hearth of moonlight and shadow", rounds: 4800, rangeFt: 30, count: "12", untilRestEnds: true },
       },
     ],
   },
   "druid::Mighty Summoner": {
     subclass: "Circle of the Shepherd",
-    effects: [{ kind: "summon_hp_per_hd", amount: 2, types: ["beast", "fey"], note: "Their natural weapons count as magical against resistance; the GM keeps to that." }],
+    // The natural weapons' magic reads these types too (src/lib/dm/mighty-summoner.ts).
+    effects: [{ kind: "summon_hp_per_hd", amount: 2, types: ["beast", "fey"], note: "Their natural weapons count as magical against resistance and immunity to nonmagical attacks." }],
   },
+  // "Summoned creatures inside your Spirit Totem aura heal half your druid
+  // level at the end of your turns": the turn's end heals them
+  // (src/lib/dm/spirit-totem.ts guardianSpiritHeal, from authored-turns.ts).
   "druid::Guardian Spirit": {
     subclass: "Circle of the Shepherd",
-    narrated: "Summoned creatures ending a turn in the Spirit Totem aura regain half the druid level: a heal the GM makes at the end of the druid's turn.",
+    heldBy: { file: "src/lib/dm/authored-turns.ts", call: "guardianSpiritHeal(" },
   },
+  // "While Symbiotic Entity is active, a bonus action hurls spores into a
+  // 10-foot cube within 30 feet for a minute": a board area at the square
+  // named (src/lib/dm/spreading-spores.ts) that strikes as the spell areas do,
+  // and Halo of Spores' reaction stays shut while it lasts (its row's gate).
   "druid::Spreading Spores": {
     subclass: "Circle of Spores",
-    narrated: "A 10-foot cube of spores is a zone the GM places; a creature entering or starting there takes the Halo of Spores damage on a failed Constitution save.",
+    spends: [
+      {
+        name: "Spreading Spores",
+        action: "bonus",
+        gate: { condition: "symbiotic entity", because: "needs Symbiotic Entity running" },
+        does: { kind: "spreading_spores", rangeFt: 30, rounds: 10 },
+      },
+    ],
   },
   "druid::Full of Stars": {
     subclass: "Circle of Stars",
@@ -182,7 +212,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "fighter::Arcane Charge": {
     subclass: "Eldritch Knight",
-    narrated: "A 30-foot teleport with Action Surge: a move_token the GM makes when the fighter surges.",
+    // Action Surge credits the 30-foot teleport.
+    heldBy: { file: "src/lib/dm/mutations.ts", call: "afterCounterSpend(" },
   },
   "fighter::Improved War Magic": {
     subclass: "Eldritch Knight",
@@ -196,13 +227,17 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         action: "none",
         oncePerTurn: true,
         fight: "in",
+        // "when you move at least 10 feet in a straight line right before
+        // attacking a creature and hit it": the hit and the run are both on the
+        // turn's record (attack-swing.ts WEAPON_HIT, mt-fb-charge.ts).
+        afterWeaponHit: true,
+        chargeFeet: 10,
         does: {
           kind: "save_effect",
           save: "str",
           dcAbility: "str",
           condition: "prone",
           rangeFt: 5,
-          onFail: "is knocked prone (the fighter moved 10 feet straight at it before the hit)",
         },
       },
     ],
@@ -225,17 +260,31 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "free once per short rest or by spending a die": the free use first, then
+  // a Psionic Energy die. Every use took a die before.
   "fighter::Telekinetic Movement": {
     subclass: "Psi Warrior",
-    narrated: "Moving an object or a willing creature 30 feet is a move_token the GM makes; the die it may spend is the Psionic Energy counter.",
+    counter: "sub_telekinetic_movement",
+    spends: [
+      {
+        name: "Telekinetic Movement",
+        pool: { id: "sub_telekinetic_movement", fallback: "sub_psionic_energy" },
+        action: "action",
+        // The move is credited as a feature's is (feature-teleport.ts), for
+        // move_token to make: no touch is asked, the mind does it.
+        does: { kind: "teleport", feet: 30, touched: true, note: "by the mind alone, no touch needed (a Large or smaller loose object may be moved instead)" },
+      },
+    ],
   },
+  // Each rune's counter holds two uses from 15th level ([15, 2]).
   "fighter::Master of Runes": {
     subclass: "Rune Knight",
-    narrated: "Each rune is invoked twice per rest: the GM counts the second invocation.",
+    heldBy: { file: "src/lib/srd/authored-resources.json", call: "\"sub_hill_rune\"" },
   },
   "fighter::Rallying Cry": {
     subclass: "Banneret",
-    narrated: "Second Wind also heals up to three allies within 60 feet for the fighter level: heals the GM makes when Second Wind is spent.",
+    // Second Wind heals up to three allies within 60 feet for the fighter level.
+    heldBy: { file: "src/lib/dm/mutations.ts", call: "afterCounterSpend(" },
   },
   "fighter::Bulwark": {
     subclass: "Banneret",
@@ -243,23 +292,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
 
   // ---- monk ----
-  "monk::Shadow Arts": {
-    subclass: "Way of Shadow",
-    narrated:
-      "Spells cast with 2 ki (darkness, darkvision, pass without trace, silence): the cast tools with the ki spent by use_resource. Minor illusion at will: a monk keeps no spell list, so the GM casts it when asked, as for a non-caster's racial cantrip.",
-  },
-  "monk::Cloak of Shadows": {
-    subclass: "Way of Shadow",
-    narrated: "Invisibility in dim light or darkness until the monk attacks, casts or steps into light: set_condition invisible, which the GM ends.",
-  },
-  "monk::Drunken Technique": {
-    subclass: "Way of the Drunken Master",
-    narrated: "Flurry of Blows also gives Disengage and 10 feet of movement: the GM moves the monk without opportunity attacks this turn.",
-  },
-  "monk::Unerring Accuracy": {
-    subclass: "Way of the Kensei",
-    narrated: "Rerolling one missed monk weapon attack a turn: the GM calls pc_attack again for it.",
-  },
   "monk::Sun Shield": {
     subclass: "Way of the Sun Soul",
     effects: [{ kind: "retaliate", formula: (_level, mods) => 5 + (mods.wis ?? 0), type: "radiant", melee: true, note: "The bright light it sheds is the GM's to place." }],
@@ -274,14 +306,15 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
           kind: "buff",
           condition: "hour of reaping",
           rounds: 1,
-          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", rounds: 1 },
+          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", untilNextTurnEnds: true },
         },
       },
     ],
   },
   "monk::Mastery of Death": {
     subclass: "Way of the Long Death",
-    narrated: "Spending 1 ki to drop to 1 hit point instead of 0: the GM heals the monk to 1 and spends the ki with use_resource.",
+    // The damage path holds the monk and spends the ki (src/lib/dm/mastery-of-death.ts).
+    narrated: "Spending 1 ki to drop to 1 hit point instead of 0: the engine holds the monk at 1 and spends the ki as the blow lands.",
   },
   "monk::Hand of Healing": {
     subclass: "Way of Mercy",
@@ -290,7 +323,16 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         name: "Hand of Healing",
         pool: { id: "ki", amount: 1 },
         action: "action",
-        does: { kind: "flames", formula: MARTIAL_WIS, type: "radiant", healOnly: true },
+        does: { kind: "mr", id: "hand_of_healing", aims: "ally", rangeFt: 5 },
+      },
+      // "Or replace one Flurry of Blows attack with it": a strike of the
+      // flurry given up, for no action and no ki.
+      {
+        name: "Flurry of Healing",
+        aliases: ["Hand of Healing (Flurry of Blows)"],
+        action: "none",
+        fight: "in",
+        does: { kind: "mr", id: "flurry_healing", aims: "ally", rangeFt: 5 },
       },
     ],
   },
@@ -299,24 +341,14 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Hand of Harm",
-        pool: { id: "ki", amount: 1 },
+        // Free on a Flurry of Blows strike with Flurry of Healing and Harm.
+        pool: { id: "ki", amount: 1, free: "flurry_harm" },
         oncePerTurn: true,
         action: "none",
-        does: { kind: "die_damage", dice: MARTIAL_WIS, type: "necrotic" },
+        afterWeaponHit: true,
+        does: { kind: "mr", id: "hand_of_harm", aims: "enemy" },
       },
     ],
-  },
-  "monk::Physician's Touch": {
-    subclass: "Way of Mercy",
-    narrated: "Hand of Healing also ends a disease or condition (end_condition), and Hand of Harm can poison the creature (set_condition poisoned): the GM applies them.",
-  },
-  "monk::Flurry of Healing and Harm": {
-    subclass: "Way of Mercy",
-    narrated: "Hand of Healing in place of Flurry of Blows' strikes, with no ki, and one free Hand of Harm: the GM spends nothing for them.",
-  },
-  "monk::Draconic Disciple": {
-    subclass: "Way of the Ascendant Dragon",
-    narrated: "Changing an unarmed strike's damage type and rerolling a failed Intimidation or Persuasion check are the GM's; the language is the sheet's training.",
   },
 
   // ---- paladin ----
@@ -326,11 +358,25 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "paladin::Aura of the Sentinel": {
     subclass: "Oath of the Watchers",
-    effects: [{ kind: "init_prof", note: "Allies within 10 feet (30 from 18th level) add it too; the GM adds theirs." }],
+    effects: [
+      {
+        kind: "init_prof",
+        rangeFt: [[7, 10], [18, 30]],
+        note: "Allies within 10 feet (30 from 18th level) add it too, while the paladin is up; the server adds it to their initiative.",
+      },
+    ],
   },
   "paladin::Aura of Hate": {
     subclass: "Oathbreaker",
-    effects: [{ kind: "damage_ability", ability: "cha", when: "melee", note: "Fiends and undead within 10 feet (30 from 18th level) add it too; the GM adds theirs." }],
+    effects: [
+      {
+        kind: "damage_ability",
+        ability: "cha",
+        when: "melee",
+        aura: { rangeFt: [[7, 10], [18, 30]], types: ["fiend", "undead"] },
+        note: "Fiends and undead within 10 feet (30 from 18th level) add it too, while the paladin is up; the server adds it to their melee weapon blows.",
+      },
+    ],
   },
   "paladin::Supernatural Resistance": {
     subclass: "Oathbreaker",
@@ -340,33 +386,52 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   // ---- ranger ----
   "ranger::Umbral Sight": {
     subclass: "Gloom Stalker",
-    effects: [{ kind: "darkvision", feet: 60, orAdd: 30, note: "Unseen by creatures that rely on darkvision in darkness: the GM keeps to that." }],
+    effects: [{ kind: "darkvision", feet: 60, orAdd: 30, note: "Unseen by creatures that rely on darkvision in darkness: the board's sight rule keeps to it (src/lib/dm/attack-light.ts)." }],
   },
+  // One more attack of the Attack action after a miss, once a turn, and a
+  // third creature's attack after two were attacked: the turn budget gives
+  // them (src/lib/dm/turn-extra-attacks-logic.ts, read by budgetFor).
   "ranger::Stalker's Flurry": {
     subclass: "Gloom Stalker",
-    narrated: "One more weapon attack after a miss, once a turn: the GM calls pc_attack again for it.",
+    heldBy: { file: "src/lib/dm/turn-extra-attacks-logic.ts", call: "export function turnExtraAttacks(" },
   },
   "ranger::Distant Strike": {
     subclass: "Horizon Walker",
-    narrated: "A 10-foot teleport before each attack (move_token) and a third attack after striking two creatures: the GM allows them.",
+    heldBy: { file: "src/lib/dm/turn-extra-attacks-logic.ts", call: "export function distantStrikeRefusal(" },
   },
+  // Two attacks for one command: pet_attack's second is free once the first
+  // is made (src/lib/dm/pet-attack-cost.ts).
   "ranger::Bestial Fury": {
     subclass: "Beast Master",
-    narrated: "The companion is its own sheet (pet-tools); the GM gives it two attacks when commanded to attack.",
+    heldBy: { file: "src/lib/dm/pet-attack-cost.ts", call: 'holdsFeature(sheet, "Bestial Fury")' },
   },
+  // A spell the ranger casts on themselves lands on the companion's record
+  // too (cast_buff, src/lib/dm/pet-command.ts shareSpell).
   "ranger::Share Spells": {
     subclass: "Beast Master",
-    narrated: "A spell the ranger casts on themselves also affects the companion within 30 feet: the GM applies it to the companion's sheet.",
+    heldBy: { file: "src/lib/dm/cast-buff.ts", call: "shareSpell(" },
   },
   "ranger::Exceptional Training": {
     subclass: "Beast Master",
-    effects: [
+    // "On a turn your companion doesn't attack, a bonus action can command
+    // it to Dash, Disengage or Help" (src/lib/dm/authored-spend-divine-rng.ts).
+    spends: [
       {
-        kind: "pet_magical",
-        pets: ["beast_companion"],
-        note: "A bonus action commands the companion to Dash, Disengage or Help on a turn it does not attack; the GM moves it.",
+        name: "Exceptional Training",
+        aliases: ["Command Companion"],
+        action: "bonus",
+        gate: { pet: "beast_companion" },
+        does: {
+          kind: "variants",
+          options: {
+            dash: { does: { kind: "pet_command", options: ["dash"] } },
+            disengage: { does: { kind: "pet_command", options: ["disengage"] } },
+            help: { does: { kind: "pet_command", options: ["help"] } },
+          },
+        },
       },
     ],
+    effects: [{ kind: "pet_magical", pets: ["beast_companion"] }],
   },
   "ranger::Fey Wanderer Magic": { subclass: "Fey Wanderer", heldBy: SPELL_TABLE },
   "ranger::Swarmkeeper Magic": { subclass: "Swarmkeeper", heldBy: SPELL_TABLE },
@@ -391,7 +456,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "rogue::Impostor": { subclass: "Assassin", narrated: "Mimicking a studied person: roleplay the GM judges with a Deception check." },
   "rogue::Death Strike": {
     subclass: "Assassin",
-    narrated: "A hit on a surprised creature: it makes a Constitution save (DC 8 + Dexterity + proficiency) or takes double damage, which the GM applies after the hit.",
+    // The save and the doubling are the engine's (src/lib/dm/death-strike.ts).
+    narrated: "A hit on a surprised creature: it makes a Constitution save (DC 8 + Dexterity + proficiency) or takes double damage; the engine rolls the save and doubles the blow.",
   },
   "rogue::Mage Hand Legerdemain": {
     subclass: "Arcane Trickster",
@@ -399,29 +465,27 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "rogue::Insightful Manipulator": { subclass: "Mastermind", narrated: "Information the GM gives after a minute of watching." },
   "rogue::Soul of Deceit": { subclass: "Mastermind", narrated: "Thoughts that cannot be read and lies that read as true: the GM keeps to that." },
-  "rogue::Fancy Footwork": {
+  // Persuasion against the hostile creature's Insight: on a win it is goaded
+  // for a minute (src/lib/dm/goaded.ts reads it at its attacks and its
+  // opportunity attacks). A creature that is not hostile is no row of the
+  // fight, and its charm is the GM's (the action is a social one there).
+  "rogue::Panache": {
     subclass: "Swashbuckler",
-    narrated: "A creature the rogue attacked in melee this turn makes no opportunity attack against them: the GM withholds it.",
+    spends: [{ name: "Panache", action: "action", fight: "in", does: { kind: "insight_contest", mine: "persuasion", theirs: "insight", condition: "goaded", rounds: 10, goads: true } }],
   },
-  "rogue::Panache": { subclass: "Swashbuckler", narrated: "A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition." },
   "rogue::Ear for Deceit": {
     subclass: "Inquisitive",
-    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, note: "Only on an Insight check to tell whether a creature lies; the GM keeps to that." }],
+    // "To tell whether a creature is lying": the check's `about` says so (roll-about.ts "lies").
+    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, about: "lies" }],
   },
-  "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
-  "rogue::Death's Friend": {
+  // One skill or tool proficiency chosen out of a fight, once after each
+  // short or long rest (its counter), kept until the next choice replaces
+  // it; the skill check and the tool check read it (borrowed-proficiency.ts).
+  "rogue::Whispers of the Dead": {
     subclass: "Phantom",
-    narrated: "Wails from the Grave's necrotic on the first creature too, and a soul trinket at a long rest's end: the GM applies the damage and the trinket.",
-  },
-  "rogue::Psi-Bolstered Knack": {
-    subclass: "Soulknife",
-    narrated: "A Psionic Energy die added to a failed proficient check: the GM rolls it, and the die is the counter's.",
+    spends: [{ name: "Whispers of the Dead", pool: { id: "sub_whispers_of_the_dead" }, action: "none", fight: "out", does: { kind: "buff", condition: WHISPERED_MARK, variants: borrowedVariants(WHISPERED_MARK), rounds: 0, lasting: true } }],
   },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },
-  "rogue::Soul Blades": {
-    subclass: "Soulknife",
-    narrated: "Homing Strikes' die on a missed Psychic Blade and Psychic Teleportation's move: the GM rolls the die (the counter's) and moves the token.",
-  },
 
   // ---- sorcerer ----
   // The d20 and the wild magic table are the GM's to roll and narrate; the
@@ -478,7 +542,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     ],
     effects: [
       { kind: "move", fly: "walk", gate: { condition: "revelation in flesh (fly)" } },
-      { kind: "move", swim: "walk", gate: { condition: "revelation in flesh (swim)" }, note: "The swimming speed is twice the walking speed, and the sorcerer breathes water; one benefit per point spent." },
+      { kind: "move", swim: "double_walk", gate: { condition: "revelation in flesh (swim)" }, note: "The sorcerer breathes water; one benefit per point spent." },
     ],
   },
   "sorcerer::Clockwork Magic": { subclass: "Clockwork Soul", heldBy: SPELL_TABLE },
@@ -491,13 +555,15 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "warlock::Awakened Mind": { subclass: "The Great Old One", narrated: "Telepathic speech: conversation, nothing on a sheet changes." },
   "warlock::Thought Shield": {
     subclass: "The Great Old One",
-    effects: [{ kind: "resist", types: ["psychic"], note: "Psychic damage dealt to the warlock is dealt back to its source: the GM applies it." }],
+    effects: [{ kind: "resist", types: ["psychic"], note: "Psychic damage a creature deals the warlock is dealt back to it, the amount the warlock took (thought-shield.ts)." }],
   },
   "warlock::Create Thrall": { subclass: "The Great Old One", narrated: "A charmed thrall in telepathic contact: set_condition charmed, held until a remove curse." },
   "warlock::Bonus Cantrips (Celestial)": { subclass: "The Celestial", heldBy: SPELL_TABLE },
+  // Once a turn: one more damage die in Form of Dread, and the hit's damage
+  // necrotic when pc_attack is asked for it (damageType "necrotic").
   "warlock::Grave Touched": {
     subclass: "The Undead",
-    narrated: "Changing a hit's damage to necrotic, with one more die in Form of Dread: the GM applies the type and the die.",
+    heldBy: { file: "src/lib/dm/ar-wbf-warlock-grave-logic.ts", call: "export function graveTouchedDie(" },
   },
   "warlock::Undying Nature": { subclass: "The Undying", narrated: "Needs no food, water, breath or sleep, and ages slowly: roleplay, nothing in a fight changes." },
 
@@ -596,7 +662,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         classes: ["artificer"],
         damageTypes: ["acid", "fire", "necrotic", "poison"],
         healing: true,
-        note: "One roll of a spell cast through alchemist's supplies; the GM keeps to that.",
+        // "When you cast a spell with alchemist's supplies as your
+        // spellcasting focus": none carried, nothing is added (the bonus
+        // landed on Fire Bolt and Cure Wounds with no supplies at all).
+        itemNames: ["alchemist's supplies"],
+        note: "One roll of a spell cast through alchemist's supplies.",
       },
     ],
   },

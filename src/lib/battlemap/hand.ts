@@ -48,7 +48,9 @@ import { featureCards, spellCards, spellNames } from "@/lib/battlemap/hand-spell
 import { itemSpellCards, itemSpellNames } from "@/lib/battlemap/hand-items";
 import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
+import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-doors";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
+import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
@@ -444,6 +446,14 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     };
   };
   for (const basic of BASICS) {
+    // Revelation in Flesh's slip out of a grapple or a nonmagical restraint,
+    // as take_action escape answers it (src/lib/dm/ar-ws-squeeze.ts): 5 feet
+    // of movement, so the card costs no action and rolls nothing.
+    if (basic.id === "escape" && squeezeSlips(sheet)) {
+      const slip: HandCard = { ...make(basic, null), cost: "free", dice: "", roll: "no roll", condition: "", rules: "Revelation in Flesh: you slip free for 5 feet of movement. No action, no roll." };
+      cards.push(gated(slip, standingGate(sheet, turn, "move")));
+      continue;
+    }
     // Escape is only there to take while something holds you.
     if (basic.id === "escape" && !grappled && !hold) continue;
     // Standing up is only there to take while lying prone.
@@ -503,6 +513,16 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
   return cards;
 }
 
+// The counters that work only in dim light or darkness (Steps of Night, One
+// with Shadows), shut while the board says the square is bright, as
+// use_resource refuses them there (one-with-shadows.ts shadowLightProblem).
+const DARK_BOUND = new Set(["sub_steps_of_night", "one_with_shadows"]);
+function darkBound(card: HandCard, board: HandOptions["board"]): HandCard {
+  return board?.bright && card.pool && DARK_BOUND.has(card.pool) && !card.disabled
+    ? { ...card, disabled: `${board.bright}; ${card.name} works only in dim light or darkness.`, spent: false }
+    : card;
+}
+
 // ---- the hand ----
 
 // Attacks, the riders that ride them, spells by level, class features, then
@@ -510,7 +530,9 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
 export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}): HandCard[] {
   const riders = combatRiders(sheet);
   const spells = spellCards(sheet, turn, riders, options);
-  const features = featureCards(sheet, turn);
+  // Arcane Abeyance's and Master Scrivener's counters are the door cards'
+  // (hand-feature-doors.ts), which name the spell their engines need.
+  const features = featureCards(sheet, turn).filter((card) => !card.pool || !DOOR_COUNTERS.includes(card.pool)).map((card) => darkBound(card, options.board));
   // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
   const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
@@ -522,7 +544,8 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...features,
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
-    ...subclassSpendCards(sheet, turn, taken),
+    ...subclassSpendCards(sheet, turn, taken, options.board),
+    ...featureDoorCards(sheet, turn, spells),
     ...kiCards(sheet, turn),
     ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
     ...gearCards(sheet, turn, options.gear),

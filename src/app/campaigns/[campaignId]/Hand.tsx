@@ -19,10 +19,12 @@ import { HAND_TUTORIAL_ID, HandTutorial } from "@/app/campaigns/[campaignId]/Han
 import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandReactPrompt } from "@/app/campaigns/[campaignId]/HandReactPrompt";
 import { HandPips } from "@/app/campaigns/[campaignId]/HandPips";
-import { handTargets } from "@/app/campaigns/[campaignId]/handTargets";
+import { deadAllyTargets, handTargets } from "@/app/campaigns/[campaignId]/handTargets";
 import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaigns/[campaignId]/useHandChoices";
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
+import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
 import { groupHand, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
@@ -257,7 +259,11 @@ function HandInner({
   );
   // The board measures from the viewer's own acting character, so its distances
   // say nothing of a companion or dominated hero the GM seat plays.
-  const ownFeet = sheet?.userId === meUserId ? feet : undefined;
+  // The feet from an area the character keeps are read only from a host that
+  // says it sends them (src/lib/capabilities.ts ownZoneFeet).
+  const zoneFeet = hostOffers(capabilities, "ownZoneFeet");
+  const hostFeet = useMemo(() => feetForHost(feet, zoneFeet), [feet, zoneFeet]);
+  const ownFeet = sheet?.userId === meUserId ? hostFeet : undefined;
   // Everyone a redirect may turn a blow onto, friend or foe (Misdirection).
   const creatures = useMemo(
     () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides),
@@ -265,8 +271,8 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures, unseen],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", hostFeet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, hostFeet, encounter.lastSaves, ownFeet, creatures, unseen],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
@@ -320,19 +326,22 @@ function HandInner({
   // resolve one leaves them typed.
   const items = hostOffers(capabilities, "handItemCasts");
   const turnHeld = useTurnHeld(encounter);
+  const squareLight = hostOffers(capabilities, "handSquareLight");
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
     // The board reads the viewer's own token, so it says nothing of a
     // companion or a dominated hero the GM seat plays.
-    const ownBoard = sheet.userId === meUserId ? board : undefined;
+    // The light on the square is read only from a host that says it sends it
+    // (src/lib/capabilities.ts handSquareLight).
+    const ownBoard = sheet.userId === meUserId ? boardFactsForHost(board, squareLight) : undefined;
     const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
     // Their End Turn is in and the move waits on a watcher's stop
     // (turn-hold.ts): the turn takes nothing more but a reaction, and every
     // other card says why, End turn's own included.
     const ending = turnHeld?.characterId === sheet.id ? turnHeldLine(turnHeld, true) : null;
     return ending ? dealt.map((card) => (card.cost === "reaction" ? card : { ...card, disabled: ending })) : dealt;
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, turnHeld]);
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, turnHeld, squareLight]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
@@ -393,6 +402,9 @@ function HandInner({
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
+  // A card that takes the dead (Revivify, Hand of Ultimate Mercy) is aimed at
+  // them alone (src/lib/srd/dead-targets.ts).
+  const deadTargets = useMemo(() => deadAllyTargets(sheets, sheet?.id, encounter.sides), [sheets, sheet?.id, encounter.sides]);
   // A redirect's creature may be friend or foe, the acting hero too when the
   // card is another hero's (reactionPicks leaves out the holder and the attacker).
   const redirects = picked?.pickWithin !== undefined;
@@ -413,8 +425,8 @@ function HandInner({
       // the board says they cannot (hand-play.ts aimUnseen, the engine's gate).
       ? seenChips(picked, reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet))
       : picked?.target === "ally"
-        ? picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
-        : [], [fixedChip, picked, pickable, partyTargets, ownFeet]);
+        ? picked.takesTheDead ? deadTargets : picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
+        : [], [fixedChip, picked, pickable, partyTargets, deadTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =
     picked?.target === "self"
@@ -686,7 +698,7 @@ function HandInner({
       ...(splits && picked.shares && aim && offered.some(target => target.id !== aim.id) ? [shareControl(picked, aim, offered, barProps.shares)] : []),
       ...(barProps.trigger !== null ? [{ id: "hand-trigger" as const, label: "Trigger", disabled: null, input: { value: barProps.trigger } }] : []),
       ...(picked.area && hasPick(picked.area, barProps.areaPick) ? [{ id: "hand-area-clear" as const, label: "Clear area", disabled: null }] : []),
-      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
+      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix, shares: barProps.shares }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
       { id: "hand-edit", label: "Edit in chat", disabled: null }, { id: "hand-back", label: "Back", disabled: null }, close,
     ] };
   }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);

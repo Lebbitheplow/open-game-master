@@ -39,6 +39,8 @@ import { commandersStrike, commandersStrikeCharge, knowsManeuver, rally } from "
 import type { ResourceAction } from "@/lib/srd/class-resources";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { chooseFiendishResilience, stillnessOfMind } from "@/lib/dm/feature-hooks";
+import { sacredWeaponMeta, shedLight } from "@/lib/dm/mt-srd-paladin";
+import { seesOrHears, undeadOrConstruct } from "@/lib/dm/mt-srd-reach";
 
 // Re-exported for the callers that reached it here first.
 export { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
@@ -47,6 +49,8 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath";
 import { TURNED } from "@/lib/dm/flee-logic";
+import { ultimateMercy } from "@/lib/dm/ultimate-mercy";
+import { DEAD_TARGET_COUNTERS } from "@/lib/srd/dead-targets";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
@@ -55,12 +59,17 @@ import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
 // The turnings beyond Turn Undead and Turn the Unholy, each by its own creature
-// types, within 30 feet. Banishing (Arcane Abjuration from 5th level) rests on a
-// creature's plane of origin, which no stat block records, so it stays the GM's.
+// types, within 30 feet. Arcane Abjuration from 5th level banishes instead: "a
+// creature that fails, isn't on its plane of origin, and has a challenge
+// rating at or below a limit (1/2 at 5th level, 1 at 8th, 2 at 11th, 3 at
+// 14th, 4 at 17th) is banished for a minute instead". No stat block records a
+// plane of origin: a celestial, elemental, fey or fiend on the table is taken
+// to be away from its own, the world's plane being the Material. Before this
+// the banishment was only a sentence for the GM, and the creature was turned.
 const CHANNEL_TURNINGS = [
   { name: "Turn the Faithless", beyond: true, ability: "cha" as const, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
   { name: "Abjure the Extraplanar", beyond: true, ability: "cha" as const, types: /aberration|celestial|elemental|fey|fiend/i },
-  { name: "Arcane Abjuration", beyond: true, ability: "wis" as const, types: /celestial|elemental|fey|fiend/i, single: true, note: "From 5th level a creature that failed, away from its plane of origin, at or under the limit for this level (CR 1/2 at 5th, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th) is banished for a minute instead: that is the GM's call." },
+  { name: "Arcane Abjuration", beyond: true, ability: "wis" as const, types: /celestial|elemental|fey|fiend/i, single: true, banish: true },
 ];
 
 // Destroy Undead's challenge rating threshold by cleric level (SRD 5.1).
@@ -212,7 +221,12 @@ export function featureVariantSpend(
       }));
     }
     if (isNamed(wanted, "sacred weapon")) {
-      return spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      const imbued = spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      if (!("error" in imbued)) {
+        // "bright light in a 20-foot radius and dim light 20 feet beyond that".
+        shedLight(campaign.id, sheet.id, 20, 20, 1);
+      }
+      return imbued;
     }
     if (isNamed(wanted, "vow of enmity")) {
       // Inside the spend, so a use or bonus action already gone answers first.
@@ -239,6 +253,11 @@ export function featureVariantSpend(
     return spend(campaign, turnId, sheet, def.id, (fresh) => commandersStrikeCharge(campaign, fresh, targetId), reason, () =>
       commandersStrike(campaign, sheet, targetId),
     );
+  }
+  // Hand of Ultimate Mercy brings back the dead its heal path refused
+  // (src/lib/dm/ultimate-mercy.ts): the use, 5 ki and the action.
+  if (def && DEAD_TARGET_COUNTERS.includes(def.id)) {
+    return spend(campaign, turnId, sheet, def.id, "action", reason, () => ultimateMercy(campaign, turnId, getSheetById(sheet.id) ?? sheet, targetId));
   }
   if (def?.id === "eldritch_master") {
     return spend(campaign, turnId, sheet, def.id, "none", reason, () => eldritchMaster(sheet));
@@ -352,7 +371,7 @@ function turnUndead(
   // `ability`: the class's spellcasting ability the DC is read with (a
   // cleric's Wisdom, a paladin's Charisma), so a multiclass sheet whose first
   // caster class is another does not lend that class's DC.
-  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean; ability?: Ability } = { types: /undead/i, destroy: true, name: "Turn Undead", ability: "wis" },
+  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean; ability?: Ability; banish?: boolean } = { types: /undead/i, destroy: true, name: "Turn Undead", ability: "wis" },
 ): Resolution {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -360,6 +379,8 @@ function turnUndead(
   }
   const dc = classSaveDc(sheet, kind.ability ?? "wis");
   const destroyAt = kind.destroy ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
+  // The same ladder of challenge ratings bounds Arcane Abjuration's banishment.
+  const banishAt = kind.banish ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
   // Nothing across a swallower's wall sees or hears the cleric (swallow.ts).
   const named = kind.single && kind.target ? resolveTargetFoe(campaign.id, encounter, kind.target) : null;
   if (kind.single && !named) {
@@ -372,6 +393,10 @@ function turnUndead(
       (!named || enemy.id === named.id) &&
       kind.types.test(String(enemy.stats.type ?? "")) &&
       within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET) &&
+      // "That can see or hear you" (SRD 5.1, Turn Undead; Arcane Abjuration):
+      // a creature both deafened and unable to see the cleric is left out
+      // (mt-srd-reach.ts seesOrHears, which every turning asks).
+      seesOrHears(encounter.id, enemy, sheet) &&
       !swallowCoverBetween(sheet.id, enemy.id),
   );
   if (!undead.length) {
@@ -391,13 +416,22 @@ function turnUndead(
       continue;
     }
     // Turned: a legendary creature spends a resistance to stand its ground.
-    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage), ...(kind.beyond ? { magical: true, against: TURNED, record: { detail: `${enemy.displayName}: WIS save against ${kind.name}` } } : {}) });
+    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { channel: true, resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage), ...(kind.beyond ? { magical: true, against: TURNED, record: { detail: `${enemy.displayName}: WIS save against ${kind.name}` } } : {}) });
     const lean = [defence.advantage ? `advantage from ${defence.advantage}` : "", defence.disadvantage ? `disadvantage from ${defence.disadvantage}` : ""].filter(Boolean).join(", ");
     if (save.success) {
       outcomes.push(`${enemy.displayName} resists (WIS ${save.total ?? "failed outright"} vs DC ${dc}${lean ? `, ${lean}` : ""})${save.legendaryResistance ? " with Legendary Resistance" : ""}.`);
       continue;
     }
     const cr = Number(enemy.stats.cr ?? enemy.cr ?? 99);
+    if (banishAt !== null && cr <= banishAt) {
+      const standing = resolveTargetFoe(campaign.id, encounter, enemy.id) ?? enemy;
+      patchEnemyConditions(enemy.id, [...standing.conditions.filter((entry) => entry !== "banished"), "banished"], {
+        ...(standing.conditionMeta as ConditionMetaMap),
+        banished: { rounds: 10, source: sheet.id },
+      });
+      outcomes.push(`${enemy.displayName} is banished for a minute (WIS ${save.total ?? "failed"} vs DC ${dc}; CR ${cr} at or under ${banishAt}).`);
+      continue;
+    }
     if (destroyAt !== null && cr <= destroyAt && turn) {
       applyEnemyDamage(campaign, turn, encounter, enemy, Math.max(1, enemy.currentHp), sheets, byId, undefined, {
         magical: true,
@@ -502,9 +536,9 @@ function sacredWeapon(sheet: CharacterSheet): Resolution {
   return {
     patch: {
       conditions: [...held, condition],
-      conditionMeta: { ...sheet.conditionMeta, [condition]: { rounds: 10 } },
+      conditionMeta: { ...sheet.conditionMeta, [condition]: sacredWeaponMeta(sheet, 10) },
     },
-    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light.` },
+    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light for 20 feet and dim light 20 feet beyond.` },
   };
 }
 
@@ -522,7 +556,8 @@ function preserveLife(
   const party = fieldedSheets(campaign, listSheets(campaign.id))
     .map((entry) => getSheetById(entry.id) ?? entry)
     // One Chill Touch grips, or one suffocating, regains nothing (regain.ts).
-    .filter((entry) => canRegain(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
+    // "You can't use this feature on an undead or a construct" (mt-srd-reach.ts).
+    .filter((entry) => canRegain(entry) && !undeadOrConstruct(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
   const room = (entry: CharacterSheet) =>
     Math.max(0, Math.floor(effectiveMaxHp(entry) / 2) - entry.currentHp);
   const ordered = [

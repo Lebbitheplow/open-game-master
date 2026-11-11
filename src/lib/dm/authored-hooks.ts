@@ -21,6 +21,8 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { defenderDodging } from "@/lib/dm/defender-dodge";
+import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -44,15 +46,17 @@ import type { Advantage } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
+import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
+import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
+import { noteCurseHeal } from "@/lib/dm/master-of-hexes";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -152,16 +156,39 @@ export function authoredIncomingAttack(input: {
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
   }
+  // Lunar Empowerment's New Moon: entirely in darkness (ar-ws-lunar-empowerment.ts).
+  const veil = darkVeil(input.campaignId, input.encounterId, target);
+  if (veil) {
+    sources.push("disadvantage");
+    notes.push(veil);
+  }
   for (const name of GUARD_MARKS) {
     const condition = attacker.conditions.find((entry) => textKey(entry) === name);
     const meta = condition ? metaOf(attacker, condition) : undefined;
-    if (condition && meta?.source && meta.source !== target.id) {
+    // A mark that binds only near its marker (Unwavering Mark: "while it is
+    // within 5 feet of you") lets go of a creature that has stepped away.
+    const reach = (meta as { withinFeet?: number } | undefined)?.withinFeet;
+    const bound = !reach || !meta?.source || withinFeet(input.encounterId, meta.source, attacker.id, reach);
+    if (condition && meta?.source && meta.source !== target.id && bound) {
       sources.push("disadvantage");
       notes.push(`${condition}: it attacks anyone but its marker at disadvantage`);
       if ((meta as { halve?: boolean }).halve) {
         halve = condition;
       }
     }
+  }
+  // The steel defender takes the Dodge action unless commanded (defender-dodge.ts).
+  const dodging = defenderDodging(target);
+  if (dodging) {
+    sources.push("disadvantage");
+    notes.push(dodging);
+  }
+  // Perfected Armor (Infiltrator): the glowing creature "has disadvantage on
+  // attack rolls against you", the armorer whose launcher lit it.
+  const lit = attacker.conditions.find((entry) => textKey(entry) === "lit by perfected armor");
+  if (lit && metaOf(attacker, lit)?.source === target.id) {
+    sources.push("disadvantage");
+    notes.push(`${lit}: it attacks ${target.name} at disadvantage`);
   }
   // Totemic Attunement (Bear): a creature within 5 feet of the raging
   // barbarian attacks anyone else at disadvantage.
@@ -188,7 +215,8 @@ export function authoredIncomingAttack(input: {
 // character's features send back.
 export function authoredAfterHit(
   campaign: Campaign,
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; ranged?: boolean },
+  // `taken`: what the character took of it past their defenses.
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
@@ -225,7 +253,7 @@ export function authoredAfterHit(
     }
     const amount =
       effect.formula === "half_dealt"
-        ? Math.floor(input.dealt / 2)
+        ? Math.floor((input.taken ?? input.dealt) / 2)
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
       lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
@@ -267,6 +295,12 @@ export function authoredAttackSituation(input: {
       applies = Boolean(condition && metaOf(enemy, condition)?.source === sheet.id);
     } else if (effect.vs === "types") {
       applies = (effect.types ?? []).some((kind) => type.includes(kind));
+    } else if (effect.vs === "beside_illusion") {
+      // Invoke Duplicity: "if you and your illusion are both within 5 feet of
+      // a creature that can see the illusion". The double has no token: it is
+      // placed beside the creature the cleric fights, so the cleric within 5
+      // feet of one that is not blinded is the whole test.
+      applies = withinFeet(encounter.id, sheet.id, enemy.id, 5) && !enemy.conditions.some((entry) => isConditionNamed(entry, "blinded"));
     }
     if (applies) {
       sources.push("advantage");
@@ -282,6 +316,12 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Entropic Ward: advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
+  }
+  // The Hawk spirit's reaction: this attack roll, against the creature named.
+  if (edgeQuarry(sheet, HAWK_EDGE) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Spirit Totem (Hawk): advantage, spent by this attack");
+    spent.push(sheet.conditions.find((entry) => textKey(entry) === HAWK_EDGE)!);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
@@ -313,7 +353,8 @@ export function authoredOnHit(
   campaign: Campaign,
   // `melee` unknown (a parked roll): read off the board. `weapon` false for
   // a spell attack, which lays no mark.
-  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean },
+  // `spell`: the spell a spell attack killed with (ar-ws-harvest.ts killingSpell).
+  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean; spell?: { level: number; school?: string | null } },
 ): string[] {
   const lines: string[] = [];
   const sheet = getSheetById(input.sheet.id) ?? input.sheet;
@@ -350,21 +391,29 @@ export function authoredOnHit(
     }
     if (input.weapon !== false) {
       const melee = input.melee ?? withinFeet(encounter.id, sheet.id, enemy.id, 5);
-      lines.push(...markEnemy(encounter, sheet, enemy, melee));
+      lines.push(...markEnemy(encounter, sheet, enemy, melee, input.weaponName));
+    }
+    // Form of Dread's fright on a hit (src/lib/dm/hit-save.ts).
+    if (!input.dead) {
+      lines.push(...hitSavesOnHit(campaign, encounter, sheet, enemy));
     }
   }
   if (input.dead) {
-    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false));
+    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false, input.spell));
   }
   return lines;
 }
 
 // The marks this character's hit lays on the creature it hit, once a turn
 // where the feature says so.
-function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean): string[] {
+function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: EncounterEnemy, melee: boolean, weaponName?: string): string[] {
   const lines: string[] = [];
   for (const { effect, held } of activeAuthored(sheet, "mark")) {
     if (effect.melee && !melee) {
+      continue;
+    }
+    // A mark of one weapon (the thunder gauntlets) is laid by that weapon alone.
+    if (effect.weapon && textKey(effect.weapon) !== textKey(weaponName ?? "")) {
       continue;
     }
     if (effect.firstRoundOnly && encounter.round > 1) {
@@ -392,8 +441,12 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
       [effect.condition]: {
         source: sheet.id,
         stamp,
-        ...(effect.effect === "save_disadv" ? { untilTurnEndOf: sheet.id } : { untilTurnOf: sheet.id }),
+        ...(effect.effect === "save_disadv" || effect.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { untilTurnOf: sheet.id }),
+        ...(effect.rangeFt ? { withinFeet: effect.rangeFt } : {}),
         ...(effect.halve ? { halve: true } : {}),
+        // A mark a rage lays ends with the rage, not only at the next turn
+        // (Ancestral Protectors: "or until your rage ends", rage-bound.ts).
+        ...(effect.gate?.raging ? { whileRagingOf: sheet.id } : {}),
         ...(effect.dice ? { dice: effect.dice, type: effect.damageType ?? "" } : {}),
       },
     };
@@ -488,6 +541,8 @@ export function authoredOnKill(
       const cleared = removeConditions(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, [condition]);
       patchSheet(holder.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
       publishSheet(campaign, holder.id);
+      // Master of Hexes may move the curse and give these back (master-of-hexes.ts).
+      noteCurseHeal(campaign, holder.id, given, enemy.id);
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }

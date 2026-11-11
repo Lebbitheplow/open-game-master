@@ -8,6 +8,7 @@
 // (src/lib/dm/last-hit.ts): same round and turn, by that creature, and not
 // answered by Giant Killer already.
 
+import { unseenBecause } from "@/lib/dm/authored-saves";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
@@ -42,12 +43,18 @@ export function giantKillerOpen(
     return false;
   }
   const apart = tilesBetween(encounterId, sheet.id, enemy.id);
-  return apart === null || apart <= 1;
+  if (apart !== null && apart > 1) {
+    return false;
+  }
+  // "provided that you can see the creature": the attack gave a hidden
+  // creature away, so only blindness, invisibility and the board's line of
+  // sight are asked.
+  return unseenBecause(encounterId, sheet, enemy, { hidden: false }) === null;
 }
 
 // The attack it allowed has been made: the record is answered.
 export function spendGiantKiller(campaignId: string, sheetId: string, enemyId?: string) {
-  const record = freshLastHit(campaignId, sheetId, (hit) => !enemyId || hit.attacker.id === enemyId);
+  const record = freshLastHit(campaignId, sheetId, (hit) => hit.source !== "effect" && (!enemyId || hit.attacker.id === enemyId));
   if (record && !record.answered.includes(GIANT_KILLER)) {
     writeLastHit(campaignId, { ...record, answered: [...record.answered, GIANT_KILLER] });
   }

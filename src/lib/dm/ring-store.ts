@@ -15,6 +15,8 @@ import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import "@/lib/db/item-cast-credits";
 import { recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
 import { rowName } from "@/lib/srd/item-row";
+import { beadStoreRefusal, putInBead } from "@/lib/dm/ar-ws-bead-store";
+import { isBead, isBeadSlot } from "@/lib/srd/ar-ws-conjured";
 import {
   isSpellStorer,
   SPELL_STORE_LEVELS,
@@ -63,6 +65,10 @@ function splitStack(equipment: readonly EquipmentItem[], ring: EquipmentItem): {
 // Why this spell at this level cannot go in the ring as it stands, or null. A
 // ring that has gone, or filled up since a casting began, is asked the same.
 export function storeRefusal(holderId: string, ringName: string, spell: string, level: number): ToolError | null {
+  // A new Arcane Abeyance bead, not a ring on the pack (ar-ws-bead-store.ts).
+  if (isBeadSlot(ringName)) {
+    return beadStoreRefusal(holderId, spell, level);
+  }
   const holder = getSheetById(holderId);
   const ring = holder ? storerNamed(holder, ringName) : null;
   if (!ring) {
@@ -90,6 +96,10 @@ export function casterNumbers(caster: CharacterSheet, spell: string): Pick<Store
 // Puts a spell in the ring, asked first with storeRefusal. Reads the sheet
 // again: the caster's own cast may have just written this same one.
 export function putInRing(campaign: Campaign, turnId: string | null, holderId: string, ringName: string, entry: StoredSpell) {
+  if (isBeadSlot(ringName)) {
+    putInBead(campaign, turnId, holderId, entry);
+    return;
+  }
   const holder = getSheetById(holderId);
   const ring = holder ? storerNamed(holder, ringName) : null;
   if (holder && ring) {
@@ -104,7 +114,13 @@ export function takeFromRing(campaign: Campaign, turnId: string | null, sheetId:
   const ring = sheet ? storerNamed(sheet, ringName) : null;
   const entry = ring ? storedSpellNamed(ring, spell) : null;
   if (sheet && ring && entry) {
-    writeCharges(campaign.id, sheet, withStored(sheet.equipment, ring, storedSpellsOf(ring).filter((other) => other !== entry)), "use_item", `${entry.spell} cast from ${ring.name}`, turnId);
+    // A bead is broken to cast its spell: the row goes with it. A
+    // Spell-Storing Item keeps its spell until its last casting.
+    const counted = typeof entry.uses === "number" && entry.uses > 1;
+    const equipment = isBead(ring)
+      ? sheet.equipment.filter((item) => item !== ring)
+      : withStored(sheet.equipment, ring, counted ? storedSpellsOf(ring).map((other) => (other === entry ? { ...other, uses: (entry.uses ?? 1) - 1 } : other)) : storedSpellsOf(ring).filter((other) => other !== entry));
+    writeCharges(campaign.id, sheet, equipment, "use_item", `${entry.spell} cast from ${ring.name}`, turnId);
   }
 }
 

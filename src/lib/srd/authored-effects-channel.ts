@@ -70,7 +70,10 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
           untilNextTurnEnds: true,
           endsOnDamage: true,
           chosen: true,
-          onFail: "can be made to drop what it is holding",
+          // "That can see or hear you", and "you can make any of them drop
+          // what they are holding": the cleric's choice, taken by default.
+          seesOrHears: true,
+          mark: "disarmed",
         },
       },
     ],
@@ -95,7 +98,14 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
   "paladin::Channel Divinity: Peerless Athlete": {
     subclass: "Oath of Glory",
     spends: [{ name: "Peerless Athlete", pool: POOL, action: "bonus", does: { kind: "buff", condition: "peerless athlete", rounds: 100 } }],
-    effects: [{ kind: "check_adv", skills: ["athletics", "acrobatics"], gate: { condition: "peerless athlete" } }],
+    // TCoE: advantage on Athletics and Acrobatics, "carry, push, drag, and
+    // lift twice as much weight as normal", and long and high jumps 10 feet
+    // farther, while the mark lasts.
+    effects: [
+      { kind: "check_adv", skills: ["athletics", "acrobatics"], gate: { condition: "peerless athlete" } },
+      { kind: "carry_factor", factor: 2, gate: { condition: "peerless athlete" } },
+      { kind: "jump_feet", feet: 10, gate: { condition: "peerless athlete" } },
+    ],
   },
   "paladin::Channel Divinity: Watcher's Will": {
     subclass: "Oath of the Watchers",
@@ -134,7 +144,7 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         // SCAG: each creature of the paladin's choice that can hear them within
         // 30 feet, with no more than half its hit points, regains 1d6 + CHA (at
         // least 1).
-        does: { kind: "heal_area", formula: (_level, mods) => plus("1d6", mods.cha), rangeFt: 30, belowHalf: true, hears: true },
+        does: { kind: "heal_area", formula: (_level, mods) => plus("1d6", mods.cha), rangeFt: 30, belowHalf: true, hears: true, chosen: true },
       },
     ],
   },

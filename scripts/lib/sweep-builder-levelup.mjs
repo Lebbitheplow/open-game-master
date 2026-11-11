@@ -46,6 +46,8 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
   const campaigns = await src("lib/db/campaigns.ts");
   const { companionImprovements } = await src("lib/srd/companion-build.ts");
   const { abilityPriority } = await src("app/characters/builder/classAbilities.ts");
+  const { SRD_WEAPONS } = await src("lib/srd/weapons.ts");
+  const WEAPON_KIND = new Map(SRD_WEAPONS.map((weapon) => [key(weapon.name), weapon.kind]));
   const ALL_SKILLS = SRD_SKILLS.map((skill) => skill.id);
   const LANGUAGES = ["Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Orc", "Draconic", "Celestial", "Infernal", "Sylvan", "Undercommon", "Abyssal", "Primordial", "Deep Speech"];
   const TOOLS = ["smith's tools", "herbalism kit", "cook's utensils", "tinker's tools", "disguise kit", "lute", "flute", "dice set", "navigator's tools", "poisoner's kit"];
@@ -116,7 +118,13 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
     take("skills", spec.skills + shared("skills"), spec.skillsFrom.length ? spec.skillsFrom : ALL_SKILLS, held.skills);
     take("languages", spec.languages + shared("languages"), LANGUAGES, held.languages);
     take("tools", spec.tools + shared("tools"), spec.toolsFrom.length ? spec.toolsFrom : TOOLS, held.tools);
-    take("weapons", spec.weapons + shared("weapons"), spec.weaponsFrom.length ? spec.weaponsFrom : ["Longsword", "Rapier", "Longbow"], held.weapons);
+    // Picks that must cover kinds (Path of the Kensei: "one melee and one
+    // ranged weapon", src/lib/srd/feat-grants.ts): the first weapon of each
+    // kind the character does not hold yet goes first, so the picks are one
+    // of each.
+    const offered = (spec.weaponsFrom.length ? spec.weaponsFrom : ["Longsword", "Rapier", "Longbow"]).filter((entry) => !held.weapons.has(key(entry)));
+    const firstOf = (kinds) => (kinds ?? []).map((kind) => offered.find((entry) => WEAPON_KIND.get(key(entry)) === kind)).filter(Boolean);
+    take("weapons", spec.weapons + shared("weapons"), [...new Set([...firstOf(spec.weaponKinds), ...offered])], held.weapons);
     take("expertise", spec.expertise, [...held.skills], new Set());
     return picks;
   }

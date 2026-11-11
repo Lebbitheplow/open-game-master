@@ -213,7 +213,7 @@ async function budgetRow(id, fn) {
 
 // The compact windows the docs promise (src/lib/story-window.ts,
 // docs/text-backends.md): "24K (-c 24576): narration, exploration and checks
-// on the compact tool set, for a party of four", and 32K for fights. One first call per table of
+// on the compact tool set, for a party of four", and 40K for fights (-c 40960). One first call per table of
 // the matrix, at the window its moment is promised.
 const { MIN_NARRATION_WINDOW, MIN_COMBAT_WINDOW, windowFlag, windowLabel } = await import("../src/lib/story-window.ts");
 const REPLY_FLOOR = 1_024;

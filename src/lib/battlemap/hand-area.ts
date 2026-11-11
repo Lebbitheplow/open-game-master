@@ -42,6 +42,9 @@ export type HandArea = {
   // nothing stays on the ground, and the creatures on its squares are the
   // ones it catches. Absent for a lasting area.
   blast?: AreaShape;
+  // The square a move goes to, not an area (Mantle of Inspiration's stride,
+  // hand-feature-doors.ts): one square, sent as the tool's x and y.
+  move?: true;
 };
 
 export type AreaPick = { at?: XY; toward?: XY };
@@ -178,6 +181,7 @@ export function describePick(area: HandArea, pick: AreaPick): string {
       ? `from ${square(pick.at)} toward ${square(pick.toward)}`
       : `from ${square(pick.at)}`;
   }
+  if (area.move) return pick.at ? `to ${square(pick.at)}` : "";
   return pick.at ? `centred on ${square(pick.at)}` : "";
 }
 
@@ -199,6 +203,7 @@ export function pickHint(area: HandArea, pick: AreaPick): string {
           ? "Tap again to start the wall over."
           : "Tap where it runs toward, or leave it across your view.";
     case "point":
+      if (area.move) return pick.at ? "Tap another square to go there instead." : "Tap the square to move to.";
       return pick.at ? "Tap another square to move it." : "Tap the board where it is centred.";
   }
 }

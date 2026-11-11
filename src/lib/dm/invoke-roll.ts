@@ -11,9 +11,11 @@
 // after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
+import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
+import { takeFate } from "@/lib/dm/fate-turn";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
@@ -279,13 +281,17 @@ export function handleRequestRoll(
         noteShift(campaignId, `${by} used Chronal Shift: ${sheet.name} rolled the ${args.kind.replaceAll("_", " ")} again (${first} became ${outcome.total}), and the new roll stands.`);
       }
     }
+    // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
+    if (sheet && typeof args.dc === "number" && canWaitOnRoll(args.kind)) {
+      outcome = takeFate(campaignId, purpose, sheet.name, outcome, args.dc)?.outcome ?? outcome;
+    }
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, or a wizard beside them could make them
     // roll it again, and the model waits with them.
     const options = canWait && sheet && fresh
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
-          ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id) }),
+          ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id), check: { skill: args.kind === "skill_check" ? resolved.detail : null, tool: args.tool } }),
           ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
         ]
       : [];
@@ -302,6 +308,9 @@ export function handleRequestRoll(
         advantage: args.advantage ?? "none",
         dc: args.dc ?? null,
         reason: args.reason?.slice(0, 200) ?? "",
+        // The tool a check is made with, for the offers that read it again
+        // as the roll changes (after-roll.ts optionsForPending).
+        ...(args.tool ? { carry: { tool: args.tool } } : {}),
         parkedFor: "after_roll",
         thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaignId, sheet.userId) },
       });
@@ -360,6 +369,11 @@ export function handleRequestRoll(
             args.damageType,
           )
         : null;
+    // A save asked of a player in a fight goes on record with the foe whose
+    // turn it is (last-save.ts): Vigilant Rebuke answers it as it does a forced save.
+    if (args.kind === "saving_throw" && sheet && args.dc !== undefined) {
+      recordRequestedSave(campaignId, sheet.id, args.ability, roll.total >= args.dc);
+    }
     return {
       ok: true,
       total: roll.total,

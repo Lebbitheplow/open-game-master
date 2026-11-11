@@ -40,8 +40,18 @@ import type {
 } from "@/lib/srd/authored-effects-types";
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
+import { AUTHORED_DATA_W2_DIVINE } from "@/lib/srd/authored-effects-w2-divine";
+import { AUTHORED_DATA_W2_DIVINE_CLR } from "@/lib/srd/authored-effects-w2-divine-clr";
+import { AUTHORED_DATA_W2_DIVINE_DRA } from "@/lib/srd/authored-effects-w2-divine-dra";
+import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divine-rng";
+import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
+import { AUTHORED_DATA_W2_MT_MR } from "@/lib/srd/authored-effects-w2-mt-mr";
+import { AUTHORED_DATA_W2_MT_FB } from "@/lib/srd/authored-effects-w2-mt-fb";
+import { AUTHORED_DATA_W2_ARCANE } from "@/lib/srd/authored-effects-w2-arcane";
+import { AUTHORED_DATA_W2_AR_WS } from "@/lib/srd/authored-effects-w2-ar-ws";
+import { AUTHORED_DATA_W2_AR_WS_SORCERER } from "@/lib/srd/authored-effects-w2-ar-ws-sorcerer";
 import { textKey } from "@/lib/language/text-logic";
-import { choiceIn } from "@/lib/srd/feature-names";
+import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 
@@ -55,6 +65,16 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_C,
   ...AUTHORED_DATA_CHANNEL,
   ...AUTHORED_DATA_COUNTERS,
+  ...AUTHORED_DATA_W2_DIVINE,
+  ...AUTHORED_DATA_W2_DIVINE_CLR,
+  ...AUTHORED_DATA_W2_DIVINE_DRA,
+  ...AUTHORED_DATA_W2_DIVINE_RNG,
+  ...AUTHORED_DATA_W2_MARTIAL,
+  ...AUTHORED_DATA_W2_MT_MR,
+  ...AUTHORED_DATA_W2_MT_FB,
+  ...AUTHORED_DATA_W2_ARCANE,
+  ...AUTHORED_DATA_W2_AR_WS,
+  ...AUTHORED_DATA_W2_AR_WS_SORCERER,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -73,6 +93,8 @@ export const DAMAGE_TYPES = [
 // What the readers need of a character. Every field is optional so a test
 // double, the builder's preview and a full sheet all answer.
 export type AuthoredSheet = {
+  // The creatures bound to the holder (a pet gate reads them).
+  pets?: Array<{ kind: string; hp: number }>;
   class?: string;
   level?: number;
   classes?: Array<{ id: string; level: number; subclass?: string }>;
@@ -99,6 +121,9 @@ function classLevel(sheet: AuthoredSheet, classId: string): number {
 // carries that name, so a name two classes mean differently is never guessed.
 const BY_NAME = new Map<string, Row[]>();
 for (const row of BY_KEY.values()) {
+  // A row that is its own class's alone lends itself to nobody: the
+  // Bladesinger's Extra Attack gave every class's Extra Attack its cantrip.
+  if (row.entry.ownClassOnly) continue;
   const name = textKey(row.feature);
   BY_NAME.set(name, [...(BY_NAME.get(name) ?? []), row]);
 }
@@ -180,12 +205,14 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
 
 const GENRE_BY_NAME = new Map(GENRE_AUTHORED.map((row) => [textKey(row.feature), row]));
 
+// The condition by its whole name, with a bracket note ("spirit totem
+// (bear)") or as the family of a "Family: Choice" name ("starry form:
+// archer"). textKey drops the bracket and the colon, so the prefixes this once
+// compared after it ("starry form (", "starry form:") never matched, and every
+// gate on a family (Full of Stars on any Starry Form) stayed shut.
 export function hasCondition(sheet: AuthoredSheet, name: string): boolean {
   const wanted = textKey(name);
-  return (sheet.conditions ?? []).some((entry) => {
-    const held = textKey(entry);
-    return held === wanted || held.startsWith(`${wanted} (`) || held.startsWith(`${wanted}:`);
-  });
+  return (sheet.conditions ?? []).some((entry) => textKey(entry) === wanted || isConditionNamed(entry, name) || choiceIn(entry, name) !== null);
 }
 
 // Heavy armor on the body, read the way the armor engine reads "worn"
@@ -232,10 +259,16 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.notCondition && hasCondition(sheet, gate.notCondition)) {
     return false;
   }
+  if (gate.conditions?.some((condition) => !hasCondition(sheet, condition))) {
+    return false;
+  }
   if (gate.choice && textKey(held.choice ?? "") !== textKey(gate.choice)) {
     return false;
   }
   if (gate.level && held.level < gate.level) {
+    return false;
+  }
+  if (gate.pet && !(sheet.pets ?? []).some((pet) => pet.kind === gate.pet && pet.hp > 0)) {
     return false;
   }
   if (gate.choiceOf) {
@@ -295,10 +328,12 @@ export function activeAuthored<K extends AuthoredEffectKind>(
 
 // `except`: features set aside for this blow (Emissary of Redemption against
 // a creature the paladin attacked).
-export function authoredResistances(sheet: AuthoredSheet, options: { magical?: boolean; spell?: boolean; except?: string[] } = {}): string[] {
+// `noCreature`: the blow has no creature behind it (a fall, a trap, the GM's
+// apply_damage), which a `fromCreatures` resistance does not meet.
+export function authoredResistances(sheet: AuthoredSheet, options: { magical?: boolean; spell?: boolean; except?: string[]; noCreature?: boolean } = {}): string[] {
   const out: string[] = [];
   for (const { effect, held } of activeAuthored(sheet, "resist")) {
-    if (options.except?.includes(held.feature)) {
+    if (options.except?.includes(held.feature) || (effect.fromCreatures && options.noCreature)) {
       continue;
     }
     if (effect.spells && !options.spell) {
@@ -352,7 +387,20 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
 }
 
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
-  return [...new Set(activeAuthored(sheet, "save_prof").flatMap(({ effect }) => effect.abilities))];
+  // The saves the sheet itself records, where the caller's sheet carries them.
+  const own = new Set(((sheet as { proficiencies?: { saves?: string[] } }).proficiencies?.saves ?? []).map((save) => textKey(save)));
+  return [
+    ...new Set(
+      activeAuthored(sheet, "save_prof").flatMap(({ effect, held }) => {
+        // Already proficient in what the feature gives: the other save its
+        // option names is gained instead (Elegant Courtier).
+        if (!effect.elseOneOf || !effect.abilities.every((ability) => own.has(ability))) {
+          return effect.abilities;
+        }
+        return effect.elseOneOf.filter((ability) => textKey(held.choice ?? "").startsWith(ability)).slice(0, 1);
+      }),
+    ),
+  ];
 }
 
 // What the authored features add to one save's modifier: a flat bonus to
@@ -361,7 +409,9 @@ export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
 export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
   let total = 0;
   for (const { effect } of activeAuthored(sheet, "save_bonus")) {
-    total += effect.amount;
+    if (!effect.abilities || effect.abilities.includes(ability)) {
+      total += effect.amount;
+    }
   }
   for (const { effect } of activeAuthored(sheet, "save_swap")) {
     if (effect.save === ability) {
@@ -369,6 +419,53 @@ export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mod
     }
   }
   return total;
+}
+
+// What a swapped ability adds to a check of `ability` (a skill's or a raw
+// one): the other ability's modifier where it is higher, for a swap that
+// covers checks. computeSheetDerived adds it to the skills of that ability,
+// and request_roll to an ability check with no skill (src/lib/dm/rolls.ts).
+// A save bonus that covers checks of `ability` is added here too (Frost Rune).
+export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
+  let best = 0;
+  for (const { effect } of activeAuthored(sheet, "save_swap")) {
+    if (effect.checks && effect.save === ability) {
+      best = Math.max(best, (mods[effect.use] ?? 0) - (mods[effect.save] ?? 0));
+    }
+  }
+  let flat = 0;
+  for (const { effect } of activeAuthored(sheet, "save_bonus")) {
+    if (effect.checks && effect.abilities?.includes(ability)) {
+      flat += effect.amount;
+    }
+  }
+  return best + flat;
+}
+
+// ---- the road and the dark ----
+
+// The feature that spares the holder's Perception in dim light, or null.
+export function authoredDimSight(sheet: AuthoredSheet): string | null {
+  return activeAuthored(sheet, "dim_sight")[0]?.held.feature ?? null;
+}
+
+// What a travelling party's pace is multiplied by: 2 when one of them holds
+// a doubling (Elk) and the party is no larger than the holder and the
+// companions it carries along, else 1.
+export function authoredPaceFactor(travellers: readonly AuthoredSheet[]): number {
+  for (const sheet of travellers) {
+    for (const { effect } of activeAuthored(sheet, "travel")) {
+      if (effect.doubles && travellers.length <= effect.doubles.companions + 1) {
+        return 2;
+      }
+    }
+  }
+  return 1;
+}
+
+// Whether the holder moves stealthily at a normal pace (Wolf).
+export function authoredStealthAtNormal(sheet: AuthoredSheet): boolean {
+  return activeAuthored(sheet, "travel").some(({ effect }) => effect.stealthAt === "normal");
 }
 
 // ---- AC, speed, movement ----
@@ -383,13 +480,13 @@ export function authoredAcBonus(sheet: AuthoredSheet): { bonus: number; parts: s
   return { bonus, parts };
 }
 
-export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number } {
-  const out: { fly?: number; swim?: number } = {};
+export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: number; swim?: number; climb?: number } {
+  const out: { fly?: number; swim?: number; climb?: number } = {};
   for (const { effect } of activeAuthored(sheet, "move")) {
-    for (const mode of ["fly", "swim"] as const) {
+    for (const mode of ["fly", "swim", "climb"] as const) {
       const value = effect[mode];
       if (value !== undefined) {
-        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value);
+        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value === "double_walk" ? 2 * walking : value);
       }
     }
   }

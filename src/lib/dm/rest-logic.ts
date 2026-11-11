@@ -4,10 +4,14 @@ import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions }
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
 import { TENDED } from "@/lib/dm/stabilize";
+import { RALLIED } from "@/lib/dm/ar-wbf-feat-rally";
+import { sessionForgotten } from "@/lib/dm/ar-wbf-bard-session-logic";
 import { refillResources } from "@/lib/srd/resource-refills";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isMulticlass, slotTableFor } from "@/lib/srd/multiclass";
 import { settlePreparation } from "@/lib/srd/spell-prep";
+import { restVanished } from "@/lib/srd/ar-ws-spellbook";
+import { withoutConjuredAtLongRest } from "@/lib/srd/ar-ws-conjured";
 import { attunementProblem } from "@/lib/srd/magic-items";
 import type { CharacterSheet, FullPatchSheetInput, HitDicePool } from "@/lib/schemas/sheet";
 
@@ -38,6 +42,23 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
 // 24 hours) is the caller's to decide (rest-tools.ts).
 // `keepExhaustion`: a character going without food or water under the
 // supplies variant sleeps without losing a level (src/lib/dm/supplies.ts).
+// The marks that last "until it finishes a rest", short or long: a Healer's
+// kit may tend a creature again (stabilize.ts), and an Inspiring Leader rally
+// it again (ar-wbf-feat-rally.ts). Both rest patches call this; the short
+// rest once cleared neither, so a kit never tended twice in a day of short
+// rests. Empty when the sheet carries no such mark.
+const REST_MARKS = [TENDED, RALLIED];
+function restMarksCleared(
+  conditions: string[],
+  meta: CharacterSheet["conditionMeta"],
+): Pick<FullPatchSheetInput, "conditions" | "conditionMeta"> {
+  if (!conditions.some((condition) => REST_MARKS.includes(condition.toLowerCase()))) {
+    return {};
+  }
+  const cleared = removeConditions(conditions, meta, REST_MARKS);
+  return { conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
 export function longRestPatch(
   sheet: CharacterSheet,
   options: { keepExhaustion?: boolean } = {},
@@ -81,6 +102,12 @@ export function longRestPatch(
       spent: Math.max(0, sheet.hitDice.spent - recovered),
     };
   }
+  // A Master Scrivener's scroll "vanishes ... when you finish a long rest",
+  // and no Arcane Abeyance bead outlasts the night (src/lib/srd/ar-ws-conjured.ts).
+  const lasting = withoutConjuredAtLongRest(sheet.equipment);
+  if (lasting) {
+    patch.equipment = lasting;
+  }
   // Bound creatures rest with their owner: a night restores a downed
   // companion or drake to full (a vanished familiar is already gone).
   if ((sheet.pets ?? []).some((pet) => pet.hp < pet.maxHp)) {
@@ -113,7 +140,9 @@ export function longRestPatch(
     // The night is also when a prepared caster's new choices take hold:
     // spells waiting in `pending` become prepared (spell-prep.ts).
     patch.spellcasting = {
-      ...settlePreparation(sheet.spellcasting),
+      // One with the Word: a spell gone from the book waits one rest fewer,
+      // and comes back after its last (src/lib/srd/ar-ws-spellbook.ts).
+      ...restVanished(settlePreparation(sheet.spellcasting)),
       slots: Object.fromEntries(rested.filter(([, slot]) => slot.max > 0)),
       // Pact Magic comes back with the night too.
       ...(sheet.spellcasting.pact
@@ -130,15 +159,7 @@ export function longRestPatch(
       patch.conditionMeta = pruneMeta(patch.conditions, sheet.conditionMeta);
     }
   }
-  // A Healer's kit may tend a creature again after a rest (stabilize.ts).
-  {
-    const tendedBefore = patch.conditions ?? sheet.conditions;
-    if (tendedBefore.some((condition) => condition.toLowerCase() === TENDED)) {
-      const cleared = removeConditions(tendedBefore, patch.conditionMeta ?? sheet.conditionMeta, [TENDED]);
-      patch.conditions = cleared.conditions;
-      patch.conditionMeta = cleared.meta;
-    }
-  }
+  Object.assign(patch, restMarksCleared(patch.conditions ?? sheet.conditions, patch.conditionMeta ?? sheet.conditionMeta));
   // A rage never survives the night, whatever its remaining rounds said.
   const conditions = patch.conditions ?? sheet.conditions;
   if (conditions.some((condition) => condition.toLowerCase() === RAGING)) {
@@ -148,6 +169,8 @@ export function longRestPatch(
     patch.conditions = cleared.conditions;
     patch.conditionMeta = cleared.meta;
   }
+  // A Spirit Session's spell goes with the long rest (ar-wbf-bard-session-logic.ts).
+  Object.assign(patch, sessionForgotten(sheet, patch));
   // What lasts "until the target finishes a long rest" ends with it: a
   // wight's Life Drain, a succubus's kiss (condition-logic.ts untilLongRest).
   {
@@ -155,7 +178,7 @@ export function longRestPatch(
     let restedMeta = patch.conditionMeta ?? sheet.conditionMeta;
     let changed = false;
     for (const name of restedConditions) {
-      const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilLongRest === true);
+      const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilLongRest === true || instance.untilRestEnds === true);
       if (result.removed) {
         changed = true;
         restedConditions = result.conditions;
@@ -228,6 +251,19 @@ export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInp
   if (changed) {
     patch.resources = next;
   }
+  // What lasts "until the rest ends" (Hearth of Moonlight and Shadow) ends
+  // with a short rest as with a long one: it outlasted the rest before.
+  let restedConditions = sheet.conditions;
+  let restedMeta = sheet.conditionMeta;
+  for (const name of sheet.conditions) {
+    const result = removeConditionInstances(restedConditions, restedMeta, name, (instance) => instance.untilRestEnds === true);
+    if (result.removed) {
+      restedConditions = result.conditions;
+      restedMeta = result.meta;
+      patch.conditions = restedConditions;
+      patch.conditionMeta = restedMeta;
+    }
+  }
   if (sheet.spellcasting?.pact && sheet.spellcasting.pact.used > 0) {
     // Multiclass warlock: the pact slots refill, the shared pool does not.
     patch.spellcasting = {
@@ -248,6 +284,7 @@ export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInp
       patch.spellcasting = { ...sheet.spellcasting, slots };
     }
   }
+  Object.assign(patch, restMarksCleared(sheet.conditions, sheet.conditionMeta));
   return Object.keys(patch).length ? patch : null;
 }
 

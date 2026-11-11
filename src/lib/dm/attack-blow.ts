@@ -5,6 +5,8 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { ballistaPush } from "@/lib/dm/cannon-board-dra";
+import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -14,15 +16,19 @@ import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { hurlThroughHell, HURL_THROUGH_HELL, openHandOnHit, poisonOnHit, spendFeatureUse } from "@/lib/dm/attack-onhit";
 import type { AttackRecord, DamageAsk } from "@/lib/dm/attack-record";
 import { attackStage, attackTurn, emitAttackFx, finishSwing, markAttackTurn, type SwingScene } from "@/lib/dm/attack-swing";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
+import { deathStrikeDoubles } from "@/lib/dm/death-strike";
+import { killingSpell } from "@/lib/dm/ar-ws-harvest";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
+import { bulwarkBanish } from "@/lib/dm/mortal-bulwark";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
@@ -33,12 +39,16 @@ import { textKey } from "@/lib/language/text-logic";
 import { brawlerUnarmed, CRUSHER_USED, GREAT_WEAPON_MASTER_READY, SLASHER_USED, TAVERN_GRAPPLE_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { grantedStrikeMark } from "@/lib/dm/ar-wbf-warlock-strike";
 
 // The server's dice for a damage roll, with the feats the hit spent on them:
 // Brutal Attack rolls it twice and keeps the better, Savage Attacker the
 // weapon's own dice, Piercer rerolls the lowest die.
 export function throwDamage(ask: DamageAsk, who: string, notes: string[]): RollResult {
-  let outcome = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow, purpose: { roller: "hero", kind: "damage", who } });
+  let outcome = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow, ...(ask.empower ? { empower: ask.empower } : {}), purpose: { roller: "hero", kind: "damage", who } });
+  if (ask.empower) {
+    notes.push(empoweredLine(ask.empower));
+  }
   if (ask.feats.brutal) {
     const again = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow });
     notes.push(`Brutal Attack: the damage rolled twice (${outcome.total} and ${again.total}), the better kept`);
@@ -83,6 +93,7 @@ export function damageDiceNote(ask: DamageAsk): string {
     ask.feats.brutal ? ", rolling the damage a second time and keeping the better total (Brutal Attack)" : "",
     ask.feats.savage ? ", rolling the weapon's dice a second time and keeping the better total (Savage Attacker)" : "",
     ask.feats.piercer ? ", rerolling the lowest damage die once and keeping the new roll (Piercer)" : "",
+    ask.empower ? `, rerolling up to ${ask.empower} of the damage dice and keeping the new rolls (Empowered Spell)` : "",
   ].join("");
 }
 
@@ -96,6 +107,7 @@ export function damageDiceSteps(ask: DamageAsk): string {
     ask.feats.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
     ask.feats.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
     ask.feats.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
+    ask.empower ? `reroll up to ${ask.empower} of the damage dice and keep the new rolls (Empowered Spell)` : "",
   ].filter(Boolean);
   return steps.length ? `Before you enter your dice: ${steps.join(", then ")}.` : "";
 }
@@ -121,7 +133,13 @@ export function landSwingBlow(
     finishSwing(scene, record, { hit: !ask.half, damage: 0 });
     return { warning: `${scene.enemy.displayName} is no longer in the fight; the damage was NOT applied. Narrate around it.` };
   }
-  const damageOutcome = roll.breakdown;
+  // Spell Bombardment: a spell's die at its highest number is rolled again,
+  // once a turn (src/lib/dm/ar-ws-bombardment.ts).
+  const burst = record.spell ? spellBombardment({ campaign, turn: scene.turn, sheet, outcome: roll.breakdown, spell: record.spell }) : null;
+  if (burst) {
+    notes.push(burst.note);
+  }
+  const damageOutcome = burst?.outcome ?? roll.breakdown;
   const profile = { damageType: record.damageType ?? "", ...(record.material ? { material: record.material } : {}) };
   const blowFlags = {
     magical: record.magical === true,
@@ -131,9 +149,9 @@ export function landSwingBlow(
     ...(record.mageSlayer ? { concentrationDisadvantage: true } : {}),
     blow: record.blow ?? {},
   };
-  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number) =>
+  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) =>
     landRoll(roll.id, enemy.id, () =>
-      landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice }),
+      landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice, doubled }),
     );
   // Acid Arrow's miss: half of the spell's dice, under its own type alone.
   if (ask.half) {
@@ -148,7 +166,9 @@ export function landSwingBlow(
   const dealt = Math.max(0, damageOutcome.total);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   emitAttackFx(campaign.id, attackStage(campaign.id, sheet, enemy), { hit: true, crit, ranged: record.ranged === true, damage: dealt, damageType: record.damageType ?? "", visibility });
-  const applied = land(dealt, ask.riders, crit, critExtraDice);
+  // Death Strike: a surprised creature's failed save doubles the blow.
+  const doubled = deathStrikeDoubles({ campaignId: campaign.id, turn: scene.turn, encounter, sheet, enemy, notes });
+  const applied = land(dealt, ask.riders, crit, critExtraDice, doubled);
   if (hitLog && toHit) {
     // A critical that came only from the character it struck lying unconscious
     // at 0 within 5 ft keeps its ordinary damage from the same dice, for a
@@ -186,9 +206,19 @@ export function landSwingBlow(
   // marks, each until the start of the attacker's next turn.
   if (!dead && !over) {
     notes.push(...featHitMarks(scene, record, crit, ask.stunShot));
+    // And what a granted attack's own row says its hit leaves (Tentacle of the Deeps).
+    const gripped = grantedStrikeMark(scene.sheet, scene.enemy, record.weapon);
+    if (gripped) {
+      notes.push(gripped);
+    }
     const repelled = repellingBlast(scene, record);
     if (repelled) {
       notes.push(repelled);
+    }
+    // The Force Ballista's 5-foot push (cannon-board-dra.ts).
+    const shoved = ballistaPush(campaign, enemy.encounterId, sheet.id, enemy, record.weapon);
+    if (shoved) {
+      notes.push(shoved);
     }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);
@@ -208,8 +238,15 @@ export function landSwingBlow(
   // the blow found it.
   const live = getActiveEncounter(campaign.id) ?? encounter;
   const authored = live
-    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead })
+    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead, ...(dead && record.spell ? { spell: killingSpell(campaign, { spell: record.spell, slotLevel: record.spellSlot }) } : {}) })
     : [];
+  // Mortal Bulwark: a hit that dealt damage asks an aberration, celestial,
+  // elemental, fey or fiend for a Charisma save or banishes it
+  // (mortal-bulwark.ts), after the marks above so a banished creature is gone.
+  const banished = !dead && !over ? bulwarkBanish(scene, Number(applied.damageApplied ?? dealt) || 0) : null;
+  if (banished) {
+    authored.push(banished);
+  }
   if (authored.length) {
     out.subclassFeatures = authored;
   }

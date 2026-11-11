@@ -50,6 +50,8 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import type { RollResult } from "@/lib/dice";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { recoverSlot, refuelLevel } from "@/lib/dm/infusion-charges";
+import { infusionOf } from "@/lib/srd/infusions";
 
 function publishRoll(campaign: Campaign, sheet: CharacterSheet, detail: string, result: RollResult) {
   const roll = insertRoll({
@@ -279,6 +281,13 @@ export function chargedItemUse(
   }
   // An item with no charges spends none: it is only gone when the cast uses
   // it up.
+  // An artificer's Spell-Refueling Ring recovers a spent slot of 3rd level
+  // or lower (src/lib/dm/infusion-charges.ts): with none spent it is not used.
+  const refuelling = infusionOf(carried)?.def.name === "Spell-Refueling Ring";
+  const refuel = refuelling ? refuelLevel(sheet) : null;
+  if (refuelling && !refuel) {
+    return { error: `${sheet.name} has no spent spell slot of 3rd level or lower for ${carried.name} to recover. Nothing was spent.`, refused: "rules" };
+  }
   const math = rule ? spendChargesMath(carried, rule, count) : { charges: 0, destroyed: Boolean(cast?.usesUp), notes: [] as string[] };
   if ("error" in math) {
     return { ...toolError(math), error: `${math.error} Nothing was spent.` };
@@ -307,6 +316,9 @@ export function chargedItemUse(
     const at = sheet.equipment.indexOf(carried);
     const equipment = bead && !destroyed && !becomes ? spent.map((item, index) => (index === at ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item)) : spent;
     writeCharges(campaign.id, sheet, equipment, "use_item", rule ? `${carried.name}: ${count} charge${count === 1 ? "" : "s"}` : `${carried.name}: used up`, turnId);
+  }
+  if (refuel) {
+    recoverSlot(campaign, sheet.id, refuel);
   }
   // The check the cast waits on (Amulet of the Planes); a failure casts
   // nothing, and the item's text says what happens instead.
@@ -342,6 +354,7 @@ export function chargedItemUse(
     ...(destroyed ? { destroyed: true } : {}),
     ...(becomes ? { becomes } : {}),
     ...(rule?.daily ? { power: rule.daily } : {}),
+    ...(refuel ? { recovered: `one spent level ${refuel} spell slot` } : {}),
     ...(casts
       ? { spellCast: casts.spell, spellLevel: casts.level, ...(casts.dc ? { saveDc: casts.dc } : {}), ...(casts.attackBonus ? { attackBonus: casts.attackBonus } : {}) }
       : cast

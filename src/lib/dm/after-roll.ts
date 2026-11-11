@@ -50,7 +50,12 @@ import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { inPlay } from "@/lib/dm/roster";
+import { combatDie, unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { swingFacts } from "@/lib/dm/mt-mr-offers";
+import { fateChoicesFor, spendFateAfterRoll } from "@/lib/dm/fate-turn";
+import { isFatePower } from "@/lib/dm/fate-turn-logic";
+import { propheticChoicesFor, spendPropheticState } from "@/lib/dm/mt-fb-runes";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -103,12 +108,12 @@ export function optionsForPending(
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
-    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) });
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
     const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange }, done);
     return [...own, ...allies];
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
-  const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
+  const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree, check: { skill: pending.kind === "skill_check" ? pending.detail : null, tool: pending.carry?.tool } });
   const allies = allyChoicesFor(pending.campaignId, sheet, { kind: pending.kind, outcome, dc: pending.dc, spent }, done);
   return [...own, ...allies];
 }
@@ -116,7 +121,8 @@ export function optionsForPending(
 // Who could answer a roll from their own screen, for a player whose rolls wait
 // (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
 // as it would on the roller's own options. Chronal Shift, War God's Blessing
-// and Flash of Genius, which the artificer may also spend on their own roll.
+// and Flash of Genius, which the artificer may also spend on their own roll,
+// and a Rune Knight's prophetic state (mt-fb-runes.ts), theirs too.
 // A helper on the bench (one character fielded per player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
@@ -136,12 +142,12 @@ export function allyChoicesFor(
     // ally may still bless the roll.
     const fight = getActiveEncounter(campaignId);
     const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
-    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? [])];
+    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? []), ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
   }
   const flash = (artificer: CharacterSheet, ally: boolean) => flashOfGeniusOption(artificer, computeSheetDerived(artificer).abilityMods.int, roll, ally);
   const own = !done.kept && !roll.spent?.includes("flash_of_genius") && canReactNow(campaignId, sheet) ? flash(sheet, false) : null;
   const help = others.filter((artificer) => inShiftReach(campaignId, artificer, sheet)).flatMap((artificer) => flash(artificer, true) ?? []);
-  return [...shifts, ...(own ? [own] : []), ...help];
+  return [...shifts, ...(own ? [own] : []), ...help, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -166,7 +172,11 @@ export function spendAfterRoll(
   payer?: CharacterSheet,
   // Advantage on this attack throws a third d20 (attack-record.ts).
   elvenAccuracy = false,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean } | null {
+  // What the roll must reach (its Difficulty Class, an attack's Armor Class)
+  // when the caller knows it: an Eloquence bard's die that leaves the roll
+  // short of it is kept (ar-wbf-bard-dice-logic.ts).
+  target: number | null = null,
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "war_gods_blessing" || id === "flash_of_genius") {
     const giver = payer ?? sheet;
@@ -185,6 +195,12 @@ export function spendAfterRoll(
     }
     return { outcome: withFlatBonus(outcome, id === "war_gods_blessing" ? WAR_GODS_BLESSING_BONUS : computeSheetDerived(giver).abilityMods.int), choosing: false };
   }
+  if (id === "prophetic_state") {
+    return spendPropheticState(campaign, sheet, outcome, payer);
+  }
+  if (isFatePower(id)) {
+    return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);
+  }
   if (id === "guided_strike") {
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
   }
@@ -198,6 +214,10 @@ export function spendAfterRoll(
     // Paid by the hit itself, as Touch of Death is (attack-swing.ts hitSwing).
     const state = sheet.resources?.[CHANNEL_DIVINITY];
     return state && state.max - state.used > 0 ? { outcome, choosing: false, destructiveWrath: true } : null;
+  }
+  if (id === "combat_inspiration") {
+    // Paid by the hit itself too: the die leaves its holder once the hit stands.
+    return combatDie(sheet) ? { outcome, choosing: false, combatInspiration: true } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
@@ -246,8 +266,11 @@ export function spendAfterRoll(
     if (!held) {
       return null;
     }
-    spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
-    return { outcome: withBonusDie(outcome, die(sidesOf(held.die))), choosing: false };
+    const added = withBonusDie(outcome, die(sidesOf(held.die)));
+    if (!unfailingDieKept(sheet, held.condition, added.total, target)) {
+      spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
+    }
+    return { outcome: added, choosing: false };
   }
   const held = heldOwnLuckDie(sheet);
   const size = ownLuckDie(sheet);

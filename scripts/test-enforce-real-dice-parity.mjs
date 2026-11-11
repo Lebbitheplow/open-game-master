@@ -75,6 +75,8 @@ const d8s = (expression) => [...expression.matchAll(/(\d+)d8/g)].reduce((sum, ma
 // and any mark naming some other creature keeps its id and fails the compare.
 const marks = (enemy) => [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])]
   .map((mark) => (mark === `weapon-hit:${enemy.id}` ? "weapon-hit:target" : mark))
+  // The run a melee attack ended (charged:<creature>:<feet>, src/lib/srd/mt-fb-run.ts).
+  .map((mark) => (mark.startsWith(`charged:${enemy.id}:`) ? mark.replace(enemy.id, "target") : mark))
   .sort();
 
 async function answer(hero, kind, faces) {
