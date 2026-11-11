@@ -1028,10 +1028,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runes-invoked"
    },
    {
-    "c": "each with a passive benefit and an invokable effect once per short or long rest",
+    "c": "each with a passive benefit",
     "is": "held",
-    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (fighter::Rune: ...) + authored-resources.json sub_*_rune",
+    "by": "src/lib/srd/authored-effects-w2-mt-fb.ts (fighter::Rune: ...)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-carver-runes-do-nothing"
+   },
+   {
+    "c": "and an invokable effect once per short or long rest",
+    "is": "gap",
+    "read_only": true,
+    "why": "Fire, Frost, Hill and Storm invoke (sub_*_rune, probe rune-carver-runes-do-nothing); Stone and Cloud do not: both are reactions to an event with no window in the engine (a creature ending its turn within 30 feet, an attack hitting a creature within 30 feet), and the Storm Rune's prophetic state answers attacks on the knight only, not on allies within 60 feet"
    }
   ]
  },
