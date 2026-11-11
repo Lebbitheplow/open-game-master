@@ -14,6 +14,7 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
@@ -236,7 +237,7 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   const derived = computeSheetDerived(sheet);
   const bonus = derived.abilityMods.dex + derived.proficiencyBonus;
   const thrower: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
-  const hitRoll = rollCard(campaign, ctx.turn, sheet.id, "attack", rollAgainst("Caught missile", enemy.displayName), d20Expression(bonus, apart !== null && apart > 4 ? "disadvantage" : "none"), thrower);
+  const hitRoll = rollCard(campaign, ctx.turn, sheet.id, "attack", rollAgainst("Caught missile", enemy.displayName), tranceFloored(sheet, d20Expression(bonus, apart !== null && apart > 4 ? "disadvantage" : "none")), thrower);
   const ac = enemyAcWithEffects(campaign.id, enemy);
   const hit = hitRoll.crit !== "nat1" && (hitRoll.crit === "nat20" || hitRoll.total >= ac);
   if (!hit) {

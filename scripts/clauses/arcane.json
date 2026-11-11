@@ -2052,8 +2052,9 @@
    },
    {
     "c": "and you treat any d20 of 9 or lower as a 10 on attacks, checks and saves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-floor",
+    "by": "src/lib/dm/ar-ws-trance-floor.ts tranceFloored (the dice grammar floor f10 under the leading d20, so faces entered from physical dice are floored too), called by rolls.ts resolveRollExpression (checks, saves, initiative, death saves), character-roll.ts rollCharacterD20 (attacks other tools throw) and pc-attack-resolve.ts strikeToHit (pc_attack). Ruling: a natural 1 counted as a 10 is no automatic miss"
    },
    {
     "c": "once per long rest",

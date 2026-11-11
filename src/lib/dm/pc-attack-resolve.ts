@@ -5,6 +5,7 @@
 // stages on a player's real dice. Split from pc-attack.ts, which has already
 // refused or paid for everything this rolls; nothing here refuses the attack.
 
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { insertRoll } from "@/lib/db/rolls";
@@ -55,7 +56,8 @@ export function strikeToHit(plan: AttackPlan) {
     .replace(/^2d20kh1/, elvenAccuracy ? "3d20kh1" : "2d20kh1")
     .replace(/^(\d+)d20(?:k[hl]\d+)?/, (whole, count) => (plan.extras.luck ? `${Number(count) + 1}d20kh1` : whole))
     .replace(/^(\d+d20(?:k[hl]\d+)?)/, lucky ? "$1r1" : "$1");
-  const toHitExpression = `${toHitD20}${toHitRiderSuffix}`;
+  // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
+  const toHitExpression = tranceFloored(sheet, `${toHitD20}${toHitRiderSuffix}`);
   const detail = rollAgainst(profile.weapon, enemy.displayName);
   return { toHitExpression, detail };
 }

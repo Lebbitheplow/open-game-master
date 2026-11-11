@@ -366,10 +366,26 @@ export function probes(rig, shared) {
       await tranced();
       assert.equal(sheet(clock()).conditionMeta["trance of order"].rounds, 10);
     },
+    // The three rolls the text names, each with the trance and without: a
+    // save and a check through request_roll, an attack through pc_attack. A
+    // 10 or higher on the die is left as it fell, and a natural 1 on an
+    // attack, counted as a 10, is no automatic miss.
     "trance-floor": async () => {
-      await tranced();
-      const rolled = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
-      assert.equal(rolled.out.result.total, 10 + MOD.dex, "a Dexterity save with a 3 on the die");
+      const totals = async (enemy) => {
+        const save = await roll(clock(), { kind: "saving_throw", ability: "dex", dc: 10 }, [3]);
+        const check = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [9]);
+        const high = await roll(clock(), { kind: "skill_check", skill: "arcana", dc: 10 }, [14]);
+        const swing = await kit.swing(clock().id, enemy.id, [1, 4]);
+        assert.equal(swing.ok, true, swing.error);
+        return { save: save.total, check: check.total, high: high.total, attack: swing.toHit.total, hit: swing.result.hit === true };
+      };
+      const [bare] = await stage(clock());
+      const without = await totals(bare);
+      const [enemy] = await tranced();
+      const within = await totals(enemy);
+      const toHit = without.attack - 1;
+      assert.deepEqual(without, { save: 3 + MOD.dex, check: without.check, high: without.high, attack: 1 + toHit, hit: false }, "with no trance the dice count as they fall");
+      assert.deepEqual(within, { save: 10 + MOD.dex, check: without.check + 1, high: without.high, attack: 10 + toHit, hit: 10 + toHit >= foe(enemy).stats.ac }, "in the trance: a Dexterity save on a 3, an Arcana check on a 9 and on a 14, an attack roll on a natural 1");
     },
     "trance-advantage": async () => {
       const [enemy] = await tranced();
@@ -478,7 +494,6 @@ export function probes(rig, shared) {
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
-    "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
     "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },
   };
   return { PROBES, KNOWN };
