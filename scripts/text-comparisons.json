@@ -17,6 +17,7 @@
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],
     "lib/dm/genre-a-heals.ts#str-eq": [["key",1,"condition names the healers end or lay (engine vocabulary)"]],
     "lib/dm/genre-a-heals.ts#str-list": [["key",3,"condition names the healers end (engine vocabulary)"]],
+    "lib/dm/genre-a-cyberpunk-spell-hits.ts#toLowerCase": [["key",1,"the once-a-turn claim key of a feature rider, as pc-attack-damage.ts claimOncePerTurnRiders writes it (engine vocabulary)"]],
     "lib/dm/genre-a-cyberpunk-spends.ts#str-eq": [["key",1,"condition names the spends end or lay (engine vocabulary)"]],
     "lib/dm/genre-a-cyberpunk-spends.ts#str-includes": [["key",1,"an SRD weapon property (engine vocabulary)"]],
     "lib/dm/genre-a-cyberpunk-spends.ts#\\b": [["english-source",4,"the skill or ability on a check card the engine wrote (engine vocabulary)"]],

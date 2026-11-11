@@ -358,7 +358,7 @@
      "n": 3
     },
     "is": "held",
-    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders)",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders); a save spell through cast_at_enemy takes the same claim in src/lib/dm/genre-a-cyberpunk-spell-hits.ts programSpellLanded (called by cast-at-enemy-damage.ts landSpellDamage)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Lethal Payload#0"
    },
    {
@@ -2267,7 +2267,7 @@
      "ability": "cha"
     },
     "is": "held",
-    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget; a save spell through cast_at_enemy takes the same claim in src/lib/dm/genre-a-cyberpunk-spell-hits.ts programSpellLanded (called by cast-at-enemy-damage.ts landSpellDamage)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Neural Spike#0"
    },
    {

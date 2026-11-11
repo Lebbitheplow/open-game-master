@@ -46,6 +46,8 @@ CYBER.program_once = async function programOnce(t, run, feature) {
   t.encounters.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, attacksMade: 0 } });
   const second = await bolt();
   eq(first - second, run.n, `damage the rider added to the first Fire Bolt of the turn over the second (${first} then ${second})`);
+  // The same once a turn on a save spell (program_save below).
+  await CYBER.program_save(t, run, feature);
 };
 
 // "Each drone regains 2d6 HP at the start of your turn, once per rest each":
@@ -273,4 +275,26 @@ CYBER.intrusion = async function intrusion(t, run, feature) {
   eq(before - t.foeHp(scene.near.id), 0, "damage to the caster after a failed save");
   await foeSpell(t, scene, "Burning Hands", 20, 4, 4, 4, 4, 4);
   eq(before - t.foeHp(scene.near.id), 8, "psychic damage to the caster after a made save (2d8 on two 4s)");
+};
+
+// Lethal Payload and Neural Spike on a save spell: Acid Splash through
+// cast_at_enemy on a failed save lands its own 1d6 and the rider (run.n on
+// 3s); a second Acid Splash the same turn, the action handed back, lands the
+// 1d6 alone.
+CYBER.program_save = async function programSave(t, run, feature) {
+  const ability = run.ability ?? "int";
+  const scene = await t.stage(feature, { extra: { equipment: [], spellcasting: { ...CASTING(ability), cantrips: ["Fire Bolt", "Acid Splash"] } } });
+  const splash = async () => {
+    const before = t.foeHp(scene.near.id);
+    t.world.clearDice();
+    t.world.dice(1, 3, 3, 3);
+    must(await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Acid Splash" }), "Acid Splash");
+    t.world.clearDice();
+    return before - t.foeHp(scene.near.id);
+  };
+  const first = await splash();
+  const encounter = t.world.encounter();
+  t.encounters.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, attacksMade: 0 } });
+  const second = await splash();
+  eq(`${first}/${second}`, `${3 + run.n}/3`, "damage of the first Acid Splash of the turn (its 1d6 and the rider) and of the second (the 1d6 alone)");
 };
