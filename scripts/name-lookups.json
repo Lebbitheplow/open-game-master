@@ -15,6 +15,8 @@
     "lib/dm/ar-ws-spell-check.ts#whole": [["identity", 1, "a spell's school against the row's, by whole name (textKey on both sides)"]],
     "lib/dm/ar-ws-transposition.ts#whole": [["identity", 1, "a spell's school against the counter's, by whole name (textKey on both sides)"]],
     "lib/dm/ar-ws-charm-miss.ts#whole": [["identity", 1, "the attack a swing names on its attacker's block, by whole name (textKey on both sides)"]],
+    "lib/dm/ar-ws-heart-storm.ts#whole": [["identity", 2, "a spell's damage types against the row's (lightning, thunder), by whole name (textKey on both sides)"]],
+    "lib/dm/ar-ws-heart-storm.ts#number": [["key", 1, "the row's own amount, a formula of the class level that resolveFormula hands back as digits"]],
     "lib/dm/master-of-hexes.ts#partial": [["key", 3, "the engine's own marker condition, whose name carries the hit points it gave (\"hexblade's curse healed (N)\"), and that number read back"]],
     "lib/dm/spell-damage-logic.ts#partial": [["key", 1, "the turn's own mark keys (wizard-spell-damage:<id>), never a name"]],
     "lib/dm/pc-damage.ts#keyed": [["identity", 1, "a feat by its whole name, a damage type of the engine's words (textKey on both sides)"]],

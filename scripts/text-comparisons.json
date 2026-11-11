@@ -29,6 +29,7 @@
     "lib/dm/reaction-triggers.ts#re-word": [["key",1,"the derived records' own id suffix (:start)"]],
     "lib/battlemap/hand-react-triggers.ts#str-eq": [["key",3,"costs and the counter's action (engine vocabulary)"]],
     "lib/srd/authored-effects-w2-arcane.ts#str-list": [["english-source", 1, "ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-w2-ar-ws-sorcerer.ts#str-list": [["english-source", 1, "ODM's authored effect rows (bundled data)"]],
     "lib/srd/trigger-table.ts#str-eq": [["key",1,"trigger kinds and ids (engine vocabulary)"]],
     "lib/srd/trigger-table.ts#str-list": [["key",1,"trigger kinds (engine vocabulary)"]],
     "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],

@@ -77,11 +77,13 @@ export function eruptOnCast(campaign: Campaign, turnId: string | null, caster: C
   }
   const own = effect.types.find((type) => dealt.includes(textKey(type))) ?? effect.types[0];
   const encounter = getActiveEncounter(campaign.id);
-  if (!encounter || !getBattleMapForEncounter(encounter.id)) {
-    // Nothing to measure the 10 feet on: the GM lands it.
-    return encounter
-      ? { castBurst: `${held.feature}: ${caster.name}'s ${cast.spell} sets it off. Creatures of ${caster.name}'s choice within ${effect.feet} feet that they can see each take ${amount} ${effect.types.join(" or ")} damage (apply_damage): no board is live to measure it on.` }
-      : null;
+  if (!encounter) {
+    return null;
+  }
+  if (!getBattleMapForEncounter(encounter.id)) {
+    // Nothing to measure the 10 feet on: the GM lands it, told in the call's result.
+    const line = `${held.feature}: ${caster.name}'s ${cast.spell} sets it off. Creatures of ${caster.name}'s choice within ${effect.feet} feet that they can see each take ${amount} ${effect.types.join(" or ")} damage (apply_damage): no board is live to measure it on.`;
+    return afterThisCall(() => ({ castBurst: line }));
   }
   // Who stands in it now, as the spell is cast.
   const struck = foesOfSheet(campaign.id, encounter, caster.id)

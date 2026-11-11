@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 
 export function probes(rig, shared) {
-  const { world, kit, holder, sheet, foe, counter, left, budget, show, call, spend, react, stage } = rig;
+  const { world, kit, holder, sheet, counter, left, budget, show, call, spend, stage } = rig;
   const { friend } = shared;
   const shadow = () => holder("sorcerer", "Shadow Magic");
   const mind = () => holder("sorcerer", "Aberrant Mind");
