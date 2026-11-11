@@ -45,6 +45,10 @@ export type GrantedAttack = {
   // the spell's area of that name on the board, which the strike may first
   // move `moveFeet`, and which appears within `rangeFeet` of its caster.
   from?: { zone: string; reachFeet: number; moveFeet: number; rangeFeet: number; label?: string };
+  // A condition a hit leaves on the creature struck until the start of the
+  // holder's next turn (Tentacle of the Deeps: its speed drops by 10 feet).
+  // The condition's own row holds what it does (src/lib/dm/ar-wbf-warlock-strike.ts).
+  leaves?: string;
 };
 
 export type ConditionEffectRow = {

@@ -33,6 +33,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { brawlerUnarmed, CRUSHER_USED, GREAT_WEAPON_MASTER_READY, SLASHER_USED, TAVERN_GRAPPLE_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { grantedStrikeMark } from "@/lib/dm/ar-wbf-warlock-strike";
 
 // The server's dice for a damage roll, with the feats the hit spent on them:
 // Brutal Attack rolls it twice and keeps the better, Savage Attacker the
@@ -186,6 +187,11 @@ export function landSwingBlow(
   // marks, each until the start of the attacker's next turn.
   if (!dead && !over) {
     notes.push(...featHitMarks(scene, record, crit, ask.stunShot));
+    // And what a granted attack's own row says its hit leaves (Tentacle of the Deeps).
+    const gripped = grantedStrikeMark(scene.sheet, scene.enemy, record.weapon);
+    if (gripped) {
+      notes.push(gripped);
+    }
     const repelled = repellingBlast(scene, record);
     if (repelled) {
       notes.push(repelled);
