@@ -7,7 +7,8 @@
 // the die from the keyboard, the swing hits, and the server lands its damage.
 // The rules are held by scripts/test-enforce-after-roll-attacks.mjs; this is
 // what only a page can see: the card's line for an attack, finger-sized,
-// inside the phone's width, by day and by night and in the app shell.
+// inside the phone's width, by day and by night and in the app shell, and
+// the End Turn button waiting for the card.
 import { request } from "playwright-core";
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -66,6 +67,24 @@ const scenario = {
       const day = await axeViolations(page, `${root}${GROUP}`);
       check(!day.length, `axe on the card by day: ${day.map((entry) => entry.id).join(", ")}`);
       await t.shot("attack-day");
+      await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+
+      // End Turn with the card open (table report, 2026-11-10): alone at
+      // the table no clock keeps the roll, and the turn used to end under
+      // it. The button now answers with the roll to settle, the card stays,
+      // and the turn is still the fighter's.
+      const endTurn = page.locator(root || "body").getByRole("button", { name: "End turn", exact: true }).locator("visible=true").first();
+      await t.tap(endTurn);
+      const held = page.getByText("is waiting on your choice. Change the roll or keep it, then end the turn.").locator("visible=true").first();
+      await held.waitFor({ state: "visible", timeout: 15_000 });
+      check(await lucky.count(), "the card is still open after End Turn");
+      const order = (await (await gm.get(`${base}/api/campaigns/${table.id}`)).json()).encounter;
+      check(order.order[order.turnIndex]?.id === table.hero, "the turn is still the fighter's");
+      await untilStill(page);
+      await t.shot("end-turn-waits");
+      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      await untilStill(page);
+      await t.shot("end-turn-waits-day");
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
 
       // From the keyboard: the die goes on. A die too small to reach still
