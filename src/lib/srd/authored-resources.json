@@ -1627,6 +1627,10 @@
     "kind": "buff",
     "condition": "invisible",
     "rounds": 600
+   },
+   "fallbackPool": {
+    "id": "sub_psionic_energy",
+    "amount": 1
    }
   },
   {
@@ -1638,16 +1642,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "A sneak attack with Psychic Blades stuns a creature for 1 minute on a failed Wisdom save. Three Psionic Energy dice buy extra uses.",
-   "fx": {
-    "kind": "enemy_save",
-    "save": "wis",
-    "condition": "stunned",
-    "dcAbility": "dex",
-    "rounds": 10,
-    "most": 1,
-    "magical": true
-   }
+   "guidance": "A sneak attack with Psychic Blades stuns a creature for 1 minute on a failed Wisdom save (use_resource 'Rend Mind' with targetEnemyId, after the hit). Three Psionic Energy dice buy extra uses; the server spends them."
   },
   {
    "id": "sub_spell_thief",
@@ -1762,12 +1757,19 @@
    "ability": null,
    "proficiency": 1,
    "recharge": "long",
-   "guidance": "When the monk uses Step of the Wind: a flying speed equal to the walking speed until the end of the turn.",
-   "fx": {
-    "kind": "buff",
-    "condition": "flying",
-    "rounds": 1
-   }
+   "guidance": "When the monk uses Step of the Wind: a flying speed equal to the walking speed until the end of the turn."
+  },
+  {
+   "id": "sub_draconic_presence",
+   "displayName": "Dragon Disciple's Presence",
+   "match": [
+    "draconic disciple"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "long",
+   "guidance": "Draconic Presence: a failed Intimidation or Persuasion check is rolled again as a reaction, chosen on the card the roll waits on. The use is spent only when the new roll turns the failure into a success.",
+   "passive": true
   },
   {
    "id": "sub_aspect_of_the_wyrm",
@@ -1778,17 +1780,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "action": "bonus",
-   "guidance": "A bonus action raising a 10-foot aura for 1 minute that either frightens enemies or grants allies resistance to the monk's damage type. Three ki buys extra uses.",
-   "fx": {
-    "kind": "buff",
-    "condition": "aspect of the wyrm: frighten",
-    "rounds": 10,
-    "variants": [
-     "aspect of the wyrm: frighten",
-     "aspect of the wyrm: ward"
-    ]
-   }
+   "guidance": "A bonus action raising a 10-foot aura for 1 minute: use_resource 'Aspect of the Wyrm' with variant 'frighten' (an enemy starting its turn in it saves on Wisdom or is frightened) or 'ward fire' and the other types (allies in it resist that damage). Three ki buys extra uses; the server spends them."
   },
   {
    "id": "sub_glorious_defense",

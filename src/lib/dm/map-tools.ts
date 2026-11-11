@@ -71,6 +71,7 @@ import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
+import { featureLandingRefusal } from "@/lib/dm/mt-mr-spends";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -335,6 +336,11 @@ export function handleTeleportToken(
   const distanceFeet = Math.max(Math.abs(args.x - token.x), Math.abs(args.y - token.y)) * TILE_FEET;
   const spender = args.spell && args.casterCharacterId ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById) : null;
   const featureFeet = spender && args.spell ? featureTeleportFeet(spender.id, args.spell) : null;
+  // Shadow Step lands in dim light or darkness (mt-mr-spends.ts).
+  const landing = spender && args.spell && featureFeet !== null ? featureLandingRefusal(campaign.id, spender, args.spell, { x: args.x, y: args.y }) : null;
+  if (landing) {
+    return landing;
+  }
   // A legendary action that bought the jump (a sphinx's or a solar's
   // Teleport) gives its reach and has paid for it.
   const live = token.kind === "enemy" ? getActiveEncounter(campaign.id) : null;

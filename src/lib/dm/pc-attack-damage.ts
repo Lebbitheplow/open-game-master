@@ -190,6 +190,9 @@ export function claimOncePerTurnRiders(input: {
   sneak: boolean;
   sneakAttackDice: number;
   featureRiders: FeatureRider[];
+  // The key a second Sneak Attack of the turn claims, for a rogue who may
+  // make one (Sudden Strike, mt-mr-turn.ts secondSneakKey).
+  secondSneak?: string | null;
 }): { profile: AttackProfile; notes: string[]; droppedRiders: string[]; hitClaims: string[] } {
   const { budget } = input;
   let { profile, notes } = input;
@@ -197,7 +200,8 @@ export function claimOncePerTurnRiders(input: {
   const hitClaims: string[] = [];
   if (input.sneak) {
     // Sneak Attack is once per turn however many swings land.
-    const claimed = claimOncePerTurn(budget, "sneak_attack");
+    const key = budget.oncePerTurn.includes("sneak_attack") && input.secondSneak ? input.secondSneak : "sneak_attack";
+    const claimed = claimOncePerTurn(budget, key);
     if (!claimed) {
       profile = {
         ...profile,
@@ -211,7 +215,7 @@ export function claimOncePerTurnRiders(input: {
       );
       notes.push("Sneak Attack already used this turn: no extra dice");
     } else {
-      hitClaims.push("sneak_attack");
+      hitClaims.push(key);
     }
   }
   // Once-per-turn feature riders (Divine Strike) spend their turn slot the

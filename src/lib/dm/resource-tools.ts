@@ -1,3 +1,4 @@
+import { breathAugment } from "@/lib/dm/mt-mr-dragon";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { insertRoll } from "@/lib/db/rolls";
@@ -302,6 +303,8 @@ function rollCounterSave(
   base: { save: SaveAbilityId; dc: number; dice?: string | null; type?: string; half?: boolean; condition?: string },
   variant: string | undefined,
   aim: CounterSaveAim | undefined,
+  // A reach other than the row's (Augment Breath's).
+  reachFt?: number,
 ): ReturnType<typeof resolveCounterSave> {
   const effect = def.effect as SaveTerms;
   let type = base.type ?? effect.type;
@@ -323,7 +326,7 @@ function rollCounterSave(
     half: base.half ?? effect.half,
     condition: base.condition,
     rounds: effect.rounds,
-    rangeFt: effect.rangeFt,
+    rangeFt: reachFt ?? effect.rangeFt,
     ...(effect.cone ? { cone: true } : {}),
     types: effect.types,
     ...(most ? { most } : {}),
@@ -797,8 +800,18 @@ export function computeUseResource(
     case "aoe": {
       // Half on a success, rolled here on the creatures the area catches.
       const spend = aoeSpendFor(def, sheet, fxLevel, derived)!;
-      const saved = rollCounterSave(campaign, sheet, def, { save: spend.saveAbility, dc: spend.dc, dice: spend.dice, type: spend.damageType, half: def.effect.half ?? true }, variant, aim);
-      return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...(spend.area ? { area: spend.area } : {}), ...saved.result } };
+      // Augment Breath, asked for in Breath of the Dragon's own variant
+      // (mt-mr-dragon.ts): four rolls, the longer reach, 1 ki more.
+      const augment = breathAugment(sheet, def.id, variant, outcome.patch.resources ?? sheet.resources);
+      if (augment && "error" in augment) {
+        return augment;
+      }
+      const saved = rollCounterSave(campaign, sheet, def, { save: spend.saveAbility, dc: spend.dc, dice: augment?.dice ?? spend.dice, type: spend.damageType, half: def.effect.half ?? true }, augment ? augment.variant : variant, aim, augment?.rangeFt);
+      if (augment && !("error" in saved)) {
+        outcome.patch.resources = augment.resources;
+        outcome.result.augmented = `Augment Breath: 1 ki more, ${augment.dice} to ${augment.rangeFt} feet.`;
+      }
+      return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...(spend.area && !augment ? { area: spend.area } : {}), ...saved.result } };
     }
     case "wild_shape": {
       // The Hand's card names the beast as its pick (variant); the console

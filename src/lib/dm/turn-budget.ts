@@ -5,6 +5,7 @@
 // (resource-tools grants Action Surge through here) without pulling in the
 // handlers.
 
+import { awakenedArmsAttacks } from "@/lib/dm/mt-mr-turn";
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
 import { thirstingBladeAttacks } from "@/lib/srd/pact-weapon";
 import { getActiveEncounter, orderEntryId, saveEncounter, type Encounter } from "@/lib/db/encounters";
@@ -215,8 +216,9 @@ export function attacksAllowedFor(sheet: CharacterSheet): number {
   // Thirsting Blade's second pact weapon attack (pact-weapon.ts); Extra
   // Attack features do not add together.
   const seen = formSees(sheet);
-  // A condition's extra attack (Invincible Conqueror) comes on top.
-  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen)) + conditionExtraAttacks(sheet.conditions ?? []);
+  // A condition's extra attack (Invincible Conqueror) comes on top, and
+  // Awakened Astral Self's extra Arms attack rides the Attack action (mt-mr-turn.ts).
+  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen)) + conditionExtraAttacks(sheet.conditions ?? []) + awakenedArmsAttacks(seen);
   return shaped !== null ? Math.max(shaped, own) : own;
 }
 

@@ -17,8 +17,6 @@ const ALL_DAMAGE = [
   "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
 ];
 const PHYSICAL = ["bludgeoning", "piercing", "slashing"];
-// The martial arts die by monk level, plus the Wisdom modifier.
-const MARTIAL_WIS: Formula = (level, mods) => `1${level >= 17 ? "d10" : level >= 11 ? "d8" : level >= 5 ? "d6" : "d4"}+${mods.wis ?? 0}`;
 // A Psionic Energy die by class level, plus the Intelligence modifier.
 const PSIONIC_INT: Formula = (level, mods) => `1${level >= 17 ? "d12" : level >= 11 ? "d10" : level >= 5 ? "d8" : "d6"}+${mods.int ?? 0}`;
 // The subclass's spell table grants it, known or always prepared and free
@@ -263,23 +261,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
 
   // ---- monk ----
-  "monk::Shadow Arts": {
-    subclass: "Way of Shadow",
-    narrated:
-      "Spells cast with 2 ki (darkness, darkvision, pass without trace, silence): the cast tools with the ki spent by use_resource. Minor illusion at will: a monk keeps no spell list, so the GM casts it when asked, as for a non-caster's racial cantrip.",
-  },
-  "monk::Cloak of Shadows": {
-    subclass: "Way of Shadow",
-    narrated: "Invisibility in dim light or darkness until the monk attacks, casts or steps into light: set_condition invisible, which the GM ends.",
-  },
-  "monk::Drunken Technique": {
-    subclass: "Way of the Drunken Master",
-    narrated: "Flurry of Blows also gives Disengage and 10 feet of movement: the GM moves the monk without opportunity attacks this turn.",
-  },
-  "monk::Unerring Accuracy": {
-    subclass: "Way of the Kensei",
-    narrated: "Rerolling one missed monk weapon attack a turn: the GM calls pc_attack again for it.",
-  },
   "monk::Sun Shield": {
     subclass: "Way of the Sun Soul",
     effects: [{ kind: "retaliate", formula: (_level, mods) => 5 + (mods.wis ?? 0), type: "radiant", melee: true, note: "The bright light it sheds is the GM's to place." }],
@@ -294,7 +275,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
           kind: "buff",
           condition: "hour of reaping",
           rounds: 1,
-          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", rounds: 1 },
+          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", untilNextTurnEnds: true },
         },
       },
     ],
@@ -311,7 +292,16 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         name: "Hand of Healing",
         pool: { id: "ki", amount: 1 },
         action: "action",
-        does: { kind: "flames", formula: MARTIAL_WIS, type: "radiant", healOnly: true },
+        does: { kind: "mr", id: "hand_of_healing", aims: "ally", rangeFt: 5 },
+      },
+      // "Or replace one Flurry of Blows attack with it": a strike of the
+      // flurry given up, for no action and no ki.
+      {
+        name: "Flurry of Healing",
+        aliases: ["Hand of Healing (Flurry of Blows)"],
+        action: "none",
+        fight: "in",
+        does: { kind: "mr", id: "flurry_healing", aims: "ally", rangeFt: 5 },
       },
     ],
   },
@@ -320,24 +310,14 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Hand of Harm",
-        pool: { id: "ki", amount: 1 },
+        // Free on a Flurry of Blows strike with Flurry of Healing and Harm.
+        pool: { id: "ki", amount: 1, free: "flurry_harm" },
         oncePerTurn: true,
         action: "none",
-        does: { kind: "die_damage", dice: MARTIAL_WIS, type: "necrotic" },
+        afterWeaponHit: true,
+        does: { kind: "mr", id: "hand_of_harm", aims: "enemy" },
       },
     ],
-  },
-  "monk::Physician's Touch": {
-    subclass: "Way of Mercy",
-    narrated: "Hand of Healing also ends a disease or condition (end_condition), and Hand of Harm can poison the creature (set_condition poisoned): the GM applies them.",
-  },
-  "monk::Flurry of Healing and Harm": {
-    subclass: "Way of Mercy",
-    narrated: "Hand of Healing in place of Flurry of Blows' strikes, with no ki, and one free Hand of Harm: the GM spends nothing for them.",
-  },
-  "monk::Draconic Disciple": {
-    subclass: "Way of the Ascendant Dragon",
-    narrated: "Changing an unarmed strike's damage type and rerolling a failed Intimidation or Persuasion check are the GM's; the language is the sheet's training.",
   },
 
   // ---- paladin ----
@@ -454,31 +434,14 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "rogue::Insightful Manipulator": { subclass: "Mastermind", narrated: "Information the GM gives after a minute of watching." },
   "rogue::Soul of Deceit": { subclass: "Mastermind", narrated: "Thoughts that cannot be read and lies that read as true: the GM keeps to that." },
-  "rogue::Fancy Footwork": {
-    subclass: "Swashbuckler",
-    narrated: "A creature the rogue attacked in melee this turn makes no opportunity attack against them: the GM withholds it.",
-  },
   "rogue::Panache": { subclass: "Swashbuckler", narrated: "A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition." },
   "rogue::Ear for Deceit": {
     subclass: "Inquisitive",
-    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, note: "Only on an Insight check to tell whether a creature lies; the GM keeps to that." }],
+    // "To tell whether a creature is lying": the check's `about` says so (roll-about.ts "lies").
+    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, about: "lies" }],
   },
   "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
-  "rogue::Death's Friend": {
-    subclass: "Phantom",
-    // The damage on the first creature is Wails from the Grave's own spend
-    // (authored-effects-sweep-counters.ts, afterSneak.firstToo).
-    narrated: "Wails from the Grave's necrotic lands on the first creature too (the spend does it), and a soul trinket appears at a long rest's end if none is carried: the GM gives the trinket.",
-  },
-  "rogue::Psi-Bolstered Knack": {
-    subclass: "Soulknife",
-    narrated: "A Psionic Energy die added to a failed proficient check: the GM rolls it, and the die is the counter's.",
-  },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },
-  "rogue::Soul Blades": {
-    subclass: "Soulknife",
-    narrated: "Homing Strikes' die on a missed Psychic Blade and Psychic Teleportation's move: the GM rolls the die (the counter's) and moves the token.",
-  },
 
   // ---- sorcerer ----
   // The d20 and the wild magic table are the GM's to roll and narrate; the

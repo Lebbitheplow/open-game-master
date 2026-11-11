@@ -9,13 +9,14 @@ import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
+import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { authoredSpendFor, gateHolds } from "@/lib/srd/authored-effects";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
-import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
+import { heldAtWill, resourceDef, resourceLevel, type ResourceDef, resourceName } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
@@ -540,6 +541,10 @@ export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType
       // size, never as at will (granted-casts.ts grantUses).
       const uses = grantUses(sheet.resources, grant);
       const castAt = grant.castAt ?? facts?.level;
+      // A cast priced in a shared pool (a monk's ki) says its price.
+      if (uses && grant.cost && grant.counter) {
+        return { free: true, castAt, line: `${grant.cost} ${resourceName(grant.counter)}`, note: `No slot: ${grant.cost} ${resourceName(grant.counter)} a cast, ${uses.left} more until a ${grant.rest ?? "long"} rest.` };
+      }
       return uses
         ? { free: true, castAt, line: `Free ${uses.left}/${uses.max}`, note: `No slot: ${uses.left} of ${uses.max} free uses left until a ${grant.rest ?? "long"} rest.` }
         : { free: true, castAt, line: "Free · at will" };
@@ -749,7 +754,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       // A damage type the holder picks (Drake's Breath), and the beast a Wild
       // Shape becomes, sent as use_resource reads them.
       ...((effect.kind === "aoe" || effect.kind === "enemy_save") && effect.typeFromVariant?.length
-        ? { choice: { arg: "variant" as const, label: "Type", options: effect.typeFromVariant.map((value) => ({ value, label: pickLabel(value) })) } }
+        ? { choice: { arg: "variant" as const, label: "Type", options: breathChoices(sheet, def.id, effect.typeFromVariant).map((value) => ({ value, label: pickLabel(value) })) } }
         : {}),
       ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet) } : {}),
       // "one creature other than yourself" (Bardic Inspiration): no "(you)" chip.

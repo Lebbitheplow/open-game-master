@@ -132,7 +132,8 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   if (hide) out.hide = hide.error;
   const silence = silenceAround(campaignId, sheet.id);
   if (silence !== null) out.silence = { by: silence };
-  // Bright light on the square: Steps of Night and One with Shadows refuse.
+  // Bright light on the square: Steps of Night, One with Shadows, Shadow Step
+  // and Cloak of Shadows refuse.
   const bright = brightSquare(campaignId, sheet);
   if (bright) out.bright = bright;
   return out;

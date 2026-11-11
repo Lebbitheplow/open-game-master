@@ -45,6 +45,7 @@ import { AUTHORED_DATA_W2_DIVINE_CLR } from "@/lib/srd/authored-effects-w2-divin
 import { AUTHORED_DATA_W2_DIVINE_DRA } from "@/lib/srd/authored-effects-w2-divine-dra";
 import { AUTHORED_DATA_W2_DIVINE_RNG } from "@/lib/srd/authored-effects-w2-divine-rng";
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
+import { AUTHORED_DATA_W2_MT_MR } from "@/lib/srd/authored-effects-w2-mt-mr";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -65,6 +66,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_W2_DIVINE_DRA,
   ...AUTHORED_DATA_W2_DIVINE_RNG,
   ...AUTHORED_DATA_W2_MARTIAL,
+  ...AUTHORED_DATA_W2_MT_MR,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -246,6 +248,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.notCondition && hasCondition(sheet, gate.notCondition)) {
     return false;
   }
+  if (gate.conditions?.some((condition) => !hasCondition(sheet, condition))) {
+    return false;
+  }
   if (gate.choice && textKey(held.choice ?? "") !== textKey(gate.choice)) {
     return false;
   }
@@ -388,6 +393,20 @@ export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mod
     }
   }
   return total;
+}
+
+// What a swapped ability adds to a check of `ability` (a skill's or a raw
+// one): the other ability's modifier where it is higher, for a swap that
+// covers checks. computeSheetDerived adds it to the skills of that ability,
+// and request_roll to an ability check with no skill (src/lib/dm/rolls.ts).
+export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
+  let best = 0;
+  for (const { effect } of activeAuthored(sheet, "save_swap")) {
+    if (effect.checks && effect.save === ability) {
+      best = Math.max(best, (mods[effect.use] ?? 0) - (mods[effect.save] ?? 0));
+    }
+  }
+  return best;
 }
 
 // ---- AC, speed, movement ----

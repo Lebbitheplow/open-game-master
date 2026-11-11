@@ -42,20 +42,23 @@ export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterShee
 // refusal ("X stands in bright light at (x,y)"), or null when the square is
 // dim or dark, or there is no board. The Hand's board facts carry it
 // (view-tactics.ts ownSquareFacts), so a card that asks the dark closes too.
-export function brightSquare(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">): string | null {
+// `at`: another square than the one they stand on (where Shadow Step lands,
+// mt-mr-spends.ts featureLandingRefusal, which words its own refusal).
+export function brightSquare(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, at?: { x: number; y: number }): string | null {
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
   if (!map || !token) {
     return null;
   }
+  const spot = at ?? token;
   const clock = getClock(campaignId);
   const ambient = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
   const zones = lightsWithZones(map);
-  if (zones.length && magicalDarknessAt(zones, token.x, token.y)) {
+  if (zones.length && magicalDarknessAt(zones, spot.x, spot.y)) {
     return null;
   }
-  const local = zones.length ? ambientAt(zones, token.x, token.y, ambient) : ambient;
+  const local = zones.length ? ambientAt(zones, spot.x, spot.y, ambient) : ambient;
   // A lamp or a carried light on the square brightens it; the lit set does
   // not tell its bright radius from its dim one, so a lit square counts as
   // bright.
@@ -73,8 +76,8 @@ export function brightSquare(campaignId: string, sheet: Pick<CharacterSheet, "id
       },
       listTokens(map.id),
       map.lights,
-    ).has(tileIndex(map.width, token.x, token.y));
-  return local === "bright" || lit ? `${sheet.name} stands in bright light at (${token.x},${token.y})` : null;
+    ).has(tileIndex(map.width, spot.x, spot.y));
+  return local === "bright" || lit ? `${sheet.name} stands in bright light at (${spot.x},${spot.y})` : null;
 }
 
 // The invisibility One with Shadows gives, as the condition list and meta to

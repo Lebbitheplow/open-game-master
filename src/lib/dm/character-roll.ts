@@ -92,7 +92,7 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
   }
   const dc = typeof roll.dc === "number" ? roll.dc : null;
   return [
-    ...afterRollOptions(sheet, { kind: roll.kind, outcome, dc, reactionFree }),
+    ...afterRollOptions(sheet, { kind: roll.kind, outcome, dc, reactionFree, check: { skill: roll.kind === "skill_check" ? roll.detail : null } }),
     ...allyChoicesFor(campaign.id, sheet, { kind: roll.kind, outcome, dc }),
   ];
 }

@@ -23,12 +23,14 @@ import {
   primaryClass,
   standingGate,
   type Gate,
+  type HandBoardFacts,
   type HandCard,
   type HandCost,
   type HandTarget,
   type HandTurn,
   failedSaveGate,
 } from "@/lib/battlemap/hand-core";
+import { mrCardGate } from "@/lib/battlemap/mt-mr-hand";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
@@ -68,6 +70,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "cauterizing") return does.mode === "heal" ? "ally" : "enemy";
   // The creature whose thoughts Read Thoughts reads (authored-spend-divine-clr.ts).
   if (does.kind === "read_thoughts") return "enemy";
+  // A monk's or a rogue's own spend says who it is aimed at.
+  if (does.kind === "mr") return does.aims ?? "none";
   return "none";
 }
 
@@ -177,12 +181,12 @@ function ownCounter(spend: AuthoredSpend) {
 // names the cards dealt before these (a spend with a counter of its own name
 // is dealt where that counter's card sat, counterSpendCards) so none shows
 // twice.
-export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>): HandCard[] {
+export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>, board?: HandBoardFacts): HandCard[] {
   const cards: HandCard[] = [];
   for (const held of heldAuthored(sheet)) {
     for (const spend of held.entry.spends ?? []) {
       if (taken.has(textKey(spend.name))) continue;
-      const dealt = spendCards(sheet, turn, held, spend);
+      const dealt = spendCards(sheet, turn, held, spend, board);
       if (dealt.length) taken.add(textKey(spend.name));
       cards.push(...dealt);
     }
@@ -239,7 +243,7 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
 }
 
-function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend): HandCard[] {
+function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend, board?: HandBoardFacts): HandCard[] {
   const does = spend.does;
   // The counter of this spend's own name. Its card's id, cost and uses line
   // carry over, so a seat the player arranged holds and Hidden Paths, whose
@@ -364,6 +368,8 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       sightBound(aimDoes(does, aim.variant)) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
         ? { reason: `${spend.name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
         : null,
+      // What a monk's or a rogue's own spend waits for (mt-mr-hand.ts).
+      mrCardGate(sheet, turn, spend, board),
       aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name),
       does.kind === "reroll_save" ? failedSaveGate(spend.name, turn) : null,
     );

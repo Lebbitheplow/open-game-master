@@ -300,4 +300,8 @@ const MANIFESTED_WINGS = new Map<string, number | null>([
   ["otherworldly wings", 30],
   ["wings unfurled", null],
   ["celestial revelation: heavenly wings", null],
+  // A Phantom's Ghost Walk: "spectral for 10 minutes with a 10-foot fly
+  // speed" (no wings, the same reading: a flying speed while the condition
+  // is held).
+  ["ghost walk", 10],
 ]);

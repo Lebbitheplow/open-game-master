@@ -26,6 +26,8 @@ import {
 } from "@/lib/dm/attack-logic";
 import { handsRuling, otherHandArmed, thrownAtRange } from "@/lib/dm/attack-rules";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
+import { kenseiStance } from "@/lib/srd/mt-mr-kensei";
+import { unarmedForm } from "@/lib/srd/mt-mr-unarmed";
 import { shillelaghSwing, hexWarriorSwing } from "@/lib/dm/attack-features";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
@@ -411,6 +413,8 @@ export function buildAttackProfile(
       ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? weapon, {
         riders,
         martialArts: martialArtsApplies(sheet),
+        kensei: kenseiStance(sheet),
+        unarmedForm: unarmedForm(sheet, derived.abilityMods),
         brawler: brawlerUnarmed(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
@@ -455,7 +459,7 @@ export function buildAttackProfile(
     special = lance ? "lance" : used.srd?.name === SPECIAL_WEAPONS.net ? "net" : null;
   }
   // Demiurgic Colossus: a raging giant's melee reach grows by 5 feet.
-  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
+  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet, profile.unarmed === true) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
   }

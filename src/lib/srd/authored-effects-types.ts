@@ -31,6 +31,9 @@ export type Gate = {
   condition?: string;
   because?: string;
   notCondition?: string;
+  // Every one of these conditions as well (Body of the Astral Self: the arms
+  // and the visage both).
+  conditions?: string[];
   // The option chosen for this feature ("Totem Spirit (Bear)"), or for
   // another feature of the same sheet ("Armor Model (Guardian)").
   choice?: string;
@@ -61,7 +64,9 @@ export type AuthoredEffect = Base &
     | { kind: "save_prof"; abilities: Ability[] }
     | { kind: "save_bonus"; amount: number }
     // A save of one ability uses another ability's modifier when higher.
-    | { kind: "save_swap"; save: Ability; use: Ability }
+    // `checks`: ability checks of that ability too (Arms of the Astral Self:
+    // "Wisdom for Strength checks and saves").
+    | { kind: "save_swap"; save: Ability; use: Ability; checks?: true }
     | { kind: "ac"; amount: number }
     // Walking speed, through feature-effects' speed_bonus. `allies`: an ally
     // who starts their turn within the ladder's reach of the holder (up and
@@ -122,7 +127,9 @@ export type AuthoredEffect = Base &
     // skills (Silver Tongue: 10 on Persuasion and Deception).
     // `abilities`: every check of those abilities (Starry Form's Dragon:
     // Intelligence and Wisdom checks).
-    | { kind: "check_floor"; skills: string[]; floor: number; abilities?: Ability[] }
+    // `about`: only on a check about that circumstance (Ear for Deceit: 8 on
+    // an Insight check "to tell whether a creature is lying").
+    | { kind: "check_floor"; skills: string[]; floor: number; abilities?: Ability[]; about?: CheckAbout }
     // An ability's modifier added to checks of other abilities (Otherworldly
     // Glamour: Wisdom on Charisma checks; src/lib/srd/authored-check-mod.ts).
     | { kind: "check_ability_mod"; checks: Ability[]; ability: Ability }
@@ -233,7 +240,8 @@ export type AuthoredEffect = Base &
       }
     // Melee weapon reach grows by this many 5-foot squares (Demiurgic
     // Colossus while raging).
-    | { kind: "reach"; tiles: number }
+    // `unarmed`: only the unarmed strike's (Arms of the Astral Self).
+    | { kind: "reach"; tiles: number; unarmed?: boolean }
     // Sneak Attack gains dice against a creature the holder marked
     // (Eye for Weakness: 3d6 against the Insightful Fighting target).
     | { kind: "sneak_bonus"; dice: number; mark: string }
@@ -366,7 +374,9 @@ export type SpendDoes =
       // damage (Avenging Angel: "for a minute or until it takes damage").
       // `aura`: the burst is an aura that also asks each enemy as it first
       // enters it or starts its turn in it (src/lib/dm/aura-menace.ts).
-      burst?: { save: Ability; dcAbility: Ability | "spell"; rangeFt: number; dice?: Formula; type?: string; condition?: string; mark?: string; rounds?: number; endsOnDamage?: boolean; aura?: boolean };
+      // `untilNextTurnEnds`: the burst's condition lasts until the end of the
+      // holder's next turn (Hour of Reaping), not a count of rounds.
+      burst?: { save: Ability; dcAbility: Ability | "spell"; rangeFt: number; dice?: Formula; type?: string; condition?: string; mark?: string; rounds?: number; endsOnDamage?: boolean; aura?: boolean; untilNextTurnEnds?: boolean };
       // Until the end of the holder's next turn, not a count of rounds (Cloak
       // of Shadows). `rounds` still states its length on the card.
       untilNextTurnEnds?: boolean;
@@ -490,7 +500,9 @@ export type SpendDoes =
   // that level or lower (Bolstering Magic).
   | { kind: "regain_slot"; die: string }
   // An area the model resolves with aoe_damage: the dice, save and DC.
-  | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
+  // `noHalf`: a creature that saves takes nothing (Searing Sunburst).
+  // `rangeFt`: how far from the holder a creature named may stand.
+  | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string; noHalf?: boolean; rangeFt?: number }
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.
@@ -585,7 +597,16 @@ export type SpendDoes =
   // holder carries while it stands (src/lib/dm/feature-summons-dra.ts):
   // Summon Wildfire Spirit, Eldritch Cannon.
   | { kind: "wildfire_spirit"; condition: string; rounds: number }
-  | { kind: "eldritch_cannon"; condition: string; rounds: number };
+  | { kind: "eldritch_cannon"; condition: string; rounds: number }
+  // A monk's or a rogue's subclass spend wave 2 built, resolved by its id in
+  // src/lib/dm/mt-mr-spends.ts. `aims`: who the Hand's card is aimed at.
+  | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number };
+
+export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind" | "wings_unfurled" | "wyrm_frighten" | "wyrm_ward";
+
+// A precondition of a spend that a gate's words cannot say: the light on the
+// holder's square, or a mark this turn left (src/lib/dm/mt-mr-needs.ts).
+export type SpendNeed = "shadows" | "unarmed_in_action" | "flurry_harm" | "attack_action";
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -602,9 +623,18 @@ export type AuthoredSpend = {
   // `slotFallback`: with the counter spent, a spell slot of exactly this
   // level buys the use again (Living Legend: "Once per long rest, or by
   // expending a 5th-level spell slot").
-  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; slot?: boolean; slotFallback?: number };
+  // `free`: the spend takes nothing from the pool while this holds (Flurry of
+  // Healing and Harm's Hand of Harm on a Flurry of Blows strike).
+  // `fallbackAmount`: what the fallback pool pays when it is not the same
+  // amount (Rend Mind: three Psionic Energy dice for its one use).
+  // `orTrinket`: with none left in the pool, a Phantom's soul trinket is
+  // destroyed in its place (src/lib/dm/mt-mr-trinkets.ts).
+  pool?: { id: string; amount?: number; perUnit?: boolean; max?: number; optional?: boolean; fallback?: string; slot?: boolean; slotFallback?: number; fallbackAmount?: number; free?: SpendNeed; orTrinket?: boolean; min?: number };
   action?: SpendAction;
   gate?: Gate;
+  // Asked after the gate and before anything is spent; unmet, the refusal
+  // says what is missing.
+  needs?: SpendNeed;
   // Once per rage and similar: a marker condition the spend leaves.
   oncePer?: { marker: string; rounds: number };
   oncePerTurn?: boolean;

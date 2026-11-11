@@ -19,6 +19,7 @@
 // a fresh call would. The turn waits for the rolls, and the resumed turn
 // answers the call with every part (src/lib/dm/turn.ts).
 
+import { sunBoltStrike } from "@/lib/dm/mt-mr-turn";
 import { z } from "zod";
 import { listMembers, type Campaign } from "@/lib/db/campaigns";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
@@ -401,7 +402,8 @@ function stunnedThroughNextTurn(enemyId: string, monkId: string): boolean {
 // condition grants (Alter Self's natural weapons). SRD 5.1 gives no race a
 // natural weapon, so everything else a part names is struck unarmed.
 function naturalAttack(sheet: CharacterSheet, weapon: string): boolean {
-  return resolveAttackWeapon([], [], weapon).unarmed || grantedAttackFor(sheet.conditions, weapon, "") !== null;
+  // A Sun Soul monk's bolt takes a flurry strike's place (mt-mr-turn.ts sunBoltStrike).
+  return resolveAttackWeapon([], [], weapon).unarmed || grantedAttackFor(sheet.conditions, weapon, "") !== null || sunBoltStrike(sheet, weapon);
 }
 
 // The feature a part names, and what the engine reads it as: one of the

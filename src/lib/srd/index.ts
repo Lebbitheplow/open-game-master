@@ -13,7 +13,7 @@ import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
-import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -22,6 +22,7 @@ import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
 import { naturalArmorOf } from "@/lib/srd/mt-species-traits";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
+import { kiCastAbility } from "@/lib/srd/mt-mr-casts";
 import { featSpellAbility, type FeatSpellSheet } from "@/lib/srd/feat-spells";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
 import type {
@@ -541,6 +542,8 @@ export function computeSheetDerived(
         skill.id,
         keepMeaningful([
           { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
+          // Arms of the Astral Self: Wisdom for Strength checks (authored-effects.ts).
+          { label: "subclass features", value: authoredCheckSwap(sheet, skill.ability as Ability, abilityMods) },
           trained,
         ]),
       ];
@@ -658,7 +661,12 @@ function classListsHold(casting: DerivedSheet["spellcasting"], spell: string): b
 // it (issue #833): the feat's that taught it, else the race's (a tiefling's
 // Charisma, a workshop option's own), or null for the class's.
 function grantedSpellAbility(sheet: DerivedSheet, spell: string): Ability | null {
-  return featSpellAbility(sheet as FeatSpellSheet, spell) ?? racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell));
+  return (
+    featSpellAbility(sheet as FeatSpellSheet, spell) ??
+    racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell)) ??
+    // A monk's ki cast, whose DC is the ki save DC (mt-mr-casts.ts), unless a class of theirs holds the spell.
+    (classListsHold(sheet.spellcasting, spell) ? null : kiCastAbility((sheet as { features?: Array<{ name: string }> }).features, spell))
+  );
 }
 
 export type CastingSheet<T extends DerivedSheet = DerivedSheet> = T & { spellcasting: NonNullable<T["spellcasting"]> };

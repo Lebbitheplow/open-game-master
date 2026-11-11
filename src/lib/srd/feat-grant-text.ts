@@ -30,6 +30,9 @@ export type FeatGrantSpec = {
   toolsFrom: string[];
   // What a weapon pick may be, by name; empty for the whole table.
   weaponsFrom: string[];
+  // The kinds the weapon picks must cover between them, one of each (Path of
+  // the Kensei: one melee and one ranged).
+  weaponKinds?: Array<"melee" | "ranged">;
   // Armor a choice offers (Heraldic Training's "one martial weapon or
   // shields"); empty when the feat offers none as a pick.
   armorFrom: string[];

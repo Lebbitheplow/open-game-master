@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-rogue.mjs";
+import { afterRollKit } from "./lib/sweep-clauses-mt-mr.mjs";
 
 const { probe, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const RAPIER = { equipment: [{ name: "Rapier", qty: 1, equipped: true }] };
@@ -99,6 +100,20 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(budget().bonusUsed, true, "the bonus action");
     assert.equal(budget().actionUsed ?? false, false, "and not the action");
   });
+  // "At up to 30 feet": the foe named for the ally's attack, 30 feet from the
+  // mastermind, and not 35.
+  await probe("master-of-tactics-30-feet", async () => {
+    const [enemy] = await stage(mastermind, { cast: [[ally, 12, 5]] });
+    kit.place(enemy.id, 11, 5);
+    const out = await act(mastermind, "help", { bonus: true, targetCharacterId: ally.id, targetEnemyId: enemy.id });
+    assert.equal(out.ok, true, `Help on an attack against a creature 30 feet off: ${show(out)}`);
+    const [far] = await stage(mastermind, { cast: [[ally, 13, 5]] });
+    kit.place(far.id, 12, 5);
+    assert.equal((await act(mastermind, "help", { bonus: true, targetCharacterId: ally.id, targetEnemyId: far.id })).ok, false, "35 feet off");
+    const [near] = await stage(ally, { cast: [[mastermind, 4, 5]] });
+    kit.place(near.id, 11, 5);
+    assert.equal((await act(ally, "help", { targetCharacterId: mastermind.id, targetEnemyId: near.id })).ok, false, "the staging: a fighter's Help reaches 5 feet");
+  });
   await probe("misdirection-within-5-feet", async () => {
     const [enemy] = await stage(mastermind, { cast: [[ally, 5, 9]] });
     await enemyHits(enemy, mastermind, [16, 4]);
@@ -137,13 +152,22 @@ const sneakDice = (level) => Math.ceil(level / 2);
   const inquisitive = hero("rogue", "Inquisitive", 9, { ...RAPIER, proficiencies: SKILLED });
   await probe("ear-for-deceit-floor", async () => {
     await kit.endFight();
-    const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, reason: "is the merchant lying about the price?" }, [3]);
+    const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, about: "lies", reason: "is the merchant lying about the price?" }, [3]);
     assert.equal(out.total, 8 + MOD + prof(9), `a 3 on an Insight check for a lie totals ${out.total}`);
   });
   await probe("ear-for-deceit-lies-only", async () => {
     await kit.endFight();
     const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, reason: "reading the mood of the crowd" }, [3]);
     assert.equal(out.total, 3 + MOD + prof(9), `a 3 on an Insight check about no lie is floored to 8 (${out.total})`);
+    // A model's Insight check for an Inquisitive is asked whether it is about
+    // a lie, so the floor is neither lost to an omission nor given to another
+    // check (the ask is src/lib/srd/roll-keys.ts unnamedRollKeys).
+    const { heldRollKeys } = await import("../src/lib/dm/roll-feature-riders.ts");
+    const { unnamedRollKeys } = await import("../src/lib/srd/roll-keys.ts");
+    const keys = heldRollKeys(world.sheet(inquisitive.id));
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "insight" }, keys), [{ field: "about", values: ["lies"] }], "an Insight check that names no circumstance");
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "insight", about: "lies" }, keys), []);
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "stealth" }, keys), [], "a Stealth check is not asked");
   });
   await probe("eye-for-detail", async () => {
     await stage(inquisitive);
@@ -160,6 +184,18 @@ const sneakDice = (level) => Math.ceil(level / 2);
     kit.freshTurn();
     const hit = await swing(inquisitive, enemy, [15, 4, 4, 4, 4, 4, 4]);
     assert.match(expr(hit), new RegExp(`${sneakDice(9)}d6`), `alone, no advantage, the hit after Insightful Fighting: ${expr(hit)}`);
+  });
+  // "For a minute": ten rounds of the mark.
+  await probe("insightful-fighting-minute", async () => {
+    const [enemy] = await stage(inquisitive);
+    assert.equal((await spend(inquisitive, "Insightful Fighting", { targetEnemyId: enemy.id }, [20, 1])).ok, true);
+    const marked = () => r.foeHas(enemy, "insightful fighting");
+    assert.ok(marked(), "the staging: the creature is read");
+    for (let round = 0; round < 9; round += 1) r.untilTurnOf(inquisitive);
+    assert.ok(marked(), "nine rounds on the mark holds");
+    r.untilTurnOf(inquisitive);
+    r.untilTurnOf(inquisitive);
+    assert.ok(!marked(), "eleven rounds on it still holds");
   });
   await probe("steady-eye-advantage", async () => {
     await stage(inquisitive);
@@ -261,6 +297,82 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(out.ok, true, out.error);
     assert.ok(sheet(friend).conditions.includes("soul trinket"), "a long rest's end with no trinket carried leaves none in the rogue's hand");
   });
+  // "You can hold up to your proficiency bonus of them": 4 at 9th level.
+  await probe("soul-trinkets-count", async () => {
+    const dies = async (held) => {
+      // Two creatures, so the fight goes on once one has died.
+      const [enemy] = await stage(phantom, { enemies: 2 });
+      if (held) give(phantom, held, { rounds: 14400 });
+      kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 1 });
+      await swing(phantom, enemy, [15, 4]);
+      return r.react(phantom, "Tokens of the Departed");
+    };
+    const first = await dies(null);
+    assert.equal(first.ok, true, first.error);
+    assert.ok(sheet(phantom).conditions.includes("soul trinket"), `one trinket: ${sheet(phantom).conditions.join(", ")}`);
+    assert.equal((await dies("soul trinket (3)")).ok, true, "a fourth");
+    assert.ok(sheet(phantom).conditions.includes("soul trinket (4)"), `four trinkets: ${sheet(phantom).conditions.join(", ")}`);
+    const fifth = await dies("soul trinket (4)");
+    assert.equal(fifth.ok, false, `a fifth trinket at proficiency bonus 4: ${show(fifth)}`);
+  });
+  // "Destroy one to use Wails from the Grave without spending a use, and as
+  // an action you can destroy one to ask its spirit a question."
+  await probe("soul-trinket-spent", async () => {
+    const [first, second] = await stage(phantom, { enemies: 2, cast: [] });
+    give(phantom, "soul trinket (2)", { rounds: 14400 });
+    r.setUsed(phantom, "sub_wails_from_the_grave", r.max(phantom, "sub_wails_from_the_grave"));
+    kit.setEnemy(first.id, { conditions: ["prone"] });
+    await swing(phantom, first, [15, 15, ...new Array(12).fill(2)]);
+    const before = foe(second).currentHp;
+    const wail = await spend(phantom, "Wails from the Grave", { targetEnemyId: second.id }, 2);
+    assert.equal(wail.ok, true, wail.error);
+    assert.ok(before > foe(second).currentHp, "the wail landed");
+    assert.ok(sheet(phantom).conditions.includes("soul trinket"), `one trinket of two destroyed: ${sheet(phantom).conditions.join(", ")}`);
+    kit.freshTurn();
+    const asked = await spend(phantom, "Question a Spirit");
+    assert.equal(asked.ok, true, asked.error);
+    assert.equal(r.budget().actionUsed, true, "the action");
+    assert.ok(!r.has(phantom, "soul trinket"), "the trinket asked is destroyed");
+    kit.freshTurn();
+    assert.equal((await spend(phantom, "Question a Spirit")).ok, false, "with no trinket left");
+  });
+  // Ghost Walk: "free once per long rest, otherwise costs a soul trinket".
+  await probe("ghost-walk-trinket", async () => {
+    const ghost = hero("rogue", "Phantom", 13, RAPIER);
+    await stage(ghost);
+    assert.equal((await spend(ghost, "Ghost Walk")).ok, true, "the free use");
+    kit.freshTurn();
+    const none = await spend(ghost, "Ghost Walk");
+    assert.equal(none.ok, false, `a second walk with no trinket: ${show(none)}`);
+    give(ghost, "soul trinket", { rounds: 14400 });
+    const paid = await spend(ghost, "Ghost Walk");
+    assert.equal(paid.ok, true, paid.error);
+    assert.ok(!r.has(ghost, "soul trinket"), "the trinket paid for it");
+    assert.equal(r.used(ghost, "sub_ghost_walk"), 1, "and no use beyond the one");
+  });
+  // Ghost Walk: a 10-foot flying speed, and every creature's space and every
+  // prop's is one the rogue may pass through, as the move route and the
+  // board's lit squares both ask (passage.ts pcMoveTraits).
+  await probe("ghost-walk-spectral", async () => {
+    const { pcMoveTraits } = await import("../src/lib/battlemap/passage.ts");
+    const { flyingSpeedOf } = await import("../src/lib/battlemap/types.ts");
+    const maps = await import("../src/lib/db/battle-maps.ts");
+    const ghost = hero("rogue", "Phantom", 13, RAPIER);
+    const [enemy] = await stage(ghost);
+    const board = kit.map();
+    const through = () =>
+      pcMoveTraits({ width: board.width, tokens: maps.listTokens(board.id), mover: kit.token(ghost.id), sheet: r.sheet(ghost), footprintOf: () => 1, enemySize: () => "medium" }).passable;
+    const at = kit.token(enemy.id).y * board.width + kit.token(enemy.id).x;
+    const fly = () => flyingSpeedOf({ conditions: r.sheet(ghost).conditions, features: r.sheet(ghost).features, walkingFeet: r.sheet(ghost).speed });
+    assert.equal(through().has(at), false, "the staging: a hostile creature of the rogue's size blocks its space");
+    assert.equal(fly(), null, "the staging: no flying speed");
+    const out = await spend(ghost, "Ghost Walk");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(through().has(at), true, "spectral, the rogue passes through the creature's space");
+    assert.equal(fly(), 10, "a 10-foot flying speed");
+    assert.equal(r.sheet(ghost).conditionMeta["ghost walk"]?.rounds, 100, "for 10 minutes");
+  });
+
   await probe("tokens-save-advantage", async () => {
     await kit.endFight();
     give(phantom, "soul trinket", { rounds: 14400 });
@@ -280,6 +392,138 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.ok(has(knife, "invisible"), "invisible");
     assert.equal(budget().actionUsed, true, "the action");
     assert.equal(sheet(knife).conditionMeta.invisible?.rounds, 600, "an hour");
+  });
+  // "Free once per long rest and otherwise for a die."
+  await probe("psychic-veil-die", async () => {
+    await stage(knife);
+    r.setUsed(knife, "sub_psychic_veil", 1);
+    const out = await spend(knife, "Psychic Veil");
+    assert.equal(out.ok, true, out.error);
+    assert.ok(has(knife, "invisible"), "invisible");
+    assert.deepEqual([r.used(knife, "sub_psychic_veil"), r.used(knife, "sub_psionic_energy")], [1, 1], "one Psionic Energy die in the use's place");
+    await stage(knife);
+    r.setUsed(knife, "sub_psychic_veil", 1);
+    r.setUsed(knife, "sub_psionic_energy", r.max(knife, "sub_psionic_energy"));
+    assert.equal((await spend(knife, "Psychic Veil")).ok, false, "with no die left either");
+  });
+  // The Psionic Energy die where one is rolled: Psychic Teleportation's
+  // distance, ten times the roll, a d8 at 9th level and a d12 at 17th.
+  await probe("psionic-energy-die", async () => {
+    for (const [level, sides] of [[9, 8], [11, 10], [17, 12]]) {
+      const blade = hero("rogue", "Soulknife", level, RAPIER);
+      await stage(blade);
+      world.diceLog();
+      const out = await spend(blade, "Psychic Teleportation", {}, [sides]);
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(world.diceLog().map((die) => die.sides), [sides], `a d${sides} at level ${level}`);
+      assert.match(JSON.stringify(out.result), new RegExp(`${sides * 10} feet`), `ten times the roll: ${show(out)}`);
+      assert.equal(budget().bonusUsed, true, "the bonus action");
+      assert.equal(r.used(blade, "sub_psionic_energy"), 1, "one die");
+    }
+  });
+  // "The blades keep these dice at every level."
+  await probe("psychic-blades-dice-at-17", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    const hit = await swing(master, enemy, [15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.match(expr(hit), /^1d6/, `the blade at 17th level: ${expr(hit)}`);
+    const second = await swing(master, enemy, [15, ...new Array(12).fill(2)], { weapon: "psychic blade", feature: "two-weapon fighting" });
+    assert.equal(second.ok, true, second.error);
+    assert.match(expr(second), /^1d4/, `the second blade at 17th level: ${expr(second)}`);
+  });
+  // Homing Strikes (Soul Blades, 9th level): a missed psychic blade waits on
+  // the rogue, a Psionic Energy die is added, and the die is spent only if it
+  // turns the miss.
+  await probe("homing-strikes", async () => {
+    const card = await afterRollKit(world);
+    const blade = hero("rogue", "Soulknife", 9, { equipment: [{ name: "Rapier", qty: 1, equipped: false }] });
+    const [enemy] = await stage(blade);
+    // +7 with the blade (Dexterity and proficiency): a 3 is 10 against AC 13.
+    await swing(blade, enemy, [3], { weapon: "psychic blade" });
+    assert.deepEqual(card.offered(), ["homing_strikes"], "a missed psychic blade the d8 could turn");
+    assert.equal(r.used(blade, "sub_psionic_energy"), 0, "nothing is spent until they choose");
+    const turned = await card.choose(blade, "homing_strikes", 5, 2, 2, 2, 2, 2, 2, 2);
+    assert.match(turned.note, /HIT/, `10 + 5 against AC 13: ${turned.note}`);
+    assert.equal(r.used(blade, "sub_psionic_energy"), 1, "the die turned the miss and is spent");
+    const [second] = await stage(blade);
+    await swing(blade, second, [3], { weapon: "psychic blade" });
+    const short = await card.choose(blade, "homing_strikes", 1);
+    assert.match(short.note, /MISS/, `10 + 1 against AC 13: ${short.note}`);
+    assert.equal(r.used(blade, "sub_psionic_energy"), 0, "a die that leaves the attack short is not spent");
+    const [third] = await stage(blade);
+    world.patch(blade.id, { equipment: [{ name: "Rapier", qty: 1, equipped: true }] });
+    await swing(blade, third, [3], { weapon: "Rapier" });
+    assert.deepEqual(card.offered(), [], "a rapier is no psychic blade");
+    await card.keepAll(blade);
+    const [fourth] = await stage(knife);
+    kit.setEnemy(fourth.id, { ac: 30 });
+    await swing(knife, fourth, [3], { weapon: "psychic blade" });
+    assert.deepEqual(card.offered(), [], "a miss no die could turn is not offered it");
+    await card.keepAll(knife);
+  });
+
+  // Psi-Bolstered Knack: a failed check with a proficient skill or tool
+  // waits on the rogue; the die is spent only if it closes the gap.
+  await probe("psi-bolstered-knack", async () => {
+    const card = await afterRollKit(world);
+    const SKILLED = { skills: ["stealth"], saves: [], expertise: [], languages: ["Common"], tools: ["thieves' tools"], armor: ["light"], weapons: ["simple", "martial"] };
+    const adept = hero("rogue", "Soulknife", 9, { ...RAPIER, proficiencies: SKILLED });
+    const ask = async (args, face) => {
+      await kit.endFight();
+      world.clearDice();
+      world.dice(face);
+      const out = await world.invoke("request_roll", { characterId: adept.id, dc: 16, reason: "a clause probe", ...args });
+      world.clearDice();
+      assert.equal(out.ok, true, out.error);
+    };
+    const used = () => r.used(adept, "sub_psionic_energy");
+    const before = used();
+    // 5 + Dexterity + proficiency is 12 against DC 16: a d8 can close it.
+    await ask({ kind: "skill_check", skill: "stealth" }, 5);
+    assert.deepEqual(card.offered(), ["psi_knack"], "a failed Stealth check, a skill the rogue is proficient in");
+    const made = await card.choose(adept, "psi_knack", 6);
+    assert.equal(made.roll.total, 5 + MOD + prof(9) + 6, "the die is added");
+    assert.equal(used(), before + 1, "it closed the gap and is spent");
+    await ask({ kind: "skill_check", skill: "stealth" }, 5);
+    const short = await card.choose(adept, "psi_knack", 1);
+    assert.equal(short.roll.total, 5 + MOD + prof(9) + 1);
+    assert.equal(used(), before + 1, "a die that leaves the check short is not spent");
+    await ask({ kind: "ability_check", ability: "dex", tool: "thieves' tools" }, 5);
+    assert.deepEqual(card.offered(), ["psi_knack"], "a failed check with a tool the rogue is proficient with");
+    await card.keepAll(adept);
+    await ask({ kind: "skill_check", skill: "athletics" }, 9);
+    assert.deepEqual(card.offered(), [], "Athletics, which the rogue is not proficient in, is not offered it");
+    await card.keepAll(adept);
+  });
+
+  // Rend Mind: a Sneak Attack with a psychic blade, a Wisdom save or stunned
+  // for a minute; free once, then three Psionic Energy dice.
+  await probe("rend-mind", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    const cold = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(cold.ok, false, `with no Sneak Attack landed: ${show(cold)}`);
+    assert.equal(r.used(master, "sub_rend_mind"), 0, "and the refusal spent nothing");
+    kit.setEnemy(enemy.id, { conditions: ["prone"] });
+    const hit = await swing(master, enemy, [15, 15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    assert.match(expr(hit), /9d6/, `the staging: a Sneak Attack with the blade (${expr(hit)})`);
+    const out = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(r.foeHas(enemy, "stunned"), `a failed Wisdom save (a 2): ${show(out)}`);
+    assert.equal(foe(enemy).conditionMeta.stunned?.rounds, 10, "for a minute");
+    assert.equal(r.used(master, "sub_rend_mind"), 1, "the free use");
+  });
+  await probe("rend-mind-three-dice", async () => {
+    const master = hero("rogue", "Soulknife", 17, { equipment: [] });
+    const [enemy] = await stage(master);
+    r.setUsed(master, "sub_rend_mind", 1);
+    kit.setEnemy(enemy.id, { conditions: ["prone"] });
+    await swing(master, enemy, [15, 15, ...new Array(12).fill(2)], { weapon: "psychic blade" });
+    const out = await spend(master, "Rend Mind", { targetEnemyId: enemy.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(r.used(master, "sub_psionic_energy"), 3, "three Psionic Energy dice in the use's place");
+    assert.ok(r.foeHas(enemy, "stunned"), "and the creature is stunned");
   });
   await probe("psychic-veil-ends-on-damage", async () => {
     const [enemy] = await stage(knife);

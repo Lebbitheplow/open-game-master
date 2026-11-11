@@ -76,6 +76,7 @@ export async function tableRows(rig) {
     return [
       ...(gate.raging ? ["the holder raging"] : []),
       ...(gate.condition ? [`condition: ${gate.condition}`] : []),
+      ...(gate.conditions ?? []).map((condition) => `condition: ${condition}`),
       ...(does?.vsMark ? [`mark: ${does.vsMark}`] : []),
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
       ...preyOf(item).map((mark) => `mark: ${mark}`),

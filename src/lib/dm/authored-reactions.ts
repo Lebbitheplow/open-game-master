@@ -12,6 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { bothBonded, teleportBeside } from "@/lib/dm/protective-bond";
+import { SOUL_TRINKET, gainTrinket } from "@/lib/dm/mt-mr-trinkets";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -885,6 +886,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { applied: `${enemy.displayName} fails the ${does.save.toUpperCase()} save (${save.total ?? "failed"} vs DC ${dc}) and is ${condition}.` };
     }
     case "gain_condition": {
+      // A soul trinket is counted, up to the proficiency bonus (mt-mr-trinkets.ts).
+      if (textKey(does.condition) === SOUL_TRINKET) {
+        return gainTrinket(ctx.campaign, ctx.sheet);
+      }
       addSheetCondition(ctx.campaign, ctx.sheet, does.condition, { rounds: does.rounds }, reaction.name);
       return { applied: `${ctx.sheet.name} gains ${does.condition}.` };
     }

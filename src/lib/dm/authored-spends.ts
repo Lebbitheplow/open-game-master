@@ -32,6 +32,8 @@ import { drinkerTempHp, lowestSlotLeft, nearZoneRefusal, rollOption, spendSlotOf
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
+import { needRefusal } from "@/lib/dm/mt-mr-needs";
+import { destroyTrinket, trinketCount } from "@/lib/dm/mt-mr-trinkets";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -201,6 +203,11 @@ export function authoredFeatureSpend(
   if (far) {
     return far;
   }
+  // What the row needs that a gate cannot say (mt-mr-needs.ts).
+  const unmet = spend.needs ? needRefusal(campaign, sheet, spend.name, spend.needs) : null;
+  if (unmet) {
+    return unmet;
+  }
   // A spend whose counter waits on a trigger (trigger-table.ts: Call the
   // Hunt's rage just entered) answers the record, refused before anything is
   // spent when none is open: the generic door (reaction-counters.ts) asks the
@@ -241,16 +248,32 @@ export function authoredFeatureSpend(
   let poolId: string | null = null;
   let units = 0;
   let slotLevel: number | null = null;
+  let byTrinket = false;
   if (spend.pool && !swapping) {
-    units = spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
+    units = spend.pool.free && needRefusal(campaign, sheet, spend.name, spend.pool.free) === null
+      ? 0
+      : spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : (spend.pool.min ?? 1))) : (spend.pool.amount ?? 1);
+    if (spend.pool.min && units < spend.pool.min) {
+      return { error: `${spend.name} takes at least ${spend.pool.min}: pass amount ${spend.pool.min} or more. Nothing was spent.`, retry: true };
+    }
     if (spend.pool.max && units > spend.pool.max) {
       return { error: `${spend.name} takes at most ${spend.pool.max}; ${units} is more than it can hold. Nothing was spent.`, retry: true };
     }
     const candidates = [spend.pool.id, ...(spend.pool.fallback ? [spend.pool.fallback] : [])];
+    const owed = (id: string) => (id !== spend.pool!.id && spend.pool!.fallbackAmount ? spend.pool!.fallbackAmount : units);
     poolId = candidates.find((id) => {
       const state = sheet.resources?.[id];
-      return state && state.max - state.used >= units;
+      return state && state.max - state.used >= owed(id);
     }) ?? null;
+    if (poolId) {
+      units = owed(poolId);
+    }
+    if (units > 0 && !poolId && spend.pool.orTrinket && trinketCount(sheet) > 0) {
+      // A soul trinket pays for it (mt-mr-trinkets.ts): destroyed below, once
+      // the effect has landed.
+      byTrinket = true;
+      units = 0;
+    }
     // "Or by expending a spell slot of 1st level or higher": with the
     // counter spent, the lowest slot left pays (dra-slot-fallback).
     slotLevel = units > 0 && !poolId && spend.pool.slot ? lowestSlotLeft(sheet) : null;
@@ -341,6 +364,7 @@ export function authoredFeatureSpend(
   if (trigger) {
     answerTriggers(trigger);
   }
+  const trinketsLeft = byTrinket ? destroyTrinket(campaign, sheet.id) : null;
   const left = poolId ? getSheetById(sheet.id)?.resources?.[poolId] : null;
   return {
     ok: true,
@@ -350,6 +374,7 @@ export function authoredFeatureSpend(
     ...(rollsOption ? { rolled: ctx.args.variant } : {}),
     ...outcome.result,
     ...(drunk ? { tempHp: drunk } : {}),
+    ...(byTrinket ? { trinket: `A soul trinket is destroyed for it, no use spent (${trinketsLeft ?? 0} left).` } : {}),
     ...charge.commit(),
   };
 }

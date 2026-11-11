@@ -532,7 +532,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...features,
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
-    ...subclassSpendCards(sheet, turn, taken),
+    ...subclassSpendCards(sheet, turn, taken, options.board),
     ...kiCards(sheet, turn),
     ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
     ...gearCards(sheet, turn, options.gear),

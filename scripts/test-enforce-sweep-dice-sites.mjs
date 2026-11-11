@@ -492,6 +492,8 @@ const SITES = {
   "lib/dm/after-roll.ts#rerollD20s": "H an extra d20 on the after-the-roll card (Lucky, Chronal Shift)",
   "lib/dm/after-roll.ts#spendAfterRoll": "H the die or d20 a choice on the after-the-roll card adds",
   "lib/dm/aoe-damage.ts#handleAoeDamage": "D area damage",
+  "lib/dm/mt-mr-offers.ts#dieOf": "H the Psionic Energy die a choice on the after-the-roll card adds (Homing Strikes, Psi-Bolstered Knack)",
+  "lib/dm/mt-mr-offers.ts#rerolled": "H a d20 thrown again from the after-the-roll card (Unerring Accuracy, Draconic Presence)",
   "lib/dm/attack-blow.ts#throwDamage": "D an attack's damage on the server's dice",
   "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
   "lib/dm/between-io.ts#publicDie": "F a table die",
@@ -530,6 +532,8 @@ const SITES = {
 const UNREACHED = {
   "lib/dm/after-roll.ts#rerollD20s": "thrown from the after-the-roll card: test-enforce-sweep-dice-windows.mjs",
   "lib/dm/after-roll.ts#spendAfterRoll": "thrown from the after-the-roll card: test-enforce-sweep-dice-windows.mjs",
+  "lib/dm/mt-mr-offers.ts#dieOf": "thrown from the after-the-roll card: test-enforce-sweep-clauses-martial-rogue.mjs (homing-strikes, psi-bolstered-knack)",
+  "lib/dm/mt-mr-offers.ts#rerolled": "thrown from the after-the-roll card: test-enforce-sweep-clauses-martial-monk.mjs (unerring-accuracy, draconic-presence)",
   "lib/dm/encounter-tools.ts#ensureInitiativeProgress": "skips held seats by its own filter (encounter-tools.ts: !held.has(sheet.userId)); test-real-dice-initiative.mjs holds it",
   "lib/dm/feat-reactions.ts#lucky": "needs the Lucky feat and an open hit on the seat",
   "lib/dm/foretold-logic.ts#rollForetold": "needs a Divination wizard's long rest",

@@ -19,6 +19,7 @@
 //   mote            rolls.ts, forced-save.ts (Mote of Potential)
 //   swarm_prone     authored-spend-more.ts (Mighty Swarm)
 
+import type { RollKey } from "@/lib/srd/roll-keys";
 import { standsCheaply } from "@/lib/srd/feat-combat";
 import { activeAuthored, resolveFormula, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import type { NaturalWeapon } from "@/lib/srd/authored-effects-types";
@@ -94,8 +95,8 @@ export function naturalWeaponGated(sheet: AuthoredSheet, name: string): string |
 
 // ---- reach, Sneak Attack, saves ----
 
-export function authoredReachBonus(sheet: AuthoredSheet): { tiles: number; feature: string } | null {
-  const found = activeAuthored(sheet, "reach")[0];
+export function authoredReachBonus(sheet: AuthoredSheet, unarmed = false): { tiles: number; feature: string } | null {
+  const found = activeAuthored(sheet, "reach").filter(({ effect }) => !effect.unarmed || unarmed)[0];
   return found ? { tiles: found.effect.tiles, feature: found.held.feature } : null;
 }
 
@@ -284,14 +285,26 @@ export function authoredDamageAbility(
 
 // The lowest a d20 may count on a check with this skill (Silver Tongue's 10,
 // Ear for Deceit's 8), or 0.
-export function authoredCheckFloor(sheet: AuthoredSheet, skill: string, ability?: string): number {
+// `ability`: the check's ability, for a floor on every check of an ability
+// (Starry Form's Dragon). `about`: the circumstance the check names, for a
+// floor that holds only there (Ear for Deceit: a lie).
+export function authoredCheckFloor(sheet: AuthoredSheet, skill: string, ability?: string, about?: string): number {
   let floor = 0;
   for (const { effect } of activeAuthored(sheet, "check_floor")) {
-    if (effect.skills.some((entry) => textKey(entry) === textKey(skill)) || Boolean(ability && effect.abilities?.includes(ability as never))) {
+    const covered = effect.skills.some((entry) => textKey(entry) === textKey(skill)) || Boolean(ability && effect.abilities?.includes(ability as never));
+    if (covered && (!effect.about || effect.about === about)) {
       floor = Math.max(floor, effect.floor);
     }
   }
   return floor;
+}
+
+// The circumstance a floor reads, as the key a roll is asked for
+// (src/lib/srd/roll-keys.ts): an Inquisitive's Insight check names whether
+// it is about a lie, so the floor is never lost to an omission nor given to
+// a check about something else.
+export function authoredFloorKeys(sheet: AuthoredSheet): RollKey[] {
+  return activeAuthored(sheet, "check_floor").flatMap(({ effect }) => (effect.about ? [{ roll: "check" as const, skills: effect.skills, about: effect.about }] : []));
 }
 
 // Expert Divination: the slot level a casting gives back, or null. `slots`

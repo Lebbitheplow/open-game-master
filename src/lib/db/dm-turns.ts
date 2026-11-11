@@ -367,6 +367,9 @@ export type PendingAttack = {
 
 export type PendingCarry = {
   mote?: { bardId: string; die: string; sides: number };
+  // The tool an ability check is made with (request_roll's `tool`), which
+  // the roll's kind and detail do not say.
+  tool?: string;
   // The call this roll stopped (src/lib/dm/held-call.ts), run again from the
   // start when the roll lands, and what that run answered.
   call?: HeldRollCall;

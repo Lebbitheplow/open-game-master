@@ -1,3 +1,5 @@
+import { mrSpendAfterRoll } from "@/lib/dm/mt-mr-offers";
+import { isMrAfterRoll } from "@/lib/dm/mt-mr-offers-logic";
 import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
 import { getPendingRoll, publicPendingRoll, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
@@ -17,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath", "unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -132,7 +134,13 @@ export async function POST(
   // The bard whose die this is, read before the spend takes it off the sheet.
   const bard = choice.use === "bardic" ? bardOfHeldDie(sheet) : null;
   // The parked turn's spend: its revert gives it back (issue #622).
-  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true));
+  // A monk's or a rogue's subclass choice reads the roll's target, since two
+  // of them are paid only when they change the result (mt-mr-offers.ts).
+  const paid = runInTurnScope(pending.turnId, () =>
+    isMrAfterRoll(choice.use)
+      ? mrSpendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending)
+      : spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true),
+  );
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }

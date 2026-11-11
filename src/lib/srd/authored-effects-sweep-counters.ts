@@ -81,7 +81,7 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Wails from the Grave",
-        pool: { id: "sub_wails_from_the_grave" },
+        pool: { id: "sub_wails_from_the_grave", orTrinket: true },
         action: "none",
         oncePerTurn: true,
         afterWeaponHit: true,
@@ -95,7 +95,7 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
   "rogue::Ghost Walk": {
     subclass: "Phantom",
     counter: "sub_ghost_walk",
-    spends: [{ name: "Ghost Walk", pool: { id: "sub_ghost_walk" }, action: "bonus", does: { kind: "buff", condition: "ghost walk", rounds: 100 } }],
+    spends: [{ name: "Ghost Walk", pool: { id: "sub_ghost_walk", orTrinket: true }, action: "bonus", does: { kind: "buff", condition: "ghost walk", rounds: 100 } }],
   },
   "sorcerer::Clockwork Cavalcade": {
     subclass: "Clockwork Soul",

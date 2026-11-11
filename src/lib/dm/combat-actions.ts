@@ -5,6 +5,7 @@
 // these with the `spend` that pays for it once nothing refuses.
 
 import { helpReachTiles } from "@/lib/srd/feat-combat";
+import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -139,7 +140,8 @@ export function help(
   if (foe && encounter) {
     const apart = tilesBetween(encounter.id, sheet.id, foe.id);
     // Tactical Support: the creature may be 30 feet away (feat-combat.ts).
-    const reach = helpReachTiles(sheet);
+    // Master of Tactics: "at up to 30 feet" for a Mastermind (mt-mr-turn.ts).
+    const reach = Math.max(helpReachTiles(sheet), holdsRow(sheet, "rogue::Master of Tactics") ? 6 : 0);
     if (apart !== null && (apart > reach || wallBetween(encounter.id, sheet.id, foe.id))) {
       return {
         error: `${sheet.name} is ${apart * 5} ft from ${foe.displayName}; Help on an attack is against a creature within ${reach * 5} ft of the helper. They move next to it first, or help an ability check instead.`,

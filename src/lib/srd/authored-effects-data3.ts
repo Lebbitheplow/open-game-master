@@ -36,7 +36,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "rogue::Master of Tactics": {
     subclass: "Mastermind",
-    effects: [{ kind: "bonus_route", action: "help", note: "Helping at up to 30 feet is the GM's to allow." }],
+    // The 30 feet are combat-actions.ts (holdsRow "rogue::Master of Tactics").
+    effects: [{ kind: "bonus_route", action: "help" }],
   },
   "rogue::Misdirection": {
     subclass: "Mastermind",
@@ -67,7 +68,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "rogue::Steady Eye": {
     subclass: "Inquisitive",
     effects: [
-      { kind: "check_adv", skills: ["perception", "investigation"], note: "The engine does not measure the half-speed move; the GM withholds it after a longer one." },
+      // "After moving no more than half your speed on your turn": the roll
+      // door writes the board's count as a condition of the moment
+      // (src/lib/dm/mt-mr-checks.ts withMovementFacts).
+      { kind: "check_adv", skills: ["perception", "investigation"], gate: { notCondition: "moved past half speed" } },
     ],
   },
   "rogue::Eye for Weakness": {
@@ -91,14 +95,26 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "rogue::Sudden Strike": {
     subclass: "Scout",
-    effects: [{ kind: "bonus_attack", after: "attack", note: "A second Sneak Attack on another creature is the GM's to allow." }],
+    // The second Sneak Attack of a turn, against another creature, is
+    // pc-attack-plan.ts secondSneakKey.
+    effects: [{ kind: "bonus_attack", after: "attack" }],
   },
   // A soul trinket held: advantage on Constitution saves and on death saves
   // (the "soul trinket" condition row), no resistance.
   "rogue::Tokens of the Departed": {
     subclass: "Phantom",
+    // The trinkets are counted, up to the proficiency bonus (mt-mr-trinkets.ts).
     reactions: [{ name: "Tokens of the Departed", does: { kind: "gain_condition", condition: "soul trinket", rounds: 14400 } }],
     effects: [{ kind: "save_adv", ability: "con", gate: { condition: "soul trinket" } }],
+    spends: [
+      {
+        name: "Question a Spirit",
+        action: "action",
+        // No gate: the trinket it destroys is asked by the resolver and by
+        // the card (mt-mr-hand.ts), so the spend is open only once one is held.
+        does: { kind: "mr", id: "question_spirit" },
+      },
+    ],
   },
   "rogue::Psionic Power (Soulknife)": {
     subclass: "Soulknife",

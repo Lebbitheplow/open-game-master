@@ -122,6 +122,7 @@ export type FeatGrantInput = {
 export type FeatGrantVerdict = { proficiencies: Proficiencies; problems: string[]; owed?: string[] };
 
 const WEAPON_NAMES = new Set(SRD_WEAPONS.map((weapon) => lower(weapon.name)));
+const WEAPON_KINDS = new Map(SRD_WEAPONS.map((weapon) => [lower(weapon.name), weapon.kind]));
 const weaponName = (name: string) => SRD_WEAPONS.find((weapon) => lower(weapon.name) === lower(name))?.name ?? null;
 
 // The sheet's training with every feat's grants in. Fixed grants always;
@@ -291,6 +292,15 @@ export function applyFeatGrants(input: FeatGrantInput): FeatGrantVerdict {
         continue;
       }
       weapons.push(name);
+    }
+    // Picks that must cover kinds (Path of the Kensei: "one melee and one
+    // ranged"): two swords were taken before.
+    if (input.strict && spec.weaponKinds?.length && pickedWeapons.length >= spec.weaponKinds.length) {
+      const kinds = new Set(pickedWeapons.map((weapon) => WEAPON_KINDS.get(lower(weapon))));
+      const missing = spec.weaponKinds.find((kind) => !kinds.has(kind));
+      if (missing) {
+        problems.push(`${feat.name} takes one ${spec.weaponKinds.join(" and one ")} weapon, and none of its picks is a ${missing} weapon.`);
+      }
     }
     // Armor: what the feat offers (shields), not already worn.
     const pickedArmor = allowed("armor", named(picks.armor).map(lower));

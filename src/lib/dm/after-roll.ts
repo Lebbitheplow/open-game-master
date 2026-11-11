@@ -51,6 +51,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { inPlay } from "@/lib/dm/roster";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { swingFacts } from "@/lib/dm/mt-mr-offers";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -103,12 +104,12 @@ export function optionsForPending(
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
-    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) });
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
     const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange }, done);
     return [...own, ...allies];
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
-  const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
+  const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree, check: { skill: pending.kind === "skill_check" ? pending.detail : null, tool: pending.carry?.tool } });
   const allies = allyChoicesFor(pending.campaignId, sheet, { kind: pending.kind, outcome, dc: pending.dc, spent }, done);
   return [...own, ...allies];
 }
