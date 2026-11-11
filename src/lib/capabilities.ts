@@ -61,6 +61,10 @@ export const SERVER_FEATURES = {
   // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
   // an older host drops unread (Storm Aura's environment, an invocation).
   levelUpChanges: true,
+  // A sorcerer origin's own spell replaced at a level-up: levelUpForget
+  // naming it, which an older host refuses as a spell the character does
+  // not know (src/lib/dm/ar-ws-origin-swap.ts).
+  originSpellSwap: true,
   // "Import an adventure PDF" in the workshop and in WorldForge: the
   // /api/pdf-imports routes, which an older host answers with a 404.
   pdfImport: true,

@@ -17,8 +17,10 @@ export type LevelUpChange = { from: string; to: string };
 export type ChangeOffer =
   // One held choice and the names it may become ("Storm Aura (Sea)").
   | { kind: "choice"; label: string; from: string; options: string[]; shown: Record<string, string> }
-  // Any one of `froms` for one of `options`.
-  | { kind: "replace"; label: string; froms: string[]; options: string[]; shown: Record<string, string> };
+  // Any one of `froms` for one of `options`, or of `optionsFor[from]` where
+  // what may replace a name depends on it (a sorcerer origin's spell, by its
+  // level: src/lib/dm/ar-ws-origin-swap.ts). `note` says the rule.
+  | { kind: "replace"; label: string; froms: string[]; options: string[]; optionsFor?: Record<string, string[]>; note?: string; shown: Record<string, string> };
 
 type Facts = { classLevel: (classId: string) => number; cantrips: readonly string[] };
 type ChangeSheet = AuthoredSheet & { features: Array<{ name: string; source?: string; classId?: string; level?: number }>; feats?: string[] };

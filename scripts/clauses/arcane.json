@@ -1503,7 +1503,7 @@
    {
     "c": "If you replace that spell later, it must become a cleric spell.",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor). Ruling: a cleric spell of any level the sorcerer has slots for",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (src/lib/srd/level-up-spells.ts levelUpSpells, levelUpForget naming the affinity spell), recorded on the sheet (ar-ws-spell-swap-record.ts, read by features.ts subclassSpellsFor), and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). Ruling: a cleric spell of any level the sorcerer has slots for",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: divine-affinity-swap"
    }
   ]
@@ -1878,7 +1878,7 @@
    {
     "c": "swappable for divination and enchantment spells as you level: each time you gain a sorcerer level, one of them may be replaced with a divination or enchantment spell of the same level from the sorcerer, warlock or wizard list",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts). The text now states the level and the lists",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, so the spell swapped in is free of the count and paid with sorcery points (ar-ws-points-offer.ts), and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). The text now states the level and the lists",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psionic-swap"
    }
   ]
@@ -2021,7 +2021,7 @@
    {
     "c": "swappable for abjuration and transmutation spells as you level: each time you gain a sorcerer level, one of them may be replaced with an abjuration or transmutation spell of the same level from the sorcerer, warlock or wizard list",
     "is": "held",
-    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor. The text now states the level and the lists",
+    "by": "src/lib/dm/ar-ws-origin-swap.ts originSwap at the level-up's spells (level-up-spells.ts levelUpSpells), recorded on the sheet (ar-ws-spell-swap-record.ts) and read by features.ts subclassSpellsFor, and offered as a pick in the level-up dialog (originSwapOffer, checked against the route by scripts/test-origin-swap-offer.mjs). The text now states the level and the lists",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: clockwork-swap"
    }
   ]

@@ -9,6 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "app/campaigns/[campaignId]/LevelUpChangePick.tsx#fallback": [["key", 1, "the offer's own replacements for the name it offered (optionsFor, keyed by the names the offer wrote), else its shared list: no record's name"]],
+    "lib/dm/ar-ws-origin-swap.ts#keyed": [["key", 2, "the offer's optionsFor, keyed by the origin spell names the offer itself wrote: no record's name"]],
     "lib/dm/ar-ws-wild-surge.ts#number": [["key", 1, "the roll named in the call's variant, a number of the table, against the rolls kept on the sheet: no record's name"]],
     "lib/battlemap/hand-feature-doors.ts#first": [["key", 1, "a spell card's own spell name (intent.spell) against the names gathered from those cards: the Hand's own values, no record's name"]],
     "lib/battlemap/hand-feature-doors.ts#whole": [["key", 2, "a spell card's own spell name (intent.spell) against the names gathered from those cards: the Hand's own values, no record's name"]],
@@ -130,7 +132,7 @@
     "lib/dm/ar-ws-origin-swap.ts#fallback": [["identity", 1, "of the spells that already passed the feature's rule, one off the sorcerer's own list before the first on it: a ruling written at the module's head, never a guess at a name"]],
     "lib/dm/ar-ws-origin-swap.ts#whole-single": [["identity", 1, "a swap back to the spell the table names, by whole name (textKey on both sides)"]],
     "lib/dm/ar-ws-squeeze.ts#keyed": [["key", 1, "a sheet's conditionMeta by the condition key it was written under"]],
-    "lib/dm/ar-ws-origin-swap.ts#partial": [["identity", 2, "whole-name indexes read in a scan (textKey on both sides): the sheet's swaps by the spell replaced, and the spells held before the level"]],
+    "lib/dm/ar-ws-origin-swap.ts#partial": [["identity", 3, "whole-name indexes read in a scan (textKey on both sides): the sheet's swaps by the spell replaced, the spells held before the level, and the spells held that the dialog's offer leaves out"]],
     "lib/dm/ar-ws-origin-swap.ts#whole": [["identity", 8, "a spell, a class list or a school of magic against the rule's or the sheet's, by whole name (textKey on both sides)"]],
     "lib/dm/ar-ws-spell-swap-record.ts#whole": [["identity", 2, "a swap record's name against the one the level-up settled on, whole (both written by swapRecordName)"]],
     "lib/dm/ar-ws-spell-swap-record.ts#partial": [["key", 6, "the engine's own record feature, whose name carries the two spells of a swap (\"Spell swap: A > B\"), and those names read back; and whole-name indexes read in a scan (textKey on both sides): the swaps by the spell replaced, the spells a stored sheet holds"]],
@@ -396,7 +398,7 @@
     "app/campaigns/[campaignId]/LevelUpDialog.tsx#keyed": [["identity", 1, "the feat-choice map by textKey, one key"], ["identity", 10, "spells held, granted and picked (the class's list and the picks from any class) by textKey on both sides"]],
     "app/campaigns/[campaignId]/LevelUpDialog.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/campaigns/[campaignId]/LevelUpDialog.tsx#partial": [["identity",9,"options, feats, subclasses, styles and spells by whole name"],["search",1,"the level-up class list's filter box"]],
-    "app/campaigns/[campaignId]/LevelUpDialog.tsx#whole": [["identity", 15, "options, feats, subclasses, styles and spells by whole name"], ["identity", 8, "level-up picks by their row names"], ["key", 1, "the class taking the level, by its id"], ["identity", 1, "options, feats, subclasses, styles and spells by whole name"], ["identity", 4, "a workshop subclass choice's pick by its label, textKey on both sides (issue 833)"]],
+    "app/campaigns/[campaignId]/LevelUpDialog.tsx#whole": [["identity", 15, "options, feats, subclasses, styles and spells by whole name"], ["identity", 8, "level-up picks by their row names"], ["key", 1, "the class taking the level, by its id"], ["identity", 1, "options, feats, subclasses, styles and spells by whole name"], ["identity", 4, "a workshop subclass choice's pick by its label, textKey on both sides (issue 833)"], ["identity", 1, "a sorcerer origin's swap pick against the names the offer wrote, whole"]],
     "components/sheet/OwedPicks.tsx#whole": [["identity",5,"owed picks by their option's whole name"]],
     "components/sheet/OwedPicks.tsx#partial": [["identity",2,"owed picks by their option's whole name"]],
     "app/campaigns/[campaignId]/Lobby.tsx#fallback": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
