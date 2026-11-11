@@ -205,8 +205,6 @@ export function probes(rig, shared) {
       assert.equal(d(out, 20), 1, `d20s: the warlock's save against the area, and no ward save for the undead (${JSON.stringify(out.rolled).slice(0, 200)})`);
     },
   };
-  const KNOWN = {
-    "grave-necrotic": { severity: "low", kind: "rule-missing", where: "src/lib/srd/authored-effects-data4.ts warlock::Grave Touched (narrated); pc_attack's damageType is not read for a weapon", note: "", fix: "Once a turn, let the Undead warlock's hit deal necrotic damage (with the extra die in Form of Dread, the dice package's handoff)." },
-  };
+  const KNOWN = {};
   return { PROBES, KNOWN };
 }

@@ -2,7 +2,8 @@
 // from the sheet alone: Rage, an ability a feature adds (Aura of Hate, Song
 // of Victory), the dice a held condition rides on a hit (Hex, Hunter's
 // Mark, Divine Favor), and the features' damage riders (Improved Divine
-// Smite, Divine Strike, Divine Fury, Colossus Slayer, Lifedrinker).
+// Smite, Divine Strike, Divine Fury, Colossus Slayer, Lifedrinker, Grave
+// Touched's die in Form of Dread).
 //
 // pc_attack folds these into the damage (pc-attack-damage.ts
 // foldDamageRiders), and the Hand's attack cards print them
@@ -23,6 +24,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
+import { graveTouchedDie } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -59,8 +61,8 @@ export function attackDamageRiders(input: {
   // (pc-attack-damage.ts claimOncePerTurnRiders), as Sneak Attack is.
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
-      ? riders.damageRiders.filter((rider) => rider.when === "attack").map((rider) => ({ ...rider, type: riderType(sheet, rider) }))
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile)]
+      ? [...riders.damageRiders.filter((rider) => rider.when === "attack"), ...graveTouchedDie(sheet, profile)].map((rider) => ({ ...rider, type: riderType(sheet, rider) }))
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...graveTouchedDie(sheet, profile)]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;

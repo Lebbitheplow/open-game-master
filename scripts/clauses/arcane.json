@@ -3043,13 +3043,15 @@
    },
    {
     "c": "Once on each of your turns, when you hit a creature with an attack roll and roll damage, you can make that damage necrotic",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-necrotic"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-necrotic",
+    "by": "src/lib/dm/ar-wbf-warlock-grave-logic.ts graveTouchedType, called by pc-attack-plan.ts: pc_attack asked for damageType necrotic deals the hit's own damage as necrotic once on each of the holder's turns (the turn mark rider:grave touched, spent by the hit); a second hit keeps its type"
    },
    {
     "c": "and while in Form of Dread you roll one additional damage die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-die"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-die",
+    "by": "src/lib/dm/ar-wbf-warlock-grave-logic.ts graveTouchedDie, a once-a-turn damage rider of src/lib/dm/attack-damage-riders.ts (pc_attack and the Hand's attack card read it): one more of the attack's own damage die in Form of Dread"
    }
   ]
  },

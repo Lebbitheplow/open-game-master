@@ -25,6 +25,7 @@ import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { checkPcAttackRange } from "@/lib/dm/map-tools";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
+import { graveTouchedType } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 import {
   claimOncePerTurnRiders,
   foldDamageRiders,
@@ -673,6 +674,10 @@ export function planPcAttack(input: {
     droppedRiders = claimed.droppedRiders;
     hitClaims = claimed.hitClaims;
   }
+  // Grave Touched: the hit's own damage made necrotic when asked, once a turn
+  // (ar-wbf-warlock-grave-logic.ts). The coat of poison below reads the blade.
+  const forged = profile.damageType;
+  ({ profile, hitClaims } = graveTouchedType({ sheet, profile, asked: args.damageType, budget: riderBudget, hitClaims, notes: context.notes }));
 
   return {
     conjured,
@@ -734,7 +739,7 @@ export function planPcAttack(input: {
       stunShot: args.stunShot === true && stunningSniperApplies(sheet, { weaponAttack, ranged: profile.ranged }),
       // Lucky's point on this roll, when one is left.
       luck: args.luck === true && luckPointsLeft(sheet.resources) > 0,
-      poison: carriesPoison(sheet, weaponAttack, profile.damageType),
+      poison: carriesPoison(sheet, weaponAttack, forged),
       giantKiller,
       reactionAttack: Boolean(input.reactionAttack),
       turnRiders,

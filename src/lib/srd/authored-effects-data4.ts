@@ -502,9 +502,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "warlock::Create Thrall": { subclass: "The Great Old One", narrated: "A charmed thrall in telepathic contact: set_condition charmed, held until a remove curse." },
   "warlock::Bonus Cantrips (Celestial)": { subclass: "The Celestial", heldBy: SPELL_TABLE },
+  // Once a turn: one more damage die in Form of Dread, and the hit's damage
+  // necrotic when pc_attack is asked for it (damageType "necrotic").
   "warlock::Grave Touched": {
     subclass: "The Undead",
-    narrated: "Changing a hit's damage to necrotic, with one more die in Form of Dread: the GM applies the type and the die.",
+    heldBy: { file: "src/lib/dm/ar-wbf-warlock-grave-logic.ts", call: "export function graveTouchedDie(" },
   },
   "warlock::Undying Nature": { subclass: "The Undying", narrated: "Needs no food, water, breath or sleep, and ages slowly: roleplay, nothing in a fight changes." },
 

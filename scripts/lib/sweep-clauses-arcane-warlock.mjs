@@ -405,7 +405,9 @@ export function probes(rig, shared) {
     },
     "dread-fright": async () => {
       const [enemy] = await dread();
-      const swing = await kit.swing(dead().id, enemy.id, [15, 4, 1], { weapon: "Longsword" });
+      // The hit's dice: the sword's d8 and Grave Touched's (one more die in the
+      // form, once a turn), then the creature's save.
+      const swing = await kit.swing(dead().id, enemy.id, [15, 4, 4, 1], { weapon: "Longsword" });
       assert.equal(swing.ok, true, swing.error);
       assert.ok(foe(enemy).conditions.includes("frightened"), `a hit in Form of Dread, the creature's Wisdom save a 1: ${show(swing).slice(0, 200)}`);
       assert.equal(foe(enemy).conditionMeta.frightened?.untilTurnEndOf, dead().id, "until the end of the warlock's next turn");
@@ -418,9 +420,23 @@ export function probes(rig, shared) {
     },
     "grave-die": async () => {
       const [enemy] = await dread();
-      const swing = await kit.swing(dead().id, enemy.id, [15, 4, 4], { weapon: "Longsword" });
+      // Through `call`, whose dice log `d` reads (kit.swing keeps none).
+      const blow = (faces) => call("pc_attack", { characterId: dead().id, targetEnemyId: enemy.id, weapon: "Longsword" }, faces);
+      const before = foe(enemy).currentHp;
+      const swing = await blow([15, 4, 4, 20]);
       assert.equal(swing.ok, true, swing.error);
       assert.equal(d(swing, 8), 2, "d8s rolled for a longsword hit in Form of Dread");
+      assert.equal(before - foe(enemy).currentHp, 8, "both dice are damage");
+      // Once on each turn: the second hit rolls the sword's own die alone.
+      kit.saveEncounter({ ...world.encounter(), turnBudget: { ...budget(), actionUsed: false, attacksMade: 0 } });
+      const again = await blow([15, 4, 4]);
+      assert.equal(again.ok, true, again.error);
+      assert.equal(d(again, 8), 1, "a second hit of the turn rolled the extra die again");
+      // Out of the form, no die.
+      const plain = holder("warlock", "The Undead", 20, {}, "out of the form");
+      const [other] = await stage(plain);
+      const outside = await call("pc_attack", { characterId: plain.id, targetEnemyId: other.id, weapon: "Longsword" }, [15, 4, 4]);
+      assert.equal(d(outside, 8), 1, "a hit outside Form of Dread rolled the extra die");
     },
     "husk-resist": async () => {
       await kit.endFight();
@@ -548,7 +564,6 @@ export function probes(rig, shared) {
   const KNOWN = {
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
-    "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
   };
   return { PROBES, KNOWN };
 }
