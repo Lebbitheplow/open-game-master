@@ -21,6 +21,7 @@ import type { GrantedAttack } from "@/lib/srd/condition-effect-types";
 import { grantedAttackDice } from "@/lib/srd/granted-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { namedSpellGlyph } from "@/lib/battlemap/hand-spells";
 import { addFlat, attackGate, costGate, gated, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
 
 type GrantedMeta = { rounds?: number; spell?: string; slotLevel?: number };
@@ -100,6 +101,8 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
       resource: "",
       condition: "",
       icon: { kind: "spell", key: meta?.spell ?? attack.name, family: null },
+      // The spell that grants it wears its glyph here too (issue 845).
+      ...(meta?.spell ? { glyph: namedSpellGlyph(meta.spell), targetWords: "1 creature" } : {}),
       target: "enemy",
       toHit,
       damage,

@@ -38,6 +38,9 @@ export type HandArea = {
   tone: ZoneTone;
   // The spell row's own line, for the aim bar ("difficult terrain; ...").
   summary: string;
+  // A lasting area's size in feet at this slot (a burst's radius, a cube's
+  // side, a wall's length), for the words on its card (spell-glyph-logic.ts).
+  feet?: number;
   // An instant blast's template (Fireball's sphere, Burning Hands' cone):
   // nothing stays on the ground, and the creatures on its squares are the
   // ones it catches. Absent for a lasting area.
@@ -56,7 +59,9 @@ export function areaFor(named: ZoneNamed, slotLevel: number | null = null): Hand
   const runsAs = typeof named === "string" ? undefined : named.runsAs;
   const pick: AreaPickKind =
     row.shape === "aura" || row.self ? "none" : row.shape === "line" ? "direction" : row.shape === "wall" ? "wall" : "point";
-  return { spell, ...(runsAs ? { runsAs } : {}), slotLevel, pick, shape: row.shape, tone: row.tone, summary: row.summary };
+  // Fog Cloud's radius grows with the slot, as layZone lays it.
+  const feet = row.feet + (row.perSlotFeet ?? 0) * Math.max(0, (slotLevel ?? row.level) - row.level);
+  return { spell, ...(runsAs ? { runsAs } : {}), slotLevel, pick, shape: row.shape, tone: row.tone, summary: row.summary, feet };
 }
 
 // The colour a blast is drawn in, by what it deals.

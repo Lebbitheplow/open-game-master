@@ -29,7 +29,8 @@ import {
   type HandTarget,
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
-import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
+import { freeUseOf, namedSpellGlyph, spellNames } from "@/lib/battlemap/hand-spells";
+import { spellTargetWords } from "@/lib/battlemap/spell-glyph-logic";
 import { dealtByTrigger, triggerCards } from "@/lib/battlemap/hand-react-triggers";
 import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
@@ -133,7 +134,7 @@ function spellReaction(
     prompt,
     target,
     aimedIntent({ card: "reaction", feature: spell, spell, slotLevel: slot?.level ?? null }, hit),
-    { type: "spell", rules: typeof rules === "function" ? rules(level) : rules, resource: free?.free ? free.line : slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
+    { type: "spell", rules: typeof rules === "function" ? rules(level) : rules, resource: free?.free ? free.line : slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...spellFace(spell, target), ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
   );
   const problem = (refusal: ToolError | null): Gate => (refusal ? { reason: refusal.error, spent: false } : null);
   const fallen = droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers";
@@ -145,6 +146,13 @@ function spellReaction(
     free?.free || slot ? null : { reason: free?.spent ?? `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
     costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),
   );
+}
+
+// A reaction spell card's glyph and the words beside it, as a spell card
+// from the fan wears them (issue 845).
+function spellFace(spell: string, target: HandTarget): Pick<HandCard, "glyph" | "targetWords"> {
+  const words = spellTargetWords({ target });
+  return { glyph: namedSpellGlyph(spell), ...(words ? { targetWords: words } : {}) };
 }
 
 // The same spell out of a Ring of Spell Storing the character holds it in: no slot
@@ -180,6 +188,7 @@ function ringReactions(
             rules: typeof rules === "function" ? rules(entry.level) : rules,
             resource: `Level ${entry.level}`,
             icon: { kind: "spell", key: spell, family: null },
+            ...spellFace(spell, target),
             ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}),
             ...answering(hit),
           },
