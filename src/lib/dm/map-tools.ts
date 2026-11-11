@@ -938,6 +938,40 @@ export function pushTokenAway(
   return { moved: true, at };
 }
 
+// A pull: the target goes one square straight toward whoever pulls it, and
+// stops beside them. Forced movement under pushTokenAway's rules: nothing is
+// spent, nothing is provoked, and the square must be open floor with nobody
+// on it.
+export function pullTokenToward(
+  campaign: Campaign,
+  encounterId: string,
+  pullerRef: string,
+  targetRef: string,
+): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
+  const map = getBattleMapForEncounter(encounterId);
+  const puller = map ? getTokenByRef(map.id, pullerRef) : null;
+  const target = map ? getTokenByRef(map.id, targetRef) : null;
+  if (!map || !puller || !target) {
+    return { moved: false, reason: "there is no battle map to move it on" };
+  }
+  if (tilesApart(puller, target) <= 1) {
+    return { moved: false, reason: "it is already beside them" };
+  }
+  const at = {
+    x: target.x + Math.sign(puller.x - target.x),
+    y: target.y + Math.sign(puller.y - target.y),
+  };
+  if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
+    return { moved: false, reason: "a wall is in the way" };
+  }
+  if (occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+    return { moved: false, reason: "someone stands in the way" };
+  }
+  moveToken(target.id, at.x, at.y, target.movedThisRound);
+  publishBattleMapUpdate(campaign.id);
+  return { moved: true, at };
+}
+
 // ---- spatial checks for pc_attack ----
 
 // Sneak Attack's second trigger: another enemy of the target is within 5 ft

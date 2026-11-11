@@ -265,6 +265,15 @@ export const RO_EXTRA = {
     rig.kit.giveTurn(friend.id);
     const pulled = await rig.react(who, "Perfected Armor", { targetEnemyId: foe.id }, [1, 18, 4]);
     const pullTook = lost(rig, foe);
+    // From 20 feet off: "pulled up to 25 feet toward you", then the attack.
+    rig.reset();
+    ({ who, friend, foe } = await armorer(rig, 15, "Guardian"));
+    rig.kit.place(foe.id, 5, 9);
+    rig.foesTurn(foe);
+    recordTurnEnd(rig.world.campaignId, rig.world.encounter(), rig.world.encounter().order.find((entry) => entry.enemyId === foe.id), rig.enemy(foe.id).displayName);
+    rig.kit.giveTurn(friend.id);
+    const far = await rig.react(who, "Perfected Armor", { targetEnemyId: foe.id }, [1, 18, 4]);
+    const farState = { ok: far.ok, error: far.error, at: [rig.kit.token(foe.id).x, rig.kit.token(foe.id).y], took: lost(rig, foe) };
     rig.reset();
     const facts = await rig.counterFacts("artificer", "Armorer", 15, "sub_perfected_armor", { pick: ["Armor Model", "Guardian"] });
     rig.reset();
@@ -290,6 +299,9 @@ export const RO_EXTRA = {
       attack: () => {
         assert.equal(pulled.ok, true, pulled.error);
         assert.ok(pullTook > 0, `the creature that failed and ended within 5 feet was not attacked as part of the reaction: it lost ${pullTook}`);
+        assert.equal(farState.ok, true, farState.error);
+        assert.deepEqual(farState.at, [5, 6], `a creature 20 feet off that failed stands at (${farState.at}): pulled to the square beside the armorer at (5,5)`);
+        assert.ok(farState.took > 0, "the creature pulled to within 5 feet was not attacked");
       },
       uses: () => assert.deepEqual([facts.max, facts.afterShort, facts.afterLong], [profOf(15), profOf(15), 0], `the reaction's uses at 15th level (proficiency +5, Intelligence +${intOf(15)}), after a short rest and after a long one`),
       infiltrator: () => {

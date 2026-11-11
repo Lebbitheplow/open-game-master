@@ -936,7 +936,10 @@ export type ReactionDoes =
   // level (Inspiring Surge: one, two from 18th; src/lib/dm/mt-fb-surge.ts).
   | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean; weaponRange?: boolean; answers?: Array<[number, string]> }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
-  | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string> }
+  // `pullFeet`: a creature that fails is pulled that far straight toward the
+  // reactor; `attackWithin`: and, ending within that many feet, takes one melee
+  // weapon attack as part of the reaction (Perfected Armor's Guardian).
+  | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string>; pullFeet?: number; attackWithin?: number }
   // The holder gains a condition (Tokens of the Departed's soul trinket).
   | { kind: "gain_condition"; condition: string; rounds: number }
   // The attack's die is lowered by a die (Bend Luck).

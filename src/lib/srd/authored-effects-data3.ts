@@ -635,7 +635,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Perfected Armor",
         gate: { choiceOf: { feature: "Armor Model", value: "guardian" } },
         pool: { id: "sub_perfected_armor" },
-        does: { kind: "save_condition", save: "str", dcAbility: "spell", condition: "pulled by perfected armor" },
+        // "Pulled up to 25 feet toward you ... and if it ends within 5 feet of
+        // you, you can make a melee weapon attack against it as part of the reaction."
+        does: { kind: "save_condition", save: "str", dcAbility: "spell", condition: "pulled by perfected armor", pullFeet: 25, attackWithin: 5 },
       },
     ],
     effects: [

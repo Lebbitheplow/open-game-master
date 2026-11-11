@@ -18,7 +18,7 @@ import { beastFormRefusal, growBeastForm } from "@/lib/dm/mt-fb-beast";
 import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
 import { deflectionAftermath, deflectionFirst } from "@/lib/dm/ar-ws-deflection";
-import { pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
+import { pullStraightToward, pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -970,7 +970,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         [condition]: { source: ctx.sheet.id, ...(does.rounds ? { rounds: does.rounds } : { untilTurnOf: ctx.sheet.id }) },
       } as typeof enemy.conditionMeta);
       publishEncounter(ctx.campaign.id);
-      return { applied: `${enemy.displayName} fails the ${does.save.toUpperCase()} save (${save.total ?? "failed"} vs DC ${dc}) and is ${condition}.` };
+      const failed: Record<string, unknown> = { applied: `${enemy.displayName} fails the ${does.save.toUpperCase()} save (${save.total ?? "failed"} vs DC ${dc}) and is ${condition}.` };
+      if (does.pullFeet) {
+        failed.pulled = pullStraightToward(ctx.campaign, encounter.id, ctx.sheet, enemy, does.pullFeet);
+      }
+      // The attack is part of this reaction (pc-attack.ts reactionAttack): it
+      // spends no action, and a refusal of it leaves the pull standing.
+      if (does.attackWithin && withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.attackWithin)) {
+        const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
+        Object.assign(failed, typeof result.error === "string" ? { attack: "No attack follows; the pull and the spent use stand.", attackRefused: result.error } : { attack: result });
+      }
+      return failed;
     }
     case "gain_condition": {
       // A soul trinket is counted, up to the proficiency bonus (mt-mr-trinkets.ts).

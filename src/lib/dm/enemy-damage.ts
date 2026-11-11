@@ -2,6 +2,7 @@ import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { currentActor } from "@/lib/dm/acting-party";
+import { thunderboltPush } from "@/lib/dm/thunderbolt-strike";
 import { disarmFightEvents } from "@/lib/db/fight-events";
 import { endFightEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
@@ -590,6 +591,11 @@ export function applyEnemyDamage(
   // Damage the acting creature deals the one that swallowed it, from
   // whatever it did (acting-party.ts), counts toward its regurgitation.
   noteBlowFromInside(campaign, encounter.id, enemy.id, Math.max(0, enemy.currentHp - updated.currentHp));
+  // Lightning a Tempest cleric deals pushes the creature 10 feet (thunderbolt-strike.ts).
+  const thunderbolt = thunderboltPush(campaign, encounter.id, updated, [damageType, ...(options?.blowTypes ?? [])], enemy.currentHp - updated.currentHp);
+  if (thunderbolt) {
+    base.thunderboltStrike = thunderbolt;
+  }
   // One that dies frees what it swallowed, who climb out of the corpse
   // (src/lib/dm/swallow.ts).
   if (updated.status === "dead") {

@@ -112,7 +112,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "cleric::Bonus Cantrip (Light)": { subclass: "Light Domain", heldBy: SPELL_TABLE },
   "cleric::Thunderbolt Strike": {
     subclass: "Tempest Domain",
-    narrated: "Pushing a Large or smaller creature 10 feet after lightning damage is a move_token (forced) the GM makes.",
+    heldBy: { file: "src/lib/dm/enemy-damage.ts", call: "thunderboltPush(" },
   },
   "cleric::Improved Duplicity": {
     subclass: "Trickery Domain",
