@@ -231,6 +231,10 @@ export const equipmentItemSchema = z.object({
         attackBonus: z.number().int().min(-10).max(50).optional(),
         abilityMod: z.number().int().min(-5).max(20).optional(),
         by: z.string().trim().min(1).max(80).optional(),
+        // An artificer's Spell-Storing Item: the castings left of its one
+        // spell, twice the artificer's Intelligence modifier when stored
+        // (src/lib/dm/spell-storing-item.ts). A ring's spell has none.
+        uses: z.number().int().min(1).max(20).optional(),
       }),
     )
     .max(5)

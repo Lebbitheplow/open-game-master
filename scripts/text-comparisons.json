@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/spell-storing-item.ts#str-eq": [["key", 1, "the stored entry's own by and the row's own name, read back from the same sheet (no name typed by a person)"]],
     "lib/dm/genie-vessel.ts#str-list": [["english-source", 1, "reference: a Genie warlock's vessel by its whole name, the warlock's or the feature's"]],
     "lib/srd/level-up-changes.ts#str-eq": [["key", 1, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/sense-magic.ts#str-eq": [["english-source", 2, "reference: SRD spell, condition and feature names"]],
@@ -108,7 +109,7 @@
     "lib/srd/mt-species-traits.ts#str-eq": [["english-source",2,"reference: ODM's own race rows' trait lines (an hour) and the Celestial Revelation form the engine lays"]],
     "lib/srd/mt-species-traits.ts#str-list": [["key",2,"sizes and map themes (fixed choices)"]],
     "lib/srd/mt-species-traits.ts#toLowerCase": [["key",3,"sizes and map themes (fixed choices)"],["english-source",2,"reference: ODM's own race rows' trait lines (an hour or minutes) and the Celestial Revelation form the engine lays"]],
-    "lib/srd/authored-effects-w2-arcane.ts#str-list": [["english-source", 1, "ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-w2-arcane.ts#str-list": [["english-source", 2, "ODM's authored effect rows (bundled data)"]],
     "lib/srd/trigger-table.ts#str-eq": [["key",1,"trigger kinds and ids (engine vocabulary)"]],
     "lib/dm/deploy-opening-logic.ts#str-list": [["key",1,"start_encounter's own field names (tool argument names)"]],
     "lib/dm/last-save.ts#str-list": [["key",1,"the six save ability codes a requested save is read as (str to cha)"]],

@@ -114,8 +114,12 @@ export function takeFromRing(campaign: Campaign, turnId: string | null, sheetId:
   const ring = sheet ? storerNamed(sheet, ringName) : null;
   const entry = ring ? storedSpellNamed(ring, spell) : null;
   if (sheet && ring && entry) {
-    // A bead is broken to cast its spell: the row goes with it.
-    const equipment = isBead(ring) ? sheet.equipment.filter((item) => item !== ring) : withStored(sheet.equipment, ring, storedSpellsOf(ring).filter((other) => other !== entry));
+    // A bead is broken to cast its spell: the row goes with it. A
+    // Spell-Storing Item keeps its spell until its last casting.
+    const counted = typeof entry.uses === "number" && entry.uses > 1;
+    const equipment = isBead(ring)
+      ? sheet.equipment.filter((item) => item !== ring)
+      : withStored(sheet.equipment, ring, counted ? storedSpellsOf(ring).map((other) => (other === entry ? { ...other, uses: (entry.uses ?? 1) - 1 } : other)) : storedSpellsOf(ring).filter((other) => other !== entry));
     writeCharges(campaign.id, sheet, equipment, "use_item", `${entry.spell} cast from ${ring.name}`, turnId);
   }
 }

@@ -95,6 +95,31 @@ P["artificer.right-tool.makes-tools"] = async () => {
   assert.deepEqual([holds("weaver's tools"), holds("smith's tools")], [true, false], "the new set, and the last one gone");
 };
 
+// "store a 1st or 2nd-level artificer spell of one action in a weapon or
+// spellcasting focus you carry, and whoever holds it can cast it with your
+// numbers, twice your Intelligence modifier in times (once at least)": the
+// artificer lays Cure Wounds in a dagger (Intelligence 18: eight castings), a
+// fighter holding it casts it with no slot, and the count goes down by one.
+P["artificer.spell-storing-item.casts"] = async () => {
+  const t = await rig.table();
+  const who = artificer(t, 11, { equipment: [{ name: "Dagger", qty: 1, equipped: true }] });
+  const dagger = (holder) => t.sheet(holder).equipment.find((item) => item.name === "Dagger") ?? null;
+  assert.equal((await t.use(who, "Spell-Storing Item", { variant: "Fireball" })).ok, false, "a 3rd level spell off the artificer's list");
+  const out = await t.use(who, "Spell-Storing Item", { variant: "Cure Wounds" });
+  assert.equal(out.ok, true, out.error);
+  const [stored] = dagger(who)?.storedSpells ?? [];
+  assert.deepEqual([stored?.spell, stored?.level, stored?.uses], ["Cure Wounds", 1, 8], `the dagger holds the spell: ${JSON.stringify(dagger(who))}`);
+  const friend = t.hero({ class: "fighter", level: 5, equipment: [dagger(who)] });
+  t.patch(who, { equipment: [] });
+  t.patch(friend, { currentHp: 1 });
+  const cast = await t.world.invoke("use_item", { characterId: friend.id, item: "Dagger", spell: "Cure Wounds" });
+  assert.equal(cast.ok, true, cast.error);
+  const healed = await t.world.invoke("heal", { characterId: friend.id, casterId: friend.id, spell: "Cure Wounds" });
+  assert.equal(healed.ok, true, healed.error);
+  assert.ok(t.sheet(friend).currentHp > 1, "the fighter holding the dagger cast Cure Wounds from it");
+  assert.equal(dagger(friend)?.storedSpells?.[0]?.uses, 7, "one casting of eight spent, the spell still in the dagger");
+};
+
 // "you ignore all class, race, spell and level requirements on using them"
 P["artificer.magic-item-savant.requirements"] = async () => {
   const rule = (attunedBy) => ({ attunedBy: { text: "someone else", ...attunedBy } });

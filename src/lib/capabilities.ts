@@ -58,6 +58,9 @@ export type Capabilities = {
 // dropping it to its own pages over one button. Constant per release: a flag
 // only ever says this server's code has the thing.
 export const SERVER_FEATURES = {
+  // An artificer's Spell-Storing Item: a stored spell's `uses` (the castings
+  // left), which an older host neither writes nor counts down.
+  storedSpellUses: true,
   // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
   // an older host drops unread (Storm Aura's environment, an invocation).
   levelUpChanges: true,

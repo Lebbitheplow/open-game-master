@@ -19,6 +19,7 @@
 // generic path; must not import mutations.ts. The action-pricing helpers are
 // combat-features.ts's.
 
+import { spellStoringItemSpend } from "@/lib/dm/spell-storing-item";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
@@ -46,7 +47,7 @@ import { asksForCure, cleansingTouch, layOnHandsCure } from "@/lib/dm/mt-srd-pal
 import { strokeOfLuckCheck } from "@/lib/dm/mt-srd-rogue";
 import { bookOfShadows, pactOfTheBlade } from "@/lib/dm/mt-srd-warlock";
 
-export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string };
+export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number; targetCharacterId?: string; item?: string };
 
 export function srdFeatureSpend(
   campaign: Campaign,
@@ -58,6 +59,9 @@ export function srdFeatureSpend(
   // A Hand card names its counter's id ("dragon_wings"), a call the feature.
   const name = textKey(resourceName.replace(/_/g, " "));
   const sheet = getSheetById(stale.id) ?? stale;
+  // An artificer's spell laid in an item (spell-storing-item.ts).
+  const stored = spellStoringItemSpend(campaign, sheet, resourceName, args);
+  if (stored) return stored;
   if (name === "rage" && asksToEndRage(args.variant)) return endRage(campaign, sheet);
   if (name === "lay on hands" && asksForCure(args.variant)) return layOnHandsCure(campaign, sheet, args);
   if (name === "cleansing touch") return cleansingTouch(campaign, turnId, sheet, args);

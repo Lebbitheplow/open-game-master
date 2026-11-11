@@ -126,13 +126,13 @@
     "source": "src/lib/help/srd-features.json",
     "group": "artificer",
     "level": 11,
-    "sha": "bdfa495d1472",
+    "sha": "567cc9534eda",
     "clauses": [
       {
-        "c": "After a long rest you store a 1st or 2nd-level artificer spell in an item, and whoever holds it can cast it a number of times based on your Intelligence.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not built: the counter (art_spell_storing_item, once a long rest) is spent and the rest is told: no item holds the spell and nobody casts it from one. A Ring of Spell Storing's engine (src/lib/srd/spell-storing.ts) spends what it holds on each cast, where this item keeps its spell for twice the Intelligence modifier in uses. In w2-mt-srd-handoff.jsonl"
+        "c": "After a long rest you store a 1st or 2nd-level artificer spell of one action in a weapon or spellcasting focus you carry, and whoever holds it can cast it with your numbers, twice your Intelligence modifier in times (once at least).",
+        "is": "held",
+        "by": "src/lib/dm/spell-storing-item.ts spellStoringItemSpend (the spell on the item's row with its uses), cast through use_item as a Ring of Spell Storing's (src/lib/srd/spell-storing.ts isStoringItem), each casting counted down by src/lib/dm/ring-store.ts takeFromRing",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.spell-storing-item.casts"
       }
     ]
   },

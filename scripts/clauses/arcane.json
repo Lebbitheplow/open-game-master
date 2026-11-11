@@ -3001,7 +3001,7 @@
    {
     "c": "When you enter your vessel through Bottled Respite, up to five willing creatures within 30 feet can come in with you.",
     "is": "held",
-    "by": "src/lib/srd/authored-effects-w2-arcane.ts warlock::Sanctuary Vessel (Bottled Respite takes allies within 30 feet, five at most, inside under the warlock's name)",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Genie's Vessel Bottled Respite (from 10th level the party within 30 feet, five at most, inside under the warlock's name)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: sanctuary-party"
    },
    {

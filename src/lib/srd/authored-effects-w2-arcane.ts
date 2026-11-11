@@ -9,6 +9,16 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 const LUNAR_PHASES = ["Full Moon", "New Moon", "Crescent Moon"];
 
+// The SRD 5.1 spells of the artificer's list a Spell-Storing Item takes: 1st
+// and 2nd level, cast with one action (src/lib/dm/spell-storing-item.ts). The
+// SRD's spells name no artificer among their classes, so the list is held
+// here, where the card's picker and the spend both read it.
+export const STORABLE_SPELLS = [
+  "Cure Wounds", "Detect Magic", "Disguise Self", "Expeditious Retreat", "Faerie Fire", "False Life", "Grease", "Jump", "Longstrider", "Purify Food and Drink",
+  "Aid", "Alter Self", "Arcane Lock", "Blur", "Continual Flame", "Darkvision", "Enhance Ability", "Enlarge/Reduce", "Heat Metal", "Invisibility", "Lesser Restoration", "Levitate",
+  "Protection from Poison", "Rope Trick", "See Invisibility", "Spider Climb", "Web",
+];
+
 export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
   // A core artificer feature (20th). Its hold at 1 hit point is pc-damage.ts's
   // (src/lib/dm/soul-of-artifice.ts); this card readies which attunement it
@@ -16,6 +26,13 @@ export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
   "artificer::Soul of Artifice": {
     subclass: "Artificer",
     spends: [{ name: "Soul of Artifice", action: "none", does: { kind: "soul_ready" } }],
+  },
+  // The spell a Spell-Storing Item takes, picked from its list. Resolved by
+  // the counter's own door (src/lib/dm/spell-storing-item.ts, asked first
+  // by srd-feature-spends.ts); this row gives the card its picker.
+  "artificer::Spell-Storing Item": {
+    subclass: "Artificer",
+    spends: [{ name: "Spell-Storing Item", pool: { id: "art_spell_storing_item" }, fight: "out", does: { kind: "choose", options: STORABLE_SPELLS } }],
   },
   // "Once per turn when you deal damage to a creature or object with a wizard
   // spell, you can spend one to deal extra force damage equal to half your
@@ -58,23 +75,6 @@ export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
   "warlock::Form of Dread": {
     subclass: "The Undead",
     effects: [{ kind: "hit_save", save: "wis", condition: "frightened", gate: { condition: "form of dread" } }],
-  },
-  // Sanctuary Vessel: "When you enter your vessel through Bottled Respite, up
-  // to five willing creatures within 30 feet can come in with you." From 10th
-  // level Bottled Respite takes the party within 30 feet, five at most, each
-  // inside under the warlock's name (the condition's source), which is what
-  // the short rest and the Hit Dice inside read (src/lib/dm/genie-vessel.ts).
-  // Found after Genie's Vessel's own Bottled Respite, so this one answers.
-  "warlock::Sanctuary Vessel": {
-    subclass: "The Genie",
-    spends: [
-      {
-        name: "Bottled Respite",
-        pool: { id: "sub_genies_vessel" },
-        action: "action",
-        does: { kind: "buff", target: "allies", condition: "in the genie's vessel", rounds: 2400, rangeFt: 30, count: "5" },
-      },
-    ],
   },
   // The Bladesong's "advantage on Acrobatics" while it runs (the counter
   // sub_bladesong lays the condition; its AC and speed are condition-effects.ts's).
