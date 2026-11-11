@@ -8,7 +8,7 @@
 //
 // The text each row holds is src/lib/classes/horror-features.json; the ledger
 // (scripts/clauses/genre-horror.json) says which clause each row holds.
-import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import type { AuthoredEntry, SpendAction } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 
 const held = (classId: string, feature: string, file: string, call: string, more: Partial<AuthoredEntry> = {}): GenreRow => ({
@@ -22,6 +22,10 @@ const counted = (classId: string, feature: string, counter: string, more: Omit<A
   classes: [classId],
   entry: { subclass: "genre", counter, ...more },
 });
+
+// A counter whose spend src/lib/dm/genre-a-horror-spends.ts plays.
+const played = (classId: string, feature: string, counter: string, action: SpendAction, play: string, aim?: "enemy" | "ally"): GenreRow =>
+  counted(classId, feature, counter, { spends: [{ name: feature, pool: { id: counter }, action, does: { kind: "horror_spend", play, ...(aim ? { aim } : {}) } }] });
 
 export const GENRE_A_HORROR: GenreRow[] = [
   // "1/long rest, cast one stigmata of 5th level or lower without a slot at
@@ -59,6 +63,25 @@ export const GENRE_A_HORROR: GenreRow[] = [
   counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
     spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
   }),
+  // ---- the counters src/lib/dm/genre-a-horror-spends.ts plays ----
+  // "Your Rite of Repulsion affects creatures immune to being frightened"
+  held("exorcist", "Voice of Authority", "src/lib/dm/genre-a-horror-spends.ts", "horrorSaveArea"),
+  // "affected creatures take 2d8 radiant when it takes hold"
+  held("exorcist", "Greater Rite", "src/lib/dm/genre-a-horror-spends.ts", "horrorSaveArea"),
+  // "1/long rest, a spirit or fiend that fails against your Rite of Repulsion
+  // is also restrained for 1 minute"
+  // The words are readied; the next rite spends them (horrorSaveArea).
+  counted("exorcist", "Binding Words", "horror_binding_words", {
+    spends: [{ name: "Binding Words", pool: { id: "horror_binding_words" }, action: "none", does: { kind: "buff", condition: "binding words", rounds: 10 } }],
+  }),
+  // "1/long rest, gain temp HP equal to twice your level when combat starts"
+  // Given as initiative is rolled; the counter is passive (genre-a-counter-terms.ts).
+  held("survivor", "Bitter Endurance", "src/lib/dm/genre-a-horror-initiative.ts", "horrorAtInitiative"),
+  // "1/long rest, take two full turns in the first round of combat"
+  played("survivor", "Terminal Focus", "horror_terminal_focus", "none", "terminal_focus"),
+  // "1/long rest, force an invisible, ethereal, or shapechanged creature
+  // within 60 ft into its true visible form for 1 minute (CHA save negates)"
+  played("parapsychologist", "Observer Effect", "horror_observer_effect", "action", "observer_effect", "enemy"),
   // "While no ally is within 10 ft, +1 AC and advantage on Stealth"
   held("survivor", "Alone in the Dark", "src/lib/dm/genre-a-horror-board.ts", "horrorAcBonus, horrorLentRolls"),
   // "Immune to being frightened while any ally can see you"

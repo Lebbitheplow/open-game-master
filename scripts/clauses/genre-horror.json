@@ -193,9 +193,10 @@
    },
    {
     "c": "a spirit or fiend that fails against your Rite of Repulsion is also restrained for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_binding_words#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-binding-words"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-binding-words",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: the spend readies the words (a mark for a minute), and the next Rite of Repulsion restrains for a minute the first creature it takes hold of and clears the mark"
    }
   ]
  },
@@ -207,9 +208,9 @@
   "clauses": [
    {
     "c": "Your Rite of Repulsion affects creatures immune to being frightened",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the cleric's Voice of Authority reaction the exorcist borrows by name (borrowed:exorcist::Voice of Authority); Rite of Repulsion itself is a guidance-only spend (exorcist::Rite of Repulsion#1), so whom it affects cannot be staged"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: before the feature a creature immune to frightened is left out of the rite, with it the rite takes it",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -225,15 +226,12 @@
    },
    {
     "c": "affected creatures take 2d8 radiant when it takes hold",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Greater Rite#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Greater Rite#1",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: 2d8 radiant, one roll, on each creature that fails the rites save; scripts/test-genre-a-horror.mjs plays the numbers"
    }
   ]
  },
@@ -1513,11 +1511,9 @@
      "k": "spend_moves",
      "id": "horror_terminal_focus"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Terminal Focus#1",
-    "observed": "spending horror_terminal_focus moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, take two full turns in the first round of combat.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Terminal Focus#1",
+    "by": "src/lib/dm/genre-a-horror-spends.ts terminalFocus: on the survivors own turn in round 1 the turns budget and reaction are given back under the mark of the second turn, which follows the first"
    }
   ]
  },
@@ -1609,15 +1605,17 @@
    },
    {
     "c": "gain temp HP equal to twice your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_bitter_endurance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-bitter-endurance"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-bitter-endurance",
+    "by": "src/lib/dm/genre-a-horror-initiative.ts horrorAtInitiative: temporary hit points of twice the character level, the use spent"
    },
    {
     "c": "when combat starts",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_bitter_endurance#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-bitter-endurance"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-trigger-as-card-counter-horror-bitter-endurance",
+    "by": "src/lib/dm/genre-a-horror-initiative.ts horrorAtInitiative, called by src/lib/dm/feature-hooks.ts applyInitiativeRefills as the survivor rolls initiative; the counter is passive to use_resource"
    }
   ]
  },
@@ -2523,15 +2521,16 @@
    },
    {
     "c": "force an invisible, ethereal, or shapechanged creature within 60 ft into its true visible form for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_observer_effect#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-observer-effect"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-observer-effect",
+    "by": "src/lib/dm/genre-a-horror-spends.ts observerEffect: a creature within 60 feet that fails loses invisible, hidden and ethereal and is observed for a minute; a shapechangers form is the GMs to return"
    },
    {
     "c": "CHA save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_observer_effect#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "by": "src/lib/dm/genre-a-horror-spends.ts observerEffect: a CHA save against the spell save DC, through the save_effect engine"
    }
   ]
  },

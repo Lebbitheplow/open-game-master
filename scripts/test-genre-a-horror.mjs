@@ -202,5 +202,102 @@ await test("Alone in the Dark: no bonus with an ally within 10 feet, +1 AC once 
   assert.equal(acWithEffects(t.world.campaignId, lone), base, "off the board the party stands together");
 });
 
+const used = (id, counter) => sheet(id).resources[counter].used;
+const foeHas = (id, name) => t.kit.enemy(id).conditions.some((entry) => entry.toLowerCase().startsWith(name));
+const fearless = (enemy) => t.kit.setEnemy(enemy.id, { stats: { ...t.kit.enemy(enemy.id).stats, type: "undead", conditionImmune: "frightened, poisoned" } });
+
+await test("Rite of Repulsion: a fearless undead is left out before Voice of Authority and turned with it; Greater Rite adds 2d8 radiant", async () => {
+  let scene = await t.stage({ classId: "exorcist", level: 9 });
+  fearless(scene.near);
+  const none = await spend(scene, "horror_rite_of_repulsion");
+  assert.equal(none.ok, false, "only a fearless undead in reach");
+  assert.equal(used(scene.holder.id, "horror_rite_of_repulsion"), 0, "nothing spent");
+  // A second undead in reach that fear can move: it alone saves.
+  typed(scene.far, "undead");
+  t.kit.place(scene.far.id, 8, 5);
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite on the one fear moves");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.far.id, "turned") && !foeHas(scene.near.id, "turned"), "the fearless one is not turned");
+  assert.equal(t.foeHp(scene.far.id), 300, "no damage before Greater Rite");
+  // 10th level: Voice of Authority takes the fearless one too.
+  scene = await t.stage({ classId: "exorcist", level: 10 });
+  fearless(scene.near);
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite at 10th");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "turned"), "Voice of Authority");
+  // 11th level: 2d8 radiant on the failed save, none on a made one.
+  scene = await t.stage({ classId: "exorcist", level: 11 });
+  typed(scene.near, "undead");
+  typed(scene.far, "fiend");
+  t.kit.place(scene.far.id, 8, 5);
+  t.world.dice(4, 4, 1, 20);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite at 11th");
+  t.world.clearDice();
+  const hurt = [300 - t.foeHp(scene.near.id), 300 - t.foeHp(scene.far.id)].sort((a, b) => a - b);
+  assert.deepEqual(hurt, [0, 8], "2d8 on the one that failed, nothing on the one that saved");
+});
+
+await test("Binding Words: readied, the next rite restrains the first creature it takes hold of and spends the words", async () => {
+  const scene = await t.stage({ classId: "exorcist", level: 9 });
+  typed(scene.near, "fiend");
+  must(await spend(scene, "horror_binding_words"), "Binding Words");
+  assert.equal(used(scene.holder.id, "horror_binding_words"), 1);
+  assert.ok(!foeHas(scene.near.id, "restrained"), "nothing is bound before the rite");
+  t.world.dice(20);
+  must(await spend(scene, "horror_rite_of_repulsion"), "a rite the fiend resists");
+  t.world.clearDice();
+  assert.ok(!foeHas(scene.near.id, "restrained") && sheet(scene.holder.id).conditions.includes("binding words"), "a made save keeps the words readied");
+  t.kit.freshTurn();
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "turned") && foeHas(scene.near.id, "restrained"), "turned and restrained");
+  assert.ok(!sheet(scene.holder.id).conditions.includes("binding words"), "the words are spent");
+});
+
+await test("Bitter Endurance: twice the level in temporary hit points as initiative is rolled, once a long rest", async () => {
+  t.fresh();
+  const hero = t.hero("survivor", 7);
+  const refused = await t.world.invoke("use_resource", { characterId: hero.id, resource: "horror_bitter_endurance" });
+  assert.equal(refused.ok, false, "no call spends it");
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "initiative", reason: "a fight starts" }), "initiative");
+  assert.equal(sheet(hero.id).tempHp, 14);
+  assert.equal(used(hero.id, "horror_bitter_endurance"), 1);
+  t.world.patch(hero.id, { tempHp: 0 });
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "initiative", reason: "a second fight" }), "initiative again");
+  assert.equal(sheet(hero.id).tempHp, 0, "once a long rest");
+});
+
+await test("Terminal Focus: the turn's action comes back in the first round, and the use is refused in the second", async () => {
+  let scene = await t.stage({ classId: "survivor", level: 18 });
+  must(await t.world.invoke("take_action", { characterId: scene.holder.id, action: "dodge" }), "the first turn's action");
+  assert.ok(t.budget().actionUsed, "the action is spent");
+  must(await spend(scene, "horror_terminal_focus"), "Terminal Focus");
+  assert.ok(!t.budget().actionUsed, "a second turn's action");
+  must(await t.world.invoke("take_action", { characterId: scene.holder.id, action: "dodge" }), "the second turn's action");
+  scene = await t.stage({ classId: "survivor", level: 18 });
+  t.kit.saveEncounter({ ...t.world.encounter(), round: 2 });
+  const late = await spend(scene, "horror_terminal_focus");
+  assert.equal(late.ok, false, "round 2");
+  assert.equal(used(scene.holder.id, "horror_terminal_focus"), 0, "nothing spent");
+});
+
+await test("Observer Effect: a failed CHA save ends a creature's invisibility for the minute, a made one does not", async () => {
+  let scene = await t.stage({ classId: "parapsychologist", level: 18 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+  t.world.dice(1);
+  must(await spend(scene, "horror_observer_effect", { targetEnemyId: scene.near.id }), "Observer Effect");
+  t.world.clearDice();
+  assert.ok(!foeHas(scene.near.id, "invisible") && foeHas(scene.near.id, "observed"), "seen, and observed");
+  scene = await t.stage({ classId: "parapsychologist", level: 18 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+  t.world.dice(20);
+  must(await spend(scene, "horror_observer_effect", { targetEnemyId: scene.near.id }), "Observer Effect against a made save");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "invisible"), "the save negates");
+});
+
 t.close();
 console.log(`test-genre-a-horror: ${passed} passed`);

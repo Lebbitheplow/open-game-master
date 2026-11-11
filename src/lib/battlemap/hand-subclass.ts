@@ -54,6 +54,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  // A horror counter says what it is aimed at (genre-a-horror-spends.ts).
+  if (does.kind === "horror_spend") return does.aim ?? "none";
   return "none";
 }
 

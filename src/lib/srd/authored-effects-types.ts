@@ -512,6 +512,9 @@ export type SpendDoes =
   // backlash the holder takes as it is laid, which nothing reduces
   // (src/lib/dm/genre-a-horror-casts.ts): Bleeding Power.
   | { kind: "cast_mark"; condition: Array<[number, string]>; rounds: number; backlash?: Array<[number, string]> }
+  // A horror class's counter, played by src/lib/dm/genre-a-horror-spends.ts
+  // (`play` names it there). `aim`: what its Hand card is aimed at.
+  | { kind: "horror_spend"; play: string; aim?: "enemy" | "ally" }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }

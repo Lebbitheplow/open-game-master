@@ -5,6 +5,7 @@
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { horrorSaveArea, horrorSpend } from "@/lib/dm/genre-a-horror-spends";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -389,7 +390,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return { result };
     }
     case "save_area":
-      return saveArea(ctx, does);
+      // Rite of Repulsion's later features ride its area (genre-a-horror-spends.ts).
+      return horrorSaveArea(ctx, does, saveArea);
     case "reroll_save":
       return rerollLastSave(ctx);
     case "temp_hp": {
@@ -550,6 +552,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
     case "cast_mark":
       return layCastMark(ctx, does);
+    case "horror_spend":
+      return horrorSpend(ctx, does.play);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

@@ -2302,6 +2302,7 @@
     "lib/srd/authored-effects-genre-a.ts#str-list": [["english-source",11,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-genre-a-capstones.ts#str-list": [["english-source",1,"ODM's authored effect rows (bundled data)"]],
     "lib/dm/genre-a-horror-board.ts#str-eq": [["key",2,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
+    "lib/dm/genre-a-horror-spends.ts#str-list": [["key",2,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
     "lib/srd/authored-effects-genre-a-horror.ts#str-list": [["english-source",4,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/genre-a-horror-holds.ts#str-eq": [["key",8,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
     "lib/srd/authored-effects-channel.ts#str-list": [["english-source",3,"ODM's authored effect rows (bundled data)"]],

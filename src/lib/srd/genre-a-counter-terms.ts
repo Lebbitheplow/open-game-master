@@ -39,6 +39,10 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   cyberpunk_overwatch: BY_REACTION("Overwatch", "the attack that hit an ally the netrunner can see is rolled again at disadvantage."),
   horror_blood_ward: BY_REACTION("Blood Ward", "when the apostate is hit, they resist that hit's damage."),
   horror_pain_tolerance: BY_REACTION("Pain Tolerance", "the damage of one hit against the survivor is halved."),
+  horror_bitter_endurance: {
+    passive: true,
+    guidance: "Bitter Endurance: once a long rest, as the survivor rolls initiative they gain temporary hit points equal to twice their level. The server gives them and spends the use as the fight starts; no call spends it.",
+  },
   horror_predictive_model: BY_REACTION("Predictive Model", "the attack of a creature the parapsychologist measured is made with disadvantage."),
   horror_won_t_die_here: HELD_AT_THE_DROP("Won't Die Here", "once a day, when the survivor drops to 0 hit points but is not killed outright, they drop to 1 instead (from 20th level twice a day, each use also restoring five times their Constitution modifier)."),
   horror_the_one_who_lives: HELD_AT_THE_DROP("The One Who Lives", "Won't Die Here's second use of the day; each use also restores five times the Constitution modifier in hit points."),
