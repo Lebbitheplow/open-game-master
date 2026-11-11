@@ -11,7 +11,7 @@
 // Pure: no database, so the board's view may import it.
 
 import { SNEAK_HIT, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
-import { heldAuthored, type AuthoredSheet, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { gateHolds, hasCondition, heldAuthored, type AuthoredSheet, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
 // A creature a Flurry of Blows strike of this turn was aimed at, one mark a
@@ -56,6 +56,27 @@ export function flurryBought(sheet: AuthoredSheet, budget: TurnBudget): Partial<
     return {};
   }
   return { disengaged: true, oncePerTurn: budget.oncePerTurn.includes(DRUNKEN_FEET) ? budget.oncePerTurn : [...budget.oncePerTurn, DRUNKEN_FEET] };
+}
+
+// "An extra Arms attack when taking the Attack action" (Awakened Astral
+// Self): one more attack in the action while the complete astral body holds.
+export function awakenedArmsAttacks(sheet: AuthoredSheet): number {
+  return hasCondition(sheet, "awakened astral self") ? 1 : 0;
+}
+
+// Whether the gate an authored rider's row states holds for the sheet. The
+// rider itself reaches the attack through feature-effects.ts, which carries
+// one condition and no gate, so a rider gated on a second one rode without it.
+export function riderGateHolds(sheet: AuthoredSheet, feature: string): boolean {
+  for (const held of heldAuthored(sheet)) {
+    if (held.feature !== feature) continue;
+    for (const effect of held.entry.effects ?? []) {
+      if (effect.kind === "rider" && effect.gate && !gateHolds(effect.gate, sheet, held)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 // The squares a turn's marks add to its owner's movement.

@@ -48,6 +48,13 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
     subclass: "Way of Mercy",
     heldBy: { file: "src/lib/dm/mt-mr-needs.ts", call: 'holdsRow(sheet, "monk::Flurry of Healing and Harm")' },
   },
+  // "When you use Step of the Wind" is the counter's trigger
+  // (trigger-table.ts); the wings last to the end of the turn.
+  "monk::Wings Unfurled": {
+    subclass: "Way of the Ascendant Dragon",
+    counter: "sub_wings_unfurled",
+    spends: [{ name: "Wings Unfurled", pool: { id: "sub_wings_unfurled" }, action: "none", does: { kind: "mr", id: "wings_unfurled" } }],
+  },
 
   // ---- rogue ----
   // "A creature you attack in melee cannot make opportunity attacks against

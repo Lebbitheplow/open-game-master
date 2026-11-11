@@ -94,8 +94,8 @@ export function naturalWeaponGated(sheet: AuthoredSheet, name: string): string |
 
 // ---- reach, Sneak Attack, saves ----
 
-export function authoredReachBonus(sheet: AuthoredSheet): { tiles: number; feature: string } | null {
-  const found = activeAuthored(sheet, "reach")[0];
+export function authoredReachBonus(sheet: AuthoredSheet, unarmed = false): { tiles: number; feature: string } | null {
+  const found = activeAuthored(sheet, "reach").filter(({ effect }) => !effect.unarmed || unarmed)[0];
   return found ? { tiles: found.effect.tiles, feature: found.held.feature } : null;
 }
 

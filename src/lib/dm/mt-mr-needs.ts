@@ -41,6 +41,14 @@ export function needRefusal(campaign: Pick<Campaign, "id">, sheet: CharacterShee
         ? null
         : { error: `${name} follows an unarmed strike made as part of the Attack action, and ${sheet.name} has made none this turn: pc_attack with weapon "unarmed strike" first. Nothing was spent.`, refused: "rules" };
     }
+    case "attack_action": {
+      // "After the Attack action" (Searing Arc Strike): an attack of it made
+      // this turn, and the action not gone on a spell.
+      const encounter = getActiveEncounter(campaign.id);
+      const budget = encounter?.turnBudget;
+      const attacked = encounter && budget && budgetApplies(budget, sheet.id, encounter.round) && budget.attacksMade > 0 && !budget.castThisAction;
+      return attacked ? null : { error: `${name} follows the Attack action, and ${sheet.name} has not taken it this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
+    }
     case "flurry_harm":
       // Flurry of Healing and Harm: "one of its attacks can carry Hand of Harm
       // free". The latest unarmed strike was one of Flurry of Blows'.

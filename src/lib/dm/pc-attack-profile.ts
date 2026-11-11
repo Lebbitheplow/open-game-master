@@ -449,7 +449,7 @@ export function buildAttackProfile(
     special = lance ? "lance" : used.srd?.name === SPECIAL_WEAPONS.net ? "net" : null;
   }
   // Demiurgic Colossus: a raging giant's melee reach grows by 5 feet.
-  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
+  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet, profile.unarmed === true) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
   }

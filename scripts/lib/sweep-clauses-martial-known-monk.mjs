@@ -4,13 +4,6 @@ const ROWS2 = "src/lib/srd/authored-effects-data2.ts";
 const ROWS4 = "src/lib/srd/authored-effects-data4.ts";
 
 export const KNOWN = {
-  "arms-of-the-astral-self-reach": {
-    severity: "medium", kind: "rule-missing",
-    where: `${ROWS2} monk::Arms of the Astral Self (a buff with no reach effect); src/lib/dm/pc-attack-profile.ts authoredReachBonus`,
-    note: "With the arms summoned a creature 10 feet away is \"out of melee reach (5 ft)\".",
-    fix: "A reach effect of 1 tile on unarmed strikes, gated on the arms' condition.",
-    files: [ROWS2, "src/lib/dm/pc-attack-profile.ts"],
-  },
   "arms-of-the-astral-self-wisdom": {
     severity: "medium", kind: "rule-missing",
     where: "src/lib/dm/pc-attack-profile.ts (the unarmed strike's ability: the better of Strength and Dexterity only)",
@@ -31,6 +24,13 @@ export const KNOWN = {
     note: "Fire damage that came from no attack (a spell's save, a hazard) cannot be deflected: \"answers an attack that hit them this turn, and the server has none on record\".",
     fix: "Let a self reduce row with types answer the last damage taken of those types, whatever dealt it.",
     files: ["src/lib/dm/authored-reactions.ts"],
+  },
+  "aspect-of-the-wyrm-ward": {
+    severity: "medium", kind: "rule-missing",
+    where: "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm (fx buff on the monk only)",
+    note: "An ally 5 feet from the monk in the ward takes 20 fire damage whole: nothing gives the aura's resistance.",
+    fix: "An aura_resist effect on the row, its type the one the monk chose for Draconic Strike (the ward's condition names it).",
+    files: ["src/lib/srd/authored-resources.json", "src/lib/srd/authored-effects-w2-mt-mr.ts"],
   },
   "aspect-of-the-wyrm-frighten": {
     severity: "medium", kind: "rule-missing",

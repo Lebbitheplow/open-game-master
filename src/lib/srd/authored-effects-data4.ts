@@ -264,7 +264,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
           kind: "buff",
           condition: "hour of reaping",
           rounds: 1,
-          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", rounds: 1 },
+          burst: { save: "wis", dcAbility: "wis", rangeFt: 30, condition: "frightened", untilNextTurnEnds: true },
         },
       },
     ],

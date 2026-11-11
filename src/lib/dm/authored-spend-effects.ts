@@ -425,7 +425,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // the one the variant names, else the first.
       const choices = words(does.type ?? "").filter((word) => DAMAGE_WORDS.has(textKey(word)));
       const type = choices.find((word) => textKey(word) === textKey(ctx.args.variant ?? "")) ?? choices[0] ?? "";
-      const saved = resolveCounterSave(campaign, sheet, { name: ctx.spend.name, save: does.save, dc: saveDc(ctx, does.dcAbility), dice, type, half: true, magical: true }, { turnId: ctx.turnId, targetEnemyId: ctx.args.targetEnemyId, targetEnemyIds: ctx.args.targetEnemyIds });
+      const live = getActiveEncounter(campaign.id);
+      const beyond = live && does.rangeFt
+        ? [ctx.args.targetEnemyId, ...(ctx.args.targetEnemyIds ?? [])].filter((id): id is string => Boolean(id)).find((id) => !withinFeet(live.id, sheet.id, id, does.rangeFt!))
+        : null;
+      if (beyond) {
+        return { error: `${getEnemy(beyond)?.displayName ?? "That creature"} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+      }
+      const saved = resolveCounterSave(campaign, sheet, { name: ctx.spend.name, save: does.save, dc: saveDc(ctx, does.dcAbility), dice, type, half: !does.noHalf, magical: true }, { turnId: ctx.turnId, targetEnemyId: ctx.args.targetEnemyId, targetEnemyIds: ctx.args.targetEnemyIds });
       return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };
     }
     case "teleport": {
@@ -595,7 +602,7 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
       lines.push(`${enemy.displayName} takes ${rolled} ${spec.type ?? ""} damage.`.replace("  ", " "));
     }
     if (spec.condition) {
-      const landed = enemyCondition(ctx, enemy, spec.condition, spec.rounds ? { rounds: spec.rounds } : {});
+      const landed = enemyCondition(ctx, enemy, spec.condition, spec.untilNextTurnEnds ? { untilTurnEndOf: ctx.sheet.id } : spec.rounds ? { rounds: spec.rounds } : {});
       lines.push(landed ? `${enemy.displayName} is ${spec.condition}.` : `${enemy.displayName} cannot be ${spec.condition}.`);
     }
     if (spec.mark) {

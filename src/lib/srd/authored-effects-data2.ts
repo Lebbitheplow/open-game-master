@@ -86,8 +86,10 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     spends: [
       {
         name: "Searing Arc Strike",
-        pool: { id: "ki", perUnit: true, max: 11 },
+        // "After the Attack action, spend 2 ki or more."
+        pool: { id: "ki", perUnit: true, min: 2, max: 11 },
         action: "bonus",
+        needs: "attack_action",
         does: {
           kind: "aoe_report",
           dice: "3d6",
@@ -117,6 +119,8 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
           dcAbility: "wis",
           type: "radiant",
           area: "a 20-foot sphere within 150 feet",
+          noHalf: true,
+          rangeFt: 150,
         },
       },
     ],
@@ -138,6 +142,12 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "monk::Arms of the Astral Self": {
     subclass: "Way of the Astral Self",
+    // While the arms last: unarmed strikes reach 5 feet farther, and a
+    // Strength save uses Wisdom when it is higher.
+    effects: [
+      { kind: "reach", tiles: 1, unarmed: true, gate: { condition: "arms of the astral self" } },
+      { kind: "save_swap", save: "str", use: "wis", gate: { condition: "arms of the astral self" } },
+    ],
     spends: [
       {
         name: "Arms of the Astral Self",
@@ -174,13 +184,15 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
         when: "weapon",
         oncePerTurn: true,
         requiresCondition: "arms of the astral self",
+        // "While both your arms and visage are summoned."
+        gate: { condition: "visage of the astral self" },
       },
     ],
     reactions: [
       {
         name: "Body of the Astral Self",
         aliases: ["Deflect Energy"],
-        gate: { condition: "arms of the astral self" },
+        gate: { condition: "arms of the astral self", conditions: ["visage of the astral self"], because: "needs the arms and the visage of the astral self both summoned" },
         does: {
           kind: "reduce",
           amount: (_level, mods) => `1d10+${mods.wis ?? 0}`,

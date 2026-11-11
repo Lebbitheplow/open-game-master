@@ -236,6 +236,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.notCondition && hasCondition(sheet, gate.notCondition)) {
     return false;
   }
+  if (gate.conditions?.some((condition) => !hasCondition(sheet, condition))) {
+    return false;
+  }
   if (gate.choice && textKey(held.choice ?? "") !== textKey(gate.choice)) {
     return false;
   }

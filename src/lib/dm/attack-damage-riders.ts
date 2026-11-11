@@ -11,6 +11,7 @@
 // it printed 1d8+3+4 for a raging Zealot whose swing rolled 1d8+3+4+1d6+10.
 //
 // Pure: no database, so the Hand imports it.
+import { riderGateHolds } from "@/lib/dm/mt-mr-turn";
 import { lifedrinkerDamage, pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { ragingMeleeBonus, type AttackProfile } from "@/lib/dm/attack-logic";
 import { DAMAGE_TYPES } from "@/lib/dm/condition-logic";
@@ -69,7 +70,9 @@ export function attackDamageRiders(input: {
             if (rider.when === "ranged" && !profile.ranged) {
               return false;
             }
-            return !rider.requiresCondition || sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition);
+            // An authored rider's own gate holds too (Empowered Arms: the
+            // arms and the visage both; mt-mr-turn.ts riderGateHolds).
+            return (!rider.requiresCondition || sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition)) && riderGateHolds(sheet, rider.feature);
           })
           .map((rider) => ({ ...rider, type: riderType(sheet, rider) }));
   return { rageBonus, abilityRiders, onHit, featureRiders };

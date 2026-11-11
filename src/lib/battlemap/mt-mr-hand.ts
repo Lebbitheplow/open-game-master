@@ -30,6 +30,9 @@ export function mrCardGate(sheet: CharacterSheet, turn: HandTurn, spend: Authore
       return shut(`${spend.name} follows an unarmed strike made as part of the Attack action.`);
     }
   }
+  if (spend.needs === "attack_action" && !(turn.myTurn && turn.attacksMade > 0 && !turn.castThisAction)) {
+    return shut(`${spend.name} follows the Attack action: attack first.`);
+  }
   const does = spend.does;
   if (does.kind !== "mr") {
     return null;

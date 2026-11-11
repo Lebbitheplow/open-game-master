@@ -2509,9 +2509,9 @@
   "clauses": [
    {
     "c": "After the Attack action, spend 2 ki or more as a bonus action to cast burning hands at a matching level.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Searing Arc Strike::Searing Arc Strike#HANDS_BACK",
-    "recorded_by": "spends-hands-back-spend-monk-searing-arc-strike-searing-arc-strike"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-needs.ts needRefusal (attack_action); src/lib/dm/authored-spends.ts (pool.min)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: searing-arc-strike"
    }
   ]
  },
@@ -2523,9 +2523,9 @@
   "clauses": [
    {
     "c": "A 20-foot sphere within 150 feet deals 2d6 radiant on a failed Constitution save, up to 2d6 more per ki point spent.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Searing Sunburst::Searing Sunburst#HANDS_BACK",
-    "recorded_by": "spends-hands-back-spend-monk-searing-sunburst-searing-sunburst"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts aoe_report (noHalf, rangeFt)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: searing-sunburst"
    }
   ]
  },
@@ -2576,9 +2576,9 @@
    },
    {
     "c": "until the end of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the frightened condition's end was not walked"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts burst (untilNextTurnEnds)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hour-of-reaping-until-next-turn-ends"
    }
   ]
  },
@@ -2747,7 +2747,8 @@
    },
    {
     "c": "your unarmed strikes reach 5 feet farther",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredReachBonus (unarmed)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: arms-of-the-astral-self-reach"
    },
    {
@@ -2796,9 +2797,9 @@
   "clauses": [
    {
     "c": "While both your arms and visage are summoned",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the reaction row is gated on the arms alone (gate condition \"arms of the astral self\"), the visage not read; not staged without the visage"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts gateHolds (conditions)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: deflect-energy-needs-both"
    },
    {
     "c": "Deflect Energy (a reaction reduces acid, cold, fire, force, lightning or thunder damage you take by 1d10 + your Wisdom modifier)",
@@ -2807,9 +2808,9 @@
    },
    {
     "c": "Empowered Arms (once on each of your turns, when you hit with the arms, add one roll of your martial arts die to the damage)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the rider was not read off a hit"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts riderGateHolds (src/lib/dm/attack-damage-riders.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: empowered-arms"
    }
   ]
  },
@@ -2827,9 +2828,9 @@
    },
    {
     "c": "and an extra Arms attack when taking the Attack action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the attack count under the buff was not read"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-turn.ts awakenedArmsAttacks (src/lib/dm/turn-budget.ts attacksAllowedFor)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: awakened-astral-self-attack"
    }
   ]
  },
@@ -2901,9 +2902,9 @@
    },
    {
     "c": "spectral wings give you a flying speed equal to your walking speed until the end of the turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no probe uses Step of the Wind and then the wings, so the flying buff (fx buff flying, rounds 1), its speed and its end are not held"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-spends.ts wingsUnfurled",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: wings-unfurled-fly"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2927,8 +2928,7 @@
    {
     "c": "or grants allies resistance to your damage type",
     "is": "gap",
-    "read_only": true,
-    "stopped": "not run: the ward variant was not staged on an ally"
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-ward"
    },
    {
     "c": "once per long rest",

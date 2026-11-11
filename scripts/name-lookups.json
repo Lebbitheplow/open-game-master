@@ -24,7 +24,7 @@
     "lib/dm/mt-mr-spends.ts#whole-single": [["identity",1,"a condition instance by its source, the feature's whole name on both sides"]],
     "lib/dm/mt-mr-spends.ts#first": [["identity",1,"the first of Physician's Touch's five conditions the creature carries, each found by isConditionNamed"]],
     "lib/dm/mt-mr-turn.ts#partial": [["key",2,"the prefix of a once-per-turn budget key"]],
-    "lib/dm/mt-mr-turn.ts#whole": [["key",1,"an authored row by its table key"]],
+    "lib/dm/mt-mr-turn.ts#whole": [["key",1,"an authored row by its table key"],["identity",1,"a rider's feature by the held row's own name, the engine's on both sides"]],
     "lib/dm/turn-budget.ts#whole": [["key",1,"the turn budget's once-per-turn keys"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],

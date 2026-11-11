@@ -302,6 +302,44 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
   });
 }
 
+// ---- Way of the Sun Soul: the two fires ----
+{
+  const r = await openRig();
+  const { kit, hero, stage, spend, swing, foe, used, budget, show } = r;
+  const sun = hero("monk", "Way of the Sun Soul", 11, BARE);
+  await probe("searing-arc-strike", async () => {
+    const [enemy] = await stage(sun);
+    const early = await spend(sun, "Searing Arc Strike", { amount: 2, targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(early.ok, false, `before the Attack action: ${show(early)}`);
+    await swing(sun, enemy, [2], UNARMED);
+    const one = await spend(sun, "Searing Arc Strike", { amount: 1, targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(one.ok, false, `for 1 ki: ${show(one)}`);
+    assert.equal(used(sun, "ki"), 0, "and the refusals spent no ki");
+    const before = foe(enemy).currentHp;
+    const out = await spend(sun, "Searing Arc Strike", { amount: 3, targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(before - foe(enemy).currentHp, 8, `burning hands at 2nd level for 3 ki, 4d6 of 2s on a failed save: ${show(out)}`);
+    assert.equal(used(sun, "ki"), 3);
+    assert.equal(budget().bonusUsed, true, "the bonus action");
+  });
+  await probe("searing-sunburst", async () => {
+    const [enemy] = await stage(sun);
+    kit.place(enemy.id, 15, 5);
+    const before = foe(enemy).currentHp;
+    const out = await spend(sun, "Searing Sunburst", { amount: 1, targetEnemyIds: [enemy.id] }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(before - foe(enemy).currentHp, 8, `2d6 and 2d6 more for 1 ki, of 2s, on a failed save: ${show(out)}`);
+    assert.equal(budget().actionUsed, true, "the action");
+    const [sturdy] = await stage(sun);
+    const made = await spend(sun, "Searing Sunburst", { targetEnemyIds: [sturdy.id] }, 20);
+    assert.equal(made.ok, true, made.error);
+    assert.equal(foe(sturdy).currentHp, 300, `a creature that made its save takes nothing: ${show(made)}`);
+    const [far] = await stage(sun);
+    kit.place(far.id, 5 + 31, 5);
+    assert.equal((await spend(sun, "Searing Sunburst", { targetEnemyIds: [far.id] }, 2)).ok, false, "a creature 155 feet off");
+  });
+}
+
 // ---- Way of the Long Death ----
 {
   const r = await openRig();
@@ -315,6 +353,17 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
     assert.equal(out.ok, true, out.error);
     assert.equal(budget().actionUsed, true, "the action");
     assert.deepEqual([foeHas(near, "frightened"), foeHas(far, "frightened")], [true, false], `a creature 5 feet off and one 40 feet off, both failing: ${show(out)}`);
+  });
+
+  // "Until the end of your next turn."
+  await probe("hour-of-reaping-until-next-turn-ends", async () => {
+    const [near] = await stage(death);
+    assert.equal((await spend(death, "Hour of Reaping", {}, 2)).ok, true);
+    assert.ok(foeHas(near, "frightened"), "the staging: frightened");
+    r.untilTurnOf(death);
+    assert.ok(foeHas(near, "frightened"), "no longer frightened as the monk's next turn starts");
+    r.endTurn();
+    assert.ok(!foeHas(near, "frightened"), "still frightened once that turn has ended");
   });
 
   // "instead of dropping to 0": the hold answers the blow itself, as
@@ -499,11 +548,62 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
   await probe("deflect-energy", async () => {
     await stage(astral);
     await spend(astral, "Arms of the Astral Self", {}, 2);
+    kit.freshTurn();
+    await spend(astral, "Visage of the Astral Self");
     world.patch(astral.id, { currentHp: 60 });
     await world.invoke("apply_damage", { characterId: astral.id, amount: 20, type: "fire" });
     const out = await react(astral, "Deflect Energy", {}, 5);
     assert.equal(out.ok, true, out.error);
     assert.equal(sheet(astral).currentHp, 40 + 5 + 4, "1d10 (a 5) + Wisdom back");
+  });
+
+  // Empowered Arms: one roll of the martial arts die on one hit a turn, with
+  // the arms and the visage both summoned.
+  await probe("empowered-arms", async () => {
+    const [enemy] = await stage(astral);
+    await spend(astral, "Arms of the Astral Self", {}, 2);
+    kit.freshTurn();
+    const armsOnly = await swing(astral, enemy, [15, 3, 3], UNARMED);
+    assert.doesNotMatch(expr(armsOnly), /\+1d10/, `with the arms and no visage: ${expr(armsOnly)}`);
+    kit.freshTurn();
+    assert.equal((await spend(astral, "Visage of the Astral Self")).ok, true);
+    kit.freshTurn();
+    const first = await swing(astral, enemy, [15, 3, 3], UNARMED);
+    assert.match(expr(first), /\+1d10/, `the first hit of the turn: ${expr(first)}`);
+    const second = await swing(astral, enemy, [15, 3, 3], UNARMED);
+    assert.doesNotMatch(expr(second), /\+1d10/, `the second: ${expr(second)}`);
+  });
+  // "While both your arms and visage are summoned": a fire hit, deflected
+  // only with both.
+  await probe("deflect-energy-needs-both", async () => {
+    const burned = async (visage) => {
+      const [enemy] = await stage(astral);
+      await spend(astral, "Arms of the Astral Self", {}, 2);
+      kit.freshTurn();
+      if (visage) assert.equal((await spend(astral, "Visage of the Astral Self")).ok, true);
+      kit.setEnemy(enemy.id, { stats: { attacks: [{ name: "Flame", toHit: 14, damage: "1d6+2", type: "fire" }] } });
+      world.patch(astral.id, { currentHp: 60 });
+      await r.enemyHits(enemy, astral, [16, 4]);
+      return react(astral, "Deflect Energy", {}, 5);
+    };
+    const armsOnly = await burned(false);
+    assert.equal(armsOnly.ok, false, `with the arms and no visage: ${show(armsOnly)}`);
+    const both = await burned(true);
+    assert.equal(both.ok, true, both.error);
+    assert.equal(sheet(astral).currentHp, 60, "a 6 of fire, all of it deflected (1d10 + Wisdom)");
+  });
+  await probe("awakened-astral-self-attack", async () => {
+    await stage(astral);
+    await spend(astral, "Arms of the Astral Self", {}, 2);
+    kit.freshTurn();
+    await spend(astral, "Visage of the Astral Self");
+    kit.freshTurn();
+    assert.equal((await spend(astral, "Awakened Astral Self")).ok, true);
+    kit.freshTurn();
+    const [enemy] = world.enemies();
+    const made = [];
+    for (let count = 0; count < 4; count += 1) made.push((await swing(astral, enemy, [15, 3, 3], UNARMED)).ok);
+    assert.deepEqual(made, [true, true, true, false], "three attacks in the Attack action (Extra Attack and the arms' one)");
   });
 
   await probe("awakened-astral-self-ac", async () => {
@@ -537,6 +637,28 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
     // On to the creature's own turn, its dice all 1s: any save it makes fails.
     r.endTurn();
     assert.ok(foeHas(enemy, "frightened"), `a creature 5 feet off, its turn begun in the aura, is not frightened: ${show(out)}`);
+  });
+
+  // The wings: a flying speed equal to the walking speed, to the turn's end.
+  await probe("wings-unfurled-fly", async () => {
+    await stage(dragon);
+    assert.equal((await r.act(dragon, "dash", { bonus: true })).ok, true, "the staging: Step of the Wind");
+    const out = await spend(dragon, "Wings Unfurled");
+    assert.equal(out.ok, true, out.error);
+    const { flyingSpeedOf } = await import("../src/lib/battlemap/types.ts");
+    const fly = () => flyingSpeedOf({ conditions: sheet(dragon).conditions, features: sheet(dragon).features, walkingFeet: sheet(dragon).speed });
+    assert.equal(fly(), sheet(dragon).speed, `a flying speed equal to the walking speed (${sheet(dragon).speed}): ${show(out)}`);
+    r.endTurn();
+    assert.equal(fly(), null, "still flying once the turn has ended");
+  });
+  await probe("aspect-of-the-wyrm-ward", async () => {
+    const friend = hero("fighter", "Champion", 5);
+    await stage(dragon, { cast: [[friend, 5, 6]] });
+    const out = await spend(dragon, "Aspect of the Wyrm", { variant: "ward" }, 2);
+    assert.equal(out.ok, true, out.error);
+    world.patch(friend.id, { currentHp: 60 });
+    await world.invoke("apply_damage", { characterId: friend.id, amount: 20, type: "fire" });
+    assert.equal(sheet(friend).currentHp, 50, `an ally 5 feet off takes half of 20 fire: ${show(out)}`);
   });
 
   // "Once per long rest or for 3 ki."

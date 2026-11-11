@@ -218,7 +218,10 @@ export function authoredFeatureSpend(
   if (spend.pool) {
     units = spend.pool.free && needRefusal(campaign, sheet, spend.name, spend.pool.free) === null
       ? 0
-      : spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
+      : spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : (spend.pool.min ?? 1))) : (spend.pool.amount ?? 1);
+    if (spend.pool.min && units < spend.pool.min) {
+      return { error: `${spend.name} takes at least ${spend.pool.min}: pass amount ${spend.pool.min} or more. Nothing was spent.`, retry: true };
+    }
     if (spend.pool.max && units > spend.pool.max) {
       return { error: `${spend.name} takes at most ${spend.pool.max}; ${units} is more than it can hold. Nothing was spent.`, retry: true };
     }

@@ -259,8 +259,26 @@ function rendMind(ctx: SpendContext): Resolution {
   return { result: { save: `WIS ${save.total} vs DC ${dc}: failed.`, applied: landed ? `${enemy.displayName} is stunned for a minute.` : `${enemy.displayName} cannot be stunned.` } };
 }
 
+// Wings Unfurled: "a flying speed equal to your walking speed until the end
+// of the turn". The condition is the one the board reads for manifested
+// wings (battlemap/types.ts), and it goes as this turn ends: turnBegun marks
+// the turn it waits for as the one under way (turn-end.ts).
+function wingsUnfurled(ctx: SpendContext): Resolution {
+  const { sheet } = ctx;
+  const name = "wings unfurled";
+  return {
+    patch: {
+      conditions: [...sheet.conditions.filter((entry) => !isConditionNamed(entry, name)), name],
+      conditionMeta: { ...sheet.conditionMeta, [name]: { untilTurnEndOf: sheet.id, turnBegun: true } },
+    },
+    result: { applied: `${sheet.name} flies at their walking speed until the end of this turn; aloft when it ends, they fall.` },
+  };
+}
+
 export function mrSpend(ctx: SpendContext, does: MrDoes): Resolution {
   switch (does.id) {
+    case "wings_unfurled":
+      return wingsUnfurled(ctx);
     case "rend_mind":
       return rendMind(ctx);
     case "psychic_teleport":

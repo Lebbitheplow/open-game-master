@@ -1738,12 +1738,7 @@
    "ability": null,
    "proficiency": 1,
    "recharge": "long",
-   "guidance": "When the monk uses Step of the Wind: a flying speed equal to the walking speed until the end of the turn.",
-   "fx": {
-    "kind": "buff",
-    "condition": "flying",
-    "rounds": 1
-   }
+   "guidance": "When the monk uses Step of the Wind: a flying speed equal to the walking speed until the end of the turn."
   },
   {
    "id": "sub_aspect_of_the_wyrm",
