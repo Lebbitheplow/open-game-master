@@ -3308,7 +3308,8 @@
   "clauses": [
    {
     "c": "When you make a Wisdom (Insight) check to tell whether a creature is lying",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-more.ts authoredCheckFloor (the row's about \"lies\", asked for by authoredFloorKeys)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ear-for-deceit-lies-only"
    },
    {
@@ -3373,7 +3374,8 @@
    },
    {
     "c": "after moving no more than half your speed on your turn",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-checks.ts withMovementFacts (the row's gate)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: steady-eye-half-speed"
    }
   ]

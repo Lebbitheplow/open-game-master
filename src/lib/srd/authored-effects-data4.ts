@@ -384,7 +384,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "rogue::Panache": { subclass: "Swashbuckler", narrated: "A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition." },
   "rogue::Ear for Deceit": {
     subclass: "Inquisitive",
-    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, note: "Only on an Insight check to tell whether a creature lies; the GM keeps to that." }],
+    // "To tell whether a creature is lying": the check's `about` says so (roll-about.ts "lies").
+    effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, about: "lies" }],
   },
   "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },

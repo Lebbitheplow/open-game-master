@@ -180,7 +180,9 @@ await test("Every circumstance a check can be about is read by a trait's key, so
   const read = new Set([...heldCheckTraits(everything), ...heldFeatChecks(everything)].map((key) => key.about));
   for (const row of authoredRows()) {
     for (const effect of row.entry.effects ?? []) {
-      if (effect.kind === "check_adv" && effect.about) read.add(effect.about);
+      // A floor keyed to a circumstance is a key too (Ear for Deceit's "lies":
+      // authored-effects-more.ts authoredFloorKeys).
+      if ((effect.kind === "check_adv" || effect.kind === "check_floor") && effect.about) read.add(effect.about);
     }
   }
   assert.deepEqual(CHECK_ABOUT.filter((about) => !read.has(about)), []);

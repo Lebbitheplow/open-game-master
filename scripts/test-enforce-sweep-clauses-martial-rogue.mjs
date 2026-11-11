@@ -152,13 +152,22 @@ const sneakDice = (level) => Math.ceil(level / 2);
   const inquisitive = hero("rogue", "Inquisitive", 9, { ...RAPIER, proficiencies: SKILLED });
   await probe("ear-for-deceit-floor", async () => {
     await kit.endFight();
-    const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, reason: "is the merchant lying about the price?" }, [3]);
+    const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, about: "lies", reason: "is the merchant lying about the price?" }, [3]);
     assert.equal(out.total, 8 + MOD + prof(9), `a 3 on an Insight check for a lie totals ${out.total}`);
   });
   await probe("ear-for-deceit-lies-only", async () => {
     await kit.endFight();
     const out = await roll(inquisitive, { kind: "skill_check", skill: "insight", dc: 15, reason: "reading the mood of the crowd" }, [3]);
     assert.equal(out.total, 3 + MOD + prof(9), `a 3 on an Insight check about no lie is floored to 8 (${out.total})`);
+    // A model's Insight check for an Inquisitive is asked whether it is about
+    // a lie, so the floor is neither lost to an omission nor given to another
+    // check (the ask is src/lib/srd/roll-keys.ts unnamedRollKeys).
+    const { heldRollKeys } = await import("../src/lib/dm/roll-feature-riders.ts");
+    const { unnamedRollKeys } = await import("../src/lib/srd/roll-keys.ts");
+    const keys = heldRollKeys(world.sheet(inquisitive.id));
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "insight" }, keys), [{ field: "about", values: ["lies"] }], "an Insight check that names no circumstance");
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "insight", about: "lies" }, keys), []);
+    assert.deepEqual(unnamedRollKeys({ roll: "check", skill: "stealth" }, keys), [], "a Stealth check is not asked");
   });
   await probe("eye-for-detail", async () => {
     await stage(inquisitive);

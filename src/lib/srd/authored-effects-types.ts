@@ -100,7 +100,9 @@ export type AuthoredEffect = Base &
     | { kind: "init_prof" }
     // A d20 at or below `floor` - 1 counts as `floor` on checks with these
     // skills (Silver Tongue: 10 on Persuasion and Deception).
-    | { kind: "check_floor"; skills: string[]; floor: number }
+    // `about`: only on a check about that circumstance (Ear for Deceit: 8 on
+    // an Insight check "to tell whether a creature is lying").
+    | { kind: "check_floor"; skills: string[]; floor: number; about?: CheckAbout }
     // A spell of 1st level or higher that kills heals the holder twice its
     // level, three times for necromancy, once a turn (Grim Harvest).
     | { kind: "grim_harvest" }

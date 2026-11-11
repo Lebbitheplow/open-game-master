@@ -68,7 +68,10 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "rogue::Steady Eye": {
     subclass: "Inquisitive",
     effects: [
-      { kind: "check_adv", skills: ["perception", "investigation"], note: "The engine does not measure the half-speed move; the GM withholds it after a longer one." },
+      // "After moving no more than half your speed on your turn": the roll
+      // door writes the board's count as a condition of the moment
+      // (src/lib/dm/mt-mr-checks.ts withMovementFacts).
+      { kind: "check_adv", skills: ["perception", "investigation"], gate: { notCondition: "moved past half speed" } },
     ],
   },
   "rogue::Eye for Weakness": {

@@ -611,7 +611,7 @@ export function resolveRollExpression(
         ? strengthCheckFloor(sheet, computeAbilityScore(sheet, "str"), skillModifier)
         : null;
     // Silver Tongue, Ear for Deceit: a skill's own floor (authored-effects-more.ts).
-    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id));
+    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, named(args.about)));
     // Reroll (Lucky) comes before floor (Reliable Talent): the 1 is rerolled,
     // then the surviving face is raised to 10 if still low.
     const d20Mods = `${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`;
