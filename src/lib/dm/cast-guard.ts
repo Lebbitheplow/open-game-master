@@ -29,6 +29,7 @@ import { castRefills } from "@/lib/dm/ar-ws-transposition";
 import { openStoneChange } from "@/lib/dm/ar-ws-stone";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
+import { eruptOnCast } from "@/lib/dm/ar-ws-heart-storm";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -892,8 +893,13 @@ export function castSpell(
   if (via === "enemy" || via === "aoe" || via === "attack") {
     endSanctuaryOnHarm(campaign.id, sheet.id);
   }
+  // Heart of the Storm: a lightning or thunder spell sets the caster's storm
+  // off, once for the casting (ar-ws-heart-storm.ts).
+  if (!input.storing) {
+    Object.assign(result, eruptOnCast(campaign, turnId, sheet, { spell: name, level: facts?.level ?? slotLevel ?? 0, types: [mech?.damageType, mech?.secondType] }));
+  }
   // Its area on the board; aoe_damage and cast_at_enemy lay theirs after the saves.
-  const zone = !input.storing && (via === "slot" || via === "buff") ? placeSpellZone(campaign, { spell: name, runsAs: facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel, dc: spellSaveDcFor(sheet, name), at: input.at, toward: input.toward, named: Boolean(input.at), ...(pointsPaid?.seesThrough ? { seenThroughBy: sheet.id } : {}) }) : null;
+  const zone =!input.storing && (via === "slot" || via === "buff") ? placeSpellZone(campaign, { spell: name, runsAs: facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel, dc: spellSaveDcFor(sheet, name), at: input.at, toward: input.toward, named: Boolean(input.at), ...(pointsPaid?.seesThrough ? { seenThroughBy: sheet.id } : {}) }) : null;
   return zone ? { ...result, area: zone } : result;
 }
 

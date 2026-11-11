@@ -187,6 +187,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   summon_extra: { file: "src/lib/dm/summon-cast.ts", call: "thrallSpell(" },
   summon_thrall: { file: "src/lib/dm/summon-cast.ts", call: "thrallForm(" },
   attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
+  cast_burst: { file: "src/lib/dm/ar-ws-heart-storm.ts", call: 'activeAuthored(caster, "cast_burst")' },
 };
 
 export function authoredEffectKinds(): string[] {

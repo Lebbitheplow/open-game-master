@@ -229,39 +229,136 @@ export function probes(rig, shared) {
       assert.deepEqual(grant.spec.fixedLanguages, ["Primordial"]);
     },
     tempest: async () => {
-      await stage(S("Storm Sorcery", 6));
+      const [enemy] = await stage(S("Storm Sorcery", 6));
+      // The flight follows a spell of 1st level or higher cast this turn
+      // (tempest-trigger): Shatter first, with the action.
+      const cast = await call("aoe_damage", { casterCharacterId: S("Storm Sorcery", 6).id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+      assert.equal(cast.ok, true, cast.error);
       const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
       assert.equal(out.ok, true, out.error);
       assert.equal(budget().bonusUsed, true);
       assert.match(out.result.teleport, /up to 10 feet, flying, without provoking opportunity attacks/);
     },
+    // In a fight the flight is open once the turn has seen a spell of 1st
+    // level or higher cast (src/lib/dm/ar-ws-tempest-logic.ts has the ruling on
+    // "before"): [the spend's answer, the bonus action spent].
     "tempest-trigger": async () => {
-      await stage(S("Storm Sorcery", 6));
-      const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
-      assert.equal(out.ok, false, "on a turn with no spell cast, the flight is taken");
+      const who = S("Storm Sorcery", 6);
+      const casting = sheet(who).spellcasting;
+      world.patch(who.id, { spellcasting: { ...casting, cantrips: [...new Set([...(casting.cantrips ?? []), "Poison Spray"])] } });
+      const shatter = async (enemy) => {
+        const cast = await call("aoe_damage", { casterCharacterId: who.id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      };
+      const flight = async (before) => {
+        const [enemy] = await stage(who);
+        await before(enemy);
+        const out = await spend(who, "Tempestuous Magic");
+        return { out, seen: [out.ok, budget()?.bonusUsed ?? false] };
+      };
+      const bare = await flight(async () => {});
+      assert.deepEqual(bare.seen, [false, false], "on a turn with no spell cast");
+      assert.match(bare.out.error, /spell of 1st level or higher.*Nothing was spent\.$/);
+      const cantrip = await flight(async (enemy) => {
+        const cast = await call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, [20, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      });
+      assert.deepEqual(cantrip.seen, [false, false], "after a cantrip, which is no spell of 1st level or higher");
+      assert.deepEqual((await flight(shatter)).seen, [true, true], "after Shatter, a 2nd-level spell cast with the action");
+      // The next turn has seen no casting of its own.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Tempestuous Magic")).ok, false, "on the turn after the one Shatter was cast in");
+      // Out of a fight no turn is kept, and the spend is open as it was.
+      await kit.endFight();
+      const idle = await spend(who, "Tempestuous Magic");
+      assert.equal(idle.ok, true, `out of a fight: ${idle.error}`);
     },
     "heart-resist": async () => {
       await kit.endFight();
       const who = S("Storm Sorcery", 6);
       assert.deepEqual([await hurt(who, 10, "lightning"), await hurt(who, 10, "thunder"), await hurt(who, 10, "fire")], [5, 5, 10]);
     },
+    // What each dummy lost, [5 feet, 10 feet, 15 feet, 35 feet] east of the
+    // sorcerer, after one call; an ally stands 5 feet west. Every die is a 1
+    // unless a case says otherwise, so a save fails and a spell's own damage
+    // is its number of dice.
     "heart-burst": async () => {
-      const who = S("Storm Sorcery", 6);
-      const [near, far] = await stage(who, { count: 2 });
-      kit.place(far.id, 12, 5);
-      const before = foe(near).currentHp;
-      const out = await call("aoe_damage", { casterCharacterId: who.id, spell: "Shatter", enemyIds: [far.id] }, [20, 1, 1, 1]);
-      if (!out.ok) throw new Error(out.error);
-      assert.equal(before - foe(near).currentHp, 3, "damage to the creature 5 feet from a 6th-level storm sorcerer who cast Shatter (thunder) at another");
+      const six = S("Storm Sorcery", 6);
+      const same = (lost, expected, label) => assert.deepEqual(lost, expected, `${label}: the dummies lost ${JSON.stringify(lost)}`);
+      const learn = (who, spells, cantrips) => {
+        const casting = sheet(who).spellcasting;
+        world.patch(who.id, { spellcasting: { ...casting, prepared: [...new Set([...casting.prepared, ...spells])], known: [...new Set([...casting.known, ...spells])], cantrips: [...new Set([...(casting.cantrips ?? []), ...cantrips])] } });
+      };
+      learn(six, ["Witch Bolt", "Magic Missile"], ["Shocking Grasp"]);
+      const cast = async (who, name, args, arrange = () => {}, faces = [1, 1, 1, 1, 1, 1]) => {
+        const foes = await stage(who, { count: 4, others: [friend()] });
+        kit.place(foes[3].id, 12, 5);
+        arrange(foes);
+        const ally = hp(friend());
+        const out = await call(name, args(foes), faces);
+        if (!out.ok) throw new Error(`${name}: ${out.error}`);
+        assert.equal(hp(friend()), ally, "an ally within 10 feet is never chosen");
+        return { lost: foes.map((enemy) => 300 - (foe(enemy)?.currentHp ?? 300)), said: String(out.result.castBurst ?? "") };
+      };
+      const shatterAt = (who, at) => (foes) => ({ casterCharacterId: who.id, spell: "Shatter", enemyIds: [foes[at].id] });
+      // Shatter (thunder, 3d8) at the creature 35 feet off: half of 6 to each creature within 10 feet.
+      const far = await cast(six, "aoe_damage", shatterAt(six, 3));
+      same(far.lost, [3, 3, 0, 3], "a 6th-level storm sorcerer's Shatter at the far creature");
+      assert.match(far.said, /^Heart of the Storm: .*3 thunder damage/);
+      // The spell's own target, beside the sorcerer, takes the spell and the burst both.
+      same((await cast(six, "aoe_damage", shatterAt(six, 0))).lost, [3 + 3, 3, 0, 0], "Shatter at the creature 5 feet off");
+      // The same door from pc_attack: Witch Bolt (lightning, 1d12) at the creature 15 feet off.
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[2].id, spell: "Witch Bolt" }), undefined, [15, 15, 1])).lost, [3, 3, 1, 0], "Witch Bolt, a ranged spell attack (at disadvantage beside a foe: 15 and 15)");
+      // And from cast_at_enemy, a creature of the area per call.
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[3].id, spell: "Shatter" }))).lost, [3, 3, 0, 3], "Shatter through cast_at_enemy");
+      // Each tool's own target beside the sorcerer keeps both: the burst lands
+      // once the spell's damage has (src/lib/dm/ar-ws-after-call.ts).
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Shatter" }))).lost, [3 + 3, 3, 0, 0], "Shatter through cast_at_enemy at the creature 5 feet off");
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Witch Bolt" }), undefined, [15, 15, 1])).lost, [1 + 3, 3, 0, 0], "Witch Bolt at the creature 5 feet off");
+      // Once per casting: a second creature of the same Shatter, named in a
+      // second call, is no second casting.
+      const twice = await stage(six, { count: 4, others: [friend()] });
+      kit.place(twice[3].id, 12, 5);
+      kit.place(twice[2].id, 13, 5);
+      for (const at of [3, 2]) {
+        const out = await call("cast_at_enemy", { characterId: six.id, targetEnemyId: twice[at].id, spell: "Shatter" }, [1, 1, 1, 1]);
+        if (!out.ok) throw new Error(`Shatter's creature ${at}: ${out.error}`);
+      }
+      same(twice.map((enemy) => 300 - foe(enemy).currentHp), [3, 3, 3, 3], "one Shatter resolved a creature per call, two calls");
+      // A cantrip of the type is no spell of 1st level or higher, and a spell of another type sets nothing off.
+      same((await cast(six, "pc_attack", (foes) => ({ characterId: six.id, targetEnemyId: foes[0].id, spell: "Shocking Grasp" }), undefined, [15, 1, 1])).lost, [2, 0, 0, 0], "Shocking Grasp, a lightning cantrip (2d8 at 6th level)");
+      same((await cast(six, "cast_at_enemy", (foes) => ({ characterId: six.id, targetEnemyId: foes[3].id, spell: "Magic Missile" }))).lost, [0, 0, 0, 6], "Magic Missile, three darts of force");
+      // "that you can see": an invisible creature beside the sorcerer is not struck.
+      same((await cast(six, "aoe_damage", shatterAt(six, 3), (foes) => kit.setEnemy(foes[0].id, { conditions: ["invisible"] }))).lost, [0, 3, 0, 3], "with the nearest creature invisible");
+      // Half the sorcerer level: 10 at 20th.
+      same((await cast(storm(), "aoe_damage", shatterAt(storm(), 3))).lost, [10, 10, 0, 3], "a 20th-level storm sorcerer's Shatter");
     },
     "fury-push": async () => {
-      const foes = await hit(storm());
-      const at = kit.token(foes[0].id);
-      // The creature fails its Strength save on a 1.
-      const out = await react(storm(), "Storm's Fury", {}, [1]);
-      assert.equal(out.ok, true, out.error);
-      const now = kit.token(foes[0].id);
-      assert.notDeepEqual([now.x, now.y], [at.x, at.y], `the creature failed its save and stands where it stood: ${show(out).slice(0, 170)}`);
+      const dc = 8 + prof(20) + MOD.cha;
+      // The dummy (Strength save +1) has hit the sorcerer from the east and
+      // rolls `face`; `arrange` moves the pieces before the reaction.
+      const pushed = async (face, arrange = () => {}) => {
+        const [enemy] = await hit(storm());
+        arrange(enemy);
+        const from = kit.token(enemy.id);
+        const out = await react(storm(), "Storm's Fury", {}, [face]);
+        assert.equal(out.ok, true, out.error);
+        const now = kit.token(enemy.id);
+        return { moved: [now.x - from.x, now.y - from.y], save: out.result.save, lightning: 300 - foe(enemy).currentHp, reacted: rig.reacted(storm()), said: show(out).slice(0, 200) };
+      };
+      // A 1 fails: 20 feet, four squares straight away from the sorcerer.
+      const failed = await pushed(1);
+      assert.deepEqual([failed.moved, failed.save, failed.lightning, failed.reacted], [[4, 0], `2 vs DC ${dc}`, 20, true], `[squares moved, the Strength save, lightning taken, reaction spent] on a failed save: ${failed.said}`);
+      // A 20 saves: the lightning lands all the same and the creature stands.
+      const saved = await pushed(20);
+      assert.deepEqual([saved.moved, saved.save, saved.lightning], [[0, 0], `21 vs DC ${dc}`, 20], "on a save made");
+      // A wall two squares behind it: it stops against the wall after 5 feet.
+      assert.deepEqual((await pushed(1, () => kit.openField([[8, 5, "#"]]))).moved, [1, 0], "with a wall 10 feet behind it");
+      // Diagonally: straight away is the same diagonal.
+      assert.deepEqual((await pushed(1, (enemy) => kit.place(enemy.id, 6, 6))).moved, [4, 4], "struck from the south-east");
+      // The map's edge: one square of board behind it is all it goes.
+      const edge = kit.map().width - 1;
+      assert.deepEqual((await pushed(1, (enemy) => { kit.place(storm().id, edge - 2, 9); kit.place(enemy.id, edge - 1, 9); })).moved, [1, 0], "with the map's edge 5 feet behind it");
     },
     "windsoul-immune": async () => {
       await kit.endFight();
@@ -474,9 +571,6 @@ export function probes(rig, shared) {
     "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
-    "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
-    "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
     "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
     "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },

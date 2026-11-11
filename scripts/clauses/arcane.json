@@ -1636,9 +1636,9 @@
    },
    {
     "c": "or a critical hit",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a critical hit that drops the sorcerer was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: grave-crit",
+    "by": "src/lib/dm/pc-damage.ts strengthOfTheGrave (input.crit: enemy_attack marks a natural 20, and the save is not rolled)"
    },
    {
     "c": "and after a success you can't use it again until a long rest",
@@ -1692,15 +1692,15 @@
    },
    {
     "c": "teleports 120 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the board is 100 feet wide, so a move beyond 120 feet cannot be staged; the spend only tells the GM to move the token"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-reach",
+    "by": "src/lib/dm/ar-ws-shadow-walk.ts jumpToSquare (authored-spend-effects.ts teleport, through map-tools.ts teleportSquareRefusal): use_resource with atX and atY, the square fields its door already parses, moves the sorcerer up to 120 feet and refuses a farther, walled, occupied or off-map square with nothing spent; with no square the teleport waits for move_token, held to the same 120 feet by the credit (feature-teleport.ts)"
    },
    {
     "c": "between dim or dark spaces",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the spend's note leaves the light at both ends to the GM (\"from one patch of dim light or darkness to another\"); a walk from bright light was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-light",
+    "by": "src/lib/dm/ar-ws-shadow-light.ts shadowsRefusal and lightAt (the row's shadows flag): the square the sorcerer stands on and the one they arrive on are both out of bright light, the board's own or a lamp's or carried light's bright radius; asked by the spend that names its square before anything is spent, and by move_token's teleport when it takes the spend's credit (map-tools.ts handleTeleportToken)"
    }
   ]
  },
@@ -1730,9 +1730,9 @@
    },
    {
     "c": "and the ability to move through creatures and objects",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: movement through an occupied square was not walked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: umbral-through",
+    "by": "src/lib/dm/ar-ws-umbral-logic.ts movesThroughEverything (src/lib/battlemap/passage.ts pcMoveTraits, every walk of a character): under the condition a walk passes any creature's space and any object on the board (a prop) at double cost and ends inside neither. Ruling: walls and shut doors are the building, no object, and still stop it"
    }
   ]
  },
@@ -1758,8 +1758,9 @@
   "clauses": [
    {
     "c": "Before or after casting a spell of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger",
+    "by": "src/lib/dm/ar-ws-tempest-logic.ts castFirstRefusal (authored-spends.ts, the row's afterLevelledCast; the Hand's card reads the same rule). Ruling: in a fight the flight is open once the turn has seen a spell of 1st level or higher cast; taken before, nothing could hold the sorcerer to casting one, so it follows the cast; out of a fight no turn is kept and it is open"
    },
    {
     "c": "a bonus action lets you fly 10 feet without provoking",
@@ -1783,8 +1784,9 @@
    },
    {
     "c": "and casting a spell of those types deals half your sorcerer level in damage to creatures within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: heart-burst",
+    "by": "src/lib/dm/ar-ws-heart-storm.ts eruptOnCast (authored effect cast_burst, called by cast-guard.ts castSpell, the one cast door; landed at the end of the tool call by ar-ws-after-call.ts). Rulings: a spell of 1st level or higher; the engine chooses every hostile creature within 10 feet the sorcerer can see and no ally; lightning or thunder, whichever gets through more; once per casting; off a board the GM lands it"
    }
   ]
  },
@@ -1815,8 +1817,9 @@
    },
    {
     "c": "and pushes it 20 feet on a failed Strength save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push",
+    "by": "src/lib/dm/ar-ws-storm-fury.ts pushStraightAway (authored-reactions.ts strike_back, save.pushFeet 20): on the failed Strength save the creature is moved up to 20 feet straight away from the sorcerer through the board's forced move, stopping at a wall, an occupied square or the map's edge"
    }
   ]
  },

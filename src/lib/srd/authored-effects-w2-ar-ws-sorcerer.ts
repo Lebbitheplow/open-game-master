@@ -44,4 +44,51 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Cast your psionic spells by spending sorcery points equal to the spell's
   // level instead of a slot, with no verbal, somatic or costly components."
   "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+  // "A bonus action teleports 120 feet between dim or dark spaces": the
+  // spend as authored-effects-data3.ts had it, now held to its light at both
+  // ends (shadows), and made in the spend itself when the call names the
+  // square (src/lib/dm/ar-ws-shadow-walk.ts, ar-ws-shadow-light.ts).
+  "sorcerer::Shadow Walk": {
+    subclass: "Shadow Magic",
+    spends: [{ name: "Shadow Walk", action: "bonus", does: { kind: "teleport", feet: 120, shadows: true, note: "from one patch of dim light or darkness to another" } }],
+  },
+  // "Before or after casting a spell of 1st level or higher, a bonus action
+  // lets you fly 10 feet without provoking": the flight as authored-effects-data3.ts
+  // had it, now open in a fight only once the turn has seen a levelled spell
+  // cast (src/lib/dm/ar-ws-tempest-logic.ts has the ruling on "before").
+  "sorcerer::Tempestuous Magic": {
+    subclass: "Storm Sorcery",
+    spends: [
+      { name: "Tempestuous Magic", action: "bonus", afterLevelledCast: true, does: { kind: "teleport", feet: 10, note: "flying, without provoking opportunity attacks" } },
+    ],
+  },
+  // "and casting a spell of those types deals half your sorcerer level in
+  // damage to creatures within 10 feet": the burst, from the cast door
+  // (src/lib/dm/ar-ws-heart-storm.ts). The resistance in the same sentence is
+  // read from the text as before (src/lib/srd/feature-effects.ts); no earlier
+  // table held a row for this feature.
+  "sorcerer::Heart of the Storm": {
+    subclass: "Storm Sorcery",
+    effects: [{ kind: "cast_burst", types: ["lightning", "thunder"], feet: 10, amount: (level) => Math.floor(level / 2) }],
+  },
+  // "A reaction deals your sorcerer level in lightning damage to a melee
+  // attacker and pushes it 20 feet on a failed Strength save": the damage as
+  // authored-effects-data3.ts had it, and the push made in the reaction
+  // (src/lib/dm/ar-ws-storm-fury.ts) where the earlier row answered a sentence
+  // for a second call.
+  "sorcerer::Storm's Fury": {
+    subclass: "Storm Sorcery",
+    reactions: [
+      {
+        name: "Storm's Fury",
+        does: {
+          kind: "strike_back",
+          amount: (level) => level,
+          type: "lightning",
+          melee: true,
+          save: { ability: "str", dcAbility: "spell", damageRegardless: true, pushFeet: 20 },
+        },
+      },
+    ],
+  },
 };

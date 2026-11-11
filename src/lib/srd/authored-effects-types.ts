@@ -288,6 +288,11 @@ export type AuthoredEffect = Base &
     // of this school (Improved Abjuration: the checks of Counterspell and
     // Dispel Magic; src/lib/dm/ar-ws-spell-check.ts, through contest-roll.ts).
     | { kind: "spell_check_prof"; school: string }
+    // Casting a spell of 1st level or higher that deals one of these damage
+    // types deals `amount` of one of them to the hostile creatures within
+    // `feet` the holder can see (Heart of the Storm: src/lib/dm/ar-ws-heart-storm.ts,
+    // from the cast door).
+    | { kind: "cast_burst"; types: string[]; feet: number; amount: Formula }
   );
 
 export type NaturalWeapon = {
@@ -489,7 +494,9 @@ export type SpendDoes =
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.
-  | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
+  // `shadows`: only from dim light or darkness to dim light or darkness
+  // (Shadow Walk: src/lib/dm/ar-ws-shadow-light.ts).
+  | { kind: "teleport"; feet: number; note?: string; touched?: boolean; shadows?: boolean }
   // Dice of damage onto the creature the holder just hit.
   | { kind: "die_damage"; dice: Formula; type: string }
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a
@@ -564,6 +571,9 @@ export type AuthoredSpend = {
   // must have hurt a creature this turn, and the spend lands on a creature it
   // hurt (src/lib/dm/spell-damage-mark.ts).
   afterSpellDamage?: boolean;
+  // Follows a spell of 1st level or higher the holder cast this turn
+  // (Tempestuous Magic: src/lib/dm/ar-ws-tempest-logic.ts has the ruling).
+  afterLevelledCast?: boolean;
   // Master of Hexes: moving the curse takes back the hit points its first
   // creature's death gave (src/lib/dm/master-of-hexes.ts).
   takesBackCurseHeal?: boolean;
@@ -634,7 +644,9 @@ export type ReactionDoes =
       orType?: string;
       melee?: boolean;
       rangeFt?: number;
-      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
+      // `pushFeet`: on a failed save the creature is moved that far straight
+      // away from the holder, on the board (Storm's Fury: src/lib/dm/ar-ws-storm-fury.ts).
+      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean; pushFeet?: number };
     }
   // The damage a hit dealt another creature, back at whoever dealt it, on a
   // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.

@@ -42,6 +42,8 @@
     "lib/srd/ar-ws-conjured.ts#whole": [["key", 1, "a pack's rows by whole name (findNamed), and the bead slot's two fixed names by key"]],
     "lib/dm/ar-ws-buff-aim.ts#whole": [["key", 1, "a buff's own variant outcomes, written by its row (engine vocabulary), never matched to a record"]],
     "lib/srd/ar-ws-density.ts#keyed": [["key", 2, "a creature's own condition names against the two density marks, by the key of the whole name (textKey on both sides)"]],
+    "lib/dm/ar-ws-heart-storm.ts#whole": [["identity", 2, "a spell's damage types against the row's (lightning, thunder), by whole name (textKey on both sides)"]],
+    "lib/dm/ar-ws-heart-storm.ts#number": [["key", 1, "the row's own amount, a formula of the class level that resolveFormula hands back as digits"]],
     "lib/dm/master-of-hexes.ts#partial": [["key", 3, "the engine's own marker condition, whose name carries the hit points it gave (\"hexblade's curse healed (N)\"), and that number read back"]],
     "lib/dm/spell-damage-logic.ts#partial": [["key", 1, "the turn's own mark keys (wizard-spell-damage:<id>), never a name"]],
     "lib/dm/pc-damage.ts#keyed": [["identity", 1, "a feat by its whole name, a damage type of the engine's words (textKey on both sides)"]],

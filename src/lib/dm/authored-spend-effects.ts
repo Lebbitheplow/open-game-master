@@ -43,6 +43,7 @@ import { summonSteelDefender } from "@/lib/dm/summon-defender";
 import { DANCING_ITEM, summonDancingItem } from "@/lib/dm/summon-arcane";
 import { createItem } from "@/lib/dm/authored-spend-arcane";
 import { summonHound } from "@/lib/dm/ar-ws-hound";
+import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -72,7 +73,7 @@ export type SpendContext = {
   sheet: CharacterSheet;
   held: HeldAuthored;
   spend: AuthoredSpend;
-  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
+  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[]; atX?: number; atY?: number };
   units: number;
   mods: Record<string, number>;
   reason: string;
@@ -493,6 +494,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };
     }
     case "teleport": {
+      // With its square named the holder goes there now (ar-ws-shadow-walk.ts).
+      const jump = jumpToSquare(ctx, does);
+      if (jump) {
+        return jump;
+      }
       creditFeatureTeleport(sheet.id, ctx.spend.name, does.feet);
       const move = `move_token, teleport true, spell "${ctx.spend.name}" and casterCharacterId ${sheet.id}`;
       return {

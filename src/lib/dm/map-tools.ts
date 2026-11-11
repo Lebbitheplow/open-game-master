@@ -70,6 +70,7 @@ import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
+import { goesBetweenShadows, shadowsRefusal } from "@/lib/dm/ar-ws-shadow-light";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -358,6 +359,12 @@ export function handleTeleportToken(
       error: `(${args.x},${args.y}) is ${distanceFeet} ft away, past the ${rangeFeet} ft range. Pick a tile within range.`,
       retry: true,
     };
+  }
+  // A feature that goes only between shadows (Shadow Walk) asks the light
+  // at both ends of the teleport its spend paid for (ar-ws-shadow-light.ts).
+  const lit = spender && args.spell && featureFeet !== null && goesBetweenShadows(spender, args.spell) ? shadowsRefusal(campaign.id, map, token, { x: args.x, y: args.y }, args.spell) : null;
+  if (lit) {
+    return lit;
   }
   // Every refusal above spends nothing; the spell is cast (or the enemy's
   // block checked) only now.
