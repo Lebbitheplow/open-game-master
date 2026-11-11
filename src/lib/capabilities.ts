@@ -264,6 +264,12 @@ export const SERVER_FEATURES = {
   // class. An older host drops the fields unread (the class falls back to
   // the wizard's list), so the editor offers none of them there.
   customSpellLists: true,
+  // The light on the viewer's own square in the board view
+  // (`PlayerMapView.self.bright`, src/lib/battlemap/view-tactics.ts): the Hand
+  // shuts a card that works only in dim light or darkness (Shadow Step, Cloak
+  // of Shadows) while the square is bright. An older host sends no such
+  // field, so the Hand deals those cards there as it always did.
+  handSquareLight: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

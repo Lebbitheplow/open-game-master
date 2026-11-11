@@ -23,6 +23,7 @@ import { deadAllyTargets, handTargets } from "@/app/campaigns/[campaignId]/handT
 import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaigns/[campaignId]/useHandChoices";
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
 import { groupHand, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
@@ -318,14 +319,17 @@ function HandInner({
   // A wand's, a staff's or a scroll's spell as a card: a host that cannot
   // resolve one leaves them typed.
   const items = hostOffers(capabilities, "handItemCasts");
+  const squareLight = hostOffers(capabilities, "handSquareLight");
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
     // The board reads the viewer's own token, so it says nothing of a
     // companion or a dominated hero the GM seat plays.
-    const ownBoard = sheet.userId === meUserId ? board : undefined;
+    // The light on the square is read only from a host that says it sends it
+    // (src/lib/capabilities.ts handSquareLight).
+    const ownBoard = sheet.userId === meUserId ? boardFactsForHost(board, squareLight) : undefined;
     return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId]);
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, squareLight]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).

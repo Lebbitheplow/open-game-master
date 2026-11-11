@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-monk.mjs";
 
-const { probe, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
+const { probe, test, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const BARE = { equipment: [] };
 const UNARMED = { weapon: "unarmed strike" };
 const die = (level) => (level >= 17 ? 10 : level >= 11 ? 8 : level >= 5 ? 6 : 4);
@@ -74,6 +74,27 @@ const light = (kit, ambient) => getDatabase().prepare("UPDATE battle_maps SET am
     assert.ok(!has(shadow, "invisible"), "the monk stepped into bright light and is still invisible");
   });
 }
+
+// The light on the viewer's square is a field newer than some hosts
+// (`PlayerMapView.self.bright`): the server says it sends it, and the Hand
+// reads it only from a host that does (capabilities.ts handSquareLight).
+await test("the Hand reads the light on its square only from a host that offers it", async () => {
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+  const { boardFactsForHost, mrCardGate } = await import("../src/lib/battlemap/mt-mr-hand.ts");
+  assert.equal(SERVER_FEATURES.handSquareLight, true, "this host says it sends the field");
+  const older = { story: {}, images: {}, features: { handItemCasts: true } };
+  assert.equal(hostOffers(older, "handSquareLight"), false, "a host from before the field was read as offering it");
+  assert.equal(hostOffers({ ...older, features: { handSquareLight: true } }, "handSquareLight"), true);
+  const facts = { bright: true, hide: "no cover here" };
+  assert.deepEqual(boardFactsForHost(facts, true), facts, "a host that offers it");
+  assert.deepEqual(boardFactsForHost(facts, false), { hide: "no cover here" }, "a host that does not: the field is left unread, the rest kept");
+  const cloak = { name: "Cloak of Shadows", needs: "shadows", does: { kind: "mr", id: "cloak_of_shadows" } };
+  const monk = { name: "Ash", conditions: [] };
+  const turn = { myTurn: true, marks: [] };
+  assert.ok(mrCardGate(monk, turn, cloak, boardFactsForHost(facts, true)), "in bright light the card is shut on a host that sends the light");
+  assert.equal(mrCardGate(monk, turn, cloak, boardFactsForHost(facts, false)), null, "and dealt as before on a host that does not");
+});
 
 // ---- Way of the Four Elements ----
 {

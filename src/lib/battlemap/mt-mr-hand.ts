@@ -17,6 +17,20 @@ import { kenseiHeld } from "@/lib/srd/mt-mr-kensei";
 
 const shut = (reason: string): Gate => ({ reason, spent: false });
 
+// The board's verdicts as the Hand may read them on this host: the light on
+// the square (`bright`) is read only where the host says it sends it
+// (src/lib/capabilities.ts handSquareLight). A host that does not offer the
+// flag is read as before the field existed, whatever its payload holds, so
+// the cards of dim light and darkness are dealt there as they always were.
+export function boardFactsForHost(board: HandBoardFacts | undefined, offersSquareLight: boolean): HandBoardFacts | undefined {
+  if (!board || offersSquareLight || board.bright === undefined) {
+    return board;
+  }
+  const rest: HandBoardFacts = { ...board };
+  delete rest.bright;
+  return rest;
+}
+
 export function mrCardGate(sheet: CharacterSheet, turn: HandTurn, spend: AuthoredSpend, board: HandBoardFacts | undefined): Gate {
   const marks = turn.myTurn ? (turn.marks ?? []) : [];
   if (spend.needs === "shadows" && board?.bright) {
