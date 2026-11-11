@@ -38,7 +38,7 @@ import {
   type OpenHandChoice,
 } from "@/lib/dm/attack-choice-rules";
 import { matchWeapon } from "@/lib/srd/weapons";
-import { coatsAsBonusAction } from "@/lib/srd/feat-combat";
+import { coatsAsBonusAction, poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
 import { poisonAt } from "@/lib/srd/table-hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -52,7 +52,7 @@ function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
 
 // Typed damage on an enemy with a short turn for its audit rows, outside the
 // hit's own damage roll.
-function damageEnemy(campaign: Campaign, enemy: EncounterEnemy, amount: number, type: string) {
+function damageEnemy(campaign: Campaign, enemy: EncounterEnemy, amount: number, type: string, ignoreResistanceBy: string | null = null) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || amount <= 0) {
     return;
@@ -61,6 +61,7 @@ function damageEnemy(campaign: Campaign, enemy: EncounterEnemy, amount: number, 
     const sheets = listSheets(campaign.id);
     applyEnemyDamage(campaign, turn, encounter, enemy, amount, sheets, new Map(sheets.map((entry) => [entry.id, entry])), type, {
       magical: true,
+      ...(ignoreResistanceBy ? { ignoreResistance: true, ignoreResistanceBy } : {}),
     });
   });
 }
@@ -218,7 +219,10 @@ export function poisonOnHit(campaign: Campaign, sheetId: string, enemyId: string
       attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
     });
     publishRoll(campaign.id, roll);
-    damageEnemy(campaign, enemy, dealt, "poison");
+    // A Poisoner's coat is poison damage they deal: "You ignore resistance
+    // to poison damage" held on a poisoned blade's own damage type and was
+    // halved here, on the coat (src/lib/srd/feat-combat.ts).
+    damageEnemy(campaign, enemy, dealt, "poison", poisonerIgnoresResistance(sheet, "poison") ? "Poisoner" : null);
     lines.push(`${label}: ${enemy.displayName} ${save.success ? "saves" : "fails the CON save"} (${save.autoFailed ? "automatic" : save.total} vs DC ${coat.dc}) and takes ${dealt} poison damage.`);
   }
   if (!save.success && coat.conditions?.length) {

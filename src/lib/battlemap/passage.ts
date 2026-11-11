@@ -85,6 +85,9 @@ export function pcMoveTraits(input: {
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
+  // Mobile on a turn its holder Dashed (src/lib/dm/ar-wbf-feat-turn.ts
+  // crossesAnyGround): difficult terrain costs no extra.
+  anyGround?: boolean;
 }): MoveTraits {
   const moverSize = sizeForRace(input.sheet.race);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
@@ -98,6 +101,7 @@ export function pcMoveTraits(input: {
     : freely;
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
+    ...(input.anyGround ? { anyGround: true } : {}),
     passable: passableTiles({
       width: input.width,
       tokens: input.tokens,

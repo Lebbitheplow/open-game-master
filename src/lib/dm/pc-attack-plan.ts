@@ -47,6 +47,7 @@ import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
 import { textKey } from "@/lib/language/text-logic";
 import { acBreakdownFor } from "@/lib/srd";
 import { foeSlayerBonus } from "@/lib/dm/attack-features";
@@ -463,7 +464,9 @@ export function planPcAttack(input: {
     profile = { ...profile, damageExpression: polearmButtDamage(profile.damageExpression), damageType: "bludgeoning", heavy: false };
     featNotes.push("Polearm Master: the butt end, 1d4 bludgeoning, as the bonus action");
   } else if (options.bonusFeat === "Charger") {
-    if (args.charged) {
+    // The run is the caller's word, or the walk the board itself saw end in
+    // 10 feet on one heading (ar-wbf-feat-turn.ts).
+    if (args.charged || ranStraight(encounter, sheet.id)) {
       profile = { ...profile, damageExpression: `${profile.damageExpression}+5` };
       featNotes.push("Charger: +5 damage after a 10-foot straight charge");
     } else {

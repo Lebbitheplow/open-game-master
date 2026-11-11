@@ -290,10 +290,13 @@ export function zoneStepCost(
   zones: SpellZone[],
   width: number,
   moverKind: string,
+  // The mover pays no extra for difficult ground (MoveTraits.anyGround); an
+  // area's other costs (halved speed, a headwind) stand.
+  anyGround = false,
 ): ((from: number, to: number, cost: number) => number) | null {
   const moving = zones.filter((zone) => {
     const row = rowOf(zone);
-    return Boolean(row && (row.difficult || row.halvesHostile || row.headwind));
+    return Boolean(row && ((row.difficult && !anyGround) || row.halvesHostile || row.headwind));
   });
   if (!moving.length) {
     return null;
@@ -306,7 +309,7 @@ export function zoneStepCost(
         continue;
       }
       const row = rowOf(zone) as ZoneRow;
-      if (row.difficult) {
+      if (row.difficult && !anyGround) {
         floor = Math.max(floor, row.difficult);
       }
       if (row.halvesHostile && hostileTo(zone, moverKind)) {

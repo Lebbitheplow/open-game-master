@@ -15,7 +15,8 @@ import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import { sizeForRace } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
-import { highJumpFeet, longJumpFeet, RUN_UP_TILES } from "@/lib/srd/jump";
+import { highJumpFeet, longJumpFeet } from "@/lib/srd/jump";
+import { runUpTiles } from "@/lib/srd/feat-moves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether a character's move is priced as standing up or crawling: prone,
@@ -51,7 +52,7 @@ export function viewerMoves(input: {
     .map((cell) => [cell, prone ? proneCharge(walks.get(cell), crawls.get(cell), stand, budget.fullTiles)?.cost : walks.get(cell)] as const)
     .filter((entry): entry is readonly [number, number] => entry[1] !== undefined);
   const strength = computeAbilityScore(sheet, "str");
-  const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  const runningStart = scene || token.movedThisRound >= runUpTiles(sheet);
   const held = input.enemies.filter((enemy) => enemy.status === "alive" && grappledBy(enemy, sheet.id));
   return {
     reachable: charged.map(([cell]) => cell),

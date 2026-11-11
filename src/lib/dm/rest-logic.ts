@@ -4,6 +4,7 @@ import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions }
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
 import { TENDED } from "@/lib/dm/stabilize";
+import { RALLIED } from "@/lib/dm/ar-wbf-feat-rally";
 import { refillResources } from "@/lib/srd/resource-refills";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isMulticlass, slotTableFor } from "@/lib/srd/multiclass";
@@ -38,6 +39,23 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
 // 24 hours) is the caller's to decide (rest-tools.ts).
 // `keepExhaustion`: a character going without food or water under the
 // supplies variant sleeps without losing a level (src/lib/dm/supplies.ts).
+// The marks that last "until it finishes a rest", short or long: a Healer's
+// kit may tend a creature again (stabilize.ts), and an Inspiring Leader rally
+// it again (ar-wbf-feat-rally.ts). Both rest patches call this; the short
+// rest once cleared neither, so a kit never tended twice in a day of short
+// rests. Empty when the sheet carries no such mark.
+const REST_MARKS = [TENDED, RALLIED];
+function restMarksCleared(
+  conditions: string[],
+  meta: CharacterSheet["conditionMeta"],
+): Pick<FullPatchSheetInput, "conditions" | "conditionMeta"> {
+  if (!conditions.some((condition) => REST_MARKS.includes(condition.toLowerCase()))) {
+    return {};
+  }
+  const cleared = removeConditions(conditions, meta, REST_MARKS);
+  return { conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
 export function longRestPatch(
   sheet: CharacterSheet,
   options: { keepExhaustion?: boolean } = {},
@@ -130,15 +148,7 @@ export function longRestPatch(
       patch.conditionMeta = pruneMeta(patch.conditions, sheet.conditionMeta);
     }
   }
-  // A Healer's kit may tend a creature again after a rest (stabilize.ts).
-  {
-    const tendedBefore = patch.conditions ?? sheet.conditions;
-    if (tendedBefore.some((condition) => condition.toLowerCase() === TENDED)) {
-      const cleared = removeConditions(tendedBefore, patch.conditionMeta ?? sheet.conditionMeta, [TENDED]);
-      patch.conditions = cleared.conditions;
-      patch.conditionMeta = cleared.meta;
-    }
-  }
+  Object.assign(patch, restMarksCleared(patch.conditions ?? sheet.conditions, patch.conditionMeta ?? sheet.conditionMeta));
   // A rage never survives the night, whatever its remaining rounds said.
   const conditions = patch.conditions ?? sheet.conditions;
   if (conditions.some((condition) => condition.toLowerCase() === RAGING)) {
@@ -248,6 +258,7 @@ export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInp
       patch.spellcasting = { ...sheet.spellcasting, slots };
     }
   }
+  Object.assign(patch, restMarksCleared(sheet.conditions, sheet.conditionMeta));
   return Object.keys(patch).length ? patch : null;
 }
 

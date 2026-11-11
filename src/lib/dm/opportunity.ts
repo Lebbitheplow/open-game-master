@@ -1,4 +1,5 @@
 import { evadesOpportunityAttacksAfterMelee, MOBILE_ATTACKED, polearmReachOpportunity } from "@/lib/srd/feat-combat";
+import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
@@ -410,6 +411,10 @@ export function resolvePcOpportunityAttacks(
   from: XY,
   to: XY,
   path?: XY[],
+  // The walker Disengaged: its walk draws nobody's swing but a Sentinel's
+  // (src/lib/srd/feat-moves.ts). Every caller passes it rather than skipping
+  // this door, or the Sentinel is skipped with everyone else.
+  disengaged = false,
 ): string[] {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -430,6 +435,9 @@ export function resolvePcOpportunityAttacks(
 
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
+      continue;
+    }
+    if (disengaged && !strikesTheDisengaged(sheet)) {
       continue;
     }
     if (
@@ -511,7 +519,7 @@ export function resolvePcOpportunityAttacks(
   }
   // A creature the party dominates walking away from its old allies: they
   // strike it as it goes (opportunity-sides.ts posts its own lines).
-  if (moverKind === "enemy") {
+  if (moverKind === "enemy" && !disengaged) {
     notes.push(...enemiesStrikeWalker(campaign.id, enemyId, steps, moverFootprint));
   }
   return notes;

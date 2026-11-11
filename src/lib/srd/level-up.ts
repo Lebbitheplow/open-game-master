@@ -35,6 +35,7 @@ import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { applyFeatIncrease, featSaveProficiency, featsAsRun } from "@/lib/srd/feat-effects";
 import { applyFeatGrants, featGrantSpec } from "@/lib/srd/feat-grants";
 import { elementalAdeptFeatureName } from "@/lib/srd/feat-combat";
+import { featRepeatRefusal } from "@/lib/srd/feat-repeat";
 import { featSpellGrants, freeCastFeatures, withFeatSpells } from "@/lib/srd/feat-spells";
 import { chosenFightingStyles, fightingStyleChoices, newStyleFits } from "@/lib/srd/feature-effects";
 import { styleSlotFeatures } from "@/lib/srd/style-slots";
@@ -304,7 +305,11 @@ export function buildLevelUp(
       continue;
     }
     if (feats.some((feat) => textKey(feat) === textKey(choice.feat))) {
-      return refuse(`${sheet.name} already has ${choice.feat}; a feat is taken once.`);
+      // Taken once, but for the feat whose text allows another (feat-repeat.ts).
+      const again = featRepeatRefusal({ ...sheet, feats }, choice.feat, featChoice(request.featChoices, choice.feat));
+      if (again) {
+        return refuse(again);
+      }
     }
     const facts = context.featOf(choice.feat);
     if (!facts) {

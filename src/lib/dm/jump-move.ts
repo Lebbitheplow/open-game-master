@@ -14,7 +14,8 @@ import { publishPersisted } from "@/lib/events";
 import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
-import { highJumpFeet, planLongJump, RUN_UP_TILES } from "@/lib/srd/jump";
+import { highJumpFeet, planLongJump } from "@/lib/srd/jump";
+import { runUpTiles } from "@/lib/srd/feat-moves";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -81,7 +82,7 @@ export function jumpMove(input: {
   const leap = conditionJumpMultiplier(sheet.conditions) * (scene ? 1 : windStepJump(encounter, sheet.id));
   // A 10-foot run on foot this turn is the running start; out of a fight
   // there is all the room in the world to take one.
-  const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  const runningStart = scene || token.movedThisRound >= runUpTiles(sheet);
   const extra = runningJumpFeet(sheet, runningStart);
   const plan = planLongJump({
     terrain: map.terrain,

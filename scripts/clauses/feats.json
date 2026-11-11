@@ -14,20 +14,20 @@
    {
     "c": "Standing up from prone costs only 5 feet of movement",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts standsCheaply, read by authored-effects-more.ts standUpTiles (src/lib/battlemap/view.ts pcMoveBudget)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.stand"
+    "by": "src/lib/srd/feat-combat.ts standsCheaply, read by authored-effects-more.ts standUpTiles (src/lib/battlemap/view.ts pcMoveBudget): the take_action stand and the move route charge a prone Athlete 5 feet",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.stand.table"
    },
    {
     "c": "climbing costs no extra movement",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the board has no climb cost"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts climbsFreely, read by src/lib/battlemap/passage.ts pcMoveTraits: the move route charges an Athlete one square for a climbed square",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.climb"
    },
    {
     "c": "you can make a running jump after moving only 5 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the jump helpers take a Strength score alone (src/lib/srd/jump.ts)"
+    "is": "held",
+    "by": "src/lib/srd/feat-moves.ts runUpTiles (5 feet for an Athlete, 10 for anyone else), read by src/lib/dm/jump-move.ts and the board's jump reach (src/lib/battlemap/view-moves.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.jump"
    }
   ]
  },
@@ -45,9 +45,9 @@
    },
    {
     "c": "You have advantage on Deception and Performance checks when passing yourself off as someone else",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: request_roll about a disguise"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts FEAT_CHECKS (Actor, about: disguise), read by request_roll (src/lib/dm/rolls.ts featCheckRider): the check named about 'disguise' is thrown twice",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.actor.disguise"
    },
    {
     "c": "you can mimic the speech or sounds of a creature you have heard for at least 1 minute",
@@ -65,14 +65,14 @@
    {
     "c": "After you Dash, you can use a bonus action to make one melee attack or to shove a creature.",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove after a Dash (src/lib/dm/action-price.ts); the bonus melee attack is featBonusAttack (pc-attack-options.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.charger.shove"
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute (take_action shove, bonus: true, src/lib/dm/action-price.ts) and featBonusAttack (pc_attack feature 'Charger', src/lib/dm/pc-attack-options.ts), each refused with no Dash",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.charger.shove.table"
    },
    {
     "c": "If you moved at least 10 feet in a straight line first, the attack deals an extra 5 damage or the shove pushes 10 extra feet.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the +5 and the 10 extra feet"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-turn.ts noteStraightRun (the move route and move_token write the run from the path walked), ranStraight read by src/lib/dm/pc-attack-plan.ts (+5, or the caller's charged: true) and chargerShove by take_action shove (src/lib/dm/combat-actions.ts pushes 10 feet more)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.charger.run"
    }
   ]
  },
@@ -97,8 +97,8 @@
    {
     "c": "when you take the Attack action with a one-handed weapon you can use a bonus action to attack with a hand crossbow you are holding",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts featBonusAttack (ONE_HANDED_ATTACKED), read by src/lib/dm/pc-attack-options.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.crossbow-expert.bonus"
+    "by": "src/lib/srd/feat-combat.ts featBonusAttack (ONE_HANDED_ATTACKED), read by src/lib/dm/pc-attack-options.ts: pc_attack feature 'Crossbow Expert' with the hand crossbow is the bonus action after a one-handed attack, refused before it",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.crossbow-expert.bonus.table"
    }
   ]
  },
@@ -193,8 +193,8 @@
    {
     "c": "When you roll a Hit Die to regain hit points, the minimum you regain is twice your Constitution modifier.",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts hitDieHealingFloor (src/lib/dm/hit-dice.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.durable.floor"
+    "by": "src/lib/srd/feat-combat.ts hitDieHealingFloor, read by src/lib/dm/hit-dice.ts: take_rest's Hit Die showing 1 restores twice the Constitution modifier",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.durable.floor.table"
    }
   ]
  },
@@ -264,9 +264,9 @@
    },
    {
     "c": "You can take this feat more than once, choosing a different type each time.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a second Elemental Adept of another type"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts elementalAdeptTypes (every 'Elemental Adept: <type>' feature answers elementalAdeptApplies) and src/lib/srd/feat-repeat.ts featRepeatRefusal (src/lib/srd/level-up.ts takes it again for another type and refuses the same one)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.elemental-adept.twice"
    }
   ]
  },
@@ -304,9 +304,9 @@
    },
    {
     "c": "As an action you can spend a use of a healer's kit to restore 1d6 + 4 hit points plus the creature's Hit Dice to a creature, once each per rest.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/dm/stabilize.ts healerKitUse (use_item on a healer's kit: the action, 1d6 + 4 + the creature's Hit Dice, the 'tended' mark) and src/lib/dm/rest-logic.ts restMarksCleared (a short or a long rest lifts the mark)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.healer.kit"
    }
   ]
  },
@@ -383,15 +383,15 @@
    },
    {
     "c": "You can spend 10 minutes rallying up to six friendly creatures within 30 feet who can hear and understand you.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts inspiring_leader (six uses a rest, outOfFight: refused in a fight by counter-rules.ts counterGate). The 30 feet and 'can hear and understand you' are the GM's to judge: out of a fight no board measures them",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.inspiring-leader.rally"
    },
    {
     "c": "Each gains temporary hit points equal to your level plus your Charisma modifier, and cannot benefit again until it finishes a rest.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the temporary hit points (level + Charisma)"
+    "is": "held",
+    "by": "src/lib/srd/class-resources.ts inspiring_leader (temp_hp: level + Charisma modifier) and src/lib/dm/ar-wbf-feat-rally.ts (the 'rallied' mark use_resource refuses on, lifted by a rest in rest-logic.ts restMarksCleared)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.inspiring-leader.temp"
    }
   ]
  },
@@ -474,9 +474,9 @@
    },
    {
     "c": "or to roll an extra d20 on an attack made against you and choose which the attacker uses",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a luck point spent on an enemy's attack"
+    "is": "held",
+    "by": "src/lib/dm/feat-reactions.ts lucky (use_reaction feature 'Lucky' on the open hit: the attacker's d20 is thrown again, the point spent, no reaction used)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.lucky.attacked"
    }
   ]
  },
@@ -539,8 +539,8 @@
    {
     "c": "and you have advantage on saves against spells cast by creatures within 5 feet",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts spellSaveAdvantageReach (src/lib/dm/cast-at-player.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mage-slayer.save"
+    "by": "src/lib/srd/feat-combat.ts spellSaveAdvantageReach, read by src/lib/dm/cast-at-player.ts: the save against a caster within 5 feet is thrown twice",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mage-slayer.save.table"
    }
   ]
  },
@@ -608,9 +608,9 @@
    },
    {
     "c": "difficult terrain costs no extra movement when you Dash",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: difficult terrain on a Dash"
+    "is": "held",
+    "by": "src/lib/srd/feat-moves.ts dashCrossesDifficultTerrain, read by src/lib/dm/ar-wbf-feat-turn.ts crossesAnyGround into MoveTraits.anyGround (src/lib/battlemap/passage.ts pcMoveTraits; types.ts moveCost and zones.ts zoneStepCost charge no extra): the move route, move_token and the board's reach",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mobile.dash-terrain"
    },
    {
     "c": "when you make a melee attack against a creature it cannot make opportunity attacks against you for the rest of the turn",
@@ -698,8 +698,8 @@
    {
     "c": "You also get an opportunity attack when a creature enters your reach with such a weapon.",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts polearmReachOpportunity (src/lib/dm/opportunity.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.polearm-master.enter"
+    "by": "src/lib/srd/feat-combat.ts polearmReachOpportunity, read by src/lib/dm/opportunity.ts resolvePcOpportunityAttacks: move_token walking a creature into a glaive's reach draws the swing",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.polearm-master.enter.table"
    }
   ]
  },
@@ -754,21 +754,21 @@
   "clauses": [
    {
     "c": "A creature you hit with an opportunity attack has its speed reduced to 0 for that turn",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the speed 0 after a Sentinel opportunity hit"
+    "is": "held",
+    "by": "src/lib/dm/opportunity-strike.ts (hasSentinel: the 'stopped' condition until the end of the creature's turn, which move_token refuses to walk on)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sentinel.stop"
    },
    {
     "c": "creatures provoke opportunity attacks from you even if they Disengage",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-moves.ts strikesTheDisengaged, read by src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (move_token and the walk-up of enemy_attack pass the walker's Disengage instead of skipping the door)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sentinel.disengage"
    },
    {
     "c": "and when a creature within 5 feet attacks someone other than you, you can use your reaction to make a melee attack against it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/dm/feat-reactions.ts sentinel (use_reaction feature 'Sentinel' against the open attack record: one melee attack, the reaction spent; refused with no such attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sentinel.guard"
    }
   ]
  },
@@ -787,8 +787,8 @@
    {
     "c": "your ranged attacks ignore half and three-quarters cover",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts shotIgnoresCover (src/lib/dm/pc-attack-plan.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sharpshooter.cover"
+    "by": "src/lib/srd/feat-combat.ts shotIgnoresCover, read by src/lib/dm/pc-attack-plan.ts: a shot at a creature behind another hits the AC without the cover",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sharpshooter.cover.table"
    },
    {
     "c": "before a ranged attack with a weapon you are proficient with you can take a -5 penalty to the attack roll in exchange for +10 damage on a hit",
@@ -807,14 +807,14 @@
    {
     "c": "If you take the Attack action you can use a bonus action to shove a creature within 5 feet with your shield.",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove (src/lib/dm/action-price.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shield-master.shove"
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute (take_action shove, bonus: true, after an attack with a shield on the arm: src/lib/dm/action-price.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shield-master.shove.table"
    },
    {
     "c": "You add your shield's AC bonus to Dexterity saves against effects that target only you, and you can use a reaction to take no damage on a successful Dexterity save.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts shieldMasterSaveBonus, read by src/lib/dm/forced-save.ts (the shield's bonus on a Dexterity save aimed at the holder alone) and src/lib/dm/cast-at-player.ts (the reaction turns a made save into no damage)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shield-master.save"
    }
   ]
  },
@@ -837,8 +837,8 @@
    {
     "c": "You can hide when lightly obscured, missing with a ranged attack does not reveal your position, and dim light does not impose disadvantage on your Perception checks that rely on sight.",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts hasSkulker (src/lib/dm/hide-traits.ts, pc-attack-plan.ts, rolls.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skulker.hide"
+    "by": "src/lib/srd/feat-combat.ts hasSkulker, read by src/lib/dm/hide-traits.ts (take_action hide in dim light, in the open), pc-attack-plan.ts and rolls.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skulker.hide.table"
    }
   ]
  },
@@ -1134,10 +1134,16 @@
     "probe": "scripts/test-enforce-feats.mjs: a half-feat with a choice of score raises the score chosen, Resilient adds that saving throw, and no choice is refused"
    },
    {
-    "c": "Cooking during a short rest lets allies regain an extra 1d8 hit points, and an hour's work makes treats that grant temporary hit points.",
+    "c": "Cooking during a short rest lets allies regain an extra 1d8 hit points",
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts chefRestDie, read by src/lib/dm/hit-dice.ts partyChefDie: take_rest adds a d8 to what each creature spending a Hit Die regains while a Chef rests with the party",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.chef.meal"
+   },
+   {
+    "c": "and an hour's work makes treats that grant temporary hit points",
     "is": "gap",
     "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "why": "not built: the text states no number of treats and no amount of temporary hit points, so there is nothing to build from without writing numbers into the feat (w2-ar-wbf-handoff.jsonl)"
    }
   ]
  },
@@ -1210,8 +1216,8 @@
    {
     "c": "You ignore resistance to poison damage",
     "is": "held",
-    "by": "src/lib/srd/feat-combat.ts poisonerIgnoresResistance (src/lib/dm/pc-attack-damage.ts, attack-record.ts)",
-    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.resistance"
+    "by": "src/lib/srd/feat-combat.ts poisonerIgnoresResistance, read by the weapon's own damage (src/lib/dm/pc-attack-damage.ts, attack-record.ts) and by the coat's poison (src/lib/dm/attack-onhit.ts poisonOnHit), which was halved until wave 2",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.resistance.table"
    },
    {
     "c": "you can coat a weapon as a bonus action so its next hit forces a DC 14 Constitution save for 2d8 poison damage and the poisoned condition",

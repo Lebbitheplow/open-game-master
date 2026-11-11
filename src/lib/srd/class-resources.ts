@@ -497,6 +497,8 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     displayName: "Inspiring Leader",
     maxFor: () => 6,
     recharge: "short",
+    // "You can spend 10 minutes rallying": never in the middle of a fight.
+    outOfFight: true,
     effect: { kind: "temp_hp", dice: (level, mods) => `${Math.max(1, level + Math.max(0, mods.cha ?? 0))}` },
     guidance:
       "Inspiring Leader (or Level Up's Rallying Speaker): ten minutes of rallying words give up to six friendly creatures within 30 feet who can hear and understand them temporary hit points equal to the speaker's level plus Charisma modifier; one use per creature (targetCharacterId), and a creature cannot benefit again until it finishes a rest.",

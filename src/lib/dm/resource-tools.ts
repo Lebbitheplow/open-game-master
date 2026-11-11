@@ -10,6 +10,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
+import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -636,6 +637,11 @@ export function computeUseResource(
       return outcome;
     }
     case "temp_hp": {
+      // Inspiring Leader reaches a creature once until it rests (ar-wbf-feat-rally.ts).
+      const rallied = rallyRefusal(def.id, target);
+      if (rallied) {
+        return rallied;
+      }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
       const total = Math.max(
         1,
@@ -648,8 +654,9 @@ export function computeUseResource(
       }
       if (target.id === sheet.id) {
         outcome.patch.tempHp = total;
+        Object.assign(outcome.patch, rallyMark(def.id, target));
       } else {
-        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total } };
+        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total, ...rallyMark(def.id, target) } };
       }
       outcome.result.tempHp = `${total} temporary hit points to ${target.name}`;
       return outcome;
