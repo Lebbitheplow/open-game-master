@@ -84,8 +84,14 @@ export function prepareResourceCharge(
   // Entering the rage is the one thing Feral Instinct's surprised first turn
   // allows (mt-srd-barbarian.ts).
   const entersRage = def.effect.kind === "condition" && def.effect.condition === RAGING;
-  const able = canAct({ sheet: entersRage ? withoutRageFirst(sheet) : sheet, encounter, kind });
-  if (!able.ok) {
+  // A use made at 0 hit points answers its own moment there (Defy Death, on a
+  // death save that has just succeeded: ResourceDef.atZeroHp). Its gate is
+  // the record it answers (reaction-triggers.ts), not its holder being up:
+  // in a fight the use was refused as "at 0 HP and cannot act", the one
+  // place its trigger can happen.
+  const downed = Boolean(def.atZeroHp) && sheet.currentHp <= 0 && !sheet.deathSaves?.dead;
+  const able = downed ? null : canAct({ sheet: entersRage ? withoutRageFirst(sheet) : sheet, encounter, kind });
+  if (able && !able.ok) {
     return toolError(able);
   }
   const heldOff = heldTurnRefusal(encounter, sheet);

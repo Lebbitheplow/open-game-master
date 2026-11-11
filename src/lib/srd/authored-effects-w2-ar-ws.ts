@@ -107,6 +107,8 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
   // attack itself is feature-effects.ts's extra_attack.
   "wizard::Extra Attack": {
     subclass: "Bladesinging",
+    // Extra Attack is every martial class's too: this one is the wizard's alone.
+    ownClassOnly: true,
     effects: [{ kind: "attack_cantrip" }],
   },
   // "A reaction after being hit or failing a save grants +2 AC or +4 on the

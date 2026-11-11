@@ -214,7 +214,10 @@ export function probes(rig, shared) {
     },
     "hexwarrior-charisma": async () => {
       await kit.endFight();
-      assert.equal((await spend(hex(), "Hex Warrior Weapon", { variant: "Longsword" })).ok, true);
+      // The weapon already chosen stands: choosing an option again changes
+      // nothing and is refused with nothing spent (authored-spend-effects.ts, choose).
+      const chosen = await spend(hex(), "Hex Warrior Weapon", { variant: "Longsword" });
+      assert.ok(chosen.ok || / already; choosing it again changes nothing/.test(chosen.error ?? ""), chosen.error);
       const [enemy] = await stage(hex());
       const out = await kit.swing(hex().id, enemy.id, [5, 4], { weapon: "Longsword" });
       assert.equal(out.ok, true, out.error);
@@ -537,9 +540,19 @@ export function probes(rig, shared) {
       assert.equal((await roll(undying(), { kind: "saving_throw", ability: "con", dc: 10, against: "disease" })).d20s, 2);
     },
     "defy-heal": async () => {
-      await kit.endFight();
+      // "When you succeed on a death saving throw": the save is made at its
+      // own door in a fight (death.ts rollDeathSave), which leaves the record
+      // Defy Death answers (trigger-table.ts sub_defy_death, steadied). A
+      // death save count patched onto the sheet is no such moment.
+      await stage(undying());
       rig.refill(undying());
-      world.patch(undying().id, { currentHp: 0, conditions: ["unconscious"], deathSaves: { successes: 1, failures: 0, stable: false, dead: false } });
+      world.patch(undying().id, { currentHp: 0, conditions: ["unconscious"], deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+      const early = await spend(undying(), "Defy Death", {}, [5]);
+      assert.equal(early.ok, false, "with no death save succeeded");
+      const { rollDeathSave } = await import("../../src/lib/dm/death.ts");
+      world.clearDice();
+      world.dice(15);
+      assert.match(String(rollDeathSave(world.campaign(), undying().id)), /success/);
       const out = await spend(undying(), "Defy Death", {}, [5]);
       assert.equal(out.ok, true, out.error);
       assert.equal(sheet(undying()).currentHp, 5 + MOD.con);

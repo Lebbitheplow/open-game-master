@@ -3262,8 +3262,9 @@
    },
    {
     "c": "when you succeed on a death save or stabilize a creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_defy_death#TRIGGER_AS_CARD"
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts sub_defy_death (steadied: the holder's own death save succeeding, or a creature they stabilized with spare the dying); src/lib/dm/reaction-triggers.ts triggerRefusal",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: defy-heal"
    },
    {
     "c": "recharges on a long rest",

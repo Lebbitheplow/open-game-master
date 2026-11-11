@@ -985,6 +985,10 @@ export type AuthoredReaction = {
 
 export type AuthoredEntry = {
   subclass: string;
+  // Never borrowed by name (authored-effects.ts borrowedRow): the feature's
+  // name is also a core feature of other classes, which mean something else
+  // by it (the Bladesinger's Extra Attack is not a fighter's or a Valor bard's).
+  ownClassOnly?: boolean;
   effects?: AuthoredEffect[];
   spends?: AuthoredSpend[];
   reactions?: AuthoredReaction[];

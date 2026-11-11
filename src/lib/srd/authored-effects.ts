@@ -121,6 +121,9 @@ function classLevel(sheet: AuthoredSheet, classId: string): number {
 // carries that name, so a name two classes mean differently is never guessed.
 const BY_NAME = new Map<string, Row[]>();
 for (const row of BY_KEY.values()) {
+  // A row that is its own class's alone lends itself to nobody: the
+  // Bladesinger's Extra Attack gave every class's Extra Attack its cantrip.
+  if (row.entry.ownClassOnly) continue;
   const name = textKey(row.feature);
   BY_NAME.set(name, [...(BY_NAME.get(name) ?? []), row]);
 }
