@@ -528,6 +528,8 @@ const SITES = {
   "lib/dm/social-tools.ts#handleNpcReaction": "F",
   "lib/dm/stabilize.ts#healerKitUse": "D",
   "lib/dm/zone-quake.ts#quakeFissures": "F",
+  "lib/dm/fate-turn.ts#turned": "D Bend Luck's d4 on another creature's roll (a call already rolled)",
+  "lib/dm/mount-area.ts#areaOnMount": "F a mount's own Dexterity save against an area that caught its rider",
 };
 // A character's d20 no row of this suite reaches, and what it would take.
 const UNREACHED = {

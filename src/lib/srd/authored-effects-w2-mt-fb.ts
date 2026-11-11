@@ -15,7 +15,7 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
   // What the action senses is told to the rogue, and nothing of what it hides.
   "rogue::Unerring Eye": {
     subclass: "Inquisitive",
-    spends: [{ name: "Unerring Eye", pool: { id: "sub_unerring_eye" }, action: "action", does: { kind: "sense", what: "deceit" } }],
+    spends: [{ name: "Unerring Eye", pool: { id: "sub_unerring_eye" }, action: "action", gate: { notCondition: "blinded" }, does: { kind: "sense", what: "deceit" } }],
   },
   // "a reaction-free end to being charmed or frightened by spending a die"
   // (the resistance is feature-effects.ts's): a die was spent under the

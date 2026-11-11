@@ -488,5 +488,9 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   // ("knowledge of the ages (stealth)", src/lib/srd/borrowed-proficiency.ts).
   summaryOnly("knowledge_of_the_ages", "knowledge of the ages", "Knowledge of the Ages: proficient with the skill or tool named for 10 minutes."),
   summaryOnly("path_to_the_grave", "path to the grave", "Path to the Grave: the next attack that hits the creature meets a vulnerability to all of its damage, and the curse ends with that hit."),
+  // Whispers of the Dead: the same lent proficiency, kept until the next pick.
+  summaryOnly("whispers_of_the_dead", "whispers of the dead", "Whispers of the Dead: proficient with the skill or tool named until the Phantom picks another after a rest."),
+  // Goading Attack and Panache (src/lib/dm/goaded.ts).
+  summaryOnly("goaded", "goaded", "Goaded: disadvantage on attack rolls against anyone but the creature who goaded it; a Swashbuckler's goad also bars its opportunity attacks against anyone else."),
   summaryOnly("memory_stripped", "memory stripped", "Alter Memories: the Enchantment wizard stripped this creature of the hours named of what it remembers of the time it was charmed; they cannot reach its memory again under this charm."),
 ];

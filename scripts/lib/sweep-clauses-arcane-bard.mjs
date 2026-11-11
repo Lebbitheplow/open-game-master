@@ -408,14 +408,14 @@ export function probes(rig, shared) {
       const foes = await stage(spirits());
       const out = await spend(spirits(), "Tales from Beyond", {}, [1]);
       assert.equal(out.ok, true, `use_resource "Tales from Beyond": ${String(out.error).slice(0, 160)}`);
-      assert.ok(sheet(spirits()).conditions.includes("spirit tale (1)"), "the tale is kept");
+      assert.equal(sheet(spirits()).conditionMeta["spirit tale"]?.tale, 1, "the tale is kept");
       kit.saveEncounter({ ...world.encounter(), turnBudget: null });
       kit.freshTurn();
       const before = foe(foes[0]).currentHp;
       const told = await spend(spirits(), "Release Tale", { targetEnemyId: foes[0].id }, [1, 3, 3]);
       assert.equal(told.ok, true, told.error);
       assert.equal(before - foe(foes[0]).currentHp, 6, `two dice of fire on a failed save: ${show(told).slice(0, 200)}`);
-      assert.ok(!sheet(spirits()).conditions.includes("spirit tale (1)"), "the tale is let go");
+      assert.ok(!sheet(spirits()).conditions.includes("spirit tale"), "the tale is let go");
       assert.equal((await spend(spirits(), "Release Tale", { targetEnemyId: foes[0].id })).ok, false, "nothing held to tell again");
     },
     // "session" is staged in sweep-clauses-arcane-bard-wbf.mjs: the probe that

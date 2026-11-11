@@ -105,7 +105,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     subclass: "College of Spirits",
     spends: [
       { name: "Tales from Beyond", pool: { id: "bardic_inspiration" }, action: "bonus", does: { kind: "tell_tale" } },
-      { name: "Release Tale", aliases: ["Bestow Tale", "Spirit Tale"], action: "action", does: { kind: "release_tale" } },
+      { name: "Release Tale", aliases: ["Bestow Tale", "Spirit Tale"], action: "action", gate: { condition: "spirit tale", because: "a spirit tale held in mind (Tales from Beyond rolls one)" }, does: { kind: "release_tale" } },
     ],
   },
   "bard::Mystical Connection": {

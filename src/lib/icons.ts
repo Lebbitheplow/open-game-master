@@ -92,6 +92,12 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/lunar-empowerment": { kind: "feature", slug: "lunar-boons" },
   "feature/empowered-healing": { kind: "spell", slug: "cure-wounds" },
   "feature/bastion-of-law": { kind: "spell", slug: "warding-bond" },
+  // The dead's whispers, the spirits' tales and a swashbuckler's charm wear
+  // the paintings nearest them until they have their own.
+  "feature/whispers-of-the-dead": { kind: "feature", slug: "grave-whispers" },
+  "feature/tales-from-beyond": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/release-tale": { kind: "feature", slug: "consult-the-spirits" },
+  "feature/panache": { kind: "spell", slug: "enthrall" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

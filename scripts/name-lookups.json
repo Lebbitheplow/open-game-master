@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/authored-spend-effects.ts#fallback": [["key", 1, "a Hand pick that names the variant's condition, else the call's own variant word (both checked by namedOption)"]],
     "lib/srd/counter-rules.ts#bypass": [["identity", 1, "a record by its whole name (textKey on both sides)"]],
     "lib/dm/sense-magic.ts#keyed": [["identity", 1, "a record by its whole name (textKey on both sides)"]],
     "lib/dm/sense-magic.ts#helper": [["identity", 2, "a record by its whole name (textKey on both sides)"]],
@@ -1414,7 +1415,7 @@
     "lib/dm/sneak-answer.ts#partial": [["key",1,"the prefix of a once-per-turn budget key"]],
     "lib/dm/authored-spend-effects.ts#number": [["key",8,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/authored-spend-effects.ts#partial": [["parse", 1, "dice"], ["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"], ["parse", 1, "ODM's own counter guidance read for the turn cost it names (bundled data)"]],
-    "lib/dm/authored-spend-effects.ts#whole": [["identity", 3, "conditions by whole name"], ["identity", 1, "conditions and the held feature by whole name"], ["identity", 1, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"], ["identity", 1, "the feature another feature's choice renames, and its option, by whole name (textKey on both sides)"], ["identity", 1, "the spirit tale mark the bard holds, let go by its whole name (spirit-tales.ts)"]],
+    "lib/dm/authored-spend-effects.ts#whole": [["identity", 3, "conditions by whole name"], ["identity", 1, "conditions and the held feature by whole name"], ["identity", 1, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"], ["identity", 1, "the feature another feature's choice renames, and its option, by whole name (textKey on both sides)"], ["identity", 1, "the spirit tale mark the bard holds, let go by its whole name (spirit-tales.ts)"], ["identity", 1, "a Hand pick naming a variant's condition, matched to that condition by its whole name"]],
     "lib/dm/authored-spend-more.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/authored-spend-more.ts#partial": [["pattern", 2, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"], ["parse", 2, "ODM's own counter guidance read for the turn cost it names (bundled data)"]],
     "lib/dm/authored-spends.ts#keyed": [["key", 2, "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -2937,7 +2938,7 @@
     "lib/battlemap/hand-items.ts#whole-single": [["identity",1,"the spell a casting held from this item runs, against the card's, by textKey"]],
     "lib/srd/counter-rules.ts#whole": [["identity", 2, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"]],
     "lib/dm/counter-saves.ts#whole": [["identity", 1, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"], ["identity", 1, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"]],
-    "lib/dm/authored-spend-effects.ts#first": [["key", 1, "ODM's own ids and words (engine vocabulary)"]],
+    "lib/dm/authored-spend-effects.ts#first": [["key", 2, "ODM's own ids and words (engine vocabulary)"]],
     "lib/dm/authored-spends.ts#fallback": [["key", 1, "ODM's own ids and words (engine vocabulary)"]],
     "lib/battlemap/hand-spells.ts#fallback": [["key", 1, "ODM's own ids and words (engine vocabulary)"]],
     "lib/dm/clock-rewind-logic.ts#keyed": [["key",8,"the clock's own field names, read and written back"]],

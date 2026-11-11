@@ -10,7 +10,7 @@
 // the effect of the previous tale."
 //
 // use_resource "Tales from Beyond" rolls the die and keeps the tale as the
-// condition "spirit tale (N)", which a rest ends; use_resource "Release Tale"
+// condition "spirit tale" (its number in the meta), which a rest ends; use_resource "Release Tale"
 // (authored-spend-effects.ts) plays the tale held on the creature named and
 // lets it go.
 
@@ -46,12 +46,21 @@ export const SPIRIT_TALES: Tale[] = [
   { name: "The Storm Bride", told: "a bride who married the storm: the creature makes a Dexterity save, taking three Bardic Inspiration dice of lightning damage, half on a success", does: { kind: "save_effect", save: "dex", dcAbility: "spell", dice: dice(3), type: "lightning", half: true, rangeFt: REACH } },
 ];
 
-// The tale the bard holds, or null.
-export function heldTale(sheet: Pick<CharacterSheet, "conditions">): { tale: Tale; mark: string } | null {
+// The tale the bard holds: its mark, and its number on the table (the
+// mark's meta, or a mark written as "spirit tale (N)"), null when the mark
+// carries none (laid by hand): that tale is drawn as it is told.
+export function heldTale(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): { mark: string; number: number | null } | null {
   const mark = sheet.conditions.find((entry) => isConditionNamed(entry, SPIRIT_TALE));
-  const number = mark ? Number(nameChoice(mark)) : NaN;
-  const tale = Number.isInteger(number) ? SPIRIT_TALES[number - 1] : undefined;
-  return mark && tale ? { tale, mark } : null;
+  if (!mark) return null;
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { tale?: number } | undefined>;
+  const number = meta[mark]?.tale ?? Number(nameChoice(mark));
+  return { mark, number: Number.isInteger(number) && number >= 1 && number <= SPIRIT_TALES.length ? number : null };
+}
+
+// The Bardic Inspiration die rolled on the table.
+export function drawTale(ctx: SpendContext): number {
+  const die = dieAt(ctx.held.level);
+  return Math.max(1, Math.min(SPIRIT_TALES.length, Number(rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: Tales from Beyond`, `1${die}`, null).total)));
 }
 
 // use_resource "Tales from Beyond": the die rolled, the tale kept (the one
@@ -59,13 +68,12 @@ export function heldTale(sheet: Pick<CharacterSheet, "conditions">): { tale: Tal
 export function tellTale(ctx: SpendContext): ToolError | { patch: FullPatchSheetInput; result: Record<string, unknown> } {
   const { sheet } = ctx;
   const die = dieAt(ctx.held.level);
-  const rolled = Math.max(1, Math.min(SPIRIT_TALES.length, Number(rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Tales from Beyond`, `1${die}`, null).total)));
+  const rolled = drawTale(ctx);
   const tale = SPIRIT_TALES[rolled - 1];
   const kept = sheet.conditions.filter((entry) => !isConditionNamed(entry, SPIRIT_TALE));
   const meta = Object.fromEntries(Object.entries(sheet.conditionMeta ?? {}).filter(([name]) => !isConditionNamed(name, SPIRIT_TALE)));
-  const mark = `${SPIRIT_TALE} (${rolled})`;
   return {
-    patch: { conditions: [...kept, mark], conditionMeta: { ...meta, [mark]: { untilRestEnds: true } } as FullPatchSheetInput["conditionMeta"] },
+    patch: { conditions: [...kept, SPIRIT_TALE], conditionMeta: { ...meta, [SPIRIT_TALE]: { untilRestEnds: true, tale: rolled } } as FullPatchSheetInput["conditionMeta"] },
     result: {
       rolled,
       tale: `${tale.name} (${rolled} on the ${die}): ${tale.told}. use_resource "Release Tale" with an action plays it on one creature within 30 feet (${tale.helps ? "targetCharacterId, the bard by default" : "targetEnemyId"}); it is kept until then or a rest.`,

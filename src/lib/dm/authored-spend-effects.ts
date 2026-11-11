@@ -59,7 +59,7 @@ import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { arcaneShot } from "@/lib/dm/mt-fb-arcane-shot";
 import { echoSpend } from "@/lib/dm/mt-fb-echo";
 import { mindSpend } from "@/lib/dm/scribe-mind";
-import { heldTale, tellTale } from "@/lib/dm/spirit-tales";
+import { SPIRIT_TALES, drawTale, heldTale, tellTale } from "@/lib/dm/spirit-tales";
 import { magicAwareness, unerringEye } from "@/lib/dm/sense-magic";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -127,7 +127,10 @@ function bardicDie(level: number): string {
 // The condition a buff lays: its variant's, named whole, when it has
 // variants.
 function conditionName(ctx: SpendContext, does: Extract<SpendDoes, { kind: "buff" }>): string | ToolError {
-  const variant = does.variants ? namedOption(ctx.spend.name, ctx.args.variant, Object.keys(does.variants)) : null;
+  // A Hand card's pick names the condition itself ("whispers of the dead
+  // (arcana)"), a call the choice ("arcana"): both are the same variant.
+  const named = does.variants && ctx.args.variant ? Object.entries(does.variants).find(([, condition]) => textKey(condition) === textKey(ctx.args.variant!))?.[0] : undefined;
+  const variant = does.variants ? namedOption(ctx.spend.name, named ?? ctx.args.variant, Object.keys(does.variants)) : null;
   if (variant !== null && typeof variant !== "string") {
     return variant;
   }
@@ -815,9 +818,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (!held) {
         return { error: `${sheet.name} holds no spirit tale: use_resource Tales from Beyond rolls one first. Nothing was spent.`, refused: "rules" };
       }
+      const tale = SPIRIT_TALES[(held.number ?? drawTale(ctx)) - 1];
       // "This can be you": a tale that helps lands on the bard when no one is named.
-      const args = held.tale.helps && !ctx.args.targetCharacterId ? { ...ctx.args, targetCharacterId: sheet.id } : ctx.args;
-      const played = resolveSpendEffect({ ...ctx, args }, held.tale.does);
+      const args = tale.helps && !ctx.args.targetCharacterId ? { ...ctx.args, targetCharacterId: sheet.id } : ctx.args;
+      const played = resolveSpendEffect({ ...ctx, args }, tale.does);
       if ("error" in played) {
         return played;
       }
@@ -825,7 +829,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const now = getSheetById(sheet.id) ?? sheet;
       const cleared = removeConditions(now.conditions, now.conditionMeta, [held.mark]);
       const base = played.patch ?? {};
-      return { ...played, patch: { ...base, conditions: (base.conditions ?? cleared.conditions).filter((entry) => entry !== held.mark), conditionMeta: Object.fromEntries(Object.entries(base.conditionMeta ?? cleared.meta).filter(([name]) => name !== held.mark)) as FullPatchSheetInput["conditionMeta"] }, result: { tale: held.tale.name, ...played.result } };
+      return { ...played, patch: { ...base, conditions: (base.conditions ?? cleared.conditions).filter((entry) => entry !== held.mark), conditionMeta: Object.fromEntries(Object.entries(base.conditionMeta ?? cleared.meta).filter(([name]) => name !== held.mark)) as FullPatchSheetInput["conditionMeta"] }, result: { tale: tale.name, ...played.result } };
     }
     case "wild_surge":
       return surgeSpend({ campaign: ctx.campaign, turn: ctx.turn, sheet: ctx.sheet, args: ctx.args }, does, ctx.spend.name);
