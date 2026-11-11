@@ -128,7 +128,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     spends: [
       // The environment, chosen once and changed at a new level: "Storm Aura
       // (Desert)", read by the aura, Storm Soul and Raging Storm.
-      { name: "Storm Environment", aliases: ["Storm Aura environment"], fight: "out", does: { kind: "choose", options: ["Desert", "Sea", "Tundra"] } },
+      { name: "Storm Environment", aliases: ["Storm Aura environment"], fight: "out", does: { kind: "choose", options: ["Desert", "Sea", "Tundra"], changeAt: "level" } },
       { name: "Storm Aura", action: "bonus", gate: RAGING, does: { kind: "storm_aura" } },
     ],
   },

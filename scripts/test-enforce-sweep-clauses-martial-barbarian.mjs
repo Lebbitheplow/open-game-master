@@ -450,6 +450,25 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.ok(sheet(who).features.some((feature) => feature.name === "Storm Aura (Tundra)"));
   });
 
+  // "chosen at 3rd level and changed when you gain a barbarian level": a
+  // change in play is refused, and the level-up's change lands.
+  await probe("storm-environment-changes-at-level-up", async () => {
+    const who = await herald(4, "desert");
+    await kit.endFight();
+    const early = await spend(who, "Storm Environment", { variant: "sea" });
+    assert.equal(early.ok, false, "the environment changed with no level gained");
+    world.patch(who.id, { xp: 6500 });
+    const route = await world.route("campaigns/[campaignId]/sheet");
+    world.signIn({ id: sheet(who).userId });
+    const res = await route.PATCH(
+      new Request(`http://test/api/campaigns/${world.campaignId}/sheet`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ characterId: who.id, level: 5, levelUpChanges: [{ from: "Storm Aura (Desert)", to: "Storm Aura (Sea)" }] }) }),
+      { params: Promise.resolve({ campaignId: world.campaignId }) },
+    );
+    const body = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(body).slice(0, 300));
+    assert.deepEqual(sheet(who).features.filter((feature) => feature.name.startsWith("Storm Aura")).map((feature) => feature.name), ["Storm Aura (Sea)"]);
+  });
+
   await probe("storm-aura-wakes-with-rage", async () => {
     const desert = await herald(20, "desert");
     const [enemy] = await stage(desert);

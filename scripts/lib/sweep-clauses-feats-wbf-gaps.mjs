@@ -341,6 +341,28 @@ export function gapProbes(rig, P) {
 
   // Eldritch Adept: one invocation whose prerequisites the character meets,
   // taken on the sheet's owed pick (POST /sheet/owed), and no second.
+  // "You can replace it when you gain a level": the level-up gives up the
+  // invocation for another whose prerequisites are met, and refuses one unmet.
+  P["feat.eldritch-adept.replace"] = async () => {
+    const t = await rig.table();
+    const hero = t.hero({ class: "fighter", level: 4, feats: ["Eldritch Adept"] });
+    t.patch(hero, { xp: 6500, features: [...t.sheet(hero).features, { name: "Invocation: Devil's Sight", source: "choice" }] });
+    const route = await t.world.route("campaigns/[campaignId]/sheet");
+    const level = async (changes) => {
+      t.world.signIn({ id: t.sheet(hero).userId });
+      const res = await route.PATCH(
+        new Request(`http://test/api/campaigns/${t.world.campaignId}/sheet`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ characterId: hero.id, level: 5, levelUpChanges: changes }) }),
+        { params: Promise.resolve({ campaignId: t.world.campaignId }) },
+      );
+      return { status: res.status, body: await res.json() };
+    };
+    const unmet = await level([{ from: "Invocation: Devil's Sight", to: "Invocation: Thirsting Blade" }]);
+    assert.equal(unmet.status, 400, `an invocation whose prerequisites are unmet was taken: ${JSON.stringify(unmet.body).slice(0, 200)}`);
+    const done = await level([{ from: "Invocation: Devil's Sight", to: "Invocation: Armor of Shadows" }]);
+    assert.equal(done.status, 200, JSON.stringify(done.body).slice(0, 300));
+    assert.deepEqual(t.sheet(hero).features.filter((feature) => feature.name.startsWith("Invocation:")).map((feature) => feature.name), ["Invocation: Armor of Shadows"]);
+  };
+
   P["feat.eldritch-adept.invocation"] = async () => {
     const tried = {};
     for (const [label, feats] of [["plain", []], ["holder", ["Eldritch Adept"]]]) {

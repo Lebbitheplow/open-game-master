@@ -258,7 +258,7 @@ const WBF_PROBES = [
   "feat.inspiring-leader.rally", "feat.inspiring-leader.temp", "feat.lucky.attacked", "feat.mobile.dash-terrain", "feat.sentinel.stop",
   "feat.sentinel.disengage", "feat.sentinel.guard", "feat.shield-master.save", "feat.chef.meal",
   "feat.war-caster.opportunity", "feat.telekinetic.shove", "feat.telekinetic.hand", "feat.linguist.cipher",
-  "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect",
+  "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect", "feat.eldritch-adept.replace",
 ];
 assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules no longer write");
 

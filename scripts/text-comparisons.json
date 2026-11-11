@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/srd/level-up-changes.ts#str-eq": [["key", 1, "tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/sense-magic.ts#str-eq": [["english-source", 2, "reference: SRD spell, condition and feature names"]],
     "lib/dm/sense-magic.ts#str-list": [["english-source", 1, "reference: SRD spell, condition and feature names"]],
     "lib/dm/fall-landing.ts#str-eq": [["english-source", 1, "reference: SRD spell, condition and feature names"]],

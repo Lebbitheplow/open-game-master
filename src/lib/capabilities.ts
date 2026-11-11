@@ -58,6 +58,9 @@ export type Capabilities = {
 // dropping it to its own pages over one button. Constant per release: a flag
 // only ever says this server's code has the thing.
 export const SERVER_FEATURES = {
+  // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
+  // an older host drops unread (Storm Aura's environment, an invocation).
+  levelUpChanges: true,
   // "Import an adventure PDF" in the workshop and in WorldForge: the
   // /api/pdf-imports routes, which an older host answers with a 404.
   pdfImport: true,

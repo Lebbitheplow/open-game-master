@@ -498,7 +498,10 @@ export type SpendDoes =
   // change needs a spell of this school and level just cast by the holder,
   // in a fight or out, and each casting opens one (Transmuter's Stone,
   // src/lib/dm/ar-ws-stone.ts).
-  | { kind: "choose"; options: string[]; feature?: string; changeAfterCast?: { school: string; minLevel: number } }
+  // `changeAt: "level"`: once chosen, changed only by a level-up in the
+  // feature's class (Storm Aura: "changed when you gain a barbarian level"),
+  // which the level-up dialog offers (src/lib/srd/level-up-changes.ts).
+  | { kind: "choose"; options: string[]; feature?: string; changeAfterCast?: { school: string; minLevel: number }; changeAt?: "level" }
   // One enemy saves or suffers: damage (per unit spent when `perUnit`),
   // a condition, or a note on movement the DM makes on the board.
   | {

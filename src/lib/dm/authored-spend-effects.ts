@@ -254,6 +254,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.feature && owner.choice && textKey(owner.choice) === textKey(option)) {
         return { error: `${sheet.name}'s ${owner.feature} is already ${option}; ${ctx.spend.name} would change nothing. Nothing was spent.`, refused: "rules" };
       }
+      // A choice its rule changes only with a level (Storm Aura) is the
+      // level-up dialog's to change (src/lib/srd/level-up-changes.ts).
+      if (does.changeAt === "level" && ctx.held.choice && textKey(ctx.held.choice) !== textKey(option)) {
+        return { error: `${sheet.name}'s ${ctx.held.feature} is ${ctx.held.choice}, and it changes only when they gain a ${ctx.held.classId} level: the level-up offers the change. Nothing was spent.`, refused: "rules" };
+      }
       // The feature's own option already chosen changes nothing, and in a
       // fight would take its bonus action for it (Elemental Cleaver).
       if (!does.feature && ctx.held.choice && textKey(ctx.held.choice) === textKey(option)) {

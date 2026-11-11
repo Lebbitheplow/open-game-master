@@ -16,6 +16,7 @@
 //
 // Pure: the single-class and the multiclass level-up are this one function,
 // and scripts/test-sheet-legality.mjs can drive it without a database.
+import { applyLevelUpChanges } from "@/lib/srd/level-up-changes";
 import type {
   AbilityScores,
   AsiChoice,
@@ -500,6 +501,18 @@ export function buildLevelUp(
     proficiencies = { ...proficiencies, expertise: [...held, ...picks] };
   }
 
+
+  // ---- the held choices this level changes (level-up-changes.ts) ----
+  if (request.levelUpChanges?.length) {
+    const changed = applyLevelUpChanges(sheet, classId, request.levelUpChanges, {
+      classLevel: (id) => classes.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+      cantrips: sheetCantrips(sheet),
+    });
+    if ("error" in changed) {
+      return refuse(changed.error);
+    }
+    sheet = { ...sheet, features: changed.features };
+  }
 
   // ---- features ----
   // The sheet's own features, and of the request's only the picks a class

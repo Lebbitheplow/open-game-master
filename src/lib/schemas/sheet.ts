@@ -638,6 +638,9 @@ export const patchSheetSchema = z.object({
   // The one spell a caster who knows their spells gives up for another at
   // a level-up.
   levelUpForget: z.string().trim().max(80).optional(),
+  // The held choices this level changes (Storm Aura's environment, an
+  // invocation replaced): src/lib/srd/level-up-changes.ts judges each.
+  levelUpChanges: z.array(z.object({ from: z.string().trim().min(1).max(80), to: z.string().trim().min(1).max(80) })).max(4).optional(),
   // The Ability Score Improvements taken with this level: two points each,
   // or a feat. Only as many as the class's new level owes.
   asiChoices: z.array(asiChoiceSchema).max(MAX_ASI_CHOICES).optional(),

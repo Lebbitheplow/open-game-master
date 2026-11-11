@@ -1089,9 +1089,9 @@
    },
    {
     "c": "You can replace it when you gain a level.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/level-up-changes.ts (the level-up's levelUpChanges, offered in the level-up dialog)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.eldritch-adept.replace"
    }
   ]
  },

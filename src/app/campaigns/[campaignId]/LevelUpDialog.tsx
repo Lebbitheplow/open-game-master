@@ -90,6 +90,10 @@ import { useArchetypeOptions, useWorldPack } from "@/app/characters/builder/useB
 import { TableScopeNote } from "@/app/characters/builder/TableScopeNote";
 import type { AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { levelUpChangeOffers, type LevelUpChange } from "@/lib/srd/level-up-changes";
+import { sheetCantrips } from "@/lib/srd/owed-picks-logic";
+import { LevelUpChangePick } from "./LevelUpChangePick";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 import { workshopClassList } from "@/lib/classes/workshop-registry";
 
@@ -359,6 +363,8 @@ export function LevelUpDialog({
   // being chosen this level-up if there is one, so a fighter who picks Battle
   // Master here is offered maneuvers in the same flow.
   const [optionPicks, setOptionPicks] = useState<string[]>([]);
+  // The held choices this level changes, one per offer (level-up-changes.ts).
+  const [changes, setChanges] = useState<Record<string, LevelUpChange>>({});
   const subclassLevel = subclassLevelFor(classChoice);
   const entrySubclass = chosenEntry?.subclass ?? "";
   const needsSubclass = subclassOwed({ id: classChoice, subclass: entrySubclass }, classLevelAfter);
@@ -401,7 +407,19 @@ export function LevelUpDialog({
     sheet.features,
   ).filter((slot) => !slot.chosen);
   const choicePicked = (label: string) => optionPicks.find((pick) => textKey(parseSubclassChoicePick(pick)?.label ?? "") === textKey(label));
-  const needsOptions = openSlots.some((slot) => slot.remaining > 0) || choicesDue.length > 0;
+  // An older host drops levelUpChanges unread: the picks show only where it reads them.
+  const capabilities = useCapabilities();
+  const changesHeard = hostOffers(capabilities, "levelUpChanges");
+  const changeOffers = useMemo(
+    () =>
+      !changesHeard ? [] : levelUpChangeOffers(sheet, classChoice, {
+        classLevel: (id) => nextClasses.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+        cantrips: sheetCantrips(sheet),
+      }),
+    [sheet, classChoice, nextClasses, changesHeard],
+  );
+  const changesSent = Object.values(changes).filter((change) => change.to);
+  const needsOptions = openSlots.some((slot) => slot.remaining > 0) || choicesDue.length > 0 || changeOffers.length > 0;
 
   function pickChoice(label: string, name: string) {
     const featureName = subclassChoicePickName(label, { name });
@@ -852,6 +870,7 @@ export function LevelUpDialog({
             ? { levelUpSpells: [...spellPicks, ...cantripPicks, ...anyChosen] }
             : {}),
           ...(forgetPick ? { levelUpForget: forgetPick } : {}),
+          ...(changesSent.length ? { levelUpChanges: changesSent } : {}),
           ...(stylePicks.length || optionPicks.length
             ? {
                 features: [
@@ -1330,6 +1349,20 @@ export function LevelUpDialog({
                   </p>
                   {choicesDue.map((slot) => (
                     <SubclassChoicePick key={slot.label} slot={slot} picked={choicePicked(slot.label)} onPick={(name) => pickChoice(slot.label, name)} />
+                  ))}
+                  {changeOffers.map((offer) => (
+                    <LevelUpChangePick
+                      key={offer.label}
+                      offer={offer}
+                      change={changes[offer.label] ?? null}
+                      onChange={(next) =>
+                        setChanges((current) => {
+                          const rest = { ...current };
+                          delete rest[offer.label];
+                          return next ? { ...rest, [offer.label]: next } : rest;
+                        })
+                      }
+                    />
                   ))}
                   {openSlots
                     .filter((slot) => slot.remaining > 0 || slot.chosen.length > 0)

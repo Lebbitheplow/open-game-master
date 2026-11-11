@@ -1570,9 +1570,9 @@
    },
    {
     "c": "changed when you gain a barbarian level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: a level-up re-choice was not staged"
+    "is": "held",
+    "by": "src/lib/srd/level-up-changes.ts (the level-up's levelUpChanges; the Storm Environment spend refuses a change in play)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-environment-changes-at-level-up"
    },
    {
     "c": "When you enter your rage its 10-foot aura wakes",
