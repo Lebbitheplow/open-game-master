@@ -42,6 +42,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
+import { openFailedSave, standingBeforeSave } from "@/lib/dm/save-turned";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -684,7 +685,13 @@ function useReaction(
     return pets;
   }
   // Arcane Deflection's answer to a failed save is judged before that failure (ar-ws-deflection.ts).
-  const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, sheet, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
+  // So is a reaction made "immediately before" the save it answers (Slayer's
+  // Counter): its holder is judged as they stood before that save failed
+  // (save-turned.ts), so a failure that paralyzed them does not bar it.
+  const answered = heldReaction(sheet, feature)?.reaction.does;
+  const failedSave = answered?.kind === "attack" && answered.turnsSave ? openFailedSave(campaign.id, sheet.id, args.targetEnemyId?.trim() || null) : null;
+  const standing = failedSave ? standingBeforeSave(sheet, failedSave) : sheet;
+  const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, standing, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }

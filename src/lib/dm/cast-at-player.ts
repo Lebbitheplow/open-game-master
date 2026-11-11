@@ -554,7 +554,11 @@ export function handleCastAtPlayer(
     if (dealt > 0) {
       // Damage the caster dealt through the save, for what answers being damaged
       // by a creature (Hellish Rebuke: src/lib/dm/last-save.ts).
-      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell));
+      // With what a success would have spared, for a save turned after it
+      // landed (save-turned.ts): the same half-or-none rule, read as made.
+      const onSuccess = saveDamageTaken({ total: outcome.total, saved: true, halfOnSave, ability, sheet }).damage;
+      const spared = saved ? 0 : Math.max(0, dealt - (trapWard ? Math.floor(onSuccess / 2) : onSuccess));
+      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell), spared);
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })

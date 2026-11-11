@@ -45,6 +45,7 @@ import { resourceDef } from "@/lib/srd/class-resources";
 import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { reactionSpending } from "@/lib/srd/trigger-table";
 import { planSpellThief } from "@/lib/dm/spell-thief";
+import { FLASH_OF_GENIUS_ID, planFlashOfGenius } from "@/lib/dm/flash-of-genius";
 import { planArcaneTrigger } from "@/lib/dm/arcane-triggered";
 import { payTheWord } from "@/lib/dm/ar-ws-word";
 
@@ -123,12 +124,17 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
   const ask = def ? { campaignId: campaign.id, reactor: sheet, name: def.displayName, counterId: input.defId, targetEnemyId: input.targetEnemyId, label: answerKey(input.defId, sheet.id) } : null;
   // Its effect is the counter's own, applied by use_resource. The trigger is
   // not marked answered: the spent reaction, or the turn's cost, shuts its card.
-  if (ask && triggerSpecOf(ask)) {
+  // Flash of Genius also answers a roll out of a fight, where no record is
+  // kept: there the use is the plain spend it was, for the GM to narrate.
+  const unrecorded = input.defId === FLASH_OF_GENIUS_ID && !getActiveEncounter(campaign.id);
+  if (ask && triggerSpecOf(ask) && !unrecorded) {
     const unanswered = triggerRefusal(ask);
     if (unanswered) return unanswered;
     // Spell Thief's effect is the save it forces and the spell undone
     // (src/lib/dm/spell-thief.ts).
     if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
+    // Flash of Genius adds to the failed save on record (flash-of-genius.ts).
+    if (input.defId === FLASH_OF_GENIUS_ID) return planFlashOfGenius(input, ask);
     // Restore Balance, Violent Attraction and Accursed Specter act on the
     // record they answer (arcane-triggered.ts); the other triggered
     // counters' effect is their own fx.

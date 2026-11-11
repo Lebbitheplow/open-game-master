@@ -934,7 +934,9 @@ export type ReactionDoes =
   // (Inspiring Surge: "one weapon attack"), not only one within rangeFt.
   // `answers`: how many allies may answer one trigger, by the holder's class
   // level (Inspiring Surge: one, two from 18th; src/lib/dm/mt-fb-surge.ts).
-  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean; weaponRange?: boolean; answers?: Array<[number, string]> }
+  // `turnsSave`: a hit makes the save this reaction answers a success
+  // (Slayer's Counter; save-turned.ts).
+  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean; weaponRange?: boolean; answers?: Array<[number, string]>; turnsSave?: true }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
   // `pullFeet`: a creature that fails is pulled that far straight toward the
   // reactor; `attackWithin`: and, ending within that many feet, takes one melee

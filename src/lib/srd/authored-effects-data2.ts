@@ -466,7 +466,8 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "ranger::Slayer's Counter": {
     subclass: "Monster Slayer",
-    reactions: [{ name: "Slayer's Counter", does: { kind: "attack", rangeFt: 5 } }],
+    // "If the attack hits, your save automatically succeeds."
+    reactions: [{ name: "Slayer's Counter", does: { kind: "attack", rangeFt: 5, turnsSave: true } }],
   },
   "ranger::Beguiling Twist": {
     subclass: "Fey Wanderer",

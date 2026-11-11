@@ -65,8 +65,10 @@ export type LastSave = {
   dc?: number;
   // What the save resisted ("charmed", "frightened"), when the engine knew.
   against?: string;
-  // Damage the forcer dealt through the save (a spell's, with `spell`), or to the pet.
-  damage?: { amount: number; type: string; spell?: boolean };
+  // Damage the forcer dealt through the save (a spell's, with `spell`), or to
+  // the pet. `spared`: how much of it a successful save would have spared,
+  // where the door that dealt it knew (save-turned.ts gives it back).
+  damage?: { amount: number; type: string; spell?: boolean; spared?: number };
   petName?: string;
   // A death: the creature's type ("humanoid", "beast"), and who struck it.
   creatureType?: string;
@@ -222,7 +224,7 @@ export function recordRequestedSave(campaignId: string, characterId: string, abi
 // The damage the creature that forced a save dealt through it (cast-at-player.ts),
 // put on that save: Hellish Rebuke answers "being damaged by a creature", and a
 // spell's failed save leaves no hit record.
-export function noteSaveDamage(campaignId: string, characterId: string, forcerId: string, amount: number, type: string, spell = false) {
+export function noteSaveDamage(campaignId: string, characterId: string, forcerId: string, amount: number, type: string, spell = false, spared?: number) {
   if (amount <= 0) {
     return;
   }
@@ -232,8 +234,16 @@ export function noteSaveDamage(campaignId: string, characterId: string, forcerId
   if (at === undefined) {
     return;
   }
-  rows[at] = { ...rows[at], damage: { amount: (rows[at].damage?.amount ?? 0) + amount, type: type || rows[at].damage?.type || "", ...(spell || rows[at].damage?.spell ? { spell: true } : {}) } };
+  const sparedNow = spared === undefined ? rows[at].damage?.spared : (rows[at].damage?.spared ?? 0) + Math.max(0, spared);
+  rows[at] = { ...rows[at], damage: { amount: (rows[at].damage?.amount ?? 0) + amount, type: type || rows[at].damage?.type || "", ...(spell || rows[at].damage?.spell ? { spell: true } : {}), ...(sparedNow !== undefined ? { spared: sparedNow } : {}) } };
   writeRow(campaignId, rows);
+}
+
+// A failed save made a success after it landed (save-turned.ts): the record
+// says so, and holds nothing more to give back.
+export function markSaveTurned(campaignId: string, id: string) {
+  const rows = readRow(campaignId);
+  writeRow(campaignId, rows.map((record) => (record.id === id ? { ...record, success: true, ...(record.damage ? { damage: { ...record.damage, spared: 0 } } : {}) } : record)));
 }
 
 // The kinds written to the record, each where it happens. A feature that

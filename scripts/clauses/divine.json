@@ -4655,11 +4655,9 @@
    },
    {
     "c": "and a hit means the save automatically succeeds",
-    "is": "gap",
+    "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ro::ranger::Slayer's Counter#auto-success",
-    "severity": "high",
-    "where": "src/lib/dm/authored-reactions.ts case attack: the reaction attack is made and hits (11 damage), but the save it answers was already rolled and failed in cast_at_player (forced-save.ts recordSave). A hit changes nothing: the ranger keeps the 6 radiant damage from the failed save against Sacred Flame.",
-    "kind": "rule-missing"
+    "by": "src/lib/dm/authored-reactions.ts case attack (turnsSave) with src/lib/dm/save-turned.ts turnFailedSave: the reaction attack is made as the ranger stood before the failed save, and a hit makes that save a success: the hit points a success would have spared come back (cast-at-player.ts keeps them on the save record) and the conditions the failure laid end"
    }
   ]
  },

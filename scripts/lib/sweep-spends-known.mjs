@@ -7,7 +7,6 @@
 //   RULINGS[rowId][CODE] = where the ruling is written
 //   SKIP[rowId] = why the row is not walked
 export const KNOWN = {
-  "counter:art_flash_of_genius": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" } },
   "counter:cyberpunk_adrenal_override": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:cyberpunk_bullet_time": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:cyberpunk_grease_the_wheels": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

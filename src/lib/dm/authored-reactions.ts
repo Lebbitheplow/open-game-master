@@ -68,6 +68,7 @@ import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
 import { ECHO_OUT } from "@/lib/srd/authored-effects-data-b";
 import { blowLandsOn, redirectTaker } from "@/lib/dm/redirect-target";
+import { laidBySave, openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
 import type { Combatant } from "@/lib/dm/combatant";
 
 type Found = { reaction: AuthoredReaction; held: HeldAuthored; holder: CharacterSheet; variant: string };
@@ -916,8 +917,26 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // The attack is the reaction alone (pc-attack.ts reactionAttack). It
       // borrowed the readied condition, so on the holder's own turn it spent
       // their Action, and it took a readied action they already held.
+      // Slayer's Counter is made "immediately before" the save it answers:
+      // the attack is made as its holder stood before that save failed, so
+      // what the failure laid comes off for it, and goes back on if the
+      // attack does not turn the save (save-turned.ts).
+      const failedSave = does.turnsSave ? openFailedSave(ctx.campaign.id, ctx.sheet.id, enemy.id) : null;
+      const bound = failedSave ? laidBySave(getSheetById(ctx.sheet.id) ?? ctx.sheet, failedSave) : { names: [], meta: {} };
+      const rebind = () => {
+        const now = bound.names.length ? getSheetById(ctx.sheet.id) : null;
+        if (now) {
+          reactionPatch(ctx.campaign, ctx.turn.id, now.id, { conditions: [...now.conditions, ...bound.names.filter((name) => !now.conditions.includes(name))], conditionMeta: { ...(now.conditionMeta as ConditionMetaMap), ...bound.meta } as typeof now.conditionMeta }, `${reaction.name}: the save stands`);
+        }
+      };
+      if (bound.names.length) {
+        const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+        const cleared = removeConditions(now.conditions, now.conditionMeta, bound.names);
+        reactionPatch(ctx.campaign, ctx.turn.id, now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: made before the save`);
+      }
       const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
       if (typeof result.error === "string") {
+        rebind();
         return toolError(result);
       }
       if (does.answers) {
@@ -933,6 +952,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           } as typeof fresh.conditionMeta);
           publishEncounter(ctx.campaign.id);
         }
+      }
+      // Slayer's Counter: the attack comes before the save, and a hit makes
+      // the save a success. The save has landed by now, so what its failure
+      // alone cost is given back (save-turned.ts).
+      if (does.turnsSave && result.hit) {
+        return { attack: result, save: failedSave ? turnFailedSave(ctx.campaign, ctx.turn.id, failedSave, `${reaction.name}: the save succeeds`, bound.names).line : `${ctx.sheet.name}'s save against ${enemy.displayName} had already succeeded.` };
+      }
+      if (does.turnsSave) {
+        rebind();
       }
       return { attack: result };
     }

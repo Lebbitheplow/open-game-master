@@ -214,13 +214,30 @@ export const RO_RANGER_B = {
     const held = 100 - rig.hp(who);
     const out = await rig.react(who, "Slayer's Counter", { targetEnemyId: prey.id }, [18, 4, 4]);
     const after = 100 - rig.hp(who);
-    rig.note("counter", [cast.ok, cast.error.slice(0, 160), held, out.ok, out.error.slice(0, 160), brief(out.result, 300), after, rig.conditions(who)]);
+    // A save that paralyzes: "You make this attack immediately before making
+    // the saving throw", so the ranger answers as they stood before it, and a
+    // hit ends what the failure laid; a miss leaves them held.
+    const held2 = async (faces) => {
+      rig.kit.freshRound();
+      rig.foesTurn(prey);
+      rig.world.patch(who.id, { conditions: [], conditionMeta: {} });
+      rig.kit.setEnemy(prey.id, { stats: HOLD });
+      const hold = await rig.call("cast_at_player", { characterId: who.id, spell: "Hold Person", saveAbility: "wis", dc: 25, condition: "paralyzed", casterEnemyId: prey.id }, [2, 6]);
+      const bound = rig.conditions(who).includes("paralyzed");
+      const answer = await rig.react(who, "Slayer's Counter", { targetEnemyId: prey.id }, faces);
+      return [hold.ok || hold.error.slice(0, 200), bound, answer.ok, answer.error.slice(0, 120), rig.conditions(who).includes("paralyzed")];
+    };
+    const freed = await held2([18, 4, 4]);
+    const stillHeld = await held2([1, 1]);
+    rig.note("counter", [cast.ok, cast.error.slice(0, 160), held, out.ok, out.error.slice(0, 160), brief(out.result, 300), after, rig.conditions(who), freed, stillHeld]);
     return {
       "auto-success": () => {
         assert.equal(cast.ok, true, cast.error);
         assert.ok(held > 0, "the failed save cost the ranger nothing");
         assert.equal(out.ok, true, out.error);
         assert.equal(after, 0, `the counter hit, and the ranger still lost ${after} of the ${held} the failed save cost (Sacred Flame does nothing on a success)`);
+        assert.deepEqual(freed, [true, true, true, "", false], `a failed save against the prey's Hold Person, then a counter that hit: [cast ok, paralyzed, reaction ok, its error, still paralyzed] ${brief(freed, 300)}`);
+        assert.deepEqual([stillHeld[1], stillHeld[2], stillHeld[4]], [true, true, true], `a counter that missed leaves the ranger paralyzed: [paralyzed, reaction ok, still paralyzed] ${brief(stillHeld, 300)}`);
       },
     };
   },

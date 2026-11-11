@@ -18,6 +18,8 @@
     "lib/dm/spirit-totem.ts#str-list": [["key", 1, "the three spirits a Spirit Totem summons (engine vocabulary)"]],
     "lib/dm/authored-spend-divine-rng.ts#str-list": [["key", 1, "Exceptional Training's three commands, the spend's own variants (engine vocabulary)"]],
     "lib/dm/pet-command.ts#toLowerCase": [["key", 1, "a drake's stored size as the mount sizes' enum (engine vocabulary)"]],
+    "lib/dm/flash-of-genius.ts#toUpperCase": [["display", 1, "a save's ability in the result line, shown"]],
+    "lib/dm/save-turned.ts#toUpperCase": [["display", 1, "a save's ability in the result line, shown"]],
     "lib/dm/pet-command.ts#toUpperCase": [["display", 1, "the essence's first letter in the feature name"]],
     "lib/srd/authored-check-mod.ts#toUpperCase": [["display", 2, "ability codes shown in a roll note"]],
     "lib/dm/pet-command.ts#str-list": [["key", 1, "the pet kinds that dodge uncommanded and the commands' condition labels (engine vocabulary)"]],

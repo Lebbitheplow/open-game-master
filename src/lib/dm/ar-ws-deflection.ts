@@ -68,10 +68,11 @@ const failedSave = (roll: StoredRoll) => roll.kind === "saving_throw" && roll.dc
 
 type Encounter = Ctx["encounter"];
 
-// The saving throw the wizard has just failed, off the roll record: the
+// The saving throw a character has just failed, off the roll record (also
+// read by flash-of-genius.ts): the
 // latest one failed in the turn now running, or out of a fight their latest
 // roll when it is one.
-function failedSaveOf(campaignId: string, sheetId: string, encounter: Encounter): StoredRoll | null {
+export function failedSaveRollOf(campaignId: string, sheetId: string, encounter: Encounter): StoredRoll | null {
   const own = listRecentRolls(campaignId, 60).filter((roll) => roll.characterId === sheetId);
   if (!encounter || encounter.status !== "active") {
     const last = own.at(-1);
@@ -85,7 +86,7 @@ const abilityOf = (roll: StoredRoll) => (SAVE_ABILITY.exec(roll.detail)?.[1] ?? 
 
 // Whether a call means the save's half, and the failed save it would answer.
 function saveAsked(campaignId: string, sheet: CharacterSheet, encounter: Encounter, wanted: string, label: string): { asked: boolean; failed: StoredRoll | null } {
-  const failed = failedSaveOf(campaignId, sheet.id, encounter);
+  const failed = failedSaveRollOf(campaignId, sheet.id, encounter);
   if (wanted === "save") {
     return { asked: true, failed };
   }
