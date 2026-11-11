@@ -11,9 +11,9 @@
       },
       {
         "c": "You can have as many as your Intelligence modifier.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the count of tinkered objects"
+        "is": "held",
+        "by": "use_resource Magical Tinkering counts each object imbued on the artificer and refuses one past the Intelligence modifier (one at least) until one is ended (src/lib/dm/mt-srd-artificer.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.magical-tinkering.count"
       }
     ]
   },
@@ -25,9 +25,9 @@
     "clauses": [
       {
         "c": "Your ability to cast spells: which list you learn from, how many spells you can have ready, and the slots you spend to cast them.",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the artificer is ODM's (no SRD page); its gloss names the spell list, the prepared count and the slots, none staged here"
+        "is": "held",
+        "by": "the artificer's slots by level (half a caster's, rounded up, from 1st), the Intelligence modifier and half the level ready (one at least), the class's own list, and a cast that spends a slot and needs the spell ready (src/lib/srd/spell-prep.ts, src/lib/dm/cast-guard.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.spellcasting"
       }
     ]
   },
@@ -41,7 +41,7 @@
         "c": "You know a list of infusions and can imbue mundane gear with them after a long rest, turning ordinary items into magic ones for your party.",
         "is": "gap",
         "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the infusions known and imbued after a long rest"
+        "why": "not built: the infusions are picks of the builder and the level-up (src/lib/srd/options.json, kind infusion) and nothing imbues an item with one: each infusion's effect on the item it is laid on would be its own row, and the count of infused items and their end with the next long rest's choice a new piece of the rest engine. In w2-mt-srd-handoff.jsonl"
       }
     ]
   },
@@ -71,7 +71,7 @@
         "c": "With tinker's tools and an hour's work you conjure any set of artisan's tools you need, once per rest.",
         "is": "gap",
         "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+        "why": "not built: the counter (art_right_tool, once a short rest) is spent and the rest is told: nothing asks for tinker's tools, takes the hour or puts the tools on the sheet. In w2-mt-srd-handoff.jsonl"
       }
     ]
   },
@@ -117,9 +117,8 @@
       },
       {
         "c": "and you craft common and uncommon items in a quarter of the usual time and cost",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: crafting time and cost"
+        "is": "left",
+        "why": "the GM's: SRD 5.1 has no rule for crafting a magic item (its downtime Crafting makes nonmagical objects, which is what the downtime tool does: src/lib/dm/lifestyle.ts), so there is no time or cost of a common or uncommon magic item to quarter"
       }
     ]
   },
@@ -133,7 +132,7 @@
         "c": "After a long rest you store a 1st or 2nd-level artificer spell in an item, and whoever holds it can cast it a number of times based on your Intelligence.",
         "is": "gap",
         "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the stored spell and its uses"
+        "why": "not built: the counter (art_spell_storing_item, once a long rest) is spent and the rest is told: no item holds the spell and nobody casts it from one. A Ring of Spell Storing's engine (src/lib/srd/spell-storing.ts) spends what it holds on each cast, where this item keeps its spell for twice the Intelligence modifier in uses. In w2-mt-srd-handoff.jsonl"
       }
     ]
   },
@@ -151,9 +150,9 @@
       },
       {
         "c": "and you ignore all class, race, spell and level requirements on using them",
-        "is": "gap",
-        "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an item's class requirement waived"
+        "is": "held",
+        "by": "from 14th level an item's class, race and spellcaster requirements are set aside when the artificer attunes (src/lib/srd/mt-srd-artificer.ts ignoresItemRequirements, in magic-items.ts mayAttune); no item of the table asks for a level",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.magic-item-savant.requirements"
       }
     ]
   },
@@ -178,10 +177,16 @@
     "sha": "da64ad1a4704",
     "clauses": [
       {
-        "c": "You gain +1 to every saving throw per attuned magic item, and you can end one attunement as a reaction to drop to 1 hit point instead of 0.",
+        "c": "You gain +1 to every saving throw per attuned magic item",
+        "is": "held",
+        "by": "every save gains +1 for each attuned item on the sheet of an artificer with the feature (src/lib/srd/mt-srd-artificer.ts soulOfArtificeBonus, in computeSheetDerived)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-artificer.mjs: artificer.soul-of-artifice.saves"
+      },
+      {
+        "c": "and you can end one attunement as a reaction to drop to 1 hit point instead of 0.",
         "is": "gap",
         "read_only": true,
-        "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: +1 to saves per attuned item, and the attunement ended to stay at 1 hit point"
+        "why": "not built: the reaction is a choice (which attunement ends), so it needs a card on the drop to 0 that names the item and undoes the drop (hand-react.ts, reaction-refund.ts); the engine holds a character at 1 hit point only by itself (Relentless Endurance, Death Ward), and ending an attunement the player did not choose is no default. In w2-mt-srd-handoff.jsonl"
       }
     ]
   },

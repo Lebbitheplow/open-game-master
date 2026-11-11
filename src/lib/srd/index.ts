@@ -1,3 +1,4 @@
+import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
@@ -448,7 +449,8 @@ export function computeSheetDerived(
     ? { ...withItems, ...sheet.wildShape.abilities }
     : withItems;
   const magic = sheet.equipment ? magicItemRiders(sheet.equipment, sheet) : null;
-  const magicSaveBonus = magic?.saveBonus ?? 0;
+  // An artificer's Soul of Artifice: +1 for each attuned item (mt-srd-artificer.ts).
+  const magicSaveBonus = (magic?.saveBonus ?? 0) + soulOfArtificeBonus(sheet);
   const abilityMods = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [ability, abilityMod(abilities[ability])]),
   ) as Record<Ability, number>;

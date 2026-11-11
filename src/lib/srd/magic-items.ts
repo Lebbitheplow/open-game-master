@@ -19,6 +19,7 @@
 //     its text lets attune (a Staff of Power: a sorcerer, warlock or wizard);
 //   - a second copy of the same item adds nothing.
 
+import { ignoresItemRequirements } from "@/lib/srd/mt-srd-artificer";
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { ATTUNEMENT_SLOTS, attunementSlotsFor } from "@/lib/srd/armor";
 import { countsAsWorn } from "@/lib/srd/wear-slots";
@@ -211,7 +212,8 @@ export function mayAttune(def: Pick<MagicItemDef, "attunedBy">, wearer: Wearer):
   if (!rule) {
     return true;
   }
-  const device = (wearer.features ?? []).some((f) => isNamed(f.name, "Use Magic Device"));
+  // Use Magic Device, and an artificer's Magic Item Savant (mt-srd-artificer.ts).
+  const device = (wearer.features ?? []).some((f) => isNamed(f.name, "Use Magic Device")) || ignoresItemRequirements(wearer);
   if (rule.classes?.length && !device) {
     const held = [textKey(wearer.class ?? ""), ...(wearer.classes ?? []).map((entry) => textKey(entry.id))];
     if (!rule.classes.some((name) => held.includes(name))) {

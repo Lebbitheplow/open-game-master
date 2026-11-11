@@ -40,6 +40,7 @@ import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { draconicPresence, dragonWings, elementalAffinityResistance } from "@/lib/dm/draconic-spends";
 import { countercharm } from "@/lib/dm/mt-srd-bard";
+import { magicalTinkering } from "@/lib/dm/mt-srd-artificer";
 import { asksToEndRage, endRage } from "@/lib/dm/mt-srd-barbarian";
 import { asksForCure, cleansingTouch, layOnHandsCure } from "@/lib/dm/mt-srd-paladin";
 import { strokeOfLuckCheck } from "@/lib/dm/mt-srd-rogue";
@@ -66,6 +67,7 @@ export function srdFeatureSpend(
     if (luck) return luck;
   }
   if (name === "countercharm") return countercharm(campaign, sheet, args.variant);
+  if (name === "magical tinkering") return magicalTinkering(campaign, sheet, args.variant);
   if (name === "pact of the blade" || name === "pact weapon") return pactOfTheBlade(campaign, turnId, sheet, args.variant);
   if (name === "book of shadows" || name === "pact of the tome") return bookOfShadows(campaign, turnId, sheet);
   if (name === "peerless skill") return peerlessSkill(campaign, sheet);
