@@ -36,7 +36,7 @@ export function probes(rig, shared) {
   };
   // The spend with its square named: [taken, where the sorcerer stands, bonus action spent].
   const shadowWalk = async (x, y) => {
-    const out = await spend(shadow(), "Shadow Walk", { atX: x, atY: y });
+    const out = await spend(shadow(), "Shadow Walk", { x, y });
     const at = kit.token(shadow().id);
     return { out, seen: [out.ok, [at.x, at.y], budget()?.bonusUsed ?? false] };
   };

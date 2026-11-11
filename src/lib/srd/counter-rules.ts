@@ -107,7 +107,7 @@ export function ridesWeaponHit(sheet: AuthoredSheet & { resources?: Record<strin
 export type OtherPrice = { pool: { id: string; amount: number } } | { slot: number };
 
 export function otherPrice(
-  def: Pick<ResourceDef, "fallbackPool" | "fallbackSlot">,
+  def: Pick<ResourceDef, "fallbackPool" | "slotFallback">,
   sheet: { resources?: Record<string, { max: number; used: number }>; spellcasting?: { slots?: Record<string, { max: number; used: number }> } | null },
 ): OtherPrice | null {
   const pool = def.fallbackPool;
@@ -115,10 +115,10 @@ export function otherPrice(
   if (pool && state && state.max - state.used >= pool.amount) {
     return { pool };
   }
-  if (def.fallbackSlot) {
+  if (def.slotFallback) {
     const open = Object.entries(sheet.spellcasting?.slots ?? {})
       .map(([level, slot]) => ({ level: Number(level), slot }))
-      .filter(({ level, slot }) => level >= def.fallbackSlot!.minLevel && slot.used < slot.max)
+      .filter(({ level, slot }) => level >= def.slotFallback! && slot.used < slot.max)
       .sort((one, two) => one.level - two.level);
     if (open.length) {
       return { slot: open[0].level };

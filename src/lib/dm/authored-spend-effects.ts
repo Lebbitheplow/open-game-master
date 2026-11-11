@@ -91,7 +91,7 @@ export type SpendContext = {
   sheet: CharacterSheet;
   held: HeldAuthored;
   spend: AuthoredSpend;
-  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[]; x?: number; y?: number; atX?: number; atY?: number };
+  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[]; x?: number; y?: number };
   units: number;
   // The spell slot level that paid in place of the counter (pool.slot).
   paidBySlot?: number;

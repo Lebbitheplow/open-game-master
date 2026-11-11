@@ -340,18 +340,15 @@ export type ResourceDef = {
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
-  // With no use left, a spell slot of at least this level the call names
-  // (use_resource level) pays for one (Drake's Breath: 3rd).
+  // With no use left, a spell slot of this level or higher pays for one
+  // instead ("or by expending a spell slot of 3rd level or higher"): the slot
+  // the call names (use_resource level), else the lowest such slot unspent.
   slotFallback?: number;
   // A use takes the place of one attack of the Attack action, not the whole
   // action (Breath of the Dragon: "replace one of the attacks"): the turn
   // spends a swing (resource-turn.ts spendAttack), and the Hand gates the
   // card as an attack.
   replacesAttack?: boolean;
-  // With no use left (and no fallbackPool to pay), a spell slot of this
-  // level or higher pays for one instead, the lowest such slot unspent
-  // ("or by expending a spell slot of 3rd level or higher").
-  fallbackSlot?: { minLevel: number };
   // Used at 0 hit points: the moment it answers happens there (Defy Death
   // on a death save the warlock succeeds on, "when you succeed on a death
   // saving throw"). Anything else at 0 is refused as unconscious.
@@ -820,7 +817,6 @@ type SubclassResourceRow = {
   fallbackPool?: { id: string; amount: number };
   slotFallback?: number;
   replacesAttack?: boolean;
-  fallbackSlot?: { minLevel: number };
   atZeroHp?: boolean;
   requires?: "below_half";
   perUse?: "half_level" | "cha";
@@ -869,7 +865,6 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
   ...(row.slotFallback ? { slotFallback: row.slotFallback } : {}),
   ...(row.replacesAttack ? { replacesAttack: true } : {}),
-  ...(row.fallbackSlot ? { fallbackSlot: row.fallbackSlot } : {}),
   ...(row.atZeroHp ? { atZeroHp: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),

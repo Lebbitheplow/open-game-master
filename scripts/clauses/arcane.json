@@ -1257,7 +1257,7 @@
     "c": "or by expending a spell slot of 3rd level or higher",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: horizon-slot",
-    "by": "src/lib/srd/authored-resources.json sub_event_horizon fallbackSlot minLevel 3, src/lib/srd/counter-rules.ts otherPrice"
+    "by": "src/lib/srd/authored-resources.json sub_event_horizon slotFallback 3, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -1341,7 +1341,7 @@
     "c": "or costs a spell slot of any level",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-slot",
-    "by": "src/lib/srd/authored-resources.json sub_manifest_mind fallbackSlot minLevel 1, src/lib/srd/counter-rules.ts otherPrice"
+    "by": "src/lib/srd/authored-resources.json sub_manifest_mind slotFallback 1, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -3733,7 +3733,7 @@
     "c": "or by expending a spell slot",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: speech-slot",
-    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
+    "by": "src/lib/srd/authored-resources.json slotFallback (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3804,7 +3804,7 @@
     "c": "or with a spell slot",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-slot",
-    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
+    "by": "src/lib/srd/authored-resources.json slotFallback (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3830,7 +3830,7 @@
     "c": "or by expending a spell slot of 3rd level or higher",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-slot",
-    "by": "src/lib/srd/authored-resources.json fallbackSlot 3 (src/lib/dm/resource-tools.ts: a slot of 3rd level or higher buys a spent use)"
+    "by": "src/lib/srd/authored-resources.json slotFallback 3 (src/lib/dm/resource-tools.ts: a slot of 3rd level or higher buys a spent use)"
    }
   ]
  },

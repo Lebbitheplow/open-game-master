@@ -48,12 +48,10 @@ export type AuthoredSpendArgs = {
   targetCharacterId?: string;
   targetEnemyId?: string;
   targetEnemyIds?: string[];
-  // A square the feature moves its holder to (src/lib/dm/feature-move.ts).
+  // A square the feature moves its holder to (src/lib/dm/feature-move.ts,
+  // src/lib/dm/ar-ws-shadow-walk.ts): the one way a spend names a square.
   x?: number;
   y?: number;
-  // The square a teleport goes to (src/lib/dm/ar-ws-shadow-walk.ts).
-  atX?: number;
-  atY?: number;
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {

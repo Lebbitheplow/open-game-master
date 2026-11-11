@@ -7,7 +7,7 @@
 // call spent the bonus action for nothing. The 120 feet were held only by
 // that second call, and the light at either end by nobody.
 //
-// use_resource with atX and atY (the square fields its door already parses)
+// use_resource with x and y (the square a feature moves its holder to, as every such spend names it)
 // now makes the move in the spend: the holder goes to that square through the
 // board's own teleport check (map-tools.ts teleportSquareRefusal: on the map,
 // open floor, nobody there, within the feature's feet), and a spend whose row
@@ -36,7 +36,7 @@ import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 // The holder moved to the square the call names, the refusal, or null when
 // the call names no square (the spend then leaves the teleport waiting).
 export function jumpToSquare(ctx: SpendContext, does: Extract<SpendDoes, { kind: "teleport" }>): ToolError | { result: Record<string, unknown> } | null {
-  const { atX: x, atY: y } = ctx.args;
+  const { x, y } = ctx.args;
   if (x === undefined || y === undefined || does.touched) {
     return null;
   }

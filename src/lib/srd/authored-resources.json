@@ -616,9 +616,7 @@
    "recharge": "long",
    "action": "action",
    "guidance": "An action: up to the bard's Charisma modifier (minimum one) of creatures within 60 feet understand the bard for an hour. A spell slot buys another use.",
-   "fallbackSlot": {
-    "minLevel": 1
-   }
+   "slotFallback": 1
   },
   {
    "id": "sub_performance_of_creation",
@@ -631,9 +629,7 @@
    "recharge": "long",
    "action": "action",
    "guidance": "An action creating a nonmagical item worth up to 20 times the bard's level. A spell slot buys extra uses.",
-   "fallbackSlot": {
-    "minLevel": 1
-   }
+   "slotFallback": 1
   },
   {
    "id": "sub_animating_performance",
@@ -646,9 +642,7 @@
    "recharge": "long",
    "action": "action",
    "guidance": "An action animating a Large or smaller nonmagical item within 30 feet as a Dancing Item for an hour: AC 16, 10 + five times the bard level hit points, a Force-Empowered Slam of 1d10 + proficiency force with the bard's spell attack. Once per long rest; a spell slot of 3rd level or higher buys another use.",
-   "fallbackSlot": {
-    "minLevel": 3
-   }
+   "slotFallback": 3
   },
   {
    "id": "sub_spirit_session",
@@ -1400,9 +1394,7 @@
     "rangeFt": 30,
     "magical": true
    },
-   "fallbackSlot": {
-    "minLevel": 3
-   }
+   "slotFallback": 3
   },
   {
    "id": "sub_manifest_mind",
@@ -1420,9 +1412,7 @@
     "condition": "manifest mind",
     "rounds": 600
    },
-   "fallbackSlot": {
-    "minLevel": 1
-   }
+   "slotFallback": 1
   },
   {
    "id": "sub_manifest_mind_casts",

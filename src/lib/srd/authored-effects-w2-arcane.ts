@@ -32,7 +32,7 @@ export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
   // "As an action, animate a Large or smaller nonmagical item within 30 feet
   // as a Dancing Item for an hour": an ally with its stat block
   // (src/lib/dm/summon-arcane.ts). The slot that buys another use is the
-  // counter's fallbackSlot.
+  // counter's slotFallback.
   "bard::Animating Performance": {
     subclass: "College of Creation",
     spends: [{ name: "Animating Performance", pool: { id: "sub_animating_performance" }, action: "action", does: { kind: "summon", form: "Dancing Item" } }],

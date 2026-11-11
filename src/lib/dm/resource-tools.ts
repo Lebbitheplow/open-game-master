@@ -288,7 +288,7 @@ type PoolState = CharacterSheet["resources"][string];
 // points) or a spell slot of a level the row names;
 // the refusal when none can. Asked before an option is asked for too
 // (mutations.ts). Every other price a counter's text names goes on its row
-// (fallbackPool, fallbackSlot) and through here, never at one spend.
+// (fallbackPool, slotFallback) and through here, never at one spend.
 export function payForUse(
   sheet: CharacterSheet,
   def: ResourceDef,
@@ -308,7 +308,7 @@ export function payForUse(
   if (other && "slot" in other) {
     return { fallback: null, slot: other.slot };
   }
-  const slotWords = def.fallbackSlot ? ` With none left it costs a spell slot${def.fallbackSlot.minLevel > 1 ? ` of level ${def.fallbackSlot.minLevel} or higher` : ""}, and they have none unspent.` : "";
+  const slotWords = def.slotFallback ? ` With none left it costs a spell slot${def.slotFallback > 1 ? ` of level ${def.slotFallback} or higher` : ""}, and they have none unspent.` : "";
   return {
     error: `${sheet.name} has ${left}/${state.max} ${def.displayName} left; they cannot spend ${amount}.${
       fallback ? ` With none left it costs ${fallback.amount} ${fallback.id.replace(/_/g, " ")}, and they have ${fallbackState ? fallbackState.max - fallbackState.used : 0}.` : ""
@@ -580,18 +580,20 @@ export function computeUseResource(
   }
   const left = state.max - state.used;
   // Drake's Breath: "Once per long rest, or by expending a spell slot of 3rd
-  // level or higher". With the use spent the slot named pays; before this
-  // the spend was refused at 0 uses whatever slot was offered.
+  // level or higher". With the use spent the slot named pays (use_resource
+  // level), and with none named the lowest unspent slot of that level or
+  // higher does (payForUse, counter-rules.ts otherPrice): one field on the
+  // row, slotFallback, for both.
   const slotPays = def.slotFallback && left < cost && more.slotLevel !== undefined ? slotPayment(sheet, def, more.slotLevel) : null;
   if (slotPays && "error" in slotPays) {
     return slotPays;
   }
   const payment = slotPays ? { fallback: null } : payForUse(sheet, def, state, cost);
   if ("error" in payment) {
-    return def.slotFallback ? { ...payment, error: `${payment.error} A spell slot of level ${def.slotFallback} or higher buys another use (pass level).` } : payment;
+    return payment;
   }
   const paid = payment.fallback;
-  // A spell slot paid for the use (fallbackSlot).
+  // A spell slot paid for the use (slotFallback, none named in the call).
   const paidSlot = payment.slot ?? null;
   // A feature with no limit is used, not counted down.
   const unlimited = isUnlimited(state);
