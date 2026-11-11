@@ -2955,6 +2955,44 @@ for (const viewport of ["desktop", "phone"]) {
   recapTables[viewport] = table.id;
 }
 
+// Issue 917: a line a short tag splits ("...," she says. "...") was drawn
+// as two cards for one speaker with the tag stranded between. A passage
+// with both kinds of split and a reply from someone else, its lines stored
+// as the claims reader stores them, one table per viewport.
+const SPLIT_LINE_TITLE = "Split Line Table";
+const splitLineTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `${SPLIT_LINE_TITLE} (${viewport})`,
+    description: "A table at the crossroads.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false },
+  });
+  campaigns.setCampaignStatus(table.id, "active");
+  sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Corra Venn", class: "fighter", level: 3 }));
+  const marla = { kind: "npc", id: "npc-split-marla", name: "Marla" };
+  const pike = { kind: "npc", id: "npc-split-pike", name: "Old Pike" };
+  messages.insertCampaignMessage({
+    campaignId: table.id,
+    seq: campaigns.allocateSeq(table.id),
+    authorType: "dm",
+    speech: [
+      { line: "We ride at dawn,", speaker: marla },
+      { line: "and not a moment later.", speaker: marla },
+      { line: "Aye,", speaker: pike },
+      { line: "Two roads,", speaker: marla },
+      { line: "Pick one.", speaker: marla },
+    ],
+    content:
+      'Marla rolls the map flat on the crate. "We ride at dawn," said Marla, "and not a moment later." "Aye," says Old Pike, and spits into the fire.' +
+      '\n\nShe taps the fork in the road. "Two roads," she says. "Pick one."',
+  });
+  splitLineTables[viewport] = table.id;
+}
+
 // Issue 539: a table outside a fight, narration on, with two passages to
 // read aloud one after the other (scenario narration-replay).
 const REPLAY_TITLE = "Replay Table";
@@ -3838,6 +3876,7 @@ const ids = {
   twoHandsTables,
   damageStepTables,
   recapTables,
+  splitLineTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
   chipTables,
@@ -3964,6 +4003,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(splitLineTables).map(([viewport, id]) => [id, `${SPLIT_LINE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,
     [lobby.id]: LOBBY_TITLE,
