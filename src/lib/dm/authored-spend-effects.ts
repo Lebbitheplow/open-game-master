@@ -236,8 +236,12 @@ function addUnits(base: string, per: string | undefined, units: number): string 
   return `${base}+${units * Number(b?.[1] ?? 1)}d${b?.[2] ?? "6"}`;
 }
 
-export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resolution {
+export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resolution {
   const { sheet, campaign } = ctx;
+  // A length counted in the holder's proficiency bonus is read off their own
+  // sheet: Bottled Respite was 2,400 rounds (4 hours) whatever the bonus, right
+  // only at +2.
+  const does: SpendDoes = spec.kind === "buff" && spec.roundsPerProf ? { ...spec, rounds: spec.roundsPerProf * computeSheetDerived(sheet).proficiencyBonus } : spec;
   switch (does.kind) {
     case "choose": {
       const option = namedOption(ctx.spend.name, ctx.args.variant, does.options);

@@ -430,6 +430,11 @@ export type SpendDoes =
       hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
+      // The length is this many rounds for each point of the holder's
+      // proficiency bonus, in place of `rounds` (Bottled Respite: "twice your
+      // proficiency bonus in hours", 1,200 rounds a point); `rounds` is then
+      // the length at +2. Read by authored-spend-effects.ts resolveSpendEffect.
+      roundsPerProf?: number;
       // "creature": a creature of either side (Adjust Density: "a creature's
       // ... weight"): the enemy named in targetEnemyId, else the ally named in
       // targetCharacterId, else the holder.

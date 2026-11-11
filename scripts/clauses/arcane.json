@@ -2964,7 +2964,13 @@
     "why": "not run: no object stands for the vessel (no row field, no token); attacking it was not staged"
    },
    {
-    "c": "Bottled Respite: as an action, vanish into it for up to twice your proficiency bonus in hours, leaving early as a bonus action; once per long rest.",
+    "c": "Bottled Respite: as an action, vanish into it for up to twice your proficiency bonus in hours",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts Bottled Respite (buff, action, roundsPerProf 1200: src/lib/dm/authored-spend-effects.ts resolveSpendEffect)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: respite-hours"
+   },
+   {
+    "c": "leaving early as a bonus action; once per long rest.",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
     "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"

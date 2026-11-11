@@ -348,8 +348,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [
       { name: "Genie Kind", aliases: ["Patron Kind", "Genie's Kind"], fight: "out", does: { kind: "choose", options: ["Dao", "Djinni", "Efreeti", "Marid"] } },
       // Bottled Respite: "As an action, you can magically vanish and enter
-      // your vessel", for up to twice the proficiency bonus in hours.
-      { name: "Bottled Respite", pool: { id: "sub_genies_vessel" }, action: "action", does: { kind: "buff", condition: "in the genie's vessel", rounds: 2400 } },
+      // your vessel", for up to twice the proficiency bonus in hours: 1,200
+      // rounds (two hours) for each point of the warlock's own bonus.
+      { name: "Bottled Respite", pool: { id: "sub_genies_vessel" }, action: "action", does: { kind: "buff", condition: "in the genie's vessel", rounds: 2400, roundsPerProf: 1200 } },
     ],
     effects: GENIE_KINDS.map(([kind, type]) => ({
       kind: "rider" as const,
