@@ -2272,7 +2272,7 @@
    {
     "c": "Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn",
     "is": "held",
-    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon full moon (save_area con, blinded, untilItsTurnEnds, chosen)",
+    "by": "src/lib/srd/authored-effects-sweep-counters.ts Lunar Phenomenon full moon (save_area con, blinded, untilItsTurnEnds)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-full-blinds"
    },
    {

@@ -124,15 +124,17 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         does: {
           kind: "variants",
           options: {
-            // "Each creature of your choice within 30 feet": those named in
-            // targetEnemyIds, every one when none is. Each condition lasts
-            // until the end of the creature's own next turn. The Full Moon
+            // The hostile creatures within 30 feet; the GM leaves out any the
+            // sorcerer spares. (Not `chosen`: an aimed save turns the phases
+            // into three cards, aimed apart, where the Hand deals the one the
+            // phase fixes.) Each condition lasts until the end of the
+            // creature's own next turn. The Full Moon
             // heals the character named in targetCharacterId (else the
             // sorcerer); the New Moon veils the sorcerer; the Crescent Moon
             // takes the character named along and wards both
             // (src/lib/dm/ar-ws-lunar-phenomenon.ts).
-            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, condition: "blinded", untilItsTurnEnds: true, chosen: true, heals: { formula: "3d8", rangeFt: 30 } } },
-            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, dice: "3d10", type: "necrotic", condition: NEW_MOON_STILL, untilItsTurnEnds: true, chosen: true, veils: true } },
+            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, condition: "blinded", untilItsTurnEnds: true, heals: { formula: "3d8", rangeFt: 30 } } },
+            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, dice: "3d10", type: "necrotic", condition: NEW_MOON_STILL, untilItsTurnEnds: true, veils: true } },
             "crescent moon": { does: { kind: "teleport", feet: 60, companionFt: 5, ward: CRESCENT_WARD } },
           },
         },
