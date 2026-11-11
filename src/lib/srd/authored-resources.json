@@ -1741,6 +1741,18 @@
    "guidance": "When the monk uses Step of the Wind: a flying speed equal to the walking speed until the end of the turn."
   },
   {
+   "id": "sub_draconic_presence",
+   "displayName": "Dragon Disciple's Presence",
+   "match": [
+    "draconic disciple"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "long",
+   "guidance": "Draconic Presence: a failed Intimidation or Persuasion check is rolled again as a reaction, chosen on the card the roll waits on. The use is spent only when the new roll turns the failure into a success.",
+   "passive": true
+  },
+  {
    "id": "sub_aspect_of_the_wyrm",
    "displayName": "Aspect of the Wyrm",
    "match": [

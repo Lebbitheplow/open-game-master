@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-rogue.mjs";
+import { afterRollKit } from "./lib/sweep-clauses-mt-mr.mjs";
 
 const { probe, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const RAPIER = { equipment: [{ name: "Rapier", qty: 1, equipped: true }] };
@@ -399,6 +400,71 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(second.ok, true, second.error);
     assert.match(expr(second), /^1d4/, `the second blade at 17th level: ${expr(second)}`);
   });
+  // Homing Strikes (Soul Blades, 9th level): a missed psychic blade waits on
+  // the rogue, a Psionic Energy die is added, and the die is spent only if it
+  // turns the miss.
+  await probe("homing-strikes", async () => {
+    const card = await afterRollKit(world);
+    const blade = hero("rogue", "Soulknife", 9, { equipment: [{ name: "Rapier", qty: 1, equipped: false }] });
+    const [enemy] = await stage(blade);
+    // +7 with the blade (Dexterity and proficiency): a 3 is 10 against AC 13.
+    await swing(blade, enemy, [3], { weapon: "psychic blade" });
+    assert.deepEqual(card.offered(), ["homing_strikes"], "a missed psychic blade the d8 could turn");
+    assert.equal(r.used(blade, "sub_psionic_energy"), 0, "nothing is spent until they choose");
+    const turned = await card.choose(blade, "homing_strikes", 5, 2, 2, 2, 2, 2, 2, 2);
+    assert.match(turned.note, /HIT/, `10 + 5 against AC 13: ${turned.note}`);
+    assert.equal(r.used(blade, "sub_psionic_energy"), 1, "the die turned the miss and is spent");
+    const [second] = await stage(blade);
+    await swing(blade, second, [3], { weapon: "psychic blade" });
+    const short = await card.choose(blade, "homing_strikes", 1);
+    assert.match(short.note, /MISS/, `10 + 1 against AC 13: ${short.note}`);
+    assert.equal(r.used(blade, "sub_psionic_energy"), 0, "a die that leaves the attack short is not spent");
+    const [third] = await stage(blade);
+    world.patch(blade.id, { equipment: [{ name: "Rapier", qty: 1, equipped: true }] });
+    await swing(blade, third, [3], { weapon: "Rapier" });
+    assert.deepEqual(card.offered(), [], "a rapier is no psychic blade");
+    await card.keepAll(blade);
+    const [fourth] = await stage(knife);
+    kit.setEnemy(fourth.id, { ac: 30 });
+    await swing(knife, fourth, [3], { weapon: "psychic blade" });
+    assert.deepEqual(card.offered(), [], "a miss no die could turn is not offered it");
+    await card.keepAll(knife);
+  });
+
+  // Psi-Bolstered Knack: a failed check with a proficient skill or tool
+  // waits on the rogue; the die is spent only if it closes the gap.
+  await probe("psi-bolstered-knack", async () => {
+    const card = await afterRollKit(world);
+    const SKILLED = { skills: ["stealth"], saves: [], expertise: [], languages: ["Common"], tools: ["thieves' tools"], armor: ["light"], weapons: ["simple", "martial"] };
+    const adept = hero("rogue", "Soulknife", 9, { ...RAPIER, proficiencies: SKILLED });
+    const ask = async (args, face) => {
+      await kit.endFight();
+      world.clearDice();
+      world.dice(face);
+      const out = await world.invoke("request_roll", { characterId: adept.id, dc: 16, reason: "a clause probe", ...args });
+      world.clearDice();
+      assert.equal(out.ok, true, out.error);
+    };
+    const used = () => r.used(adept, "sub_psionic_energy");
+    const before = used();
+    // 5 + Dexterity + proficiency is 12 against DC 16: a d8 can close it.
+    await ask({ kind: "skill_check", skill: "stealth" }, 5);
+    assert.deepEqual(card.offered(), ["psi_knack"], "a failed Stealth check, a skill the rogue is proficient in");
+    const made = await card.choose(adept, "psi_knack", 6);
+    assert.equal(made.roll.total, 5 + MOD + prof(9) + 6, "the die is added");
+    assert.equal(used(), before + 1, "it closed the gap and is spent");
+    await ask({ kind: "skill_check", skill: "stealth" }, 5);
+    const short = await card.choose(adept, "psi_knack", 1);
+    assert.equal(short.roll.total, 5 + MOD + prof(9) + 1);
+    assert.equal(used(), before + 1, "a die that leaves the check short is not spent");
+    await ask({ kind: "ability_check", ability: "dex", tool: "thieves' tools" }, 5);
+    assert.deepEqual(card.offered(), ["psi_knack"], "a failed check with a tool the rogue is proficient with");
+    await card.keepAll(adept);
+    await ask({ kind: "skill_check", skill: "athletics" }, 9);
+    assert.deepEqual(card.offered(), [], "Athletics, which the rogue is not proficient in, is not offered it");
+    await card.keepAll(adept);
+  });
+
   // Rend Mind: a Sneak Attack with a psychic blade, a Wisdom save or stunned
   // for a minute; free once, then three Psionic Energy dice.
   await probe("rend-mind", async () => {

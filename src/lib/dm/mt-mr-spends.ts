@@ -17,6 +17,7 @@ import { shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { BLADE_AT, FLURRY_HEALED, holdsRow } from "@/lib/dm/mt-mr-turn";
 import { destroyTrinket } from "@/lib/dm/mt-mr-trinkets";
 import { aspectOfTheWyrm } from "@/lib/dm/mt-mr-dragon";
+import { psionicEnergyDie } from "@/lib/dm/mt-mr-offers-logic";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { rollCard } from "@/lib/dm/roll-card";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
@@ -212,9 +213,6 @@ function questionSpirit(ctx: SpendContext): Resolution {
   return { result: { applied: `${ctx.sheet.name} destroys a soul trinket (${left} left) and asks its spirit one question: it appears and answers in a language it knew, briefly or cryptically, with what it knew in life, then is gone.` } };
 }
 
-// A Psionic Energy die by the level of the class that holds it: "d6s, d8s
-// from 5th level, d10s from 11th, d12s from 17th".
-export const psionicEnergyDie = (level: number) => (level >= 17 ? "d12" : level >= 11 ? "d10" : level >= 5 ? "d8" : "d6");
 
 // Soul Blades' Psychic Teleportation: "throws a blade to teleport yourself up
 // to 10 times your die roll in feet". The die is rolled here and the step is

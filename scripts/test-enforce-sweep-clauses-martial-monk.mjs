@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-monk.mjs";
+import { afterRollKit } from "./lib/sweep-clauses-mt-mr.mjs";
 
 const { probe, test, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const BARE = { equipment: [] };
@@ -285,6 +286,31 @@ await test("the Hand reads the light on its square only from a host that offers 
     const [fresh] = await stage(blade);
     assert.equal((await spend(blade, "One with the Blade", { targetEnemyId: fresh.id }, 4)).ok, false, "with no hit landed this turn");
     assert.equal(used(blade, "ki"), 0, "and the refusal spent no ki");
+  });
+
+  // Unerring Accuracy (17th level): a missed attack with a monk weapon waits
+  // on the monk, is rolled again once, and the turn's next miss is not.
+  await probe("unerring-accuracy", async () => {
+    const card = await afterRollKit(world);
+    const master = hero("monk", "Way of the Kensei", 17, SWORD);
+    const [enemy] = await stage(master);
+    await swing(master, enemy, [2]);
+    assert.deepEqual(card.offered(), ["unerring_accuracy"], "a missed longsword (a kensei weapon) on the monk's own turn");
+    const again = await card.choose(master, "unerring_accuracy", 15, 4);
+    assert.match(again.note, /HIT/, `the reroll (a 15) stands: ${again.note}`);
+    assert.equal(again.roll.total, 15 + MOD + prof(17));
+    await swing(master, enemy, [2]);
+    assert.deepEqual(card.offered(), [], "once on each turn: the second miss is not offered it");
+    await card.keepAll(master);
+    const [other] = await stage(master);
+    await swing(master, other, [2], UNARMED);
+    assert.deepEqual(card.offered(), [], "an unarmed strike is no monk weapon");
+    await card.keepAll(master);
+    const novice = hero("monk", "Way of the Kensei", 11, SWORD);
+    const [third] = await stage(novice);
+    await swing(novice, third, [2]);
+    assert.deepEqual(card.offered(), [], "the staging: at 11th level a miss is a miss");
+    await card.keepAll(novice);
   });
 
   await probe("sharpen-the-blade", async () => {
@@ -796,6 +822,42 @@ await test("the Hand reads the light on its square only from a host that offers 
     assert.match(JSON.stringify(fire.hit.result), /fire/i, "the strike's damage is fire");
     const plain = await struck("bludgeoning");
     assert.equal(plain.lost, 4 + MOD, "back to bludgeoning, the same blow lands whole");
+  });
+
+  // Draconic Presence: a failed Intimidation or Persuasion check is rolled
+  // again as a reaction; the use goes only when the reroll succeeds.
+  await probe("draconic-presence", async () => {
+    const card = await afterRollKit(world);
+    const ask = async (skill, face) => {
+      world.clearDice();
+      world.dice(face);
+      const out = await world.invoke("request_roll", { characterId: dragon.id, kind: "skill_check", skill, dc: 15, reason: "a clause probe" });
+      world.clearDice();
+      assert.equal(out.ok, true, out.error);
+      return out;
+    };
+    await stage(dragon);
+    await ask("intimidation", 2);
+    assert.deepEqual(card.offered(), ["draconic_presence"], "a failed Intimidation check waits on the monk");
+    const still = await card.choose(dragon, "draconic_presence", 3);
+    assert.equal(still.roll.total, 3 + MOD, "the reroll (a 3) stands, and fails");
+    assert.equal(r.used(dragon, "sub_draconic_presence"), 0, "a reroll that still fails keeps the use");
+    assert.ok(world.encounter().reactionsUsed.includes(dragon.id), "the reaction");
+    await card.keepAll(dragon);
+    await stage(dragon);
+    await ask("persuasion", 2);
+    const turned = await card.choose(dragon, "draconic_presence", 18);
+    assert.equal(turned.roll.total, 18 + MOD, "the reroll (an 18) stands");
+    assert.equal(r.used(dragon, "sub_draconic_presence"), 1, "it turned the failure, and waits for a long rest");
+    await stage(dragon);
+    r.setUsed(dragon, "sub_draconic_presence", 1);
+    await ask("intimidation", 2);
+    assert.deepEqual(card.offered(), [], "with the use spent nothing is offered");
+    await card.keepAll(dragon);
+    await stage(dragon);
+    await ask("athletics", 2);
+    assert.deepEqual(card.offered(), [], "an Athletics check is none of its two");
+    await card.keepAll(dragon);
   });
 
   // "Once per long rest or for 3 ki."

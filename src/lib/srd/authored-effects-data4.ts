@@ -246,10 +246,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     narrated:
       "Spells cast with 2 ki (darkness, darkvision, pass without trace, silence): the cast tools with the ki spent by use_resource. Minor illusion at will: a monk keeps no spell list, so the GM casts it when asked, as for a non-caster's racial cantrip.",
   },
-  "monk::Unerring Accuracy": {
-    subclass: "Way of the Kensei",
-    narrated: "Rerolling one missed monk weapon attack a turn: the GM calls pc_attack again for it.",
-  },
   "monk::Sun Shield": {
     subclass: "Way of the Sun Soul",
     effects: [{ kind: "retaliate", formula: (_level, mods) => 5 + (mods.wis ?? 0), type: "radiant", melee: true, note: "The bright light it sheds is the GM's to place." }],
@@ -396,10 +392,6 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     effects: [{ kind: "check_floor", skills: ["insight"], floor: 8, note: "Only on an Insight check to tell whether a creature lies; the GM keeps to that." }],
   },
   "rogue::Whispers of the Dead": { subclass: "Phantom", narrated: "One skill or tool proficiency chosen after each rest: the GM notes it for the day." },
-  "rogue::Psi-Bolstered Knack": {
-    subclass: "Soulknife",
-    narrated: "A Psionic Energy die added to a failed proficient check: the GM rolls it, and the die is the counter's.",
-  },
   "rogue::Psychic Whispers": { subclass: "Soulknife", narrated: "Telepathic links for hours: conversation, nothing on a sheet changes." },
 
   // ---- sorcerer ----

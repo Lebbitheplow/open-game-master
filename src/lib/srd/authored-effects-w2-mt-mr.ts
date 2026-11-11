@@ -40,6 +40,12 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "Reroll a missed monk-weapon attack once per turn": offered on the card
+  // the missed attack waits on (mt-mr-offers-logic.ts mrAttackOffers).
+  "monk::Unerring Accuracy": {
+    subclass: "Way of the Kensei",
+    heldBy: { file: "src/lib/dm/mt-mr-offers-logic.ts", call: 'holdsRow(sheet, "monk::Unerring Accuracy")' },
+  },
   // Hand of Healing ends a condition and Hand of Harm poisons, both in the
   // spends themselves.
   "monk::Physician's Touch": {
@@ -58,8 +64,12 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   // goes back). The attack profile reads it (src/lib/srd/mt-mr-unarmed.ts),
   // and so do the wyrm's ward and Explosive Fury (src/lib/dm/mt-mr-dragon.ts).
   // The language is the sheet's training.
+  // Draconic Presence's reroll is offered on the card a failed Intimidation
+  // or Persuasion check waits on (src/lib/dm/mt-mr-offers-logic.ts); its
+  // counter is spent only when the reroll turns the failure.
   "monk::Draconic Disciple": {
     subclass: "Way of the Ascendant Dragon",
+    counter: "sub_draconic_presence",
     spends: [{ name: "Draconic Strike", aliases: ["Draconic Disciple"], action: "none", does: { kind: "choose", options: DRACONIC_CHOICES } }],
   },
   // The aura, either kind (src/lib/dm/mt-mr-dragon.ts): the frightening one
@@ -116,7 +126,9 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   // (authored-effects-sweep-counters.ts, afterSneak.firstToo); the trinket at
   // a long rest's end is the rest's.
   // Psychic Teleportation is the engine's: a die rolled, ten times its roll
-  // in feet. Homing Strikes still waits on an offer after a missed attack.
+  // in feet. Homing Strikes is offered on the card a missed psychic blade
+  // waits on (mt-mr-offers-logic.ts mrAttackOffers), its die spent only when
+  // it turns the miss.
   "rogue::Soul Blades": {
     subclass: "Soulknife",
     spends: [
@@ -127,7 +139,13 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
         does: { kind: "mr", id: "psychic_teleport" },
       },
     ],
-    narrated: "Homing Strikes' die on a missed Psychic Blade: the GM rolls the die (the counter's) and adds it to the attack roll.",
+  },
+  // "Spend a die to turn a failed check with a proficient skill or tool into
+  // a success if the die closes the gap": offered on the card the failed
+  // check waits on (mt-mr-offers-logic.ts mrCheckOffers).
+  "rogue::Psi-Bolstered Knack": {
+    subclass: "Soulknife",
+    heldBy: { file: "src/lib/dm/mt-mr-offers-logic.ts", call: 'holdsRow(sheet, "rogue::Psi-Bolstered Knack")' },
   },
   // The counter's free use, or three Psionic Energy dice with it spent.
   "rogue::Rend Mind": {

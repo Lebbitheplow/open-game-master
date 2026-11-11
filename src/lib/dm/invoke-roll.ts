@@ -276,7 +276,7 @@ export function handleRequestRoll(
     const options = canWait && sheet && fresh
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
-          ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id) }),
+          ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id), check: { skill: args.kind === "skill_check" ? resolved.detail : null, tool: args.tool } }),
           ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
         ]
       : [];
@@ -293,6 +293,9 @@ export function handleRequestRoll(
         advantage: args.advantage ?? "none",
         dc: args.dc ?? null,
         reason: args.reason?.slice(0, 200) ?? "",
+        // The tool a check is made with, for the offers that read it again
+        // as the roll changes (after-roll.ts optionsForPending).
+        ...(args.tool ? { carry: { tool: args.tool } } : {}),
         parkedFor: "after_roll",
         thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaignId, sheet.userId) },
       });

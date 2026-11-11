@@ -2475,9 +2475,9 @@
   "clauses": [
    {
     "c": "Reroll a missed monk-weapon attack once per turn.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Unerring Accuracy: \"Rerolling one missed monk weapon attack a turn: the GM calls pc_attack again for it.\"): a reroll is a roll, so a gap of kind rule-missing, with no after-the-roll offer"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrAttackOffers (the card a missed attack waits on)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: unerring-accuracy"
    }
   ]
  },
@@ -2844,9 +2844,9 @@
   "clauses": [
    {
     "c": "Draconic Presence: when you fail a Charisma (Intimidation or Persuasion) check, a reaction rerolls it, and once this turns a failure into a success you can't do so again until a long rest.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts monk::Draconic Disciple: \"rerolling a failed Intimidation or Persuasion check are the GM's\"): a reroll is a roll, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrCheckOffers, src/lib/dm/mt-mr-offers.ts mrSpendAfterRoll (counter sub_draconic_presence)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: draconic-presence"
    },
    {
     "c": "Draconic Strike: your unarmed strikes can deal acid, cold, fire, lightning or poison damage instead of bludgeoning.",
@@ -3644,7 +3644,7 @@
    {
     "c": "(d6s, d8s from 5th level, d10s from 11th, d12s from 17th)",
     "is": "held",
-    "by": "src/lib/dm/mt-mr-spends.ts psionicEnergyDie (Psychic Teleportation)",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts psionicEnergyDie (Psychic Teleportation, src/lib/dm/mt-mr-spends.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psionic-energy-die"
    },
    {
@@ -3669,9 +3669,9 @@
   "clauses": [
    {
     "c": "Spend a die to turn a failed check with a proficient skill or tool into a success if the die closes the gap.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Psi-Bolstered Knack: \"A Psionic Energy die added to a failed proficient check: the GM rolls it\"): an after-the-roll die with no offer, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrCheckOffers, src/lib/dm/mt-mr-offers.ts mrSpendAfterRoll",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: psi-bolstered-knack"
    }
   ]
  },
@@ -3722,9 +3722,9 @@
   "clauses": [
    {
     "c": "Homing Strikes adds a die to a missed Psychic Blades attack, and Psychic Teleportation throws a blade to teleport yourself up to 10 times your die roll in feet.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Soul Blades: \"the GM rolls the die (the counter's) and moves the token\"): an attack roll's bonus and a move, a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrAttackOffers (Homing Strikes); src/lib/dm/mt-mr-spends.ts psychicTeleport",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: homing-strikes"
    }
   ]
  },
