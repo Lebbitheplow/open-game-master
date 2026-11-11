@@ -11,6 +11,7 @@
 import { lentRolls } from "@/lib/dm/genre-a-auras";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { recordSave } from "@/lib/dm/last-save";
+import { counterIntrusion } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -395,6 +396,9 @@ export function rollCharacterSave(
   if (from) {
     recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against);
   }
+  // A netrunner's Counter-Intrusion burns the caster of a spell they saved
+  // against (src/lib/dm/genre-a-cyberpunk-defenses.ts).
+  const intrusion = from && outcome.total >= dc && resists?.magical ? counterIntrusion(campaign, turn, sheet, from) : null;
   return {
     success: outcome.total >= dc,
     total: outcome.total,
@@ -408,6 +412,7 @@ export function rollCharacterSave(
       ...(moteLine ? [moteLine] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
       ...(helped ? [helped.line] : []),
+      ...(intrusion ? [intrusion] : []),
     ],
   };
 }

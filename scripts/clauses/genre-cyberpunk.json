@@ -323,11 +323,9 @@
      "k": "ice",
      "part": "trigger"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::ICE Pick#0",
-    "where": "src/lib/dm/authored-reactions.ts (ac_vs_hit answers any hit; the trigger the text names is not checked)",
-    "sev": "medium",
-    "observed": "ICE Pick answered a club, which is neither a program nor a spell"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts ICE Pick (ac_vs_hit, spellOnly), refused in src/lib/dm/authored-reactions.ts for a hit that was no spell's attack or missile; the Hand's card reads the same off the hit's view (src/lib/battlemap/hand-react.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::ICE Pick#0"
    },
    {
     "c": "+2 AC",
@@ -383,15 +381,12 @@
   "clauses": [
    {
     "c": "When you succeed on a save against a spell, deal 2d8 psychic damage to the caster",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "intrusion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Counter-Intrusion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-defenses.ts counterIntrusion, called where a creature's forced save lands (src/lib/dm/forced-save.ts rollCharacterSave): a made save against magic burns the creature for 2d8 psychic, no reaction and no counter",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Counter-Intrusion#0"
    }
   ]
  },

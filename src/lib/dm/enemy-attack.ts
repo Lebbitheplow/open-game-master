@@ -770,6 +770,9 @@ export function handleEnemyAttack(
       // Magic Weapons: its weapon attacks are magical; so is a spell attack,
       // and a blow the block prints as magical ("magical bludgeoning").
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // A spell's attack is a spell to what answers one (ICE Pick, The Mark
+      // Burns Back) and to a defence against spells: it was kept as magic only.
+      ...(attack.spellAttack ? { spell: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
     };

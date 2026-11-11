@@ -218,3 +218,59 @@ CYBER.feedback = async function feedback(t, run, feature) {
   eq(out.ok, true, `Feedback Loop after an area's damage (${out.error ?? "accepted"})`);
   eq(before - t.foeHp(scene.near.id), mod("cha"), "psychic damage dealt back to the creature that breathed");
 };
+
+// A foe that casts: Fire Bolt at +6 to hit and Burning Hands at DC 14.
+function foeCasts(t, scene) {
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 4 }, spells: [{ name: "Fire Bolt", level: 0 }, { name: "Burning Hands", level: 1 }] } } });
+}
+
+async function foeSpell(t, scene, spell, ...faces) {
+  t.foesTurn(scene);
+  t.kit.freshRound();
+  t.world.clearDice();
+  t.world.dice(...faces);
+  const out = await t.world.invoke("cast_at_player", { characterId: scene.holder.id, casterEnemyId: scene.near.id, spell });
+  t.world.clearDice();
+  return must(out, `the foe's ${spell}`).result;
+}
+
+// ICE Pick, "When a hostile program or spell targets you, reaction to add +2
+// AC": the foe's Fire Bolt on a 13 against AC 12 hits and the reaction turns
+// it (part "ac"); a club is neither a program nor a spell and is refused
+// with nothing spent (part "trigger"). Replaces the probe of
+// sweep-clauses-genre-a-named.mjs, which staged a club for the AC.
+CYBER.ice = async function ice(t, run, feature) {
+  const scene = await t.stage(feature);
+  const react = () => t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "ICE Pick" });
+  if (run.part === "ac") {
+    foeCasts(t, scene);
+    t.foesTurn(scene);
+    t.kit.freshRound();
+    t.world.clearDice();
+    // Two d20s: the foe shoots with a hostile creature within 5 feet.
+    t.world.dice(7, 7, 4);
+    const bolt = await t.world.invoke("enemy_attack", { enemyId: scene.near.id, targetCharacterId: scene.holder.id, spell: "Fire Bolt" });
+    t.world.clearDice();
+    must(bolt, "the foe's Fire Bolt");
+    if (t.hp(scene.holder.id) >= 100) throw new Error(`the staged Fire Bolt on a 13 did not hit: ${JSON.stringify(bolt.result).slice(0, 700)}`);
+    const out = await react();
+    eq(out.ok, true, `ICE Pick against a Fire Bolt on a 13 (${out.error ?? "accepted"})`);
+    eq(t.hp(scene.holder.id), 100, "a 13 against AC 12 + 2 misses, and the hit points come back");
+    return;
+  }
+  await t.clubs(scene, scene.holder, 16, 4);
+  eq((await react()).ok, false, "ICE Pick answered a club, which is neither a program nor a spell");
+};
+
+// "When you succeed on a save against a spell, deal 2d8 psychic damage to the
+// caster": a failed save against the foe's Burning Hands leaves the foe
+// unhurt; a made one burns it for 2d8 (two 4s).
+CYBER.intrusion = async function intrusion(t, run, feature) {
+  const scene = await t.stage(feature);
+  foeCasts(t, scene);
+  const before = t.foeHp(scene.near.id);
+  await foeSpell(t, scene, "Burning Hands", 1, 4, 4, 4, 4, 4);
+  eq(before - t.foeHp(scene.near.id), 0, "damage to the caster after a failed save");
+  await foeSpell(t, scene, "Burning Hands", 20, 4, 4, 4, 4, 4);
+  eq(before - t.foeHp(scene.near.id), 8, "psychic damage to the caster after a made save (2d8 on two 4s)");
+};

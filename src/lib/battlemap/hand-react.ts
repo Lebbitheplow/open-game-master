@@ -681,7 +681,7 @@ function subclassReactions(
       const answers =
         whose === "self"
           ? (does.kind === "reduce" && does.who !== "ally" && typed(does.types)) ||
-            does.kind === "ac_vs_hit" ||
+            (does.kind === "ac_vs_hit" && (!does.spellOnly || Boolean(hit.spell) || hit.source === "missile")) ||
             does.kind === "disadv_vs_hit" ||
             (does.kind === "resist_instance" && typed(does.types)) ||
             does.kind === "redirect" ||

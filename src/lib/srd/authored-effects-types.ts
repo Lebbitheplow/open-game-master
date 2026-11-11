@@ -577,8 +577,9 @@ export type ReactionDoes =
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
-  // `rangedOnly`: only against a ranged attack (Bullet Time).
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; rangedOnly?: boolean }
+  // `rangedOnly`: only against a ranged attack (Bullet Time). `spellOnly`:
+  // only against a spell's attack (ICE Pick, "a hostile program or spell").
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; rangedOnly?: boolean; spellOnly?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within

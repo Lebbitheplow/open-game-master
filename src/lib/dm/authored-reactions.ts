@@ -480,6 +480,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         return { error: `${reaction.name} answers a ranged attack, and ${hit.record.attack} was made in melee. Nothing was spent.`, refused: "rules" };
       }
       const swing = hit.record.swings[hit.index];
+      // "When a hostile program or spell targets you" (ICE Pick): a spell's
+      // attack or its missile, never a club.
+      if (does.spellOnly && hit.record.source !== "missile" && !swing.flags?.spell) {
+        return { error: `${reaction.name} answers a spell that targets ${covered.name}, and ${hit.record.attack} was no spell. Nothing was spent.`, refused: "rules" };
+      }
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
         const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta, [spentDie]);
