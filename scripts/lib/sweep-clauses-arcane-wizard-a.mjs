@@ -4,8 +4,6 @@
 import assert from "node:assert/strict";
 import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
 
-const DATA = "src/lib/srd/authored-effects-data*.ts";
-
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, hurt, roll, stage } = rig;
   const { friend, mage, drain, freeReactions, uses, rests } = shared;
@@ -23,7 +21,7 @@ export function probes(rig, shared) {
   rig.outfit("wizard", "School of Divination", { spells: ["Foresight", "Detect Thoughts", "Detect Magic"] });
   rig.outfit("wizard", "School of Enchantment", { spells: ["Hold Person", "Vicious Mockery"], cantrips: ["Vicious Mockery"] });
   rig.outfit("wizard", "School of Necromancy", { spells: ["Magic Missile", "Blight", "Ray of Sickness", "Fireball", "Animate Dead", "Cloudkill"] });
-  rig.outfit("wizard", "School of Transmutation", { spells: ["Polymorph"] });
+  rig.outfit("wizard", "School of Transmutation", { spells: ["Polymorph", "Jump", "Mage Armor"], cantrips: ["Message"] });
   const abj = () => holder("wizard", "School of Abjuration");
   const con = () => holder("wizard", "School of Conjuration");
   const div = () => holder("wizard", "School of Divination");
@@ -73,8 +71,16 @@ export function probes(rig, shared) {
     rig.refill(tra());
     world.patch(tra().id, { wildShape: null });
   }
+  // The benefit the transmuter's stone holds now, or null before it is made.
+  const stoneOf = (who) => /^Transmuter's Stone \((.+)\)$/.exec(sheet(who).features.find((feature) => feature.name.startsWith("Transmuter's Stone"))?.name ?? "")?.[1]?.toLowerCase() ?? null;
+  // The stone's first benefit is chosen freely out of a fight; a change needs
+  // a transmutation spell of 1st level or higher just cast (Jump).
   async function stone(option) {
     await plain();
+    if (stoneOf(tra()) && stoneOf(tra()) !== option.toLowerCase()) {
+      const cast = await call("use_spell_slot", { characterId: tra().id, spell: "Jump" });
+      assert.equal(cast.ok, true, cast.error);
+    }
     const out = await spend(tra(), "Transmuter's Stone", { variant: option });
     assert.equal(out.ok, true, out.error);
   }
@@ -670,12 +676,56 @@ export function probes(rig, shared) {
       await stone("Speed");
       assert.equal(await hurt(tra(), 10, "fire"), 10, "the stone's old gift goes when another is chosen");
     },
+    // The first benefit is chosen freely out of a fight; a change needs a
+    // transmutation spell of 1st level or higher just cast, in a fight or out,
+    // and each casting opens one change. Refusals change and spend nothing.
     "stone-change": async () => {
-      await stage(tra());
-      assert.equal((await call("cast_buff", { characterId: tra().id, spell: "Polymorph", targetCharacterIds: [tra().id], variant: "wolf" })).ok, true);
-      const out = await spend(tra(), "Transmuter's Stone", { variant: "Fire" });
-      world.patch(tra().id, { wildShape: null });
-      assert.equal(out.ok, true, `having just cast a transmutation spell of 4th level: ${String(out.error).slice(0, 140)}`);
+      const fresh = holder("wizard", "School of Transmutation", 20, {}, "stone");
+      const choose = (option) => spend(fresh, "Transmuter's Stone", { variant: option });
+      const cast = async (tool, args) => {
+        const out = await call(tool, { characterId: fresh.id, ...args });
+        assert.equal(out.ok, true, `${args.spell}: ${out.error}`);
+        return out;
+      };
+      const refused = async (option, why) => {
+        const before = stoneOf(fresh);
+        const out = await choose(option);
+        assert.equal(out.ok, false, why);
+        assert.equal(stoneOf(fresh), before, `${why}: the stone changed all the same`);
+        return String(out.error);
+      };
+      // Making the stone.
+      await stage(fresh);
+      await refused("Fire", "the stone's first benefit, in a fight");
+      await kit.endFight();
+      rig.refill(fresh);
+      assert.equal((await choose("Fire")).ok, true, "the stone's first benefit, out of a fight, with no spell cast");
+      assert.equal(stoneOf(fresh), "fire");
+      // Changing it.
+      assert.match(await refused("Speed", "a change with no spell cast"), /transmutation spell of level 1 or higher.*Nothing was spent/);
+      await cast("use_spell_slot", { spell: "Message" });
+      await refused("Speed", "a change after a transmutation cantrip");
+      await cast("cast_buff", { spell: "Mage Armor", targetCharacterIds: [fresh.id] });
+      await refused("Speed", "a change after an abjuration spell");
+      const jump = await cast("use_spell_slot", { spell: "Jump" });
+      assert.match(String(jump.result.stoneChange), /may change its benefit now/);
+      const changed = await choose("Speed");
+      assert.equal(changed.ok, true, `having just cast a transmutation spell of 1st level: ${String(changed.error).slice(0, 140)}`);
+      assert.deepEqual([stoneOf(fresh), await hurt(fresh, 10, "fire")], ["speed", 10], "[the stone's benefit, fire damage taken of 10] after the change");
+      await refused("Constitution", "a second change on the one casting");
+      // In a fight: no change without a casting, one with it, and the opening
+      // ends with the caster's turn.
+      await stage(fresh);
+      await refused("Cold", "a change in a fight with no spell cast");
+      await cast("use_spell_slot", { spell: "Jump" });
+      const midFight = await choose("Cold");
+      assert.equal(midFight.ok, true, `in a fight, having just cast a transmutation spell: ${String(midFight.error).slice(0, 140)}`);
+      assert.equal(stoneOf(fresh), "cold");
+      kit.freshTurn();
+      await cast("use_spell_slot", { spell: "Jump" });
+      rig.cycleTo(fresh);
+      await refused("Acid", "a change a round after the casting");
+      await kit.endFight();
     },
     "shapechanger-book": async () => {
       assert.ok(rig.features.subclassSpellsFor("wizard", "School of Transmutation", 10).includes("Polymorph"), "the spells the subclass adds at 10th level hold no Polymorph");
@@ -725,7 +775,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "stone-change": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Transmuter's Stone (the choose spend is fight: "out" and asks for no spell)`, note: "Looser and stricter than the text at once: out of a fight the benefit changes at will, in one it cannot change even on a transmutation spell.", fix: "A ruling, or tie the change to a transmutation spell of 1st level or higher." },
   };
   return { PROBES, KNOWN };
 }

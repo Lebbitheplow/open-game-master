@@ -25,6 +25,7 @@ import { healArea } from "@/lib/dm/authored-heal-area";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { commandCreature, commandedNote } from "@/lib/dm/command-undead";
+import { changeSpent } from "@/lib/dm/ar-ws-stone";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { d20Expression } from "@/lib/dice";
@@ -220,7 +221,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const features = sheet.features.map((feature) =>
         feature.name === owner.name ? { ...feature, name: `${owner.feature} (${option})` } : feature,
       );
-      return { patch: { features }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
+      // A change a casting opened spends its opening (ar-ws-stone.ts).
+      return { patch: { features, ...changeSpent(sheet, does) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
       const condition = conditionName(ctx, does);

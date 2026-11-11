@@ -754,8 +754,9 @@
    },
    {
     "c": "changeable when you cast a transmutation spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: stone-change"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: stone-change",
+    "by": "src/lib/dm/ar-ws-stone.ts (choose changeAfterCast transmutation 1): cast-guard.ts castSpell opens one change on a transmutation spell of 1st level or higher, authored-spends.ts refuses a change without it and lets one through in a fight. Ruling: the first benefit is chosen freely out of a fight; a change needs such a spell just cast, in a fight or out, and each casting opens one"
    }
   ]
  },

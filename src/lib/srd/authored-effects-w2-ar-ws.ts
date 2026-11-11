@@ -8,7 +8,11 @@
 // it, so nothing the earlier rounds built is dropped.
 //
 // Pure.
+import { AUTHORED_DATA_B2 } from "@/lib/srd/authored-effects-data3";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+
+// The stone's row as the earlier table holds it (its options and effects).
+const STONE = AUTHORED_DATA_B2["wizard::Transmuter's Stone"];
 
 export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
   // "Add your proficiency bonus to ability checks made as part of an
@@ -85,5 +89,16 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
         },
       },
     ],
+  },
+  // "changeable when you cast a transmutation spell": the stone's first
+  // benefit is chosen out of a fight as before, and a change needs a
+  // transmutation spell of 1st level or higher just cast, in a fight or out
+  // (src/lib/dm/ar-ws-stone.ts, with the ruling). The earlier row, spread
+  // here whole, let it change at will out of a fight and never in one.
+  "wizard::Transmuter's Stone": {
+    ...STONE,
+    spends: (STONE.spends ?? []).map((spend) =>
+      spend.does.kind === "choose" ? { ...spend, does: { ...spend.does, changeAfterCast: { school: "transmutation", minLevel: 1 } } } : spend,
+    ),
   },
 };

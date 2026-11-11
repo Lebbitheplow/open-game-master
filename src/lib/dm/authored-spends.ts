@@ -29,6 +29,7 @@ import { answerKey } from "@/lib/dm/last-hit";
 import { curseHealTakenBack } from "@/lib/dm/master-of-hexes";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
+import { choiceChange } from "@/lib/dm/ar-ws-stone";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -198,7 +199,13 @@ export function authoredFeatureSpend(
   }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
-  if (spend.fight === "out" && inFight) {
+  // Transmuter's Stone: a change of its benefit needs a transmutation spell
+  // just cast, and is then made in a fight too (ar-ws-stone.ts).
+  const change = choiceChange(sheet, spend, held, args.variant);
+  if (change && "error" in change) {
+    return change;
+  }
+  if (spend.fight === "out" && inFight && !change) {
     return { error: `${spend.name} is chosen outside a fight, when a rest ends, not in the middle of one.`, refused: "rules" };
   }
   if (spend.oncePer && sheet.conditions.some((entry) => textKey(entry) === textKey(spend.oncePer!.marker))) {

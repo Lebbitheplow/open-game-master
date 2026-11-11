@@ -26,6 +26,7 @@
 // mutations.ts (which imports it).
 
 import { castRefills } from "@/lib/dm/ar-ws-transposition";
+import { openStoneChange } from "@/lib/dm/ar-ws-stone";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -820,6 +821,14 @@ export function castSpell(
   } else if (typeof facts?.castingTime === "number" && !completing) {
     advanceClock(campaign.id, facts.castingTime, "minutes");
     result.castingTime = `${describeCastingTime(facts.castingTime)} of casting; the clock moved on.`;
+  }
+
+  // Transmuter's Stone: a transmutation spell of 1st level or higher opens one
+  // change of the stone's benefit, laid now that the casting's own time has
+  // gone by (ar-ws-stone.ts).
+  const stoneChange = input.storing ? null : openStoneChange(campaign, sheet.id, { school: spellSchoolFor(spell, authors), level: facts?.level ?? slotLevel ?? 0 });
+  if (stoneChange) {
+    result.stoneChange = stoneChange;
   }
 
   const concentrates = !input.storing && (input.concentration === true || facts?.concentration === true);

@@ -359,7 +359,11 @@ export type SpendDoes =
   // renamed "Feature (Option)", which the passive effects read.
   // `feature`: the feature whose option is renamed, when it is another one
   // than the spend's own (Waxing and Waning changes Lunar Embodiment's phase).
-  | { kind: "choose"; options: string[]; feature?: string }
+  // `changeAfterCast`: the first choice follows the spend's own rules; a
+  // change needs a spell of this school and level just cast by the holder,
+  // in a fight or out, and each casting opens one (Transmuter's Stone,
+  // src/lib/dm/ar-ws-stone.ts).
+  | { kind: "choose"; options: string[]; feature?: string; changeAfterCast?: { school: string; minLevel: number } }
   // One enemy saves or suffers: damage (per unit spent when `perUnit`),
   // a condition, or a note on movement the DM makes on the board.
   | {
