@@ -315,7 +315,8 @@ export function authoredOnHit(
   campaign: Campaign,
   // `melee` unknown (a parked roll): read off the board. `weapon` false for
   // a spell attack, which lays no mark.
-  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean },
+  // `spell`: the spell a spell attack killed with (ar-ws-harvest.ts killingSpell).
+  input: { encounter: Encounter; sheet: CharacterSheet; enemy: EncounterEnemy; melee?: boolean; weapon?: boolean; weaponName?: string; dead: boolean; spell?: { level: number; school?: string | null } },
 ): string[] {
   const lines: string[] = [];
   const sheet = getSheetById(input.sheet.id) ?? input.sheet;
@@ -360,7 +361,7 @@ export function authoredOnHit(
     }
   }
   if (input.dead) {
-    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false));
+    lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false, input.spell));
   }
   return lines;
 }

@@ -35,6 +35,7 @@ import { holdGasesBack } from "@/lib/battlemap/zones-walls";
 import { isQuake, quakeFissures, quakeShake } from "@/lib/dm/zone-quake";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
+import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -169,6 +170,8 @@ function strike(
         // The area's caster is whose damage it is (acting-party.ts).
         lines.push(withActor({ kind: zone.casterKind === "pc" ? "sheet" : "enemy", ref: zone.casterId }, () => hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane)));
         dealt = Math.max(0, before - (getEnemy(enemy.id)?.currentHp ?? before));
+        // A character's area killed it (Grim Harvest, ar-ws-harvest.ts).
+        lines.push(...(zone.casterKind === "pc" && !row.mundane ? runningSpellKill(campaign, encounter, enemy, zone.casterId, { spell: zone.runsAs ?? zone.spell, slotLevel: zone.slotLevel }) : []));
       }
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;

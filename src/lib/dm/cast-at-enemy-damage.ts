@@ -14,7 +14,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { rollCard } from "@/lib/dm/action-common";
 import { rollAgainst } from "@/lib/roll-labels";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
-import { authoredOnKill } from "@/lib/dm/authored-hooks";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
 import { splitDamageExpression, typedRollExpression, typedShares, type SpellDicePart } from "@/lib/dm/aoe-parts";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
@@ -44,6 +44,9 @@ export function landSpellDamage(input: {
   damageExpression: string;
   damageType: string | undefined;
   spellLevel: number;
+  // The slot the casting spent: the level the spell is of for a kill
+  // (Grim Harvest, ar-ws-harvest.ts).
+  slotLevel?: number | null;
   halfOnSave: boolean;
   saved: boolean;
   base: Record<string, unknown>;
@@ -177,8 +180,8 @@ export function landSpellDamage(input: {
     if (blessing) {
       base.darkOnesBlessing = blessing;
     }
-    // Touch of Death, Keeper of Souls on the kill (authored-hooks.ts).
-    const onKill = applied.dead && encounter ? authoredOnKill(campaign, encounter, enemy, sheet.id, false, { level: spellLevel, school: spellSchoolFor(spell, authors) }) : [];
+    // Grim Harvest, Keeper of Souls on the kill (ar-ws-harvest.ts).
+    const onKill = applied.dead && encounter ? spellKill(campaign, encounter, enemy, sheet.id, { spell, spellLevel, slotLevel: input.slotLevel }) : [];
     if (onKill.length) {
       base.subclassFeatures = onKill;
     }

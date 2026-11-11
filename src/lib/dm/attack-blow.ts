@@ -20,6 +20,7 @@ import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
+import { killingSpell } from "@/lib/dm/ar-ws-harvest";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
@@ -208,7 +209,7 @@ export function landSwingBlow(
   // the blow found it.
   const live = getActiveEncounter(campaign.id) ?? encounter;
   const authored = live
-    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead })
+    ? authoredOnHit(campaign, { encounter: live, sheet, enemy, ...(record.ranged !== undefined ? { melee: !record.ranged } : {}), weapon: record.weaponAttack ?? !record.spell, weaponName: record.weapon, dead, ...(dead && record.spell ? { spell: killingSpell(campaign, { spell: record.spell, slotLevel: record.spellSlot }) } : {}) })
     : [];
   if (authored.length) {
     out.subclassFeatures = authored;

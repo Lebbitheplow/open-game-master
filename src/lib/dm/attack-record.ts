@@ -95,6 +95,9 @@ export type AttackRecord = PendingAttack & {
   hitSpent?: string[];
   hitClaims?: string[];
   spell?: string;
+  // The slot that spell attack spent: the level the spell is of for a kill
+  // (Grim Harvest, ar-ws-harvest.ts).
+  spellSlot?: number;
   stunShot?: boolean;
   maneuver?: ManeuverRider;
   typeFeat?: DamageTypeFeat;
@@ -198,6 +201,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(plan.hitSpent.length ? { hitSpent: plan.hitSpent } : {}),
     ...(plan.hitClaims.length ? { hitClaims: plan.hitClaims } : {}),
     ...(plan.kind === "spell" && plan.args.spell ? { spell: plan.args.spell } : {}),
+    ...(plan.kind === "spell" && plan.spellSlotLevel ? { spellSlot: plan.spellSlotLevel } : {}),
     ...(critGear.suffix ? { critGear } : {}),
     ...(extras.stunShot ? { stunShot: true } : {}),
     ...(rider && plan.maneuver

@@ -22,7 +22,7 @@ export function probes(rig, shared) {
   rig.outfit("wizard", "School of Conjuration", { spells: ["Fog Cloud", "Misty Step", "Hold Person"] });
   rig.outfit("wizard", "School of Divination", { spells: ["Foresight", "Detect Thoughts", "Detect Magic"] });
   rig.outfit("wizard", "School of Enchantment", { spells: ["Hold Person", "Vicious Mockery"], cantrips: ["Vicious Mockery"] });
-  rig.outfit("wizard", "School of Necromancy", { spells: ["Magic Missile", "Blight", "Ray of Sickness", "Fireball", "Animate Dead"] });
+  rig.outfit("wizard", "School of Necromancy", { spells: ["Magic Missile", "Blight", "Ray of Sickness", "Fireball", "Animate Dead", "Cloudkill"] });
   rig.outfit("wizard", "School of Transmutation", { spells: ["Polymorph"] });
   const abj = () => holder("wizard", "School of Abjuration");
   const con = () => holder("wizard", "School of Conjuration");
@@ -497,11 +497,31 @@ export function probes(rig, shared) {
     },
     "harvest-upcast": async () => {
       assert.equal(await missile(3), 6, "Magic Missile cast with a 3rd-level slot is a 3rd-level spell");
+      // The slot counts on the other two paths a spell kills by as well.
+      const area = await harvest("aoe_damage", (enemy) => ({ casterCharacterId: nec().id, spell: "Fireball", level: 5, enemyIds: [enemy.id] }), [1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
+      const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness", level: 2 }), [15, 5, 5, 5]);
+      assert.deepEqual([area, attack], [10, 6], "[Fireball from a 5th-level slot, Ray of Sickness (necromancy) from a 2nd-level slot]");
     },
     "harvest-paths": async () => {
       const area = await harvest("aoe_damage", (enemy) => ({ casterCharacterId: nec().id, spell: "Fireball", enemyIds: [enemy.id] }), [1, 6, 6, 6, 6, 6, 6, 6, 6]);
       const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness" }), [15, 5, 5]);
       assert.deepEqual({ "Fireball through aoe_damage": area, "Ray of Sickness through pc_attack": attack }, { "Fireball through aoe_damage": 6, "Ray of Sickness through pc_attack": 3 }, "hit points back from a kill");
+      // A running spell kills on a later turn: the creature starts its turn in
+      // the necromancer's Cloudkill (5th level, conjuration) and fails its save.
+      const [enemy] = await stage(nec());
+      kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+      kit.place(enemy.id, 12, 5);
+      const cloud = await call("aoe_damage", { casterCharacterId: nec().id, spell: "Cloudkill", enemyIds: [enemy.id], x: 15, y: 5 }, [1, 8, 8, 8, 8, 8]);
+      assert.equal(cloud.ok, true, cloud.error);
+      kit.setEnemy(enemy.id, { currentHp: 1 });
+      world.patch(nec().id, { currentHp: 40 });
+      // Every hero of the world is in the order: the round is ended to the
+      // necromancer's next turn, the creature's turn falling inside it.
+      world.dice(...Array(60).fill(1));
+      rig.cycleTo(nec());
+      world.clearDice();
+      assert.ok(foe(enemy).currentHp <= 0, "the creature was to die as its turn started in the cloud");
+      assert.equal(sheet(nec()).currentHp, 50, "a kill by the cloud on the creature's own turn: twice the 5th level");
     },
     "thralls-learn": async () => {
       assert.ok(rig.features.subclassSpellsFor("wizard", "School of Necromancy", 6).includes("Animate Dead"), "the spells the subclass teaches at 6th level hold no Animate Dead");
@@ -624,8 +644,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "harvest-upcast": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-hooks.ts authoredOnKill (reads the spell's own level, not the slot it was cast with)", note: "A spell cast with a higher slot is of that level (SRD 5.1, Casting a Spell at a Higher Level).", fix: "Pass the slot level to the harvest." },
-    "harvest-paths": { severity: "medium", kind: "path-parity", where: "src/lib/dm/aoe-damage.ts and src/lib/dm/pc-attack*.ts (a spell's kill there never reaches authoredOnKill; only cast_at_enemy does)", note: "Fireball, the necromancer's commonest kill, and every attack-roll spell restore nothing.", fix: "Call the kill hook with the spell from aoe_damage and from pc_attack's spell attacks." },
     "thralls-extra": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (Animate Dead raises one creature whoever casts it)", note: `The row is narrated ("the GM writes those onto their stat blocks"), yet the server makes the skeleton itself.`, fix: "Raise one more for a holder of Undead Thralls." },
     "thralls-sturdier": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/summon-cast.ts (authoredSummonHitPoints has no row for Undead Thralls)", note: "The stored text gives no number for the hit points (\"extra hit points\"); the feature it condenses gives the wizard's level. The proficiency bonus on the undead's weapon damage is unread as well.", fix: "A summon_hp row and a damage bonus for the necromancer's undead; state the number in the text." },
     "inured-maximum": { severity: "low", kind: "rule-missing", where: "src/lib/dm/effect-tools.ts set_effect field maxHp (and any creature ability that lowers a maximum)", note: "Reached by the GM's own hand here; the feature-effects row for Inured to Undeath holds the resistance only.", fix: "Refuse a lowering of the hit point maximum for a holder." },

@@ -52,6 +52,7 @@ import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
 import { freeFromCorpse, noteBlowFromInside } from "@/lib/dm/swallow";
 import { withActor } from "@/lib/dm/acting-party";
+import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 
 const FEET_PER_TILE = 5;
 
@@ -151,6 +152,7 @@ function auraHits(campaign: Campaign, encounter: Encounter, enemy: EncounterEnem
       );
       if (amount > 0) {
         lines.push(withActor({ kind: "sheet", ref: caster.id }, () => hurtEnemy(campaign, encounter, live, amount, ring.type, aura.name)));
+        lines.push(...runningSpellKill(campaign, encounter, live, caster.id, { spell: aura.name, slotLevel: slot }));
       }
     }
   }
@@ -283,6 +285,7 @@ function turnStartDamage(campaign: Campaign, encounter: Encounter, enemy: Encoun
     }
     const rolled = rollCard(campaign, null, hold.casterSheetId, "damage", rollAgainst(hold.spell, live.displayName), hold.dice, hold.attacker).total;
     lines.push(withActor(hold.casterSheetId ? { kind: "sheet", ref: hold.casterSheetId } : null, () => hurtEnemy(campaign, encounter, live, rolled, hold.type, hold.spell)));
+    lines.push(...runningSpellKill(campaign, encounter, live, hold.casterSheetId, { spell: hold.spell }));
   }
 }
 

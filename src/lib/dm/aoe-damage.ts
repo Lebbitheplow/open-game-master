@@ -59,6 +59,7 @@ import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
 import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -387,7 +388,7 @@ export function handleAoeDamage(
     plan = planned;
     // Prismatic Spray rolls a ray for each creature (prismatic.ts).
     if (isPrismaticSpray(planned.runsAs ?? planned.spell)) {
-      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
+      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, slotLevel: planned.slotLevel, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
       return { ok: true, spell: planned.spell, caster: planned.caster.name, dc: planned.dc, saveAbility: "dex", results, ...(planned.corrections.length ? { corrected: planned.corrections } : {}), ...(skippedDead.length ? { skippedDead } : {}) };
     }
     // Limited Magic Immunity (the rakshasa): the area washes over it.
@@ -719,6 +720,12 @@ export function handleAoeDamage(
           plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistance: true } : {}) } : undefined,
         ),
       );
+    }
+    // A character's spell killed it: Grim Harvest and the features that answer
+    // any kill (ar-ws-harvest.ts).
+    const onKill = plan && row.dead ? spellKill(campaign, encounter, enemy, plan.caster.id, { spell: plan.spell, spellLevel: plan.spellLevel, slotLevel: plan.slotLevel }) : [];
+    if (onKill.length) {
+      row.subclassFeatures = onKill;
     }
     // What the failure cost, so legendary_resist can settle it as a success
     // (src/lib/dm/legendary-tools.ts): the conditions and the hit points a

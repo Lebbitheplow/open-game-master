@@ -522,6 +522,7 @@ export function handleCastAtEnemy(
         damageExpression,
         damageType,
         spellLevel,
+        slotLevel,
         halfOnSave,
         saved,
         base,

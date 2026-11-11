@@ -589,13 +589,15 @@
    },
    {
     "c": "killing a creature with a spell of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-paths"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-paths",
+    "by": "src/lib/dm/ar-ws-harvest.ts spellKill and killingSpell: every path a character's spell kills by names the spell to authored-hooks.ts authoredOnKill (cast-at-enemy-damage.ts, aoe-damage.ts, and attack-blow.ts through authoredOnHit for pc_attack's spell attacks)"
    },
    {
     "c": "restores twice the spell's level in hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-upcast"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: harvest-upcast",
+    "by": "src/lib/dm/ar-ws-harvest.ts killingSpell. Ruling: the spell's level is the level it was cast at (SRD 5.1, Casting a Spell at a Higher Level: the spell assumes the higher level for that casting); a cantrip is never of 1st level"
    },
    {
     "c": "three times for necromancy spells",
