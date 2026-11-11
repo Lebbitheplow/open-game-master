@@ -24,7 +24,6 @@ export function probes(rig, shared) {
   const condition = await0(() => import("../../src/lib/dm/condition-logic.ts"));
   const training = await0(() => import("../../src/lib/srd/subclass-training.ts"));
   const speedOf = async (who) => (await condition()).effectiveSpeed(sheet(who).conditions, rig.srd.speedFor(sheet(who)));
-  const d20s = (out) => out.rolled.filter((die) => die.sides === 20).length;
   // The Hand's card of that name as the page deals it on the holder's own turn.
   const handOf = await0(async () => ({ ...(await import("../../src/lib/battlemap/hand.ts")), ...(await import("../../src/lib/battlemap/hand-table.ts")), ...(await import("../../src/lib/db/encounter-view.ts")) }));
   async function card(who, name) {

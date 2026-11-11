@@ -9,7 +9,7 @@
 //
 // Pure: the row in, the words and the numbers out.
 
-import { findNamed, textKey } from "@/lib/language/text-logic";
+import { findNamed } from "@/lib/language/text-logic";
 import { isWorn } from "@/lib/srd/armor";
 import { isWorkshopRow, type RowItem } from "@/lib/srd/item-row";
 import { matchMagicItem } from "@/lib/srd/magic-items";

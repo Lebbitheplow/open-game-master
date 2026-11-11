@@ -9,7 +9,7 @@ const DATA = "src/lib/srd/authored-effects-data*.ts";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, drain, freeReactions, uses, rests, buysAnother } = shared;
+  const { friend, drain, uses, rests, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
   rig.outfit("sorcerer", "Divine Soul", { spells: ["Cure Wounds"] });
   rig.outfit("sorcerer", "Wild Magic", { spells: ["Burning Hands"], cantrips: ["Poison Spray", "Fire Bolt"] });
