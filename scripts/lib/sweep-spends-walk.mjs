@@ -233,6 +233,23 @@ async function step(rig, scene, name, notes) {
       world.patch(holder, { equipment: shield(true) });
       return out;
     }
+    case "the holder's spell healed them": {
+      // A healing spell's dice through the real heal path (heal-spell.ts
+      // notes the roll: src/lib/dm/ar-ws-empowered-healing.ts), for a spend
+      // that rolls them again (Empowered Healing). The holder is hurt, and
+      // given Cure Wounds and a slot: the setting, not the thing under test.
+      // A 2 on the d8 is a die worth rolling again.
+      const casting = world.sheet(holder).spellcasting;
+      if (!casting) return { ok: false, error: "the holder casts no spells" };
+      const slots = { ...casting.slots, 1: { max: Math.max(1, casting.slots?.[1]?.max ?? 0), used: 0 } };
+      const gear = world.sheet(holder).equipment;
+      const shield = (equipped) => gear.map((item) => (item.name === "Shield" ? { ...item, equipped } : item));
+      world.patch(holder, { currentHp: Math.max(1, world.sheet(holder).currentHp - 20), equipment: shield(false), spellcasting: { ...casting, slots, prepared: [...new Set([...(casting.prepared ?? []), "Cure Wounds"])], known: [...new Set([...(casting.known ?? []), "Cure Wounds"])] } });
+      world.dice(2);
+      const out = await world.invoke("heal", { characterId: holder, casterId: holder, spell: "Cure Wounds" });
+      world.patch(holder, { equipment: shield(true) });
+      return out;
+    }
     case "the holder killed a foe":
       kit.setEnemy(scene.near.id, { maxHp: 300, currentHp: 1 });
       return swing([18, 5]);

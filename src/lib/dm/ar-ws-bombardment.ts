@@ -27,7 +27,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { rollExpression, type DiceTerm, type RollResult } from "@/lib/dice";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { rollCard } from "@/lib/dm/roll-card";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -91,7 +91,9 @@ export function spellBombardment(input: {
     markFight(encounter.id, turnMark(sheet.id), stamp);
   }
   const expression = `1d${die.sides}`;
-  const extra = (input.card === false ? rollExpression(expression) : rollCard(campaign, input.turn, sheet.id, "damage", `${SPELL_BOMBARDMENT} (${input.spell})`, expression, sheetAttacker(sheet))).total;
+  // The die's own card is the feature's, not a second damage roll of the
+  // spell: the spell's card keeps the dice its Hand card shows.
+  const extra = (input.card === false ? rollExpression(expression) : rollCard(campaign, input.turn, sheet.id, "custom", `${SPELL_BOMBARDMENT} (${input.spell})`, expression, null)).total;
   return {
     outcome: withExplodedDie(outcome, die.term, die.sides, extra),
     extra,

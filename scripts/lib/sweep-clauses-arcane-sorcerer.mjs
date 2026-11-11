@@ -6,7 +6,6 @@ import assert from "node:assert/strict";
 import { MOD, prof } from "./sweep-clauses-arcane.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
-const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;

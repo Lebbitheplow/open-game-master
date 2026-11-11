@@ -25,6 +25,7 @@
 //
 // Pure: no database.
 
+import type { RollArgs } from "@/lib/dm/roll-args";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export const TRANCE_OF_ORDER = "trance of order";
@@ -61,7 +62,7 @@ const TRANCE_NOTE = "Trance of Order: a d20 of 9 or lower counts as 10";
 // What resolveRollExpression answers, floored: the kinds that are a d20 of
 // the character's own (never damage or a custom roll), with the note the
 // roll's card shows.
-export function tranceResolved<T extends object>(sheet: Tranced, kind: string, resolved: T): T {
+export function tranceResolved<T extends object>(sheet: Tranced, kind: RollArgs["kind"], resolved: T): T {
   if (kind === "damage" || kind === "custom" || !("expression" in resolved) || typeof resolved.expression !== "string") {
     return resolved;
   }

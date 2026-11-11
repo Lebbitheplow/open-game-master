@@ -84,8 +84,10 @@ export async function tableRows(rig) {
       ...preyOf(item).map((mark) => `mark: ${mark}`),
       ...markedDeathOf(item).map((mark) => `the creature under ${mark} died`),
       ...(item?.afterSpellDamage ? ["the holder's spell hurt the foe"] : []),
+      // Empowered Healing answers a healing spell's dice rolled this turn.
+      ...(does?.kind === "reroll_heal" ? ["the holder's spell healed them"] : []),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
-      ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
+      ...(does?.kind === "restore" || does?.kind === "wild_surge" ? [`pool down: ${does.pool}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];
