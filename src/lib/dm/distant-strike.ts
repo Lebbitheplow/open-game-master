@@ -4,7 +4,8 @@
 // teleports to that square first (pc-attack.ts asks this). Before this the
 // teleport was the GM's to make, and pc_attack refused a creature 15 feet
 // off. Nothing here refuses: a square or none.
-import { getBattleMapForEncounter, getTokenByRef, placeToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
+import { placeTeleported } from "@/lib/dm/teleport-place";
 import { listEnemies } from "@/lib/db/encounters";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { footprintForSize } from "@/lib/battlemap/footprint";
@@ -37,7 +38,7 @@ export function distantStrikeTeleport(campaignId: string, encounterId: string, s
   if (!map || !token) {
     return "";
   }
-  placeToken(token.id, square.x, square.y);
+  placeTeleported(campaignId, token, square);
   publishFx(campaignId, planTeleportFx({ from: { x: token.x, y: token.y }, to: square, tokenId: token.id }));
   publishBattleMapUpdate(campaignId);
   return `Distant Strike: ${token.name} teleports to (${square.x},${square.y}) before the attack.`;

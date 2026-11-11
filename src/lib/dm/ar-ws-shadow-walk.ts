@@ -22,7 +22,8 @@
 //
 // Called by authored-spend-effects.ts for every spend of kind teleport.
 
-import { getBattleMapForEncounter, getTokenByRef, placeToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
+import { placeTeleported } from "@/lib/dm/teleport-place";
 import { getActiveBoard } from "@/lib/db/encounters";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { TILE_FEET } from "@/lib/battlemap/types";
@@ -54,7 +55,7 @@ export function jumpToSquare(ctx: SpendContext, does: Extract<SpendDoes, { kind:
   }
   const from = { x: token.x, y: token.y };
   const feet = Math.max(Math.abs(x - from.x), Math.abs(y - from.y)) * TILE_FEET;
-  placeToken(token.id, x, y);
+  placeTeleported(ctx.campaign.id, token, { x, y });
   publishBattleMapUpdate(campaign.id);
   publishFx(campaign.id, planTeleportFx({ from, to: { x, y }, tokenId: token.id }));
   return { result: { moved: `${sheet.name} goes ${feet} feet to (${x},${y})${does.note ? `, ${does.note}` : ""}. No movement was spent; the board already shows it.` } };

@@ -16,7 +16,7 @@ import { blocksMove, tileAt, tileIndex, TILE_FEET } from "@/lib/battlemap/types"
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { publishFx } from "@/lib/dm/fx";
-import { recordTeleport } from "@/lib/dm/last-save";
+import { placeTeleported } from "@/lib/dm/teleport-place";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
@@ -69,10 +69,7 @@ export function planFeatureMove(
     go: () => {
       const from = { x: token.x, y: token.y };
       if (input.teleport) {
-        placeToken(token.id, input.square.x, input.square.y);
-        if (token.refId) {
-          recordTeleport(campaign.id, { id: token.refId, name: token.name }, from, token.kind === "enemy");
-        }
+        placeTeleported(campaign.id, token, input.square);
         publishFx(campaign.id, planTeleportFx({ from, to: input.square, tokenId: token.id }));
       } else {
         // Carried, not walked: the turn's movement is not spent.
@@ -83,7 +80,9 @@ export function planFeatureMove(
         const moved = getTokenByRef(map.id, input.refId);
         const beside = moved ? openSquaresBeside(board.id, map, friend, moved, 1)[0] : undefined;
         if (beside) {
-          placeToken(friend.id, beside.x, beside.y);
+          // Brought along by a teleport, it is on record as teleported too.
+          if (input.teleport) placeTeleported(campaign.id, friend, beside);
+          else placeToken(friend.id, beside.x, beside.y);
           publishFx(campaign.id, planTeleportFx({ from: { x: friend.x, y: friend.y }, to: beside, tokenId: friend.id }));
           lines.push(`${friend.name} comes along to (${beside.x},${beside.y}).`);
         } else {

@@ -23,7 +23,8 @@
 // cast any more. A cantrip refills nothing: the feature it condenses says "a
 // conjuration spell of 1st level or higher".
 
-import { getBattleMapForEncounter, getTokenByRef, placeToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
+import { placeTeleported } from "@/lib/dm/teleport-place";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveBoard } from "@/lib/db/encounters";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
@@ -59,8 +60,8 @@ export function planSwap(campaign: Campaign, sheet: CharacterSheet, target: Char
   return {
     apply: () => {
       const [from, to] = [{ x: mine.x, y: mine.y }, { x: theirs.x, y: theirs.y }];
-      placeToken(mine.id, to.x, to.y);
-      placeToken(theirs.id, from.x, from.y);
+      placeTeleported(campaign.id, mine, to);
+      placeTeleported(campaign.id, theirs, from);
       publishBattleMapUpdate(campaign.id);
       publishFx(campaign.id, planTeleportFx({ from, to, tokenId: mine.id }));
       publishFx(campaign.id, planTeleportFx({ from: to, to: from, tokenId: theirs.id }));
