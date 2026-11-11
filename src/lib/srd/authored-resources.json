@@ -1419,6 +1419,18 @@
    "guidance": "A wizard spell cast from the manifested mind's space: a proficiency-bonus number a day. Spend one with use_resource 'Manifest Mind casting' as the spell is cast."
   },
   {
+   "id": "sub_awakened_spellbook",
+   "displayName": "Awakened Spellbook",
+   "match": [
+    "awakened spellbook"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "long",
+   "action": "none",
+   "guidance": "Once per long rest: the next ritual the wizard casts from their spellbook takes its own casting time, without the 10 extra minutes (in a fight, a ritual cast with an action takes effect at once). Spend it before the ritual; the server skips the minutes. The feature's other half needs no use: a wizard spell cast with a slot may deal a damage type found in another spell of the slot's level in the book, named in cast_at_enemy's damageType or aoe_damage's type."
+  },
+  {
    "id": "sub_master_scrivener",
    "displayName": "Master Scrivener",
    "match": [

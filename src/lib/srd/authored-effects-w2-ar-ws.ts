@@ -70,4 +70,17 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     counter: "sub_master_scrivener",
     spends: [{ name: "Master Scrivener", pool: { id: "sub_master_scrivener" }, action: "none", fight: "out", does: { kind: "scribe_scroll", minLevel: 1, maxLevel: 2 } }],
   },
+  // "once per long rest you can cast a ritual spell from the book at its
+  // normal casting time rather than adding 10 minutes": the use lays a mark
+  // the next ritual from the book spends (src/lib/dm/ar-ws-awakened.ts, read by
+  // the one cast guard). "you can change its damage type to one found in
+  // another spell in your book of the slot's level": the same module, asked by
+  // the guard for the type the cast tools were given. The earlier row left
+  // both to the GM.
+  "wizard::Awakened Spellbook": {
+    subclass: "Order of Scribes",
+    counter: "sub_awakened_spellbook",
+    heldBy: { file: "src/lib/dm/cast-guard.ts", call: "awakenedDamageType(" },
+    spends: [{ name: "Awakened Spellbook", pool: { id: "sub_awakened_spellbook" }, action: "none", does: { kind: "buff", condition: "swift ritual", rounds: 4800, untilLongRest: true } }],
+  },
 };

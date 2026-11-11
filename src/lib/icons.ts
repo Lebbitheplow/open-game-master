@@ -59,6 +59,9 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/dragon-wings": { kind: "feature", slug: "wings-unfurled" },
   "feature/draconic-presence": { kind: "spell", slug: "fear" },
   "feature/elemental-affinity": { kind: "spell", slug: "protection-from-energy" },
+  // A Scribe's Awakened Spellbook (its ritual use, authored-effects-w2-ar-ws.ts)
+  // wears the painting of the same book's mind.
+  "feature/awakened-spellbook": { kind: "feature", slug: "manifest-mind" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {
