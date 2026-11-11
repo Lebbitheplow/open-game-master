@@ -98,3 +98,10 @@ GENRE_A_CYBERPUNK.push(
     spends: [{ name: "Deus in Machina", pool: { id: "cyberpunk_deus_in_machina" }, action: "none", does: { kind: "buff", condition: "deus in machina", rounds: 10 } }],
   }),
 );
+
+// "1/short rest, reroll a failed CHA-based check."
+GENRE_A_CYBERPUNK.push(
+  counted("fixer", "Grease the Wheels", "cyberpunk_grease_the_wheels", {
+    spends: [{ name: "Grease the Wheels", pool: { id: "cyberpunk_grease_the_wheels" }, action: "none", does: { kind: "cyber_spend", what: "grease" } }],
+  }),
+);

@@ -20,7 +20,7 @@
     "lib/dm/genre-a-cyberpunk-spends.ts#whole": [["identity",1,"a condition by its keyed name on both sides"]],
     "lib/dm/genre-a-cyberpunk-spends.ts#fallback": [["key",1,"the rigger's first drone by sheet id when the call names none: \"one drone\""]],
     "lib/dm/genre-a-cyberpunk-spends.ts#first": [["key",1,"a drone of the rigger by sheet id"]],
-    "lib/dm/genre-a-cyberpunk-spends.ts#partial": [["parse",1,"an SRD weapon's damage line cut into its dice and type"]],
+    "lib/dm/genre-a-cyberpunk-spends.ts#partial": [["parse",3,"an SRD weapon's damage line cut into its dice and type; the skill or ability a check card the engine wrote names"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],
     "lib/battlemap/hand-attack-lines.ts#partial": [["key", 1, "the once-per-turn rider keys the engine marks (pc-attack-damage.ts claimOncePerTurnRiders)"]],

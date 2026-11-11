@@ -4,6 +4,7 @@
 // sweep-clauses-genre-a-probes.mjs (an assertion is the rule not held, any
 // other throw is the probe's setup breaking).
 import { must, eq } from "./sweep-clauses-genre-a.mjs";
+import { TRAINED } from "./enforce-combat.mjs";
 
 const key = (name) => name.toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
 // A caster of the class's own ability, Fire Bolt known, two slot levels.
@@ -148,4 +149,21 @@ CYBER.rend = async function rend(t, run, feature) {
   const first = await burn();
   const second = await burn();
   eq(`${first}/${second}`, "18/1", "Burning Hands with the mark, then without (the dice show 1s; the foe saves at 20 for half)");
+};
+
+// "reroll a failed CHA-based check": refused with no failed check; after a
+// Persuasion check fails (a 2), the spend rolls it again (a 20) and it holds.
+CYBER.grease = async function grease(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { proficiencies: { ...TRAINED, skills: ["persuasion"] } });
+  const spend = () => t.world.invoke("use_resource", { characterId: hero.id, resource: "Grease the Wheels" });
+  eq((await spend()).ok, false, "Grease the Wheels with no failed check");
+  t.world.clearDice();
+  t.world.dice(2);
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: "persuasion", dc: 15, reason: "a probe" }), "the check");
+  t.world.clearDice();
+  t.world.dice(20);
+  const out = must(await spend(), "Grease the Wheels after the failure");
+  t.world.clearDice();
+  eq(/succeeds/.test(JSON.stringify(out.result)), true, `the reroll on a 20: ${JSON.stringify(out.result).slice(0, 200)}`);
 };

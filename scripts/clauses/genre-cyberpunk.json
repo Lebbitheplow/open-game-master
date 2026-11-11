@@ -1511,9 +1511,12 @@
    },
    {
     "c": "reroll a failed CHA-based check",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_grease_the_wheels#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-grease-the-wheels"
+    "run": {
+     "k": "grease"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts grease: the fixer last failed Charisma check or Charisma skill check rolled again through rollCharacterCheck",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Grease the Wheels#1"
    }
   ]
  },

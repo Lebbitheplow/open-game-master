@@ -31,9 +31,11 @@ import { matchWeapon } from "@/lib/srd/weapons";
 import { computeSheetDerived } from "@/lib/srd";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { listRecentRolls } from "@/lib/db/rolls";
+import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 
-export type CyberSpend = "ghost_protocol" | "lazarus" | "whirl" | "synaptic";
+export type CyberSpend = "ghost_protocol" | "lazarus" | "whirl" | "synaptic" | "grease";
 export const SPELL_HIT = "spell-hit:";
 
 type Ctx = {
@@ -58,6 +60,8 @@ export function resolveCyberSpend(ctx: Ctx, what: CyberSpend, then: (does: Spend
       return whirl(ctx);
     case "synaptic":
       return synaptic(ctx, then);
+    case "grease":
+      return grease(ctx);
   }
 }
 
@@ -157,4 +161,25 @@ export function spendRealityRend(campaign: Campaign, caster: CharacterSheet): st
   delete conditionMeta[REALITY_REND];
   patchSheetAudited(campaign.id, live.id, { conditions, conditionMeta: conditionMeta as never }, { kind: "set_condition", reason: "Reality Rend spent on the cast", delta: { condition: REALITY_REND } });
   return "Reality Rend: the psionic deals its maximum damage.";
+}
+
+// Grease the Wheels, "1/short rest, reroll a failed CHA-based check": the
+// fixer's last check that missed its DC, a Charisma check or one of the
+// Charisma skills, rolled again through the check's own door; the new roll
+// stands. The Charisma skills, as the check's card names them:
+const CHA_SKILL = /\b(persuasion|deception|intimidation|performance)\b/i;
+
+function grease({ campaign, sheet, label }: Ctx): Out {
+  const failed = listRecentRolls(campaign.id, 60).find(
+    (roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc,
+  );
+  const skill = failed ? textKey(CHA_SKILL.exec(failed.detail)?.[1] ?? "") || undefined : undefined;
+  const chaCheck = failed && (skill || (failed.kind === "ability_check" && /\bcha(risma)?\b/i.test(failed.detail)));
+  if (!failed || !chaCheck) {
+    return refuse(`${sheet.name}'s last check that failed was no Charisma-based check, so ${label} has nothing to reroll.`);
+  }
+  const dc = failed.dc!;
+  const again = rollCharacterCheck(campaign, sheet, skill ? { skill, dc } : { ability: "cha", dc }, `${label} reroll`);
+  const made = again.total >= dc;
+  return { result: { reroll: `${label}: the ${skill ?? "Charisma"} check is rolled again, ${again.total} against DC ${dc}: ${made ? "it succeeds" : "it fails again"}.` } };
 }

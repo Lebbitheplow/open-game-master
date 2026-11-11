@@ -526,7 +526,7 @@ export type SpendDoes =
   // the rigger's drones, the vermin lord's dire rat, King Below the Streets' rats.
   | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" }
   // A cyberpunk counter's own spend (src/lib/dm/genre-a-cyberpunk-spends.ts).
-  | { kind: "cyber_spend"; what: "ghost_protocol" | "lazarus" | "whirl" | "synaptic" }
+  | { kind: "cyber_spend"; what: "ghost_protocol" | "lazarus" | "whirl" | "synaptic" | "grease" }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
