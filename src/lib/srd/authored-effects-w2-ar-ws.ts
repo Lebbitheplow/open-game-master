@@ -38,4 +38,12 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "School of Enchantment",
     spends: [{ name: "Alter Memories", action: "action", gm: true, does: { kind: "strip_memory", save: "int", dcAbility: "spell", hoursAbility: "cha", condition: "memory stripped" } }],
   },
+  // "and one of those attacks may be a cantrip with a casting time of one
+  // action": the cast guard counts such a cantrip as one attack of the Attack
+  // action, once per action (src/lib/dm/ar-ws-cantrip-attack.ts). The second
+  // attack itself is feature-effects.ts's extra_attack.
+  "wizard::Extra Attack": {
+    subclass: "Bladesinging",
+    effects: [{ kind: "attack_cantrip" }],
+  },
 };

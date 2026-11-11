@@ -183,6 +183,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   spend: { file: "src/lib/dm/mutations.ts", call: "authoredFeatureSpend(" },
   reaction: { file: "src/lib/dm/reaction-tools.ts", call: "authoredReaction(" },
   spell_check_prof: { file: "src/lib/dm/ar-ws-spell-check.ts", call: 'activeAuthored(sheet, "spell_check_prof")' },
+  attack_cantrip: { file: "src/lib/dm/ar-ws-cantrip-attack.ts", call: 'activeAuthored(sheet, "attack_cantrip")' },
 };
 
 export function authoredEffectKinds(): string[] {

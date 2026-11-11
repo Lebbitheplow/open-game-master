@@ -26,6 +26,7 @@
 // mutations.ts (which imports it).
 
 import { castRefills } from "@/lib/dm/ar-ws-transposition";
+import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -312,6 +313,7 @@ function planTurn(
     budget,
     reactionSpent: false,
     bonusCast: bonusCastFor(sheet, facts, spell),
+    attackCantrip: holdsCantripAttack(sheet),
   });
   if ("error" in charge) {
     return charge;

@@ -11,7 +11,7 @@ export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, roll, stage } = rig;
   const { friend, mage, drain, uses, rests, movesSomething, buysAnother } = shared;
   rig.outfit("wizard", "War Magic", { spells: ["Magic Missile", "Hold Person", "Counterspell"], acOverride: false });
-  rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Hold Person"], cantrips: ["Fire Bolt"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
+  rig.outfit("wizard", "Bladesinging", { spells: ["Fire Bolt", "Acid Splash", "Hold Person"], cantrips: ["Fire Bolt", "Acid Splash"], equipment: [{ name: "Rapier", qty: 1, equipped: true }], acOverride: false });
   const war = () => holder("wizard", "War Magic");
   const bla = () => holder("wizard", "Bladesinging");
   const chr = () => holder("wizard", "Chronurgy Magic");
@@ -21,6 +21,15 @@ export function probes(rig, shared) {
   const training = await0(() => import("../../src/lib/srd/subclass-training.ts"));
   const speedOf = async (who) => (await condition()).effectiveSpeed(sheet(who).conditions, rig.srd.speedFor(sheet(who)));
   const d20s = (out) => out.rolled.filter((die) => die.sides === 20).length;
+  // The Hand's card of that name as the page deals it on the holder's own turn.
+  const handOf = await0(async () => ({ ...(await import("../../src/lib/battlemap/hand.ts")), ...(await import("../../src/lib/battlemap/hand-table.ts")), ...(await import("../../src/lib/db/encounter-view.ts")) }));
+  async function card(who, name) {
+    const { deriveHand, turnFromEncounter, activePublicEncounter } = await handOf();
+    const found = deriveHand(sheet(who), turnFromEncounter(activePublicEncounter(world.campaignId), sheet(who), { myTurn: true })).find((entry) => entry.name === name);
+    assert.ok(found, `the Hand deals no ${name} card`);
+    return found;
+  }
+  const open = async (who, name) => (await card(who, name)).disabled === null;
   // The dummy has hit this wizard for 6 on the friend's turn (13 against AC 12).
   async function hit(who, faces = [9, 4]) {
     const foes = await stage(who, { others: [friend()], first: friend() });
@@ -170,10 +179,50 @@ export function probes(rig, shared) {
       assert.equal((await kit.swing(bla().id, enemy.id, [15, 4], { weapon: "Rapier" })).ok, false, "no third");
     },
     "bladesinger-cantrip": async () => {
-      const [enemy] = await stage(bla());
-      assert.equal((await kit.swing(bla().id, enemy.id, [15, 4], { weapon: "Rapier" })).ok, true);
-      const bolt = await call("pc_attack", { characterId: bla().id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [15, 5, 5, 5, 5]);
-      assert.equal(bolt.ok, true, `Fire Bolt as the second attack of the action: ${String(bolt.error).slice(0, 170)}`);
+      const swing = (who, enemy) => kit.swing(who.id, enemy.id, [15, 4], { weapon: "Rapier" });
+      const bolt = (who, enemy) => call("pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Fire Bolt" }, [10, 10]);
+      const splash = (who, enemy) => call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Acid Splash" }, [10, 3]);
+      const refusedFree = async (act, why) => {
+        const before = JSON.stringify([budget(), sheet(bla()).spellcasting.slots]);
+        const out = await act();
+        assert.equal(out.ok, false, why);
+        assert.equal(JSON.stringify([budget(), sheet(bla()).spellcasting.slots]), before, `${why}: nothing is spent on the refusal`);
+        return out;
+      };
+      // A weapon attack, then an attack-roll cantrip as the second attack.
+      let [enemy] = await stage(bla());
+      assert.equal((await swing(bla(), enemy)).ok, true);
+      const second = await bolt(bla(), enemy);
+      assert.equal(second.ok, true, `Fire Bolt as the second attack of the action: ${String(second.error).slice(0, 170)}`);
+      assert.deepEqual([budget().attacksMade, budget().castThisAction ?? false], [2, false], "the cantrip is one of the two attacks");
+      assert.deepEqual([await open(bla(), "Fire Bolt"), await open(bla(), "Rapier")], [false, false], "[Fire Bolt, Rapier] cards open with both attacks made");
+      await refusedFree(() => swing(bla(), enemy), "a third attack");
+      await refusedFree(() => bolt(bla(), enemy), "a cantrip once both attacks are made");
+      // The cantrip first, then the weapon; a save cantrip through cast_at_enemy.
+      [enemy] = await stage(bla());
+      const first = await splash(bla(), enemy);
+      assert.equal(first.ok, true, `Acid Splash as the first attack of the action: ${String(first.error).slice(0, 170)}`);
+      assert.deepEqual([budget().actionUsed, budget().attacksMade], [true, 1]);
+      assert.deepEqual([await open(bla(), "Fire Bolt"), await open(bla(), "Rapier")], [false, true], "[Fire Bolt, Rapier] cards open after the action's one cantrip");
+      // One cantrip per Attack action: the other attack is a weapon's.
+      const twice = await refusedFree(() => bolt(bla(), enemy), "a second cantrip in the same Attack action");
+      assert.match(twice.error, /Extra Attack allows one/);
+      assert.equal((await swing(bla(), enemy)).ok, true, "the weapon attack after the cantrip");
+      assert.equal(budget().attacksMade, 2);
+      // A spell of 1st level or higher is never one of the attacks.
+      [enemy] = await stage(bla());
+      assert.equal((await swing(bla(), enemy)).ok, true);
+      // The Hand after one weapon attack: the cantrips are open, the levelled spell shut.
+      assert.deepEqual([await open(bla(), "Fire Bolt"), await open(bla(), "Acid Splash"), await open(bla(), "Hold Person")], [true, true, false], "[Fire Bolt, Acid Splash, Hold Person] cards open after one weapon attack");
+      const levelled = await refusedFree(() => call("cast_at_enemy", { characterId: bla().id, targetEnemyId: enemy.id, spell: "Hold Person" }, [1]), "a levelled spell as the second attack");
+      assert.match(levelled.error, /not a spell of 1st level or higher/);
+      assert.equal((await splash(bla(), enemy)).ok, true, "the cantrip still takes the second attack");
+      // Below 6th level there is no Extra Attack to give it.
+      const young = holder("wizard", "Bladesinging", 5);
+      [enemy] = await stage(young);
+      assert.equal((await swing(young, enemy)).ok, true);
+      assert.equal(await open(young, "Fire Bolt"), false, "a 5th-level bladesinger's Fire Bolt card after their one attack");
+      assert.equal((await bolt(young, enemy)).ok, false, "a 5th-level bladesinger's cantrip is the whole action");
     },
     "song-of-defense-gate": async () => {
       await hit(bla());
@@ -345,7 +394,6 @@ export function probes(rig, shared) {
     "deflection-save": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Arcane Deflection (one reaction, ac_vs_hit; no half for a failed save)`, note: "Half of the feature has no door: a failed save cannot be answered.", fix: "A second reaction on the row that adds 4 to the save just failed (the after-roll card's shape)." },
     "deflection-cost": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (nothing marks the war mage after Arcane Deflection)", note: "The reaction is free of its price: a full spell the turn after.", fix: "Lay a mark until the end of the wizard's next turn that refuses any spell but a cantrip." },
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
-    "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "density-enemy": { severity: "medium", kind: "rule-wrong", where: `${DATA} wizard::Adjust Density (buff target "ally"), src/lib/dm/authored-spend-effects.ts (a targetEnemyId the buff cannot use falls back to the holder)`, note: "The wizard meant to slow a foe and is told they have slowed themselves; the action is spent.", fix: "Let the buff take a creature of either side, and refuse a target it cannot use instead of falling back to the holder." },

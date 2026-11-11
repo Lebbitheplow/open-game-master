@@ -997,8 +997,9 @@
    },
    {
     "c": "and one of those attacks may be a cantrip with a casting time of one action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesinger-cantrip",
+    "by": "authored effect attack_cantrip (src/lib/srd/authored-effects-w2-ar-ws.ts wizard::Extra Attack), counted by src/lib/dm/ar-ws-cantrip-attack.ts spendActionCast inside cast-rules.ts turnCharge, which the cast guard (pc_attack with spell, cast_at_enemy) and the Hand spell cards both ask: a cantrip with a casting time of one action is one attack of the Attack action, before or after the weapon attack, one per action (ruling: Haste extra action, one weapon attack, never pays for it)"
    }
   ]
  },

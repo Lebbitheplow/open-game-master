@@ -4,6 +4,7 @@
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
+import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
@@ -394,6 +395,8 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
         ? { error: free.spent }
         : slotPlan(sheet, name, facts, fact.level)
       : null;
+  const asAttack = !stored && !beam && holdsCantripAttack(sheet);
+  if (asAttack && fact.level === 0 && cost === "action") notes.push("Extra Attack: this cantrip can take the place of one attack of your Attack action.");
   const charge = turnCharge({
     who: sheet.name,
     // Not a casting: charged as cast-repeat.ts charges it.
@@ -401,11 +404,14 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     spell: name,
     slotLevel: slotLevel ?? null,
     inFight: true,
-    budget: turn.myTurn ? budgetOf(turn, sheet) : null,
+    // A Bladesinger's cantrip is one attack of the Attack action, counted
+    // against the attacks it grants (src/lib/dm/ar-ws-cantrip-attack.ts).
+    budget: turn.myTurn ? budgetOf(turn, sheet, asAttack ? 1 + riders.extraAttacks : 1) : null,
     reactionSpent: turn.reactionUsed,
     // Mantle of Majesty, Elder Champion (the school is the pack's, so
     // Embodiment of the Law is the engine's to decide).
     bonusCast: bonusCastOf(sheet, facts, null),
+    attackCantrip: asAttack,
   });
   const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
   // Sorcery points in place of the slot (Psionic Sorcery, Eyes of the Dark),
@@ -455,6 +461,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     compose: false,
     level: fact.level,
     ...(fact.concentration ? { concentration: true } : {}),
+    ...(asAttack && fact.level === 0 && cost === "action" ? { attackCantrip: true } : {}),
     // A reaction spell (Shield, Hellish Rebuke) is played as a reaction:
     // use_reaction resolves it, off the caster's turn too.
     intent:

@@ -234,6 +234,10 @@ export type AuthoredEffect = Base &
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }
+    // One attack of the holder's Attack action may be a cantrip with a
+    // casting time of one action (the Bladesinger's Extra Attack:
+    // src/lib/dm/ar-ws-cantrip-attack.ts, through cast-rules.ts turnCharge).
+    | { kind: "attack_cantrip" }
     // An opportunity attack on every other creature's turn, each with its own
     // reaction (Vigilant Defender).
     | { kind: "oa_each_turn" }

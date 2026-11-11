@@ -176,6 +176,10 @@ export type HandCard = {
   // An attack that is the whole action, not a swing of the Attack action
   // (Flame Blade, hand-granted.ts): afterCommit spends the action for it.
   wholeAction?: boolean;
+  // A cantrip that is one attack of the Attack action (the Bladesinger's
+  // Extra Attack, src/lib/dm/ar-ws-cantrip-attack.ts): afterCommit counts it
+  // as the engine does.
+  attackCantrip?: boolean;
   // The magic item a spell card casts from: Items shows a section per item with
   // what it has left (hand-groups.ts), as Spells shows one per level with its slots.
   fromItem?: { key: string; label: string; note: string };
