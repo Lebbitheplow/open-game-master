@@ -238,7 +238,7 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage, a mote's inspiration die
   // (attack-roll-extras.ts, which the Hand's cards print from too).
-  const attackRiders = attackRollExtras(sheet);
+  const attackRiders = attackRollExtras(sheet, kind === "weapon" ? profile : undefined);
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);

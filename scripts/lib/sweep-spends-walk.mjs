@@ -2,6 +2,7 @@
 // the stagings a spend may need before it is accepted, the doors it is
 // played through, and how an accepted call is judged.
 import { readChanges, signature, statesMechanic } from "./sweep-spends.mjs";
+import { STEAMPUNK_OWN_TURN, steampunkStep } from "./sweep-spends-steampunk.mjs";
 
 // ---- stagings ----
 
@@ -127,6 +128,9 @@ async function step(rig, scene, name, notes) {
     refresh();
     return { ok: true };
   }
+  // The steampunk counters' own triggers (scripts/lib/sweep-spends-steampunk.mjs).
+  const steampunk = await steampunkStep(rig, scene, name);
+  if (steampunk) return steampunk;
   if (name.startsWith("pool down: ")) {
     const id = name.slice("pool down: ".length);
     const sheet = world.sheet(holder);
@@ -268,6 +272,9 @@ export async function staged(rig, scene, key) {
   scene.stagedNotes.set(key, [...notes]);
   return made;
 }
+
+// What a steampunk counter answers on its holder's own turn, after the rest.
+OWN_TURN.push(...STEAMPUNK_OWN_TURN);
 
 // ---- doors ----
 

@@ -12,6 +12,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { attackGate, attacksAllowed, costGate, standingGate, type Gate, type HandTurn } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { turnFromEncounter, type FloorView } from "@/lib/battlemap/hand-table";
+import { autoLoaderOpen } from "@/lib/srd/genre-b-steampunk-attacks";
 
 export type HudGateId = "attack" | "cast" | "dodge" | "dash" | "disengage" | "help";
 
@@ -21,7 +22,7 @@ export function hudGates(sheet: CharacterSheet, turn: HandTurn): Record<HudGateI
   const action = (name: string) => first(standingGate(sheet, turn, "action"), costGate("action", turn, sheet, name));
   const casting = casterStateProblem(sheet);
   return {
-    attack: first(standingGate(sheet, turn, "attack"), attackGate(turn, attacksAllowed(sheet), sheet)),
+    attack: first(standingGate(sheet, turn, "attack"), attackGate(turn, attacksAllowed(sheet) + autoLoaderOpen(sheet, null, turn.marks ?? []), sheet)),
     cast: spellNames(sheet).length
       ? first(standingGate(sheet, turn, "cast"), casting ? { reason: casting.error, spent: false } : null)
       : `${sheet.name} has no spells to cast.`,

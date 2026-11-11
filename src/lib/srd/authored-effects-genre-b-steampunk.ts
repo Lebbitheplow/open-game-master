@@ -8,4 +8,14 @@
 // Pure data; no database.
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 
-export const GENRE_B_STEAMPUNK_AUTHORED: GenreRow[] = [];
+export const GENRE_B_STEAMPUNK_AUTHORED: GenreRow[] = [
+  // "1/long rest, ignore being disarmed": what the gadgeteer let fall is in
+  // their hand again and the disarmed mark is gone, at no cost of the turn;
+  // refused, nothing spent, when they are not disarmed
+  // (src/lib/dm/genre-b-steampunk-spends.ts rearm).
+  {
+    feature: "Backup Rig",
+    classes: ["gadgeteer"],
+    entry: { subclass: "genre", counter: "steampunk_backup_rig", spends: [{ name: "Backup Rig", pool: { id: "steampunk_backup_rig" }, action: "none", does: { kind: "steampunk", what: "rearm" } }] },
+  },
+];

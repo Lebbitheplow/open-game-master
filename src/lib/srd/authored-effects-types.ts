@@ -4,6 +4,7 @@
 
 import type { CheckAbout, SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { ItemTag } from "@/lib/schemas/item-tags";
+import type { SteampunkSpend } from "@/lib/srd/genre-b-steampunk-types";
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -487,6 +488,9 @@ export type SpendDoes =
   | { kind: "restore"; pool: string; amount: number; clears?: string }
   // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
   | ({ kind: "zone" } & GenreZoneSpec)
+  // The steampunk classes' own spends (src/lib/srd/genre-b-steampunk-types.ts,
+  // resolved by src/lib/dm/genre-b-steampunk-spends.ts).
+  | ({ kind: "steampunk" } & SteampunkSpend)
   // A draught the drinker heals by, curing poison once `upgrade.feature` is
   // held (src/lib/dm/genre-b-cure.ts genreDraught: Emergency Draught).
   | { kind: "draught"; formula: Formula; upgrade?: { feature: string; ends: string[]; condition: string; rounds: number } }

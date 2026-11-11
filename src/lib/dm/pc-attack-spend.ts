@@ -14,6 +14,7 @@ import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
 import { loadingProblem, withLoadingFired } from "@/lib/dm/attack-rules";
 import { withClawsExtra } from "@/lib/dm/authored-attacks";
+import { autoLoaderSwing } from "@/lib/srd/genre-b-steampunk-attacks";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
 import {
   ATTACKED,
@@ -138,7 +139,9 @@ export function spendAttackEconomy(input: {
         : kind === "spell"
           ? // The cast guard charges the casting time in pc-attack.ts.
             { ok: true as const, budget }
-          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike", flurry: args.flurryStrike === true });
+          : // The Auto-Loader Harness's extra firearm attack rides this spend
+            // (src/lib/srd/genre-b-steampunk-attacks.ts).
+            autoLoaderSwing(sheet, profile, budget, (open) => spendAttack(open, sheet.name, { unarmed: profile.weapon === "Unarmed strike", flurry: args.flurryStrike === true }));
     if (!spend.ok) {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }

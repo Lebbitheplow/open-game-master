@@ -217,7 +217,7 @@ export function bonusStrikeCards(
     // action's cards read them (hand-attack-lines.ts): a raging Frenzy card
     // left the Rage bonus out.
     const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
-    const rolled = attackRollLine(sheet, profile.toHit);
+    const rolled = attackRollLine(sheet, profile.toHit, profile);
     const notes = [...line.notes, ...rolled.notes];
     const card: HandCard = {
       id: `attack:${textKey(weapon)}:${bonusAttack.replace(/\s+/g, "-")}${key ? `:${key}` : ""}`,

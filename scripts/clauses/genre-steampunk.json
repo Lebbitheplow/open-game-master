@@ -880,11 +880,9 @@
   "clauses": [
    {
     "c": "Your critical hits with one-handed weapons knock the target prone or disarm it (your choice)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Duelist#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Sky Duelist: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Sky Duelist: a critical hit with a one-handed weapon",
+    "by": "src/lib/dm/genre-b-steampunk-hits.ts steampunkHitMarks (src/lib/dm/attack-blow.ts landSwingBlow): prone by default, disarmed when it cannot fall, the trade told to the GM"
    }
   ]
  },
@@ -1906,13 +1904,9 @@
    },
    {
     "c": "ignore being disarmed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Backup Rig#2:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_backup_rig"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Backup Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"When an effect would destroy or disable a held gadget, it survives; 1/long rest, igno"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Backup Rig: a weapon let fall is in the hand again",
+    "by": "src/lib/dm/genre-b-steampunk-spends.ts rearm (the Backup Rig row of src/lib/srd/authored-effects-genre-b-steampunk.ts)"
    }
   ]
  },
@@ -2020,16 +2014,15 @@
   "clauses": [
    {
     "c": "Add +1d4 to attack rolls made with gadget-augmented weapons (tech blades and firearms you have tuned)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Prodigy's Precision: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Prodigy's Precision: a tuned weapon's attack roll adds 1d4",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts tunedAttackDie through src/lib/dm/attack-roll-extras.ts attackRollExtras (pc_attack and the Hand's card)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Prodigy's Precision: a tuned weapon's attack roll adds 1d4",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts tunedAttackDie through src/lib/dm/attack-roll-extras.ts attackRollExtras (pc_attack and the Hand's card)"
    }
   ]
  },
@@ -2099,11 +2092,9 @@
   "clauses": [
    {
     "c": "Once per turn, make one extra firearm attack as part of the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Auto-Loader Harness#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Auto-Loader Harness: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Auto-Loader Harness: after the Attack action's two attacks",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts autoLoaderSwing (src/lib/dm/pc-attack-spend.ts) and autoLoaderOpen (the Hand's gate)"
    }
   ]
  },
@@ -2989,11 +2980,9 @@
   "clauses": [
    {
     "c": "Piston Strike applies to every melee hit, not once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Barrage#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Piston Barrage: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Piston Barrage: every melee hit",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (oncePerTurn lifted for a holder of Piston Barrage)"
    }
   ]
  },
@@ -3070,8 +3059,9 @@
    },
    {
     "c": "Head of Steam is free once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::The Engine Eternal#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs The Engine Eternal: the first Head of Steam of a turn",
+    "by": "src/lib/dm/genre-b-steampunk-turn.ts freeSpendThisTurn (src/lib/dm/authored-spends.ts) and src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey (the Hand's card)"
    }
   ]
  },

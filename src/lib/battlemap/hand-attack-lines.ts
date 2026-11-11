@@ -59,8 +59,9 @@ export function attackDamageLine(input: {
 // The to-hit line: the profile's bonus with the flat part of the held
 // conditions, and their dice beside it (Bless's +1d4), with the advantage
 // they give, as the roll is made.
-export function attackRollLine(sheet: CharacterSheet, toHit: number): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
-  const extras = attackRollExtras(sheet);
+// `swing`: the weapon the card swings, for a feature's die on a weapon's roll.
+export function attackRollLine(sheet: CharacterSheet, toHit: number, swing?: { base?: string }): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
+  const extras = attackRollExtras(sheet, swing);
   const split = splitRollSuffix(extras.diceSuffix);
   return {
     toHit: toHit + split.flat,

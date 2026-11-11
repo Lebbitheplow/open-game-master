@@ -25,6 +25,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
+import { freeSpendThisTurn } from "@/lib/dm/genre-b-steampunk-turn";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -211,7 +212,10 @@ export function authoredFeatureSpend(
     }
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
+  // A spend a feature makes free once a turn (The Engine Eternal's Head of
+  // Steam, src/lib/dm/genre-b-steampunk-turn.ts): no cost, and its own mark.
+  const free = freeSpendThisTurn(sheet, spend.name, encounter);
+  const charge = prepareCost(campaign, sheet, free ? "none" : picked.action, spend.name, free ?? onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
   if ("error" in charge) {
     return charge;
   }

@@ -28,6 +28,7 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { DISARMED, freeSpendKey } from "@/lib/srd/genre-b-steampunk-attacks";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
 
@@ -211,8 +212,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   // carry over, so a seat the player arranged holds and Hidden Paths, whose
   // variants price themselves, stays a bonus action.
   const counter = ownCounter(spend);
-  const action = spendAction(spend);
+  // A spend a feature makes free once a turn costs nothing while that use is
+  // unspent (src/lib/srd/genre-b-steampunk-attacks.ts, as use_resource charges it).
+  const action = freeSpendKey(sheet, spend.name, turn.myTurn ? (turn.marks ?? []) : undefined) ? "none" : spendAction(spend);
   if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  // Backup Rig answers a disarm: its card is dealt while the holder carries
+  // the mark, never on a turn with nothing to take back (the engine refuses
+  // it there, src/lib/dm/genre-b-steampunk-spends.ts rearm).
+  if (does.kind === "steampunk" && does.what === "rearm" && !sheet.conditions.some((entry) => isConditionNamed(entry, DISARMED))) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;

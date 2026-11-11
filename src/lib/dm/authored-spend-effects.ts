@@ -5,6 +5,7 @@
 import { regainSlotLevels } from "@/lib/srd/slot-levels";
 import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
 import { layGenreZone } from "@/lib/dm/genre-b-zones";
+import { steampunkSpend } from "@/lib/dm/genre-b-steampunk-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -569,6 +570,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     }
     case "draught":
       return genreDraught(ctx, does);
+    case "steampunk":
+      return steampunkSpend(ctx, does);
     case "hit_die":
       return genreHitDie(ctx);
     case "zone": {

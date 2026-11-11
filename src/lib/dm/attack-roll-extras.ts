@@ -1,6 +1,7 @@
 // What a player character's held conditions add to their own attack roll:
 // Bless's +1d4, Bane's -1d4, a flat bonus a condition names, True Strike's
-// advantage, and a mote's Bardic Inspiration die, which bursts at the throw.
+// advantage, and a mote's Bardic Inspiration die, which bursts at the throw;
+// and the die a feature adds to a weapon's attack roll (Prodigy's Precision).
 // pc-attack-situation.ts rolls these, and the Hand's attack and spell cards
 // print them (src/lib/battlemap/hand-attack-lines.ts), so a blessed card says
 // +9+1d4 and its odds count the die: it said +9.
@@ -9,6 +10,7 @@
 import { holdsMoteDie } from "@/lib/dm/after-roll-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
+import { tunedAttackDie } from "@/lib/srd/genre-b-steampunk-attacks";
 
 // An unspent Bardic Inspiration die: the size rides in the condition name,
 // "bardic inspiration (d8)", as use_resource writes it.
@@ -22,8 +24,19 @@ function heldInspiration(conditions: string[]): { condition: string; die: string
   return null;
 }
 
-export function attackRollExtras(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): ConditionRollRiders {
+// `swing`: the weapon attack the roll is for, by the weapon's SRD row; absent
+// for a spell attack. A feature's die on a weapon's attack roll rides here too
+// (Prodigy's Precision, src/lib/srd/genre-b-steampunk-attacks.ts).
+export function attackRollExtras(
+  sheet: Pick<CharacterSheet, "conditions" | "conditionMeta"> & Partial<Pick<CharacterSheet, "class" | "classes" | "features">>,
+  swing?: { base?: string | null },
+): ConditionRollRiders {
   const riders = conditionRollRiders(sheet.conditions, "attack");
+  const tuned = tunedAttackDie(sheet, swing);
+  if (tuned) {
+    riders.diceSuffix += `+${tuned.dice}`;
+    riders.notes.push(tuned.note);
+  }
   // A held Bardic Inspiration die is the holder's to add once the d20 is
   // rolled (SRD 5.1): the attack adds it only to a miss it can turn into a
   // hit (forced-save.ts settleHeldDie). A mote's die bursts at the throw
