@@ -176,7 +176,7 @@ the pick for that card, and about 28 GB runs the recommended Qwen3.6-35B-A3B
 and the [system requirements](https://opengamemaster.com/guide/start/system-requirements/)).
 Below 16 GB a local model is not supported; use an API key, an agent program or
 a human Game Master. Run it on llama.cpp, with a **context window of at
-least 24K tokens to narrate and 32K to run fights; 48K or more is
+least 24K tokens to narrate and 40K to run fights; 48K or more is
 recommended**. The default storyteller runs at 64K, and the guided setup's
 **Test backend** reads the window a server runs
 ([what each size plays](docs/text-backends.md#context-window)). Hosted models

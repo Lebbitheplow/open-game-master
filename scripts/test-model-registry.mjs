@@ -156,7 +156,7 @@ try {
     assert.equal(old.fit, "unfit", "an 8K window cannot hold the DM's instructions");
     assert.match(old.warnings[0], /Deprecated/);
     // The floors src/lib/story-window.ts measures over a party of one to four (gap sweep 2026-11-09).
-    assert.match(old.warnings[1], /8K window is too small to narrate.*24K tokens to narrate and 32K to run fights/);
+    assert.match(old.warnings[1], /8K window is too small to narrate.*24K tokens to narrate and 40K to run fights/);
     const picture = story("gpt-image-1", "openai");
     assert.equal(picture.fit, "unfit");
     assert.match(picture.warnings.join(" "), /Does not write text/);
