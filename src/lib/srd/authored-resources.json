@@ -1296,7 +1296,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action for 1 minute: add the Intelligence modifier to AC, 10 feet of speed, advantage on Acrobatics, and a bonus on concentration saves. It ends if the wizard wears medium or heavy armor or a shield, or is incapacitated.",
+   "guidance": "A bonus action for 1 minute: add the Intelligence modifier to AC, 10 feet of speed, advantage on Acrobatics, and the Intelligence modifier (at least +1) on Constitution saves to keep concentration. It ends if the wizard wears medium or heavy armor or a shield, or is incapacitated.",
    "fx": {
     "kind": "buff",
     "condition": "bladesong",

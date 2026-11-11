@@ -144,6 +144,18 @@ export function probes(rig, shared) {
       // 10 damage is DC 10: a 6 on the die is 7 with CON +1, 10 with INT +3.
       const out = await call("apply_damage", { characterId: bla().id, amount: 10, type: "fire" }, [6]);
       assert.equal(sheet(bla()).concentratingOn, "Hold Person", `the save to keep the spell: ${JSON.stringify(out.result?.concentration)}`);
+      assert.equal(out.result.concentration.rolled, 6 + MOD.con + Math.max(1, MOD.int), "the die, Constitution and Intelligence");
+      // The Intelligence modifier and no more: a 5 is 9, and the spell is lost.
+      const low = await call("apply_damage", { characterId: bla().id, amount: 10, type: "fire" }, [5]);
+      assert.equal(low.result.concentration.rolled, 5 + MOD.con + Math.max(1, MOD.int));
+      assert.equal(sheet(bla()).concentratingOn ?? null, null, "9 against DC 10 loses the spell");
+      // Only while the song runs: the same 6 is a 7 once it has ended.
+      const [other] = await stage(bla());
+      kit.saveEncounter({ ...world.encounter(), turnBudget: null });
+      assert.equal((await call("cast_at_enemy", { characterId: bla().id, targetEnemyId: other.id, spell: "Hold Person" }, [1])).ok, true);
+      const plain = await call("apply_damage", { characterId: bla().id, amount: 10, type: "fire" }, [6]);
+      assert.equal(plain.result.concentration.rolled, 6 + MOD.con, "no song, no Intelligence on the save");
+      assert.equal(sheet(bla()).concentratingOn ?? null, null);
     },
     "bladesong-uses": async () => {
       await uses(["wizard", "Bladesinging"], "sub_bladesong", { 2: prof(2), 20: prof(20) })();
@@ -333,7 +345,6 @@ export function probes(rig, shared) {
     "deflection-save": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Arcane Deflection (one reaction, ac_vs_hit; no half for a failed save)`, note: "Half of the feature has no door: a failed save cannot be answered.", fix: "A second reaction on the row that adds 4 to the save just failed (the after-roll card's shape)." },
     "deflection-cost": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (nothing marks the war mage after Arcane Deflection)", note: "The reaction is free of its price: a full spell the turn after.", fix: "Lay a mark until the end of the wizard's next turn that refuses any spell but a cantrip." },
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
-    "bladesong-concentration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/concentration.ts (the bladesong's bonus to the save is not read)", note: "The stored text gives no number (\"a concentration-save bonus\"); the feature it condenses adds the Intelligence modifier.", fix: "Add the Intelligence modifier to a bladesinger's concentration saves, and state it in the text." },
     "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },

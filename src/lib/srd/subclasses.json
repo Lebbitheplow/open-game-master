@@ -4793,7 +4793,7 @@
             },
             {
               "n": "Bladesong",
-              "d": "A bonus action for a minute grants +Intelligence to AC, 10 feet of speed, advantage on Acrobatics and a concentration-save bonus; a proficiency-bonus number of times per long rest."
+              "d": "A bonus action for a minute grants +Intelligence to AC, 10 feet of speed, advantage on Acrobatics and your Intelligence modifier (at least +1) on Constitution saves to keep concentration; a proficiency-bonus number of times per long rest."
             }
           ],
           "6": [

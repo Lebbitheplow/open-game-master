@@ -1,4 +1,5 @@
 import { concentrationFeat } from "@/lib/srd/feat-combat";
+import { bladesongConcentrationBonus } from "@/lib/dm/ar-ws-bladesong";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
@@ -397,6 +398,9 @@ export function concentrationDamageHook(
   const feat = concentrationFeat(fresh);
   const warCaster = feat?.advantage === true;
   const floor = conditionConcentrationFloor(fresh.conditions);
+  // The Bladesong's Intelligence modifier on this save alone (ar-ws-bladesong.ts).
+  const song = bladesongConcentrationBonus(fresh);
+  const added = [feat?.die, song ? String(song) : null].filter(Boolean).join("+");
   const save = rollCharacterSave(
     campaign,
     null,
@@ -408,7 +412,7 @@ export function concentrationDamageHook(
     null,
     warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : null,
     false,
-    { ...(feat?.die ? { die: feat.die } : {}), ...(floor ? { floor } : {}) },
+    { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
   );
   const held = save.success;
   if (!held) {
@@ -421,6 +425,7 @@ export function concentrationDamageHook(
       rolled: save.total,
       held,
       ...(feat ? { [feat.advantage ? "warCaster" : "battleCaster"]: feat.advantage ? "advantage on the save" : `+${feat.die} on the save` } : {}),
+      ...(song ? { bladesong: `+${song} on the save (Intelligence, while the Bladesong runs)` } : {}),
       ...(save.notes.length ? { riders: save.notes } : {}),
     },
   };

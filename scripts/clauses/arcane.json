@@ -937,7 +937,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Bladesinging",
   "level": 2,
-  "sha": "d429d47f0f73",
+  "sha": "1d0692a1c542",
   "clauses": [
    {
     "c": "A bonus action",
@@ -970,9 +970,10 @@
     "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Bladesong check_adv acrobatics (gate: the bladesong condition)"
    },
    {
-    "c": "and a concentration-save bonus",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration"
+    "c": "and your Intelligence modifier (at least +1) on Constitution saves to keep concentration",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-concentration",
+    "by": "src/lib/dm/ar-ws-bladesong.ts bladesongConcentrationBonus, added to the save in src/lib/dm/concentration.ts concentrationDamageHook (the Intelligence modifier, at least +1, only while the bladesong condition holds; the text was given the number)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
