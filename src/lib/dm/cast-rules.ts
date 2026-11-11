@@ -26,6 +26,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
 import { wieldedWeaponFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { projectedComponents } from "@/lib/dm/ar-wbf-warlock-projection-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
 import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
@@ -224,7 +225,9 @@ export function componentsAsCast(sheet: Caster, facts: SpellFacts | null, grant:
   if (!grant && holdsFeature(sheet, "Archdruid") && druidHolds(sheet, namesOf(facts.name, facts), extras)) {
     cast = { ...cast, verbal: false, somatic: false, material: cast.material && (Boolean(cast.materialCostGp) || cast.materialConsumed) };
   }
-  return cast;
+  // Spirit Projection: conjuration and necromancy cast with no components
+  // but a costly material (ar-wbf-warlock-projection-logic.ts).
+  return projectedComponents(sheet, cast);
 }
 
 // The druid's own lists hold the spell (a druid spell of theirs).

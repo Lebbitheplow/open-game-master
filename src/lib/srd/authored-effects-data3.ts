@@ -441,7 +441,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "The Undead",
     effects: [
       { kind: "resist", types: ["bludgeoning", "piercing", "slashing"], gate: { condition: "spirit projection" } },
-      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects, the healing in Form of Dread and the spells without components are the GM's to apply." },
+      { kind: "move", fly: "walk", gate: { condition: "spirit projection" }, note: "Passing through creatures and objects and the healing in Form of Dread are the GM's to apply." },
     ],
   },
 

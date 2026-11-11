@@ -190,6 +190,29 @@ export function probes(rig, shared) {
       const refused = await call("pc_attack", { characterId: plain.id, targetEnemyId: other.id, weapon: "Longsword", damageType: "necrotic" }, [15, 6]);
       assert.ok(!refused.ok || 300 - foe(other).currentHp === 6, "a 5th-level warlock made a sword's damage necrotic");
     },
+    // "your conjuration and necromancy spells need no verbal or somatic
+    // components": with a blade in each hand no gesture can be made.
+    "projection-components": async () => {
+      const who = W("The Undead", 20, {
+        cantrips: ["Chill Touch", "Fire Bolt"], spells: ["Chill Touch", "Fire Bolt"],
+        equipment: [{ name: "Shortsword", qty: 1, equipped: true }, { name: "Dagger", qty: 1, equipped: true }],
+      }, "a blade in each hand");
+      const [enemy] = await stage(who);
+      const cast = (spell) => {
+        kit.freshTurn();
+        return call("pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell }, [15, 4]);
+      };
+      const bound = await cast("Chill Touch");
+      assert.equal(bound.ok, false, "the staging: with both hands full a necromancy cantrip's gestures are refused");
+      assert.match(String(bound.error), /hand/i, `the staging's refusal is about the hands: ${bound.error}`);
+      kit.freshTurn();
+      const out = await spend(who, "Spirit Projection");
+      assert.equal(out.ok, true, out.error);
+      const necromancy = await cast("Chill Touch");
+      assert.equal(necromancy.ok, true, `a necromancy spell in the projection, hands full: ${necromancy.error}`);
+      const evocation = await cast("Fire Bolt");
+      assert.equal(evocation.ok, false, "an evocation spell cast without its gestures in the projection");
+    },
     // ---- The Undying
     "dead-spell": async () => {
       const who = W("The Undying");

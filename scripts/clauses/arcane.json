@@ -3141,9 +3141,9 @@
    },
    {
     "c": "your conjuration and necromancy spells need no verbal or somatic components, nor material ones without a cost",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM; a silenced casting was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-projection-logic.ts projectedComponents, asked by src/lib/dm/cast-rules.ts componentsAsCast (the one place a cast reads its components): while the projection's condition runs, a conjuration or necromancy spell has no verbal or somatic component and no material without a cost; every other school keeps its own",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-components"
    },
    {
     "c": "you can fly at your walking speed and hover",
