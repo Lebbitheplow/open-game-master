@@ -503,7 +503,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const dice = does.perUnit ? addUnits(does.perUnit, does.perUnit, ctx.units - 1) : does.dice ? formula(ctx, does.dice) : null;
       if (dice) {
         const rolled = damageDice(ctx, enemy, dice);
-        const amount = save.success ? (does.half ? Math.floor(rolled / 2) : 0) : rolled;
+        const amount = save.success && !does.whole ? (does.half ? Math.floor(rolled / 2) : 0) : rolled;
         Object.assign(result, { rolled: `${dice}: ${rolled}` }, damageEnemy(ctx, getEnemy(enemy.id) ?? enemy, amount, type));
       }
       if (!save.success && does.condition && does.commands) {

@@ -409,7 +409,9 @@ export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
 export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
   let total = 0;
   for (const { effect } of activeAuthored(sheet, "save_bonus")) {
-    total += effect.amount;
+    if (!effect.abilities || effect.abilities.includes(ability)) {
+      total += effect.amount;
+    }
   }
   for (const { effect } of activeAuthored(sheet, "save_swap")) {
     if (effect.save === ability) {
@@ -423,6 +425,7 @@ export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mod
 // one): the other ability's modifier where it is higher, for a swap that
 // covers checks. computeSheetDerived adds it to the skills of that ability,
 // and request_roll to an ability check with no skill (src/lib/dm/rolls.ts).
+// A save bonus that covers checks of `ability` is added here too (Frost Rune).
 export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
   let best = 0;
   for (const { effect } of activeAuthored(sheet, "save_swap")) {
@@ -430,7 +433,13 @@ export function authoredCheckSwap(sheet: AuthoredSheet, ability: Ability, mods: 
       best = Math.max(best, (mods[effect.use] ?? 0) - (mods[effect.save] ?? 0));
     }
   }
-  return best;
+  let flat = 0;
+  for (const { effect } of activeAuthored(sheet, "save_bonus")) {
+    if (effect.checks && effect.abilities?.includes(ability)) {
+      flat += effect.amount;
+    }
+  }
+  return best + flat;
 }
 
 // ---- AC, speed, movement ----

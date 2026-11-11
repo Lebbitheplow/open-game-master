@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/authored-turns.ts#whole": [["identity", 1, "a condition the holder laid, by its whole name (textKey on both sides)"]],
     "lib/dm/authored-spend-effects.ts#fallback": [["key", 1, "a Hand pick that names the variant's condition, else the call's own variant word (both checked by namedOption)"]],
     "lib/srd/counter-rules.ts#bypass": [["identity", 1, "a record by its whole name (textKey on both sides)"]],
     "lib/dm/sense-magic.ts#keyed": [["identity", 1, "a record by its whole name (textKey on both sides)"]],

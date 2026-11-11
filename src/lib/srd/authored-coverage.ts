@@ -17,7 +17,7 @@ import { AUTHORED_TABLE, authoredRows } from "@/lib/srd/authored-effects";
 import { populateResources } from "@/lib/srd/class-resources";
 import { effectsFor } from "@/lib/srd/feature-effects";
 import { trainingFromText, trainingTableKeys } from "@/lib/srd/subclass-training";
-import { optionLabelsOpenedBy } from "@/lib/srd/options";
+import { optionFeatureKeys, optionLabelsOpenedBy } from "@/lib/srd/options";
 import { isThirdCasterFeature } from "@/lib/srd/third-caster";
 
 // The words that make a rules line mechanical. Issue 474's audit found
@@ -101,6 +101,10 @@ export function authoredCoverage(): AuthoredCoverage {
         seen.add(`${classId}::${name}`.toLowerCase());
       }
     }
+  }
+  // A pick's own row ("fighter::Rune: Stone Rune", options.ts).
+  for (const key of optionFeatureKeys()) {
+    seen.add(key.toLowerCase());
   }
   out.stale = Object.keys(AUTHORED_TABLE).filter((key) => !seen.has(key.toLowerCase()));
   return out;

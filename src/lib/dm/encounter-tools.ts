@@ -60,7 +60,7 @@ import { registerFightStarter } from "@/lib/dm/turncoat";
 import { askThoseTheOpeningLeft } from "@/lib/dm/fight-opening-ask";
 import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { hasHumanDm } from "@/lib/dm/viewer";
-import { decideAmbush, rollOpeningInitiative } from "@/lib/dm/encounter-open";
+import { decideAmbush, hasAlert, rollOpeningInitiative } from "@/lib/dm/encounter-open";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { healthState } from "@/lib/bestiary/health";
 import {
@@ -163,7 +163,6 @@ import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostT
 import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
 import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
 import { beamTurnEnd } from "@/lib/dm/witch-bolt";
@@ -220,9 +219,6 @@ function crLabel(cr: number): string {
 }
 
 // ---- start_encounter ----
-
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
 
 // Who is not at this fight. A weak caller's one string ("Alice" or "Alice,
 // Bob") counts as the list; any other shape is refused, because dropping it

@@ -114,7 +114,12 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
         if (!live || live.status !== "alive") {
           break;
         }
-        if (!withinFeet(encounter.id, holder.id, id, reach(effect.rangeFt, held.level))) {
+        if (effect.heldIn) {
+          const bound = live.conditions.find((entry) => textKey(entry) === textKey(effect.heldIn!));
+          if (!bound || (live.conditionMeta as ConditionMetaMap)[bound]?.source !== holder.id) {
+            continue;
+          }
+        } else if (!withinFeet(encounter.id, holder.id, id, reach(effect.rangeFt, held.level))) {
           continue;
         }
         if (effect.frightenedOnly) {

@@ -1040,13 +1040,52 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     await kit.endFight();
     const insight = d20s(await roll(carver, { kind: "skill_check", skill: "insight", dc: 10 }));
     const poison = d20s(await roll(carver, { kind: "saving_throw", ability: "con", dc: 10, against: "poisoned" }));
+    const before = sheet(carver).currentHp;
     await world.invoke("apply_damage", { characterId: carver.id, amount: 10, type: "poison" });
-    const invoked = await spend(carver, "Stone Rune");
+    const lost = before - sheet(carver).currentHp;
+    // Invoked as a reaction at a creature within 30 feet: a Wisdom save (the
+    // dummy rolls a 2) or it is charmed. Once a short rest at 7th level, twice
+    // at 15th (Master of Runes).
+    const [enemy] = await stage(carver);
+    const invoked = await spend(carver, "Stone Rune", { targetEnemyId: enemy.id });
+    kit.freshRound();
+    const again = await spend(carver, "Stone Rune", { targetEnemyId: enemy.id });
+    const master = hero("fighter", "Rune Knight", 15);
+    world.patch(master.id, { features: [...sheet(master).features, { name: options.optionFeatureName("rune", "Stone Rune"), source: "class" }] });
+    const got = { insight, poison, lost, invoked: invoked.ok, charmed: kit.enemy(enemy.id).conditions.includes("charmed"), again: again.ok, uses: [sheet(carver).resources.sub_stone_rune?.max, sheet(master).resources.sub_stone_rune?.max] };
     assert.deepEqual(
-      { insight, poison, lost: 80 - sheet(carver).currentHp, invoked: invoked.ok },
-      { insight: 2, poison: 2, lost: 5, invoked: true },
-      "Stone Rune (advantage on Insight; invoked as a reaction) and Hill Rune (advantage on saves against poison, resistance to poison damage) on a knight who carries both",
+      got,
+      { insight: 2, poison: 2, lost: 5, invoked: true, charmed: true, again: false, uses: [1, 2] },
+      `${JSON.stringify(got)}: Stone Rune (advantage on Insight; invoked as a reaction) and Hill Rune (advantage on saves against poison, resistance to poison damage) on a knight who carries both`,
     );
+  });
+
+  // The other runes' invocations and passives: Frost's +2 to Strength saves,
+  // Hill's resistance to slashing once invoked, Fire's tools doubled and its
+  // shackles' fire landing whatever the save.
+  await probe("runes-invoked", async () => {
+    const { toolProficiencyBonus } = await import("../src/lib/dm/roll-riders.ts");
+    const knight = hero("fighter", "Rune Knight", 7);
+    world.patch(knight.id, { features: [...sheet(knight).features, ...["Frost Rune", "Hill Rune", "Fire Rune"].map((name) => ({ name: options.optionFeatureName("rune", name), source: "class" }))] });
+    const [enemy] = await stage(knight);
+    const strBefore = (await roll(knight, { kind: "saving_throw", ability: "str", dc: 10 })).total;
+    assert.equal((await spend(knight, "Frost Rune")).ok, true, "Frost Rune is a bonus action");
+    kit.freshTurn();
+    const strAfter = (await roll(knight, { kind: "saving_throw", ability: "str", dc: 10 })).total;
+    assert.equal(strAfter - strBefore, 2, "Frost Rune: +2 to Strength saves");
+    const hill = await spend(knight, "Hill Rune");
+    assert.equal(hill.ok, true, hill.error);
+    const before = sheet(knight).currentHp;
+    await world.invoke("apply_damage", { characterId: knight.id, amount: 10, type: "slashing" });
+    assert.equal(before - sheet(knight).currentHp, 5, "Hill Rune invoked: resistance to slashing");
+    const tools = toolProficiencyBonus({ ...sheet(knight), proficiencies: { ...sheet(knight).proficiencies, tools: ["Smith's tools"] } }, "smith's tools", 3);
+    assert.equal(tools?.bonus, 6, "Fire Rune: proficiency doubled on tool checks");
+    const hp = kit.enemy(enemy.id).currentHp;
+    await swing(knight, enemy, [15, 4, 4]);
+    const afterHit = kit.enemy(enemy.id).currentHp;
+    const fire = await spend(knight, "Fire Rune", { targetEnemyId: enemy.id }, 20);
+    assert.equal(fire.ok, true, fire.error);
+    assert.ok(afterHit - kit.enemy(enemy.id).currentHp >= 2, `Fire Rune's 2d6 fire lands even when the save is made (${hp} -> ${afterHit} -> ${kit.enemy(enemy.id).currentHp})`);
   });
 
   const mighty = async (level) => {

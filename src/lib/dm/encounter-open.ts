@@ -13,6 +13,8 @@ import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { holdsFeat } from "@/lib/srd/feat-effects";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { optionFeatureName } from "@/lib/srd/options";
 
 // What happens as a fight opens (SRD 5.1, Combat Step by Step): who is
 // surprised, decided by the hiders' Stealth against each opponent's passive
@@ -20,8 +22,11 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 // for. Split from encounter-tools.ts, which calls it; it must not import
 // encounter-tools (the initiative totals go back through a callback).
 
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
+// Who cannot be surprised while conscious: the Alert feat, and a Rune Knight
+// carrying the Storm Rune. Every door that decides surprise asks this (the
+// ambush here and start_encounter's named side, encounter-tools.ts).
+export const hasAlert = (sheet: CharacterSheet) =>
+  holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune"));
 
 // A creature's Stealth: its block's skill, else its Dexterity.
 function enemyStealth(enemy: EncounterEnemy): number {

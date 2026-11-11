@@ -6,6 +6,88 @@
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
+  // ---- the Rune Knight's runes (Rune Carver): picks of options.json kind
+  // "rune", held as "Rune: Stone Rune" and keyed here by that name. Each has
+  // a passive benefit and an invocation that spends its own counter, once a
+  // short or long rest, twice from 15th level (Master of Runes). A rune's
+  // save DC is 8 + proficiency + Constitution (dcAbility "con").
+  "fighter::Rune: Cloud Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_cloud_rune",
+    effects: [{ kind: "check_adv", skills: ["sleight_of_hand", "deception"] }],
+    // "When you or a creature you can see within 30 feet of you is hit by an
+    // attack roll": the hit goes to another creature within 30 feet.
+    reactions: [{ name: "Cloud Rune", pool: { id: "sub_cloud_rune" }, sees: "target", does: { kind: "redirect", rangeFt: 30 } }],
+  },
+  "fighter::Rune: Fire Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_fire_rune",
+    // Doubled proficiency on tool checks: roll-riders.ts toolProficiencyBonus.
+    // On a weapon hit: 2d6 fire whatever the save, and a Strength save or the
+    // fiery shackles restrain it for a minute, burning 2d6 fire as each of its
+    // turns starts, until it saves at the end of one.
+    effects: [{ kind: "enemy_turn_damage", formula: "2d6", type: "fire", rangeFt: 0, heldIn: "restrained" }],
+    spends: [
+      {
+        name: "Fire Rune",
+        pool: { id: "sub_fire_rune" },
+        action: "none",
+        afterWeaponHit: true,
+        does: { kind: "save_effect", save: "str", dcAbility: "con", dice: "2d6", type: "fire", whole: true, condition: "restrained", rounds: 10, saveEnds: true },
+      },
+    ],
+  },
+  "fighter::Rune: Frost Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_frost_rune",
+    effects: [
+      { kind: "check_adv", skills: ["animal_handling", "intimidation"] },
+      // "+2 bonus to all ability checks and saving throws that use Strength
+      // or Constitution" for 10 minutes once invoked.
+      { kind: "save_bonus", amount: 2, abilities: ["str", "con"], checks: true, gate: { condition: "frost rune" } },
+    ],
+    spends: [{ name: "Frost Rune", pool: { id: "sub_frost_rune" }, action: "bonus", does: { kind: "buff", condition: "frost rune", rounds: 100 } }],
+  },
+  "fighter::Rune: Hill Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_hill_rune",
+    effects: [
+      { kind: "save_adv", against: ["poison", "poisoned"] },
+      { kind: "resist", types: ["poison"] },
+      // Invoked: resistance to bludgeoning, piercing and slashing for a minute.
+      { kind: "resist", types: ["bludgeoning", "piercing", "slashing"], gate: { condition: "hill rune" } },
+    ],
+    spends: [{ name: "Hill Rune", pool: { id: "sub_hill_rune" }, action: "bonus", does: { kind: "buff", condition: "hill rune", rounds: 10 } }],
+  },
+  "fighter::Rune: Stone Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_stone_rune",
+    effects: [
+      { kind: "check_adv", skills: ["insight"] },
+      { kind: "darkvision", feet: 120 },
+    ],
+    // "When a creature you can see ends its turn within 30 feet of you": a
+    // Wisdom save or it is charmed for a minute, incapacitated with it (its
+    // speed 0 in a dreamy stupor).
+    spends: [
+      {
+        name: "Stone Rune",
+        pool: { id: "sub_stone_rune" },
+        action: "reaction",
+        does: { kind: "save_effect", save: "wis", dcAbility: "con", condition: "charmed", alsoCondition: "incapacitated", rounds: 10, rangeFt: 30, sight: true },
+      },
+    ],
+  },
+  "fighter::Rune: Storm Rune": {
+    subclass: "Rune Knight",
+    counter: "sub_storm_rune",
+    // Cannot be surprised while conscious: encounter-open.ts hasAlert.
+    effects: [{ kind: "check_adv", skills: ["arcana"] }],
+    // A minute of prophetic state, in which a reaction turns a roll against
+    // the knight or a creature within 60 feet to disadvantage.
+    spends: [{ name: "Storm Rune", pool: { id: "sub_storm_rune" }, action: "bonus", does: { kind: "buff", condition: "prophetic state", rounds: 10 } }],
+    reactions: [{ name: "Prophetic State", gate: { condition: "prophetic state" }, sees: "attacker", does: { kind: "disadv_vs_hit", allyWith: "rune: storm rune", rangeFt: 60 } }],
+  },
   // What the action senses is told to the barbarian from the board's spells,
   // creatures and items (src/lib/dm/sense-magic.ts).
   "barbarian::Magic Awareness": {

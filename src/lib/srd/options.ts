@@ -382,6 +382,13 @@ export function optionSlotsFor(
   return step ? step[1] : 0;
 }
 
+// "fighter::Rune: Stone Rune" for every option a class's grant hands out: the
+// authored table keys a pick's own row by its held name (authored-coverage.ts
+// counts them as features).
+export function optionFeatureKeys(): string[] {
+  return GRANTS.flatMap((grant) => optionsOfKind(grant.kind).map((option) => `${grant.classId}::${optionFeatureName(grant.kind, option.n)}`));
+}
+
 // The pick-lists a subclass feature of this name opens in a class, by their
 // labels: the workshop's subclass editor says so beside a borrowed Combat
 // Superiority.

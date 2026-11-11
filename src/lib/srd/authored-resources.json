@@ -2408,6 +2408,144 @@
    "recharge": "long",
    "passive": true,
    "guidance": "Whether the Arcane Ward has been raised since the last long rest (it is raised once a day, by the first abjuration spell of 1st level or higher). The server keeps it."
+  },
+  {
+   "id": "sub_cloud_rune",
+   "displayName": "Cloud Rune",
+   "match": [
+    "rune: cloud rune",
+    "cloud rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "A reaction when the knight or a creature they can see within 30 feet is hit by an attack roll: the hit lands on another creature within 30 feet of the knight, other than the attacker, with the same roll. use_reaction feature \"Cloud Rune\".",
+   "action": "reaction",
+   "passive": true
+  },
+  {
+   "id": "sub_fire_rune",
+   "displayName": "Fire Rune",
+   "match": [
+    "rune: fire rune",
+    "fire rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "On a weapon hit: 2d6 extra fire damage, and a Strength save (8 + proficiency + Constitution) or the target is restrained by fiery shackles for a minute, taking 2d6 fire as each of its turns starts; it saves again at the end of each of its turns. use_resource \"Fire Rune\" with targetEnemyId; the server rolls the save, the damage and the burns."
+  },
+  {
+   "id": "sub_frost_rune",
+   "displayName": "Frost Rune",
+   "match": [
+    "rune: frost rune",
+    "frost rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "A bonus action: +2 to every ability check and saving throw that uses Strength or Constitution for 10 minutes. The server adds it.",
+   "action": "bonus"
+  },
+  {
+   "id": "sub_hill_rune",
+   "displayName": "Hill Rune",
+   "match": [
+    "rune: hill rune",
+    "hill rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "A bonus action: resistance to bludgeoning, piercing and slashing damage for 1 minute. The server applies it.",
+   "action": "bonus"
+  },
+  {
+   "id": "sub_stone_rune",
+   "displayName": "Stone Rune",
+   "match": [
+    "rune: stone rune",
+    "stone rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "A reaction when a creature the knight can see ends its turn within 30 feet: a Wisdom save (8 + proficiency + Constitution) or it is charmed and incapacitated for 1 minute. use_resource \"Stone Rune\" with targetEnemyId; the server rolls the save.",
+   "action": "reaction"
+  },
+  {
+   "id": "sub_storm_rune",
+   "displayName": "Storm Rune",
+   "match": [
+    "rune: storm rune",
+    "storm rune"
+   ],
+   "uses": 1,
+   "ability": null,
+   "scale": [
+    [
+     15,
+     2
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "recharge": "short",
+   "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll against them or a creature within 60 feet to disadvantage (use_reaction \"Prophetic State\").",
+   "action": "bonus"
   }
  ]
 }

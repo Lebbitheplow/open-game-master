@@ -98,6 +98,15 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/tales-from-beyond": { kind: "feature", slug: "consult-the-spirits" },
   "feature/release-tale": { kind: "feature", slug: "consult-the-spirits" },
   "feature/panache": { kind: "spell", slug: "enthrall" },
+  // A rune's invocation wears the rune's own painting (option/rune-*), and
+  // the Storm Rune's prophetic state its rune's.
+  "feature/cloud-rune": { kind: "option", slug: "rune-cloud-rune" },
+  "feature/fire-rune": { kind: "option", slug: "rune-fire-rune" },
+  "feature/frost-rune": { kind: "option", slug: "rune-frost-rune" },
+  "feature/hill-rune": { kind: "option", slug: "rune-hill-rune" },
+  "feature/stone-rune": { kind: "option", slug: "rune-stone-rune" },
+  "feature/storm-rune": { kind: "option", slug: "rune-storm-rune" },
+  "feature/prophetic-state": { kind: "option", slug: "rune-storm-rune" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

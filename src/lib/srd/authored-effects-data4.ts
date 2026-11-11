@@ -276,9 +276,10 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // Each rune's counter holds two uses from 15th level ([15, 2]).
   "fighter::Master of Runes": {
     subclass: "Rune Knight",
-    narrated: "Each rune is invoked twice per rest: the GM counts the second invocation.",
+    heldBy: { file: "src/lib/srd/authored-resources.json", call: "\"sub_stone_rune\"" },
   },
   "fighter::Rallying Cry": {
     subclass: "Banneret",

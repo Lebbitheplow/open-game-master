@@ -65,7 +65,9 @@ export type AuthoredEffect = Base &
     // gains the one of these the feature's option names instead (Elegant
     // Courtier: "Intelligence or Charisma if you already have it").
     | { kind: "save_prof"; abilities: Ability[]; elseOneOf?: Ability[] }
-    | { kind: "save_bonus"; amount: number }
+    // `abilities`: only saves of these (Frost Rune: Strength and Constitution);
+    // `checks`: the same bonus on ability checks of those abilities, skills too.
+    | { kind: "save_bonus"; amount: number; abilities?: Ability[]; checks?: true }
     // A save of one ability uses another ability's modifier when higher.
     // `checks`: ability checks of that ability too (Arms of the Astral Self:
     // "Wisdom for Strength checks and saves").
@@ -244,7 +246,9 @@ export type AuthoredEffect = Base &
     // Conquest: only frightened ones).
     // `holdsSpeed`: a creature frightened of the holder has speed 0 while in
     // the aura (Aura of Conquest; src/lib/dm/aura-hold.ts).
-    | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean; holdsSpeed?: boolean }
+    // `heldIn`: only a creature held in this condition the holder laid, at any
+    // range (Fire Rune's shackles burn a creature restrained by them).
+    | { kind: "enemy_turn_damage"; formula: Formula; type: string; rangeFt: number | Array<[number, number]>; frightenedOnly?: boolean; holdsSpeed?: boolean; heldIn?: string }
     // Flurry of Blows grants this many strikes instead of two.
     | { kind: "flurry"; strikes: number }
     // Sneak Attack with no advantage and no ally when the rogue duels one
@@ -505,6 +509,10 @@ export type SpendDoes =
       perUnit?: string;
       type?: string;
       half?: boolean;
+      // The dice land whether or not the save is made: the save is only for
+      // the condition (Fire Rune: the extra fire is the hit's, the save the
+      // shackles').
+      whole?: true;
       condition?: string;
       rounds?: number;
       // The condition lasts until the creature saves at a round's end; with
