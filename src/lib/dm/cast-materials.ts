@@ -23,6 +23,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
+import { carriesCyberdeck, genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -239,12 +240,24 @@ const CLASS_FOCUS: Record<string, string[]> = {
 // A material with no price needs a component pouch or the caster's focus.
 // The priced parts are the materialPlan's to find; an item's own spell (a
 // scroll, a wand) never asks (cast-guard.ts castFromItem).
-export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment">, facts: SpellFacts | null): ToolError | null {
+export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats">>, facts: SpellFacts | null): ToolError | null {
   if (!facts?.material || materialComponents(facts).length) {
+    return null;
+  }
+  // A genre caster's own focus rule (src/lib/srd/genre-a-cyberpunk-focus.ts):
+  // an esper needs none, a rigger's is the drone (the cast guard asks whether
+  // one stands), a netrunner's is the cyberdeck and no other focus.
+  const genre = genreFocusOf(sheet);
+  if (genre?.kind === "none" || genre?.kind === "drone") {
     return null;
   }
   if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch"))) {
     return null;
+  }
+  if (genre?.kind === "cyberdeck") {
+    return carriesCyberdeck(sheet.equipment) || sheet.equipment.some((item) => hasItemTag(item, "arcane_focus"))
+      ? null
+      : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name} needs their cyberdeck as the focus (${genre.feature}; a Cyberdeck or an arcane focus on the sheet) or a component pouch to cast it, and carries neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];

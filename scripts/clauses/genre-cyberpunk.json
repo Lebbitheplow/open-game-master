@@ -18,15 +18,14 @@
    },
    {
     "c": "needs their cyberdeck as a focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "cyberdeck",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Deck Interface#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf, read by src/lib/dm/cast-materials.ts focusProblem (the cast guard and the Hand's spell cards): the deck is a line named Cyberdeck or an arcane focus, the wizard's focus under the setting's name; a component pouch holds the materials themselves (SRD 5.1) and still serves",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Deck Interface#1"
    }
   ]
  },
@@ -1075,15 +1074,14 @@
    },
    {
     "c": "the drone is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "drone",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Machine Codex#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-drones.ts droneFocusProblem, asked by the cast guard (src/lib/dm/cast-guard.ts): a drone of the rigger's standing on the board, or a component pouch; no focus item serves",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Machine Codex#1"
    }
   ]
  },
@@ -1953,15 +1951,14 @@
    },
    {
     "c": "needs no material focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "none",
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Wetware Surge#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf, read by src/lib/dm/cast-materials.ts focusProblem: an unpriced material asks an esper for no pouch and no focus; a priced one is still the material plan's",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Wetware Surge#1"
    }
   ]
  },

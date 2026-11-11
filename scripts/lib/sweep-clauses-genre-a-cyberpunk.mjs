@@ -167,3 +167,32 @@ CYBER.grease = async function grease(t, run, feature) {
   t.world.clearDice();
   eq(/succeeds/.test(JSON.stringify(out.result)), true, `the reroll on a 20: ${JSON.stringify(out.result).slice(0, 200)}`);
 };
+
+// The focus clauses (src/lib/srd/genre-a-cyberpunk-focus.ts): Mage Armor's
+// cured leather has no price, so it asks for a pouch or the caster's focus.
+//   cyberdeck: "needs their cyberdeck as a focus": refused with a holy symbol
+//     alone, cast with a Cyberdeck;
+//   none: "needs no material focus": cast with nothing carried, where the
+//     focus check refused every caster before the feature was read;
+//   drone: "the drone is the focus": refused with an arcane focus and no
+//     drone, cast once Drone Companion has built one.
+CYBER.focus = async function focus(t, run, feature) {
+  const ability = run.ability ?? "int";
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { equipment: [], spellcasting: { ...CASTING(ability), known: ["Mage Armor"], prepared: ["Mage Armor"] } });
+  const carry = (...names) => t.world.patch(hero.id, { equipment: names.map((name) => ({ name, qty: 1, equipped: false })) });
+  const cast = async () => (await t.world.invoke("cast_buff", { characterId: hero.id, spell: "Mage Armor" })).ok;
+  if (run.want === "cyberdeck") {
+    carry("Amulet");
+    eq(await cast(), false, "Mage Armor cast with a holy symbol and no cyberdeck");
+    carry("Cyberdeck");
+    eq(await cast(), true, "Mage Armor cast with the cyberdeck carried");
+  } else if (run.want === "none") {
+    eq(await cast(), true, "Mage Armor cast with no pouch and no focus");
+  } else {
+    carry("Arcane Focus");
+    eq(await cast(), false, "Mage Armor cast with an arcane focus and no drone built");
+    must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion");
+    eq(await cast(), true, "Mage Armor cast with a drone on the board");
+  }
+};

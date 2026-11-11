@@ -16,6 +16,27 @@ import { riggerDrones } from "@/lib/dm/genre-a-summons";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { materialComponents } from "@/lib/dm/cast-materials";
+import type { SpellFacts } from "@/lib/srd/spell-facts";
+import { genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
+import { hasItemTag } from "@/lib/srd/item-tags";
+import type { ToolError } from "@/lib/dm/tool-errors";
+
+// Machine Codex, "the drone is the focus": a rigger's unpriced material is
+// answered by a drone of theirs standing on the board (or a component pouch,
+// which holds the materials themselves), never by a focus item. The sheet's
+// half of the rule is src/lib/srd/genre-a-cyberpunk-focus.ts; this half
+// reads the board, so only the cast guard asks it.
+export function droneFocusProblem(campaignId: string, sheet: CharacterSheet, facts: SpellFacts | null): ToolError | null {
+  const focus = genreFocusOf(sheet);
+  if (focus?.kind !== "drone" || !facts?.material || materialComponents(facts).length) {
+    return null;
+  }
+  if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch")) || riggerDrones(campaignId, sheet.id).some((drone) => drone.currentHp > 0)) {
+    return null;
+  }
+  return { error: `${facts.name} has a material component: ${sheet.name}'s focus is their drone (${focus.feature}), and no drone of theirs stands (Drone Companion builds them out of a fight; a component pouch serves too). Nothing was spent.`, refused: "rules" };
+}
 
 export const SELF_REPAIR = "cyberpunk_self_repair_protocol";
 const MENDED = "self-repaired";
