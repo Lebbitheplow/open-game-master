@@ -465,6 +465,7 @@ const { setParty, getParty } = await import("../src/lib/db/party.ts");
 const { setMount } = await import("../src/lib/db/mounts.ts");
 
 await test("The hours of cold stop too, and the number lands on the first hour's save.", async () => {
+  await passBackstops();
   arm();
   const before = saveRolls().length;
   await enemyTurn([modelCall("apply_hazard", { type: "extreme_cold", hours: 2, characterIds: [target.id] })], "The cold bites.");
@@ -481,6 +482,7 @@ await test("The hours of cold stop too, and the number lands on the first hour's
 });
 
 await test("A trap aimed at the front of the travel formation stops for the one who walks there.", async () => {
+  await passBackstops();
   arm();
   setParty(fightWorld.campaignId, { ...getParty(fightWorld.campaignId), marchingOrder: [target.id, seer.id] });
   await enemyTurn([modelCall("apply_hazard", { type: "trap", severity: "setback", rank: "front" })], "Darts fly.");
@@ -494,6 +496,7 @@ await test("A trap aimed at the front of the travel formation stops for the one 
 });
 
 await test("A condition laid with its save stops for that save, a character's or a creature's.", async () => {
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("set_condition", { characterId: target.id, condition: "restrained", saveAbility: "str", saveDc: 15, reason: "a net" })], "The net falls.");
   const [stop] = stops();
@@ -503,6 +506,7 @@ await test("A condition laid with its save stops for that save, a character's or
   await settleQueue(fightWorld.campaignId);
   assert.equal(saveRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the save's d20");
   assert.ok(!fightWorld.sheet(target.id).conditions.includes("restrained"), "the save is made");
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("set_condition", { enemyId: goblin2.id, condition: "restrained", saveAbility: "str", saveDc: 15, reason: "a net" })], "The net falls.");
   const [held] = stops();
@@ -516,6 +520,7 @@ await test("A condition laid with its save stops for that save, a character's or
 });
 
 await test("A rider thrown from the saddle stops for the save to land on their feet.", async () => {
+  await passBackstops();
   arm();
   setMount(fightWorld.campaignId, target.id, { name: "Riding Horse", speed: 60, size: "large", controlled: true, hp: 13, maxHp: 13 });
   await enemyTurn([modelCall("dismount", { characterId: target.id, cause: "forced-move" })], "Kara is thrown.");
@@ -541,8 +546,10 @@ const letItRoll = async (stop) => {
 // kept standing through them, and given back their hit points after.
 let goblinsBefore;
 await test("A feature a character spends stops for the creature's save it asks.", async () => {
+  await passBackstops();
   goblinsBefore = [goblin, goblin2].map((enemy) => ({ id: enemy.id, currentHp: kit.enemy(enemy.id).currentHp, maxHp: kit.enemy(enemy.id).maxHp }));
   for (const enemy of goblinsBefore) kit.setEnemy(enemy.id, { currentHp: 300, maxHp: 300 });
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("use_resource", { characterId: target.id, resource: "Intimidating Presence", targetEnemyId: goblin.id })], "Kara roars.");
   const [scare] = stops();
@@ -552,6 +559,7 @@ await test("A feature a character spends stops for the creature's save it asks."
 });
 
 await test("A reaction that makes the attacker save stops for that save.", async () => {
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("use_reaction", { characterId: target.id, feature: "Hellish Rebuke", targetEnemyId: goblin.id })], "Flames answer.");
   const [rebuke] = stops();
@@ -561,6 +569,7 @@ await test("A reaction that makes the attacker save stops for that save.", async
 });
 
 await test("A pet's attack stops, for its d20 or the save its sting asks, and the number lands on the pet's d20.", async () => {
+  await passBackstops();
   arm();
   fightWorld.patch(target.id, { pets: [{ name: "Imp", kind: "familiar", form: "imp", hp: 10, maxHp: 10, ac: 13, speed: 20, attacks: [{ name: "Sting", toHit: 5, damage: "1d4+3", type: "piercing", onHit: { save: "con", dc: 11 } }], notes: "" }] });
   const order = fightWorld.encounter();
@@ -578,6 +587,7 @@ await test("A pet's attack stops, for its d20 or the save its sting asks, and th
 });
 
 await test("A swing with Stunning Strike stops for the swing or the creature's save against the stun.", async () => {
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("pc_attack", { characterId: target.id, attacks: [{ targetEnemyId: goblin.id, stunningStrike: true }] })], "Kara strikes.");
   const [stun] = stops();
@@ -601,6 +611,7 @@ const karaTurn = (calls, said, tail = "It is done.") => {
 };
 
 await test("Damage to a concentrating character or creature stops for the save it asks, and the number lands on it.", async () => {
+  await passBackstops();
   arm();
   fightWorld.patch(target.id, { concentratingOn: "Bless" });
   // No creature is left due: its own swing after the narration would ask the
@@ -614,6 +625,7 @@ await test("Damage to a concentrating character or creature stops for the save i
   assert.match(String(toldConcentration()), /"rolled":17/, "the foretold 17 is the concentration save's d20");
   assert.equal(fightWorld.sheet(target.id).concentratingOn, "Bless", "the 17 keeps it");
   fightWorld.patch(target.id, { concentratingOn: null, currentHp: 60 });
+  await passBackstops();
   arm();
   kit.setEnemy(goblin2.id, { currentHp: 300, maxHp: 300 });
   (await import("../src/lib/db/encounters.ts")).setEnemyConcentration(goblin2.id, "Bless");
@@ -626,6 +638,7 @@ await test("Damage to a concentrating character or creature stops for the save i
 });
 
 await test("A grapple stops for either side of its contest, and the number lands on the side picked.", async () => {
+  await passBackstops();
   arm();
   kit.setEnemy(goblin.id, { conditions: [], conditionMeta: {} });
   await karaTurn([modelCall("take_action", { characterId: target.id, action: "grapple", targetEnemyId: goblin.id })], "I grab the goblin.");
@@ -644,6 +657,7 @@ await test("A grapple stops for either side of its contest, and the number lands
 });
 
 await test("A walk out of a creature's reach and a legendary action stop for the rolls they may throw.", async () => {
+  await passBackstops();
   arm();
   kit.place(target.id, 5, 5);
   kit.place(goblin.id, 6, 5);
@@ -654,6 +668,7 @@ await test("A walk out of a creature's reach and a legendary action stop for the
   assert.ok(choiceNames(walk).includes(goblin.displayName), "the goblin's opportunity attack is one");
   await letItRoll(walk);
   kit.place(target.id, 5, 5);
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("legendary_action", { enemyId: goblin.id, action: "Club", targetCharacterId: target.id })], "It lashes out.");
   const [legend] = stops();
@@ -666,6 +681,7 @@ await test("A walk out of a creature's reach and a legendary action stop for the
 });
 
 await test("A poison laid with afflict stops for its save.", async () => {
+  await passBackstops();
   arm();
   await enemyTurn([modelCall("afflict", { characterId: target.id, kind: "poison", name: "Serpent Venom" })], "The fang sinks in.");
   const [stop] = stops();
@@ -679,6 +695,7 @@ await test("A poison laid with afflict stops for its save.", async () => {
 });
 
 await test("Polymorph at a creature of the fight stops before its save.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -715,6 +732,7 @@ await test("A hero's spell at one creature stops before it is cast, and the numb
 // stop that read only the flat targetEnemyId never came for it (play-test
 // 2026-11-09: Hold Person at one creature, twice, with no Portent stop).
 await test("A hero's spell sent as the tool sends it, its creature in targets, stops too.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -776,6 +794,7 @@ await test("An area with one creature in it stops for that one's save; with two 
 });
 
 await test("A hero's spell at two creatures asks whose save takes the number, as an area does.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -815,6 +834,7 @@ await test("A hero's spell at two creatures asks whose save takes the number, as
 // down, which the tool refuses before any roll. Each held the turn for its
 // whole time with a number nothing could take.
 await test("Magic Missile's darts, and a spell at a creature already down, hold nothing: no d20 is thrown there.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -847,6 +867,7 @@ await test("Magic Missile's darts, and a spell at a creature already down, hold 
 // stands on its squares as aoe_damage then catches them (area-casting.ts
 // boardCatch). It read only a burst, so no stop came.
 await test("Grease laid on a square with nobody named stops for the save of the creature standing in it, and the number lands there.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
@@ -874,6 +895,7 @@ await test("Grease laid on a square with nobody named stops for the save of the 
 // Ice Storm laid on a square names nobody either; its burst is read from its
 // text, and it leaves hail as well (issue 570, #889).
 await test("Ice Storm laid on a square with nobody named asks whose save, of the creatures standing in its storm.", async () => {
+  await passBackstops();
   arm();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
