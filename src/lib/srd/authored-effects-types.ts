@@ -529,6 +529,9 @@ export type AuthoredSpend = {
   // must have hurt a creature this turn, and the spend lands on a creature it
   // hurt (src/lib/dm/spell-damage-mark.ts).
   afterSpellDamage?: boolean;
+  // Follows a spell of 1st level or higher the holder cast this turn
+  // (Tempestuous Magic: src/lib/dm/ar-ws-tempest-logic.ts has the ruling).
+  afterLevelledCast?: boolean;
   // Master of Hexes: moving the curse takes back the hit points its first
   // creature's death gave (src/lib/dm/master-of-hexes.ts).
   takesBackCurseHeal?: boolean;

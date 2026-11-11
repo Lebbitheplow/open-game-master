@@ -44,6 +44,16 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Cast your psionic spells by spending sorcery points equal to the spell's
   // level instead of a slot, with no verbal, somatic or costly components."
   "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+  // "Before or after casting a spell of 1st level or higher, a bonus action
+  // lets you fly 10 feet without provoking": the flight as authored-effects-data3.ts
+  // had it, now open in a fight only once the turn has seen a levelled spell
+  // cast (src/lib/dm/ar-ws-tempest-logic.ts has the ruling on "before").
+  "sorcerer::Tempestuous Magic": {
+    subclass: "Storm Sorcery",
+    spends: [
+      { name: "Tempestuous Magic", action: "bonus", afterLevelledCast: true, does: { kind: "teleport", feet: 10, note: "flying, without provoking opportunity attacks" } },
+    ],
+  },
   // "A reaction deals your sorcerer level in lightning damage to a melee
   // attacker and pushes it 20 feet on a failed Strength save": the damage as
   // authored-effects-data3.ts had it, and the push made in the reaction

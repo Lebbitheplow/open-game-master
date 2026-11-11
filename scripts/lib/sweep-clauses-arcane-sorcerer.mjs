@@ -229,16 +229,49 @@ export function probes(rig, shared) {
       assert.deepEqual(grant.spec.fixedLanguages, ["Primordial"]);
     },
     tempest: async () => {
-      await stage(S("Storm Sorcery", 6));
+      const [enemy] = await stage(S("Storm Sorcery", 6));
+      // The flight follows a spell of 1st level or higher cast this turn
+      // (tempest-trigger): Shatter first, with the action.
+      const cast = await call("aoe_damage", { casterCharacterId: S("Storm Sorcery", 6).id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+      assert.equal(cast.ok, true, cast.error);
       const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
       assert.equal(out.ok, true, out.error);
       assert.equal(budget().bonusUsed, true);
       assert.match(out.result.teleport, /up to 10 feet, flying, without provoking opportunity attacks/);
     },
+    // In a fight the flight is open once the turn has seen a spell of 1st
+    // level or higher cast (src/lib/dm/ar-ws-tempest-logic.ts has the ruling on
+    // "before"): [the spend's answer, the bonus action spent].
     "tempest-trigger": async () => {
-      await stage(S("Storm Sorcery", 6));
-      const out = await spend(S("Storm Sorcery", 6), "Tempestuous Magic");
-      assert.equal(out.ok, false, "on a turn with no spell cast, the flight is taken");
+      const who = S("Storm Sorcery", 6);
+      const casting = sheet(who).spellcasting;
+      world.patch(who.id, { spellcasting: { ...casting, cantrips: [...new Set([...(casting.cantrips ?? []), "Poison Spray"])] } });
+      const shatter = async (enemy) => {
+        const cast = await call("aoe_damage", { casterCharacterId: who.id, spell: "Shatter", enemyIds: [enemy.id] }, [20, 1, 1, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      };
+      const flight = async (before) => {
+        const [enemy] = await stage(who);
+        await before(enemy);
+        const out = await spend(who, "Tempestuous Magic");
+        return { out, seen: [out.ok, budget()?.bonusUsed ?? false] };
+      };
+      const bare = await flight(async () => {});
+      assert.deepEqual(bare.seen, [false, false], "on a turn with no spell cast");
+      assert.match(bare.out.error, /spell of 1st level or higher.*Nothing was spent\.$/);
+      const cantrip = await flight(async (enemy) => {
+        const cast = await call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Poison Spray" }, [20, 1]);
+        assert.equal(cast.ok, true, cast.error);
+      });
+      assert.deepEqual(cantrip.seen, [false, false], "after a cantrip, which is no spell of 1st level or higher");
+      assert.deepEqual((await flight(shatter)).seen, [true, true], "after Shatter, a 2nd-level spell cast with the action");
+      // The next turn has seen no casting of its own.
+      kit.freshTurn();
+      assert.equal((await spend(who, "Tempestuous Magic")).ok, false, "on the turn after the one Shatter was cast in");
+      // Out of a fight no turn is kept, and the spend is open as it was.
+      await kit.endFight();
+      const idle = await spend(who, "Tempestuous Magic");
+      assert.equal(idle.ok, true, `out of a fight: ${idle.error}`);
     },
     "heart-resist": async () => {
       await kit.endFight();
@@ -492,7 +525,6 @@ export function probes(rig, shared) {
     "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
-    "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
     "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },

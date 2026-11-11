@@ -9,6 +9,7 @@
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { castFirstReason, levelledCastThisTurn } from "@/lib/dm/ar-ws-tempest-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -309,6 +310,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       // Power Surge: after a wizard spell of this turn hurt a creature.
       spend.afterSpellDamage && turn.myTurn && !spellHurt(turn.marks).length
         ? { reason: `${spend.name} rides a wizard spell's damage: hurt a creature with one this turn first.`, spent: false }
+        : null,
+      // Tempestuous Magic: after a spell of 1st level or higher cast this turn.
+      spend.afterLevelledCast && turn.myTurn && !levelledCastThisTurn(turn.marks)
+        ? { reason: castFirstReason(spend.name, sheet.name), spent: false }
         : null,
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.

@@ -24,6 +24,7 @@ import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
+import { castFirstRefusal } from "@/lib/dm/ar-ws-tempest-logic";
 import { answerTriggers, triggerRefusal } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
 import { curseHealTakenBack } from "@/lib/dm/master-of-hexes";
@@ -256,6 +257,11 @@ export function authoredFeatureSpend(
         refused: "rules",
       };
     }
+  }
+  // Tempestuous Magic: in a fight, once a levelled spell is cast this turn.
+  const uncast = spend.afterLevelledCast ? castFirstRefusal(spend.name, sheet, inFight ? encounter : null) : null;
+  if (uncast) {
+    return uncast;
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
   const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);

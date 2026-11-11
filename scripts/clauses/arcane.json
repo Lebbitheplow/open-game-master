@@ -1742,8 +1742,9 @@
   "clauses": [
    {
     "c": "Before or after casting a spell of 1st level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: tempest-trigger",
+    "by": "src/lib/dm/ar-ws-tempest-logic.ts castFirstRefusal (authored-spends.ts, the row's afterLevelledCast; the Hand's card reads the same rule). Ruling: in a fight the flight is open once the turn has seen a spell of 1st level or higher cast; taken before, nothing could hold the sorcerer to casting one, so it follows the cast; out of a fight no turn is kept and it is open"
    },
    {
     "c": "a bonus action lets you fly 10 feet without provoking",
