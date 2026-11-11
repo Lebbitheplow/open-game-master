@@ -75,6 +75,11 @@ const useReactionSchema = z.object({
   feature: z.string().max(80),
   targetCharacterId: z.string().optional(),
   targetEnemyId: z.string().optional(),
+  // The creatures a reaction strikes when it strikes several (Deflecting
+  // Shroud's up to three: src/lib/dm/ar-ws-deflection.ts). Read from the
+  // console and a card; the tool's description does not name it, so it costs
+  // the model's window nothing, and with none named the engine picks.
+  targetEnemyIds: z.array(z.string()).max(8).optional(),
   // Counterspell: the spell being countered.
   spell: z.string().max(80).optional(),
   // The way a counted reaction goes, when it has two (Cauterizing Flames: heal

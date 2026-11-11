@@ -917,8 +917,9 @@
   "clauses": [
    {
     "c": "Arcane Deflection also deals half your wizard level in force damage to up to three creatures within 60 feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflecting-shroud",
+    "by": "src/lib/dm/ar-ws-deflection.ts deflectingShroud, dealt inside deflectionAftermath by either half of the Arcane Deflection reaction for a holder of the feature: half the wizard level in force to the foes named in targetEnemyIds (three at most), else the three nearest, each within 60 feet and seen by the wizard; a creature named beyond the reach, unseen or a fourth is refused before the reaction is spent (shroudRefusal)"
    }
   ]
  },

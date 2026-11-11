@@ -55,4 +55,12 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
     subclass: "War Magic",
     reactions: [{ name: "Arcane Deflection", does: { kind: "ac_vs_hit", amount: 2, orSave: 4, cantripsOnly: true } }],
   },
+  // "Arcane Deflection also deals half your wizard level in force damage to
+  // up to three creatures within 60 feet": dealt by the reaction itself, to
+  // the creatures the call names or the three nearest the wizard can see. The
+  // earlier row left it to the GM and apply_damage.
+  "wizard::Deflecting Shroud": {
+    subclass: "War Magic",
+    heldBy: { file: "src/lib/dm/ar-ws-deflection.ts", call: "deflectingShroud(" },
+  },
 };

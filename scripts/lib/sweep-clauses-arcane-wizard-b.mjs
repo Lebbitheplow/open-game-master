@@ -180,10 +180,52 @@ export function probes(rig, shared) {
       assert.equal((await spend(war(), "Power Surge", { targetEnemyId: enemy.id })).ok, false, "once per turn");
     },
     "deflecting-shroud": async () => {
-      const [enemy] = await hit(war());
-      const before = foe(enemy).currentHp;
-      assert.equal((await react(war(), "Arcane Deflection")).ok, true);
-      assert.equal(before - foe(enemy).currentHp, 10, "force damage to the creature beside a 20th-level war mage who used Arcane Deflection");
+      // Hit by the first of five: four stand in a row within 20 feet, the fifth 75 feet off.
+      async function shrouded(who) {
+        const foes = await stage(who, { count: 5, others: [friend()], first: friend() });
+        await rig.table.strike(foes[0], who, [9, 4]);
+        kit.place(who.id, 1, 5);
+        foes.slice(0, 4).forEach((enemy, at) => kit.place(enemy.id, 2 + at, 5));
+        kit.place(foes[4].id, 16, 5);
+        assert.ok(rig.feetBetween(who, foes[4]) > 60 && rig.feetBetween(who, foes[3]) <= 60, "the staging: four within 60 feet, one beyond");
+        return foes;
+      }
+      const hps = (foes) => foes.map((enemy) => foe(enemy).currentHp);
+      const lost = (before, foes) => hps(foes).map((now, at) => before[at] - now);
+      const half = Math.floor(20 / 2);
+      // Nobody named: the three nearest take half the wizard level, the fourth and the far one nothing.
+      let foes = await shrouded(war());
+      let before = hps(foes);
+      const out = await react(war(), "Arcane Deflection");
+      assert.equal(out.ok, true, out.error);
+      assert.deepEqual(lost(before, foes), [half, half, half, 0, 0], `force damage to [nearest, second, third, fourth, 75 feet off]: ${show(out)}`);
+      assert.match(out.result.shroud, /10 force/);
+      // The creatures named are the ones struck.
+      foes = await shrouded(war());
+      before = hps(foes);
+      const picked = await react(war(), "Arcane Deflection", { targetEnemyIds: [foes[3].id, foes[1].id] });
+      assert.equal(picked.ok, true, picked.error);
+      assert.deepEqual(lost(before, foes), [0, half, 0, half, 0], "the two named and nobody else");
+      // One named beyond 60 feet, or a fourth: refused, with the reaction and the hit as they were.
+      foes = await shrouded(war());
+      before = hps(foes);
+      const far = await react(war(), "Arcane Deflection", { targetEnemyIds: [foes[4].id] });
+      assert.equal(far.ok, false, "a creature 75 feet off");
+      assert.match(far.error, /beyond 60 feet/);
+      const four = await react(war(), "Arcane Deflection", { targetEnemyIds: foes.slice(0, 4).map((enemy) => enemy.id) });
+      assert.equal(four.ok, false, "four creatures named");
+      assert.deepEqual([lost(before, foes), rig.reacted(war()), sheet(war()).conditions.includes("arcane deflection")], [[0, 0, 0, 0, 0], false, false], "[damage, reaction spent, mark laid] on the refusals");
+      // The save's half deals it too.
+      assert.equal((await roll(war(), { kind: "saving_throw", ability: "dex", dc: 14 }, [9])).out.result?.success, false);
+      const saved = await react(war(), "Arcane Deflection", { variant: "save" });
+      assert.equal(saved.ok, true, saved.error);
+      assert.deepEqual(lost(before, foes), [half, half, half, 0, 0], "the shroud from the +4 on a save");
+      // Below 14th level there is no shroud.
+      const young = holder("wizard", "War Magic", 13);
+      foes = await shrouded(young);
+      before = hps(foes);
+      assert.equal((await react(young, "Arcane Deflection")).ok, true);
+      assert.deepEqual(lost(before, foes), [0, 0, 0, 0, 0], "a 13th-level war mage's Arcane Deflection hurts nobody");
     },
     // ---- Bladesinging
     "bladesinger-training": async () => {
@@ -459,7 +501,6 @@ export function probes(rig, shared) {
   const wordRest = rests(["wizard", "Order of Scribes"], "sub_one_with_the_word", "long");
 
   const KNOWN = {
-    "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "density-enemy": { severity: "medium", kind: "rule-wrong", where: `${DATA} wizard::Adjust Density (buff target "ally"), src/lib/dm/authored-spend-effects.ts (a targetEnemyId the buff cannot use falls back to the holder)`, note: "The wizard meant to slow a foe and is told they have slowed themselves; the action is spent.", fix: "Let the buff take a creature of either side, and refuse a target it cannot use instead of falling back to the holder." },
