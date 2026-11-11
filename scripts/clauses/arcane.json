@@ -2974,9 +2974,9 @@
   "clauses": [
    {
     "c": "As an action, you produce the effect of one spell of 6th level or lower, from any class's list, with a casting time of one action, ignoring its requirements and costly components.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the use is a counter; the spell it stands for goes through the cast tools, and a casting with no slot and no component was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-doors.ts: use_resource \"Limited Wish\" with the spell in variant is refused for a spell above 6th level or of another casting time, spending nothing; the use (its action, its 1d4 long rests) then writes the credit a spell cast from an item has (src/lib/srd/item-cast-credit.ts), so the spell's own tool casts it with no slot, no component and no need to know it",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: wish-spell"
    },
    {
     "c": "You can use it again only after 1d4 long rests.",
@@ -3874,7 +3874,8 @@
   "clauses": [
    {
     "c": "During a short or long rest you hold an hour-long ritual with up to your proficiency bonus in willing creatures (you included). At its end you learn one divination or necromancy spell from any class's list, of a level you can cast and no higher than the number of creatures who took part; it counts as a bard spell, doesn't count against your spells known, and stays until you start a long rest.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-doors.ts spiritSession (use_resource \"Spirit Session\", the spell in variant, the creatures who took part in amount): out of a fight, a divination or necromancy spell of a level the bard can cast and no higher than the creatures who took part (at most the proficiency bonus), put in the prepared list beside the spells known under a mark; the long rest takes both (ar-wbf-bard-session-logic.ts sessionForgotten, rest-logic.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: session"
    },
    {

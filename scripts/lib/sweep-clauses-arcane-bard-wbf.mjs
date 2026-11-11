@@ -140,6 +140,35 @@ export function probes(rig, shared) {
       rig.endCurrent();
       assert.ok(!has(friend(), "mantle's stride"), `after the bard's turn: ${JSON.stringify(sheet(friend()).conditions)}`);
     },
+    // ---- College of Spirits
+    // Speak with Dead is a 3rd-level necromancy spell: three creatures took
+    // part (amount, the bard included; a 20th-level bard may hold it with 6).
+    session: async () => {
+      const who = B("College of Spirits", 20, { spells: ["Sleep"] }, "session");
+      await stage(who);
+      await kit.endFight();
+      const ask = (variant, amount) => call("use_resource", { characterId: who.id, resource: "Spirit Session", variant, ...(amount ? { amount } : {}) });
+      const cast = () => call("use_spell_slot", { characterId: who.id, spell: "Speak with Dead" });
+      assert.equal((await cast()).ok, false, "the staging: the bard does not know Speak with Dead");
+      assert.equal((await ask("Speak with Dead")).ok, false, "a 3rd-level spell from a session of one");
+      assert.equal((await ask("Fireball", 3)).ok, false, "an evocation spell");
+      assert.equal((await ask("Speak with Dead", 7)).ok, false, "seven creatures on a proficiency bonus of 6");
+      assert.equal(sheet(who).resources.sub_spirit_session.used, 0, "a refusal spends nothing");
+      const out = await ask("Speak with Dead", 3);
+      assert.equal(out.ok, true, out.error);
+      const lists = () => sheet(who).spellcasting;
+      assert.ok(lists().prepared.includes("Speak with Dead"), "the spell is learned");
+      assert.ok(!(lists().known ?? []).includes("Speak with Dead"), "it does not count against the spells known");
+      assert.equal((await ask("Detect Magic", 3)).ok, false, "a second session before a long rest");
+      const spoken = await cast();
+      assert.equal(spoken.ok, true, `the learned spell is cast as a bard spell: ${String(spoken.error).slice(0, 200)}`);
+      // The rest itself (rig.rest would first wipe every condition, the mark with them).
+      const night = await call("take_rest", { kind: "long" });
+      assert.equal(night.ok, true, night.error);
+      assert.ok(!lists().prepared.includes("Speak with Dead"), "it stays until a long rest");
+      assert.ok(!has(who, "spirit session"), JSON.stringify(sheet(who).conditions));
+      assert.equal((await cast()).ok, false, "cast after the long rest took it");
+    },
   };
 
   const KNOWN = {};

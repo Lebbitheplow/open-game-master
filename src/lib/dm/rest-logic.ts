@@ -5,6 +5,7 @@ import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
 import { TENDED } from "@/lib/dm/stabilize";
 import { RALLIED } from "@/lib/dm/ar-wbf-feat-rally";
+import { sessionForgotten } from "@/lib/dm/ar-wbf-bard-session-logic";
 import { refillResources } from "@/lib/srd/resource-refills";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isMulticlass, slotTableFor } from "@/lib/srd/multiclass";
@@ -158,6 +159,8 @@ export function longRestPatch(
     patch.conditions = cleared.conditions;
     patch.conditionMeta = cleared.meta;
   }
+  // A Spirit Session's spell goes with the long rest (ar-wbf-bard-session-logic.ts).
+  Object.assign(patch, sessionForgotten(sheet, patch));
   // What lasts "until the target finishes a long rest" ends with it: a
   // wight's Life Drain, a succubus's kiss (condition-logic.ts untilLongRest).
   {

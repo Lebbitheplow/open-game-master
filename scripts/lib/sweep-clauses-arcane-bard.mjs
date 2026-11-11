@@ -6,7 +6,6 @@ import { MOD } from "./sweep-clauses-arcane.mjs";
 import { call as routeCall } from "./enforce-campaign.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
-const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, left, budget, show, call, spend, react, stage } = rig;
@@ -378,19 +377,15 @@ export function probes(rig, shared) {
       const out = await spend(spirits(), "Tales from Beyond");
       assert.equal(out.ok, true, `use_resource "Tales from Beyond": ${String(out.error).slice(0, 160)}`);
     },
-    session: async () => {
-      await kit.endFight();
-      const out = await spend(spirits(), "Spirit Session", { variant: "Speak with Dead" });
-      assert.equal(out.ok, true, out.error);
-      assert.ok((sheet(spirits()).spellcasting.prepared ?? []).includes("Speak with Dead"), "the spell is learned");
-    },
+    // "session" is staged in sweep-clauses-arcane-bard-wbf.mjs: the probe that
+    // stood here asked for a 3rd-level spell from a session of one, which the
+    // text refuses ("no higher than the number of creatures who took part").
     "session-rest": rests(["bard", "College of Spirits"], "sub_spirit_session", "long"),
   };
   const infectiousRest = rests(["bard", "College of Eloquence"], "sub_infectious_inspiration", "long");
 
   const KNOWN = {
     "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
-    session: { severity: "low", kind: "rule-missing", where: `${RES} sub_spirit_session (a counter with guidance)`, note: "", fix: "Teach the chosen divination or necromancy spell until the next long rest." },
   };
   return { PROBES, KNOWN };
 }

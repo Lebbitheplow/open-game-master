@@ -247,6 +247,33 @@ export function probes(rig, shared) {
       assert.ok(hp(who) < before, `the undead's Burning Hands left the warlock unhurt: ${show(out).slice(0, 220)}`);
       assert.equal(d(out, 20), 1, `d20s: the warlock's save against the area, and no ward save for the undead (${JSON.stringify(out.rolled).slice(0, 200)})`);
     },
+    // ---- The Genie
+    // Disintegrate is a 6th-level spell of one action that no warlock list
+    // holds: the wish casts it with no slot (a 2 fails the Dexterity save).
+    "wish-spell": async () => {
+      const who = W("The Genie");
+      const [enemy] = await stage(who);
+      const ray = () => call("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Disintegrate" }, [2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
+      assert.equal((await ray()).ok, false, "the staging: Disintegrate is no spell of this warlock's");
+      kit.freshTurn();
+      for (const [spell, why] of [["Wish", "a 9th-level spell"], ["Find the Path", "a casting time of a minute"], [undefined, "no spell named"]]) {
+        const refused = await spend(who, "Limited Wish", spell ? { variant: spell } : {});
+        assert.equal(refused.ok, false, why);
+      }
+      assert.equal(sheet(who).resources.sub_limited_wish.used, 0, "a refusal spends nothing");
+      const slots = JSON.stringify([sheet(who).spellcasting.slots, sheet(who).spellcasting.pact ?? null]);
+      const out = await spend(who, "Limited Wish", { variant: "Disintegrate" });
+      assert.equal(out.ok, true, out.error);
+      assert.equal(budget().actionUsed, true, "the wish is the action");
+      const before = foe(enemy).currentHp;
+      const cast = await ray();
+      assert.equal(cast.ok, true, `the wished spell, cast with its own tool: ${String(cast.error).slice(0, 220)}`);
+      assert.ok(before - foe(enemy).currentHp >= 100, `Disintegrate's 10d6 + 40: ${before - foe(enemy).currentHp}`);
+      assert.equal(JSON.stringify([sheet(who).spellcasting.slots, sheet(who).spellcasting.pact ?? null]), slots, "no slot is spent");
+      assert.equal(sheet(who).resources.sub_limited_wish.used, 1, "the use is");
+      kit.freshTurn();
+      assert.equal((await ray()).ok, false, "a second casting on the one wish");
+    },
   };
   const KNOWN = {};
   return { PROBES, KNOWN };
