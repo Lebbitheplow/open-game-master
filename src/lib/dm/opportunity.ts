@@ -49,6 +49,7 @@ import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
@@ -486,6 +487,16 @@ export function resolvePcOpportunityAttacks(
     // Only a creature they can see provokes it (attack-light.ts).
     const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
     if (sight && !sight.attackerSees) {
+      continue;
+    }
+    // War Caster: the spell they named is cast in the swing's place, null
+    // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint), reactionKey });
+    if (cast) {
+      notes.push(cast.note);
+      if (cast.dropped) {
+        break;
+      }
       continue;
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactionKey];

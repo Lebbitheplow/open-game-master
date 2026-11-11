@@ -51,6 +51,7 @@ import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { turnPayer } from "@/lib/dm/ar-wbf-feat-treats";
+import { featDoorSpend } from "@/lib/dm/ar-wbf-feat-doors";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
@@ -1390,6 +1391,12 @@ function dmMutation(
       const srdSpend = srdFeatureSpend(campaign, turnId, sheet, resourceName, args);
       if (srdSpend) {
         return { result: srdSpend };
+      }
+      // The feats with a door of their own: War Caster's spell, Telekinetic's
+      // shove... (src/lib/dm/ar-wbf-feat-doors.ts).
+      const featSpend = featDoorSpend(campaign, turnId, sheet, resourceName, args);
+      if (featSpend) {
+        return { result: featSpend };
       }
       // Authored subclass features the engine resolves (src/lib/dm/authored-spends.ts).
       const authoredSpend = authoredFeatureSpend(campaign, turnId, sheet, resourceName, args, reason);

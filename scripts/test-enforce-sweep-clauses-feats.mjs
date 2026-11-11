@@ -243,8 +243,10 @@ P["feat.spell-sniper.range"] = async () => {
 // and the clauses nobody had staged (the two modules say how each is run).
 const { tableProbes } = await import("./lib/sweep-clauses-feats-wbf-table.mjs");
 const { gapProbes } = await import("./lib/sweep-clauses-feats-wbf-gaps.mjs");
+const { doorProbes } = await import("./lib/sweep-clauses-feats-wbf-doors.mjs");
 tableProbes(rig, P);
 gapProbes(rig, P);
+doorProbes(rig, P);
 // The ids those modules answer for, written out because the ledger's own
 // check reads this file's text for a probe's name: a module that drops one
 // fails here before the ledger sends a clause to nothing.
@@ -255,6 +257,8 @@ const WBF_PROBES = [
   "feat.athlete.climb", "feat.athlete.jump", "feat.actor.disguise", "feat.charger.run", "feat.elemental-adept.twice", "feat.healer.kit",
   "feat.inspiring-leader.rally", "feat.inspiring-leader.temp", "feat.lucky.attacked", "feat.mobile.dash-terrain", "feat.sentinel.stop",
   "feat.sentinel.disengage", "feat.sentinel.guard", "feat.shield-master.save", "feat.chef.meal",
+  "feat.war-caster.opportunity", "feat.telekinetic.shove", "feat.telekinetic.hand", "feat.linguist.cipher",
+  "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect",
 ];
 assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules no longer write");
 

@@ -70,6 +70,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
+import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
@@ -303,6 +304,12 @@ export function handleEnemyAttack(
   if (unmounted) {
     return { error: unmounted, retry: true };
   }
+  // Mounted Combatant: the rider takes the attack aimed at the mount
+  // (src/lib/dm/ar-wbf-feat-doors.ts).
+  const riderTakes = args.targetMount ? riderTakesIt(target) : null;
+  if (riderTakes) {
+    args.targetMount = false;
+  }
   // Swallowed: total cover against everything outside the creature that
   // swallowed them (swallow.ts).
   const inside = swallowCover({ kind: "enemy", id: found.id }, { kind: "sheet", id: target.id });
@@ -459,7 +466,7 @@ export function handleEnemyAttack(
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on every swing, as it would on a character's attack.
   let riders = conditionRollRiders(standing.conditions, "attack");
-  const notes: string[] = [];
+  const notes: string[] = riderTakes ? [riderTakes] : [];
   if (stood) {
     notes.push(`${enemy.displayName} stands up (half its speed)`);
   }

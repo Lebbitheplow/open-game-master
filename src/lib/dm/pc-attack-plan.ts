@@ -8,6 +8,7 @@
 
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
+import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -618,6 +619,13 @@ export function planPcAttack(input: {
   if (options.featureBonus?.advantage) {
     sources.push("advantage");
     context.notes.push(`${options.featureBonus.feature}: advantage on this attack`);
+  }
+  // Mounted Combatant: advantage in melee against an unmounted creature
+  // smaller than the mount (src/lib/dm/ar-wbf-feat-doors.ts).
+  const ridden = mountedAdvantage(campaign.id, sheet, enemy, !profile.ranged);
+  if (ridden) {
+    sources.push("advantage");
+    context.notes.push(ridden);
   }
   // Powerful Attacker's trade: the roll at disadvantage (feat-combat.ts).
   if (powerDisadvantage) {

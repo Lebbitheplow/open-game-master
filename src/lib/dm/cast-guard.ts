@@ -78,6 +78,7 @@ import { paidByManualTick } from "@/lib/dm/manual-ticks";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { reactionTimingOf } from "@/lib/dm/reaction-kinds";
 import { readiedRelease, releaseReadied } from "@/lib/dm/readied-spell";
+import { castsAsOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster-logic";
 import { heldBySlow, markSlowedCast, slowHoldsCast } from "@/lib/dm/slow-cast";
 import { antimagicProblem, silenceProblem } from "@/lib/dm/zone-rules";
 import { placeSpellZone, placementReachProblem } from "@/lib/dm/zone-cast";
@@ -363,7 +364,9 @@ export function castSpell(
   // SRD 5.1, Longer Casting Times: in a fight a spell of a minute or more,
   // or one cast as a ritual, is begun now and held across the caster's turns.
   const holdRounds = inFight && !completing ? castingRoundsOf(facts, Boolean(input.ritual)) : null;
-  const reactionTime = !input.storing && (facts?.castingTime === "reaction" || via === "reaction");
+  // War Caster's opportunity spell is a one-action spell cast with the
+  // reaction (src/lib/dm/ar-wbf-feat-warcaster-logic.ts).
+  const reactionTime = !input.storing && (facts?.castingTime === "reaction" || via === "reaction" || castsAsOpportunity(sheet.id));
   // A summoning spell's creatures come through cast_buff (summon-cast.ts),
   // once its casting is done when that takes a minute in a fight.
   const summoning = via === "slot" && !input.dryRun && !input.storing && holdRounds === null ? summonSlotProblem(engine) : null;

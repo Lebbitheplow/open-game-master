@@ -448,9 +448,9 @@
    },
    {
     "c": "and can create written ciphers that others cannot read without an Intelligence check against a DC of 8 plus your Intelligence modifier and proficiency bonus",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-doors.ts linguistCipher (use_resource \"Linguist\"): the engine gives the DC, 8 + Intelligence modifier + proficiency bonus, and the check that reads it is request_roll's at that DC",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.linguist.cipher"
    }
   ]
  },
@@ -651,10 +651,22 @@
   "sha": "92357b26c2d0",
   "clauses": [
    {
-    "c": "While mounted you have advantage on melee attacks against unmounted creatures smaller than your mount, you can redirect an attack aimed at your mount to yourself, and your mount takes no damage on a successful Dexterity save and half on a failure.",
+    "c": "While mounted you have advantage on melee attacks against unmounted creatures smaller than your mount",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-doors.ts mountedAdvantage, asked by pc-attack-plan.ts: the mount on record (db/mounts.ts), its size against the creature's, melee only",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mounted-combatant.advantage"
+   },
+   {
+    "c": "you can redirect an attack aimed at your mount to yourself",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-doors.ts riderTakesIt, asked by enemy-attack.ts for targetMount: the rider takes it while they can act, unless they said to let it land (use_resource \"Mounted Combatant\", variant \"mount\")",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mounted-combatant.redirect"
+   },
+   {
+    "c": "your mount takes no damage on a successful Dexterity save and half on a failure",
     "is": "gap",
     "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a mounted fight"
+    "why": "not built here: no door deals a mount damage through a saving throw (an area or a spell reaches the rider alone; only enemy_attack's targetMount reaches a mount, src/lib/dm/mount-combat.ts strikeMount), so there is no damage for the feat to remove or halve. It needs areas to reach mounts first (w2-ar-wbf-handoff.jsonl)"
    }
   ]
  },
@@ -942,9 +954,9 @@
    },
    {
     "c": "and you can cast a one-action spell targeting one creature as an opportunity attack",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-warcaster.ts: use_resource \"War Caster\" names the spell beforehand (the server rolls opportunity attacks itself, src/lib/dm/opportunity.ts), and warCasterOpportunity casts it at the creature that provoked through the spell's own tool, with the reaction (cast-guard.ts prices it so); one action and one creature are checked when the spell is named (ar-wbf-feat-warcaster-logic.ts opportunitySpellProblem)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.war-caster.opportunity"
    }
   ]
  },
@@ -1015,10 +1027,16 @@
     "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
    },
    {
-    "c": "You learn mage hand and can cast it without components at 30 extra feet, and as a bonus action you can shove a creature within 30 feet 5 feet on a failed Strength save.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "c": "You learn mage hand and can cast it without components at 30 extra feet",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts teaches the cantrip; src/lib/dm/ar-wbf-feat-doors-logic.ts telekineticComponents, asked by cast-rules.ts componentsAsCast, casts it with no words or gestures. The 30 extra feet have nothing to hold back: no cast door measures how far off a Mage Hand appears",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.telekinetic.hand"
+   },
+   {
+    "c": "as a bonus action you can shove a creature within 30 feet 5 feet on a failed Strength save",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-feat-doors.ts telekineticShove (use_resource \"Telekinetic\" with the creature): the bonus action, 30 feet, a Strength save against 8 + proficiency bonus + the modifier of the score the feat raised, and 5 feet straight away on a failure (map-tools.ts pushTokenAway)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.telekinetic.shove"
    }
   ]
  },
