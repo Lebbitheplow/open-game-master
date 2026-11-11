@@ -96,6 +96,8 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   },
   summaryOnly("tides_of_chaos_check", "tides of chaos (check)", "Tides of Chaos: advantage on the next ability check, which spends it."),
   summaryOnly("tides_of_chaos_save", "tides of chaos (save)", "Tides of Chaos: advantage on the next saving throw, which spends it."),
+  // Laid by a Metamagic spend, taken by the next casting (src/lib/dm/ar-ws-lunar-boons.ts).
+  summaryOnly("lunar_boon", "lunar boon", "Lunar Boons: a Metamagic option was just paid; if the next spell cast is of the current phase's schools, 1 sorcery point comes back and a boon is spent."),
   summaryOnly("surge_chance", "surge chance", "Wild Magic Surge: a sorcerer spell was just cast with Tides of Chaos spent; if the GM has the sorcerer roll on the wild magic table now, Tides of Chaos comes back."),
   ...(["1d8", "1d10"] as const).map(
     (dice): ConditionEffectRow => ({

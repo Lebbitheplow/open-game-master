@@ -10,7 +10,7 @@ const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, left, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother, movesSomething } = shared;
+  const { friend, drain, freeReactions, uses, rests, hasDoor, buysAnother } = shared;
   rig.outfit("sorcerer", "Storm Sorcery", { spells: ["Shatter"] });
   rig.outfit("sorcerer", "Aberrant Mind", { spells: ["Dissonant Whispers"] });
   rig.outfit("sorcerer", "Shadow Magic", { spells: ["Darkness"] });
@@ -434,7 +434,58 @@ export function probes(rig, shared) {
       const apart = await call("cast_at_enemy", { characterId: lunar().id, targetEnemyId: one.id, secondTargetEnemyId: two.id, spell: "Sacred Flame" }, [1, 1, 3, 3, 3, 3]);
       assert.equal(apart.ok, false, "40 feet apart");
     },
-    "lunar-boons": movesSomething(["sorcerer", "Lunar Sorcery"], "Lunar Boons"),
+    // A Metamagic spend names no spell, so the boon meets it at the cast
+    // (src/lib/dm/ar-ws-lunar-boons.ts): the option paid, then the spell.
+    // Each case is [sorcery points, boons] the two calls cost together.
+    "lunar-boons": async () => {
+      const who = lunar();
+      const state = () => [left(who, "sorcery_points"), left(who, "sub_lunar_boons")];
+      const meta = (option, amount = 1) => spend(who, "Sorcery Points", { variant: option, amount });
+      const cast = (spell) => call("use_spell_slot", { characterId: who.id, spell });
+      const paid = async (steps, { boons = true } = {}) => {
+        rig.refill(who);
+        if (!boons) drain(who, "sub_lunar_boons");
+        const before = state();
+        for (const step of steps) {
+          const out = await step();
+          assert.equal(out.ok, true, out.error);
+        }
+        return [before[0] - state()[0], before[1] - state()[1]];
+      };
+      await phase("Crescent Moon");
+      world.patch(who.id, { features: [...sheet(who).features.filter((feature) => !feature.name.startsWith("Metamagic: ")), ...["Extended Spell", "Twinned Spell"].map((name) => ({ name: `Metamagic: ${name}`, source: "class", description: "" }))] });
+      // Crescent Moon: illusion and transmutation. Alter Self is transmutation,
+      // Lesser Restoration abjuration (the Full Moon's).
+      assert.deepEqual(await paid([() => cast("Alter Self")]), [0, 0], "a spell of the phase's schools with no Metamagic on it");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [0, 1], "Extended Spell (1 point) on Alter Self in the Crescent Moon phase");
+      assert.deepEqual(await paid([() => meta("Twinned Spell", 2), () => cast("Alter Self")]), [1, 1], "Twinned Spell on a 2nd-level spell (2 points)");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [1, 0], "on a spell of another phase's school");
+      assert.ok(!sheet(who).conditions.includes("lunar boon"), "the Metamagic rode that spell: the mark is gone");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration"), () => cast("Alter Self")]), [1, 0], "a later spell of the phase's schools takes nothing back");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")], { boons: false }), [1, 0], "with no boon left");
+      // The counter is spent by the cast, never by a call of its own.
+      rig.refill(who);
+      const bare = await spend(who, "Lunar Boons");
+      assert.equal(bare.ok, false, "a bare spend of the counter");
+      assert.equal(left(who, "sub_lunar_boons"), prof(20), "nothing spent");
+      // The phase decides the schools.
+      await phase("Full Moon");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Lesser Restoration")]), [0, 1], "abjuration in the Full Moon phase");
+      assert.deepEqual(await paid([() => meta("Extended Spell"), () => cast("Alter Self")]), [1, 0], "transmutation in the Full Moon phase");
+      // In a fight the spell may come first: a Metamagic option paid later that
+      // turn costs 1 less there and then, once.
+      await stage(who);
+      const before = state();
+      for (const step of [() => cast("Lesser Restoration"), () => meta("Extended Spell")]) {
+        const out = await step();
+        assert.equal(out.ok, true, out.error);
+      }
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [0, 1], "the spell, then Extended Spell, on one turn");
+      const again = await meta("Extended Spell");
+      assert.equal(again.ok, true, again.error);
+      assert.deepEqual([before[0] - state()[0], before[1] - state()[1]], [1, 1], "a second option that turn pays its price until its own spell is cast");
+      rig.refill(who);
+    },
     "boons-uses": async () => {
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_boons", { 6: prof(6), 20: prof(20) })();
       await boonsRest();
@@ -494,7 +545,6 @@ export function probes(rig, shared) {
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
     "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
-    "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },
   };
   return { PROBES, KNOWN };
 }

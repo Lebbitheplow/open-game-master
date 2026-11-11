@@ -2150,8 +2150,9 @@
   "clauses": [
    {
     "c": "When you use Metamagic on a spell of your current phase's schools (Full Moon: abjuration and divination; New Moon: enchantment and necromancy; Crescent Moon: illusion and transmutation), it costs 1 sorcery point less (minimum 0)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: lunar-boons",
+    "by": "src/lib/dm/ar-ws-lunar-boons.ts metamagicPaid (resource-tools.ts computeUseResource, every Metamagic option) and boonAtCast (cast-guard.ts castSpell). Ruling: the Metamagic spend names no spell, so the option paid marks the sorcerer and the next spell cast, if of the phase schools, gives 1 point back and spends a boon; in a fight a phase spell cast first lowers a Metamagic option paid later that turn; a bare spend of the counter is refused"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",

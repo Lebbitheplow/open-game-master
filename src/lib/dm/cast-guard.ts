@@ -25,6 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { boonAtCast } from "@/lib/dm/ar-ws-lunar-boons";
 import { castRefills } from "@/lib/dm/ar-ws-transposition";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
@@ -704,6 +705,15 @@ export function castSpell(
   if (refilled) {
     patch.resources = refilled.resources;
     result.refilled = refilled.notes.join(" ");
+  }
+  // Lunar Boons: the Metamagic paid for this spell costs 1 sorcery point less
+  // when the spell is of the phase's schools (src/lib/dm/ar-ws-lunar-boons.ts).
+  const boon = input.storing ? null : boonAtCast(campaign.id, sheet, patch, spellSchoolFor(spell, authors));
+  if (boon) {
+    Object.assign(patch, boon.patch);
+    if (boon.note) {
+      result.lunarBoons = boon.note;
+    }
   }
   // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
   // have the sorcerer roll on the surge table, and a spent Tides of Chaos then
