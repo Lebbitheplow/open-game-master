@@ -13,6 +13,7 @@ import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { sizeForRace } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { movesThroughEverything } from "@/lib/dm/ar-ws-umbral-logic";
 import { itemSpeeds, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
@@ -41,6 +42,9 @@ export function passableTiles(input: {
   // than its kinds' (src/lib/dm/combatant.ts tokenSides: a companion turned
   // on the party is hostile to it). Absent: by kind.
   sideOf?: TokenSide;
+  // Umbral Form: through every creature's space and every object's
+  // (src/lib/dm/ar-ws-umbral-logic.ts).
+  everything?: boolean;
 }): Set<number> {
   const out = new Set<number>();
   const moverSize = sizeIndex(input.sizeOf(input.mover));
@@ -49,12 +53,12 @@ export function passableTiles(input: {
   const side = input.sideOf ?? kindSide;
   const moverSide = side(input.mover);
   for (const token of input.tokens) {
-    if (token.id === input.mover.id || side(token) === "prop") {
+    if (token.id === input.mover.id || (side(token) === "prop" && !input.everything)) {
       continue;
     }
     const size = sizeIndex(input.sizeOf(token));
     const friendly = side(token) === moverSide;
-    const through = friendly || Math.abs(size - moverSize) >= 2 || (input.nimble === true && size > moverSize);
+    const through = input.everything === true || friendly || Math.abs(size - moverSize) >= 2 || (input.nimble === true && size > moverSize);
     if (!through) {
       continue;
     }
@@ -81,7 +85,7 @@ export function pcMoveTraits(input: {
   width: number;
   tokens: BattleToken[];
   mover: BattleToken;
-  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number } & Wearer;
+  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[] } & Wearer;
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
@@ -105,6 +109,7 @@ export function pcMoveTraits(input: {
       footprintOf: input.footprintOf,
       sizeOf: (token) => (token.id === input.mover.id ? moverSize : token.kind === "enemy" ? input.enemySize(token.refId) : undefined),
       nimble: hasHalflingNimbleness(input.sheet.features),
+      everything: movesThroughEverything(input.sheet.conditions),
       ...(input.sideOf ? { sideOf: input.sideOf } : {}),
     }),
   };

@@ -117,6 +117,48 @@ export function probes(rig, shared) {
       const plain = await blow([19, 3, 20]);
       assert.deepEqual([plain.hp, plain.used, plain.d20s], [1, 1, 2], "[hit points, uses spent, d20s thrown] after the same club on a 19");
     },
+    // "and the ability to move through creatures and objects": in shadow form
+    // the sorcerer's own walk (the board's move route) passes a hostile
+    // creature of their own size and an object on the board, each at double
+    // cost, and ends inside neither (src/lib/dm/ar-ws-umbral-logic.ts, read by
+    // battlemap/passage.ts pcMoveTraits).
+    "umbral-through": async () => {
+      const maps = await import("../../src/lib/db/battle-maps.ts");
+      const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
+      const walk = async (x, y) => {
+        world.signIn({ id: sheet(shadow()).userId });
+        // The dummy's opportunity attack, when the walk draws one, misses on a 1.
+        world.clearDice();
+        world.dice(1, 1);
+        const response = await moveRoute.POST(
+          new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x, y }) }),
+          { params: Promise.resolve({ campaignId: world.campaignId }) },
+        );
+        world.clearDice();
+        const at = kit.token(shadow().id);
+        return { status: response.status, at: [at.x, at.y], spent: at.movedThisRound };
+      };
+      // A cell four squares long and one high, walled all round: the sorcerer
+      // at (5, 5), a hostile dummy at (6, 5), a statue at (7, 5), floor at (8, 5).
+      const cell = async () => {
+        await stage(shadow());
+        kit.openField([...[4, 5, 6, 7, 8, 9].flatMap((x) => [[x, 4, "#"], [x, 6, "#"]]), [4, 5, "#"], [9, 5, "#"]]);
+        maps.insertToken({ mapId: kit.map().id, campaignId: world.campaignId, kind: "prop", refId: "statue", name: "Statue", x: 7, y: 5 });
+      };
+      await cell();
+      const plain = await walk(8, 5);
+      assert.deepEqual([plain.at, plain.spent], [[5, 5], 0], "[square, squares spent] with no shadow form: the creature and the statue stand in the way");
+      await cell();
+      const formed = await spend(shadow(), "Umbral Form");
+      assert.equal(formed.ok, true, formed.error);
+      assert.deepEqual((await walk(6, 5)).at, [5, 5], "in shadow form, a walk that would end inside the creature");
+      assert.deepEqual((await walk(7, 5)).at, [5, 5], "in shadow form, a walk that would end inside the statue");
+      const through = await walk(8, 5);
+      assert.deepEqual([through.status, through.at, through.spent], [200, [8, 5], 5], "[status, square, squares spent] in shadow form: through the creature and the statue, each as difficult terrain (2 + 2 + 1)");
+      // A wall is the building, no object: it stops the shadow too.
+      assert.deepEqual((await walk(10, 5)).at, [8, 5], "in shadow form, a walk through the cell's wall");
+      rig.refill(shadow());
+    },
   };
   const KNOWN = {};
   return { PROBES, KNOWN };

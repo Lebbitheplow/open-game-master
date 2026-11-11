@@ -1714,9 +1714,9 @@
    },
    {
     "c": "and the ability to move through creatures and objects",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: movement through an occupied square was not walked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: umbral-through",
+    "by": "src/lib/dm/ar-ws-umbral-logic.ts movesThroughEverything (src/lib/battlemap/passage.ts pcMoveTraits, every walk of a character): under the condition a walk passes any creature's space and any object on the board (a prop) at double cost and ends inside neither. Ruling: walls and shut doors are the building, no object, and still stop it"
    }
   ]
  },
