@@ -463,7 +463,9 @@ export type SpendDoes =
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.
-  | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
+  // `shadows`: only from dim light or darkness to dim light or darkness
+  // (Shadow Walk: src/lib/dm/ar-ws-shadow-light.ts).
+  | { kind: "teleport"; feet: number; note?: string; touched?: boolean; shadows?: boolean }
   // Dice of damage onto the creature the holder just hit.
   | { kind: "die_damage"; dice: Formula; type: string }
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a

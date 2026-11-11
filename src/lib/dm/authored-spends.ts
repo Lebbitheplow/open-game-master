@@ -41,6 +41,9 @@ export type AuthoredSpendArgs = {
   targetCharacterId?: string;
   targetEnemyId?: string;
   targetEnemyIds?: string[];
+  // The square a teleport goes to (src/lib/dm/ar-ws-shadow-walk.ts).
+  atX?: number;
+  atY?: number;
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {

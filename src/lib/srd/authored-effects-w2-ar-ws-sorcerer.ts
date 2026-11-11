@@ -44,6 +44,14 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Cast your psionic spells by spending sorcery points equal to the spell's
   // level instead of a slot, with no verbal, somatic or costly components."
   "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+  // "A bonus action teleports 120 feet between dim or dark spaces": the
+  // spend as authored-effects-data3.ts had it, now held to its light at both
+  // ends (shadows), and made in the spend itself when the call names the
+  // square (src/lib/dm/ar-ws-shadow-walk.ts, ar-ws-shadow-light.ts).
+  "sorcerer::Shadow Walk": {
+    subclass: "Shadow Magic",
+    spends: [{ name: "Shadow Walk", action: "bonus", does: { kind: "teleport", feet: 120, shadows: true, note: "from one patch of dim light or darkness to another" } }],
+  },
   // "Before or after casting a spell of 1st level or higher, a bonus action
   // lets you fly 10 feet without provoking": the flight as authored-effects-data3.ts
   // had it, now open in a fight only once the turn has seen a levelled spell

@@ -15,6 +15,33 @@ export function probes(rig, shared) {
   const slotsUsed = (who) => Object.values(sheet(who).spellcasting.slots).map((slot) => slot.used).join("");
   const view = lazy(() => import("../../src/lib/battlemap/view.ts"));
   const pointsCast = lazy(() => import("../../src/lib/dm/ar-ws-points-cast.ts"));
+  const battleMaps = lazy(() => import("../../src/lib/db/battle-maps.ts"));
+  // Shadow Walk's stage: a dark hall indoors, 150 feet long and 100 wide (the
+  // rig's board is 100 feet a side, too short for 120 feet), with a lit shrine
+  // (bright light) over columns 12 to 14 and a dim aisle over columns 16 and
+  // 17. The sorcerer stands at (2, 5), a dummy at (6, 5), the friend out of
+  // the way at (2, 15).
+  const hall = async () => {
+    const maps = await battleMaps();
+    const foes = await stage(shadow(), { others: [friend()] });
+    const board = kit.map();
+    maps.replaceBattleMapTerrain(board.id, {
+      width: 30, height: 20, terrain: ".".repeat(600), ambient: "dark", theme: board.theme, lights: [], seed: board.seed,
+      scene: { zones: [{ x0: 12, y0: 0, x1: 14, y1: 19, ambient: "bright", kind: "light" }, { x0: 16, y0: 0, x1: 17, y1: 19, ambient: "dim", kind: "light" }] },
+    });
+    maps.setBattleMapOutdoors(board.id, false);
+    kit.place(shadow().id, 2, 5);
+    kit.place(friend().id, 2, 15);
+    return foes;
+  };
+  // The spend with its square named: [taken, where the sorcerer stands, bonus action spent].
+  const shadowWalk = async (x, y) => {
+    const out = await spend(shadow(), "Shadow Walk", { atX: x, atY: y });
+    const at = kit.token(shadow().id);
+    return { out, seen: [out.ok, [at.x, at.y], budget()?.bonusUsed ?? false] };
+  };
+  // The teleport a spend with no square leaves waiting, taken through move_token.
+  const waitingJump = (x, y) => call("move_token", { token: shadow().id, x, y, teleport: true, spell: "Shadow Walk", casterCharacterId: shadow().id });
   // What a call spent: [sorcery points, spell slots of every level as one word].
   async function paid(who, run) {
     const before = [points(who), slotsUsed(who)];
@@ -157,6 +184,77 @@ export function probes(rig, shared) {
       assert.deepEqual([through.status, through.at, through.spent], [200, [8, 5], 5], "[status, square, squares spent] in shadow form: through the creature and the statue, each as difficult terrain (2 + 2 + 1)");
       // A wall is the building, no object: it stops the shadow too.
       assert.deepEqual((await walk(10, 5)).at, [8, 5], "in shadow form, a walk through the cell's wall");
+      rig.refill(shadow());
+    },
+    // "teleports 120 feet": with the square named the spend moves the sorcerer
+    // there, up to 120 feet and no farther, onto open floor nobody stands on,
+    // and a refusal spends nothing (src/lib/dm/ar-ws-shadow-walk.ts, through
+    // map-tools.ts teleportSquareRefusal).
+    "shadow-walk-reach": async () => {
+      await hall();
+      const far = await shadowWalk(26, 5);
+      assert.deepEqual(far.seen, [true, [26, 5], true], `[taken, square, bonus action spent] 120 feet down the hall: ${show(far.out)}`);
+      assert.match(far.out.result.moved, /goes 120 feet to \(26,5\)/);
+      await hall();
+      const past = await shadowWalk(27, 5);
+      assert.deepEqual(past.seen, [false, [2, 5], false], `125 feet: ${show(past.out)}`);
+      assert.match(past.out.error, /125 ft away, past the 120 ft range.*Nothing was spent\.$/);
+      // A square somebody stands on, a wall and a square off the map.
+      kit.openField([[8, 5, "#"]]);
+      for (const [x, y, why] of [[6, 5, /occupied/], [8, 5, /wall/], [30, 5, /outside/]]) {
+        const tried = await shadowWalk(x, y);
+        assert.deepEqual(tried.seen, [false, [2, 5], false], `to (${x},${y}): ${show(tried.out)}`);
+        assert.match(tried.out.error, why);
+        assert.match(tried.out.error, /Nothing was spent\.$/);
+      }
+      // Named with no square, the teleport waits for move_token, which holds it to the same 120 feet.
+      const bare = await spend(shadow(), "Shadow Walk");
+      assert.equal(bare.ok, true, bare.error);
+      assert.equal((await waitingJump(27, 5)).ok, false, "125 feet through move_token");
+      const landed = await waitingJump(26, 5);
+      assert.equal(landed.ok, true, landed.error);
+      assert.deepEqual([kit.token(shadow().id).x, kit.token(shadow().id).y], [26, 5]);
+      rig.refill(shadow());
+    },
+    // "between dim or dark spaces": both ends stand out of bright light, the
+    // board's own (a lit patch) or a carried torch's, whichever call makes the
+    // move (src/lib/dm/ar-ws-shadow-light.ts).
+    "shadow-walk-light": async () => {
+      const maps = await battleMaps();
+      const lights = await import("../../src/lib/dm/ar-ws-shadow-light.ts");
+      const lightOf = (squares) => squares.map(([x, y]) => lights.lightAt(world.campaignId, kit.map(), { x, y }));
+      await hall();
+      assert.deepEqual(lightOf([[2, 5], [13, 5], [16, 5], [26, 5]]), ["dark", "bright", "dim", "dark"], "the hall as the rule reads it");
+      const lit = await shadowWalk(13, 5);
+      assert.deepEqual(lit.seen, [false, [2, 5], false], `from darkness into the lit shrine: ${show(lit.out)}`);
+      assert.match(lit.out.error, /\(13,5\) is in bright light.*Nothing was spent\.$/);
+      // Darkness to dim light, and back.
+      assert.deepEqual((await shadowWalk(16, 5)).seen, [true, [16, 5], true], "from darkness into dim light");
+      kit.freshTurn();
+      assert.deepEqual((await shadowWalk(2, 5)).seen, [true, [2, 5], true], "from dim light into darkness");
+      // Standing in bright light, there is no shadow to step from.
+      await hall();
+      kit.place(shadow().id, 13, 5);
+      const from = await shadowWalk(2, 5);
+      assert.deepEqual(from.seen, [false, [13, 5], false], `from the lit shrine into darkness: ${show(from.out)}`);
+      assert.match(from.out.error, /stands in bright light.*Nothing was spent\.$/);
+      // The friend's torch at (22, 5): bright for 20 feet, dim for 20 more.
+      await hall();
+      kit.place(friend().id, 22, 5);
+      maps.setTokenLight(kit.token(friend().id).id, 4, 0, 0, 8);
+      assert.deepEqual(lightOf([[22, 8], [22, 11], [22, 14]]), ["bright", "dim", "dark"], "15, 30 and 45 feet from the torch");
+      assert.deepEqual((await shadowWalk(22, 8)).seen, [false, [2, 5], false], "into the torch's bright light");
+      assert.deepEqual((await shadowWalk(22, 11)).seen, [true, [22, 11], true], "into the torch's dim light");
+      // The teleport a spend with no square left waiting asks the same light.
+      await hall();
+      const bare = await spend(shadow(), "Shadow Walk");
+      assert.equal(bare.ok, true, bare.error);
+      const intoLight = await waitingJump(13, 5);
+      assert.equal(intoLight.ok, false, "through move_token into the lit shrine");
+      assert.match(intoLight.error, /bright light/);
+      const intoDark = await waitingJump(20, 5);
+      assert.equal(intoDark.ok, true, intoDark.error);
+      assert.deepEqual([kit.token(shadow().id).x, kit.token(shadow().id).y], [20, 5]);
       rig.refill(shadow());
     },
   };

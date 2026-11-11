@@ -1676,15 +1676,15 @@
    },
    {
     "c": "teleports 120 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the board is 100 feet wide, so a move beyond 120 feet cannot be staged; the spend only tells the GM to move the token"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-reach",
+    "by": "src/lib/dm/ar-ws-shadow-walk.ts jumpToSquare (authored-spend-effects.ts teleport, through map-tools.ts teleportSquareRefusal): use_resource with atX and atY, the square fields its door already parses, moves the sorcerer up to 120 feet and refuses a farther, walled, occupied or off-map square with nothing spent; with no square the teleport waits for move_token, held to the same 120 feet by the credit (feature-teleport.ts)"
    },
    {
     "c": "between dim or dark spaces",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the spend's note leaves the light at both ends to the GM (\"from one patch of dim light or darkness to another\"); a walk from bright light was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: shadow-walk-light",
+    "by": "src/lib/dm/ar-ws-shadow-light.ts shadowsRefusal and lightAt (the row's shadows flag): the square the sorcerer stands on and the one they arrive on are both out of bright light, the board's own or a lamp's or carried light's bright radius; asked by the spend that names its square before anything is spent, and by move_token's teleport when it takes the spend's credit (map-tools.ts handleTeleportToken)"
    }
   ]
  },
