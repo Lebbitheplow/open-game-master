@@ -9,6 +9,9 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/spirit-projection.ts#fallback": [["identity", 1, "a body token by its id, its ref or its whole name as the board names it"]],
+    "lib/dm/spirit-projection.ts#whole": [["identity", 3, "a body token by its id, its ref or its whole name as the board names it"]],
+    "lib/dm/spirit-projection.ts#partial": [["identity", 1, "a body token by its id, its ref or its whole name as the board names it"]],
     "lib/dm/genie-vessel.ts#first": [["identity", 1, "the Genie warlock whose whole name the vessel's name carries ('<name>'s vessel'), never a word of it"]],
     "lib/dm/genie-vessel.ts#whole": [["identity", 2, "the vessel's name read whole against '<warlock>'s vessel' and the vessel's own names"]],
     "lib/dm/genie-vessel.ts#fallback": [["identity", 2, "the vessel's host read by the condition's source id (the holder's own when none), and the only Genie warlock when the vessel is named with nobody's name in it; two or more and none is guessed"]],
@@ -1623,7 +1626,7 @@
     "lib/dm/enemy-casting.ts#whole": [["identity",1,"an enemy's spell by whole name"],["key",2,"bought use keys, and a second save's parent by its key"]],
     "lib/dm/enemy-conditions.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/enemy-damage.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
-    "lib/dm/enemy-damage.ts#partial": [["key",4,"damage types; a recovered ammo line by its whole own name"]],
+    "lib/dm/enemy-damage.ts#partial": [["key", 6, "damage types; a recovered ammo line by its whole own name"]],
     "lib/dm/enemy-damage.ts#whole": [["key",2,"damage types; a recovered ammo line by its whole own name"]],
     "lib/dm/enemy-exhaustion.ts#partial": [["identity",1,"exhaustion and its level, anchored"]],
     "lib/dm/enemy-defenses.ts#partial": [["key",1,"damage types"]],

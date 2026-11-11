@@ -8,6 +8,8 @@ import { prof, spellDc } from "./sweep-clauses-arcane.mjs";
 
 const VESSEL = "in the genie's vessel";
 
+const { listTokens: boardTokens } = await import("../../src/lib/db/battle-maps.ts");
+
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, call, spend, stage } = rig;
   const { friend } = shared;
@@ -29,6 +31,10 @@ export function probes(rig, shared) {
     if (world.encounter()) await world.invoke("end_encounter", { outcome: "truce" });
     return { far, out };
   }
+  const tokens = () => {
+    const map = kit.map();
+    return map ? boardTokens(map.id) : [];
+  };
   const leave = () => [genie(), friend(), genie(5)].forEach((who) => rig.refill(who));
 
   const PROBES = {
@@ -50,6 +56,95 @@ export function probes(rig, shared) {
       const bare = (who) => ({ ...sheet(who), equipment: [] });
       assert.notEqual(focusProblem(bare(holder("warlock", "The Hexblade", 20)), light), null, "a warlock with no focus is refused");
       assert.equal(focusProblem(bare(genie()), light), null, "the Genie's vessel is the focus");
+    },
+    // ---- Spirit Projection (The Undead, 14th level)
+    "projection-body": async () => {
+      const who = holder("warlock", "The Undead", 20);
+      const [enemy] = await stage(who);
+      assert.equal((await spend(who, "Spirit Projection")).ok, true);
+      const name = `${sheet(who).name}'s body`;
+      const body = () => tokens().find((token) => token.kind === "prop" && token.name === name) ?? null;
+      assert.deepEqual([body()?.x, body()?.y], [5, 5], "the body lies where the projection began");
+      kit.place(who.id, 5, 8);
+      const before = sheet(who).currentHp;
+      // Two d20s (advantage on the unconscious), a hit from beside it is a
+      // critical (2d6+2 of the club), and the concentration save holds.
+      const out = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: name }, [3, 18, 4, 4, 20]);
+      assert.equal(out.ok, true, out.error);
+      assert.equal(out.rolled.filter((die) => die.sides === 20).length >= 2, true, "the attack on the body is rolled with advantage");
+      assert.equal(out.result.critical, true, `a hit from within 5 feet is a critical hit: ${JSON.stringify(out.result).slice(0, 240)}`);
+      assert.ok(sheet(who).currentHp < before, "the blow to the body is a blow to the warlock");
+      // The projection over, its body is gone as the turn ends.
+      world.patch(who.id, { conditions: sheet(who).conditions.filter((entry) => entry !== "spirit projection"), concentratingOn: null });
+      kit.giveTurn(who.id);
+      rig.endCurrent();
+      assert.equal(body(), null, "the body stayed after the projection ended");
+    },
+    "projection-passage": async () => {
+      const { movesThroughEverything } = await import("../../src/lib/dm/ar-ws-umbral-logic.ts");
+      const who = holder("warlock", "The Undead", 20);
+      await stage(who);
+      assert.equal(movesThroughEverything(sheet(who).conditions), false, "the staging: no projection yet");
+      assert.equal((await spend(who, "Spirit Projection")).ok, true);
+      assert.equal(movesThroughEverything(sheet(who).conditions), true, "the spirit passes through creatures and objects");
+    },
+    "projection-inside": async () => {
+      const who = holder("warlock", "The Undead", 20);
+      await stage(who);
+      assert.equal((await spend(who, "Spirit Projection")).ok, true);
+      kit.place(who.id, 6, 5);
+      const before = sheet(who).currentHp;
+      world.clearDice();
+      world.dice(7, 20);
+      rig.endCurrent();
+      world.clearDice();
+      assert.equal(before - sheet(who).currentHp, 7, "the turn ended inside the dummy: 1d10 force");
+    },
+    "projection-dread": async () => {
+      const who = holder("warlock", "The Undead", 20, { cantrips: ["Chill Touch"], spells: ["Chill Touch"] }, "chill");
+      const [enemy] = await stage(who);
+      kit.place(enemy.id, 9, 5);
+      assert.equal((await spend(who, "Spirit Projection")).ok, true);
+      assert.equal((await spend(who, "Form of Dread", {}, [5])).ok, true);
+      world.patch(who.id, { currentHp: 40 });
+      const chill = () => {
+        kit.freshTurn();
+        return call("pc_attack", { characterId: who.id, targetEnemyId: enemy.id, spell: "Chill Touch" }, [15, 4, 4, 4, 4]);
+      };
+      const hpOf = () => rig.foe(enemy).currentHp;
+      const before = hpOf();
+      const first = await chill();
+      assert.equal(first.ok, true, first.error);
+      const dealt = before - hpOf();
+      assert.ok(dealt > 0, "the staging: Chill Touch hit");
+      assert.equal(sheet(who).currentHp, 40 + Math.floor(dealt / 2), `half of the ${dealt} necrotic dealt comes back: ${JSON.stringify(first.result).slice(0, 240)}`);
+      const healed = sheet(who).currentHp;
+      const second = await chill();
+      assert.equal(second.ok, true, second.error);
+      assert.equal(sheet(who).currentHp, healed, "once on each of the warlock's turns");
+    },
+    // ---- Fathomless Plunge (The Fathomless, 14th level)
+    plunge: async () => {
+      const deep = holder("warlock", "The Fathomless", 20);
+      const far = holder("fighter", "Champion", 5, {}, "far");
+      const onBoard = (who) => Boolean(kit.token(who.id)) || (world.encounter()?.order ?? []).some((entry) => entry.characterId === who.id);
+      await stage(deep, { others: [friend(), far] });
+      kit.place(far.id, 5, 5 + 7);
+      const out = await spend(deep, "Fathomless Plunge");
+      assert.equal(out.ok, true, out.error);
+      assert.equal(onBoard(deep), false, `the warlock left the board: ${JSON.stringify(out.result).slice(0, 240)}`);
+      assert.equal(onBoard(friend()), false, "the friend within 30 feet went with them");
+      assert.equal(onBoard(far), true, "a hero 35 feet off stays in the fight");
+      assert.ok(world.encounter(), "the fight goes on for the hero left in it");
+      // With nobody left behind, the fight ends with the party gone.
+      // The staging: a fight of the two of them and the dummy (the rig puts
+      // every hero of the world in the order).
+      await stage(deep, { others: [friend()] });
+      const order = world.encounter().order.filter((entry) => entry.kind !== "pc" || [deep.id, friend().id].includes(entry.characterId));
+      kit.saveEncounter({ ...world.encounter(), order, turnIndex: order.findIndex((entry) => entry.characterId === deep.id) });
+      const again = await spend(deep, "Fathomless Plunge");
+      assert.equal(again.ok, true, again.error);
+      assert.equal(world.encounter(), null, `the fight ended once no hero was left in it: ${JSON.stringify(again.result).slice(0, 400)} order ${JSON.stringify((world.encounter()?.order ?? []).map((entry) => entry.kind + ":" + (entry.characterId ?? entry.enemyId)))}`);
     },
     // ---- Sanctuary Vessel (The Genie, 10th level)
     "sanctuary-party": async () => {

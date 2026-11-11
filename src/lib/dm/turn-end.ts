@@ -31,6 +31,7 @@ import { endLeashes } from "@/lib/dm/condition-leash";
 import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { echoTurnEnd } from "@/lib/dm/mt-fb-echo";
+import { projectionTurnEnd } from "@/lib/dm/spirit-projection";
 import { mindTurnEnd } from "@/lib/dm/scribe-mind";
 import { eagleBurstFalls } from "@/lib/dm/fall-landing";
 import { endBrokenPerformances } from "@/lib/dm/mt-srd-bard";
@@ -243,5 +244,7 @@ export function endTurns(
   lines.push(...zoneTurnEnd(campaign, encounterId, combatantIds));
   // Blink's d20 as its caster's turn ends: spell-planes.ts.
   lines.push(...blinkTurnEnd(campaign, combatantIds));
+  // A spirit projection's body and its passage through things: spirit-projection.ts.
+  lines.push(...projectionTurnEnd(campaign, combatantIds));
   return { lines, enemiesChanged };
 }

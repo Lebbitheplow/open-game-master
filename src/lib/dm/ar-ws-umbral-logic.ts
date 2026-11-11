@@ -26,8 +26,12 @@
 import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export const UMBRAL_FORM = "umbral form";
+// An Undead warlock's Spirit Projection passes "through creatures and objects
+// as difficult terrain" by the same board rule (src/lib/dm/spirit-projection.ts
+// deals the 1d10 force to a turn that ends inside one anyway).
+const SPIRIT_PROJECTION = "spirit projection";
 
 // Whether these conditions let their holder move through creatures and objects.
 export function movesThroughEverything(conditions: readonly string[] | null | undefined): boolean {
-  return (conditions ?? []).some((entry) => isConditionNamed(entry, UMBRAL_FORM));
+  return (conditions ?? []).some((entry) => isConditionNamed(entry, UMBRAL_FORM) || isConditionNamed(entry, SPIRIT_PROJECTION));
 }

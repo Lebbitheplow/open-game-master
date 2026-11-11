@@ -59,6 +59,7 @@ import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 import { freeFromCorpse, noteBlowFromInside, swallowFightEnd } from "@/lib/dm/swallow";
+import { projectionDreadHeal } from "@/lib/dm/spirit-projection";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -412,6 +413,9 @@ export function applyEnemyDamage(
     // The types of a blow of several, which lands untyped (enemy-blow.ts):
     // its fire still catches oil and stops a troll's regeneration.
     blowTypes?: string[];
+    // Each type's part of that blow, met already (enemy-blow.ts): what a
+    // feature counting one type dealt reads (Spirit Projection's necrotic).
+    blowParts?: Array<{ type: string; amount: number }>;
   },
 ): ToolResult {
   // A character fighting on the other side, seen as a foe (sheet-foe.ts):
@@ -595,6 +599,13 @@ export function applyEnemyDamage(
   const thunderbolt = thunderboltPush(campaign, encounter.id, updated, [damageType, ...(options?.blowTypes ?? [])], enemy.currentHp - updated.currentHp);
   if (thunderbolt) {
     base.thunderboltStrike = thunderbolt;
+  }
+  // An Undead warlock projected in Form of Dread regains half the necrotic
+  // damage they deal, once on each of their turns (spirit-projection.ts).
+  const necrotic = /^necrotic$/i.test(damageType ?? "") ? adjusted.amount : (options?.blowParts ?? []).filter((part) => /^necrotic$/i.test(part.type)).reduce((sum, part) => sum + part.amount, 0);
+  const dread = necrotic > 0 ? projectionDreadHeal(campaign, encounter, necrotic) : null;
+  if (dread) {
+    base.spiritProjection = dread;
   }
   // One that dies frees what it swallowed, who climb out of the corpse
   // (src/lib/dm/swallow.ts).

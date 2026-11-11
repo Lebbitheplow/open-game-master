@@ -4179,7 +4179,7 @@
           "14": [
             {
               "n": "Fathomless Plunge",
-              "d": "Teleport yourself and up to five willing creatures to a body of water within a mile; recharges on a short or long rest."
+              "d": "Teleport yourself and up to five willing creatures within 30 feet of you to a body of water within a mile; recharges on a short or long rest."
             }
           ]
         },
@@ -4365,7 +4365,7 @@
           "14": [
             {
               "n": "Spirit Projection",
-              "d": "As an action, once per long rest, project your spirit from your body for up to an hour (concentration) while the body lies unconscious. Your spirit carries copies of your gear; you resist bludgeoning, piercing and slashing damage; your conjuration and necromancy spells need no verbal or somatic components, nor material ones without a cost; you can fly at your walking speed and hover, passing through creatures and objects as difficult terrain (1d10 force damage if you end a turn inside one); and while in Form of Dread, once on each of your turns when you deal necrotic damage, you regain hit points equal to half of it."
+              "d": "As an action, once per long rest, project your spirit from your body for up to an hour (concentration) while the body lies unconscious where you stood (your AC and hit points; a blow to it is a blow to you). Your spirit carries copies of your gear; you resist bludgeoning, piercing and slashing damage; your conjuration and necromancy spells need no verbal or somatic components, nor material ones without a cost; you can fly at your walking speed and hover, passing through creatures and objects as difficult terrain (1d10 force damage if you end a turn inside one); and while in Form of Dread, once on each of your turns when you deal necrotic damage, you regain hit points equal to half of it."
             }
           ]
         },

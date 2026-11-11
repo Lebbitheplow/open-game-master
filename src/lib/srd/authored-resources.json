@@ -910,7 +910,7 @@
    "ability": null,
    "recharge": "short",
    "action": "action",
-   "guidance": "Teleport the warlock and up to five willing creatures to a body of water within a mile."
+   "guidance": "Teleport the warlock and up to five willing creatures within 30 feet to a body of water within a mile: in a fight they leave the board, and a fight with no hero left ends."
   },
   {
    "id": "sub_form_of_dread",

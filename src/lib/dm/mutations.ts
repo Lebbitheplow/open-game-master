@@ -56,6 +56,8 @@ import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlocked
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { turnPayer } from "@/lib/dm/ar-wbf-feat-treats";
 import { wbfAfterSpend, wbfDoorSpend } from "@/lib/dm/ar-wbf-doors";
+import { plungeAfterSpend } from "@/lib/dm/fathomless-plunge";
+import { projectionAfterSpend } from "@/lib/dm/spirit-projection";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
@@ -1584,6 +1586,11 @@ function dmMutation(
       }
       // What the use bought beside its counter (Limited Wish's spell, ar-wbf-doors.ts).
       Object.assign(outcome.result, wbfAfterSpend(campaign, sheet, counter?.id, args));
+      // The Fathomless Plunge takes the warlock and the party near them off
+      // the board (fathomless-plunge.ts).
+      Object.assign(outcome.result, plungeAfterSpend(campaign, getDmTurn(turnId), sheet, counter?.id, sheets, sheetsById));
+      // A Spirit Projection leaves the body on the board (spirit-projection.ts).
+      Object.assign(outcome.result, projectionAfterSpend(campaign, sheet, counter?.id));
       // A feature that lands on someone else (Bardic Inspiration) patches
       // the second sheet the same audited way.
       if (outcome.patchTarget) {

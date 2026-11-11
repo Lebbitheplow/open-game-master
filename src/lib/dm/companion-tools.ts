@@ -17,12 +17,12 @@ import {
   getBattleMapForEncounter,
   insertToken,
   listTokens,
-  removeTokenByRef,
 } from "@/lib/db/battle-maps";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { spliceIntoOrder } from "@/lib/dm/encounter-logic";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { takeOffBoard } from "@/lib/dm/leave-board";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { publishCast } from "@/lib/dm/cast";
@@ -722,27 +722,7 @@ export function departCompanion(campaign: Campaign, sheet: CharacterSheet, reaso
 // conscience's words, or a plain parting), so the Party panel shows it.
 function removeCompanion(campaign: Campaign, sheet: CharacterSheet, reason?: string, how?: string) {
   // Mid-combat: pull them out of the order and off the map cleanly.
-  const encounter = getActiveEncounter(campaign.id);
-  if (encounter) {
-    const index = encounter.order.findIndex(
-      (entry) => entry.kind === "pc" && entry.characterId === sheet.id,
-    );
-    if (index !== -1) {
-      encounter.order.splice(index, 1);
-      if (index < encounter.turnIndex) {
-        encounter.turnIndex -= 1;
-      } else if (index === encounter.turnIndex) {
-        encounter.turnIndex = Math.max(0, encounter.turnIndex - 1);
-      }
-      saveEncounter(encounter);
-      publishEncounterState(campaign.id);
-    }
-    const map = getBattleMapForEncounter(encounter.id);
-    if (map) {
-      removeTokenByRef(map.id, sheet.id);
-      publishBattleMapUpdate(campaign.id);
-    }
-  }
+  takeOffBoard(campaign.id, sheet.id);
 
   insertCharacterEvent({
     libraryCharacterId: null,

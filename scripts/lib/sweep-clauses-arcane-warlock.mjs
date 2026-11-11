@@ -5,12 +5,10 @@
 import assert from "node:assert/strict";
 import { MOD, prof } from "./sweep-clauses-arcane.mjs";
 
-const DATA = "src/lib/srd/authored-effects-data*.ts";
-const RES = "src/lib/srd/authored-resources.json";
 
 export function probes(rig, shared) {
   const { world, kit, holder, sheet, foe, hp, counter, budget, show, call, spend, react, hurt, roll, stage } = rig;
-  const { friend, uses, rests, movesSomething } = shared;
+  const { friend, uses, rests } = shared;
   rig.outfit("warlock", "The Celestial", { spells: ["Sacred Flame", "Burning Hands"], cantrips: ["Sacred Flame"] });
   rig.outfit("warlock", "The Genie", { cantrips: ["Eldritch Blast"], spells: ["Eldritch Blast"] });
   const W = (patron, level = 20) => holder("warlock", patron, level);
@@ -356,7 +354,6 @@ export function probes(rig, shared) {
       assert.equal(counter(who, "sub_grasping_tentacles").used, 1, "the once-a-day use pays");
       assert.equal(sheet(who).tempHp, 20, "temporary hit points equal to the warlock level");
     },
-    plunge: movesSomething(["warlock", "The Fathomless"], "Fathomless Plunge"),
     "plunge-rest": rests(["warlock", "The Fathomless"], "sub_fathomless_plunge", "short"),
     // ---- The Genie
     "wrath-once": async () => {
@@ -591,8 +588,6 @@ export function probes(rig, shared) {
   const dreadRest = rests(["warlock", "The Undead"], "sub_form_of_dread", "long");
   const projectionRest = rests(["warlock", "The Undead"], "sub_spirit_projection", "long");
 
-  const KNOWN = {
-    plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
-  };
+  const KNOWN = {};
   return { PROBES, KNOWN };
 }

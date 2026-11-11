@@ -40,6 +40,7 @@ import { acWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
 import { canEnemyAct, markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
 import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
+import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
 import { hasteActionOpen, slowedOut } from "@/lib/dm/enemy-actions";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
@@ -234,6 +235,12 @@ export function handleEnemyAttack(
   const atEcho = cast ? null : enemyStrikesEcho(campaign, turn, encounter, found, args.targetCharacterId, args.attack);
   if (atEcho) {
     return atEcho;
+  }
+  // A Spirit Projection's body left on the board: a blow at the warlock's
+  // own hit points, at advantage (spirit-projection.ts).
+  const atBody = cast ? null : enemyStrikesBody(campaign, turn, encounter, found, args.targetCharacterId, args.attack);
+  if (atBody) {
+    return atBody;
   }
   // The target is any combatant (src/lib/dm/combatant.ts): a character on
   // either side, or an enemy fighting on the other one (a creature the party

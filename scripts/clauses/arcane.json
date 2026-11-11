@@ -2900,11 +2900,12 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "The Fathomless",
   "level": 14,
-  "sha": "f9af94907784",
+  "sha": "61413ed7761d",
   "clauses": [
    {
-    "c": "Teleport yourself and up to five willing creatures to a body of water within a mile",
-    "is": "gap",
+    "c": "Teleport yourself and up to five willing creatures within 30 feet of you to a body of water within a mile",
+    "is": "held",
+    "by": "src/lib/dm/fathomless-plunge.ts plungeAfterSpend (in a fight the warlock and the party within 30 feet, five at most, leave the board through src/lib/dm/leave-board.ts takeOffBoard; a fight with no hero left ends with the party fled)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: plunge"
    },
    {
@@ -3154,7 +3155,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "The Undead",
   "level": 14,
-  "sha": "a5c155f7ad77",
+  "sha": "8f558e427cc8",
   "clauses": [
    {
     "c": "As an action, once per long rest",
@@ -3175,10 +3176,10 @@
     "by": "src/lib/srd/authored-resources.json sub_spirit_projection fx concentration (src/lib/dm/resource-tools.ts holdConcentration)"
    },
    {
-    "c": "while the body lies unconscious",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no body is left on the board; an attack on it was not staged"
+    "c": "while the body lies unconscious where you stood (your AC and hit points; a blow to it is a blow to you)",
+    "is": "held",
+    "by": "src/lib/dm/spirit-projection.ts (projectionAfterSpend leaves the body token; enemyStrikesBody rolls at advantage against the warlock's AC, a critical from within 5 feet, the damage through pc-damage.ts applyPcDamage; projectionTurnEnd clears it with the projection)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-body"
    },
    {
     "c": "Your spirit carries copies of your gear",
@@ -3203,16 +3204,22 @@
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-fly"
    },
    {
-    "c": "passing through creatures and objects as difficult terrain (1d10 force damage if you end a turn inside one)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM; a turn ended inside a creature was not staged"
+    "c": "passing through creatures and objects as difficult terrain",
+    "is": "held",
+    "by": "src/lib/dm/ar-ws-umbral-logic.ts movesThroughEverything (the projection's condition), read by src/lib/battlemap/passage.ts pcMoveTraits: through every creature's space and every prop at double cost",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-passage"
+   },
+   {
+    "c": "1d10 force damage if you end a turn inside one",
+    "is": "held",
+    "by": "src/lib/dm/spirit-projection.ts projectionTurnEnd, called by src/lib/dm/turn-end.ts endTurns",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-inside"
    },
    {
     "c": "and while in Form of Dread, once on each of your turns when you deal necrotic damage, you regain hit points equal to half of it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"the healing in Form of Dread ... are the GM's to apply\"); necrotic damage dealt in both forms was not staged"
+    "is": "held",
+    "by": "src/lib/dm/spirit-projection.ts projectionDreadHeal, asked by src/lib/dm/enemy-damage.ts applyEnemyDamage (the necrotic of a blow, a typed blow's own part from src/lib/dm/enemy-blow.ts) for the acting warlock on their own turn, once a turn",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: projection-dread"
    }
   ]
  },
