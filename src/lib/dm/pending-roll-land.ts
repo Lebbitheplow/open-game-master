@@ -5,6 +5,8 @@
 
 import {
   getDmTurn,
+  getLatestDmTurnId,
+  listOpenPendingRolls,
   listPendingForTurn,
   resolvePendingRoll,
   getPendingRoll,
@@ -24,7 +26,8 @@ import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
 import { parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
 import { attackTurnOver, type AttackRecord } from "@/lib/dm/attack-record";
-import { resumeDmTurn } from "@/lib/dm/turn";
+import { closeStaleDmTurn, resumeDmTurn } from "@/lib/dm/turn";
+import { parkedTurnIsStale, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { runInTurnScope } from "@/lib/dm/job-control";
@@ -184,11 +187,22 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
 }
 
 export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): StoredRoll | null {
+  // Asked before the roll lands, as landOne asks it.
+  const toHit = pending.kind === "attack" && Boolean(pending.attack);
+  const turnOver = toHit && attackTurnOver(campaign.id, pending.attack as AttackRecord, pending.characterId);
   const roll = landOne(campaign, pending, outcome, landing);
   if (!roll) {
     return null;
   }
   const remaining = listPendingForTurn(pending.turnId).filter((entry) => entry.status === "pending");
+  if (!remaining.length && parkedTurnIsStale({ toHit, turnOver, turnId: pending.turnId }, getLatestDmTurnId(campaign.id))) {
+    // The swing landed on nothing and newer turns have told the story since:
+    // the turn it was parked on closes without a word (open-roll-logic.ts).
+    if (!resumeHumanTurn(pending.turnId)) {
+      enqueueDmJob(campaign.id, () => closeStaleDmTurn(campaign.id, pending.turnId), { kind: "turn" });
+    }
+    return roll;
+  }
   if (!remaining.length) {
     // A turn a person opened has no model waiting on the answer: the roll
     // already published itself and applied what it applies, so closing the
@@ -198,4 +212,19 @@ export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcom
     }
   }
   return roll;
+}
+
+// The lead skipped a turn with its attack's dice thrown and the choice still
+// open: the dice are kept as they lie, as the clock keeps them
+// (after-roll-timer.ts), so no card outlives the turn it was dealt on. The
+// turn is over, so the swing lands on nothing and nothing is spent. Dice the
+// player has yet to enter stay theirs to enter.
+export function keepRollsLeftBehind(campaign: Campaign): number {
+  const left = listOpenPendingRolls(campaign.id).filter(
+    (entry) => entry.thrown && entry.characterId && toHitRollWithPlayer([entry], entry.characterId) && attackTurnOver(campaign.id, entry.attack as AttackRecord, entry.characterId),
+  );
+  for (const pending of left) {
+    landPendingRoll(campaign, pending, pending.thrown!.outcome, pending.thrown!.landing);
+  }
+  return left.length;
 }
