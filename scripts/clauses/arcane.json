@@ -819,8 +819,9 @@
    },
    {
     "c": "or failing a save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "grants +2 AC",
@@ -830,8 +831,9 @@
    },
    {
     "c": "or +4 on the save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: deflection-save",
+    "by": "the reaction row orSave 4 (src/lib/srd/authored-effects-w2-ar-ws.ts): src/lib/dm/ar-ws-deflection.ts deflectSaveHalf, from authored-reactions.ts ac_vs_hit, answers the failed save on the roll record of the turn now running, adds 4, and on a success lifts the conditions that save ends (as Indomitable reroll does) and answers the trigger record (last-save.ts); refused with nothing spent when none is open; judged as the wizard stood before the failure (reaction-tools.ts through standingForDeflection); the Hand deals its card from the same records (hand-react.ts). Ruling: a failed save to keep concentration is not answered, the spell having ended with the roll"
    },
    {
     "c": "at the cost of casting only cantrips on your next turn",

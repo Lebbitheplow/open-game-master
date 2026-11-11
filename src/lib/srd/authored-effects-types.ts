@@ -563,7 +563,9 @@ export type ReactionDoes =
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
   // `cantripsOnly`: every use leaves the holder casting only cantrips until
   // the end of their next turn (Arcane Deflection: src/lib/dm/ar-ws-deflection.ts).
-  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; cantripsOnly?: boolean }
+  // `orSave`: the same reaction instead adds this much to a saving throw the
+  // holder has just failed (Arcane Deflection's other half).
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean; cantripsOnly?: boolean; orSave?: number }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within

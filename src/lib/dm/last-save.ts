@@ -43,6 +43,9 @@ export type LastSave = {
   forcer: Ref;
   // A save's outcome; absent on records written before failures were kept.
   success?: boolean;
+  // The DC it was rolled against, for what tells this save's own conditions
+  // from older ones (ar-ws-deflection-mark.ts beforeFailedSave).
+  dc?: number;
   // What the save resisted ("charmed", "frightened"), when the engine knew.
   against?: string;
   // Damage the forcer dealt through the save (a spell's, with `spell`), or to the pet.
@@ -124,6 +127,18 @@ export function openTriggers(campaignId: string): LastSave[] {
   return rows.filter((record) => (kindOf(record) === "turn_end" ? record === lastEnd && endOpen : record.turn === key));
 }
 
+// When the turn now running began: the moment the pointer left the one before
+// it (a turn's end is kept under the ending turn's key). Null before any turn
+// of this fight has ended. Arcane Deflection reads it to tell a save failed
+// this turn from an older one on the roll record (ar-ws-deflection.ts).
+export function turnBeganAt(campaignId: string): string | null {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter) {
+    return null;
+  }
+  return readRow(campaignId).filter((record) => record.encounterId === encounter.id && kindOf(record) === "turn_end").at(-1)?.at ?? null;
+}
+
 // The saves still open (made or failed), this fight, this turn.
 export function openSaves(campaignId: string): LastSave[] {
   return openTriggers(campaignId).filter((record) => kindOf(record) === "save");
@@ -142,11 +157,11 @@ function append(campaignId: string, record: Omit<LastSave, "id" | "encounterId" 
 
 // A save in a fight forced by a creature (forced-save.ts rollCharacterSave),
 // made or failed. One with no forcer answers nothing and is not kept.
-export function recordSave(campaignId: string, characterId: string, ability: SaveAbility, forcer: Ref | null, success = true, against?: string) {
+export function recordSave(campaignId: string, characterId: string, ability: SaveAbility, forcer: Ref | null, success = true, against?: string, dc?: number) {
   if (!forcer) {
     return;
   }
-  append(campaignId, { kind: "save", characterId, ability, forcer, success, ...(against ? { against } : {}) });
+  append(campaignId, { kind: "save", characterId, ability, forcer, success, ...(against ? { against } : {}), ...(dc !== undefined ? { dc } : {}) });
 }
 
 // The damage the creature that forced a save dealt through it (cast-at-player.ts),

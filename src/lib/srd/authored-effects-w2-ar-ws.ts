@@ -48,10 +48,11 @@ export const AUTHORED_DATA_W2_AR_WS: Record<string, AuthoredEntry> = {
   },
   // "A reaction after being hit or failing a save grants +2 AC or +4 on the
   // save, at the cost of casting only cantrips on your next turn": the earlier
-  // row held the +2 alone. Every use now leaves the mark the cast door reads
+  // row held the +2 alone. The same reaction answers a save just failed with
+  // +4, and every use leaves the mark the cast door reads
   // (src/lib/dm/ar-ws-deflection.ts, ar-ws-deflection-mark.ts).
   "wizard::Arcane Deflection": {
     subclass: "War Magic",
-    reactions: [{ name: "Arcane Deflection", does: { kind: "ac_vs_hit", amount: 2, cantripsOnly: true } }],
+    reactions: [{ name: "Arcane Deflection", does: { kind: "ac_vs_hit", amount: 2, orSave: 4, cantripsOnly: true } }],
   },
 };

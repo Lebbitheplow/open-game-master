@@ -58,6 +58,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { matchResource } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { standingForDeflection } from "@/lib/dm/ar-ws-deflection";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -655,7 +656,8 @@ function useReaction(
   if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
-  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
+  // Arcane Deflection's answer to a failed save is judged before that failure (ar-ws-deflection.ts).
+  const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, sheet, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }

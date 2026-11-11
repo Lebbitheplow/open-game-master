@@ -58,12 +58,65 @@ export function probes(rig, shared) {
       assert.equal(hp(war()), after, "a 14 still lands");
     },
     "deflection-save": async () => {
+      const marked = () => sheet(war()).conditions.includes("arcane deflection");
+      const offered = () => rig.table.offered(war(), "Arcane Deflection").filter((entry) => entry.intent?.variant === "save");
+      // With no save failed, nothing is answered and nothing is spent.
       await stage(war(), { others: [friend()], first: friend() });
+      const none = await react(war(), "Arcane Deflection", { variant: "save" });
+      assert.equal(none.ok, false, "no failed save on record");
+      assert.deepEqual([rig.reacted(war()), marked()], [false, false], "[reaction spent, mark laid] on the refusal");
       // DEX save: a 9 on the die is 11 against DC 14, and +4 makes it 15.
       const failed = await roll(war(), { kind: "saving_throw", ability: "dex", dc: 14 }, [9]);
       assert.equal(failed.out.result?.success, false);
       const out = await react(war(), "Arcane Deflection", { variant: "save" });
       assert.equal(out.ok, true, `after a failed save: ${String(out.error).slice(0, 170)}`);
+      assert.equal(out.result.save, "success", show(out));
+      assert.match(out.result.applied, new RegExp(`\\+4 on the DEX save: ${9 + MOD.dex} becomes ${13 + MOD.dex} against DC 14`));
+      assert.deepEqual([rig.reacted(war()), marked()], [true, true], "[reaction spent, mark laid] by the save's half");
+      // One the +4 does not reach: 11 + 4 against DC 20 stays a failure, and the reaction is spent all the same.
+      await stage(war(), { others: [friend()], first: friend() });
+      assert.equal((await roll(war(), { kind: "saving_throw", ability: "dex", dc: 20 }, [9])).out.result?.success, false);
+      const short = await react(war(), "Arcane Deflection", { variant: "save" });
+      assert.equal(short.ok, true, short.error);
+      assert.equal(short.result.save, "failure", show(short));
+      assert.deepEqual([rig.reacted(war()), marked()], [true, true]);
+      // A save a creature forced, whose failure laid a condition that same save
+      // ends: CON 8 + 1 against DC 12 fails, 13 succeeds, and the poison is gone.
+      const [enemy] = await stage(war(), { others: [friend()], first: friend() });
+      const spit = await call("cast_at_player", { characterId: war().id, casterEnemyId: enemy.id, source: "a venom spit", saveAbility: "con", dc: 12, condition: "poisoned" }, [8]);
+      assert.equal(spit.ok, true, spit.error);
+      assert.ok(sheet(war()).conditions.includes("poisoned"), `the staging: the failed save was to poison them: ${show(spit)}`);
+      assert.equal(offered().length, 1, "the Hand deals the save's card for the failed save on record");
+      assert.equal(offered()[0].disabled, null);
+      // No variant named and no hit open: the save is what it answers.
+      const lifted = await react(war(), "Arcane Deflection");
+      assert.equal(lifted.ok, true, lifted.error);
+      assert.equal(lifted.result.save, "success", show(lifted));
+      assert.ok(!sheet(war()).conditions.includes("poisoned"), "the condition the failed save laid is lifted with the save turned");
+      assert.equal(offered().length, 0, "the card goes once the save is answered");
+      // A failed save that paralyzes them is still theirs to turn: the reaction
+      // is judged as they stood before the failure. STR 8 against DC 10, 12 with the +4.
+      const [holder2] = await stage(war(), { others: [friend()], first: friend() });
+      const held = await call("cast_at_player", { characterId: war().id, casterEnemyId: holder2.id, source: "a binding gaze", saveAbility: "str", dc: 10, condition: "paralyzed" }, [8]);
+      assert.equal(held.ok, true, held.error);
+      assert.ok(sheet(war()).conditions.includes("paralyzed"), `the staging: the failed save was to paralyze them: ${show(held)}`);
+      assert.deepEqual(offered().map((entry) => entry.disabled), [null], "the save's card is open to a wizard the failure has just paralyzed");
+      const freed = await react(war(), "Arcane Deflection", { variant: "save" });
+      assert.equal(freed.ok, true, `paralyzed by the very save it answers: ${String(freed.error).slice(0, 170)}`);
+      assert.ok(!sheet(war()).conditions.includes("paralyzed"), "the paralysis is lifted with the save turned");
+      // Paralyzed by something else, they take no reaction at all.
+      await stage(war(), { others: [friend()], first: friend() });
+      assert.equal((await roll(war(), { kind: "saving_throw", ability: "dex", dc: 14 }, [9])).out.result?.success, false);
+      world.patch(war().id, { conditions: ["paralyzed"], conditionMeta: { paralyzed: { rounds: 10 } } });
+      assert.equal((await react(war(), "Arcane Deflection", { variant: "save" })).ok, false, "paralyzed before the save");
+      world.patch(war().id, { conditions: [], conditionMeta: {} });
+      // A save failed on an earlier turn is not open on this one.
+      await stage(war(), { others: [friend()], first: friend() });
+      assert.equal((await roll(war(), { kind: "saving_throw", ability: "dex", dc: 14 }, [9])).out.result?.success, false);
+      rig.cycleTo(friend());
+      const stale = await react(war(), "Arcane Deflection", { variant: "save" });
+      assert.equal(stale.ok, false, "a save failed a round ago");
+      assert.equal(rig.reacted(war()), false);
     },
     "deflection-cost": async () => {
       const [enemy] = await hit(war());
@@ -406,7 +459,6 @@ export function probes(rig, shared) {
   const wordRest = rests(["wizard", "Order of Scribes"], "sub_one_with_the_word", "long");
 
   const KNOWN = {
-    "deflection-save": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Arcane Deflection (one reaction, ac_vs_hit; no half for a failed save)`, note: "Half of the feature has no door: a failed save cannot be answered.", fix: "A second reaction on the row that adds 4 to the save just failed (the after-roll card's shape)." },
     "deflecting-shroud": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Deflecting Shroud (narrated: "the GM applies it with apply_damage")`, note: "A number (half the wizard level, force, three creatures, 60 feet) the engine has every fact for at the moment Arcane Deflection resolves.", fix: "Deal it from the Arcane Deflection reaction to up to three chosen creatures in 60 feet." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },

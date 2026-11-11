@@ -12,7 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
-import { deflectionAftermath } from "@/lib/dm/ar-ws-deflection";
+import { deflectionAftermath, deflectSaveHalf } from "@/lib/dm/ar-ws-deflection";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -465,6 +465,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
     }
     case "ac_vs_hit": {
+      // Arcane Deflection's other half: a save just failed (ar-ws-deflection.ts).
+      const saved = does.orSave === undefined ? null : deflectSaveHalf(ctx, found.variant, reaction.name, does.orSave, label);
+      if (saved) return saved;
       let bonus: number;
       let spentDie: string | null = null;
       if (does.amount === "bardic") {

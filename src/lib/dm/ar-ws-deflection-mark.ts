@@ -17,6 +17,13 @@
 // Lightning's bolt), a readied spell's release, and a spell an item casts,
 // whose charge use_item has already taken when the door hears of it.
 //
+// The reaction's other half answers a save just failed (ar-ws-deflection.ts),
+// and is judged as the wizard stood before that failure: beforeFailedSave
+// takes off the conditions the failure laid which that same save ends, so a
+// wizard a failed save has just paralyzed may still turn it, as Shield is
+// judged before the hit that dropped its caster. The engine's reaction gate
+// and the Hand's card both ask it.
+//
 // Pure: no database, so the Hand imports it.
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
@@ -49,4 +56,15 @@ export function deflectionCastProblem(sheet: Caster, spell: string, level: numbe
     error: `${sheet.name} used Arcane Deflection and casts only cantrips until the end of their next turn, so ${spell} is not cast. Nothing was spent.`,
     refused: "rules",
   };
+}
+
+// The sheet as it stood before a save was failed: without the conditions that
+// save ends (its ability, and its DC where the record kept one).
+export function beforeFailedSave<T extends Pick<CharacterSheet, "conditions" | "conditionMeta">>(sheet: T, ability: string, dc: number | null | undefined): T {
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { saveEnds?: { ability: string; dc: number } } | undefined>;
+  const laid = (entry: string) => {
+    const ends = meta[entry]?.saveEnds;
+    return Boolean(ends) && ends!.ability === ability && (dc === null || dc === undefined || ends!.dc === dc);
+  };
+  return sheet.conditions.some(laid) ? { ...sheet, conditions: sheet.conditions.filter((entry) => !laid(entry)) } : sheet;
 }
