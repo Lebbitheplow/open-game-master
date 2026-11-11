@@ -11,10 +11,15 @@
 //              fighter and wizard 28,480; four level 5 heroes 29,678 (the
 //              fight's rules and turn order are about 6K on their own)
 //
-// So 24K narrates, explores and checks for a party of four, and 32K runs
+// So 24K narrates, explores and checks for a party of four, and 40K runs
 // its fights. These were 16K and 24K, measured on a lone level 1 fighter:
 // every other party fell to the four essential tools on a 16K window, and
-// every fight measured on a 24K one (gap sweep 2026-11-09). 48K plays on
+// every fight measured on a 24K one (gap sweep 2026-11-09). The fight floor
+// is 40K, not the 32K the four heroes' 29,678 would clear: the figures are
+// the budget's estimate (characters over four, context-budget.ts), not a
+// tokenizer's count, and 32K left about 2,000 tokens spare, which a tokenizer
+// 7% over the estimate, the later calls of a turn, a fifth hero or a
+// campaign's own history use up (the review of #906). 48K plays on
 // the trimmed set, with recent turns in view (src/lib/dm/model-tuning-
 // logic.ts). The README, the guided setup, the model pickers and the
 // window-too-small refusal all quote these, and scripts/test-story-window.mjs
@@ -22,9 +27,9 @@
 //
 // Round thousands, as the model catalog counts them, so a model sold as
 // "24K" (24,000 tokens) is not told it is short of 24K; the llama-server
-// commands the docs give (-c 24576, 32768, 49152) clear each one.
+// commands the docs give (-c 24576, 40960, 49152) clear each one.
 export const MIN_NARRATION_WINDOW = 24_000;
-export const MIN_COMBAT_WINDOW = 32_000;
+export const MIN_COMBAT_WINDOW = 40_000;
 export const RECOMMENDED_WINDOW = 48_000;
 // The window the docs' llama-server commands start with (-c 65536): the
 // full tool set with a long transcript. The app asks Ollama for no more than

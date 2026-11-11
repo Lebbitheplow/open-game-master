@@ -44,7 +44,7 @@ Software:
   Qwen3.6-35B-A3B needs about 28 GB at Q4
   ([text-backends.md](text-backends.md#hardware-for-a-local-model)). Below 16 GB
   is not supported. It needs a context window of at least 24K tokens to narrate and
-  32K to run fights; 48K or more is recommended
+  40K to run fights; 48K or more is recommended
   ([text-backends.md](text-backends.md#context-window)). Hosted models and
   agent programs have far more.
 - **Optional services** (each feature simply stays off, or falls back to a

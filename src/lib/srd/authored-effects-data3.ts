@@ -348,7 +348,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [
       { name: "Genie Kind", aliases: ["Patron Kind", "Genie's Kind"], fight: "out", does: { kind: "choose", options: ["Dao", "Djinni", "Efreeti", "Marid"] } },
       // Bottled Respite: "As an action, you can magically vanish and enter
-      // your vessel", for up to twice the proficiency bonus in hours.
+      // your vessel", for up to twice the proficiency bonus in hours: 1,200
+      // rounds (two hours) for each point of the warlock's own bonus.
       // From 10th level (Sanctuary Vessel) "up to five willing creatures
       // within 30 feet can come in with you": the party within 30 feet, five
       // at most, each inside under the warlock's name (the condition's
@@ -358,7 +359,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Bottled Respite",
         pool: { id: "sub_genies_vessel" },
         action: "action",
-        does: { kind: "buff", target: "allies", condition: "in the genie's vessel", rounds: 2400, rangeFt: 30, count: (level) => (level >= 10 ? 5 : 0) },
+        does: { kind: "buff", target: "allies", condition: "in the genie's vessel", rounds: 2400, roundsPerProf: 1200, rangeFt: 30, count: (level) => (level >= 10 ? 5 : 0) },
       },
     ],
     effects: GENIE_KINDS.map(([kind, type]) => ({

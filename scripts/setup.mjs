@@ -129,5 +129,5 @@ the storyteller (a local model, an API key or an agent program), pictures,
 voice, who may join, and your own agent.
 
 A local model needs a context window of at least 24K tokens to narrate and
-32K to run fights; 48K or more is recommended ${dim("(llama-server -c 49152)")}.
+40K to run fights; 48K or more is recommended ${dim("(llama-server -c 49152)")}.
 `);

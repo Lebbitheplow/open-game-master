@@ -26,14 +26,17 @@ await test("each window is told what it plays", () => {
   assert.equal(level(16_384), "short");
   assert.equal(level(windows.MIN_NARRATION_WINDOW), "no-fights", "a model sold as 24K narrates");
   assert.equal(level(24_576), "no-fights");
+  // Fights need 40K: a four-hero fight's 29,678 estimated tokens left a 32K
+  // window about 2,000 spare, too few for a tokenizer that counts more.
+  assert.equal(level(32_768), "no-fights");
   assert.equal(level(windows.MIN_COMBAT_WINDOW), "tight");
-  assert.equal(level(32_768), "tight");
+  assert.equal(level(40_960), "tight");
   assert.equal(level(windows.RECOMMENDED_WINDOW), "ok");
   assert.equal(level(65_536), "ok");
   assert.equal(windows.storyWindowVerdict(65_536).text, "", "enough says nothing");
   assert.match(windows.storyWindowVerdict(8_192).text, /^An 8K window is too small to narrate/);
-  assert.match(windows.storyWindowVerdict(28_672).text, /^A 28K window narrates and explores, but fights need 32K/);
-  assert.match(windows.storyWindowVerdict(32_768).text, /^A 32K window plays, fights included/);
+  assert.match(windows.storyWindowVerdict(32_768).text, /^A 32K window narrates and explores, but fights need 40K/);
+  assert.match(windows.storyWindowVerdict(40_960).text, /^A 40K window plays, fights included/);
 });
 
 await test("a size is named the way it was set", () => {
@@ -48,7 +51,7 @@ await test("a size is named the way it was set", () => {
 
 await test("llama-server's -c clears each minimum", () => {
   assert.equal(windows.windowFlag(windows.MIN_NARRATION_WINDOW), 24_576);
-  assert.equal(windows.windowFlag(windows.MIN_COMBAT_WINDOW), 32_768);
+  assert.equal(windows.windowFlag(windows.MIN_COMBAT_WINDOW), 40_960);
   assert.equal(windows.windowFlag(windows.RECOMMENDED_WINDOW), 49_152);
 });
 

@@ -430,6 +430,11 @@ export type SpendDoes =
       hound?: boolean;
       condition: string | Array<[number, string]>;
       rounds: number;
+      // The length is this many rounds for each point of the holder's
+      // proficiency bonus, in place of `rounds` (Bottled Respite: "twice your
+      // proficiency bonus in hours", 1,200 rounds a point); `rounds` is then
+      // the length at +2. Read by authored-spend-effects.ts resolveSpendEffect.
+      roundsPerProf?: number;
       // "creature": a creature of either side (Adjust Density: "a creature's
       // ... weight"): the enemy named in targetEnemyId, else the ally named in
       // targetCharacterId, else the holder.
@@ -620,6 +625,16 @@ export type SpendDoes =
       // A second condition each creature that failed carries, until it is
       // taken off (Order's Demand: "disarmed", what it held dropped).
       mark?: string;
+      // The condition lasts until the end of each creature's own next turn
+      // (Lunar Phenomenon: "until the end of its next turn"), not the holder's.
+      untilItsTurnEnds?: boolean;
+      // One creature of the holder's choice in reach regains this: the
+      // character named in targetCharacterId, else the holder (Full Moon).
+      heals?: { formula: Formula; rangeFt: number };
+      // The holder turns invisible until the end of their next turn, or until
+      // they attack or cast a spell (New Moon). Both read by
+      // src/lib/dm/ar-ws-lunar-phenomenon.ts.
+      veils?: boolean;
     }
   | { kind: "reroll_save" }
   // The healing dice of a spell cast this turn rolled again, the new roll
@@ -653,7 +668,11 @@ export type SpendDoes =
   // `touched`: a willing creature the holder touches is the one moved.
   // `shadows`: only from dim light or darkness to dim light or darkness
   // (Shadow Walk: src/lib/dm/ar-ws-shadow-light.ts).
-  | { kind: "teleport"; feet: number; note?: string; touched?: boolean; shadows?: boolean }
+  // `companionFt`: one willing creature within that many feet, named in
+  // targetCharacterId, goes too; `ward`: a condition on the holder and the
+  // companion until the start of the holder's next turn (Crescent Moon:
+  // src/lib/dm/ar-ws-lunar-phenomenon.ts).
+  | { kind: "teleport"; feet: number; note?: string; touched?: boolean; shadows?: boolean; companionFt?: number; ward?: string }
   // Dice of damage onto the creature the holder just hit.
   // `afterSneak`: it answers the turn's Sneak Attack hit (action-budget.ts
   // SNEAK_HIT) and lands on a second creature within `rangeFt` of the one the

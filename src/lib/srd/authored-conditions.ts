@@ -249,6 +249,21 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     summary: "Abjure Enemy: half speed for a minute or until it takes damage.",
     speedMultiplier: 0.5,
   },
+  // Lunar Phenomenon: the New Moon's hold on each creature that failed its
+  // save, and the Crescent Moon's ward on the sorcerer and their companion
+  // (src/lib/srd/authored-effects-sweep-counters.ts).
+  {
+    id: "new_moons_stillness",
+    match: ["new moon's stillness"],
+    summary: "New Moon (Lunar Phenomenon): speed 0 until the end of its next turn.",
+    speedMultiplier: 0,
+  },
+  {
+    id: "crescent_moons_ward",
+    match: ["crescent moon's ward"],
+    summary: "Crescent Moon (Lunar Phenomenon): resistance to all damage until the start of the sorcerer's next turn.",
+    resistances: ALL_BUT(),
+  },
   {
     id: "held_in_place",
     match: ["held in place"],

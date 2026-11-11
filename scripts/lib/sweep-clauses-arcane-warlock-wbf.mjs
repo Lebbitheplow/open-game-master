@@ -248,6 +248,21 @@ export function probes(rig, shared) {
       assert.equal(d(out, 20), 1, `d20s: the warlock's save against the area, and no ward save for the undead (${JSON.stringify(out.rolled).slice(0, 200)})`);
     },
     // ---- The Genie
+    // "Bottled Respite: as an action, vanish into it for up to twice your
+    // proficiency bonus in hours": 4 hours at +2, 12 at +6. It was 2,400
+    // rounds at every bonus.
+    "respite-hours": async () => {
+      for (const [level, bonus] of [[1, 2], [20, 6]]) {
+        const who = W("The Genie", level, {}, `respite ${level}`);
+        await stage(who);
+        const out = await spend(who, "Bottled Respite");
+        assert.equal(out.ok, true, out.error);
+        assert.equal(budget().actionUsed, true, "as an action");
+        const entry = sheet(who).conditionMeta?.["in the genie's vessel"];
+        const meta = Array.isArray(entry?.instances) ? entry.instances[0] : entry;
+        assert.equal(meta?.rounds, 2 * bonus * 600, `at proficiency +${bonus}: ${2 * bonus} hours`);
+      }
+    },
     // Disintegrate is a 6th-level spell of one action that no warlock list
     // holds: the wish casts it with no slot (a 2 fails the Dexterity save).
     "wish-spell": async () => {
