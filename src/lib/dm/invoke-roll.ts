@@ -103,7 +103,7 @@ export function handleRequestRoll(
     }
   }
   // A roll to sway someone answers an attempt, and a player who only asked
-  // a question made none (src/lib/dm/player-word.ts swayUnasked).
+  // a question or listened made none (src/lib/dm/player-word.ts swayUnasked).
   if (sheet && args.kind === "skill_check" && swaySkill(args.skill)) {
     const unasked = swayUnasked(campaignId, turn, sheet);
     if (unasked) {

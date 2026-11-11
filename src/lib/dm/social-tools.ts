@@ -412,8 +412,9 @@ export function handleSocialCheck(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
-  // Swaying answers an attempt; a player who only asked a question made
-  // none, and is answered in character (src/lib/dm/player-word.ts).
+  // Swaying answers an attempt; a player who only asked a question or
+  // listened made none, and is answered in character
+  // (src/lib/dm/player-word.ts).
   const unasked = swayUnasked(campaign.id, turn, sheet);
   if (unasked) {
     return unasked;
