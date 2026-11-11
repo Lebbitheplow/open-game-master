@@ -609,6 +609,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "alert", "observant", "lucky", "dual wielder", "resilient", "battle caster", "spellbreaker", "diehard", "survivor", "rapid drinker",
     "durable", "medium armor master", "skirmisher", "mobile", "brutal attack", "piercer", "slasher", "crusher", "giant foe", "skulker", "actor", "grappler",
     "savage attacker", "poisoner", "athlete", "chef", "healer", "elven accuracy", "eldritch adept",
+    // Mounted Combatant: the mount's area save and the redirected blow (mount-area.ts, mount-combat.ts).
+    "mounted combatant",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic"].includes(name)) return "[cast tools]";
   return null;
