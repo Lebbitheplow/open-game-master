@@ -132,6 +132,13 @@ await test("a save the creature forces on a seat on physical dice is theirs to r
   kit.setEnemy(goblin.id, { stats: { ...kit.enemy(goblin.id).stats, attacks: [{ name: "Bite", toHit: 30, damage: "1d4", type: "piercing", onHit: { save: "con", dc: 11, damage: "2d6", damageType: "poison" } }] } });
   setMemberRealDice(world.campaignId, karaUser.id, true);
   try {
+    // The creature's own dice are named before its turn is played, since its
+    // d20 is thrown on either side of the seat's save as the queue runs: a 10
+    // (no critical hit, which doubles the bite's die), then 2 on every damage
+    // die (the bite's d4, the poison's 2d6). Left to chance, a natural 20 or
+    // a 4 on a doubled bite read as the poison landing.
+    world.clearDice();
+    world.dice(10, 2, 2, 2);
     const { turnId } = await narrateOver();
     const [card] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.characterId === kara.id);
     assert.ok(card, "the server threw the seat's save: no card waits for their dice");
@@ -144,9 +151,11 @@ await test("a save the creature forces on a seat on physical dice is theirs to r
     const out = await routeCall(route.submit, "POST", { dice: [20] }, { campaignId: world.campaignId, pendingRollId: card.id });
     assert.equal(out.status, 200, JSON.stringify(out.json));
     await settleQueue(world.campaignId);
+    world.clearDice();
     assert.equal(attacksBy(goblin).length, 1, "the creature's bite was not made once, with the save");
     assert.ok(world.sheet(kara.id).currentHp < hp, "the bite did not land");
-    assert.ok(hp - world.sheet(kara.id).currentHp <= 4, "the poison landed on a save of 20");
+    const lost = hp - world.sheet(kara.id).currentHp;
+    assert.equal(lost, 2, `the bite's 2 and no poison on a save of 20: ${lost} lost; rolls ${JSON.stringify(listRecentRolls(world.campaignId, 6).map((roll) => [roll.kind, roll.breakdown?.natural ?? null, roll.total, roll.detail ?? roll.label ?? ""]))}`);
     assert.equal(getDmTurn(turnId).status, "done");
     assert.equal(model.requests.length, before, "the model was asked again after its narration");
   } finally {

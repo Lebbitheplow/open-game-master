@@ -484,5 +484,9 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   { id: "grasping_arrow", match: ["grasping arrow"], summary: "Grasping Arrow: brambles wrap the creature. Its speed is 10 feet lower, and the first time on each turn it moves it takes 2d6 slashing damage.", speedBonus: -10 },
   { id: "shadow_arrow", match: ["shadow arrow"], summary: "Shadow Arrow: the creature cannot see anything farther than 5 feet away.", sightFeet: 5 },
   // Alter Memories: the hours are in the name ("memory stripped (5 hours)").
+  // Knowledge of the Ages: the skill or tool lent is in the name
+  // ("knowledge of the ages (stealth)", src/lib/srd/borrowed-proficiency.ts).
+  summaryOnly("knowledge_of_the_ages", "knowledge of the ages", "Knowledge of the Ages: proficient with the skill or tool named for 10 minutes."),
+  summaryOnly("path_to_the_grave", "path to the grave", "Path to the Grave: the next attack that hits the creature meets a vulnerability to all of its damage, and the curse ends with that hit."),
   summaryOnly("memory_stripped", "memory stripped", "Alter Memories: the Enchantment wizard stripped this creature of the hours named of what it remembers of the time it was charmed; they cannot reach its memory again under this charm."),
 ];

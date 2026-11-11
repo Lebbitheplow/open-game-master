@@ -232,6 +232,9 @@ await test("Shadow Martyr: no reaction before 10th level, and use_resource point
 const RESIST = "sub_reflexive_resistance";
 const reflexive = (who, ally) => world.invoke("use_reaction", { characterId: who.id, feature: "Reflexive Resistance", ...(ally ? { targetCharacterId: ally.id } : {}) });
 const ranger = hero("ranger", "Drakewarden");
+// Summoning the drake is an action on the ranger's own turn in a fight: the
+// last case's fight is over before it is called.
+await kit.endFight();
 const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" });
 assert.equal(summoned.ok, true, summoned.error);
 
