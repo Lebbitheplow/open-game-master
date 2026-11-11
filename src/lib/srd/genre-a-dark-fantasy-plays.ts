@@ -29,7 +29,15 @@ export type DarkFantasyPlay =
   | "song_that_ends"
   // The Flame That Judges: every enemy within 30 feet saves on Wisdom or is
   // branded, each its own brand.
-  | "mass_brand";
+  | "mass_brand"
+  // The penitent's prices in hit points: Blood Offering (5 HP: an attack this
+  // turn that would miss by 3 or less hits), Mortified Flesh (up to the
+  // proficiency bonus, twice it with Greater Mortification, onto the next
+  // attack's damage), Apotheosis of Suffering (down to 1 HP: the HP paid as
+  // radiant shared among the creatures in 30 feet, DEX save halves).
+  | "blood_offering"
+  | "mortify"
+  | "apotheosis";
 
 export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 
@@ -43,4 +51,7 @@ export const DARK_FANTASY_AIM: Record<DarkFantasyPlay, DarkFantasyAim> = {
   threnody: "none",
   song_that_ends: "enemy",
   mass_brand: "none",
+  blood_offering: "none",
+  mortify: "none",
+  apotheosis: "none",
 };

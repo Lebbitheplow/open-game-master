@@ -264,5 +264,41 @@ await test("The Flock Remembers: at 0 hit points the doctor is stable and may be
   assert.equal(bare.ok, false, "no call spends it");
 });
 
+await test("Blood Offering: 5 hit points, and an attack that would miss by 3 or less hits", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 7 });
+  must(await spend(scene, "dark_fantasy_blood_offering"), "Blood Offering");
+  assert.equal(sheet(scene.holder.id).currentHp, 95);
+  const out = must(await t.kit.swing(scene.holder.id, scene.near.id, [4, 4, 3, 3]), "the swing");
+  assert.equal(out.result.hit, true, JSON.stringify(out.result).slice(0, 300));
+  assert.ok(!conditions(scene.holder.id).some((entry) => entry.startsWith("blood offering")), "spent by the attack");
+});
+
+await test("Mortified Flesh: hit points paid up to the proficiency bonus land on the next attack's damage; more is refused", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 1 });
+  const much = await spend(scene, "Mortified Flesh", { amount: 3 });
+  assert.equal(much.ok, false, "a level 1 penitent pays at most 2");
+  must(await spend(scene, "Mortified Flesh", { amount: 2 }), "Mortified Flesh");
+  assert.equal(sheet(scene.holder.id).currentHp, 98);
+  const before = t.foeHp(scene.near.id);
+  must(await swing(scene, scene.near, [15, 4, 3, 3]), "the swing");
+  assert.equal(before - t.foeHp(scene.near.id), 4 + 4 + 2);
+});
+
+await test("Apotheosis of Suffering: down to 1 hit point, the hit points paid burn the creatures within 30 feet", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 20 });
+  t.world.dice(1);
+  must(await spend(scene, "dark_fantasy_apotheosis_of_suffering"), "Apotheosis of Suffering");
+  t.world.clearDice();
+  assert.equal(sheet(scene.holder.id).currentHp, 1);
+  assert.equal(300 - t.foeHp(scene.near.id), 99);
+  assert.equal(t.foeHp(scene.far.id), 300, "the foe 70 feet off is untouched");
+});
+
+await test("Greater Mortification: up to twice the proficiency bonus, doubled below half hit points", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 11 }, { hp: 40 });
+  must(await spend(scene, "Mortified Flesh", { amount: 8 }), "Mortified Flesh");
+  assert.ok(conditions(scene.holder.id).includes("mortified flesh (16)"), JSON.stringify(conditions(scene.holder.id)));
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

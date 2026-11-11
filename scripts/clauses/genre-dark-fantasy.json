@@ -1781,20 +1781,15 @@
   "clauses": [
    {
     "c": "When you attack, you may pay HP up to your proficiency bonus",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Mortified Flesh#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"mortified flesh\" is known. They have no limited-use resources. Send the one meant, by the name on the sheet. / No resource called \"mortified\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (use_resource \"Mortified Flesh\" with amount, up to the proficiency bonus)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Mortified Flesh"
    },
    {
     "c": "add the same amount to the damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap penitent::Mortified Flesh#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the mortified flesh (N) rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts (+N on the next attack, spent by it)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Mortified Flesh",
     "same_probe_as": 0
    }
   ]
@@ -1928,14 +1923,16 @@
    },
    {
     "c": "pay 5 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_blood_offering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the blood_offering play of src/lib/dm/genre-a-dark-fantasy-spends.ts (5 HP paid, refused if it would drop the penitent)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Blood Offering",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-blood-offering"
    },
    {
     "c": "one attack this turn becomes an automatic hit if the roll would miss by 3 or less",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_blood_offering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the blood offering (+3) row of src/lib/srd/genre-a-dark-fantasy-conditions.ts (+3 to hit, spent by the attack, this turn only)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Blood Offering",
     "same_probe_as": 1
    }
   ]
@@ -1998,21 +1995,15 @@
   "clauses": [
    {
     "c": "Mortified Flesh can pay up to twice your proficiency bonus in HP",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Greater Mortification#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (twice the proficiency bonus)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Greater Mortification"
    },
    {
     "c": "the bonus damage is doubled while below half HP",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (doubled below half HP)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Greater Mortification",
     "same_probe_as": 0
    }
   ]
@@ -2180,20 +2171,23 @@
    },
    {
     "c": "drop yourself to 1 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (down to 1 HP)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-apotheosis-of-suffering"
    },
    {
     "c": "deal the HP paid as radiant damage divided among any creatures within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the HP paid shared evenly among the creatures within 30 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "same_probe_as": 1
    },
    {
     "c": "DEX save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a DEX save for half against the Wisdom DC)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "same_probe_as": 2
    }
   ]

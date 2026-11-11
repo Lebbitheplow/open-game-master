@@ -38,6 +38,12 @@ export function playDarkFantasy(ctx: SpendContext, play: DarkFantasyPlay): Resol
       return songThatEnds(ctx);
     case "mass_brand":
       return massBrand(ctx);
+    case "blood_offering":
+      return bloodOffering(ctx);
+    case "mortify":
+      return mortify(ctx);
+    case "apotheosis":
+      return apotheosis(ctx);
   }
 }
 
@@ -237,4 +243,85 @@ function massBrand(ctx: SpendContext): Resolution {
     lines.push(`${foe.displayName} is branded (WIS ${save.total ?? "failed"} vs DC ${dc}).`);
   }
   return { patch: { conditions, conditionMeta: meta }, result: { applied: lines } };
+}
+
+// Hit points the penitent pays, refused when they would fall to 0.
+function payHp(ctx: SpendContext, amount: number): string | null {
+  return amount >= ctx.sheet.currentHp ? `${ctx.sheet.name} has ${ctx.sheet.currentHp} hit points and cannot pay ${amount} without falling. Nothing was spent.` : null;
+}
+
+// Blood Offering: "pay 5 HP: one attack this turn becomes an automatic hit if
+// the roll would miss by 3 or less".
+function bloodOffering(ctx: SpendContext): Resolution {
+  const short = payHp(ctx, 5);
+  if (short) {
+    return { error: short, refused: "rules" };
+  }
+  const condition = "blood offering (+3)";
+  const kept = ctx.sheet.conditions.filter((entry) => !isConditionNamed(entry, "blood offering"));
+  return {
+    patch: { currentHp: ctx.sheet.currentHp - 5, conditions: [...kept, condition], conditionMeta: { ...ctx.sheet.conditionMeta, [condition]: { untilTurnEndOf: ctx.sheet.id } } },
+    result: { applied: [`${ctx.sheet.name} pays 5 hit points: their next attack this turn hits if it would miss by 3 or less.`] },
+  };
+}
+
+// Mortified Flesh: "When you attack, you may pay HP up to your proficiency
+// bonus; add the same amount to the damage". Greater Mortification (11th):
+// "can pay up to twice your proficiency bonus in HP; the bonus damage is
+// doubled while below half HP". The amount is the call's; the next attack
+// carries it.
+function mortify(ctx: SpendContext): Resolution {
+  const prof = computeSheetDerived(ctx.sheet).proficiencyBonus;
+  const greater = holdsFeature(ctx.sheet, "Greater Mortification");
+  const most = greater ? 2 * prof : prof;
+  const amount = Math.floor(Number(ctx.args.amount ?? 0));
+  if (!amount || amount < 1 || amount > most) {
+    return { error: `${ctx.spend.name} pays 1 to ${most} hit points: pass amount. Nothing was spent.`, retry: true };
+  }
+  const short = payHp(ctx, amount);
+  if (short) {
+    return { error: short, refused: "rules" };
+  }
+  const left = ctx.sheet.currentHp - amount;
+  const bonus = greater && left < ctx.sheet.maxHp / 2 ? 2 * amount : amount;
+  const condition = `mortified flesh (${bonus})`;
+  const kept = ctx.sheet.conditions.filter((entry) => !isConditionNamed(entry, "mortified flesh"));
+  return {
+    patch: { currentHp: left, conditions: [...kept, condition], conditionMeta: { ...ctx.sheet.conditionMeta, [condition]: { untilTurnEndOf: ctx.sheet.id } } },
+    result: { applied: [`${ctx.sheet.name} pays ${amount} hit points: +${bonus} damage on their next attack.`] },
+  };
+}
+
+// Apotheosis of Suffering: "drop yourself to 1 HP: deal the HP paid as radiant
+// damage divided among any creatures within 30 ft (DEX save halves)". The
+// creatures are the player's to name (targetEnemyIds), each within 30 feet,
+// every foe in reach when none is named; the share is even, rounded down.
+function apotheosis(ctx: SpendContext): Resolution {
+  const paid = ctx.sheet.currentHp - 1;
+  if (paid < 1) {
+    return { error: `${ctx.sheet.name} has no hit points above 1 to pay. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  if (!encounter) {
+    return { error: `${ctx.spend.name} burns the creatures of a fight; there is no fight. Nothing was spent.`, refused: "rules" };
+  }
+  const reach = foesOfSheet(ctx.campaign.id, encounter, ctx.sheet.id).filter((foe) => foe.status === "alive" && foe.currentHp > 0 && withinFeet(encounter.id, ctx.sheet.id, foe.id, 30));
+  const named = ctx.args.targetEnemyIds?.length ? ctx.args.targetEnemyIds : ctx.args.targetEnemyId ? [ctx.args.targetEnemyId] : [];
+  const ids = named.map((ref) => resolveTargetFoe(ctx.campaign.id, encounter, ref)?.id ?? ref);
+  const caught = named.length ? reach.filter((foe) => ids.includes(foe.id)) : reach;
+  if (named.length && caught.length !== named.length) {
+    return { error: `${ctx.spend.name} reaches only creatures within 30 feet: ${reach.map((foe) => `${foe.displayName} (${foe.id})`).join(", ") || "none"}. Nothing was spent.`, retry: true };
+  }
+  if (!caught.length) {
+    return { error: `No creature is within 30 feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  const share = Math.floor(paid / caught.length);
+  const lines: string[] = [];
+  for (const foe of caught) {
+    const struck = resolveSpendEffect({ ...ctx, args: { ...ctx.args, targetEnemyId: foe.id } }, { kind: "save_effect", save: "dex", dcAbility: "wis", dice: String(share), type: "radiant", half: true });
+    if (!("error" in struck)) {
+      lines.push(`${foe.displayName}: ${JSON.stringify({ saved: struck.result.saved, damage: struck.result.damage })}`);
+    }
+  }
+  return { patch: { currentHp: 1 }, result: { paid, share, applied: lines } };
 }

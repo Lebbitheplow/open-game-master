@@ -61,6 +61,18 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("witch_hunter", "The Flame That Judges", "dark_fantasy_the_flame_that_judges", {
     spends: [{ name: "The Flame That Judges", pool: { id: "dark_fantasy_the_flame_that_judges" }, action: "action", does: { kind: "dark_fantasy", play: "mass_brand" } }],
   }),
+  // The penitent's prices: "1/rest, pay 5 HP: one attack this turn becomes an
+  // automatic hit if the roll would miss by 3 or less"; "When you attack, you
+  // may pay HP up to your proficiency bonus" (at will, no action: the attack's
+  // own price); "1/long rest, drop yourself to 1 HP: deal the HP paid as
+  // radiant damage divided among any creatures within 30 ft (DEX save halves)".
+  counted("penitent", "Blood Offering", "dark_fantasy_blood_offering", {
+    spends: [{ name: "Blood Offering", pool: { id: "dark_fantasy_blood_offering" }, action: "none", fight: "in", does: { kind: "dark_fantasy", play: "blood_offering" } }],
+  }),
+  { feature: "Mortified Flesh", classes: ["penitent"], entry: { subclass: "genre", spends: [{ name: "Mortified Flesh", action: "none", fight: "in", does: { kind: "dark_fantasy", play: "mortify" } }] } },
+  counted("penitent", "Apotheosis of Suffering", "dark_fantasy_apotheosis_of_suffering", {
+    spends: [{ name: "Apotheosis of Suffering", pool: { id: "dark_fantasy_apotheosis_of_suffering" }, action: "action", does: { kind: "dark_fantasy", play: "apotheosis" } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

@@ -13,8 +13,6 @@ export const KNOWN = {
   "counter:cyberpunk_daemon_cache": { GUIDANCE_ONLY: { severity: "medium", note: "the counter is held (1/long rest); the cached program's cast without a slot is not wired to the cast guard: no pick names the program (w2-genre-a handoff)" } },
   "counter:cyberpunk_grease_the_wheels": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:cyberpunk_reality_rend": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:dark_fantasy_apotheosis_of_suffering": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:dark_fantasy_blood_offering": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:dark_fantasy_candle_in_the_dark": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:dark_fantasy_flashfire_litany": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:dark_fantasy_purging_flame": { UNREACHED: { severity: "low", note: "the sweep stages no Hunter's Brand, and the spend rides one (refused with nothing spent while none is held): scripts/test-genre-a-dark-fantasy.mjs plays it on a branded creature" } },
