@@ -10,7 +10,7 @@ import { canTurnFate } from "@/lib/dm/fate-turn";
 
 export const runtime = "nodejs";
 
-const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck" };
+const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck", cloud_rune: "Cloud Rune" };
 export const dynamic = "force-dynamic";
 
 // `choice`: whose roll, by its place in the stop's list, when the stop offers
@@ -90,6 +90,12 @@ export async function POST(
     }
     if ("shift" in data && power === "slayers_counter" && (!sheet || !canReactNow(campaignId, sheet))) {
       return Response.json({ error: "Your reaction is spent." }, { status: 409 });
+    }
+    // The Cloud Rune: the creature it turns onto is one of the stop's choices,
+    // and the reaction and a use of the rune are still there to spend.
+    const rune = sheet?.resources?.sub_cloud_rune;
+    if ("shift" in data && power === "cloud_rune" && (!sheet || !canReactNow(campaignId, sheet) || !rune || rune.max - rune.used < 1)) {
+      return Response.json({ error: "Your reaction is spent, or the Cloud Rune's uses are." }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
     return Response.json({ error: "This is not your choice yet." }, { status: 403 });

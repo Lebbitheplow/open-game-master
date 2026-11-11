@@ -40,6 +40,7 @@ import { moreAbout } from "@/lib/dm/foresight-more";
 import { attackRiderFoes, foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canTurnFate, inFateReach } from "@/lib/dm/fate-turn";
+import type { OpenedStop } from "@/lib/dm/held-call";
 
 // The rolls a watch stop offers Convergent Future and Bend Luck on: the ones
 // a roll site asks takeFate about.
@@ -402,11 +403,11 @@ function openStopFor(
   campaign: Campaign,
   turnId: string,
   calls: readonly HeldCall[],
-  found: { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[] },
+  found: OpenedStop,
   line: string,
 ): string {
   const about = { line };
-  const { watcher, power, choices } = found;
+  const { watcher, power, choices, hit } = found;
   const pending = createPendingRoll({
     campaignId: campaign.id,
     turnId,
@@ -423,7 +424,7 @@ function openStopFor(
   });
   const deadline = new Date(Date.now() + WATCH_SECONDS * 1000).toISOString();
   const [lead, ...also] = choices[0].rolls.map((roll) => roll.tag);
-  const held = setPendingWatch(pending.id, { calls: [...calls], tag: lead, ...(also.length ? { also } : {}), line: about.line, face: null, deadline, power, choices });
+  const held = setPendingWatch(pending.id, { calls: [...calls], tag: lead, ...(also.length ? { also } : {}), line: about.line, face: null, deadline, power, choices, ...(hit ? { hit } : {}) });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(held ?? pending) });
   // Past the deadline the roll goes ahead on its own and nothing is spent.
   const timer = setTimeout(() => {
@@ -486,6 +487,8 @@ export function anyoneWatching(campaignId: string): boolean {
 }
 
 globalThis.__odmWatchStop = watchStopForRoll;
+// A stop made inside a call after its dice began (held-call.ts stopAfterThrow).
+globalThis.__odmOpenStop = openStopFor;
 globalThis.__odmAnyoneWatching = anyoneWatching;
 
 // Runs one held call with the chosen number armed on its first matching d20,

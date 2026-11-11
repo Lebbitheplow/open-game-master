@@ -12,7 +12,8 @@ import { slayersCounterAtStop } from "@/lib/dm/slayers-counter";
 import { forcerOfCall } from "@/lib/dm/foresight";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { dropHeldCalls, getDmTurn, listPendingForTurn, saveDmTurn, takeHeldCalls, watchChoiceOf, type DmTurn, type WatchStop } from "@/lib/db/dm-turns";
+import { answeredAtStop, dropHeldCalls, getDmTurn, listPendingForTurn, saveDmTurn, takeHeldCalls, watchChoiceOf, type DmTurn, type WatchStop } from "@/lib/db/dm-turns";
+import { layCloudTurn } from "@/lib/dm/cloud-rune";
 import { backstopWaiting, isBackstopPending } from "@/lib/dm/backstop-calls";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { continueBackstop } from "@/lib/dm/encounter-tools";
@@ -27,16 +28,20 @@ import { wakeDm } from "@/lib/dm/wake";
 // console call, the backstop), the first with the watcher's answer armed.
 export async function runWatchedCalls(campaign: Campaign, turn: DmTurn, watcherId: string, stop: WatchStop) {
   const picked = watchChoiceOf(stop);
-  const shifting = Boolean(stop.power) && stop.power !== "portent" && stop.power !== "slayers_counter";
+  const shifting = Boolean(stop.power) && stop.power !== "portent" && !answeredAtStop(stop.power);
   for (const [at, call] of stop.calls.entries()) {
     const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" && stop.power !== "cloud_rune" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     if (at === 0) {
       markWatchAnswered(campaign.id, call.tape ?? []);
     }
     // Slayer's Counter is made before the call that forces the save (slayers-counter.ts).
     if (at === 0 && stop.power === "slayers_counter" && stop.shift) {
       runInTurnScope(turn.id, () => slayersCounterAtStop(campaign, turn, watcherId, forcerOfCall(call, getActiveEncounter(campaign.id)?.id)));
+    }
+    // The Cloud Rune's answer, read at the hit the call stopped on (cloud-rune.ts).
+    if (at === 0) {
+      layCloudTurn(watcherId, stop);
     }
     try {
       await runInTurnScope(turn.id, () =>

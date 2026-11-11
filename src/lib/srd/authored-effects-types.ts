@@ -994,7 +994,8 @@ export type ReactionDoes =
   // target on a success (Instinctive Charm).
   // `within`: the hit on the holder or on a creature they can see within that
   // many feet turns onto another creature within as many feet of the holder,
-  // not the attacker, on the same roll (the Cloud Rune: src/lib/dm/mt-fb-runes.ts).
+  // not the attacker, on the same roll, at a stop before its damage is rolled
+  // (the Cloud Rune: src/lib/dm/cloud-rune.ts); no card answers it afterwards.
   | { kind: "redirect"; save?: { ability: Ability; dcAbility: Ability | "spell" }; rangeFt?: number; within?: number }
   // The hit misses on this die or higher (Armor of Hexes: a d6, 4 or more),
   // against a creature the holder marked with this condition.

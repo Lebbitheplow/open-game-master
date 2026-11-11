@@ -1048,7 +1048,7 @@
    {
     "c": "Cloud: a reaction as the knight or a creature within 30 feet is hit, turning the attack onto another creature",
     "is": "held",
-    "by": "src/lib/dm/redirect-target.ts withinTaker + src/lib/dm/authored-reactions.ts redirect (within)",
+    "by": "src/lib/dm/cloud-rune.ts cloudRuneAtHit (a stop at the hit before its damage, held-call.ts stopAfterThrow) + landTurnedBlow",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rune-cloud-turns-hit"
    },
    {

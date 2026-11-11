@@ -250,6 +250,11 @@ export const SERVER_FEATURES = {
   // divine soul, and a stop's `power` may name either. An older host refuses
   // the first, so the button is drawn only here.
   saveWatch: true,
+  // The Cloud Rune's stop at a hit before its damage (src/lib/dm/cloud-rune.ts):
+  // a stop's `power` may be "cloud_rune", its choices the creatures the
+  // attack may turn onto, answered on pending-rolls/[id]/watch with `shift`
+  // and `choice`. An older host never makes one, so nothing is drawn there.
+  cloudRuneStop: true,
   // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the
   // public encounter's `turnHeld`, which the End Turn controls show while the
   // move waits on a watcher. An older host never holds a move, so nothing is

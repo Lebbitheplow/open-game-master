@@ -1100,6 +1100,9 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
     const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
     const afterRoll = await t.world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+    const watch = await t.world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/watch");
+    const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+    const { settleQueue } = await import("./lib/enforce-narrator.mjs");
     const rune = (name) => ({ name: options.optionFeatureName("rune", name), source: "class" });
     const knight = t.hero("fighter", "Rune Knight", 7);
     const ally = t.hero("fighter", "Champion", 7);
@@ -1150,23 +1153,65 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
 
     // "When you or a creature you can see within 30 feet of you is hit by an
     // attack roll": a different creature within 30 feet, not the attacker,
-    // becomes the target, using the same roll, before the damage stands.
+    // becomes the target, using the same roll. A reaction that redirects an
+    // effect acts before the outcome lands: the hit stops for the knight's
+    // player before its damage is rolled (cloud-rune.ts), and the first
+    // target's hit points never drop, not even to be given back after.
     await probe("rune-cloud-turns-hit", async () => {
       const [first, second] = await t.stage(knight, { enemies: 2, cast: [[ally, 5, 6]] });
       const before = t.sheet(ally).currentHp;
-      await t.enemyHits(first, ally, [16, 4]);
-      assert.ok(t.sheet(ally).currentHp < before, "the club lands on the ally");
-      const card = named(strip(knight), "Cloud Rune")[0];
-      assert.equal(card?.target, "enemy", `the knight's card for the ally's hit picks the creature: ${JSON.stringify(card ?? null)}`);
-      assert.equal(card?.pickWithin, 30);
-      const onAttacker = await t.react(knight, "Cloud Rune", { targetCharacterId: ally.id, targetEnemyId: first.id });
-      assert.equal(onAttacker.ok, false, "not onto the attacker");
       const foeHp = t.foe(second).currentHp;
-      const out = await t.react(knight, "Cloud Rune", { targetCharacterId: ally.id, targetEnemyId: second.id });
-      assert.equal(out.ok, true, out.error);
-      assert.equal(t.sheet(ally).currentHp, before, `the ally's hit points come back: ${t.show(out)}`);
+      const rollsBefore = new Set(listRecentRolls(t.world.campaignId, 500).map((roll) => roll.id));
+      // Every hit-point figure the table is shown for the ally: a blow dealt
+      // and then given back shows here as a dip, whatever the end state.
+      const shown = [];
+      const hear = (chunk) => {
+        const type = /^event: (.+)$/m.exec(chunk)?.[1];
+        const data = /^data: (.+)$/m.exec(chunk)?.[1];
+        const sheet = type === "sheet_updated" && data ? JSON.parse(data).sheet : null;
+        if (sheet?.id === ally.id && typeof sheet.currentHp === "number") shown.push(sheet.currentHp);
+      };
+      // The knight's player is at the table: a stop reaches them.
+      const offs = [subscribe(t.world.campaignId, hear, t.sheet(knight).userId), subscribe(t.world.campaignId, hear, t.sheet(ally).userId)];
+      try {
+        t.kit.freshRound();
+        const out = await t.forced([16, 4], () => t.world.invoke("enemy_attack", { enemyId: first.id, targetCharacterId: ally.id }));
+        assert.equal(out.ok, true, out.error);
+        const [stop] = listOpenPendingRolls(t.world.campaignId).filter((pending) => pending.parkedFor === "watch");
+        assert.equal(stop?.watch?.power, "cloud_rune", `the hit stops for the knight before its damage: ${t.show(out)}`);
+        assert.equal(t.sheet(ally).currentHp, before, "the club landed before the knight was asked");
+        const names = stop.watch.choices.map((choice) => choice.name);
+        assert.ok(!stop.watch.choices.some((choice) => choice.ref === first.id || choice.ref === ally.id), `the attacker and the one it hit are no choices: ${names}`);
+        const onto = stop.watch.choices.findIndex((choice) => choice.ref === second.id);
+        assert.ok(onto >= 0, `the other foe within 30 feet is a choice: ${names}`);
+        // The same roll: its d20 comes again off the stop's tape. Then the
+        // club's damage, for the other foe: 4 + 2.
+        t.world.signIn({ id: t.sheet(knight).userId });
+        t.world.dice(4);
+        const answered = await call(watch, "POST", { shift: true, choice: onto }, { campaignId: t.world.campaignId, pendingRollId: stop.id });
+        assert.equal(answered.status, 200, JSON.stringify(answered.json));
+        await settleQueue(t.world.campaignId);
+        t.world.clearDice();
+      } finally {
+        for (const off of offs) off();
+      }
       assert.equal(foeHp - t.foe(second).currentHp, 6, "the same blow lands on the other foe");
+      assert.equal(t.sheet(ally).currentHp, before, "the ally keeps every hit point");
+      assert.ok(shown.every((hp) => hp >= before), `the ally's hit points dropped and came back: ${shown.join(", ")}`);
+      const dealt = listRecentRolls(t.world.campaignId, 500).filter((roll) => !rollsBefore.has(roll.id) && roll.kind === "damage" && roll.characterId === ally.id);
+      assert.equal(dealt.length, 0, "damage was rolled against the ally");
       assert.equal(t.used(knight, "sub_cloud_rune"), 1);
+      assert.ok(t.world.encounter().reactionsUsed.includes(knight.id), "the knight's reaction spent");
+      // Nothing answers the hit once its damage is dealt: a seat no stop
+      // reaches (the player away) sees the attack land as rolled.
+      const [foe] = await t.stage(knight, { cast: [[ally, 5, 6]] });
+      await t.enemyHits(foe, ally, [16, 4]);
+      assert.equal(t.sheet(ally).currentHp, before - 6, "the club lands on the ally");
+      assert.equal(listOpenPendingRolls(t.world.campaignId).filter((pending) => pending.parkedFor === "watch").length, 0, "an absent player's knight was stopped for");
+      assert.equal(named(strip(knight), "Cloud Rune").length, 0, "a card offers the rune after the damage");
+      const late = await t.react(knight, "Cloud Rune", { targetCharacterId: ally.id, targetEnemyId: foe.id });
+      assert.equal(late.ok, false, "the rune gave back a hit already dealt");
+      assert.equal(t.used(knight, "sub_cloud_rune"), 0);
     });
 
     // The prophetic state answers the attacks, saves and checks of a creature

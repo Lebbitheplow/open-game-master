@@ -82,6 +82,7 @@ import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sizeForRace } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -735,17 +736,47 @@ export function handleEnemyAttack(
       return;
     }
 
+    // Aura of Hate: a fiend or undead within an oathbreaker's aura adds the
+    // paladin's Charisma to its melee weapon blows (divine-auras.ts).
+    const hate = ranged || attack.spellAttack ? null : hateAuraDamage(campaign.id, standing);
+    // An active effect's amount on its damage rolls (set_effect), once.
+    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus + (hate?.bonus ?? 0);
+    // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
+    const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
+    const flags: BlowFlags = {
+      // An attack, so Heavy Armor Master's reduction answers it (pc-damage.ts).
+      ...(attack.spellAttack ? {} : { attack: true }),
+      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
+      // and a blow the block prints as magical ("magical bludgeoning").
+      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // Emissary of Redemption holds nothing against a creature the paladin attacked.
+      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+    };
+    // The Cloud Rune (cloud-rune.ts): a knight's player turns the hit onto
+    // another creature before its damage is rolled, on the same roll, so the
+    // target was never hit. The blow keeps its own dice; what the target's
+    // place gave it (Martial Advantage, a critical for lying unconscious) is
+    // not the new creature's.
+    const turned = cloudRuneAtHit({ campaign, turn, encounter, attacker: standing, attackName: attack.name, struck: target, swing: index, rolled: hitOutcome.total });
+    if (turned) {
+      hitLog.swing(hitOutcome, targetAc(), { hit: false, crit: false, raw: 0, advantage, ranged, attack: attack.name });
+      const turnedCrit = natCrit && !authored.noCrit && !(turned.taker.kind === "sheet" && wornArmorTurnsCrits(turned.taker.sheet.equipment ?? []));
+      const turnedBase = effectDamage > 0 ? `${attack.damage}+${effectDamage}` : effectDamage < 0 ? `${attack.damage}-${-effectDamage}` : attack.damage;
+      const expression = turnedCrit
+        ? critDamageExpression(turnedBase, 0, { powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical, multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+        : turnedBase;
+      swings.push(landTurnedBlow({ campaign, turn, encounter, attacker: standing, attack, taker: turned.taker, knight: turned.knight, expression, crit: turnedCrit, shrink: shrunk, flags, rolled: hitOutcome.total, sheets, sheetsById }));
+      return;
+    }
+
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
     if (bonus.martial) {
       martialSpent = true;
     }
-    // Aura of Hate: a fiend or undead within an oathbreaker's aura adds the
-    // paladin's Charisma to its melee weapon blows (divine-auras.ts).
-    const hate = ranged || attack.spellAttack ? null : hateAuraDamage(campaign.id, standing);
-    // An active effect's amount on its damage rolls (set_effect), once.
-    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus + (hate?.bonus ?? 0);
     const withTraits = bonus.dice.length ? `${attack.damage}+${bonus.dice.join("+")}` : attack.damage;
     const baseDamage = effectDamage > 0 ? `${withTraits}+${effectDamage}` : effectDamage < 0 ? `${withTraits}-${-effectDamage}` : withTraits;
     const damageExpression = crit
@@ -775,8 +806,6 @@ export function handleEnemyAttack(
     // immune to poison takes none of a bite's venom). A penalty can bring a
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
-    // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
-    const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
     const dealt = shrunk(blow.amount);
     // A critical that came only from the target lying unconscious at 0 within
     // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
@@ -797,17 +826,6 @@ export function handleEnemyAttack(
     const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
     // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
-    // What the blow is made of for the target's defenses, kept with the hit
-    // so a reaction's replay meets the same clauses (last-hit.ts flags).
-    const flags: BlowFlags = {
-      // An attack, so Heavy Armor Master's reduction answers it (pc-damage.ts).
-      ...(attack.spellAttack ? {} : { attack: true }),
-      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
-      // and a blow the block prints as magical ("magical bludgeoning").
-      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
-      // Emissary of Redemption holds nothing against a creature the paladin attacked.
-      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
-    };
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {

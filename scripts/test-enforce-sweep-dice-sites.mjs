@@ -507,6 +507,8 @@ const SITES = {
   "lib/dm/contest-roll.ts#checkCeiling": "F no die: the highest the check could reach",
   "lib/dm/death.ts#rollStableTimer": "F 1d4 hours",
   "lib/dm/encounter-tools.ts#ensureInitiativeProgress": "H",
+  // A foe's blow the Cloud Rune turned onto another creature, its damage rolled for them.
+  "lib/dm/cloud-rune.ts#landTurnedBlow": "F",
   "lib/dm/enemy-attack.ts#handleEnemyAttack": "F", "lib/dm/enemy-fall.ts#enemyFalls": "F", "lib/dm/enemy-hit-rows.ts#resolveRowOnHit": "F",
   "lib/dm/enemy-hit.ts#resolveOnHit": "F", "lib/dm/enemy-strike.ts#enemyStrikesEnemy": "F",
   "lib/dm/feat-reactions.ts#lucky": "H the Lucky feat's d20 against an attacker", "lib/dm/feat-reactions.ts#reservesRecovery": "D a hit die",

@@ -130,6 +130,20 @@ const conditionInstanceSchema = z.object({
         escapeFeet: z.number().int().min(0).max(120).optional(),
       })
       .optional(),
+    // A Cloud Rune knight's answers at the stops before hits' damage
+    // (src/lib/dm/cloud-rune.ts): which swing of whose attack on whom, and
+    // the creature it turns onto, or null for one let land.
+    cloudTurns: z
+      .array(
+        z.object({
+          attackerId: z.string().trim().min(1).max(80),
+          struckId: z.string().trim().min(1).max(80),
+          swing: z.number().int().min(0).max(20),
+          onto: z.string().trim().min(1).max(80).nullable(),
+        }),
+      )
+      .max(8)
+      .optional(),
 });
 
 // Duration/save metadata for active conditions, keyed by condition name.

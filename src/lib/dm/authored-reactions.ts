@@ -249,10 +249,8 @@ function saveDc(holder: CharacterSheet, ability: string): number {
 
 // The creature a redirect turns the attack onto, or why there is none
 // (redirect-target.ts).
-function takerOf(ctx: Ctx, encounter: NonNullable<Ctx["encounter"]>, record: LastHit, reaction: string, closest: boolean, within?: number): Combatant | ToolError {
+function takerOf(ctx: Ctx, encounter: NonNullable<Ctx["encounter"]>, record: LastHit, reaction: string, closest: boolean): Combatant | ToolError {
   return redirectTaker({
-    within,
-    struck: record.characterId,
     campaignId: ctx.campaign.id,
     encounter,
     holder: ctx.sheet,
@@ -1055,17 +1053,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.` };
     }
     case "redirect": {
-      // The Cloud Rune answers a hit on the knight or on a creature they see
-      // within its reach (mt-fb-runes.ts); the others, a hit on the holder. A
-      // character named with no hit open on them, while the knight has one, is
-      // the one the knight's hit turns onto ("a different creature").
-      const named = does.within ? allyOf(ctx) : null;
-      const covered = named && !("error" in lastHitOn(ctx, named, label)) ? named : ctx.sheet;
-      if (does.within && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.within)) {
-        return { error: `${covered.name} is beyond ${does.within} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      // The Cloud Rune turns a hit before its damage is rolled: the knight's
+      // player is asked at the hit itself (cloud-rune.ts), and a seat no stop
+      // reaches lets it land as rolled. A hit already dealt is never taken back.
+      if (does.within) {
+        return { error: `${reaction.name} turns a hit before its damage is rolled: ${ctx.sheet.name}'s player is asked at the hit, and a hit already dealt is not taken back. Nothing was spent.`, refused: "rules" };
       }
-      const unseenCovered = does.within ? unseenTarget(ctx, found, covered) : null;
-      if (unseenCovered) return unseenCovered;
+      const covered = ctx.sheet;
       const landed = lastHitOn(ctx, covered, label);
       // Instinctive Charm answers the attack roll, hit or miss
       // (ar-ws-charm-miss.ts): with no hit open, an attack that missed.
@@ -1077,7 +1071,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // Who takes the blow, settled before anything is rolled: for
       // Misdirection a creature beside the holder giving cover, for
       // Instinctive Charm the one closest to the attacker (redirect-target.ts).
-      const taker = does.save ? null : takerOf(ctx, encounter, hit.record, reaction.name, false, does.within);
+      const taker = does.save ? null : takerOf(ctx, encounter, hit.record, reaction.name, false);
       if (taker && "error" in taker) return taker;
       // Instinctive Charm: the attacker saves first, and keeps its target on
       // a success. What bars the attacker is asked before who is closest to it.

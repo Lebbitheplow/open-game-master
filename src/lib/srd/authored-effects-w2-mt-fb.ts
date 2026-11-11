@@ -14,7 +14,7 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
   // Cloud Rune's invocation: when the knight or a creature they can see
   // within 30 feet is hit by an attack, the reaction turns that attack onto
   // another creature within 30 feet of the knight, not the attacker, on the
-  // same roll, before its damage stands (src/lib/dm/mt-fb-runes.ts).
+  // same roll, at a stop before its damage is rolled (src/lib/dm/cloud-rune.ts).
   "fighter::Rune: Cloud Rune": {
     subclass: "Rune Knight",
     counter: "sub_cloud_rune",

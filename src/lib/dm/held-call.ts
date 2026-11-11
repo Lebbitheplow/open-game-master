@@ -35,7 +35,11 @@ import {
   type DmTurn,
   type HeldRollCall,
   type PendingRoll,
+  type WatchChoice,
+  type WatchPower,
+  type WatchStop,
 } from "@/lib/db/dm-turns";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import type { Advantage, RollResult } from "@/lib/dice";
@@ -73,6 +77,9 @@ type Trial = {
   watchTag?: RollTag;
   watchTapeAt?: number;
   watchers?: boolean;
+  // A stop made after a die (stopAfterThrow): opens its own card once the
+  // run is rolled back.
+  reopen?: (held: HeldCallSpecShape) => string | null;
   decided: DecidedRoll[];
   used: Set<number>;
   feed: DiceTapeCursor;
@@ -88,7 +95,13 @@ declare global {
   // Tables whose next held call is a watch stop's, already answered.
   var __odmWatchAnswered: Map<string, Array<[number, number]>> | undefined;
   var __odmAnyoneWatching: ((campaignId: string) => boolean) | undefined;
+  // foresight.ts openStopFor, registered there: a watch stop's card for one
+  // watcher, holding these calls. Its id.
+  var __odmOpenStop: ((campaign: Campaign, turnId: string, calls: readonly HeldCallSpecShape[], found: OpenedStop, line: string) => string) | undefined;
 }
+
+// What a stop asks of its watcher (foresight.ts openStopFor).
+export type OpenedStop = { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[]; hit?: WatchStop["hit"] };
 
 type HeldCallSpecShape = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 
@@ -139,6 +152,36 @@ export function parkHeldCall(park: HeldPark, tapeAt = tapeMark()): never {
   }
   trial.park ??= { ...park, tapeAt };
   throw new HeldRollParked(park.note);
+}
+
+// A stop made inside the call after its dice have begun: a hit held before
+// its damage is rolled (the Cloud Rune, cloud-rune.ts), where a stop before
+// the call's first d20 would come before anyone knows it hits. The faces
+// drawn so far go on the stop's tape, so the answered call throws them again
+// the same and reaches the same hit. Only inside a held call, and not once a
+// player's roll has landed in it: the stop keeps the tape, not their dice.
+// Nor under a Portent number or a Chronal Shift armed on the call: the face
+// they put on a d20 is no chance draw, so the tape would not carry it.
+export function canStopAfterThrow(): boolean {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || trial.decided.length || trial.park || trial.watchStop || !globalThis.__odmOpenStop) {
+    return false;
+  }
+  const armed = armedNow(trial.campaignId);
+  return !armed.faces && !armed.shifts;
+}
+
+// Stops the call here for `stop.watcher` (canStopAfterThrow first). Never returns.
+export function stopAfterThrow(campaign: Campaign, turn: DmTurn, stop: OpenedStop, line: string): never {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || !canStopAfterThrow()) {
+    throw new Error("stopAfterThrow where no stop can be made");
+  }
+  trial.watched = true;
+  trial.watchStop = stop.watcher.id;
+  trial.watchTapeAt = trial.drawn.length;
+  trial.reopen = (held) => globalThis.__odmOpenStop?.(campaign, turn.id, [held], stop, line) ?? null;
+  throw new HeldRollParked("waiting on a watcher");
 }
 
 export type HeldCallSpec = { name: string; rawArguments: string; toolCallId: string | null };
@@ -287,7 +330,7 @@ function parkWatch(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: 
   const tag = trial.watchTag;
   const tape = trial.drawn.slice(0, trial.watchTapeAt ?? 0);
   const held = { ...(call.toolCallId ? { id: call.toolCallId } : {}), name: call.name, rawArguments: call.rawArguments, ...(tape.length ? { tape } : {}) };
-  const stop = tag ? (globalThis.__odmWatchStop?.(campaign, turn, held, tag) ?? null) : null;
+  const stop = trial.reopen ? trial.reopen(held) : tag ? (globalThis.__odmWatchStop?.(campaign, turn, held, tag) ?? null) : null;
   const answer: ToolResult = { ok: true, parked: true, note: "Waiting on a player watching for Portent before the roll." };
   PARKED.add(answer);
   if (stop) {

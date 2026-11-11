@@ -512,9 +512,7 @@ export function reactionCards(
     if (!ally) continue;
     const prompt = what(hit, ally.name);
     for (const held of allyReactions(sheet, hit, feet, unseen)) {
-      // One that turns the blow onto a creature the player picks (the Cloud
-      // Rune) is aimed at that creature; the hit it answers names the ally.
-      feature(hit, held.name, prompt, held.rules, held.target ?? "ally", { range: held.range, ...(held.pickWithin ? { pickWithin: held.pickWithin } : {}) });
+      feature(hit, held.name, prompt, held.rules, "ally", { range: held.range });
     }
   }
   // Hellish Rebuke after a creature's spell damaged them through a save: no hit
@@ -588,7 +586,7 @@ function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): G
 // Words with a die left, Protection, and the subclass reactions for an ally.
 // The cards above offer these, and the actions route takes words typed as a
 // reaction for an ally's hit only when one of them covers it.
-export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>, unseen?: Unseen): Array<{ name: string; rules: string; range: string; target?: HandTarget; pickWithin?: number }> {
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>, unseen?: Unseen): Array<{ name: string; rules: string; range: string }> {
   if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
   // Cutting Words and Protection: "a creature (that) you can see" attacks.
   const attackerSeen = !hidden(unseen, hit.attackerId);
@@ -599,7 +597,7 @@ export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: 
       : []),
     // Protection: "a target other than you that is within 5 feet of you".
     ...(holdsFeature(sheet, "protection") && attackerSeen && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again.", range: reachLabel(5) }] : []),
-    ...subclassReactions(sheet, hit, "ally", feet, unseen).map((held) => ({ name: held.name, rules: held.rules, range: held.range, ...(held.pickWithin ? { target: held.target, pickWithin: held.pickWithin } : {}) })),
+    ...subclassReactions(sheet, hit, "ally", feet, unseen).map((held) => ({ name: held.name, rules: held.rules, range: held.range })),
   ];
 }
 
@@ -685,9 +683,7 @@ function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
     case "redirect":
       return does.save
         ? "The attacker saves or turns the attack onto the creature closest to it."
-        : does.within
-          ? `The attack turns onto another creature within ${does.within} feet of you, on the same roll.`
-          : "The attack turns onto a creature beside you that gives you cover.";
+        : "The attack turns onto a creature beside you that gives you cover.";
     case "force_miss":
       return does.exhaustion
         ? `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`
@@ -736,7 +732,9 @@ function subclassReactions(
             does.kind === "ac_vs_hit" ||
             does.kind === "disadv_vs_hit" ||
             (does.kind === "resist_instance" && typed(does.types)) ||
-            does.kind === "redirect" ||
+            // The Cloud Rune (`within`) is asked at the hit before its damage
+            // (cloud-rune.ts), never as a card after it.
+            (does.kind === "redirect" && !does.within) ||
             does.kind === "force_miss" ||
             does.kind === "uncrit" ||
             (does.kind === "reroll_hit" && Boolean(does.roller)) ||
@@ -749,7 +747,6 @@ function subclassReactions(
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
             (does.kind === "disadv_vs_hit" && (Boolean(does.anyAlly) || (Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)))) ||
-            (does.kind === "redirect" && Boolean(does.within)) ||
             does.kind === "echo_takes_hit" ||
             (does.kind === "resist_instance" && !does.bond && typed(does.types));
       if (!answers) continue;
@@ -759,8 +756,7 @@ function subclassReactions(
       // Within its reach: the ally it covers, or for Rebuke the Violent the
       // attacker ("an attacker within 30 feet of you"). Chronal Shift's reach
       // is to the attacker whoever it hit, the holder too.
-      // The Cloud Rune's reach is its `within`, to the creature hit and to the one it turns onto.
-      const reach = does.kind === "redirect" && does.within ? does.within : "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
+      const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
       const toRoller = does.kind === "reroll_hit" && Boolean(does.roller);
       if (whose === "ally" || toRoller) {
         if (!inReach(feet, does.kind === "echo_hit" || toRoller ? hit.attackerId : hit.characterId, reach)) continue;
@@ -770,8 +766,6 @@ function subclassReactions(
       if (does.kind === "strike_back" && !inReach(feet, hit.attackerId, reach)) continue;
       // Instinctive Charm sways an attacker within its 30 feet.
       const charm = does.kind === "redirect" && Boolean(does.save);
-      // The Cloud Rune's player picks the creature within its reach.
-      const cloud = does.kind === "redirect" && Boolean(does.within);
       if (charm && !inReach(feet, hit.attackerId, reach)) continue;
       const rules = reactionRules(does, hit);
       if (!rules) continue;
@@ -779,8 +773,8 @@ function subclassReactions(
       // Charm's attacker turns on the creature closest to it, which the
       // engine finds on the board (redirect-target.ts), so its card asks
       // for nobody.
-      const misdirects = does.kind === "redirect" && !charm && !cloud;
-      const target: HandTarget = does.kind === "strike_back" || misdirects || cloud ? "enemy" : whose === "ally" ? "ally" : "none";
+      const misdirects = does.kind === "redirect" && !charm;
+      const target: HandTarget = does.kind === "strike_back" || misdirects ? "enemy" : whose === "ally" ? "ally" : "none";
       // A redirect lands on a creature beside the holder (use_reaction's 5 feet),
       // Instinctive Charm reaches the attacker, a melee strike back has no
       // reach of its own on record, and Shadow Martyr's only bar is seeing
@@ -788,7 +782,7 @@ function subclassReactions(
       const range =
         misdirects
           ? reachLabel(REDIRECT_FT)
-          : charm || cloud
+          : charm
             ? reachLabel(reach)
           : target === "none" && !toRoller
             ? "Self"
@@ -804,7 +798,7 @@ function subclassReactions(
         range,
         // Asked by what it does to the hit, as the engine asks it (reaction-tools.ts).
         fallen: timingOfDoes(does) === "answers",
-        ...(misdirects ? { pickWithin: REDIRECT_FT } : cloud && reach !== undefined ? { pickWithin: reach } : {}),
+        ...(misdirects ? { pickWithin: REDIRECT_FT } : {}),
         // Glorious Defense: the miss "lets you attack", so the card asks. The
         // attack comes first, as most paladins take it (ruling R6).
         ...(does.kind === "ac_vs_hit" && does.strikeOnMiss

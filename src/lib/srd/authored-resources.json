@@ -2431,7 +2431,7 @@
    ],
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction when the knight or a creature they can see within 30 feet is hit by an attack: the attack turns onto another creature within 30 feet of the knight, not the attacker, on the same roll. use_reaction 'Cloud Rune' with hit and the new target's targetEnemyId; the server gives back the damage and lands the blow on it."
+   "guidance": "A reaction when the knight or a creature they can see within 30 feet is hit by an attack: the attack turns onto another creature within 30 feet of the knight, not the attacker, on the same roll. The server asks the knight's player at the hit, before its damage is rolled; a hit already dealt is not taken back."
   },
   {
    "id": "sub_stone_rune",

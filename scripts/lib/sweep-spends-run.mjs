@@ -11,7 +11,7 @@ import path from "node:path";
 import { suite } from "./enforce-harness.mjs";
 import { openSpendsRig, signature, statesMechanic } from "./sweep-spends.mjs";
 import { FAMILIES, opensWithTrigger, statedRecharge, tableRows } from "./sweep-spends-rows.mjs";
-import { staged, knock, replay, judge, cardIntents, playCard, untriggered, UNTRIGGERED, TRIGGERS, OWN_TURN, short } from "./sweep-spends-walk.mjs";
+import { staged, knock, replay, judge, cardIntents, playCard, untriggered, stopDoor, STOPPED, UNTRIGGERED, TRIGGERS, OWN_TURN, short } from "./sweep-spends-walk.mjs";
 import { KNOWN, RULINGS, SKIP } from "./sweep-spends-known.mjs";
 
 // ---- one row ----
@@ -230,6 +230,21 @@ export async function walkRow(rig, scene, row) {
       }
     }
     notes.push(offered.length ? `reaction card dealt on: ${[...new Set(offered)].join("; ")}` : "no reaction card on any staged trigger");
+  }
+
+  // A reaction no door reaches after its trigger may be answered at the stop
+  // the trigger opens before it lands (sweep-spends-walk.mjs stopDoor).
+  if (!first?.accepted && !cardAccepted && !reacted) {
+    for (const base of STOPPED) {
+      const stopped = await stopDoor(rig, scene, reactor, base);
+      if (!stopped) continue;
+      (doors.stop ??= {})[base] = summary(stopped);
+      if (stopped.ok && stopped.read.counters.length) {
+        reacted = true;
+        notes.push(`answered at the stop ${base} opens: ${stopped.sig}`);
+        break;
+      }
+    }
   }
 
   if (!first?.accepted && !cardAccepted && !reacted) {

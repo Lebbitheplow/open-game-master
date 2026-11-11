@@ -13,7 +13,7 @@
 //     knight's own screen for an ally's roll; an attack that hit the knight or
 //     such a creature is the reaction card's disadvantage (authored-reactions.ts
 //     disadv_vs_hit with anyAlly).
-// The Cloud Rune's turned blow is redirect-target.ts withinTaker.
+// The Cloud Rune turns a hit at a stop before its damage: cloud-rune.ts.
 //
 // Every after-the-roll spend of the prophetic state goes through
 // spendPropheticState, which asks the reach and the reaction again.

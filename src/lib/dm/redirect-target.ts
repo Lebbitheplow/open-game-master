@@ -11,10 +11,8 @@
 //   nobody: the board does, and among creatures equally close the attacker
 //   chooses, so the call names one of them.
 //
-// - Cloud Rune (Rune Knight): when the knight or a creature they can see
-//   within 30 feet is hit, "a different creature within 30 feet of you, other
-//   than the attacker" becomes the target, using the same roll. The knight
-//   picks it, and may pick themselves for a hit on another (`within`).
+// (The Cloud Rune turns a hit before its damage is rolled, never after:
+// src/lib/dm/cloud-rune.ts.)
 //
 // Either way the attack now targets that creature, so its roll is set
 // against that creature's AC: a blow that beat the holder's AC can miss the
@@ -46,10 +44,6 @@ export type RedirectAsk = {
   // Instinctive Charm: the creature closest to the attacker, not one beside
   // the holder.
   closest: boolean;
-  // The Cloud Rune's reach from the holder, and the creature the hit fell on,
-  // which cannot take it again.
-  within?: number;
-  struck?: string;
 };
 
 export function redirectTaker(ask: RedirectAsk): Combatant | ToolError {
@@ -57,9 +51,6 @@ export function redirectTaker(ask: RedirectAsk): Combatant | ToolError {
   const named = ask.named ? resolveCombatant(campaignId, encounter, ask.named) : null;
   if (ask.named && (!named || combatantDefeated(named))) {
     return { error: `No creature still in this fight matches "${ask.named}". Nothing was spent.`, retry: true };
-  }
-  if (ask.within !== undefined) {
-    return withinTaker(ask, named);
   }
   if (named && named.id === holder.id) {
     return { error: `${reaction} turns the attack onto another creature, not ${holder.name}. Nothing was spent.`, refused: "rules" };
@@ -78,26 +69,6 @@ export function redirectTaker(ask: RedirectAsk): Combatant | ToolError {
   }
   if (attackerId && !coversAgainst(encounter.id, attackerId, holder.id, named.id)) {
     return { error: `${named.name} does not stand between ${attackerName} and ${holder.name}, so gives no cover: ${reaction} turns the attack only onto a creature that does. Nothing was spent.`, refused: "rules" };
-  }
-  return named;
-}
-
-// The Cloud Rune's pick: any creature within its reach of the holder but the
-// attacker and the one already hit.
-function withinTaker(ask: RedirectAsk, named: Combatant | null): Combatant | ToolError {
-  const { encounter, holder, attackerId, reaction } = ask;
-  const feet = ask.within!;
-  if (!named) {
-    return { error: `${reaction} turns the attack onto another creature within ${feet} feet of ${holder.name}: pass its targetEnemyId. Nothing was spent.`, retry: true };
-  }
-  if (named.id === attackerId) {
-    return { error: `${reaction} turns the attack onto another creature, not ${named.name}, who made it. Nothing was spent.`, refused: "rules" };
-  }
-  if (named.id === (ask.struck ?? holder.id)) {
-    return { error: `${reaction} turns the attack onto a different creature than ${named.name}, whom it hit. Nothing was spent.`, refused: "rules" };
-  }
-  if (named.id !== holder.id && !withinFeet(encounter.id, holder.id, named.id, feet)) {
-    return { error: `${named.name} is not within ${feet} feet of ${holder.name}. Nothing was spent.`, refused: "rules" };
   }
   return named;
 }
