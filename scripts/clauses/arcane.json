@@ -1620,9 +1620,9 @@
    },
    {
     "c": "or a critical hit",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a critical hit that drops the sorcerer was not staged"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: grave-crit",
+    "by": "src/lib/dm/pc-damage.ts strengthOfTheGrave (input.crit: enemy_attack marks a natural 20, and the save is not rolled)"
    },
    {
     "c": "and after a success you can't use it again until a long rest",

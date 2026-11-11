@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 
 export function probes(rig, shared) {
-  const { world, kit, holder, sheet, left, call, stage } = rig;
+  const { world, kit, holder, sheet, foe, counter, left, budget, show, call, spend, react, stage } = rig;
   const { friend } = shared;
   const shadow = () => holder("sorcerer", "Shadow Magic");
   const mind = () => holder("sorcerer", "Aberrant Mind");
@@ -95,6 +95,27 @@ export function probes(rig, shared) {
       assert.deepEqual([rule.bareFacts(facts).material, rule.bareFacts(facts).materialCostGp], [false, null]);
       const whisper = content.spellFactsFor("Dissonant Whispers", []);
       assert.equal(rule.pointsPayFirst(world.campaignId, sheet(mind()), rule.pointsOfferFor(sheet(mind()), "Dissonant Whispers", whisper, undefined), { facts: whisper, problem: null }, { inFight: true }), false, "nothing shut: the slot pays");
+    },
+    // "It fails against radiant damage or a critical hit": a natural 20 that
+    // drops the sorcerer rolls no Charisma save and leaves the use; the same
+    // club on a 19 is answered by the save (src/lib/dm/pc-damage.ts).
+    "grave-crit": async () => {
+      const blow = async (faces) => {
+        const [enemy] = await stage(shadow(), { others: [friend()], first: friend() });
+        world.patch(shadow().id, { currentHp: 4 });
+        kit.freshRound();
+        const out = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: shadow().id }, faces);
+        assert.equal(out.ok, true, out.error);
+        const seen = { hp: sheet(shadow()).currentHp, used: counter(shadow(), "sub_strength_of_the_grave").used, d20s: out.rolled.filter((die) => die.sides === 20).length, crit: Boolean(out.result.crit ?? out.result.critical) };
+        rig.refill(shadow());
+        return seen;
+      };
+      // The dummy's club, 1d6 + 2. A critical hit doubles the die: 3 + 3 + 2.
+      const crit = await blow([20, 3, 3, 20]);
+      assert.deepEqual([crit.hp, crit.used, crit.d20s], [0, 0, 1], "[hit points, uses spent, d20s thrown] after a critical hit dropped the sorcerer: no save is rolled");
+      // No critical: 3 + 2 damage is DC 10, and a 20 on the save holds them at 1.
+      const plain = await blow([19, 3, 20]);
+      assert.deepEqual([plain.hp, plain.used, plain.d20s], [1, 1, 2], "[hit points, uses spent, d20s thrown] after the same club on a 19");
     },
   };
   const KNOWN = {};
