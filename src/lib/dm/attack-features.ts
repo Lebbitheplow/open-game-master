@@ -26,6 +26,7 @@ import { nameChoice } from "@/lib/srd/feature-names";
 import { favoredEnemies } from "@/lib/srd/check-traits";
 import { sameRulesKey } from "@/lib/srd/name-forms";
 import { activeAuthored } from "@/lib/srd/authored-effects";
+import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 
 type Sheet = Pick<CharacterSheet, "name" | "class" | "level" | "classes" | "features" | "feats" | "conditions" | "resources" | "spellcasting">;
@@ -156,7 +157,8 @@ const SHILLELAGH_WEAPONS = new Set(["club", "quarterstaff"]);
 // stands in for Strength when it is better.
 // Hex Warrior (Hexblade 1): the weapon the warlock bound at the end of a
 // long rest ("Hex Warrior (Longsword)") swings with Charisma when it is the
-// better modifier, for its attack and damage rolls alike.
+// better modifier, for its attack and damage rolls alike; so does a Pact of
+// the Blade warlock's pact weapon.
 export function hexWarriorSwing(
   sheet: Sheet & { features: Array<{ name: string; classId?: string; source?: string }> },
   resolved: ResolvedWeapon,
@@ -167,8 +169,14 @@ export function hexWarriorSwing(
     return null;
   }
   for (const { effect, held } of activeAuthored(sheet, "weapon_ability")) {
-    // Battle Ready: any magic weapon. Hex Warrior: the weapon its option names.
-    const fits = effect.magicOnly ? Boolean(resolved.gear) : Boolean(held.choice) && textKey(held.choice ?? "") === textKey(srd.name);
+    // Battle Ready: any magic weapon. Hex Warrior: the weapon its option
+    // names and, with Pact of the Blade, the pact weapon in whatever form it
+    // was conjured: a melee weapon in the warlock's hand, as every reader of
+    // the pact takes it (src/lib/srd/pact-weapon.ts). The GM had to name each
+    // new form as the hex weapon by hand.
+    const fits = effect.magicOnly
+      ? Boolean(resolved.gear)
+      : (Boolean(held.choice) && textKey(held.choice ?? "") === textKey(srd.name)) || (effect.pactWeapons === true && srd.kind === "melee" && holdsPactOfTheBlade(sheet));
     if (!fits) {
       continue;
     }

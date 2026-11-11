@@ -83,8 +83,10 @@ export type AuthoredEffect = Base &
     | { kind: "oa_disadv" }
     // The holder uses this ability for the attack and damage rolls of the
     // weapon the feature's option names, when it is higher (Hex Warrior:
-    // Charisma, "Hex Warrior (Longsword)").
-    | { kind: "weapon_ability"; ability: Ability; magicOnly?: boolean }
+    // Charisma, "Hex Warrior (Longsword)"). `pactWeapons`: with Pact of the
+    // Blade it holds for the pact weapon too, whatever its form ("this also
+    // holds for every pact weapon you conjure").
+    | { kind: "weapon_ability"; ability: Ability; magicOnly?: boolean; pactWeapons?: boolean }
     // Darkvision to this range, or `orAdd` more feet when the holder already
     // sees in the dark (Umbral Sight: 60, or 30 more).
     | { kind: "darkvision"; feet: number; orAdd?: number }

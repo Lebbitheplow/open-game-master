@@ -93,6 +93,26 @@ export function probes(rig, shared) {
       const then = await spend(hex(), "Master of Hexes", { targetEnemyId: second.id });
       assert.equal(then.ok, true, `no longer incapacitated: ${then.error}`);
     },
+    // "With Pact of the Blade, this also holds for every pact weapon you
+    // conjure": a rapier, which is not the weapon bound at the rest.
+    "hexwarrior-pact": async () => {
+      const blow = async (who) => {
+        await kit.endFight();
+        const bound = await spend(who, "Hex Warrior Weapon", { variant: "Longsword" });
+        assert.equal(bound.ok, true, bound.error);
+        world.patch(who.id, { equipment: [...sheet(who).equipment.filter((item) => item.name !== "Rapier"), { name: "Rapier", qty: 1, equipped: true }] });
+        const [enemy] = await stage(who);
+        const out = await kit.swing(who.id, enemy.id, [5, 4], { weapon: "Rapier" });
+        assert.equal(out.ok, true, out.error);
+        return 300 - foe(enemy).currentHp;
+      };
+      // Without the pact the rapier is a finesse weapon: Dexterity (+2).
+      const plain = W("The Hexblade", 20, {}, "no pact");
+      assert.equal(await blow(plain), 4 + MOD.dex, "the staging: a Hexblade without the pact swings a rapier with Dexterity");
+      const blade = W("The Hexblade", 20, {}, "pact of the blade");
+      world.patch(blade.id, { features: [...sheet(blade).features, { name: "Pact Boon: Pact of the Blade", source: "choice" }] });
+      assert.equal(await blow(blade), 4 + MOD.cha, "a pact weapon that is not the bound one swings with Charisma");
+    },
     // ---- The Fathomless
     "tentacle-later": async () => {
       const who = W("The Fathomless");

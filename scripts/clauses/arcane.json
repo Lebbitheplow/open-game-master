@@ -2631,9 +2631,9 @@
    },
    {
     "c": "With Pact of the Blade, this also holds for every pact weapon you conjure",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the row's note leaves it to the GM (\"With Pact of the Blade, every pact weapon too; the GM names it as the hex weapon.\"); a pact weapon other than the chosen one was not swung"
+    "is": "held",
+    "by": "the row's weapon_ability effect says pactWeapons (src/lib/srd/authored-effects-data3.ts); src/lib/dm/attack-features.ts hexWarriorSwing takes a Pact of the Blade warlock's melee weapon as the pact weapon (src/lib/srd/pact-weapon.ts) and swings it with Charisma",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexwarrior-pact"
    }
   ]
  },

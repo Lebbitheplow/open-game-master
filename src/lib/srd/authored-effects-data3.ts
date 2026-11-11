@@ -408,7 +408,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "warlock::Hex Warrior": {
     subclass: "The Hexblade",
     spends: [{ name: "Hex Warrior Weapon", aliases: ["Hex Warrior"], fight: "out", does: { kind: "choose", options: HEX_WEAPONS } }],
-    effects: [{ kind: "weapon_ability", ability: "cha", note: "With Pact of the Blade, every pact weapon too; the GM names it as the hex weapon." }],
+    effects: [{ kind: "weapon_ability", ability: "cha", pactWeapons: true }],
   },
   "warlock::Armor of Hexes": {
     subclass: "The Hexblade",
