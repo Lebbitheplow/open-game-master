@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { clauseSuite, openRig, prof, MOD } from "./lib/sweep-clauses-martial.mjs";
 import { KNOWN, SKIP } from "./lib/sweep-clauses-martial-known-barbarian.mjs";
 
-const { probe, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
+const { probe, test, finish } = await clauseSuite(import.meta.url, KNOWN, SKIP);
 const NONMAGICAL = { stats: { resist: "bludgeoning, piercing, and slashing from nonmagical attacks" } };
 const AXE = { equipment: [{ name: "Greataxe", qty: 1, equipped: true }] };
 const BOW = { equipment: [{ name: "Longbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] };
@@ -725,8 +725,12 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const out = await spend(beast, "Bestial Soul", { variant: "swim" });
     assert.equal(out.ok, true, `no way to take the swim, climb or jump option: ${show(out)}`);
     const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
-    // The walking speed the derived speeds are read from (src/lib/srd/index.ts otherSpeeds).
-    const walking = sheet(beast).speed;
+    // "A swimming speed equal to your walking speed": the speed the barbarian
+    // walks at, Fast Movement in it, not the species' 30 on the sheet (this
+    // once read sheet.speed, which src/lib/srd/index.ts otherSpeeds did too).
+    const { speedFor: walks } = await import("../src/lib/srd/index.ts");
+    const walking = walks(sheet(beast));
+    assert.equal(walking, sheet(beast).speed + 10, "Fast Movement is in the walking speed");
     assert.equal(computeSheetDerived(sheet(beast)).speeds?.swim, walking, "a swimming speed equal to the walking speed");
     assert.equal((await spend(beast, "Bestial Soul", { variant: "climb" })).ok, true, "changed after a rest");
     assert.deepEqual([computeSheetDerived(sheet(beast)).speeds?.swim, computeSheetDerived(sheet(beast)).speeds?.climb], [undefined, walking], "climb in its place");
@@ -1108,6 +1112,47 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     kit.place(enemy.id, 8, 5);
     const out = await swing(who, enemy, [15, 4]);
     assert.equal(out.ok, true, `at 14th level a raging giant's reach is the 10 feet it was at 3rd: ${String(out.error).slice(0, 70)}`);
+  });
+}
+
+// ---- defects found on the way, each with its own case ----
+{
+  const r = await openRig();
+  const { world, kit, hero, stage, walk, give, sheet } = r;
+
+  // A gate on a condition holds for the condition with a bracket note and for
+  // a "Family: Choice" name, and for nothing that only starts the same.
+  await test("a condition gate reads a bracket note and a family's choice", async () => {
+    const { hasCondition } = await import("../src/lib/srd/authored-effects.ts");
+    assert.equal(hasCondition({ conditions: ["Spirit Totem (bear)"] }, "spirit totem"), true, "a bracket note");
+    assert.equal(hasCondition({ conditions: ["starry form: archer"] }, "starry form"), true, "a family's choice");
+    assert.equal(hasCondition({ conditions: ["raging"] }, "raging"), true, "the whole name");
+    assert.equal(hasCondition({ conditions: ["raging storm"] }, "raging"), false, "another condition that starts the same");
+  });
+
+  // The jump ruler shows what the jump move allows: SRD 5.1 Champion,
+  // Remarkable Athlete ("increases by a number of feet equal to your Strength
+  // modifier", a running long jump), and the Jump spell's tripled distance.
+  await test("the jump ruler counts Remarkable Athlete and the Jump spell", async () => {
+    const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+    const champion = hero("fighter", "Champion", 7);
+    const plain = hero("fighter", "Battle Master", 7);
+    const ruler = (who) => buildPlayerMapView(world.campaignId, sheet(who).userId)?.moves;
+    const feet = {};
+    for (const [name, who] of [["champion", champion], ["plain", plain]]) {
+      await stage(who);
+      kit.place(world.enemies()[0].id, 12, 12);
+      assert.equal(await walk(who, 5, 7), 200, "a 10-foot run");
+      feet[name] = [ruler(who)?.jumpFeet, ruler(who)?.highJumpFeet];
+      if (name === "champion") {
+        give(who, "jumping");
+        feet.spell = [ruler(who)?.jumpFeet, ruler(who)?.highJumpFeet];
+      }
+    }
+    // Strength 16: a running long jump of 16 feet and a high jump of 3 + 3.
+    assert.deepEqual(feet.plain, [16, 6], "no feature, no spell");
+    assert.deepEqual(feet.champion, [19, 6], "Remarkable Athlete's 3 feet on the running long jump");
+    assert.deepEqual(feet.spell, [57, 18], "the Jump spell triples both");
   });
 }
 

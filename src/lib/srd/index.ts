@@ -396,9 +396,12 @@ function sumParts(parts: DerivedPart[]): number {
 // the best of each, as a spread for the derived numbers; nothing when there
 // are none.
 function otherSpeeds(
-  sheet: Parameters<typeof authoredSpeeds>[0] & Wearer & { speed?: number; equipment?: WornMagicItem[] },
+  sheet: Parameters<typeof authoredSpeeds>[0] & Wearer & Pick<AcSource, "abilities" | "proficiencies"> & { speed?: number; equipment?: WornMagicItem[]; wildShape?: CharacterSheet["wildShape"] },
 ): { speeds?: { fly?: number; swim?: number; climb?: number } } {
-  const walking = sheet.speed ?? 30;
+  // "Equal to your walking speed" is the speed the character really walks at
+  // (speedFor: Fast Movement, Unarmored Movement, Mobile, armor), not the
+  // species' number on the sheet: a barbarian with Fast Movement climbs at 40.
+  const walking = speedFor({ ...sheet, class: sheet.class ?? "", equipment: sheet.equipment ?? [], features: sheet.features ?? [], speed: sheet.speed ?? 30 });
   const speeds: { fly?: number; swim?: number; climb?: number } = { ...authoredSpeeds(sheet, walking) };
   for (const [mode, feet] of Object.entries(sheet.equipment ? itemSpeeds(sheet.equipment, sheet, walking) : {}) as Array<["fly" | "swim" | "climb", number]>) {
     speeds[mode] = Math.max(speeds[mode] ?? 0, feet);

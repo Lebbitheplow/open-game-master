@@ -56,6 +56,7 @@ import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps 
 import { viewZones } from "@/lib/dm/zone-view";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
+import { windStepOn } from "@/lib/dm/mt-fb-jump-reach";
 import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
@@ -431,6 +432,7 @@ export function buildPlayerMapView(
         scene,
         budget,
         enemies: [...enemiesById.values()],
+        windStep: windStepOn(encounter, sheet.id),
       }));
     }
   }

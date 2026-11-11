@@ -11,12 +11,11 @@ import { tileIndex, type BattleToken } from "@/lib/battlemap/types";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { dragCostFactor, grappledBy } from "@/lib/dm/drag";
-import { computeAbilityScore } from "@/lib/dm/roll-riders";
+import { jumpReach } from "@/lib/dm/mt-fb-jump-reach";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import { sizeForRace } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
-import { highJumpFeet, longJumpFeet, RUN_UP_TILES } from "@/lib/srd/jump";
-import { authoredJump, jumpStrength } from "@/lib/srd/authored-mt-fb";
+import { RUN_UP_TILES } from "@/lib/srd/jump";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether a character's move is priced as standing up or crawling: prone,
@@ -37,6 +36,8 @@ export function viewerMoves(input: {
   scene: boolean;
   budget: { speed: number; fullTiles: number };
   enemies: EncounterEnemy[];
+  // Step of the Wind is on this turn (mt-fb-jump-reach.ts windStepOn).
+  windStep?: boolean;
 }): { reachable: number[]; reachableCost: number[]; moves: NonNullable<PlayerMapView["moves"]> } {
   const { costs, sheet, token, scene, budget } = input;
   // A prone character pays for standing or crawls, every square one extra:
@@ -51,16 +52,16 @@ export function viewerMoves(input: {
   const charged = cells
     .map((cell) => [cell, prone ? proneCharge(walks.get(cell), crawls.get(cell), stand, budget.fullTiles)?.cost : walks.get(cell)] as const)
     .filter((entry): entry is readonly [number, number] => entry[1] !== undefined);
-  const strength = computeAbilityScore(sheet, "str");
   const runningStart = scene || token.movedThisRound >= RUN_UP_TILES;
+  const reach = jumpReach(sheet, { runningStart, windStep: !scene && Boolean(input.windStep) });
   const held = input.enemies.filter((enemy) => enemy.status === "alive" && grappledBy(enemy, sheet.id));
   return {
     reachable: charged.map(([cell]) => cell),
     reachableCost: charged.map(([, cost]) => cost),
     moves: {
-      // With the feet a feature adds to any jump (Totem Spirit's tiger).
-      jumpFeet: longJumpFeet(jumpStrength(strength, authoredJump(sheet).long, runningStart), runningStart),
-      highJumpFeet: highJumpFeet(strength, runningStart) + authoredJump(sheet).high,
+      // What the jump move will allow (src/lib/dm/mt-fb-jump-reach.ts).
+      jumpFeet: reach.longFeet,
+      highJumpFeet: reach.highFeet,
       runningStart,
       drag: held.length
         ? {

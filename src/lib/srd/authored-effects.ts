@@ -43,7 +43,7 @@ import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counter
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
 import { AUTHORED_DATA_W2_MT_FB } from "@/lib/srd/authored-effects-w2-mt-fb";
 import { textKey } from "@/lib/language/text-logic";
-import { choiceIn } from "@/lib/srd/feature-names";
+import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 
@@ -184,12 +184,14 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
 
 const GENRE_BY_NAME = new Map(GENRE_AUTHORED.map((row) => [textKey(row.feature), row]));
 
+// The condition by its whole name, with a bracket note ("spirit totem
+// (bear)") or as the family of a "Family: Choice" name ("starry form:
+// archer"). textKey drops the bracket and the colon, so the prefixes this once
+// compared after it ("starry form (", "starry form:") never matched, and every
+// gate on a family (Full of Stars on any Starry Form) stayed shut.
 export function hasCondition(sheet: AuthoredSheet, name: string): boolean {
   const wanted = textKey(name);
-  return (sheet.conditions ?? []).some((entry) => {
-    const held = textKey(entry);
-    return held === wanted || held.startsWith(`${wanted} (`) || held.startsWith(`${wanted}:`);
-  });
+  return (sheet.conditions ?? []).some((entry) => textKey(entry) === wanted || isConditionNamed(entry, name) || choiceIn(entry, name) !== null);
 }
 
 // Heavy armor on the body, read the way the armor engine reads "worn"
