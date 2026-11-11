@@ -142,6 +142,34 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(d20s(await roll(swash, { kind: "skill_check", skill: "acrobatics", dc: 10 })), 2, "the next Acrobatics check");
     assert.equal(d20s(await roll(swash, { kind: "skill_check", skill: "acrobatics", dc: 10 })), 1, "only the next");
   });
+  // "If you succeed on the check and the creature is hostile to you, it has
+  // disadvantage on attack rolls against targets other than you and can't
+  // make opportunity attacks against targets other than you": Persuasion 18
+  // against the creature's Insight 2; its swing at the friend then rolls two
+  // d20s, its swing at the swashbuckler one, and the friend walks away from
+  // it with no opportunity attack.
+  await probe("panache-goads", async () => {
+    const friend = hero("fighter", "Champion", 5);
+    const [enemy] = await stage(swash, { cast: [[friend, 7, 4]] });
+    const lost = await spend(swash, "Panache", { targetEnemyId: enemy.id }, [2, 18]);
+    assert.equal(lost.ok, true, lost.error);
+    assert.ok(!kit.enemy(enemy.id).conditions.includes("goaded"), "a lost contest holds nothing");
+    kit.freshTurn();
+    const out = await spend(swash, "Panache", { targetEnemyId: enemy.id }, [18, 2]);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(kit.enemy(enemy.id).conditions.includes("goaded"), `the creature is goaded: ${show(out).slice(0, 200)}`);
+    const d20sAt = async (target) => {
+      world.diceLog();
+      await r.enemyHits(enemy, target, [16, 15, 4, 4]);
+      return world.diceLog().filter((die) => die.sides === 20).length;
+    };
+    assert.deepEqual([await d20sAt(friend), await d20sAt(swash)], [2, 1], "disadvantage at the friend, a straight roll at the swashbuckler");
+    kit.giveTurn(friend.id);
+    kit.freshTurn();
+    world.diceLog();
+    await r.walk(friend, 7, 8);
+    assert.equal(world.diceLog().filter((die) => die.sides === 20).length, 0, "no opportunity attack at the friend");
+  });
 }
 
 // ---- Inquisitive ----

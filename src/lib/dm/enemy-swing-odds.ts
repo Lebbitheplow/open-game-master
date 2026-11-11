@@ -5,6 +5,7 @@
 // that explain it. Split from enemy-attack.ts, which rolls each swing of the
 // routine with what this returns. Nothing is spent or stored here.
 
+import { goadedAway } from "@/lib/dm/goaded";
 import { withStandingProtection } from "@/lib/dm/mt-srd-paladin";
 import type { Campaign } from "@/lib/db/campaigns";
 import { effectOutcome } from "@/lib/dm/effect-tools";
@@ -154,6 +155,8 @@ export function enemySwingOdds(input: {
     ...(underwater?.disadvantage ? ["disadvantage" as const] : []),
     // Bestow Curse on its attacks against the caster (spell-retort.ts).
     ...(cursedAgainst(standing, target.id) ? ["disadvantage" as const] : []),
+    // Goaded by another character (goaded.ts).
+    ...(goadedAway(standing, target.id) ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
     // An active effect on its attack rolls (set_effect): its advantage, and
@@ -174,6 +177,7 @@ export function enemySwingOdds(input: {
     ...(flanking ? ["flanking: advantage"] : []),
     ...(pack ? ["Pack Tactics: advantage"] : []),
     ...(chilled ? ["Chill Touch: an undead attacks its caster at disadvantage"] : []),
+    ...(goadedAway(standing, target.id) ? ["goaded: disadvantage on attacks at anyone but the one who goaded it"] : []),
     ...(underwater?.note ? [underwater.note] : []),
     ...(elusive && sources.includes("advantage") ? [`Elusive: no attack roll against ${target.name} has advantage`] : []),
     ...(input.defended ? [`Multiattack Defense: +4 AC against ${standing.displayName}'s later attacks this turn`] : []),
@@ -235,6 +239,8 @@ export function enemyRowSwingOdds(input: {
     [worn, "disadvantage", `exhaustion ${enemyExhaustion(standing.conditions)}: disadvantage on attack rolls`],
     [flanking, "advantage", "flanking: advantage"],
     [pack, "advantage", "Pack Tactics: advantage"],
+    // A goad a character laid: every other creature is "a target other than you" (goaded.ts).
+    [goadedAway(standing, target.id) !== null, "disadvantage", "goaded: disadvantage on attacks at anyone but the one who goaded it"],
     [effect.advantage, "advantage", ""],
     [effect.disadvantage, "disadvantage", ""],
   ];

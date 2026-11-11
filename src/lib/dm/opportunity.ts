@@ -1,4 +1,5 @@
 import { evadesOpportunityAttacksAfterMelee, MOBILE_ATTACKED, polearmReachOpportunity } from "@/lib/srd/feat-combat";
+import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
 import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
@@ -161,6 +162,10 @@ export function resolveOpportunityAttacks(
       continue;
     }
     if (encounter.reactionsUsed.includes(enemy.id)) {
+      continue;
+    }
+    // Panache: no opportunity attack at anyone but the swashbuckler (goaded.ts).
+    if (goadBarsOpportunity(enemy, characterId)) {
       continue;
     }
     const token = getTokenByRef(map.id, enemy.id);

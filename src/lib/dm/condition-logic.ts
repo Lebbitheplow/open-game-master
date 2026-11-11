@@ -72,6 +72,8 @@ export type ConditionMeta = {
   // Held while its source stands within this many feet: ends when the source
   // is down, dead or incapacitated, or farther (src/lib/dm/condition-leash.ts).
   leashFeet?: number;
+  // The leash only ends the condition past its feet; the creature may walk off (Panache).
+  leashEnds?: boolean;
   // Lasts while this barbarian rages: "until the rage ends" (Call the Hunt,
   // Ancestral Protectors), src/lib/dm/rage-bound.ts.
   whileRagingOf?: string;

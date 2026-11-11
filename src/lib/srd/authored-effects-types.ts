@@ -658,7 +658,11 @@ export type SpendDoes =
   // names its own (src/lib/dm/authored-spends.ts).
   | { kind: "variants"; options: Record<string, { does: SpendDoes; action?: SpendAction; afterWeaponHit?: boolean }>; roll?: string }
   // Insightful Fighting: an Insight check against the creature's Deception.
-  | { kind: "insight_contest"; condition: string; rounds: number }
+  // A contest of the holder's skill against the creature's (Insightful
+  // Fighting: Insight against Deception; Panache: Persuasion against
+  // Insight), the condition laid on the creature for `rounds` when the
+  // holder wins. `goads`: the condition is Panache's goad (goaded.ts).
+  | { kind: "insight_contest"; condition: string; rounds: number; mine?: "persuasion"; theirs?: "insight"; goads?: true }
   // Gathered Swarm's push: after the holder's hit this turn, the creature hit
   // makes a STR save or is moved 15 feet (Mighty Swarm: and knocked prone);
   // it takes the swarm's once-a-turn place of the damage.

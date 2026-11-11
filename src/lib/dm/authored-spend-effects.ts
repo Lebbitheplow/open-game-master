@@ -713,19 +713,33 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if ("error" in enemy) {
         return enemy;
       }
-      const insight = rollCharacterCheck(campaign, sheet, { skill: "insight" }, `${sheet.name}: Insight against ${enemy.displayName}'s Deception`);
+      const mine = does.mine ?? "insight";
+      const theirs = does.theirs ?? "deception";
+      const label = (skill: string) => `${skill[0].toUpperCase()}${skill.slice(1)}`;
+      const insight = rollCharacterCheck(campaign, sheet, { skill: mine }, `${sheet.name}: ${label(mine)} against ${enemy.displayName}'s ${label(theirs)}`);
       const skills = enemy.stats.skills as Record<string, number> | undefined;
-      const deceptionMod = Number(skills?.deception ?? Math.floor(((enemy.stats.abilities?.cha ?? 10) - 10) / 2));
+      const theirAbility = theirs === "insight" ? enemy.stats.abilities?.wis : enemy.stats.abilities?.cha;
+      const deceptionMod = Number(skills?.[theirs] ?? Math.floor(((theirAbility ?? 10) - 10) / 2));
       // A contest the table sees, as every enemy's contest roll is
       // (action-common.ts). An enemy that charmed the character lies to them
       // with advantage (SRD 5.1, Charmed: the charmer's social checks).
-      const charmer = charmedBy(sheet.conditions, sheet.conditionMeta as Parameters<typeof charmedBy>[1], enemy.id);
-      const deception = rollCard(ctx.campaign, ctx.turn, null, "skill_check", `${enemy.displayName}: Deception against ${sheet.name}'s Insight`, d20Expression(deceptionMod, charmer ? "advantage" : "none"), null).total;
+      const charmer = theirs === "deception" && charmedBy(sheet.conditions, sheet.conditionMeta as Parameters<typeof charmedBy>[1], enemy.id);
+      const deception = rollCard(ctx.campaign, ctx.turn, null, "skill_check", `${enemy.displayName}: ${label(theirs)} against ${sheet.name}'s ${label(mine)}`, d20Expression(deceptionMod, charmer ? "advantage" : "none"), null).total;
       if (insight.total <= deception) {
-        return { result: { insight: insight.total, deception, read: `${enemy.displayName} gives nothing away; no Sneak Attack edge.` } };
+        return { result: { [mine]: insight.total, [theirs]: deception, read: does.goads ? `${enemy.displayName} is not taken in; nothing holds it.` : `${enemy.displayName} gives nothing away; no Sneak Attack edge.` } };
       }
-      enemyCondition(ctx, enemy, does.condition, { rounds: does.rounds });
-      return { result: { insight: insight.total, deception, read: `${sheet.name} reads ${enemy.displayName}: ${does.condition} for a minute.` } };
+      // Panache's goad lasts a minute, or until the swashbuckler and the
+      // creature are more than 60 feet apart (condition-leash.ts).
+      enemyCondition(ctx, enemy, does.condition, { rounds: does.rounds, ...(does.goads ? { panache: true, leashFeet: 60, leashEnds: true } : {}) });
+      return {
+        result: {
+          [mine]: insight.total,
+          [theirs]: deception,
+          read: does.goads
+            ? `${enemy.displayName} fixes on ${sheet.name} for a minute: disadvantage on attack rolls against anyone else, and no opportunity attacks against anyone else.`
+            : `${sheet.name} reads ${enemy.displayName}: ${does.condition} for a minute.`,
+        },
+      };
     }
     case "variants":
       return { error: `${ctx.spend.name} needs a variant: ${Object.keys(does.options).join(" or ")}. Ask the player which, unless they named one. Nothing was spent.`, retry: true };

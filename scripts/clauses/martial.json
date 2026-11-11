@@ -3321,9 +3321,9 @@
   "clauses": [
    {
     "c": "A Persuasion check against a creature's Insight either charms it into following you peacefully or fixes its attention on you in a fight for a minute.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run; narrated (src/lib/srd/authored-effects-data4.ts rogue::Panache: \"A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition.\"): a contest and a condition, so a gap of kind rule-missing"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data4.ts rogue::Panache (insight_contest, Persuasion against Insight) lays goaded with the swashbuckler as its source for a minute, ended past 60 feet (condition-leash.ts leashEnds); src/lib/dm/goaded.ts is read by enemy-swing-odds.ts (disadvantage against anyone else) and opportunity.ts (no opportunity attack at anyone else). A creature that is not hostile is no row of a fight: its charm is the GM's",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: panache-goads"
    }
   ]
  },

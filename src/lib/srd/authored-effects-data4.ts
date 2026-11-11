@@ -457,7 +457,14 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "rogue::Insightful Manipulator": { subclass: "Mastermind", narrated: "Information the GM gives after a minute of watching." },
   "rogue::Soul of Deceit": { subclass: "Mastermind", narrated: "Thoughts that cannot be read and lies that read as true: the GM keeps to that." },
-  "rogue::Panache": { subclass: "Swashbuckler", narrated: "A Persuasion contest that charms or goads a creature: the GM rolls it and sets the condition." },
+  // Persuasion against the hostile creature's Insight: on a win it is goaded
+  // for a minute (src/lib/dm/goaded.ts reads it at its attacks and its
+  // opportunity attacks). A creature that is not hostile is no row of the
+  // fight, and its charm is the GM's (the action is a social one there).
+  "rogue::Panache": {
+    subclass: "Swashbuckler",
+    spends: [{ name: "Panache", action: "action", fight: "in", does: { kind: "insight_contest", mine: "persuasion", theirs: "insight", condition: "goaded", rounds: 10, goads: true } }],
+  },
   "rogue::Ear for Deceit": {
     subclass: "Inquisitive",
     // "To tell whether a creature is lying": the check's `about` says so (roll-about.ts "lies").

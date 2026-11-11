@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/goaded.ts#keyed": [["identity", 4, "a condition's own meta, read by the key it was laid under"]],
     "lib/dm/scribe-mind.ts#whole": [["identity", 1, "the mind token by its whole name, textKey on both sides (or by its id or ref)"]],
     "lib/dm/scribe-mind.ts#partial": [["key", 1, "the mind token's own ref, written by the engine: read by its prefix, and the prefix read back off it"]],
     "lib/dm/mount-area.ts#keyed": [["identity", 1, "a mount's stored ref, an SRD mount id, into its Dexterity table"]],

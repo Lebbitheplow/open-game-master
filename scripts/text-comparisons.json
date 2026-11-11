@@ -1337,7 +1337,7 @@
     "lib/dm/authored-saves.ts#toLowerCase": [["key",1,"condition labels and damage types (engine vocabulary)"]],
     "lib/dm/authored-spend-effects.ts#str-eq": [["key",2,"the documented variant keys (heal, burn)"],["key",1,"feature names the authored layer keys on (engine vocabulary)"],["key",1,"a creature type the authored row names, normalized (creature-type.ts)"]],
     "lib/dm/authored-spend-effects.ts#str-list": [["english-source", 1, "reference: the option keys the directive names as a variant (desert, sea, tundra)"], ["key", 1, "ODM's own ids and words (engine vocabulary)"]],
-    "lib/dm/authored-spend-effects.ts#toUpperCase": [["display",5,"ability abbreviation shown in a roll note"]],
+    "lib/dm/authored-spend-effects.ts#toUpperCase": [["display", 6, "ability abbreviation shown in a roll note"]],
     "lib/dm/aura-menace.ts#toUpperCase": [["display", 3, "ability abbreviation shown in a roll note"]],
     "lib/dm/aura-hold.ts#str-eq": [["key", 1, "an SRD condition the engine writes (frightened), normalized with textKey"]],
     "lib/dm/mortal-bulwark.ts#str-list": [["key", 1, "the five SRD creature types the feature names, in the block's normalized type"]],

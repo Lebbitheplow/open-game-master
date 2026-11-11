@@ -35,7 +35,9 @@ function sourceHolds(encounterId: string, holderId: string, entry: ConditionMeta
     return false;
   }
   const down = sheet ? sheet.currentHp <= 0 || Boolean(sheet.deathSaves?.dead) : enemy!.status !== "alive" || enemy!.currentHp <= 0;
-  if (down || isIncapacitated((sheet ?? enemy)!.conditions)) {
+  // A leash that only ends the condition (Panache: "until you and the target
+  // are more than 60 feet apart") is held by the distance alone.
+  if (!entry.leashEnds && (down || isIncapacitated((sheet ?? enemy)!.conditions))) {
     return false;
   }
   return withinFeet(encounterId, entry.source, holderId, entry.leashFeet);
@@ -76,7 +78,7 @@ export function leashRefusal(mapId: string, enemy: EncounterEnemy, token: Battle
   for (const name of enemy.conditions) {
     for (const entry of instancesOf(meta?.[name])) {
       const source = entry.leashFeet && entry.source ? getTokenByRef(mapId, entry.source) : null;
-      if (!source || !entry.leashFeet) {
+      if (!source || !entry.leashFeet || entry.leashEnds) {
         continue;
       }
       if (tilesApart({ ...token, x: landing.x, y: landing.y }, source) > Math.floor(entry.leashFeet / 5)) {
