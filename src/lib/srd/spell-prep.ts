@@ -517,10 +517,14 @@ export function spellListProblems(
       problems.push(`A ${label} may hold ${cap.count} ${cap.label}; that list has ${counted}.`);
     }
     if (view.style === "spellbook" && options.bookAllowance !== false) {
-      const book = spellbookOf(view);
+      // A spell the school itself writes into the book sits on top of the six
+      // and two a level, as a granted spell sits on top of a known caster's
+      // count: "You add polymorph to your spellbook if it isn't there"
+      // (Shapechanger), "You learn animate dead" (Undead Thralls).
+      const book = spellsAgainstLimit(spellbookOf(view), granted);
       const allowance = spellbookAllowance(view.level);
-      if (book.length > allowance) {
-        problems.push(`A ${label} starts with ${allowance} spells in the spellbook; that book has ${book.length}.`);
+      if (book > allowance) {
+        problems.push(`A ${label} starts with ${allowance} spells in the spellbook; that book has ${book}.`);
       }
     }
     const top = Math.max(maxSpellLevelOf(view), arcanumTop(view));
