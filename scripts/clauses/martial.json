@@ -3593,9 +3593,9 @@
   "clauses": [
    {
     "c": "A bonus action makes you spectral for 10 minutes with a 10-foot fly speed and the ability to move through creatures and objects",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: sub_ghost_walk has no fx; what the spend applies was not read"
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts MANIFESTED_WINGS (the 10-foot flying speed); src/lib/battlemap/passage.ts passableTiles spectral (every creature's space and every prop's; a wall is the building, SRD 5.1 Objects)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: ghost-walk-spectral"
    },
    {
     "c": "free once per long rest",

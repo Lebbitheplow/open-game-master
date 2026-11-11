@@ -350,6 +350,29 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.ok(!r.has(ghost, "soul trinket"), "the trinket paid for it");
     assert.equal(r.used(ghost, "sub_ghost_walk"), 1, "and no use beyond the one");
   });
+  // Ghost Walk: a 10-foot flying speed, and every creature's space and every
+  // prop's is one the rogue may pass through, as the move route and the
+  // board's lit squares both ask (passage.ts pcMoveTraits).
+  await probe("ghost-walk-spectral", async () => {
+    const { pcMoveTraits } = await import("../src/lib/battlemap/passage.ts");
+    const { flyingSpeedOf } = await import("../src/lib/battlemap/types.ts");
+    const maps = await import("../src/lib/db/battle-maps.ts");
+    const ghost = hero("rogue", "Phantom", 13, RAPIER);
+    const [enemy] = await stage(ghost);
+    const board = kit.map();
+    const through = () =>
+      pcMoveTraits({ width: board.width, tokens: maps.listTokens(board.id), mover: kit.token(ghost.id), sheet: r.sheet(ghost), footprintOf: () => 1, enemySize: () => "medium" }).passable;
+    const at = kit.token(enemy.id).y * board.width + kit.token(enemy.id).x;
+    const fly = () => flyingSpeedOf({ conditions: r.sheet(ghost).conditions, features: r.sheet(ghost).features, walkingFeet: r.sheet(ghost).speed });
+    assert.equal(through().has(at), false, "the staging: a hostile creature of the rogue's size blocks its space");
+    assert.equal(fly(), null, "the staging: no flying speed");
+    const out = await spend(ghost, "Ghost Walk");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(through().has(at), true, "spectral, the rogue passes through the creature's space");
+    assert.equal(fly(), 10, "a 10-foot flying speed");
+    assert.equal(r.sheet(ghost).conditionMeta["ghost walk"]?.rounds, 100, "for 10 minutes");
+  });
+
   await probe("tokens-save-advantage", async () => {
     await kit.endFight();
     give(phantom, "soul trinket", { rounds: 14400 });

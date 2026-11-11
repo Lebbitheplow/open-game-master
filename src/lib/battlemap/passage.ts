@@ -12,7 +12,7 @@ import { climbsFreely } from "@/lib/srd/feat-combat";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { sizeForRace } from "@/lib/srd";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { itemSpeeds, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
@@ -37,6 +37,12 @@ export function passableTiles(input: {
   sizeOf: (token: BattleToken) => string | undefined;
   // Halfling Nimbleness: through the space of any creature larger than you.
   nimble?: boolean;
+  // A Phantom's Ghost Walk: "the ability to move through creatures and
+  // objects". Every creature's space, and a prop's (the board's objects:
+  // SRD 5.1, "an object is a discrete, inanimate item ... not a building").
+  // Walls are the building and still stop it; a space passed through is
+  // difficult terrain and nobody ends a move in one, as for any passage.
+  spectral?: boolean;
   // The side each token's creature fights on, when a fight has sides other
   // than its kinds' (src/lib/dm/combatant.ts tokenSides: a companion turned
   // on the party is hostile to it). Absent: by kind.
@@ -49,12 +55,12 @@ export function passableTiles(input: {
   const side = input.sideOf ?? kindSide;
   const moverSide = side(input.mover);
   for (const token of input.tokens) {
-    if (token.id === input.mover.id || side(token) === "prop") {
+    if (token.id === input.mover.id || (side(token) === "prop" && input.spectral !== true)) {
       continue;
     }
     const size = sizeIndex(input.sizeOf(token));
     const friendly = side(token) === moverSide;
-    const through = friendly || Math.abs(size - moverSize) >= 2 || (input.nimble === true && size > moverSize);
+    const through = input.spectral === true || friendly || Math.abs(size - moverSize) >= 2 || (input.nimble === true && size > moverSize);
     if (!through) {
       continue;
     }
@@ -70,6 +76,9 @@ export function passableTiles(input: {
   return out;
 }
 
+// The condition a Phantom's Ghost Walk lays (authored-effects-sweep-counters.ts).
+const GHOST_WALK = "ghost walk";
+
 // Halfling Nimbleness on a sheet.
 export function hasHalflingNimbleness(features: Array<{ name: string }> = []): boolean {
   return holdsFeature({ features }, "Halfling Nimbleness");
@@ -81,7 +90,7 @@ export function pcMoveTraits(input: {
   width: number;
   tokens: BattleToken[];
   mover: BattleToken;
-  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number } & Wearer;
+  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[] } & Wearer;
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
@@ -105,6 +114,7 @@ export function pcMoveTraits(input: {
       footprintOf: input.footprintOf,
       sizeOf: (token) => (token.id === input.mover.id ? moverSize : token.kind === "enemy" ? input.enemySize(token.refId) : undefined),
       nimble: hasHalflingNimbleness(input.sheet.features),
+      spectral: (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GHOST_WALK)),
       ...(input.sideOf ? { sideOf: input.sideOf } : {}),
     }),
   };
