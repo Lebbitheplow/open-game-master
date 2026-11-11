@@ -255,13 +255,31 @@ export function probes(rig, shared) {
       assert.equal(before - foe(near).currentHp, 3, "damage to the creature 5 feet from a 6th-level storm sorcerer who cast Shatter (thunder) at another");
     },
     "fury-push": async () => {
-      const foes = await hit(storm());
-      const at = kit.token(foes[0].id);
-      // The creature fails its Strength save on a 1.
-      const out = await react(storm(), "Storm's Fury", {}, [1]);
-      assert.equal(out.ok, true, out.error);
-      const now = kit.token(foes[0].id);
-      assert.notDeepEqual([now.x, now.y], [at.x, at.y], `the creature failed its save and stands where it stood: ${show(out).slice(0, 170)}`);
+      const dc = 8 + prof(20) + MOD.cha;
+      // The dummy (Strength save +1) has hit the sorcerer from the east and
+      // rolls `face`; `arrange` moves the pieces before the reaction.
+      const pushed = async (face, arrange = () => {}) => {
+        const [enemy] = await hit(storm());
+        arrange(enemy);
+        const from = kit.token(enemy.id);
+        const out = await react(storm(), "Storm's Fury", {}, [face]);
+        assert.equal(out.ok, true, out.error);
+        const now = kit.token(enemy.id);
+        return { moved: [now.x - from.x, now.y - from.y], save: out.result.save, lightning: 300 - foe(enemy).currentHp, reacted: rig.reacted(storm()), said: show(out).slice(0, 200) };
+      };
+      // A 1 fails: 20 feet, four squares straight away from the sorcerer.
+      const failed = await pushed(1);
+      assert.deepEqual([failed.moved, failed.save, failed.lightning, failed.reacted], [[4, 0], `2 vs DC ${dc}`, 20, true], `[squares moved, the Strength save, lightning taken, reaction spent] on a failed save: ${failed.said}`);
+      // A 20 saves: the lightning lands all the same and the creature stands.
+      const saved = await pushed(20);
+      assert.deepEqual([saved.moved, saved.save, saved.lightning], [[0, 0], `21 vs DC ${dc}`, 20], "on a save made");
+      // A wall two squares behind it: it stops against the wall after 5 feet.
+      assert.deepEqual((await pushed(1, () => kit.openField([[8, 5, "#"]]))).moved, [1, 0], "with a wall 10 feet behind it");
+      // Diagonally: straight away is the same diagonal.
+      assert.deepEqual((await pushed(1, (enemy) => kit.place(enemy.id, 6, 6))).moved, [4, 4], "struck from the south-east");
+      // The map's edge: one square of board behind it is all it goes.
+      const edge = kit.map().width - 1;
+      assert.deepEqual((await pushed(1, (enemy) => { kit.place(storm().id, edge - 2, 9); kit.place(enemy.id, edge - 1, 9); })).moved, [1, 0], "with the map's edge 5 feet behind it");
     },
     "windsoul-immune": async () => {
       await kit.endFight();
@@ -476,7 +494,6 @@ export function probes(rig, shared) {
     "eyes-board": { severity: "medium", kind: "path-parity", where: "src/lib/battlemap/view.ts sheetDarkvisionTiles and src/lib/dm/place-light.ts (neither reads authoredDarkvisionFeet; src/lib/dm/attack-light.ts does)", note: "The sorcerer attacks in the dark without disadvantage, and the board still shows them nothing there: their own screen and the light a Perception check reads treat them as blind in darkness. Every authored darkvision row shares it (Umbral Sight).", fix: "Read authoredDarkvisionFeet in sheetDarkvisionTiles." },
     "tempest-trigger": { severity: "low", kind: "timing-window", where: `${DATA} sorcerer::Tempestuous Magic (a plain bonus-action spend; nothing asks for a spell cast this turn)`, note: "", fix: "Gate the spend on a spell of 1st level or higher cast this turn, or about to be." },
     "heart-burst": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Heart of the Storm (the resistance only; the second half of the sentence is its guidance)", note: "No written reason: the row is counted as typed because of the resistance.", fix: "On a lightning or thunder spell of 1st level or higher, deal half the sorcerer level to chosen creatures within 10 feet." },
-    "fury-push": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Storm's Fury (save.onFail is a sentence: "is pushed up to 20 feet (move_token forced)")`, note: "The engine rolls the save and leaves the push to a second call.", fix: "Move the creature 20 feet straight away on the failed save." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
     "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
     "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },

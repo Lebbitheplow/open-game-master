@@ -595,7 +595,9 @@ export type ReactionDoes =
       orType?: string;
       melee?: boolean;
       rangeFt?: number;
-      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
+      // `pushFeet`: on a failed save the creature is moved that far straight
+      // away from the holder, on the board (Storm's Fury: src/lib/dm/ar-ws-storm-fury.ts).
+      save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean; pushFeet?: number };
     }
   // The damage a hit dealt another creature, back at whoever dealt it, on a
   // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.

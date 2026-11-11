@@ -1799,8 +1799,9 @@
    },
    {
     "c": "and pushes it 20 feet on a failed Strength save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: fury-push",
+    "by": "src/lib/dm/ar-ws-storm-fury.ts pushStraightAway (authored-reactions.ts strike_back, save.pushFeet 20): on the failed Strength save the creature is moved up to 20 feet straight away from the sorcerer through the board's forced move, stopping at a wall, an occupied square or the map's edge"
    }
   ]
  },

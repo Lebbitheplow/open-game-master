@@ -12,6 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
+import { pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
@@ -781,6 +782,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         }
         if (!save.success && does.save.onFail) {
           out.onFail = `${enemy.displayName} ${does.save.onFail}.`;
+        }
+        if (!save.success && does.save.pushFeet) {
+          out.pushed = pushStraightAway(ctx.campaign, encounter.id, holder, enemy, does.save.pushFeet);
         }
       }
       if (amount > 0) {

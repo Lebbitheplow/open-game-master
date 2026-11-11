@@ -44,4 +44,24 @@ export const AUTHORED_DATA_W2_AR_WS_SORCERER: Record<string, AuthoredEntry> = {
   // "Cast your psionic spells by spending sorcery points equal to the spell's
   // level instead of a slot, with no verbal, somatic or costly components."
   "sorcerer::Psionic Sorcery": { subclass: "Aberrant Mind", heldBy: POINTS_CAST },
+  // "A reaction deals your sorcerer level in lightning damage to a melee
+  // attacker and pushes it 20 feet on a failed Strength save": the damage as
+  // authored-effects-data3.ts had it, and the push made in the reaction
+  // (src/lib/dm/ar-ws-storm-fury.ts) where the earlier row answered a sentence
+  // for a second call.
+  "sorcerer::Storm's Fury": {
+    subclass: "Storm Sorcery",
+    reactions: [
+      {
+        name: "Storm's Fury",
+        does: {
+          kind: "strike_back",
+          amount: (level) => level,
+          type: "lightning",
+          melee: true,
+          save: { ability: "str", dcAbility: "spell", damageRegardless: true, pushFeet: 20 },
+        },
+      },
+    ],
+  },
 };
