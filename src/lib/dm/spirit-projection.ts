@@ -38,6 +38,7 @@ import { attackNamed } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { currentActor } from "@/lib/dm/acting-party";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
 import { noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
@@ -206,8 +207,7 @@ export function projectionDreadHeal(campaign: Campaign, encounter: Encounter, ne
     return null;
   }
   const live = getActiveEncounter(campaign.id) ?? encounter;
-  const current = live.order[live.turnIndex];
-  if (current?.kind !== "pc" || current.characterId !== sheet.id) {
+  if (!ownTurnOf(live, sheet.id)) {
     return null;
   }
   const key = turnKey(live);

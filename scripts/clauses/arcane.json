@@ -2905,7 +2905,7 @@
    {
     "c": "Teleport yourself and up to five willing creatures within 30 feet of you to a body of water within a mile",
     "is": "held",
-    "by": "src/lib/dm/fathomless-plunge.ts plungeAfterSpend (in a fight the warlock and the party within 30 feet, five at most, leave the board through src/lib/dm/leave-board.ts takeOffBoard; a fight with no hero left ends with the party fled)",
+    "by": "src/lib/dm/fathomless-plunge.ts plungeAfterSpend (in a fight the warlock and the party within 30 feet, five at most, leave the board through src/lib/dm/leave-board.ts takeOffBoard; with no hero left the GM is told to end the fight)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: plunge"
    },
    {

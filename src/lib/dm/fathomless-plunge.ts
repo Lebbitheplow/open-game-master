@@ -5,7 +5,7 @@
 //
 // In a fight everyone who goes leaves the board (leave-board.ts takeOffBoard:
 // their place in the order and their token), and a fight with no hero left
-// in its order ends with the party fled. Out of a fight there is no board:
+// in its order is the GM's to end (party_fled), once the plunge's turn is paid. Out of a fight there is no board:
 // the party within reach goes, and the result names who went for the story.
 //
 // Who goes: the warlock and the party within 30 feet who can choose to come
@@ -17,7 +17,6 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
-import { finishEncounter } from "@/lib/dm/enemy-damage";
 import { takeOffBoard } from "@/lib/dm/leave-board";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -61,10 +60,11 @@ export function plungeAfterSpend(
   }
   const live = getActiveEncounter(campaign.id);
   const heroesLeft = live?.order.filter((entry) => entry.kind === "pc").length ?? 0;
-  if (live && turn && heroesLeft === 0) {
-    lines.push("No hero is left in the fight: it ends with the party gone.");
-    return { plunge: lines.join(" "), fightEnded: finishEncounter(campaign, turn, live, "party_fled", sheets, sheetsById) };
-  }
-  lines.push(`They are off the board; the fight goes on for ${heroesLeft === 1 ? "the one hero" : `the ${heroesLeft} heroes`} still in it.`);
-  return { plunge: lines.join(" ") };
+  // The fight is left standing as the turn that paid for the plunge ends:
+  // with no hero in it, the GM ends it (end_encounter, party_fled), and
+  // the action the plunge cost stays spent on the turn it was taken in.
+  lines.push(heroesLeft === 0
+    ? 'No hero is left in the fight: end it with end_encounter, outcome "party_fled".'
+    : `They are off the board; the fight goes on for ${heroesLeft === 1 ? "the one hero" : `the ${heroesLeft} heroes`} still in it.`);
+  return { plunge: lines.join(" "), ...(heroesLeft === 0 ? { heroesLeft: 0 } : {}) };
 }

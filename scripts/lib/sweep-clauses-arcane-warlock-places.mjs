@@ -11,7 +11,7 @@ const VESSEL = "in the genie's vessel";
 const { listTokens: boardTokens } = await import("../../src/lib/db/battle-maps.ts");
 
 export function probes(rig, shared) {
-  const { world, kit, holder, sheet, call, spend, stage } = rig;
+  const { world, kit, holder, sheet, call, spend, stage, budget } = rig;
   const { friend } = shared;
   const genie = (level = 20) => holder("warlock", "The Genie", level);
   const pb = (who) => rig.srd.computeSheetDerived(sheet(who)).proficiencyBonus;
@@ -136,7 +136,7 @@ export function probes(rig, shared) {
       assert.equal(onBoard(friend()), false, "the friend within 30 feet went with them");
       assert.equal(onBoard(far), true, "a hero 35 feet off stays in the fight");
       assert.ok(world.encounter(), "the fight goes on for the hero left in it");
-      // With nobody left behind, the fight ends with the party gone.
+      // With nobody left behind, the GM is told to end the fight.
       // The staging: a fight of the two of them and the dummy (the rig puts
       // every hero of the world in the order).
       await stage(deep, { others: [friend()] });
@@ -144,7 +144,9 @@ export function probes(rig, shared) {
       kit.saveEncounter({ ...world.encounter(), order, turnIndex: order.findIndex((entry) => entry.characterId === deep.id) });
       const again = await spend(deep, "Fathomless Plunge");
       assert.equal(again.ok, true, again.error);
-      assert.equal(world.encounter(), null, `the fight ended once no hero was left in it: ${JSON.stringify(again.result).slice(0, 400)} order ${JSON.stringify((world.encounter()?.order ?? []).map((entry) => entry.kind + ":" + (entry.characterId ?? entry.enemyId)))}`);
+      assert.equal((world.encounter()?.order ?? []).some((entry) => entry.kind === "pc"), false, "no hero is left in the fight's order");
+      assert.match(String(again.result.plunge), /party_fled/, `the GM is told to end the fight: ${JSON.stringify(again.result).slice(0, 300)}`);
+      assert.equal(budget()?.actionUsed, true, "the plunge's action stays spent");
     },
     // ---- Sanctuary Vessel (The Genie, 10th level)
     "sanctuary-party": async () => {

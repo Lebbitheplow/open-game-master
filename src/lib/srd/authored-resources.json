@@ -2127,7 +2127,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "After a long rest, store a 1st or 2nd-level artificer spell in an item; the holder can cast it twice the artificer's Intelligence modifier in times."
+   "guidance": "After a long rest, out of a fight, store a 1st or 2nd-level artificer spell of one action (variant: which) in a weapon or focus the artificer carries; the holder casts it with use_item and spell, twice the artificer's Intelligence modifier in times. The server spends the use itself.",
+   "outOfFight": true
   },
   {
    "id": "art_arcane_jolt",
