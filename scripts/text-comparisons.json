@@ -14,6 +14,14 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/ar-wbf-bard-casting-logic.ts#\\b": [["table-language",2,"meaning reader: an inventory item's name read for a Spirits bard's focus (a candle, a deck, a talking board), in English, as cast-materials.ts reads a material line against the inventory"]],
+    "lib/dm/ar-wbf-bard-casting-logic.ts#re-word": [["table-language",1,"meaning reader: an inventory item's name read for a Spirits bard's focus (a candle, a deck, a talking board), in English, as cast-materials.ts reads a material line against the inventory"]],
+    "lib/dm/ar-wbf-bard-casting-logic.ts#str-eq": [["key",2,"a spell's and a condition's own key (textKey), feature names: engine vocabulary"]],
+    "lib/dm/ar-wbf-bard-dice-logic.ts#re-word": [["key",1,"ODM's own condition label \"bardic inspiration (dN)\" and its die notation (engine vocabulary)"]],
+    "lib/dm/ar-wbf-bard-dice-logic.ts#toLowerCase": [["key",1,"ODM's own condition label \"bardic inspiration (dN)\" and its die notation (engine vocabulary)"]],
+    "lib/dm/ar-wbf-feat-rally.ts#toLowerCase": [["key",1,"a counter id and ODM's own condition label (engine vocabulary)"]],
+    "lib/dm/ar-wbf-feat-turn.ts#str-eq": [["key",1,"ODM's own turn mark and feature names the engine writes (engine vocabulary)"]],
+    "lib/dm/ar-wbf-warlock-ward.ts#toUpperCase": [["display",3,"ability abbreviation shown in a roll note"]],
     "lib/dm/hit-save.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/spell-damage-mark.ts#str-includes": [["key", 1, "a spell's class list ids (engine vocabulary) and the turn's mark keys"]],
     "lib/dm/pc-damage.ts#str-list": [["key", 1, "weapon properties (engine vocabulary)"]],
@@ -1430,7 +1438,6 @@
     "lib/dm/enemy-approach.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary)"]],
     "lib/dm/enemy-attack.ts#\\b": [["key",1,"the engine's own damage breakdown"]],
     "lib/dm/enemy-attack.ts#re-word": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/enemy-attack.ts#toUpperCase": [["display",3,"ability abbreviation shown in a roll note"]],
     "lib/dm/enemy-turn-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-casting.ts#str-includes": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-casting.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],

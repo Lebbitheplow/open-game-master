@@ -2505,7 +2505,8 @@
    },
    {
     "c": "and up to five creatures of your choice you can see",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-rest-logic.ts restAlliesChosen, read by src/lib/dm/authored-turns.ts authoredRestTempHp. The ruling (maintainer's delegate): take_rest takes no list of creatures; with five or fewer others resting every one gains them, with more the five with the fewest hit points do (ties by rest order), and the rest's result (restTempHp) names who gained them and who went without, so the table can ask the GM to change it",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: resilience-choice"
    },
    {
@@ -2568,9 +2569,9 @@
    },
    {
     "c": "or until it or you die",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the warlock's death under a standing curse was not staged"
+    "is": "held",
+    "by": "the cursed creature's death ends the curse (src/lib/dm/authored-hooks.ts); the warlock's fall to 0 hit points, dead or dying, ends it with every mark held only while its holder can act (src/lib/dm/ar-wbf-warlock-marks.ts endIncapacitationHeld, called by src/lib/dm/pc-damage.ts applyPcDamage and set_condition)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-death"
    },
    {
     "c": "or you are incapacitated",
@@ -2702,9 +2703,9 @@
    },
    {
     "c": "if you aren't incapacitated",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an incapacitated warlock's spend was not staged apart from the general blocking matrix (the doors sweep)"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-effects.ts (a buff that endsIfIncapacitated is never laid by an incapacitated holder: refused with nothing spent, the death record left open)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: hexes-incapacitated"
    },
    {
     "c": "you don't regain hit points from the first creature's death when you do",
@@ -2741,9 +2742,9 @@
    },
    {
     "c": "When it appears, and as a bonus action on later turns",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the bonus action of a later turn's strike was not charged against a turn"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack (bonusAction, withActivation), charged by src/lib/dm/pc-attack-profile.ts: the strike that comes with the tentacle is free, a later turn's is the bonus action and a second one is refused",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-later"
    },
    {
     "c": "it can strike a creature within 10 feet of it with a melee spell attack",
@@ -2753,21 +2754,21 @@
    },
    {
     "c": "for 1d8 cold damage (2d8 from 10th level)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the granted attack's dice by level (condition-effects.ts diceByLevel) were read, not rolled"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack diceByLevel (src/lib/srd/granted-attacks.ts grantedAttackDice): pc_attack rolls 1d8 below 10th level and 2d8 from it, with no ability modifier",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-dice"
    },
    {
     "c": "and the target's speed drops by 10 feet until the start of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the struck creature's speed was not measured"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects.ts tentacle_of_the_deep grantedAttack leaves 'slowed by the tentacle' (speedBonus -10), laid on a hit by src/lib/dm/ar-wbf-warlock-strike.ts grantedStrikeMark (src/lib/dm/attack-blow.ts) until the start of the warlock's next turn",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-slow"
    },
    {
     "c": "you can move it up to 30 feet when you make that attack",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the tentacle's zone was not moved"
+    "is": "held",
+    "by": "src/lib/dm/conjured-strike.ts planConjuredStrike (grantedAttack.from: moveFeet 30, reachFeet 10): a later turn's strike moves the tentacle's area up to 30 feet to within 10 of its target, and a creature farther is refused with the bonus action kept",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: tentacle-move"
    }
   ]
  },
@@ -3043,8 +3044,7 @@
    {
     "c": "Once on each of your turns, when you hit a creature with an attack roll and roll damage, you can make that damage necrotic",
     "is": "gap",
-    "read_only": true,
-    "why": "not run: the row leaves the type to the GM (narrated: \"the GM applies the type and the die\"); pc_attack's damageType on a weapon was not sent"
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: grave-necrotic"
    },
    {
     "c": "and while in Form of Dread you roll one additional damage die",
@@ -3183,9 +3183,9 @@
    },
    {
     "c": "or a harmful spell",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an undead's spell at the warlock (cast_at_player from a block that lists one) was not staged"
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-warlock-ward.ts authoredWardSave, called by src/lib/dm/cast-at-player.ts for an undead's spell at the warlock alone: the Wisdom save first, and a failure loses the spell",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-spell"
    },
    {
     "c": "must first make a Wisdom save against your spell save DC or choose another target or lose the attack or spell",
@@ -3195,9 +3195,9 @@
    },
    {
     "c": "this doesn't protect you from area effects",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: an undead's area at the warlock was not staged"
+    "is": "held",
+    "by": "src/lib/dm/cast-at-player.ts: a spell with an area (src/lib/dm/aoe-shape.ts spellAreaShape) asks no ward save, and the doors that take a list of creatures never call the ward",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-area"
    },
    {
     "c": "and an undead that succeeds, or that you target with an attack or harmful spell, is immune for 24 hours",

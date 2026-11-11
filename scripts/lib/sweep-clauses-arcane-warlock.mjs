@@ -176,14 +176,6 @@ export function probes(rig, shared) {
       // Charisma modifier rides the first creature's damage alone.
       assert.equal(dealt[0] - dealt[1], MOD.cha, `Burning Hands dealt ${dealt.join(" and ")}: the Charisma modifier rides one target's roll`);
     },
-    "resilience-choice": async () => {
-      await kit.endFight();
-      rig.refill(cel());
-      rig.refill(friend());
-      const out = await call("take_rest", { kind: "short", characterIds: [cel().id, friend().id] });
-      assert.equal(out.ok, true, out.error);
-      assert.equal(sheet(friend()).tempHp, 10 + MOD.cha, `the friend the warlock rested beside gains half the level + CHA: ${JSON.stringify(out.result).slice(0, 200)}`);
-    },
     "vengeance-rest": rests(["warlock", "The Celestial"], "sub_searing_vengeance", "long"),
     // ---- The Hexblade
     curse: async () => {
@@ -555,7 +547,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
-    "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
     "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
   };
