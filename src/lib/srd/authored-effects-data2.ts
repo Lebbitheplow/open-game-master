@@ -213,22 +213,6 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       },
     ],
   },
-  // Explosive Fury: when Aspect of the Wyrm is activated, creatures of the
-  // monk's choice in its 10-foot aura save on Dexterity or take 3d10 of the
-  // Draconic Strike type. Augment Breath's bigger cone and Blindsight are the
-  // DM's to place.
-  "monk::Ascendant Aspect": {
-    subclass: "Way of the Ascendant Dragon",
-    spends: [
-      {
-        name: "Explosive Fury",
-        aliases: ["Ascendant Aspect"],
-        action: "none",
-        gate: { condition: "aspect of the wyrm" },
-        does: { kind: "aoe_report", dice: "3d10", save: "dex", dcAbility: "wis", type: "acid, cold, fire, lightning or poison (the Draconic Strike type)", area: "each creature of the monk's choice in the 10-foot aura" },
-      },
-    ],
-  },
 
   // ---- paladin ----
   "paladin::Aura of Warding": {

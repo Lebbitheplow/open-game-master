@@ -1749,21 +1749,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "action": "bonus",
-   "guidance": "A bonus action raising a 10-foot aura for 1 minute that either frightens enemies or grants allies resistance to the monk's damage type. Three ki buys extra uses.",
-   "fx": {
-    "kind": "buff",
-    "condition": "aspect of the wyrm: frighten",
-    "rounds": 10,
-    "variants": [
-     "aspect of the wyrm: frighten",
-     "aspect of the wyrm: ward"
-    ]
-   },
-   "fallbackPool": {
-    "id": "ki",
-    "amount": 3
-   }
+   "guidance": "A bonus action raising a 10-foot aura for 1 minute: use_resource 'Aspect of the Wyrm' with variant 'frighten' (an enemy starting its turn in it saves on Wisdom or is frightened) or 'ward fire' and the other types (allies in it resist that damage). Three ki buys extra uses; the server spends them."
   },
   {
    "id": "sub_glorious_defense",

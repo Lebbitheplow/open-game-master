@@ -17,6 +17,8 @@
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],
     "lib/dm/sampling-logic.ts#str-eq": [["key", 1, "pydantic's error type and loc names"]],
     "lib/dm/spell-thief.ts#str-list": [["key",1,"the mental ability codes a caster's save is read from (int, wis, cha)"]],
+    "lib/srd/authored-effects-w2-mt-mr.ts#str-list": [["key",1,"Draconic Strike's choices: damage types, the engine's vocabulary"]],
+    "lib/srd/mt-mr-unarmed.ts#str-list": [["key",1,"Draconic Strike's damage types, the engine's vocabulary"]],
     "lib/srd/mt-mr-kensei.ts#str-list": [["english-source",1,"reference: the four Way of the Kensei features whose training grant picks a kensei weapon"]],
     "lib/dm/mt-mr-spends.ts#str-eq": [["key",1,"a variant word of use_resource (no poison)"],["english-source",1,"reference: the feature name move_token carries for Shadow Step's teleport"]],
     "lib/dm/mt-mr-spends.ts#str-list": [["key",1,"condition labels (engine vocabulary)"]],

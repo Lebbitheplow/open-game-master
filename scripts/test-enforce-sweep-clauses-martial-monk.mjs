@@ -637,6 +637,23 @@ await test("the Hand reads the light on its square only from a host that offers 
     assert.deepEqual(made, [true, true, true, false], "three attacks in the Attack action (Extra Attack and the arms' one)");
   });
 
+  // Astral Sight: under the visage the monk sees through magical darkness
+  // (to 120 feet); the creature in it does not see the monk.
+  await probe("astral-sight", async () => {
+    const darkness = (kit) => getDatabase().prepare("UPDATE battle_maps SET zones_json = ? WHERE id = ?").run(JSON.stringify([{ x0: 0, y0: 0, x1: 40, y1: 40, kind: "magical_darkness", ambient: "dark" }]), kit.map().id);
+    const [enemy] = await stage(astral);
+    darkness(kit);
+    const blind = await swing(astral, enemy, [15, 15, 3], UNARMED);
+    assert.equal(blind.toHit.advantage, "none", "the staging: in magical darkness neither sees the other, and the two cancel");
+    const [other] = await stage(astral);
+    assert.equal((await spend(astral, "Visage of the Astral Self")).ok, true);
+    kit.freshTurn();
+    darkness(kit);
+    const seen = await swing(astral, other, [15, 15, 3], UNARMED);
+    assert.equal(seen.toHit.advantage, "advantage", `with the visage the monk sees a creature that cannot see them: ${JSON.stringify(seen.toHit).slice(0, 200)}`);
+    light(kit, "bright");
+  });
+
   await probe("awakened-astral-self-ac", async () => {
     await stage(astral);
     const ac = sheet(astral).ac;
@@ -668,6 +685,12 @@ await test("the Hand reads the light on its square only from a host that offers 
     // On to the creature's own turn, its dice all 1s: any save it makes fails.
     r.endTurn();
     assert.ok(foeHas(enemy, "frightened"), `a creature 5 feet off, its turn begun in the aura, is not frightened: ${show(out)}`);
+    // Beyond the 10 feet nothing is asked.
+    const [far] = await stage(dragon);
+    kit.place(far.id, 9, 5);
+    assert.equal((await spend(dragon, "Aspect of the Wyrm", { variant: "frighten" }, 2)).ok, true);
+    r.endTurn();
+    assert.ok(!foeHas(far, "frightened"), "a creature 20 feet off was frightened by a 10-foot aura");
   });
 
   // The wings: a flying speed equal to the walking speed, to the turn's end.
@@ -685,11 +708,76 @@ await test("the Hand reads the light on its square only from a host that offers 
   await probe("aspect-of-the-wyrm-ward", async () => {
     const friend = hero("fighter", "Champion", 5);
     await stage(dragon, { cast: [[friend, 5, 6]] });
-    const out = await spend(dragon, "Aspect of the Wyrm", { variant: "ward" }, 2);
+    // "Resistance to your damage type": the ward names the type it wards
+    // against, one of Draconic Strike's five.
+    const out = await spend(dragon, "Aspect of the Wyrm", { variant: "ward fire" }, 2);
     assert.equal(out.ok, true, out.error);
     world.patch(friend.id, { currentHp: 60 });
     await world.invoke("apply_damage", { characterId: friend.id, amount: 20, type: "fire" });
     assert.equal(sheet(friend).currentHp, 50, `an ally 5 feet off takes half of 20 fire: ${show(out)}`);
+    await world.invoke("apply_damage", { characterId: friend.id, amount: 20, type: "cold" });
+    assert.equal(sheet(friend).currentHp, 30, "and all of 20 cold: the ward is against fire");
+    kit.place(friend.id, 5, 9);
+    await world.invoke("apply_damage", { characterId: friend.id, amount: 10, type: "fire" });
+    assert.equal(sheet(friend).currentHp, 20, "20 feet off the ally is outside the ward");
+  });
+
+  // ---- Ascendant Aspect (17th level) ----
+  const wyrm = hero("monk", "Way of the Ascendant Dragon", 17, BARE);
+
+  // Explosive Fury rides the activation: 3d10 of the Draconic Strike type to
+  // each creature in the aura that fails a Dexterity save, nothing on a
+  // success, nothing beyond 10 feet.
+  await probe("explosive-fury", async () => {
+    await r.choose(wyrm, "Draconic Strike", "fire");
+    const [near, far] = await stage(wyrm, { enemies: 2 });
+    kit.place(far.id, 13, 5);
+    const out = await spend(wyrm, "Aspect of the Wyrm", { variant: "frighten" }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual([300 - r.foe(near).currentHp, 300 - r.foe(far).currentHp], [6, 0], `3d10 of 2s to the creature 5 feet off, nothing 40 feet off: ${show(out)}`);
+    assert.match(JSON.stringify(out.result), /fire/i, "of the Draconic Strike type");
+    const [sturdy] = await stage(wyrm);
+    const made = await spend(wyrm, "Aspect of the Wyrm", { variant: "frighten" }, 20);
+    assert.equal(made.ok, true, made.error);
+    assert.equal(r.foe(sturdy).currentHp, 300, `a creature that made its Dexterity save takes nothing: ${show(made)}`);
+    const young = await stage(dragon);
+    await spend(dragon, "Aspect of the Wyrm", { variant: "frighten" }, 2);
+    assert.equal(r.foe(young[0]).currentHp, 300, "the staging: at 11th level the activation explodes on nobody");
+  });
+
+  // Augment Breath: 1 ki in the breath's own call ("augmented fire"), and it
+  // reaches 90 feet for four rolls of the martial arts die; a breath that
+  // does not ask for it is the plain one.
+  await probe("augment-breath", async () => {
+    const [near, far] = await stage(wyrm, { enemies: 2 });
+    kit.place(far.id, 5 + 13, 5);
+    const short = await spend(wyrm, "Breath of the Dragon", { variant: "fire", targetEnemyIds: [far.id] }, 2);
+    assert.equal(short.ok, false, `the staging: a creature 65 feet off is beyond the plain breath: ${show(short)}`);
+    assert.equal(r.used(wyrm, "ki"), 0, "and the refusal spent no ki");
+    const out = await spend(wyrm, "Breath of the Dragon", { variant: "augmented fire", targetEnemyIds: [far.id] }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(300 - r.foe(far).currentHp, 8, `four rolls of the d10 (2s) on a failed save, 65 feet off: ${show(out)}`);
+    assert.equal(r.used(wyrm, "ki"), 1, "1 ki");
+    const plain = await spend(wyrm, "Breath of the Dragon", { variant: "fire", targetEnemyIds: [near.id] }, 2);
+    assert.equal(plain.ok, true, plain.error);
+    assert.equal(300 - r.foe(near).currentHp, 6, "the next breath of the turn is the plain three rolls");
+    assert.equal(r.used(wyrm, "ki"), 1, "and took no more ki");
+    const [other] = await stage(dragon);
+    const young = await spend(dragon, "Breath of the Dragon", { variant: "augmented fire", targetEnemyIds: [other.id] }, 2);
+    assert.equal(young.ok, false, `at 11th level there is no Augment Breath to ask for: ${show(young)}`);
+  });
+
+  // Blindsight to 10 feet: an invisible creature beside the monk is attacked
+  // with no disadvantage, and one 15 feet off is still unseen.
+  await probe("ascendant-aspect-blindsight", async () => {
+    const hidden = async (who, at) => {
+      const [enemy] = await stage(who);
+      kit.place(enemy.id, at, 5);
+      kit.setEnemy(enemy.id, { conditions: ["invisible"] });
+      return (await r.swing(who, enemy, [15, 15, 3], at > 6 ? { weapon: "dart" } : UNARMED)).toHit?.advantage;
+    };
+    assert.equal(await hidden(dragon, 6), "disadvantage", "the staging: at 11th level an invisible creature 5 feet off is attacked at disadvantage");
+    assert.equal(await hidden(wyrm, 6), "none", "at 17th level the monk perceives it within 10 feet");
   });
 
   // Draconic Strike: the chosen type against a creature that resists it, and

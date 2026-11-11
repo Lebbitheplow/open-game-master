@@ -62,6 +62,41 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
     subclass: "Way of the Ascendant Dragon",
     spends: [{ name: "Draconic Strike", aliases: ["Draconic Disciple"], action: "none", does: { kind: "choose", options: DRACONIC_CHOICES } }],
   },
+  // The aura, either kind (src/lib/dm/mt-mr-dragon.ts): the frightening one
+  // asks its save as an enemy's turn starts within 10 feet, and the ward's
+  // condition names the type its allies resist ("aspect of the wyrm: ward
+  // (fire)"). Once a long rest, or 3 ki with the use spent.
+  "monk::Aspect of the Wyrm": {
+    subclass: "Way of the Ascendant Dragon",
+    counter: "sub_aspect_of_the_wyrm",
+    effects: [{ kind: "aura_resist", rangeFt: 10, typeFrom: { condition: "aspect of the wyrm: ward", map: { acid: "acid", cold: "cold", fire: "fire", lightning: "lightning", poison: "poison" } } }],
+    spends: [
+      {
+        name: "Aspect of the Wyrm",
+        pool: { id: "sub_aspect_of_the_wyrm", fallback: "ki", fallbackAmount: 3 },
+        action: "bonus",
+        does: {
+          kind: "variants",
+          options: {
+            frighten: { does: { kind: "mr", id: "wyrm_frighten" } },
+            "ward acid": { does: { kind: "mr", id: "wyrm_ward" } },
+            "ward cold": { does: { kind: "mr", id: "wyrm_ward" } },
+            "ward fire": { does: { kind: "mr", id: "wyrm_ward" } },
+            "ward lightning": { does: { kind: "mr", id: "wyrm_ward" } },
+            "ward poison": { does: { kind: "mr", id: "wyrm_ward" } },
+          },
+        },
+      },
+    ],
+  },
+  // Explosive Fury rides the activation of Aspect of the Wyrm
+  // (mt-mr-dragon.ts explosiveFury), where it was a spend of its own with
+  // nothing to answer. Augment Breath is asked for in Breath of the Dragon's
+  // own call (breathAugment); the blindsight is src/lib/srd/mt-mr-senses.ts.
+  "monk::Ascendant Aspect": {
+    subclass: "Way of the Ascendant Dragon",
+    heldBy: { file: "src/lib/dm/mt-mr-dragon.ts", call: "explosiveFury(" },
+  },
   // "When you use Step of the Wind" is the counter's trigger
   // (trigger-table.ts); the wings last to the end of the turn.
   "monk::Wings Unfurled": {
@@ -104,6 +139,9 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
         pool: { id: "sub_rend_mind", fallback: "sub_psionic_energy", fallbackAmount: 3 },
         action: "none",
         fight: "in",
+        // The Sneak Attack it answers is a weapon hit of this turn: the card
+        // waits for one, as every spend that rides a hit does.
+        afterWeaponHit: true,
         does: { kind: "mr", id: "rend_mind", aims: "enemy" },
       },
     ],

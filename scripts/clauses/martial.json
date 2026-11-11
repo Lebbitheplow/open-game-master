@@ -2774,9 +2774,9 @@
    },
    {
     "c": "Astral Sight (you see normally in darkness, magical or not, to 120 feet)",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: no magical darkness staged around the monk"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-senses.ts mrSensesOver (Devil's Sight's reading of magical darkness)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: astral-sight"
    },
    {
     "c": "Wisdom of the Spirit (advantage on Insight and Intimidation checks)",
@@ -2924,12 +2924,14 @@
   "clauses": [
    {
     "c": "A bonus action creates a 10-foot aura for a minute that either frightens enemies",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts wyrmFrightens (authored-turns.ts authoredTurnStart)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-frighten"
    },
    {
     "c": "or grants allies resistance to your damage type",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-mt-mr.ts monk::Aspect of the Wyrm aura_resist (the ward's condition names the type)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: aspect-of-the-wyrm-ward"
    },
    {
@@ -2954,21 +2956,21 @@
   "clauses": [
    {
     "c": "Augment Breath: spending 1 ki when you use Breath of the Dragon makes it a 60-foot cone or a 90-foot line 5 feet wide that deals four rolls of your martial arts die.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: Breath of the Dragon hands its damage back (spends-hands-back-counter-sub-breath-of-the-dragon), so the augmented area has nothing to change"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts augmentedBreath (resource-tools.ts rollCounterSave)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: augment-breath"
    },
    {
     "c": "Blindsight: you can perceive your surroundings without sight to 10 feet.",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run: blindsight against a hidden or invisible creature within 10 feet was not staged"
+    "is": "held",
+    "by": "src/lib/srd/mt-mr-senses.ts mrSensesOver",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: ascendant-aspect-blindsight"
    },
    {
     "c": "Explosive Fury: when you activate Aspect of the Wyrm, each creature of your choice in its aura makes a Dexterity save against your ki save DC or takes 3d10 damage of a type you choose for Draconic Strike.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:monk::Ascendant Aspect::Explosive Fury#TRIGGER_AS_CARD",
-    "recorded_by": "spends-trigger-as-card-spend-monk-ascendant-aspect-explosive-fury"
+    "is": "held",
+    "by": "src/lib/dm/mt-mr-dragon.ts explosiveFury (rides Aspect of the Wyrm's activation)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: explosive-fury"
    }
   ]
  },

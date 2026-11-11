@@ -477,7 +477,7 @@ export type SpendDoes =
   // src/lib/dm/mt-mr-spends.ts. `aims`: who the Hand's card is aimed at.
   | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number };
 
-export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind" | "wings_unfurled";
+export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind" | "wings_unfurled" | "wyrm_frighten" | "wyrm_ward";
 
 // A precondition of a spend that a gate's words cannot say: the light on the
 // holder's square, or a mark this turn left (src/lib/dm/mt-mr-needs.ts).

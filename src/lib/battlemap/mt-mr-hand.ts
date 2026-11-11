@@ -9,7 +9,7 @@
 
 import type { Gate, HandBoardFacts, HandTurn } from "@/lib/battlemap/hand-core";
 import { SNEAK_HIT } from "@/lib/dm/action-budget";
-import { BLADE_AT, UNARMED_IN_ACTION } from "@/lib/dm/mt-mr-turn";
+import { BLADE_AT, UNARMED_IN_ACTION, holdsRow } from "@/lib/dm/mt-mr-turn";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { AuthoredSpend } from "@/lib/srd/authored-effects-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -29,6 +29,21 @@ export function boardFactsForHost(board: HandBoardFacts | undefined, offersSquar
   const rest: HandBoardFacts = { ...board };
   delete rest.bright;
   return rest;
+}
+
+// The types a breath's card offers: Breath of the Dragon's, and each again
+// "augmented" for a monk with Ascendant Aspect who has the 1 ki it takes on
+// top of the breath's own cost (src/lib/dm/mt-mr-dragon.ts breathAugment,
+// which reads the same counters). Any other counter's types come back as
+// they went in.
+export function breathChoices(sheet: CharacterSheet, counterId: string, types: string[]): string[] {
+  if (counterId !== "sub_breath_of_the_dragon" || !holdsRow(sheet, "monk::Ascendant Aspect")) {
+    return types;
+  }
+  const left = (id: string) => Math.max(0, (sheet.resources?.[id]?.max ?? 0) - (sheet.resources?.[id]?.used ?? 0));
+  // With no use of the breath left it is bought with 2 ki first.
+  const needs = left(counterId) > 0 ? 1 : 3;
+  return left("ki") >= needs ? [...types, ...types.map((type) => `augmented ${type}`)] : types;
 }
 
 export function mrCardGate(sheet: CharacterSheet, turn: HandTurn, spend: AuthoredSpend, board: HandBoardFacts | undefined): Gate {

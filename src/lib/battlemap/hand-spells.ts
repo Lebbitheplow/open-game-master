@@ -9,6 +9,7 @@ import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
+import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
@@ -748,7 +749,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       // A damage type the holder picks (Drake's Breath), and the beast a Wild
       // Shape becomes, sent as use_resource reads them.
       ...((effect.kind === "aoe" || effect.kind === "enemy_save") && effect.typeFromVariant?.length
-        ? { choice: { arg: "variant" as const, label: "Type", options: effect.typeFromVariant.map((value) => ({ value, label: pickLabel(value) })) } }
+        ? { choice: { arg: "variant" as const, label: "Type", options: breathChoices(sheet, def.id, effect.typeFromVariant).map((value) => ({ value, label: pickLabel(value) })) } }
         : {}),
       ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet) } : {}),
       // "one creature other than yourself" (Bardic Inspiration): no "(you)" chip.

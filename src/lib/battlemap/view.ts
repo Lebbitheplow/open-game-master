@@ -41,6 +41,7 @@ import {
 } from "@/lib/battlemap/los";
 import { cachedLitTiles } from "@/lib/battlemap/lit-cache";
 import { sensesFromText, type Senses } from "@/lib/srd/senses";
+import { mrSensesOver } from "@/lib/srd/mt-mr-senses";
 import { reachableTiles, speedToTiles } from "@/lib/battlemap/movement";
 import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { crawlingTraits, flyingSpeedOf, tileIndex, type BattleToken, type TokenMovement } from "@/lib/battlemap/types";
@@ -103,7 +104,7 @@ export function sheetDarkvisionTiles(sheet: CharacterSheet): number {
 // Devil's Sight, Ghostly Gaze, a homebrew "blindsight 30 ft" feature).
 export function sheetSenses(sheet: CharacterSheet): Senses {
   const senses = sensesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
-  return { ...senses, darkvision: Math.max(senses.darkvision, sheetDarkvisionTiles(sheet)) };
+  return mrSensesOver(sheet, { ...senses, darkvision: Math.max(senses.darkvision, sheetDarkvisionTiles(sheet)) });
 }
 
 // Whether this player's PC may move right now: open floor, or their own

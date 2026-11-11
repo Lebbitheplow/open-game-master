@@ -11,20 +11,6 @@ export const KNOWN = {
     fix: "Let a self reduce row with types answer the last damage taken of those types, whatever dealt it.",
     files: ["src/lib/dm/authored-reactions.ts"],
   },
-  "aspect-of-the-wyrm-ward": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm (fx buff on the monk only)",
-    note: "An ally 5 feet from the monk in the ward takes 20 fire damage whole: nothing gives the aura's resistance.",
-    fix: "An aura_resist effect on the row, its type the one the monk chose for Draconic Strike (the ward's condition names it).",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/srd/authored-effects-w2-mt-mr.ts"],
-  },
-  "aspect-of-the-wyrm-frighten": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm (fx buff on the monk only: \"resolve via cast_at_enemy\")",
-    note: "No creature in the aura is frightened at any point, its turn begun there with every die a 1.",
-    fix: "An aura condition read at the start of an enemy's turn within 10 feet: WIS save against the ki DC or frightened.",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/srd/authored-conditions.ts"],
-  },
 };
 
 export const SKIP = {};

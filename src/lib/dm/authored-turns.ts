@@ -21,6 +21,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { withActor } from "@/lib/dm/acting-party";
 import { regainHitPoints } from "@/lib/dm/regain";
 import { risesWithVengeance, searingVengeance } from "@/lib/dm/searing-vengeance";
+import { wyrmFrightens } from "@/lib/dm/mt-mr-dragon";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -91,6 +92,8 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
     if (!enemy || enemy.status !== "alive") {
       continue;
     }
+    // Aspect of the Wyrm's frightening aura (mt-mr-dragon.ts).
+    lines.push(...wyrmFrightens(campaign, encounter, id, holders));
     for (const holder of holders) {
       for (const { effect, held } of activeAuthored(holder, "enemy_turn_damage")) {
         const live = getEnemy(id);

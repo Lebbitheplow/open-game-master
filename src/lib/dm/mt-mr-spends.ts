@@ -16,6 +16,7 @@ import { removeConditionInstances, removeConditions, type ConditionMetaMap } fro
 import { shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { BLADE_AT, FLURRY_HEALED, holdsRow } from "@/lib/dm/mt-mr-turn";
 import { destroyTrinket } from "@/lib/dm/mt-mr-trinkets";
+import { aspectOfTheWyrm } from "@/lib/dm/mt-mr-dragon";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { rollCard } from "@/lib/dm/roll-card";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
@@ -277,6 +278,10 @@ function wingsUnfurled(ctx: SpendContext): Resolution {
 
 export function mrSpend(ctx: SpendContext, does: MrDoes): Resolution {
   switch (does.id) {
+    case "wyrm_frighten":
+      return aspectOfTheWyrm(ctx, false);
+    case "wyrm_ward":
+      return aspectOfTheWyrm(ctx, true);
     case "wings_unfurled":
       return wingsUnfurled(ctx);
     case "rend_mind":

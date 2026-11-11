@@ -30,6 +30,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { lightSourcesWithZones, lightsWithZones, zoneHidesFrom } from "@/lib/dm/zone-rules";
 import { conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
 import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
+import { mrSensesOver } from "@/lib/srd/mt-mr-senses";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
 import { tilesApart } from "@/lib/dm/board-reach";
@@ -42,7 +43,8 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   const named = Math.max(senses.darkvision, darkvisionTilesFromText(texts));
   // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night).
   const authored = Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
-  return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) };
+  // A monk subclass's blindsight and Astral Sight (mt-mr-senses.ts).
+  return mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) });
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {
