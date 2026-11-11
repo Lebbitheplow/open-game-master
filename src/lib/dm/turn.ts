@@ -139,7 +139,7 @@ import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
 import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
-import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
+import { awayCall, gateAiCall, healListRolledByServer } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
@@ -1783,6 +1783,42 @@ export function modelCallArguments(
   });
 }
 
+// One casting of a healing spell over a list of creatures, as the one call it
+// is: the list whole, each entry read as modelCallArguments reads a call (a
+// creature's name as their id). Null for any other list, which its caller
+// splits into a call for each entry (action-parts-logic.ts listedCalls).
+//
+// Split, the entries shared what the first one paid in memory, and a roll
+// that held one entry ran it again alone, where it paid for the casting a
+// second time: so a caster on physical dice had a list's dice thrown for
+// them (issue 902). Whole, the call is gated, counted and held once, as a
+// pc_attack with several attacks is, and its handler resolves the entries
+// (mutations.ts healList), each creature's roll asked in turn.
+export function oneCastingCall(
+  campaign: Campaign,
+  name: string,
+  rawArguments: string,
+  each: readonly Record<string, unknown>[],
+  sheets: readonly CharacterSheet[],
+): { rawArguments: string } | { refusal: ToolResult } | null {
+  if (!oneCasting(name, each) || !healListRolledByServer(each)) {
+    return null;
+  }
+  const { key } = PART_LISTS[name];
+  const shared = Object.fromEntries(Object.entries(JSON.parse(rawArguments) as Record<string, unknown>).filter(([field]) => field !== key));
+  const entries: Record<string, unknown>[] = [];
+  for (const one of each) {
+    const door = modelCallArguments(campaign, name, JSON.stringify(one), sheets);
+    if ("refusal" in door) {
+      return door;
+    }
+    // What the entry says beside the list's own fields.
+    const read = JSON.parse(door.rawArguments) as Record<string, unknown>;
+    entries.push(Object.fromEntries(Object.entries(read).filter(([field, value]) => JSON.stringify(shared[field]) !== JSON.stringify(value))));
+  }
+  return { rawArguments: JSON.stringify({ ...shared, [key]: entries }) };
+}
+
 // Whether a set of tools takes a call by this name: one it offers, or a
 // retired name whose merged tool it offers (issue #471), which a stored turn
 // or an agent program may still send.
@@ -2912,11 +2948,19 @@ async function resolveModelCall(
   // reaches: each entry the one-entry call it always was
   // (src/lib/dm/action-parts-logic.ts listedCalls).
   const each = listedCalls(toolCall.name, toolCall.rawArguments);
-  if (each) {
-    const refused = listRefusal(toolCall.name, each) ?? awayCall(toolCall.name, JSON.parse(toolCall.rawArguments), { campaign, sheetsById });
-    if (refused) {
-      return refused;
-    }
+  const refusedList = each ? (listRefusal(toolCall.name, each) ?? awayCall(toolCall.name, JSON.parse(toolCall.rawArguments), { campaign, sheetsById })) : null;
+  if (refusedList) {
+    return refusedList;
+  }
+  // One casting over several creatures goes on below as the one call it is.
+  const whole = each ? oneCastingCall(campaign, toolCall.name, toolCall.rawArguments, each, sheets) : null;
+  if (whole && "refusal" in whole) {
+    return whole.refusal;
+  }
+  if (whole) {
+    toolCall = { ...toolCall, rawArguments: whole.rawArguments };
+  }
+  if (each && !whole) {
     if (turn.mutationCount >= MUTATION_CAP_PER_TURN) {
       return MUTATION_CAP_REFUSAL;
     }

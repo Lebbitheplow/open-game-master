@@ -385,7 +385,13 @@ export function runHeldAgain(
     return { roll: null, answer: null };
   }
   const since = nowIso();
-  const decided: DecidedRoll = { characterId: pending.characterId, kind: pending.kind, outcome, raw: !call.siteThrew };
+  const decided: DecidedRoll = {
+    characterId: pending.characterId,
+    kind: pending.kind,
+    outcome,
+    raw: !call.siteThrew,
+    landing: { physical: landing.physical, source: landing.source },
+  };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;
   try {

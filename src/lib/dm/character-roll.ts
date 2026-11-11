@@ -22,7 +22,7 @@
 
 import { entryDice, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
-import { dicePreferencesOf, type DmTurn } from "@/lib/db/dm-turns";
+import { dicePreferencesOf, type DecidedRoll, type DmTurn } from "@/lib/db/dm-turns";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertRoll, type RollKind, type RollVisibility } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
@@ -125,10 +125,25 @@ function hasDice(expression: string): boolean {
 }
 
 export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll: CharacterRoll): RollResult {
+  return rollAtDoor(campaign, stale, roll).outcome;
+}
+
+// How a roll the player made came in (pending-roll-land.ts RollLanding), for
+// the site that records it; null for dice thrown here.
+export type DoorLanding = NonNullable<DecidedRoll["landing"]>;
+
+// The door, for a site that keeps its own record of the dice (a short rest's
+// hit dice, hit-dice.ts): the roll, and how it landed when the player made it.
+export function rollCharacterDice(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRoll): { outcome: RollResult; landing: DoorLanding | null } {
+  return rollAtDoor(campaign, sheet, roll);
+}
+
+function rollAtDoor(campaign: Campaign, stale: CharacterSheet, roll: CharacterRoll): { outcome: RollResult; landing: DoorLanding | null } {
+  const thrownHere = (outcome: RollResult) => ({ outcome, landing: null });
   const sheet = getSheetById(stale.id) ?? stale;
   const decided = takeDecided(sheet.id, roll.kind);
   if (decided) {
-    return decided.raw && roll.adjust ? roll.adjust(decided.outcome) : decided.outcome;
+    return { outcome: decided.raw && roll.adjust ? roll.adjust(decided.outcome) : decided.outcome, landing: decided.landing ?? null };
   }
   const tag = roll.tag ?? heroRollTag(roll.kind, sheet.name);
   const held = inHeldCall();
@@ -174,11 +189,11 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
         mark,
       );
     }
-    return thrown;
+    return thrownHere(thrown);
   }
   const settle = (outcome: RollResult) =>
     roll.settle ? roll.settle(outcome) : roll.settleHeldDie && typeof roll.dc === "number" && heldDieWaits(sheet, roll.dc) ? settleHeldDie(campaign.id, sheet.id, outcome, roll.dc) : outcome;
-  return answerArmed(campaign.id, sheet.name, tag, roll.dc, settle(thrown), () => settle(throwOnce()));
+  return thrownHere(answerArmed(campaign.id, sheet.name, tag, roll.dc, settle(thrown), () => settle(throwOnce())));
 }
 
 // The other dice of a character's own that a call rolls: the healing or the
@@ -188,6 +203,10 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
 // table; and added to the turn's cards, so the chronicle shows the roll. A
 // site that throws such dice calls this rather than rollCard (roll-card.ts),
 // which throws them where it stands.
+//
+// Dice the player rolled at the table are recorded as theirs, "(physical)" as
+// a roll card's are (pending-roll-land.ts), and sent as physical: sent as
+// digital, the stage threw a die on screen that the player had already rolled.
 //
 // A flat amount has nothing to roll, and gets a card only where the site
 // always gave it one (`flatCard`). `turn` is the turn the card joins when the
@@ -200,12 +219,19 @@ export function rollOwnDice(
   options: { mayWait?: boolean; flatCard?: boolean; turn?: DmTurn | null } = {},
 ): RollResult {
   const said = detail.slice(0, 200);
-  const outcome = rollCharacterD20(campaign, roller, { kind: "custom", expression, detail: said, ...(options.mayWait === false ? { mayWait: false } : {}) });
+  const { outcome, landing } = rollAtDoor(campaign, roller, { kind: "custom", expression, detail: said, ...(options.mayWait === false ? { mayWait: false } : {}) });
   if (!options.flatCard && !outcome.terms.some((term) => term.kind === "dice")) {
     return outcome;
   }
-  const roll = insertRoll({ campaignId: campaign.id, characterId: roller.id, requestedBy: "dm", kind: "custom", detail: said, result: outcome });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  const roll = insertRoll({
+    campaignId: campaign.id,
+    characterId: roller.id,
+    requestedBy: "dm",
+    kind: "custom",
+    detail: landing?.physical ? `${said} (physical)` : said,
+    result: outcome,
+  });
+  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: landing?.source ?? "digital" });
   (options.turn ?? heldCallTurn())?.rollIds.push(roll.id);
   return outcome;
 }

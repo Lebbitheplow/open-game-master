@@ -495,7 +495,7 @@ const SITES = {
   "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
   "lib/dm/between-io.ts#publicDie": "F a table die",
   "lib/dm/character-roll.ts#initiativeWaits": "F no die: the lowest initiative, to read what the after-the-roll card would offer",
-  "lib/dm/character-roll.ts#rollCharacterD20": "H the one door a character's d20 is thrown through (src/lib/dm/character-roll.ts)",
+  "lib/dm/character-roll.ts#rollAtDoor": "H the one door a character's d20 is thrown through (src/lib/dm/character-roll.ts rollCharacterD20)",
   "lib/dm/chronal-shift.ts#takeSaveHelp": "D Flash of Genius and Favored by the Gods' dice",
   "lib/dm/combat-features.ts#divineIntervention": "D d100",
   "lib/dm/companion-agenda.ts#agendaRounds": "F a companion's own agenda",

@@ -2911,6 +2911,37 @@ for (const viewport of ["desktop", "phone"]) {
   healingDiceTables[viewport] = { id: table.id, hero: hero.id };
 }
 
+// Hit dice on real dice (issue 902): the same kind of table just after a
+// short rest, with the lead's hurt fighter still choosing her hit dice and a
+// bard in the party, so the first die she spends carries the song's d6.
+const HIT_DICE_TITLE = "Rest Stop Table";
+const hitDiceTables = {};
+{
+  const { openShortRestWindow } = await import("../../src/lib/db/clock.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${HIT_DICE_TITLE} (${viewport})`,
+      description: "An hour by the road, and a song.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the rest stop table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Maren Vost", class: "fighter", level: 3, maxHp: 28, abilities: { str: 16, con: 14 } }));
+    sheets.patchSheet(hero.id, { currentHp: 6 });
+    sheets.createSheet(table.id, player.id, 2, heroInput({ name: "Lira Quill", class: "bard", level: 2, maxHp: 15, abilities: { cha: 16 } }));
+    campaigns.setMemberRealDice(table.id, world.owner.id, true);
+    openShortRestWindow(table.id, [hero.id]);
+    hitDiceTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
 // Issue 530: a running campaign the lead steers, one per viewport, to step
 // out of play to its prep and back without ending anything.
 const PREP_RETURN_TITLE = "Waystation Table";
@@ -3864,6 +3895,7 @@ const ids = {
   twoHandsTables,
   damageStepTables,
   healingDiceTables,
+  hitDiceTables,
   recapTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
@@ -3991,6 +4023,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,

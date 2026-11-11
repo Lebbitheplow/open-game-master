@@ -20,8 +20,14 @@
 //     held for a roll records the roll itself, and that record named no card:
 //     the card stayed up, asking for dice already entered, for a d20 held by
 //     the same door as well (a group check is the case here);
-//   - one casting over a list of creatures is still thrown by the server
-//     (src/lib/dm/heal-spell.ts says why);
+//   - one casting over a list of creatures is one call: its caster is asked
+//     for each creature's roll in turn, and the slot is spent once. The list
+//     used to be a call for each creature sharing one payment in memory, and
+//     a roll that held one of them ran it again alone, paying twice, so the
+//     server threw a list's dice (src/lib/dm/mutations.ts healList). A list
+//     that sends its own dice is still a call for each, thrown by the server;
+//   - dice entered at the table are on record as physical and are not thrown
+//     again on the stage; dice the server rolls for the seat are not marked;
 //   - the issue's own table: an AI Game Master's fight, the Second Wind card
 //     played from the Hand, the die entered, and the narration that follows
 //     carrying the roll's card.
@@ -30,7 +36,7 @@ import { call } from "./lib/enforce-campaign.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
-import { aiEngine, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
+import { aiEngine, call as modelCall, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-healing-real-dice");
 const world = await openWorld({ campaign: { maxPlayers: 8 }, gameSettings: { dicePolicy: "real_allowed" } });
@@ -97,6 +103,10 @@ function cardClosed(campaignId, pendingId, seq) {
     (event.type === "roll_pending" && event.payload?.pendingRoll?.id === pendingId && event.payload.pendingRoll.status !== "pending"));
 }
 const lastSeq = (campaignId) => listEventsSince(campaignId, 0, 5000).at(-1)?.seq ?? 0;
+// What the table was told of a roll since `seq`: its source says whether the
+// stage throws a die for it.
+const announced = (campaignId, seq, rollId) =>
+  listEventsSince(campaignId, seq, 500).find((event) => event.type === "roll_result" && event.payload?.roll?.id === rollId)?.payload;
 
 // The player types the faces of their own dice into the card.
 async function enter(hero, pending, faces) {
@@ -134,6 +144,7 @@ for (const [door, invoke] of DOORS) {
     assert.equal(world.sheet(fighter.id).resources.second_wind.used, 0, "the use was spent before the dice were in");
     assert.equal(rollsSince(mark).length, 0, "the server threw the die");
 
+    const seq = lastSeq(world.campaignId);
     await enter(fighter, pending, [7]);
     assert.equal(world.sheet(fighter.id).currentHp, 15, "7 on the d10 and the fighter's level heal 10");
     assert.equal(world.sheet(fighter.id).resources.second_wind.used, 1);
@@ -142,6 +153,61 @@ for (const [door, invoke] of DOORS) {
     assert.equal(rolls.length, 1, `one roll on record, not ${rolls.length}`);
     assert.equal(rolls[0].total, 10);
     assert.equal(rolls[0].characterId, fighter.id);
+    // The die was rolled on a real table: the record says so, and the stage
+    // does not throw it again.
+    assert.match(rolls[0].detail, /\(physical\)$/, `the record does not say the die was the player's own: ${rolls[0].detail}`);
+    assert.equal(announced(world.campaignId, seq, rolls[0].id)?.source, "physical", "the table was told to throw a die the player had already rolled");
+  });
+
+  await test(`${door}: one casting over a list of creatures asks its caster for each creature's roll in turn, and spends one slot`, async () => {
+    reset();
+    setMemberRealDice(world.campaignId, cleric.userId, true);
+    const mark = rollMark();
+    const out = await invoke("heal", {
+      casterId: cleric.id, spell: "Mass Healing Word", reason: "a word for the fallen",
+      targets: [{ characterId: ward.id }, { characterId: fighter.id }],
+    });
+    assert.equal(out.ok, true, `refused: ${out.error}`);
+    assert.equal(out.result.parked, true, `the casting did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+    const [first, ...more] = pendingOf(cleric);
+    assert.ok(first, "no roll card went to the caster's seat");
+    assert.equal(more.length, 0, "one card at a time");
+    assert.equal(first.expression, "1d4+3");
+    assert.match(first.detail, /Mass Healing Word on Tam/);
+    assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 0, "the slot was spent before the dice were in");
+
+    await enter(cleric, first, [1]);
+    assert.equal(rollsSince(mark).length, 0, "the first roll went on record before the casting finished");
+    const [second, ...extra] = pendingOf(cleric);
+    assert.ok(second, "the second creature's roll did not come to the caster's seat");
+    assert.equal(extra.length, 0);
+    assert.match(second.detail, /Mass Healing Word on Brakk/);
+    assert.equal(world.sheet(ward.id).currentHp, 5, "nobody is healed until the casting can finish");
+    assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 0, "the slot was spent before every die was in");
+
+    await enter(cleric, second, [4]);
+    assert.equal(world.sheet(ward.id).currentHp, 9, "1 on the d4 and Wisdom's 3");
+    assert.equal(world.sheet(fighter.id).currentHp, 12, "4 on the d4 and Wisdom's 3");
+    assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 1, "one casting, one slot");
+    assert.equal(pendingOf(cleric).length, 0);
+    const rolls = rollsSince(mark);
+    assert.deepEqual(rolls.map((roll) => roll.total).sort((a, b) => a - b), [4, 7], `each roll on record once: ${rolls.map((roll) => `${roll.detail} = ${roll.total}`).join("; ")}`);
+    assert.ok(rolls.every((roll) => roll.characterId === cleric.id), "the rolls are the caster's");
+  });
+
+  await test(`${door}: one casting over a list of creatures, for a caster on the server's dice: every creature healed, one slot, one answer for each`, async () => {
+    reset();
+    world.dice(2, 3);
+    const out = await invoke("heal", {
+      casterId: cleric.id, spell: "Mass Healing Word", reason: "a word for the fallen",
+      targets: [{ characterId: ward.id }, { characterId: "Brakk" }],
+    });
+    assert.equal(out.ok, true, `refused: ${out.error}`);
+    assert.equal(out.result.parked, undefined);
+    assert.equal(out.result.targets?.length, 2, `one answer for each creature: ${JSON.stringify(out.result).slice(0, 200)}`);
+    assert.equal(world.sheet(ward.id).currentHp, 10);
+    assert.equal(world.sheet(fighter.id).currentHp, 11, "a creature named by its name is healed as one named by its id");
+    assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 1, "one casting, one slot");
   });
 
   await test(`${door}: a fighter on the server's dice is not asked, and the roll joins the turn's cards`, async () => {
@@ -260,15 +326,47 @@ await test("a flat amount has nothing to roll, so a seat on physical dice is not
   assert.equal(world.sheet(monk.id).currentHp, 23, "three times the monk's level");
 });
 
-await test("one casting over a list of creatures is still thrown by the server, and spends one slot", async () => {
+await test("a casting that refuses one creature of its list heals the others, and says which was refused", async () => {
   reset();
-  setMemberRealDice(world.campaignId, cleric.userId, true);
+  world.patch(fighter.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+  world.dice(2);
   const out = await world.invoke("heal", {
     casterId: cleric.id, spell: "Mass Healing Word", reason: "a word for the fallen",
     targets: [{ characterId: ward.id }, { characterId: fighter.id }],
   });
   assert.equal(out.ok, true, `refused: ${out.error}`);
-  assert.equal(pendingOf(cleric).length, 0, "a list's entry waited: it is run again alone and would pay for the casting twice");
+  assert.equal(world.sheet(ward.id).currentHp, 10);
+  assert.match(String(out.result.partial), /Entry 2 of 2 refused/);
+  assert.match(String(out.result.targets?.[1]?.error), /DEAD/);
+  assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 1, "one casting, one slot");
+});
+
+await test("a healing roll the player lets the server make is not marked as their own dice", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, fighter.userId, true);
+  const mark = rollMark();
+  const out = await world.invoke("use_resource", { characterId: fighter.id, resource: "Second Wind" });
+  assert.equal(out.result.parked, true, `the call did not wait: ${JSON.stringify(out.result).slice(0, 200)}`);
+  const [pending] = pendingOf(fighter);
+  world.signIn({ id: fighter.userId });
+  const seq = lastSeq(world.campaignId);
+  const landed = await call(submitRoute, "POST", { fallback: "digital" }, { campaignId: world.campaignId, pendingRollId: pending.id });
+  assert.equal(landed.status, 200, JSON.stringify(landed.json).slice(0, 200));
+  const [roll] = rollsSince(mark);
+  assert.ok(roll, "the healing roll is not on record");
+  assert.doesNotMatch(roll.detail, /physical/);
+  assert.equal(announced(world.campaignId, seq, roll.id)?.source, "digital");
+});
+
+await test("a list that sends its own dice is still a call for each creature, thrown by the server, and spends one slot", async () => {
+  reset();
+  setMemberRealDice(world.campaignId, cleric.userId, true);
+  const out = await world.invoke("heal", {
+    casterId: cleric.id, spell: "Mass Healing Word", reason: "a word for the fallen",
+    targets: [{ characterId: ward.id, dice: "1d4" }, { characterId: fighter.id, dice: "1d4" }],
+  });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.equal(pendingOf(cleric).length, 0, "a split list's entry waited: it is run again alone and would pay for the casting twice");
   assert.ok(world.sheet(ward.id).currentHp > 5, "Tam was not healed");
   assert.ok(world.sheet(fighter.id).currentHp > 5, "Brakk was not healed");
   assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 1, "one casting, one slot");
@@ -415,6 +513,54 @@ await test("an AI Game Master's turn: the Second Wind card waits for the die, an
   const told = listRecentMessages(table.campaignId, 10).filter((entry) => entry.authorType === "dm").at(-1);
   assert.ok(told?.content.includes(story), `the GM did not narrate once the die was in: ${told?.content}`);
   assert.ok(told.content.includes(`[roll:${roll.id}]`), `the narration does not carry the healing roll's card: ${told.content}`);
+});
+
+// The model's own turn loop is the third door (src/lib/dm/turn.ts
+// resolveModelCall): it answers one held card for each tool call, so a list
+// that was a call for each creature could never have had its rolls answered.
+const mira = table.addHero({
+  name: "Mira", class: "cleric", level: 5, maxHp: 30, abilities: { wis: 16, con: 10 }, proficiencies: TRAINED, spellcasting: CASTING,
+});
+const tam = table.addHero({ name: "Tam", class: "rogue", level: 3, maxHp: 30, abilities: { dex: 16, con: 10 }, proficiencies: TRAINED });
+
+await test("an AI Game Master's turn: one casting over two creatures waits for each roll, spends one slot, and is narrated once", async () => {
+  await table.invoke("end_encounter", { outcome: "victory", reason: "the fight is over" });
+  getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(table.campaignId);
+  setMemberRealDice(table.campaignId, brakk.userId, false);
+  setMemberRealDice(table.campaignId, mira.userId, true);
+  table.patch(brakk.id, { currentHp: 5 });
+  table.patch(tam.id, { currentHp: 5 });
+  const story = "Mira speaks one word, and it reaches them both.";
+  model.script([
+    reply({ calls: [modelCall("heal", { casterId: mira.id, spell: "Mass Healing Word", reason: "a word for the fallen", targets: [{ characterId: tam.id }, { characterId: brakk.id }] })] }),
+    reply({ text: story }),
+  ]);
+  const early = await model.turn(table, "Mira casts Mass Healing Word on Tam and Brakk.", mira.id, mira.userId);
+  await settleQueue(table.campaignId);
+  assert.equal(early, null, "the GM narrated before the dice were in");
+  const mine = () => listOpenPendingRolls(table.campaignId).filter((entry) => entry.userId === mira.userId);
+  const [first, ...more] = mine();
+  assert.ok(first, "no roll card went to the caster's seat");
+  assert.equal(more.length, 0, "one card at a time");
+  assert.equal(table.sheet(mira.id).spellcasting.slots[3].used, 0, "the slot was spent before the dice were in");
+
+  table.signIn({ id: mira.userId });
+  let landed = await call(submitRoute, "POST", { dice: [2] }, { campaignId: table.campaignId, pendingRollId: first.id });
+  assert.equal(landed.status, 200, `the die was not taken: ${JSON.stringify(landed.json).slice(0, 200)}`);
+  await settleQueue(table.campaignId);
+  const [second] = mine();
+  assert.ok(second, "the second creature's roll did not come to the caster's seat");
+  assert.notEqual(second.id, first.id);
+  assert.equal(table.sheet(tam.id).currentHp, 5, "nobody is healed until the casting can finish");
+
+  landed = await call(submitRoute, "POST", { dice: [3] }, { campaignId: table.campaignId, pendingRollId: second.id });
+  assert.equal(landed.status, 200, `the die was not taken: ${JSON.stringify(landed.json).slice(0, 200)}`);
+  await settleQueue(table.campaignId);
+  assert.equal(table.sheet(tam.id).currentHp, 10, "2 on the d4 and Wisdom's 3");
+  assert.equal(table.sheet(brakk.id).currentHp, 11, "3 on the d4 and Wisdom's 3");
+  assert.equal(table.sheet(mira.id).spellcasting.slots[3].used, 1, "one casting, one slot");
+  const told = listRecentMessages(table.campaignId, 10).filter((entry) => entry.authorType === "dm").at(-1);
+  assert.ok(told?.content.includes(story), `the GM did not narrate once the dice were in: ${told?.content}`);
 });
 
 model.close();

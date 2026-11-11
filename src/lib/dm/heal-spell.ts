@@ -249,11 +249,13 @@ export function castHealingSpell(
     // The caster's own dice, whoever is healed: on physical dice their
     // player rolls them (src/lib/dm/character-roll.ts), as they roll a
     // spell's damage, and the card joins the turn's (issue 902). One casting
-    // over a list of creatures is still thrown here: its entries are calls
-    // of their own that share what the first one paid, in memory
-    // (action-parts-logic.ts OneCasting), and a call held for a roll is run
-    // again alone, without it.
-    amount = rollOwnDice(campaign, caster, `${name} on ${target.name} (${full})`, full, { flatCard: true, mayWait: !casting || casting.creatures < 2 }).total;
+    // over a list of creatures asks for each creature's roll in turn, inside
+    // the one call the list is (mutations.ts healList). A list split into a
+    // call for each entry (one that sends its own dice, a spell only this
+    // table wrote) is still thrown here: those calls share what the first
+    // one paid, in memory (action-parts-logic.ts OneCasting), and a call held
+    // for a roll is run again alone, without it.
+    amount = rollOwnDice(campaign, caster, `${name} on ${target.name} (${full})`, full, { flatCard: true, mayWait: !casting || casting.creatures < 2 || casting.oneCall === true }).total;
   }
   // Regenerate goes on healing at the start of each of the target's turns
   // (src/lib/dm/spell-aura.ts reads the mark).

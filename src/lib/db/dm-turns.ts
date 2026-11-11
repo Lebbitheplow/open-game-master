@@ -371,8 +371,16 @@ export type PendingCarry = {
 
 // A roll a held call already has, for its next run: the player's, as it
 // landed. `raw`: faces entered at the table, before what the roll site adds
-// to the dice it throws itself (a floor under the d20).
-export type DecidedRoll = { characterId: string; kind: RollKind; outcome: RollResult; raw: boolean };
+// to the dice it throws itself (a floor under the d20). `landing`: how it
+// landed, so the run that records it says whose dice they were: dice rolled
+// at the table are marked physical and are not thrown again on the stage.
+export type DecidedRoll = {
+  characterId: string;
+  kind: RollKind;
+  outcome: RollResult;
+  raw: boolean;
+  landing?: { physical: boolean; source: "digital" | "physical" };
+};
 
 // A tool call held for a player's roll. `tape`: the faces its first run drew
 // by chance, [sides, face], drawn again by the next run so a die nobody saw
