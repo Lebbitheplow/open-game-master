@@ -10,6 +10,7 @@
 // (/tmp/odm-enf2/fixes/ui-play.md). Pure: no database, no server.
 import assert from "node:assert/strict";
 import { register } from "node:module";
+import { staticImports } from "./lib/static-imports.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -622,6 +623,19 @@ test("the End turn refusal lapses when the round or the turn moves on", () => {
   assert.equal(liveNotice(entry, floorNoticeKey({ ...floor, round: 3 })), "");
   assert.equal(liveNotice(entry, floorNoticeKey({ ...floor, currentName: "Hollis", userIds: ["u2"] })), "");
   assert.equal(liveNotice(entry, floorNoticeKey({ mode: "open" })), "");
+});
+
+// The table display page (the board on a television) draws the board and
+// deals no hand, so the Hand's card builders stay out of its first load:
+// the token menu's gates (hand-hud.ts) and the board's aim events
+// (hand-play.ts) read light modules, never hand-spells.ts or hand.ts, which
+// pull every spell, item and subclass card behind them (about 60 KiB gzip).
+test("the board reaches no card builder of the Hand", () => {
+  const reached = staticImports("app/campaigns/[campaignId]/table/page.tsx");
+  assert.ok(reached.has("lib/battlemap/hand-hud.ts") && reached.has("lib/battlemap/hand-play.ts"), "the walk reaches the board's Hand helpers");
+  for (const heavy of ["lib/battlemap/hand.ts", "lib/battlemap/hand-spells.ts", "lib/battlemap/hand-granted.ts"]) {
+    assert.ok(!reached.has(heavy), `the table page's first load imports ${heavy}`);
+  }
 });
 
 console.log(`test-hand-engine: ${passed} passed`);

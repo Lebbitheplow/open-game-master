@@ -46,12 +46,29 @@ export function spellGlyphSrc(glyph: SpellGlyph): string {
   return `/assets/icons/glyph/spell-${glyph}.webp`;
 }
 
+// An effect glyph in plain words, as the card's own lines are written:
+// its id ("buff", "debuff") is game jargon, and "heal" or "summon" read as
+// a verb after the card's cost ("Cure Wounds, Action, heal").
+const EFFECT_WORDS: Record<(typeof EFFECT_GLYPHS)[number], string> = {
+  heal: "healing",
+  restore: "ends a condition",
+  guard: "protection",
+  dispel: "ends a spell",
+  buff: "boon",
+  debuff: "hindrance",
+  summon: "summoning",
+  teleport: "teleportation",
+  detection: "detection",
+  utility: "utility",
+};
+
 // The glyph in words, for a screen reader; "" where it would say nothing.
 export function spellGlyphLabel(glyph: SpellGlyph): string {
   if (glyph === "unknown") return "";
   if (glyph === "choice") return "damage type of your choice";
   if (glyph === "physical") return "weapon damage";
-  return (DAMAGE_GLYPHS as readonly string[]).includes(glyph) ? `${glyph} damage` : glyph;
+  if (glyph in EFFECT_WORDS) return EFFECT_WORDS[glyph as keyof typeof EFFECT_WORDS];
+  return `${glyph} damage`;
 }
 
 const BY_NAME = new Map<string, SpellGlyph>(

@@ -13,6 +13,7 @@ import { attackOddsWithDice, previewAdvantage } from "@/lib/battlemap/hand-odds"
 import { weaponNamed } from "@/lib/srd/weapons";
 import {
   budgetOf,
+  grantedRideMark,
   type HandAttackOption,
   type HandAttackOptionId,
   type HandCard,
@@ -24,7 +25,6 @@ import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { grantedRideMark } from "@/lib/battlemap/hand-granted";
 import { summonIntent, summonReady, summonWords, type SummonChoices } from "@/lib/battlemap/hand-summon";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
 

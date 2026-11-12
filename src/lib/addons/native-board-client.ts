@@ -1,6 +1,8 @@
 import type { ShellNativeBoard, NativeBoardRect } from "@/lib/shell-host";
 import { readViewMessage, type HostMessageBody, type ViewMessage } from "./board-bridge";
-import { variantUrl } from "@/lib/image-format";
+// The address half alone: image-format.ts reads bytes with Buffer, and a
+// page that imported it carried the Buffer polyfill (test-image-variants).
+import { variantUrl } from "@/lib/image-variant-url";
 
 const bindings = new WeakMap<HTMLIFrameElement, (packet: HostMessageBody) => void>();
 const snapshots = new WeakMap<HTMLIFrameElement, HostMessageBody>();

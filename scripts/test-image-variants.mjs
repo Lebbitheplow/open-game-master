@@ -12,6 +12,7 @@ import path from "node:path";
 import { createRequire, register, syncBuiltinESMExports } from "node:module";
 import zlib from "node:zlib";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
+import { staticImports } from "./lib/static-imports.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -426,6 +427,19 @@ try {
   }
 } finally {
   removeTempDir(dir);
+}
+
+// The table view's first load (the pages' own static imports, from the page
+// down through "@/" and relative paths) never reaches image-format.ts: its
+// byte-reading half uses Buffer, and a page that imports it carries Next's
+// Buffer polyfill, about 7 KiB gzip. Pages ask for a copy's address from
+// image-variant-url.ts. The native board client (an addon's board view in the
+// apps) imported it, and the table page took the polyfill with it.
+{
+  const reached = staticImports("app/campaigns/[campaignId]/table/page.tsx");
+  assert.ok(reached.size > 100, `the walk reads the table page's imports (${reached.size} files)`);
+  assert.ok(!reached.has("lib/image-format.ts"), "the table page imports image-format.ts (Buffer); import variantUrl from image-variant-url.ts");
+  passed += 1;
 }
 
 console.log(`image variants: ${passed} tests passed`);

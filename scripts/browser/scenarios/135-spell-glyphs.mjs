@@ -47,7 +47,7 @@ export default {
     const face = await fireball.evaluate((card) => ({
       src: card.querySelector(".hand-glyph")?.getAttribute("src") ?? "",
       loaded: (card.querySelector(".hand-glyph")?.naturalWidth ?? 0) > 0,
-      words: [...card.querySelectorAll(".hand-target > span")].map((line) => line.textContent),
+      words: [...card.querySelectorAll(".hand-glyph-words > span")].map((line) => line.textContent),
       label: card.getAttribute("aria-label") ?? "",
     }));
     check(face.src.endsWith("/spell-fire.webp") && face.loaded, `Fireball wears the fire glyph (${face.src}, loaded ${face.loaded})`);
@@ -103,7 +103,7 @@ export default {
               found.push(`${size.name} ${name}: the glyph leaves its well`);
             }
             if (glyph.height < art.height * 0.6) found.push(`${size.name} ${name}: the glyph is ${glyph.height}px in a ${art.height}px well`);
-            const target = card.querySelector(".hand-target");
+            const target = card.querySelector(".hand-glyph-words");
             if (!target || getComputedStyle(target).display === "none") {
               if (target && art.width > 60) found.push(`${size.name} ${name}: the words are hidden in a ${art.width}px well`);
               continue;

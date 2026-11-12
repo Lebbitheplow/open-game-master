@@ -22,14 +22,9 @@ import { grantedAttackDice } from "@/lib/srd/granted-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { namedSpellGlyph } from "@/lib/battlemap/hand-spells";
-import { addFlat, attackGate, costGate, gated, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
+import { addFlat, attackGate, costGate, gated, grantedRideMark, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
 
 type GrantedMeta = { rounds?: number; spell?: string; slotLevel?: number };
-
-// The once-a-turn mark pc_attack leaves when the strike rode the activation.
-export function grantedRideMark(name: string): string {
-  return `granted:${name.toLowerCase()}`;
-}
 
 // Whether this strike would ride the activation's own action now, as
 // pc-attack-spend.ts ridesActivation asks it.

@@ -72,7 +72,7 @@ function SpellGlyphArt({ glyph, words }: { glyph: SpellGlyph; words?: string }) 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="hand-glyph hand-art-icon" src={spellGlyphSrc(glyph)} alt="" draggable={false} />
       {lines.length ? (
-        <span className="hand-target" style={{ "--target-chars": longest, "--target-lines": lines.length } as CSSProperties}>
+        <span className="hand-glyph-words" style={{ "--target-chars": longest, "--target-lines": lines.length } as CSSProperties}>
           {lines.map((line) => (
             <span key={line}>{line}</span>
           ))}

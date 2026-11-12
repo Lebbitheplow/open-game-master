@@ -12,7 +12,7 @@ import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grante
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
-import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
+import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
@@ -33,13 +33,12 @@ import { bundledSpellFacts, bundledSpellSchool, type CastingTime, type SpellRang
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
 import { counterCost, counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { inFightOf, polymorphChoice, wildShapeChoice } from "@/lib/battlemap/hand-counters";
-import { counterCastsHeld } from "@/lib/srd/counter-casts";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { authoredSpellRow, castShares, parseSpellMech, spellMechFor, type SpellMech } from "@/lib/srd/spell-mechanics";
 import { baseHealingDice, scaledSpellDice } from "@/lib/srd/spell-scaling";
 import { mechSpellDamage } from "@/lib/srd/spell-dice";
 import { bakedSpellDuration, bakedSpellMech } from "@/lib/content/baked-spells";
-import { allSpellNames } from "@/lib/srd/spell-lists";
+import { spellNames } from "@/lib/battlemap/hand-spell-names";
 import { areaFor, blastAreaFor } from "@/lib/battlemap/hand-area";
 import { spellGlyph, spellTargetWords, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import { summonPick } from "@/lib/battlemap/hand-summon";
@@ -77,30 +76,11 @@ import { INFUSE_COUNTER, infusionPicks } from "@/lib/srd/infusion-picks";
 
 // ---- spells ----
 
-export const ringCardName = (spell: string) => `Ring: ${spell}`;
+// What a character can cast, by name; its own module so the board's token
+// menu (hand-hud.ts) asks it without loading the card builders here.
+export { spellNames };
 
-export function spellNames(sheet: CharacterSheet): string[] {
-  const casting = sheet.spellcasting;
-  // The spells the race and its chosen option give (issue #833): a
-  // tiefling fighter's hellish rebuke, a Topaz ancestry's misty step. They
-  // sit on no class list, and a character with no Spellcasting casts them
-  // too.
-  const racial = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features }).map((spell) => spell.name);
-  const all = [
-    ...(casting ? allSpellNames(casting) : []),
-    ...(casting?.casters ?? []).flatMap((caster) => allSpellNames(caster)),
-    ...racial,
-    // A subclass counter's free spell (Star Map's guiding bolt), on no list.
-    ...counterCastsHeld(sheet.features).map((entry) => entry.spell),
-  ];
-  const seen = new Set<string>();
-  return all.filter((name) => {
-    const key = textKey(name);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
+export const ringCardName = (spell: string) => `Ring: ${spell}`;
 
 // The bundled facts in the words a pack's row uses, so a table without the
 // pack deals the same card the pack would (and the cast guard, which reads
