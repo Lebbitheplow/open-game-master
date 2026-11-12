@@ -15,6 +15,7 @@
 // scripts/test-spell-glyphs.mjs drives it over every spell in the manifest.
 import { SPELL_GLYPH_NAMES } from "@/lib/battlemap/spell-glyph-names";
 import type { HandCard } from "@/lib/battlemap/hand-core";
+import type { IconRef } from "@/lib/icons";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -44,6 +45,13 @@ export type SpellGlyph = (typeof SPELL_GLYPHS)[number];
 // The painting each glyph is drawn with (docs/art/spell-glyphs-2026-11-10).
 export function spellGlyphSrc(glyph: SpellGlyph): string {
   return `/assets/icons/glyph/spell-${glyph}.webp`;
+}
+
+// A card's picture wherever it is drawn small (the More sheet, the arrange
+// list, a group card's fan of three, a hero tip): a spell's glyph, else the
+// card's own icon.
+export function cardIcon(card: { icon: IconRef; glyph?: SpellGlyph }): IconRef {
+  return card.glyph ? { kind: "glyph", key: `spell-${card.glyph}` } : card.icon;
 }
 
 // An effect glyph in plain words, as the card's own lines are written:

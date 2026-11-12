@@ -12,6 +12,7 @@ import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
 import { conditionDetail, maxHpView } from "@/components/sheet/sheet-state";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { PartyGone } from "@/app/campaigns/[campaignId]/PartyGone";
 import type { DepartingSheet } from "@/app/campaigns/[campaignId]/departing";
@@ -880,7 +881,7 @@ export function PartyPanel({
                     className="inline-flex items-center gap-1 rounded-full bg-sky-950 px-2 py-0.5 text-xs text-sky-300"
                     title="Concentrating on this spell"
                   >
-                    <GameIcon icon={{ kind: "spell", key: sheet.concentratingOn }} size="size-4" />
+                    <GameIcon icon={spellGlyphIcon(sheet.concentratingOn)} size="size-4" />
                     {sheet.concentratingOn}
                   </span>
                 ) : null}
