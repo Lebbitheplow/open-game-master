@@ -110,6 +110,11 @@ import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
 
+// The rolls the moment shows have landed and been told (issue 931): under a
+// bare "Recent rolls" the model told last round's 6 damage on the hero again
+// as the enemy's new blow.
+export const RECENT_ROLLS_HEADING = "Recent rolls (already resolved and on the table; never narrate one again as new):";
+
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
 // Full system prompt for a campaign: base rules plus genre flavor plus any
@@ -1447,7 +1452,7 @@ export function buildGameStateBlock(state: DmGameState): string {
       .join("\n")}`,
   );
   if (rollLines.length) {
-    moment.push(`Recent rolls:\n${rollLines.join("\n")}`);
+    moment.push(`${RECENT_ROLLS_HEADING}\n${rollLines.join("\n")}`);
   }
   if (state.pins?.length) {
     // Unconditional and unfiltered by design: the table asked for these to be
