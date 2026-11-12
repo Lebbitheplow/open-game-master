@@ -145,8 +145,16 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
   }
   if (!accepted) return out;
 
+  // A call held for its player's choice (Portent, Weal or Restore Balance
+  // before the throw, a choice after the d20, the table's own dice) has not
+  // run yet: nothing of the turn is spent until it does, so neither the cost
+  // pill (P4) nor the dice (P3) can be read here.
+  const parked = /"_parked":true|"parked":true|"awaitingRoll":true|"parkedFor":"/.test(JSON.stringify(played.calls));
+
   // P4: the cost pill against the turn's budget.
-  if (state !== "out-of-fight" && played.before && !variant.startsWith(":rider")) {
+  if (parked) {
+    out.push({ prop: "P4", skip: "the call is held for the player's choice; it spends as it runs" });
+  } else if (state !== "out-of-fight" && played.before && !variant.startsWith(":rider")) {
     const { before, after } = played;
     const moved = {
       action: (!before.action && after.action) || after.attacks > before.attacks || after.extra < before.extra,
@@ -167,7 +175,7 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
 
   // P3 and P6: the dice. A roll that waits on its player (a choice after the
   // d20, the table's own dice) has not been made yet.
-  if (/"_parked":true|"awaitingRoll":true/.test(JSON.stringify(played.calls))) {
+  if (parked) {
     out.push({ prop: "P3", skip: "the roll is parked for the player's choice (the dice sweep's windows)" });
     return out;
   }
