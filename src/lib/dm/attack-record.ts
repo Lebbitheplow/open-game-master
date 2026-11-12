@@ -229,10 +229,13 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
 
 // Whether the turn a parked to-hit roll was declared on is over: the pointer
 // has moved off its attacker (the lead skipped them, the order was edited).
-// A roll the server threw for the player's choice also names its round, so a
-// lone hero whose turn came round again does not land last round's swing on
-// this one. A roll that lands then does nothing.
-export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "serverDice">, characterId: string | null): boolean {
+// A roll made on the attacker's own turn names its round, so a hero whose
+// turn came round again does not land last round's swing on this one. That
+// held only for dice the server threw: real dice the player had yet to
+// enter stay theirs after the lead's skip (pending-roll-land.ts
+// keepRollsLeftBehind), and entered on their next turn they hit for last
+// round. A roll that lands then does nothing.
+export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round">, characterId: string | null): boolean {
   const fight = getActiveEncounter(campaignId);
   if (!fight?.orderReady) {
     return false;
@@ -241,7 +244,7 @@ export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "r
   if (!current || current.kind !== "pc" || current.characterId !== characterId) {
     return true;
   }
-  return Boolean(record.serverDice) && record.round !== undefined && fight.round !== record.round;
+  return record.round !== undefined && fight.round !== record.round;
 }
 
 // The AC a roll meets when it lands. An attack's parts are made together, so

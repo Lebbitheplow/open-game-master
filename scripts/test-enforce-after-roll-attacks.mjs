@@ -258,6 +258,33 @@ await test("A card left open by a fight that is over holds no turn of the next o
   assert.equal(open().length, 0);
 });
 
+// The lead's skip leaves dice the player has yet to enter with them, and
+// End Turn passes a card from an earlier round: entered when the hero's turn
+// comes round again, last round's swing landed on this one.
+await test("Real dice left from a skipped turn, entered on the hero's next turn, land nothing.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    assert.equal(toHit.thrown, null, "no dice yet");
+    world.signIn({ id: world.owner.id });
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    assert.ok(open().some((entry) => entry.id === toHit.id), "dice not yet entered stay the player's");
+    // The turn comes round again, a round on.
+    const encounter = world.encounter();
+    kit.saveEncounter({ ...encounter, round: encounter.round + 1, turnIndex: encounter.order.findIndex((entry) => entry.characterId === hero.id), turnBudget: null });
+    world.signIn({ id: userId });
+    const entered = await call(route.pending, "POST", { dice: [19] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(entered.status, 200, JSON.stringify(entered.json));
+    assert.match(getPendingRoll(toHit.id).combatNote ?? "", /does not land/);
+    assert.equal(hp(enemy), 400, "last round's swing hit nothing this round");
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 await test("Dice the player has yet to enter hold the turn the same way, at the button and at end_turn.", async () => {
   const enemy = await stage(NONE);
   const userId = world.sheet(hero.id).userId;
