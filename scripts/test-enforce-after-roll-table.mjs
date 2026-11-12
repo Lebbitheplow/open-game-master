@@ -1,18 +1,15 @@
 // The after-the-roll table (src/lib/dm/after-roll-table.ts): one row per
 // choice a character makes after a d20 lands, read by the card, the watch
 // stop, the route enums and the client's types. This suite holds the table's
-// own promises and the two rows it brought to the card:
+// own promises and the row it brought to the card (#907 brought Restore
+// Balance too; by the ruling on issue #908 it is used before the roll):
 //
-//   Restore Balance (Clockwork Soul 1): a reaction cancels advantage or
-//   disadvantage on a roll within 60 feet. On the card, after the dice, a
-//   roll with disadvantage counts its first d20, as if the second had never
-//   been rolled; offered on the sorcerer's own roll or an ally's in sight.
 //   Violent Attraction (Graviturgy 10): when a creature the wizard can see
 //   within 60 feet hits with a weapon attack, a reaction adds 1d10 to its
 //   damage. An ally's hit waits on the wizard's screen.
 //
-// Before this both were Hand cards played after the roll had landed: they
-// spent the use and changed nothing.
+// Before this it was a Hand card played after the roll had landed: it spent
+// the use and changed nothing.
 import assert from "node:assert/strict";
 import { call } from "./lib/enforce-campaign.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
@@ -65,7 +62,9 @@ await test("The table owns the card's choices, the route's enum and the watch st
   const ids = table.AFTER_ROLL_ROWS.map((row) => row.id);
   assert.equal(new Set(ids).size, ids.length, "one row per choice");
   assert.deepEqual(table.AFTER_ROLL_IDS, ids);
-  assert.deepEqual(Object.keys(table.WATCH_FEATURES), ["portent", "slayers_counter", "cloud_rune", "chronal_shift", "flash_of_genius", "favored_by_the_gods", "convergent_future", "bend_luck"]);
+  assert.deepEqual(Object.keys(table.WATCH_FEATURES), ["portent", "cosmic_omen", "restore_balance", "slayers_counter", "cloud_rune", "chronal_shift", "flash_of_genius", "favored_by_the_gods", "convergent_future", "bend_luck"]);
+  // Portent, Cosmic Omen and Restore Balance go on the d20 before it is thrown.
+  assert.deepEqual(Object.keys(table.WATCH_FEATURES).filter(table.armsBeforeRoll), ["portent", "cosmic_omen", "restore_balance"]);
   assert.deepEqual(table.SAVE_HELPS, ["flash_of_genius", "favored_by_the_gods"]);
   // The stop's own powers act at the stop; the watch rows are armed on the dice.
   assert.deepEqual(["portent", "slayers_counter", "cloud_rune", "chronal_shift"].map(table.answeredAtStop), [false, true, true, false]);
@@ -81,88 +80,32 @@ await test("The table owns the card's choices, the route's enum and the watch st
 });
 
 await test("The route refuses a choice no row names, and asks again for one a row names that is not on offer.", async () => {
-  await stage(BALANCE);
-  world.dice(15, 4);
-  await save(hero.id, 12);
-  world.clearDice();
+  const enemy = await stage(ATTRACTION);
+  await kit.swing(hero.id, enemy.id, [12]);
   const [pending] = open();
+  assert.ok(pending, "the hit waits on the wizard");
   assert.equal((await press(hero, pending.id, { use: "no_such_feature" })).status, 400);
-  assert.equal((await press(hero, pending.id, { use: "violent_attraction" })).status, 409);
+  assert.equal((await press(hero, pending.id, { use: "restore_balance" })).status, 400, "no row names it now");
+  assert.equal((await press(hero, pending.id, { use: "lucky" })).status, 409);
+  world.dice(4);
   await press(hero, pending.id, { keep: true });
   await press(helper, pending.id, { decline: true, by: helper.id });
+  world.clearDice();
 });
 
-await test("Restore Balance on an ally's save with disadvantage: the first d20 counts, for the sorcerer's use and reaction.", async () => {
-  await stage(BALANCE);
-  world.dice(15, 4);
-  await save(hero.id, 12);
-  world.clearDice();
-  assert.deepEqual(offered(), ["restore_balance"]);
-  const [pending] = open();
-  assert.equal(pending.thrown.options[0].by, helper.id);
-  assert.match(pending.thrown.options[0].label, /without disadvantage/);
-  const before = pending.thrown.outcome.total;
-  assert.equal(used("sub_restore_balance"), 0, "nothing is spent until they choose");
-  const out = await press(helper, pending.id, { use: "restore_balance", by: helper.id });
-  assert.equal(out.status, 200, JSON.stringify(out.json));
-  assert.equal(getRoll(getPendingRoll(pending.id).rollId).total, before - 4 + 15);
-  assert.equal(used("sub_restore_balance"), 1);
-  assert.ok(reacted(), "the reaction is spent");
-  assert.match(getPendingRoll(pending.id).combatNote ?? "", /used Restore Balance/);
-});
-
-await test("Restore Balance waits for nothing where the first die is the low one, on advantage, beyond 60 feet, or with the reaction spent.", async () => {
-  await stage(BALANCE);
-  world.dice(4, 15);
-  await save(hero.id, 12);
-  world.clearDice();
-  assert.equal(open().length, 0, "the first die is the one already kept");
-  world.dice(4, 3);
-  await save(hero.id, 12, "advantage");
-  world.clearDice();
-  assert.equal(open().length, 0, "cancelling an ally's advantage helps nobody");
-  await stage(BALANCE, [5, 18]);
-  world.dice(15, 4);
-  await save(hero.id, 12);
-  world.clearDice();
-  assert.equal(open().length, 0, "beyond 60 feet");
-  await stage(BALANCE);
-  const { markReactionUsed } = await import("../src/lib/dm/turn-budget.ts");
-  markReactionUsed(world.encounter(), helper.id);
-  world.dice(15, 4);
-  await save(hero.id, 12);
-  world.clearDice();
-  assert.equal(open().length, 0, "the reaction is gone");
-});
-
-await test("Restore Balance on the sorcerer's own save with disadvantage.", async () => {
-  await stage(BALANCE);
-  world.dice(16, 2);
-  await save(helper.id, 12);
-  world.clearDice();
-  assert.deepEqual(offered(), ["restore_balance"]);
-  const [pending] = open();
-  assert.equal(pending.thrown.options[0].by, undefined, "the roller's own");
-  const before = pending.thrown.outcome.total;
-  const out = await press(helper, pending.id, { use: "restore_balance" });
-  assert.equal(out.status, 200, JSON.stringify(out.json));
-  assert.equal(getRoll(getPendingRoll(pending.id).rollId).total, before - 2 + 16);
-  assert.equal(used("sub_restore_balance"), 1);
-});
-
-await test("Restore Balance on a poisoned ally's attack: the first d20 turns the miss into a hit.", async () => {
+// Restore Balance is used before the roll (the maintainer's ruling on issue
+// #908): scripts/test-enforce-before-roll.mjs runs it at the hold and the
+// watch stop. The card no longer offers it after the dice.
+await test("Restore Balance is no row of the card: a disadvantaged save or attack waits for nothing.", async () => {
+  assert.ok(!table.AFTER_ROLL_IDS.includes("restore_balance"));
   const enemy = await stage(BALANCE, [5, 3], { conditions: ["poisoned"] });
-  // 3 + 6 = 9 misses AC 15 with disadvantage; the first die, 15 + 6 = 21, hits.
-  await kit.swing(hero.id, enemy.id, [15, 3]);
-  assert.deepEqual(offered(), ["restore_balance"]);
-  const [pending] = open();
-  world.dice(4);
-  const out = await press(helper, pending.id, { use: "restore_balance", by: helper.id });
+  world.dice(15, 4);
+  await save(hero.id, 12);
   world.clearDice();
-  assert.equal(out.status, 200, JSON.stringify(out.json));
-  assert.equal(getRoll(getPendingRoll(pending.id).rollId).total, 21);
-  assert.match(getPendingRoll(pending.id).combatNote, /HIT/);
-  assert.equal(kit.enemy(enemy.id).currentHp, 400 - 7);
+  assert.equal(open().length, 0, "the save lands as thrown");
+  await kit.swing(hero.id, enemy.id, [15, 3]);
+  assert.equal(open().length, 0, "the attack lands as thrown");
+  assert.equal(used("sub_restore_balance"), 0);
 });
 
 await test("Violent Attraction: an ally's weapon hit waits on the wizard, who adds 1d10 to its damage for a use and the reaction.", async () => {

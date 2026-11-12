@@ -374,6 +374,9 @@ export type PendingAttack = {
 
 export type PendingCarry = {
   mote?: { bardId: string; die: string; sides: number };
+  // The before-the-roll features already used on this roll (Cosmic Omen,
+  // Restore Balance; the before-roll route), each once.
+  before?: Array<"cosmic_omen" | "restore_balance">;
   // The tool an ability check is made with (request_roll's `tool`), which
   // the roll's kind and detail do not say.
   tool?: string;
@@ -805,6 +808,15 @@ export function setPendingCombatNote(id: string, note: string) {
   getDatabase()
     .prepare(`UPDATE pending_rolls SET combat_note = ? WHERE id = ?`)
     .run(note.slice(0, 500), id);
+}
+
+// What a parked roll carries, written while it is still open (the
+// before-roll route's used features). Null once resolved.
+export function setPendingCarry(id: string, carry: PendingCarry): PendingRoll | null {
+  const result = getDatabase()
+    .prepare(`UPDATE pending_rolls SET carry_json = ? WHERE id = ? AND status = 'pending'`)
+    .run(Object.keys(carry).length ? JSON.stringify(carry) : null, id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
 }
 
 // A parked roll the player spent Inspiration on takes its new d20 term while

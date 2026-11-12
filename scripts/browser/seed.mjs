@@ -2542,11 +2542,9 @@ const FLASH_TITLE = "Flash of Insight";
 const flashTables = {};
 const TOUCH_TITLE = "Deathly Swing";
 const touchTables = {};
-// A poisoned player's swing with the lead's Clockwork Soul sorcerer beside
-// them (Restore Balance), and a player's hit with the lead's Graviturgy
-// wizard beside them (Violent Attraction): scenario after-roll-helpers.
-const BALANCE_TITLE = "Balanced Swing";
-const balanceTables = {};
+// A player's hit with the lead's Graviturgy wizard beside them (Violent
+// Attraction): scenario after-roll-helpers. Restore Balance is used before
+// the roll (issue #908), so it has no lane on the after-the-roll card.
 const ATTRACTION_TITLE = "Heavy Swing";
 const attractionTables = {};
 {
@@ -2583,13 +2581,6 @@ const attractionTables = {};
       class: "cleric",
       features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
       resources: { channel_divinity: { max: 1, used: 0 } },
-    }],
-    [BALANCE_TITLE, balanceTables, [], {
-      class: "sorcerer",
-      otherRolls: true,
-      rollerPatch: { conditions: ["poisoned"] },
-      features: [{ name: "Restore Balance", source: "choice" }],
-      resources: { sub_restore_balance: { max: 2, used: 0 } },
     }],
     [ATTRACTION_TITLE, attractionTables, [], {
       class: "wizard",
@@ -2717,6 +2708,32 @@ const watchTables = {};
     encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
     watchTables[viewport] = { id: table.id, hero: hero.id };
   }
+}
+
+// Out of a fight, the lead's Circle of Stars druid holds Weal (the ruling on
+// issue #908): the Watch toggle stands for her at a table the AI GM plays,
+// and her own check waits before the throw for the omen's d6 (scenario
+// before-roll).
+const STAR_TITLE = "Star Watch";
+const starTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${STAR_TITLE} (${viewport})`,
+    description: "A druid who reads the stars.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 6,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "steered" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the star watch: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 6, heroInput({ name: "Vela Stars", class: "druid", subclass: "Circle of Stars", level: 6 }));
+  sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_cosmic_omen: { max: 3, used: 0 } }, omen: "weal" });
+  starTables[viewport] = { id: table.id, hero: hero.id };
 }
 
 // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the lead's
@@ -3891,10 +3908,10 @@ const ids = {
   allyTables,
   flashTables,
   touchTables,
-  balanceTables,
   attractionTables,
   portentTables,
   watchTables,
+  starTables,
   heldTurnTables,
   shiftTables,
   chronalWatchTables,
@@ -4020,10 +4037,10 @@ const ids = {
     ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
-    ...Object.fromEntries(Object.entries(balanceTables).map(([viewport, table]) => [table.id, `${BALANCE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(attractionTables).map(([viewport, table]) => [table.id, `${ATTRACTION_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(starTables).map(([viewport, table]) => [table.id, `${STAR_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),

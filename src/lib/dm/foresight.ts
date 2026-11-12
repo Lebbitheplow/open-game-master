@@ -43,6 +43,8 @@ import { attackRiderFoes, foeRoll, holdsCondition, savesAbout, unseen, type Abou
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canTurnFate, inFateReach } from "@/lib/dm/fate-turn";
 import type { OpenedStop } from "@/lib/dm/held-call";
+import { beforeRollAt, runWithBeforeRoll, tableWatcherFor, type BeforeChoice } from "@/lib/dm/foresight-before";
+import { balanceLeft, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
 
 // The rolls a watch stop offers Convergent Future and Bend Luck on: the ones
 // a roll site asks takeFate about.
@@ -53,16 +55,19 @@ const FATE_WATCH = WATCH_ROWS.flatMap((row) => (isFatePower(row.id) ? [row.id] :
 // A stop comes before every watched roll, so it cannot ask for long.
 export const WATCH_SECONDS = 20;
 
-// Whether the sheet is watching this fight and could answer a stop: a
-// number left (Portent), or a watch row of after-roll-table.ts it holds
-// (Chronal Shift, Flash of Genius, Favored by the Gods). "A creature that
-// you can see": a blinded or unconscious watcher sees nothing to stop. A player who has left the table would hold
-// every watched roll for the stop's whole time (chronal-shift.ts playerAtTable),
-// and one waiting on the bench is not in the fight at all (roster.ts inPlay).
+// Whether the sheet is watching this fight (or, out of one, the table:
+// TABLE_WATCH) and could answer a stop: a number left (Portent), Cosmic
+// Omen's omen or Restore Balance with a use left (before-roll-logic.ts), or a
+// watch row of after-roll-table.ts it holds (Chronal Shift, Flash of Genius,
+// Favored by the Gods, Convergent Future, Bend Luck). "A creature that you
+// can see": a blinded or unconscious watcher sees nothing to stop. A player
+// who has left the table would hold every watched roll for the stop's whole
+// time (chronal-shift.ts playerAtTable), and one waiting on the bench is not
+// in the fight at all (roster.ts inPlay).
 function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string): boolean {
   return (
     sheet.watchingEncounterId === encounterId &&
-    (foretoldLeft(sheet).length > 0 || WATCH_ROWS.some((row) => holdsFeature(sheet, row.feature))) &&
+    (foretoldLeft(sheet).length > 0 || omenLeft(sheet) !== null || balanceLeft(sheet) || WATCH_ROWS.some((row) => holdsFeature(sheet, row.feature))) &&
     sheet.currentHp > 0 &&
     !holdsCondition(sheet, "blinded", "unconscious") &&
     rollsCanWait(sheet) &&
@@ -242,17 +247,23 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     return { line, rollerId: rolls[0].ref, rolls, perCreature: true, rollerWaits: false };
   }
   if (call.name === "request_roll") {
-    const hero = sheetOf(args.characterId);
-    const kind = typeof args.kind === "string" ? args.kind : "";
-    // Initiative waits on its roller's card now (after-roll-logic.ts), but no
-    // watch stops for it: that is a ruling still to make.
-    const tag = hero && canWaitOnRoll(kind) && kind !== "initiative" && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
-    if (!hero || !tag) {
-      return null;
-    }
-    return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
+    return requestRollAbout(args, sheets);
   }
   return savesAbout(campaign, encounter, call.name, args, sheets) ?? moreAbout(campaign, encounter, call.name, args, sheets);
+}
+
+// A character's check or save the GM asks for (request_roll), in a fight or
+// out of one.
+function requestRollAbout(args: Record<string, unknown>, sheets: readonly CharacterSheet[]): About | null {
+  const hero = sheets.find((sheet) => sheet.id === args.characterId);
+  const kind = typeof args.kind === "string" ? args.kind : "";
+  // Initiative waits on its roller's card now (after-roll-logic.ts), but no
+  // watch stops for it: that is a ruling still to make.
+  const tag = hero && canWaitOnRoll(kind) && kind !== "initiative" && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
+  if (!hero || !tag) {
+    return null;
+  }
+  return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
 }
 
 // "Within 30 feet" and "a creature you can see", for Chronal Shift: the
@@ -326,6 +337,12 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
     if (foretoldLeft(sheet).length > 0) {
       return { watcher: sheet, power: "portent", choices: choicesOf(about.rolls, () => "success") };
     }
+    // Cosmic Omen and Restore Balance, before the roll as Portent is
+    // (foresight-before.ts): an enemy's attack among the rolls they answer.
+    const before = beforeRollAt(campaignId, sheet, about, sheets, (ref) => side(ref) === side(sheet.id));
+    if (before) {
+      return { watcher: sheet, power: before.power, choices: choicesOf(before.rolls, () => "success") };
+    }
     // A foe's success is rolled again, an ally's failure; a roll the
     // roller's own card answers once it lands is offered there instead.
     const mine = side(sheet.id);
@@ -370,8 +387,16 @@ export function watchFor(campaignId: string, encounter: Encounter, about: About,
 export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly HeldCall[]): boolean {
   const [first] = calls;
   const encounter = first ? getActiveEncounter(campaign.id) : null;
-  if (!first || !encounter) {
+  if (!first) {
     return false;
+  }
+  if (!encounter) {
+    // Out of a fight only an ally's check or save is stopped for, and only
+    // by a before-the-roll feature (foresight-before.ts tableWatcherFor).
+    const sheets = listSheets(campaign.id);
+    const about = first.name === "request_roll" ? requestRollAbout(argsOf(first.rawArguments), sheets) : null;
+    const found = about ? tableWatcherFor(campaign.id, about, sheets, (sheet) => canWatch(campaign.id, sheet, TABLE_WATCH)) : null;
+    return about && found ? Boolean(openStopFor(campaign, turn.id, calls, found, about.line)) : false;
   }
   const sheets = listSheets(campaign.id);
   const about = rollAbout(campaign, first, sheets, encounter);
@@ -454,7 +479,7 @@ export function watchStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCal
   const words = ROLL_WORDS[tag.kind];
   const encounter = words ? getActiveEncounter(campaign.id) : null;
   if (!encounter) {
-    return null;
+    return words ? tableStopForRoll(campaign, turn, call, tag, words, open) : null;
   }
   const sheets = listSheets(campaign.id);
   // A group's roll names every creature it stands for: the stop is for the
@@ -483,12 +508,37 @@ export function watchStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCal
   return open ? openStopFor(campaign, turn.id, [call], found, about.line) : found.watcher.id;
 }
 
-// Whether anyone at the table is watching this fight at all: read once per
-// held call, so a call nobody watches asks nothing of every d20 it throws.
+// Out of a fight: the stop before a character's check or save, for a sheet
+// watching the table (TABLE_WATCH). An ally's roll is thrown at once
+// otherwise (invoke-roll.ts), so this is where a before-the-roll feature can
+// answer it.
+function tableStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCall, tag: RollTag, words: string, open: boolean): string | null {
+  if (tag.roller !== "hero" || (tag.kind !== "save" && tag.kind !== "check")) {
+    return null;
+  }
+  const sheets = listSheets(campaign.id);
+  const hero = [tag.who ?? []].flat().map((name) => findNamed(sheets, name, (sheet) => [sheet.name])).find(Boolean);
+  if (!hero) {
+    return null;
+  }
+  const about: About = { line: `${hero.name} is about to make ${words}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
+  const found = tableWatcherFor(campaign.id, about, sheets, (sheet) => canWatch(campaign.id, sheet, TABLE_WATCH));
+  if (!found) {
+    return null;
+  }
+  return open ? openStopFor(campaign, turn.id, [call], found, about.line) : found.watcher.id;
+}
+
+// Whether anyone at the table is watching this fight at all, or the table
+// out of one: read once per held call, so a call nobody watches asks nothing
+// of every d20 it throws.
 export function anyoneWatching(campaignId: string): boolean {
   const encounter = getActiveEncounter(campaignId);
+  if (!encounter) {
+    return listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === TABLE_WATCH);
+  }
   // A ranger holding Slayer's Counter is asked without a Watch button (slayersCounterStops).
-  return Boolean(encounter) && listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === encounter?.id || holdsFeature(sheet, "slayer's counter"));
+  return listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === encounter.id || holdsFeature(sheet, "slayer's counter"));
 }
 
 globalThis.__odmWatchStop = watchStopForRoll;
@@ -497,17 +547,22 @@ globalThis.__odmOpenStop = openStopFor;
 globalThis.__odmAnyoneWatching = anyoneWatching;
 
 // Runs one held call with the chosen number armed on its first matching d20,
-// and pays for the number if a die took it. The line is for the model's answer.
+// and pays for the number if a die took it; or with Cosmic Omen or Restore
+// Balance set on it the same way (foresight-before.ts). The line is for the
+// model's answer.
 export async function runWithForetold<T>(
   campaign: Campaign,
   turnId: string,
-  choice: { watcherId: string; face: number; tags: readonly RollTag[]; line: string } | null,
+  choice: BeforeChoice | null,
   run: () => Promise<T>,
 ): Promise<{ result: T; portent: string | null }> {
+  if (choice?.power) {
+    return runWithBeforeRoll(campaign, { ...choice, power: choice.power }, run);
+  }
   // Spent some other way since it was chosen (the counter moved, an undo): the
   // die rolls honestly rather than show a number nobody paid for.
   const holder = choice ? getSheetById(choice.watcherId) : null;
-  if (!choice || !holder || !foretoldLeft(holder).includes(choice.face)) {
+  if (!choice || choice.face === null || !holder || !foretoldLeft(holder).includes(choice.face)) {
     return { result: await run(), portent: null };
   }
   armForetold(campaign.id, { face: choice.face, tags: choice.tags });

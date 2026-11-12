@@ -31,7 +31,6 @@ import {
   withBonusDie,
   withExtraD20,
   withFlatBonus,
-  withoutEdge,
   withRerolledD20,
   shiftCanHelp,
   type AfterRollId,
@@ -117,8 +116,8 @@ export function optionsForPending(
 // Who could answer a roll from their own screen, for a player whose rolls wait
 // (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
 // as it would on the roller's own options. Every row of after-roll-table.ts
-// that answers another's roll: Chronal Shift, Restore Balance, War God's
-// Blessing and Flash of Genius on a miss or a failure (the artificer may also
+// that answers another's roll: Chronal Shift, War God's Blessing and Flash
+// of Genius on a miss or a failure (the artificer may also
 // spend Flash of Genius on their own roll), Violent Attraction on a weapon's
 // hit; then the rows of their own: Convergent Future and Bend Luck
 // (fate-turn.ts), a Rune Knight's prophetic state (mt-fb-runes.ts), the
@@ -306,10 +305,6 @@ export function spendAfterRoll(
       const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : elvenAccuracy ? 3 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
       const again = withAdvantageReroll(outcome, fresh);
       return again ? { outcome: again, choosing: false } : null;
-    }
-    case "cancel_edge": {
-      const level = withoutEdge(outcome);
-      return level ? { outcome: level, choosing: false } : null;
     }
     default:
       return null;

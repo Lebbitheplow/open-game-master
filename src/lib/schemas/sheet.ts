@@ -822,6 +822,7 @@ export const fullPatchSheetSchema = patchSheetSchema.extend({
   conditionMeta: conditionMetaSchema.optional(),
   resources: resourcesSchema.optional(),
   foretold: z.array(z.number().int().min(1).max(20)).max(3).optional(),
+  omen: z.enum(["weal", "woe"]).nullable().optional(),
   wildShape: wildShapeSchema.optional(),
   // Bound creatures (familiars, animal companions, drakes); managed by the
   // pet engine (src/lib/dm/pet-tools.ts), never player-patchable directly.
@@ -912,6 +913,10 @@ export type CharacterSheet = {
   // The numbers Portent foretold at the last long rest, kept until used
   // (src/lib/dm/foretold-logic.ts).
   foretold?: number[];
+  // Cosmic Omen's Weal or Woe, read from the die rolled at the last long
+  // rest and kept until the next one (src/lib/dm/before-roll-logic.ts). A
+  // sheet field, so no condition tool clears it.
+  omen?: "weal" | "woe" | null;
   // The fight its player is watching for Portent (src/lib/dm/foresight.ts).
   watchingEncounterId?: string | null;
   exhaustion: number;

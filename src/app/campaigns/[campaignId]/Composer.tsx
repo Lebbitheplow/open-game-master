@@ -27,6 +27,7 @@ import {
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
 import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { balanceLeft, holdsBeforeRoll, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
 import { DmStatusLine } from "@/app/campaigns/[campaignId]/DmStatusLine";
@@ -249,17 +250,24 @@ function ComposerInner({
   // may take (a test fight a person runs): a hit hero answers under the
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
-  // The watch button, for the character who holds a Portent number, or a
-  // Chronal Shift on a host that stops for it (chronalWatch), or Flash of
-  // Genius or Favored by the Gods on one that stops for a save (saveWatch).
+  // The watch button, for the character who holds a Portent number, or
+  // Cosmic Omen or Restore Balance on a host that stops for them
+  // (beforeRollWatch), or a Chronal Shift on a host that stops for it
+  // (chronalWatch), or Flash of Genius or Favored by the Gods on one that
+  // stops for a save (saveWatch).
+  const beforeWatch = hostOffers(capabilities, "beforeRollWatch");
   const watchingSheet = sheets.find(
     (sheet) =>
       sheet.userId === meUserId &&
       !sheet.isCompanion &&
       (foretoldLeft(sheet).length > 0 ||
+        ((omenLeft(sheet) !== null || balanceLeft(sheet)) && beforeWatch) ||
         (holdsFeature(sheet, "chronal shift") && hostOffers(capabilities, "chronalWatch")) ||
         ((holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods")) && hostOffers(capabilities, "saveWatch"))),
   );
+  // Out of a fight, only a before-the-roll feature is watched for: an ally's
+  // check or save is held at the stop (foresight-before.ts).
+  const tableWatchSheet = !encounter && beforeWatch ? sheets.find((sheet) => sheet.userId === meUserId && !sheet.isCompanion && holdsBeforeRoll(sheet)) : undefined;
   // And the companions nobody commands, whose reactions the seat plays at a
   // table a person runs as it plays their turns (issue 685).
   const answersForCompanions = gmCompanions && hostOffers(capabilities, "companionReactions") && companionReactors(sheets, meUserId, undefined, true).length > 0;
@@ -313,7 +321,12 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {encounter && watchingSheet && aiTurns && hostOffers(capabilities, "portentWatch") ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
+        {encounter && watchingSheet && aiTurns && hostOffers(capabilities, "portentWatch") ? (
+          <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} />
+        ) : !encounter && tableWatchSheet && aiTurns ? (
+          // Out of a fight the same toggle, for a before-the-roll feature on an ally's check or save (issue #908).
+          <WatchToggle campaignId={campaignId} sheet={tableWatchSheet} encounterId={TABLE_WATCH} />
+        ) : null}
         {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
           <WatchCard
             key={pending.id}
@@ -343,6 +356,8 @@ function ComposerInner({
             members={members}
             meUserId={meUserId}
             steersStory={steersStory}
+            beforeRoll={hostOffers(capabilities, "beforeRollWatch")}
+            reactionsUsed={encounter?.reactionsUsed ?? []}
           />
         ))}
         <FloorBanners

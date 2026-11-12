@@ -19,6 +19,7 @@ import { backstopWaiting, isBackstopPending } from "@/lib/dm/backstop-calls";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { continueBackstop } from "@/lib/dm/encounter-tools";
 import { runWithForetold } from "@/lib/dm/foresight";
+import { beforeChoiceOf } from "@/lib/dm/foresight-before";
 import { clearWatchAnswered, markWatchAnswered, runHeldCallNow } from "@/lib/dm/held-call";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { setDmStatus } from "@/lib/dm/status";
@@ -31,7 +32,7 @@ export async function runWatchedCalls(campaign: Campaign, turn: DmTurn, watcherI
   const picked = watchChoiceOf(stop);
   const shifting = armsWatchRow(stop.power);
   for (const [at, call] of stop.calls.entries()) {
-    const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
+    const choice = at === 0 ? beforeChoiceOf(stop, watcherId) : null;
     const shift = at === 0 && shifting && stop.shift && picked && armsWatchRow(stop.power) ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     if (at === 0) {
       markWatchAnswered(campaign.id, call.tape ?? []);

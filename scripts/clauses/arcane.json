@@ -2035,13 +2035,13 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Clockwork Soul",
   "level": 1,
-  "sha": "21e6384f64df",
+  "sha": "48900f9d4b15",
   "clauses": [
    {
-    "c": "A reaction cancels advantage or disadvantage on a roll within 60 feet",
+    "c": "When a creature within 60 feet is about to roll a d20 with advantage or disadvantage, a reaction cancels it and the roll is made with one d20",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: balance-cancel",
-    "by": "src/lib/dm/arcane-triggered.ts restoreBalance (the hit record's first die)"
+    "by": "src/lib/dm/foresight-before.ts (the watch stop before another's roll, in a fight or with the Watch toggle out of one) and the before-roll route (the hold before the sorcerer's own disadvantaged check or save); one d20 is thrown (db/dice-scripts.ts armBeforeRoll), paid only if the roll had an edge. A GM's use_resource for a roll that never waited settles the hit record on its first die (arcane-triggered.ts restoreBalance)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",

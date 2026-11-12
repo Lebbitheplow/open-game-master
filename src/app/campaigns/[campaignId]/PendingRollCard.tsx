@@ -26,6 +26,7 @@ import { heldInspiration } from "@/lib/dm/roll-riders";
 import { INSPIRED_KINDS } from "@/lib/dm/pending-inspiration";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -64,6 +65,8 @@ export function PendingRollCard({
   members,
   meUserId,
   steersStory,
+  beforeRoll = false,
+  reactionsUsed = [],
 }: {
   campaignId: string;
   pending: PendingRoll;
@@ -71,6 +74,10 @@ export function PendingRollCard({
   members: CampaignMember[];
   meUserId: string;
   steersStory: boolean;
+  // The host answers the before-roll route (capabilities beforeRollWatch).
+  beforeRoll?: boolean;
+  // Who has spent their reaction this round, in a fight.
+  reactionsUsed?: readonly string[];
 }) {
   const [values, setValues] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
@@ -333,6 +340,32 @@ export function PendingRollCard({
     }
   }
 
+  // Cosmic Omen's Weal and Restore Balance on the character's own roll, before
+  // it is thrown (before-roll-logic.ts, issue #908).
+  const beforeChoices =
+    beforeRoll && character && !pending.thrown
+      ? ownBeforeRollChoices(character, { kind: pending.kind, expression: pending.expression, reactionFree: !reactionsUsed.includes(character.id), used: pending.carry?.before })
+      : [];
+  async function spendBefore(use: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/before-roll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "Could not use that.");
+      }
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function inspire() {
     setBusy(true);
     setError("");
@@ -423,6 +456,23 @@ export function PendingRollCard({
             >
               <Sparkles className="size-3.5" /> Spend Inspiration
             </button>
+          ) : null}
+          {beforeChoices.length ? (
+            <div role="group" aria-label="Before you roll" className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs">Before you roll:</span>
+              {beforeChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void spendBefore(choice.id)}
+                  title={choice.note}
+                  className="motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 disabled:opacity-50"
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
           ) : null}
           {foretold.length ? (
             <div role="group" aria-label="Use a number Portent foretold" className="mt-1.5 flex flex-wrap items-center gap-1.5">

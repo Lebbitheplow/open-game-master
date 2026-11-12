@@ -7,6 +7,7 @@
 // an enemy's turn ends beside them, Hurl Through Hell after a hit.
 //
 // Pure; hand-react.ts reactionCards deals these with the hit reactions.
+import { BEFORE_ROLL_COUNTERS } from "@/lib/dm/before-roll-logic";
 import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { costGate, gated, standingGate, type HandCard, type HandCost, type HandTarget, type HandTurn } from "@/lib/battlemap/hand-core";
@@ -87,6 +88,10 @@ export function triggerCards(
   const context = (label: string) => ({ holderId: sheet.id, near, quarry: (mark: string) => quarryOf(sheet, mark), label });
   const cards: HandCard[] = [];
   for (const id of TRIGGERED_COUNTERS) {
+    // Cosmic Omen and Restore Balance are used before the roll, at the hold
+    // and the watch stop (before-roll-logic.ts, issue #908): a card dealt
+    // once the roll is on record answers it later than either allows.
+    if (BEFORE_ROLL_COUNTERS.includes(id)) continue;
     const state = sheet.resources[id];
     const def = resourceDef(id);
     const spec = triggerSpecFor(def?.displayName ?? id, { counterId: id });

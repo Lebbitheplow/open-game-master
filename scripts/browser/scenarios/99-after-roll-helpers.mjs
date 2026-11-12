@@ -1,8 +1,6 @@
-// The two rows the after-the-roll table brought to another player's roll
-// (src/lib/dm/after-roll-table.ts):
-//   - Restore Balance: the player's poisoned fighter swings with disadvantage
-//     and enters a 15 and a 3; the 3 misses, and the lead, whose Clockwork Soul
-//     sorcerer stands beside them, sees the card with the first die's hit on it.
+// The row the after-the-roll table brought to another player's roll
+// (src/lib/dm/after-roll-table.ts; Restore Balance, which #907 also brought,
+// is used before the roll by the ruling on issue #908):
 //   - Violent Attraction: the player's fighter enters a 15 and hits, and the
 //     lead's Graviturgy wizard is offered 1d10 more damage on the hit. The
 //     player's own screen says the attack hits and someone may still add to it.
@@ -85,23 +83,6 @@ const scenario = {
         check(!day.length, `axe on the card by day: ${day.map((entry) => entry.id).join(", ")}`);
         await t.shot(`${name}-day`);
         await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
-      }
-
-      // ---- Restore Balance: the first d20 turns the poisoned miss ----
-      {
-        const table = ids.balanceTables[viewport];
-        // 2d20, the lower kept: the 3 misses AC 15, the first die's 15 hits.
-        const { choices, state } = await lane(table, [15, 3]);
-        check(await page.getByText(/Bren Ash rolled \d+ \(the die shows 3\) and misses as it stands/).locator("visible=true").count(), "the lead reads that the roll misses");
-        const balance = choices.getByRole("button", { name: "Restore Balance: Bren Ash without disadvantage" });
-        await looks(choices, balance, "balance");
-        await balance.focus();
-        await page.keyboard.press("Enter");
-        await eventually(async () => !(await choices.count()), { timeoutMs: 15_000, label: "the card gone once the lead answers" });
-        const after = await state();
-        const sorcerer = after.sheets.find((sheet) => sheet.id === table.hero);
-        check(sorcerer?.resources?.sub_restore_balance?.used === 1, `one use of Restore Balance spent (${JSON.stringify(sorcerer?.resources?.sub_restore_balance)})`);
-        check(after.pendingRolls?.some((entry) => entry.kind === "damage"), "the hit now asks the player for damage");
       }
 
       // ---- Violent Attraction: 1d10 more on the hit ----

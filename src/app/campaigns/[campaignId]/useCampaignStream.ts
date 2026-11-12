@@ -90,6 +90,9 @@ export type PendingRoll = {
   // it is for, and whose roll it may answer when there is more than one
   // (`when`: the words a Chronal Shift waits for, "if it succeeds").
   watch?: { line: string; deadline: string; power?: WatchPower; choices?: Array<{ name: string; when: string }> } | null;
+  // What the roll carries that its card reads: the before-the-roll features
+  // already used on it (src/lib/dm/before-roll-logic.ts).
+  carry?: { before?: Array<"cosmic_omen" | "restore_balance"> } | null;
   userId: string;
   characterId: string | null;
   kind: string;

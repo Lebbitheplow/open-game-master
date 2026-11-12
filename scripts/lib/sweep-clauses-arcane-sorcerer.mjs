@@ -607,6 +607,28 @@ export function probes(rig, shared) {
       const cancel = await spend(clock(), "Restore Balance");
       assert.equal(cancel.ok, true, cancel.error);
       assert.equal(hp(clock()), before, `on its first die alone, a 2, the attack misses: ${show(cancel).slice(0, 160)}`);
+      // Before the roll, as the watch stop sets it (foresight-before.ts, the
+      // ruling on issue #908): the attack is thrown with one d20, and the use
+      // and the reaction are paid only because it had advantage to cancel.
+      const { runWithForetold } = await import("../../src/lib/dm/foresight.ts");
+      const { getCampaignById } = await import("../../src/lib/db/campaigns.ts");
+      const spent = () => sheet(clock()).resources.sub_restore_balance.used;
+      const set = async (args) => {
+        const [fresh] = await stage(clock(), { others: [friend()], first: friend() });
+        rig.refill(clock());
+        const tag = { roller: "enemy", kind: "attack", who: foe(fresh).displayName };
+        const was = { hp: hp(clock()), used: spent() };
+        const ran = await runWithForetold(getCampaignById(world.campaignId), "", { watcherId: clock().id, face: null, power: "restore_balance", tags: [tag], line: "" }, () => call("enemy_attack", { enemyId: fresh.id, targetCharacterId: clock().id, ...args }, [2, 19, 4]));
+        assert.equal(ran.result.ok, true, ran.result.error);
+        return { ...ran, lost: was.hp - hp(clock()), paid: spent() - was.used };
+      };
+      const edged = await set({ advantage: "advantage", advantageReason: "the sorcerer is flanked" });
+      assert.equal(edged.lost, 0, "the 2 alone misses: the 19 was never thrown");
+      assert.equal(edged.paid, 1, "paid for the advantage it cancelled");
+      assert.match(edged.portent ?? "", /used Restore Balance/);
+      const plain = await set({});
+      assert.equal(plain.portent, null, "a roll with no edge pays nothing");
+      assert.equal(plain.paid, 0);
     },
     "balance-uses": async () => {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();

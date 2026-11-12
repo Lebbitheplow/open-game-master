@@ -1,5 +1,9 @@
 // Every choice a character may make after a d20 has landed and before the game
-// says what it did: one row per feature. The after-the-roll card
+// says what it did: one row per feature. The choices made before a d20 is
+// thrown are not rows: Portent, Cosmic Omen and Restore Balance are the
+// stop's own powers (STOP_POWERS below), used at the hold before the
+// holder's own roll and at the watch stop before another's, and never on
+// this card (the maintainer's ruling on issue #908). The after-the-roll card
 // (after-roll-logic.ts, after-roll.ts, AfterRollCard.tsx), the watch stop
 // before a roll inside a call (foresight.ts, chronal-shift.ts, WatchCard.tsx),
 // the route enums and the client's types all read this table.
@@ -37,12 +41,11 @@ export type AfterRollWhose = "own" | "other" | "own_or_other";
 //   add_flat      a number is added (Guided Strike's 10, Flash of Genius's Intelligence modifier)
 //   reroll        the d20s are rolled again, and the new roll stands (Chronal Shift)
 //   reroll_edge   rolled again with advantage, and the new roll stands (Master Duelist)
-//   cancel_edge   advantage or disadvantage no longer applies: the first d20 thrown counts
 //   hit_damage    the hit deals more: flat, dice, or its lightning and thunder at their maximum
 //   own           the row's `module` offers it and spends it, since what it does
 //                 reads more than the table holds (a once-a-turn mark, a die paid
 //                 only if it turns the roll, a proficiency, a roll dictated outright)
-export type AfterRollEffect = "extra_d20" | "add_die" | "add_dice" | "add_flat" | "reroll" | "reroll_edge" | "cancel_edge" | "hit_damage" | "own";
+export type AfterRollEffect = "extra_d20" | "add_die" | "add_dice" | "add_flat" | "reroll" | "reroll_edge" | "hit_damage" | "own";
 
 // How much an add_* or hit_damage row adds. `ability`: the holder's modifier
 // for it. `held`: the size of the die held on the sheet. `level`: 5 + twice
@@ -258,29 +261,6 @@ export const AFTER_ROLL_ROWS = [
     },
     label: "Favored by the Gods: add {amount}",
     note: "Spend your use of Favored by the Gods: add {amount} to this {what}.",
-  },
-  {
-    // Restore Balance (Clockwork Soul 1): a reaction cancels advantage or
-    // disadvantage on a roll within 60 feet. The rules have it chosen before
-    // the roll; on the card it is chosen after the dice, and the first d20
-    // thrown is the roll's one d20, as if the second had never been rolled.
-    // Offered on the holder's or an ally's roll with disadvantage, where the
-    // first die would carry it.
-    id: "restore_balance",
-    feature: "Restore Balance",
-    cost: "counter",
-    counter: "sub_restore_balance",
-    reaction: true,
-    kinds: ["check", "save", "attack"],
-    whose: "own_or_other",
-    rangeFt: 60,
-    sight: true,
-    effect: "cancel_edge",
-    when: "short",
-    label: "Restore Balance: no disadvantage",
-    note: "Use your reaction and a use of Restore Balance: this {what} loses its disadvantage, and the first d20 rolled counts.",
-    otherLabel: "Restore Balance: {name} without disadvantage",
-    otherNote: "Use your reaction and a use of Restore Balance: {name}'s {what} loses its disadvantage, and the first d20 rolled counts.",
   },
   {
     // War God's Blessing (War Domain 6): the cleric's reaction gives +10 to
@@ -531,14 +511,39 @@ export const SAVE_HELPS = WATCH_ROWS.filter((row) => row.effect === "add_flat" |
 export const isSaveHelp = (power: string): power is SaveHelp => (SAVE_HELPS as readonly string[]).includes(power);
 
 // The stop's own powers, not rows of this table: chosen at the stop before
-// the roll rather than armed for after it. Portent's number goes on the d20
-// as it is thrown; Slayer's Counter and the Cloud Rune act at the stop itself
+// the roll rather than armed for after it. The `before` ones go on the d20
+// as it is thrown and are paid only if one took them (foresight.ts
+// runWithForetold): Portent's number, Cosmic Omen's d6, Restore Balance's
+// one d20. Slayer's Counter and the Cloud Rune act at the stop itself
 // (`atStop`), arming nothing on the dice (turn-hold.ts). `words` are the
 // card's where they differ from a roll's ("Let it land" for a hit).
+// {amount} in Cosmic Omen's button: "Weal: add 1d6" or "Woe: take off 1d6".
 export type StopWords = { group?: string; pickGroup?: string; pickPrompt?: string; pickFirst?: string; pass?: string; passing?: string };
-export type StopPower = { id: string; feature: string; hint: string; button?: string; title?: string; spentError?: string; atStop?: boolean; words?: StopWords };
+export type StopPower = { id: string; feature: string; hint: string; button?: string; title?: string; spentError?: string; atStop?: boolean; before?: boolean; words?: StopWords };
 export const STOP_POWERS = [
-  { id: "portent", feature: "Portent", hint: "use a foretold number", words: { group: "Use a number Portent foretold, or let it roll" } },
+  { id: "portent", feature: "Portent", hint: "use a foretold number", before: true, words: { group: "Use a number Portent foretold, or let it roll" } },
+  {
+    // Cosmic Omen (Circle of Stars 6, before-roll-logic.ts): the omen read at
+    // the last long rest, on a roll in sight within 30 feet before it is made.
+    id: "cosmic_omen",
+    feature: "Cosmic Omen",
+    hint: "add a d6 to a friend's roll (Weal) or take one off a foe's (Woe) before it is made",
+    button: "{amount}",
+    title: "Spend your reaction and a use of Cosmic Omen: a d6 is rolled with the roll and added (Weal) or taken off (Woe), however the roll turns out. Paid only if the roll is made.",
+    spentError: "Your Cosmic Omen is spent, or your reaction is.",
+    before: true,
+  },
+  {
+    // Restore Balance (Clockwork Soul 1, before-roll-logic.ts): a roll within
+    // 60 feet is made with one d20, its advantage or disadvantage cancelled.
+    id: "restore_balance",
+    feature: "Restore Balance",
+    hint: "cancel the advantage or disadvantage of a roll before it is made",
+    button: "Cancel its advantage or disadvantage",
+    title: "Spend your reaction and a use of Restore Balance: the roll is made with one d20. Paid only if the roll had advantage or disadvantage to cancel.",
+    spentError: "Your Restore Balance is spent, or your reaction is.",
+    before: true,
+  },
   {
     // Slayer's Counter (Monster Slayer 15): asked without a Watch button, at
     // the ranger's own save that their prey forces (foresight.ts).
@@ -585,6 +590,9 @@ export const watchRow = (power: WatchPower) => (STOP_BY_ID.has(power) ? null : (
 export const answeredAtStop = (power: WatchPower | undefined): boolean => Boolean(power && (STOP_BY_ID.get(power) as StopPower | undefined)?.atStop);
 // A stop that arms a row on the dice, taken once the roll goes the wrong way.
 export const armsWatchRow = (power: WatchPower | undefined): power is WatchRowId => Boolean(power) && !STOP_BY_ID.has(power!);
+// A stop power that goes on the d20 as it is thrown (Portent, Cosmic Omen,
+// Restore Balance), answered before the roll and paid only if a d20 took it.
+export const armsBeforeRoll = (power: WatchPower | undefined): boolean => Boolean(power && (STOP_BY_ID.get(power) as StopPower | undefined)?.before);
 // The words a stop's card shows: the row's watch words, or the stop power's own.
 export function watchWords(power: WatchPower): { button: string; title: string; spentError: string } {
   const row = watchRow(power);

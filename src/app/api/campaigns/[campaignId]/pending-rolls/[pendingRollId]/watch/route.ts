@@ -9,6 +9,7 @@ import { canHelpSaveNow, canReactNow, canShiftNow } from "@/lib/dm/chronal-shift
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { canTurnFate } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
+import { balanceLeft, omenLeft } from "@/lib/dm/before-roll-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export const runtime = "nodejs";
@@ -22,6 +23,9 @@ export const dynamic = "force-dynamic";
 function canAnswerNow(campaignId: string, sheet: CharacterSheet, power: WatchPower): boolean {
   if (power === "portent") return false;
   if (power === "slayers_counter") return canReactNow(campaignId, sheet);
+  // Before the roll: the reaction and a use, and Cosmic Omen's omen (before-roll-logic.ts).
+  if (power === "cosmic_omen") return canReactNow(campaignId, sheet) && omenLeft(sheet) !== null;
+  if (power === "restore_balance") return canReactNow(campaignId, sheet) && balanceLeft(sheet);
   if (power === "cloud_rune") {
     const rune = sheet.resources?.sub_cloud_rune;
     return canReactNow(campaignId, sheet) && Boolean(rune) && rune!.max - rune!.used > 0;
@@ -45,7 +49,8 @@ const choiceSchema = z.union([
 // it goes the wrong way, Flash of Genius or Favored by the Gods to add to the
 // save if it fails, Convergent Future or Bend Luck to turn it
 // (src/lib/dm/chronal-shift.ts, fate-turn.ts), Slayer's Counter or the Cloud
-// Rune to act at the stop itself, or the roll goes ahead.
+// Rune to act at the stop itself, Cosmic Omen or Restore Balance to go on the
+// d20 as it is thrown (src/lib/dm/foresight-before.ts), or the roll goes ahead.
 // Whoever runs the story may send a stop on, and so may anyone once its time
 // is up.
 export async function POST(

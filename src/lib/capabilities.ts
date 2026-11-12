@@ -242,6 +242,13 @@ export const SERVER_FEATURES = {
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the
   // button is not drawn there and the numbers wait on the wizard's own rolls.
   portentWatch: true,
+  // Cosmic Omen and Restore Balance before the roll (issue #908,
+  // src/lib/dm/before-roll-logic.ts): POST
+  // /api/campaigns/[id]/pending-rolls/[id]/before-roll on the holder's own
+  // check or save, `shift` at a watch stop for another's, and the Watch
+  // toggle out of a fight (foresight route, TABLE_WATCH). An older host has
+  // none of these, so neither the buttons nor the toggle are drawn there.
+  beforeRollWatch: true,
   // Watching a fight for Chronal Shift, and the "whose roll" pick at a stop
   // (src/lib/dm/foresight.ts, chronal-shift.ts): POST
   // /api/campaigns/[id]/foresight takes a Chronurgy wizard with no Portent

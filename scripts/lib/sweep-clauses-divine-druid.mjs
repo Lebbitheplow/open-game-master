@@ -447,9 +447,52 @@ export const DRUID = {
 
   "druid::Cosmic Omen": async (rig) => {
     const facts = await rig.counterFacts("druid", "Circle of Stars", 6, "sub_cosmic_omen");
+    // The omen a long rest reads, and the d6 on a roll before it is thrown
+    // (before-roll-logic.ts, the ruling on issue #908): Weal at the hold
+    // before the druid's own check, Woe at the watch stop before a foe's
+    // attack. scripts/test-enforce-before-roll.mjs runs the stop itself.
+    const { call: callRoute } = await import("./enforce-campaign.mjs");
+    const { listOpenPendingRolls, getPendingRoll } = await import(new URL("../../src/lib/db/dm-turns.ts", import.meta.url).href);
+    const { getRoll } = await import(new URL("../../src/lib/db/rolls.ts", import.meta.url).href);
+    const { runWithForetold } = await import(new URL("../../src/lib/dm/foresight.ts", import.meta.url).href);
+    const { getCampaignById } = await import(new URL("../../src/lib/db/campaigns.ts", import.meta.url).href);
+    const { world } = rig;
+    const who = rig.hero("druid", "Circle of Stars", 6);
+    world.patch(who.id, { omen: null });
+    world.clearDice();
+    world.dice(3);
+    await world.invoke("take_rest", { kind: "long" });
+    world.clearDice();
+    const rested = world.sheet(who.id).omen;
+    world.patch(who.id, { omen: "weal" });
+    world.dice(10, 4);
+    await world.invoke("request_roll", { characterId: who.id, kind: "ability_check", ability: "wis", dc: 1, reason: "the stars" });
+    const [held] = listOpenPendingRolls(world.campaignId).filter((entry) => entry.characterId === who.id && !entry.thrown);
+    world.signIn({ id: world.sheet(who.id).userId });
+    const pressed = held ? await callRoute(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/before-roll"), "POST", { use: "cosmic_omen" }, { campaignId: world.campaignId, pendingRollId: held.id }) : null;
+    if (held) await callRoute(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"), "POST", { fallback: "digital" }, { campaignId: world.campaignId, pendingRollId: held.id });
+    world.clearDice();
+    const own = held ? getRoll(getPendingRoll(held.id).rollId) : null;
+    // Woe on a foe's attack, set before its d20 as the stop sets it.
+    const [enemy] = await rig.fight(who);
+    rig.foesTurn(enemy);
+    world.patch(who.id, { omen: "woe", resources: { ...world.sheet(who.id).resources, sub_cosmic_omen: { max: facts.max, used: 0 } } });
+    const tag = { roller: "enemy", kind: "attack", who: rig.enemy(enemy.id).displayName };
+    world.dice(12, 5);
+    const ran = await runWithForetold(getCampaignById(world.campaignId), "", { watcherId: who.id, face: null, power: "cosmic_omen", tags: [tag], line: "" }, () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: who.id }));
+    world.clearDice();
+    const swing = rig.lastRolls(6).filter((roll) => roll.kind === "attack").at(-1);
     return {
       uses: () => assert.equal(facts.max, profOf(6), `${facts.max} uses at 6th level (proficiency +3, Wisdom +${wis(6)})`),
       "long-rest": () => assert.deepEqual([facts.afterShort, facts.afterLong], [facts.max, 0]),
+      "omen-rest": () => assert.equal(rested, "woe", `a long rest with the die on 3 (odd) read ${rested}`),
+      "omen-stop": () => {
+        assert.equal(pressed?.status, 200, `Weal at the hold before the druid's own check: ${JSON.stringify(pressed?.json)}`);
+        assert.match(own?.expression ?? "", /\+1d6$/, "the d6 rides the druid's own check");
+        assert.equal(own?.total, 10 + wis(6) + 4);
+        assert.match(ran.portent ?? "", /used Cosmic Omen \(Woe\)/, `the stop's Woe on the foe's attack: ${ran.portent}`);
+        assert.match(swing?.expression ?? "", /-1d6$/, `the d6 comes off the attack: ${swing?.expression}`);
+      },
     };
   },
 

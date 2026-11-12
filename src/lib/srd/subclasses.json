@@ -1547,7 +1547,7 @@
           "6": [
             {
               "n": "Cosmic Omen",
-              "d": "After a long rest, read your map for Weal or Woe; a reaction then adds or subtracts a d6 on a roll near you, a proficiency-bonus number of times per long rest."
+              "d": "After each long rest, roll a die: an even number is Weal and an odd one Woe until the next long rest. When a creature you can see within 30 feet is about to make an attack roll, a saving throw or an ability check, a reaction rolls a d6 and adds it to that roll (Weal) or takes it off (Woe), a proficiency-bonus number of times per long rest."
             }
           ],
           "10": [
@@ -3784,7 +3784,7 @@
             },
             {
               "n": "Restore Balance",
-              "d": "A reaction cancels advantage or disadvantage on a roll within 60 feet, a proficiency-bonus number of times per long rest."
+              "d": "When a creature within 60 feet is about to roll a d20 with advantage or disadvantage, a reaction cancels it and the roll is made with one d20, a proficiency-bonus number of times per long rest."
             }
           ],
           "6": [

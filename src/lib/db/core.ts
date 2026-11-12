@@ -1671,6 +1671,8 @@ function ensureSchema(db: SqliteDatabase) {
     ["summon_json", `TEXT`],
     // The numbers Portent foretold at the last long rest (src/lib/dm/foretold-logic.ts).
     ["foretold_json", `TEXT`],
+    // Cosmic Omen's Weal or Woe from the last long rest (src/lib/dm/before-roll-logic.ts).
+    ["omen", `TEXT`],
     // The fight this wizard is watching for Portent (src/lib/dm/foresight.ts).
     ["watching_encounter_id", `TEXT`],
     // AI companion party member: owned by an unloginable bot user row so

@@ -11,6 +11,7 @@
 // after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
+import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
@@ -229,10 +230,13 @@ export function handleRequestRoll(
 
   const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
   // Portent replaces the d20 before it is thrown, so a wizard holding a number
-  // decides here: the roll waits unthrown, and the model waits with it.
+  // decides here: the roll waits unthrown, and the model waits with it. So
+  // does a druid's Weal or a sorcerer's Restore Balance on their own roll
+  // (before-roll-logic.ts, issue #908): both are chosen before the throw.
   // Not on initiative: the watch leaves it be (a ruling the maintainer has
   // still to make), and so does a wizard's own card.
-  const foretelling = canWait && fresh && args.kind !== "initiative" ? foretoldLeft(fresh).length > 0 : false;
+  const beforeOwn = canWait && fresh ? ownBeforeRollChoices(fresh, { kind: args.kind, expression: resolved.expression, reactionFree: reactionFreeFor(campaignId, fresh.id) }) : [];
+  const foretelling = canWait && fresh && args.kind !== "initiative" ? foretoldLeft(fresh).length > 0 || beforeOwn.length > 0 : false;
   if (sheet && (foretelling || realDiceUserIds.has(sheet.userId))) {
     const pending = createPendingRoll({
       campaignId,
@@ -263,7 +267,7 @@ export function handleRequestRoll(
     return {
       ok: true,
       parked: true,
-      note: foretelling ? `Waiting on ${sheet.name} to roll or to use Portent.` : `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
+      note: foretelling ? `Waiting on ${sheet.name} to roll or to use ${beforeRollWords(fresh, beforeOwn)}.` : `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
     };
   }
 

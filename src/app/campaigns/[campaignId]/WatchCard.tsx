@@ -5,8 +5,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
-import { holdsFeature } from "@/lib/srd/feature-names";
-import { amountWords, stopPower, WATCH_FEATURES, WATCH_HINTS, WATCH_ROWS, watchRow, watchWords, type WatchPower } from "@/lib/dm/after-roll-table";
+import { amountWords, stopPower, WATCH_FEATURES, WATCH_HINTS, watchRow, watchWords, type WatchPower } from "@/lib/dm/after-roll-table";
+import { OMEN_SIDES, OMEN_WORDS, TABLE_WATCH, watchFeatureOf } from "@/lib/dm/before-roll-logic";
 
 // A finger-sized target (40px, the kit's own) with a ring for the keyboard.
 const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70";
@@ -16,16 +16,8 @@ const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-
 type Power = WatchPower;
 const FEATURES = WATCH_FEATURES;
 
-// The feature a character watches with: a diviner's numbers first, then the
-// watch rows in the table's order (src/lib/dm/after-roll-table.ts): a
-// chronurgist's shift, an artificer's Flash of Genius, a divine soul's
-// Favored by the Gods (src/lib/dm/foresight.ts asks in the same order).
-export function watchFeatureOf(sheet: CharacterSheet): Power | null {
-  if (foretoldLeft(sheet).length > 0) return "portent";
-  // Slayer's Counter and the Cloud Rune have no row here: they are asked
-  // without the button, at their own stops (foresight.ts, cloud-rune.ts).
-  return WATCH_ROWS.find((row) => holdsFeature(sheet, row.feature))?.id ?? null;
-}
+// The feature a character watches with (before-roll-logic.ts).
+export { watchFeatureOf };
 
 // What watching lets the player do, on the button's hint.
 const WATCH_FOR = WATCH_HINTS;
@@ -114,8 +106,12 @@ export function WatchCard({
 
   const numbers = watcher ? [...new Set(foretoldLeft(watcher))] : [];
   const row = watchRow(power);
-  // What the row adds, in the button's words: Flash of Genius's modifier, Favored by the Gods' 2d4.
-  const amount = row?.amount?.kind === "ability" ? String(intModifier(watcher)) : row ? amountWords(row) : "";
+  // What the row adds, in the button's words: Flash of Genius's modifier,
+  // Favored by the Gods' 2d4, the omen the druid read at their last rest.
+  const omen = power === "cosmic_omen" ? (watcher?.omen ?? null) : null;
+  const amount = omen
+    ? `${OMEN_WORDS[omen]}: ${omen === "weal" ? "add" : "take off"} 1d${OMEN_SIDES}`
+    : row?.amount?.kind === "ability" ? String(intModifier(watcher)) : row ? amountWords(row) : "";
   const choice = asking && pick !== null ? { choice: pick } : {};
   const when = choices[pick ?? 0]?.when ?? "";
   // The creature a Cloud Rune turns the hit onto, once one is picked: the
@@ -192,8 +188,10 @@ export function WatchCard({
   );
 }
 
-// The button: only a character who holds a number, a Chronal Shift, Flash of
-// Genius or Favored by the Gods, only in a fight.
+// The button: only a character who holds a feature the stop answers with. In
+// a fight, every one of them; out of one (`encounterId` TABLE_WATCH), only a
+// before-the-roll feature (Portent, Cosmic Omen, Restore Balance), and the
+// stops are for an ally's check or save (foresight-before.ts).
 export function WatchToggle({
   campaignId,
   sheet,
@@ -206,7 +204,9 @@ export function WatchToggle({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const on = sheet.watchingEncounterId === encounterId;
-  const power = watchFeatureOf(sheet) ?? "portent";
+  const table = encounterId === TABLE_WATCH;
+  const power = watchFeatureOf(sheet, table) ?? "portent";
+  const rolls = table ? "each check or save an ally makes" : "each roll you can see";
   const feature = FEATURES[power];
   const what = WATCH_FOR[power];
 
@@ -237,7 +237,7 @@ export function WatchToggle({
         aria-pressed={on}
         disabled={busy}
         onClick={() => void toggle()}
-        title={on ? `The game stops before each roll you can see, so you can ${what}. It turns off when the fight ends.` : `Stop the game before each roll you can see, so you can ${what}. Only turn it on when it matters: every stop holds up the table.`}
+        title={on ? `The game stops before ${rolls}, so you can ${what}. ${table ? "It stays on until you turn it off." : "It turns off when the fight ends."}` : `Stop the game before ${rolls}, so you can ${what}. Only turn it on when it matters: every stop holds up the table.`}
         className={`motion-press inline-flex min-h-10 items-center rounded-full border px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING} ${on ? "border-amber-400 bg-amber-500/20" : "border-amber-400/60"}`}
       >
         {on ? `Watching for ${feature}` : `Watch for ${feature}`}

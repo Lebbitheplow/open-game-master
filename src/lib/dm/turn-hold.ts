@@ -22,6 +22,7 @@ import { listSheets } from "@/lib/db/sheets";
 import { tableNote } from "@/lib/dm/between-io";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { openWatchStop, runWithForetold, watchFor } from "@/lib/dm/foresight";
+import { beforeChoiceOf } from "@/lib/dm/foresight-before";
 import { moveSavesAbout } from "@/lib/dm/foresight-more";
 import { publishPersisted } from "@/lib/events";
 
@@ -89,7 +90,7 @@ export async function runHeldMove(pendingId: string): Promise<void> {
   // Slayer's Counter never stops a turn's end: it answers a save alone; nor
   // does the Cloud Rune, which answers a hit.
   const shifting = armsWatchRow(stop.power);
-  const choice = !shifting && stop.face !== null && watcherId ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
+  const choice = watcherId ? beforeChoiceOf(stop, watcherId) : null;
   const shift = shifting && stop.shift && picked && armsWatchRow(stop.power) && watcherId ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
   const { endHeldOwnTurn } = await import("@/lib/dm/encounter-tools");
   const ran = await runWithShift(campaign.id, shift, () => runWithForetold(campaign, pending.turnId, choice, async () => endHeldOwnTurn(campaign.id, characterId)));

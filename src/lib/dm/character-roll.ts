@@ -20,6 +20,7 @@
 // rollExpression: scripts/test-enforce-sweep-dice-sites.mjs walks the source
 // for sites that throw one and fails on a site it has not classified.
 
+import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
 import { dicePreferencesOf } from "@/lib/db/dm-turns";
@@ -145,9 +146,11 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, aske
   // again (foresight.ts, chronal-shift.ts).
   const waits = mayWait && roll.kind !== "damage" && rollsCanWait(sheet) && !shiftArmedFor(campaign.id, tag);
   // Portent replaces the d20 before it is thrown: a wizard holding a number
-  // decides here, as on a requested check (invoke-roll.ts).
-  if (waits && !roll.attack && roll.kind !== "initiative" && foretoldLeft(sheet).length > 0) {
-    parkHeldCall({ ...card, parkedFor: "foretold", note: `Waiting on ${sheet.name} to roll or to use Portent.` });
+  // decides here, as on a requested check (invoke-roll.ts). So does a druid's
+  // Weal or a sorcerer's Restore Balance (before-roll-logic.ts, issue #908).
+  const beforeOwn = waits && !roll.attack ? ownBeforeRollChoices(sheet, { kind: roll.kind, expression: roll.expression, reactionFree: reactionFreeFor(campaign.id, sheet.id) }) : [];
+  if (waits && !roll.attack && roll.kind !== "initiative" && (foretoldLeft(sheet).length > 0 || beforeOwn.length > 0)) {
+    parkHeldCall({ ...card, parkedFor: "foretold", note: `Waiting on ${sheet.name} to roll or to use ${beforeRollWords(sheet, beforeOwn)}.` });
   }
   const mark = tapeMark();
   const throwOnce = () => (roll.throwIt ? roll.throwIt() : rollExpression(roll.expression, undefined, { ...(tag ? { purpose: tag } : {}) }));

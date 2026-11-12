@@ -52,8 +52,8 @@ export type AfterRollOption = {
   // Another character's, offered on their player's screen: a Chronurgy
   // wizard's Chronal Shift on an ally's roll ("after you or a creature you
   // can see within 30 feet of you makes an attack roll, an ability check,
-  // or a saving throw"), War God's Blessing, Flash of Genius, Restore
-  // Balance, Violent Attraction. Absent: the roller's own.
+  // or a saving throw"), War God's Blessing, Flash of Genius, Violent
+  // Attraction. Absent: the roller's own.
   by?: string;
 };
 
@@ -63,7 +63,6 @@ export const CHANNEL_DIVINITY = "channel_divinity";
 export const MASTER_DUELIST = "sub_master_duelist";
 export const FAVORED_BY_THE_GODS = "sub_favored_by_the_gods";
 export const FLASH_OF_GENIUS = "art_flash_of_genius";
-export const RESTORE_BALANCE = "sub_restore_balance";
 export const VIOLENT_ATTRACTION = "sub_violent_attraction";
 export const GUIDED_STRIKE_BONUS = mostAdded(afterRollRow("guided_strike"));
 export const WAR_GODS_BLESSING_BONUS = mostAdded(afterRollRow("war_gods_blessing"));
@@ -225,28 +224,12 @@ export function attackHits(outcome: RollResult, ac: number, critRange: number): 
   return natural !== undefined && natural !== 1 && (natural >= critRange || outcome.total >= ac);
 }
 
-// The roll with its disadvantage gone after the dice: the first d20 thrown is
-// its one d20 (Restore Balance). Null on a roll of one d20.
-export function withoutEdge(outcome: RollResult): RollResult | null {
-  const lead = leadD20(outcome);
-  return lead && lead.dice.length > 1 ? keepD20(outcome, 0) : null;
-}
-
 // Whether the row, once paid, could turn this roll that falls short. A
 // fresh d20 can land at best a 20 on a check or save, and can always save a
 // miss (a natural 20 hits); a number added cannot lift a natural 1 to a hit.
 function carries(sheet: CharacterSheet, row: AfterRollRow, roll: Reading, modifier?: number): boolean {
   const { outcome, target } = roll;
   const natural = outcome.natural;
-  if (row.effect === "cancel_edge") {
-    // Offered on disadvantage alone (the dice kept the lowest): cancelling
-    // advantage on the roller's own side helps nobody. Not after a luck
-    // point, whose extra die is in the same pool.
-    const lead = leadD20(outcome);
-    const fixed = lead?.keep?.mode === "lowest" && !roll.taken.has("lucky") ? withoutEdge(outcome) : null;
-    if (!fixed || fixed.total <= outcome.total) return false;
-    return "ac" in target ? attackHits(fixed, target.ac, target.critRange) : target.dc === null || fixed.total >= target.dc;
-  }
   if ("ac" in target) {
     if (row.effect === "extra_d20" || row.effect === "reroll" || row.effect === "reroll_edge") return true;
     return natural !== 1 && outcome.total + mostFor(sheet, row, modifier) >= target.ac;
@@ -351,8 +334,8 @@ export function shiftCanHelp(roll: { kind: string; outcome: RollResult; dc: numb
 
 // Another character's choice on this roll, for a row that answers another's:
 // War God's Blessing (+10 where it turns a miss), Flash of Genius (the
-// artificer's Intelligence modifier, `modifier`), Restore Balance (an ally's
-// disadvantage). A roll with no DC is not offered to a helper (shiftCanHelp).
+// artificer's Intelligence modifier, `modifier`). A roll with no DC is not
+// offered to a helper (shiftCanHelp).
 // `own`: the helper is the roller (Flash of Genius on the artificer's own
 // roll, offered with the helpers'), where a roll with no DC still asks.
 export function helperOption(
