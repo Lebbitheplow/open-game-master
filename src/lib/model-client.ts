@@ -1,4 +1,4 @@
-import { getGlobalConfig } from "@/lib/db/app-settings";
+import { getAppSetting, getGlobalConfig, setAppSetting } from "@/lib/db/app-settings";
 import {
   BackendRefusal,
   describeTransportFailure,
@@ -28,12 +28,17 @@ import {
 import {
   buildPropsUrl,
   contextCacheKey,
+  knownContextWindow,
   normalizeBaseUrl,
   OPENAI_CONTEXT_TOKENS,
   paramsFromModelName,
+  probeMissUnreachable,
   readContextWindow,
+  readRememberedWindows,
   readReasoningKnob,
   readModelParams,
+  rememberWindow,
+  type RememberedWindow,
 } from "@/lib/dm/context-probe-logic";
 import { serverEnv } from "@/lib/server-env";
 import { isPrivateBackendHost } from "@/lib/backend-host";
@@ -315,9 +320,7 @@ export function storyContextTokens(settings: {
       (settings.customModel ?? "").trim() || getGlobalConfig().text.customModel || serverEnv("OPENAI_COMPAT_MODEL"),
     );
   }
-  const probed = probedContextWindows.get(
-    contextCacheKey(settings.customBaseUrl ?? "", settings.customModel ?? ""),
-  )?.window;
+  const probed = windowFor(contextCacheKey(settings.customBaseUrl ?? "", settings.customModel ?? ""));
   if (probed) {
     return Math.max(2_048, probed);
   }
@@ -344,7 +347,7 @@ export function storyWindowAssumed(settings: {
   if (Number.parseInt(serverEnv("OPENAI_COMPAT_CONTEXT"), 10) > 0 || endpointKind(settings.customBaseUrl ?? "") === "openai") {
     return false;
   }
-  if (probedContextWindows.get(contextCacheKey(settings.customBaseUrl ?? "", settings.customModel ?? ""))?.window) {
+  if (windowFor(contextCacheKey(settings.customBaseUrl ?? "", settings.customModel ?? ""))) {
     return false;
   }
   return !hostedContextWindow(settings.customBaseUrl ?? "", settings.customModel ?? "");
@@ -371,7 +374,21 @@ export function utilityWindowAssumed(settings: { utilityProvider: string; utilit
   if (settings.utilityProvider === "local" || endpointKind(baseUrl) === "openai") {
     return false;
   }
-  return !probedContextWindows.get(contextCacheKey(baseUrl, settings.utilityModel.trim()))?.window;
+  return !windowFor(contextCacheKey(baseUrl, settings.utilityModel.trim()));
+}
+
+// Whether the story endpoint's last probe found nothing listening (or a
+// llama-server still loading its model): a turn then waits for it rather
+// than building its prompt against a window nobody reported (turn.ts).
+export function storyEndpointUnreachable(settings: { textProvider: string; customBaseUrl?: string; customModel?: string }): boolean {
+  if (settings.textProvider === "local" || settings.textProvider === "harness") {
+    return false;
+  }
+  return endpointUnreachable(settings.customBaseUrl ?? "", settings.customModel ?? "");
+}
+
+export function endpointUnreachable(baseUrl: string, model: string): boolean {
+  return probedContextWindows.get(contextCacheKey(baseUrl, model))?.unreachable === true;
 }
 
 function openAiWindow(baseUrl: string, model: string): number {
@@ -386,24 +403,80 @@ function openAiWindow(baseUrl: string, model: string): number {
 // (the server still loading) must not leave the default in place until ODM
 // restarts. A miss is retried sooner than a hit, and probes of one endpoint
 // that overlap share one request.
-type ProbedWindow = { window: number; at: number };
+//
+// unreachable: the last probe found nothing listening (probeMissUnreachable).
+// Such a miss is asked again on the next turn (at 0): a refused connection
+// costs nothing, and a server still loading must be seen the moment it is up.
+type ProbedWindow = { window: number; at: number; unreachable?: boolean };
 const PROBE_HIT_TTL_MS = 30 * 60_000;
 const PROBE_MISS_TTL_MS = 2 * 60_000;
 const probedContextWindows = new Map<string, ProbedWindow>();
 const probesInFlight = new Map<string, Promise<number | null>>();
 
+// Each endpoint's last reported window, in the database, so a restart does
+// not forget it (issue #925): the app starts its own llama-server after the
+// world, and a first turn that probed it too early packed against the 16K
+// stand-in on a 64K server and left the scene out of the prompt.
+const REMEMBERED_WINDOWS_SETTING = "probedContextWindows";
+
+function rememberedWindows(): Record<string, RememberedWindow> {
+  // A cache: a database that cannot be read only means the probe decides.
+  try {
+    return readRememberedWindows(getAppSetting<unknown>(REMEMBERED_WINDOWS_SETTING, {}));
+  } catch {
+    return {};
+  }
+}
+
+function saveRememberedWindow(key: string, window: number): void {
+  try {
+    const next = rememberWindow(rememberedWindows(), key, window, Date.now());
+    if (next) {
+      setAppSetting(REMEMBERED_WINDOWS_SETTING, next);
+    }
+  } catch (error) {
+    console.warn("[model] could not save the probed context window", error);
+  }
+}
+
+// The saved window as a cache entry that is already due (at 0): it serves
+// until the next probe, which asks the server again before trusting it.
+function rememberedEntry(key: string): ProbedWindow | undefined {
+  const saved = rememberedWindows()[key];
+  return saved ? { window: saved.window, at: 0 } : undefined;
+}
+
+// The window known for an endpoint and model (context-probe-logic.ts
+// knownContextWindow): this process's, else the saved one.
+function windowFor(key: string): number | null {
+  const cached = probedContextWindows.get(key);
+  if (cached?.window) {
+    return cached.window;
+  }
+  const saved = rememberedEntry(key);
+  const known = knownContextWindow(cached, saved);
+  if (known && !cached) {
+    probedContextWindows.set(key, { window: known, at: 0 });
+  }
+  return known;
+}
+
 // A refusal that named the server's real window teaches it; one that did
-// not forgets what was known, so the next turn probes again.
+// not forgets what was known, saved or not, so the next turn probes again
+// instead of packing against the same number the server just refused.
 export function learnContextWindow(baseUrl: string, model: string, window: number | null): void {
   const key = contextCacheKey(baseUrl, model);
   if (window && window > 0) {
     probedContextWindows.set(key, { window: Math.floor(window), at: Date.now() });
+    saveRememberedWindow(key, Math.floor(window));
   } else {
     probedContextWindows.delete(key);
+    saveRememberedWindow(key, 0);
   }
 }
 
 // Every window learned so far is dropped; the admin's text settings changed.
+// The saved ones stay: each comes back due, so it is asked again before use.
 export function forgetContextWindows(): void {
   probedContextWindows.clear();
   reasoningKnobs.clear();
@@ -466,7 +539,7 @@ export async function probeCustomContextWindow(
   // Keyed by base URL AND model: llama-server's --models-preset router serves
   // several models from one port, each launched with its own -c.
   const cacheKey = contextCacheKey(baseUrl, model);
-  const cached = probedContextWindows.get(cacheKey);
+  const cached = probedContextWindows.get(cacheKey) ?? rememberedEntry(cacheKey);
   if (cached && Date.now() - cached.at < (cached.window ? PROBE_HIT_TTL_MS : PROBE_MISS_TTL_MS)) {
     return cached.window || null;
   }
@@ -480,31 +553,47 @@ export async function probeCustomContextWindow(
   // against the 16K default on a 64K server.
   const trimmedBase = baseUrl.trim();
   const key = resolveCustomKey(trimmedBase, apiKey, customChatEndpoint(trimmedBase)).resolvedKey;
+  // Not listening, not llama.cpp, or too slow. The miss is remembered for a
+  // short while so a turn does not pay the timeout again (one that found
+  // nothing listening is asked again at once); a window learned before, or
+  // saved, stays until a probe says otherwise.
+  const miss = (outcome: { status?: number; error?: unknown }) => {
+    const unreachable = probeMissUnreachable(outcome);
+    probedContextWindows.set(cacheKey, { window: cached?.window ?? 0, at: unreachable ? 0 : Date.now(), ...(unreachable ? { unreachable } : {}) });
+    return cached?.window || null;
+  };
   const probe = (async () => {
     try {
-      // Never redirected (the URL is a campaign's; see fetchBackend), and
-      // read under a ceiling: the window is one number in a small object.
-      const response = await fetch(url, {
-        headers: key ? { Authorization: `Bearer ${key}` } : undefined,
-        signal: AbortSignal.timeout(2_000),
-        redirect: "error",
-      });
+      let response: Response;
+      try {
+        // Never redirected (the URL is a campaign's; see fetchBackend), and
+        // read under a ceiling: the window is one number in a small object.
+        response = await fetch(url, {
+          headers: key ? { Authorization: `Bearer ${key}` } : undefined,
+          signal: AbortSignal.timeout(2_000),
+          redirect: "error",
+        });
+      } catch (error) {
+        return miss({ error });
+      }
       if (!response.ok) {
-        probedContextWindows.set(cacheKey, { window: cached?.window ?? 0, at: Date.now() });
-        return cached?.window || null;
+        return miss({ status: response.status });
       }
       const body = await readBody(response, MAX_BACKEND_ERROR_BYTES);
       const props = body.complete ? JSON.parse(body.text) : null;
+      // n_ctx 0 is a router answering for itself, not for the model
+      // (readContextWindow): a window known before is kept.
       const window = readContextWindow(props) ?? 0;
-      probedContextWindows.set(cacheKey, { window, at: Date.now() });
+      probedContextWindows.set(cacheKey, { window: window || cached?.window || 0, at: Date.now() });
       reasoningKnobs.set(cacheKey, readReasoningKnob(props));
-      return window || null;
+      if (window) {
+        saveRememberedWindow(cacheKey, window);
+      }
+      return window || cached?.window || null;
     } catch {
-      // Unreachable, not llama.cpp, or too slow. The miss is remembered for
-      // a short while so a turn does not pay the timeout again; a window
-      // learned before stays until a probe says otherwise.
-      probedContextWindows.set(cacheKey, { window: cached?.window ?? 0, at: Date.now() });
-      return cached?.window || null;
+      // A body that would not read or parse: the server answered, so this
+      // is an ordinary miss.
+      return miss({ status: 0 });
     } finally {
       probesInFlight.delete(cacheKey);
     }
