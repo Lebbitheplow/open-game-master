@@ -21,8 +21,8 @@ import { openWorld } from "./lib/enforce-world.mjs";
 const { test, finish } = suite("test-enforce-after-roll-attacks");
 const world = await openWorld({ campaign: { maxPlayers: 12 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
-const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
-const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { getCampaignById, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { createDmTurn, getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getRoll, listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { fillQueuedParts, QUEUED_BEHIND, AWAITING_ROLL } = await import("../src/lib/dm/pc-attack-parts.ts");
 const { keepAfterRollWhenDue, rearmAfterRollKeeps } = await import("../src/lib/dm/after-roll-timer.ts");
@@ -280,6 +280,25 @@ await test("Dice the player has yet to enter hold the turn the same way, at the 
   } finally {
     setMemberRealDice(world.campaignId, userId, false);
   }
+});
+
+// The third door: a GM turn told while the card is open (another player
+// posted) whose narration hands the turn on, or the player's own words that
+// end it, moved the pointer after the narration with no look at the roll.
+await test("A narration that hands the turn on leaves it with the player while their attack roll is with them.", async () => {
+  const enemy = await stage(LUCKY);
+  world.dice(3);
+  await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+  world.clearDice();
+  const [pending] = open();
+  assert.ok(pending?.thrown, "the miss waits on the choice");
+  const told = createDmTurn(world.campaignId, []);
+  tools.resolveTurnFromNarration(told, hero.id);
+  tools.advanceAfterTurn(getCampaignById(world.campaignId), told);
+  assert.equal(kit.current().characterId, hero.id, "the turn waits for the card");
+  assert.equal((await choose(pending.id, { keep: true })).status, 200);
+  assert.match(getPendingRoll(pending.id).combatNote, /MISS/, "the swing landed on its own turn");
+  assert.equal(kit.endTurn(world.sheet(hero.id).userId), true);
 });
 
 await test("The lead's skip keeps a thrown roll as it lies: no card outlives the turn, and nothing is spent.", async () => {
