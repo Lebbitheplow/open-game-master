@@ -1281,24 +1281,29 @@ function handleEndTurn(
   }
   const names = acting.map((enemy) => enemy.displayName);
   // A pass that waits for its enemies to turn the round over lands on the
-  // next round's turn (issue 713).
-  const round = encounter.round + (encounter.legendary.rest?.wrap ? 1 : 0);
+  // next round's turn (issue 713). Those enemies are the last of this round,
+  // not the first of the next: told "the guard acts before Jason ... It is
+  // now Jason's turn (round 3)", the model had the guard go first in round 3
+  // though Jason leads the order (issue 931). `round` is the round they act
+  // in; `nextRound` the one that begins after them.
+  const wraps = Boolean(encounter.legendary.rest?.wrap);
+  const nextRound = encounter.round + (wraps ? 1 : 0);
+  const cue = turn.actor === "ai" ? ` ${ENEMY_TURNS_CUE}` : "";
+  const one = names.length === 1;
+  const enemiesLine = !names.length
+    ? ""
+    : wraps
+      ? ` ${names.join(" and ")} ${one ? "takes its turn" : "take their turns"} now, the last of round ${encounter.round}; then round ${nextRound} begins with ${next?.name}.${cue}`
+      : ` ${names.join(" and ")} act${one ? "s" : ""} before ${next?.name}.${cue}`;
   return {
     ok: true,
     nextTurn: next?.name ?? null,
-    round,
+    round: encounter.round,
+    ...(wraps ? { nextRound } : {}),
     ...(acting.length
       ? { enemiesToAct: acting.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })) }
       : {}),
-    note: `${sheet.name}'s turn is over.${dyingNote(advanced.dyingPassed)}${
-      names.length
-        ? ` ${names.join(" and ")} act${names.length === 1 ? "s" : ""} before ${next?.name}${
-            turn.actor === "ai"
-              ? `. ${ENEMY_TURNS_CUE}`
-              : "."
-          }`
-        : ""
-    } It is now ${next?.name}'s turn (round ${round}).`,
+    note: `${sheet.name}'s turn is over.${dyingNote(advanced.dyingPassed)}${enemiesLine}${wraps && names.length ? "" : ` It is now ${next?.name}'s turn (round ${nextRound}).`}`,
   };
 }
 

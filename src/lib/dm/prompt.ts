@@ -205,7 +205,9 @@ export type DmEncounterState = {
   // what to do.
   // `round`: the round the current character's turn is in, the next one
   // when the enemies due close this one.
-  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
+  // `endsRound`: the enemies are the last of that round, and `before` opens
+  // the next (`round`), rather than acting first in it.
+  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number; endsRound?: number };
   // The hits a reaction may still answer, by character (turn.ts
   // openHitsForState); `ai` marks a companion nobody commands, whose
   // reactions are the AI's. Absent when none are open.
@@ -1137,11 +1139,13 @@ export function buildGameStateBlock(state: DmGameState): string {
       // Their turns come first: asking the current character's player now
       // would leave them to the backstop.
       if (encounter.enemiesDue) {
-        const { before, enemies, round } = encounter.enemiesDue;
+        const { before, enemies, round, endsRound } = encounter.enemiesDue;
         const due = enemies.map((enemy) => `${enemy.name} [enemyId=${enemy.enemyId}]`);
         const one = due.length === 1;
         lines.push(
-          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
+          endsRound
+            ? `${due.join(" and ")} ${one ? "takes its turn" : "take their turns"} now, the last of round ${endsRound}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} Then round ${round} begins with ${before}: a new turn, its action, bonus action and movement unspent.`
+            : `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
         );
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
