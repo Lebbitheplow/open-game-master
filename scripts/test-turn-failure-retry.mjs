@@ -439,6 +439,7 @@ await test("Retry builds again a prompt that was packed against a guessed window
     assert.equal(halted.status, "failed");
     assert.deepEqual(halted.contextTrace?.window, { tokens: 16_384, assumed: true }, "the trace does not say the window was a guess");
     assert.doesNotMatch(JSON.stringify(halted.conversation), /GM-LINE-15/, "the guessed window kept more history than this test starves it of");
+    assert.match(JSON.stringify(halted.conversation), /GM-LINE-19/, "even a starved prompt keeps the newest narration");
 
     // The server is up and has said its window.
     const { settings } = getCampaignById(world.campaignId);

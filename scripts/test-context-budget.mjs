@@ -27,6 +27,7 @@ import {
   NEWEST_LINE_FLOOR_CHARS,
   clipLine,
   compactionEvicted,
+  historyGapNote,
 } from "../src/lib/dm/context-budget.ts";
 
 let passed = 0;
@@ -416,6 +417,49 @@ check("the transcript a summary covers is left out, but the newest few at the se
   assert.deepEqual(cut.kept, entries.slice(9));
   assert.deepEqual(cutCoveredHistory(entries, 39).kept, entries.slice(14), "all covered: only the floor is left");
   assert.equal(cutCoveredHistory([], 39).cut, 0);
+});
+
+// Issue #925: a prompt packed against a 16K guess on a 64K server had 24
+// tokens left for history and kept only the player's newest line, so the GM
+// placed the party in a scene an hour back.
+check("a room too small for history still keeps the newest line and the newest GM line, both cut", () => {
+  const scene = `The sage hangs in iron chains at the back of the cavern. ${filler(2_000)} The crystal hums in your hand.`;
+  const entries = [
+    { id: "old-gm", text: `The Butcher falls in the courtyard. ${filler(500)}`, gm: true },
+    { id: "p1", text: filler(50) },
+    { id: "gm", text: scene, gm: true },
+    { id: "p2", text: filler(40) },
+    { id: "move", text: `Dammit. ${filler(2_000)} I try to use the crystal and see if it'll unlock his chains.` },
+  ];
+  const fit = fitHistory(entries, 24);
+  assert.deepEqual(fit.kept.map((entry) => entry.id), ["gm", "move"], "the newest narration rides, in order, and nothing older");
+  assert.equal(fit.dropped, 3);
+  assert.equal(fit.clipped, true);
+  for (const entry of fit.kept) {
+    assert.ok(entry.text.length <= NEWEST_LINE_FLOOR_CHARS, `${entry.id} cut to the floor (${entry.text.length})`);
+    assert.match(entry.text, /characters left out to fit the model's window/);
+  }
+  assert.match(fit.kept[0].text, /The sage hangs in iron chains/);
+  assert.match(fit.kept[1].text, /unlock his chains\.$/);
+  // A newest line that is the GM's own needs no second one, and a room with
+  // space for a GM line already keeps it whole.
+  assert.deepEqual(fitHistory([{ id: "a", text: filler(5), gm: true }, { id: "b", text: filler(500), gm: true }], 10).kept.map((entry) => entry.id), ["b"]);
+  const gmWhole = fitHistory([{ id: "gm", text: filler(30), gm: true }, { id: "p", text: filler(10) }, { id: "move", text: filler(10) }], 45);
+  assert.deepEqual(gmWhole.kept.map((entry) => entry.id), ["gm", "p", "move"], "the GM line the walk stopped at is kept past the allowance");
+  assert.equal(gmWhole.kept[0].text, filler(30), "and a short one is kept whole");
+  const gmFits = fitHistory([{ id: "older", text: filler(30), gm: true }, { id: "gm", text: filler(10), gm: true }, { id: "move", text: filler(10) }], 25);
+  assert.deepEqual(gmFits.kept.map((entry) => entry.id), ["gm", "move"], "a GM line inside the allowance needs no older one");
+  // Every line fits: nothing is added, nothing cut.
+  const all = fitHistory(entries.slice(3), 10_000);
+  assert.deepEqual(all.kept.map((entry) => entry.id), ["p2", "move"]);
+  assert.equal(all.dropped, 0);
+});
+
+check("a transcript with lines left out says so at its head, singular or plural, with or without a summary", () => {
+  assert.equal(historyGapNote(0, true), "");
+  assert.equal(historyGapNote(62, true), "[Table note] 62 lines since the summary were left out for room; the scene is where the lines below are.");
+  assert.equal(historyGapNote(1, true), "[Table note] 1 line since the summary was left out for room; the scene is where the lines below are.");
+  assert.match(historyGapNote(3, false), /^\[Table note\] 3 lines of the story so far were left out for room/);
 });
 
 check("compaction is never handed lines a guessed window left out", () => {

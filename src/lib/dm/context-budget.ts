@@ -437,8 +437,10 @@ export function compactionEvicted(trace: Pick<ContextTrace, "historyEvicted" | "
 // History is the one kind that degrades well, so instead of dropping whole
 // blocks it is trimmed newest-first: keep taking messages backward until the
 // allowance runs out. Mirrors what the old character-budget walk did, with
-// tokens instead of characters and a reported cut point.
-export type HistoryEntry = { id: string; text: string };
+// tokens instead of characters and a reported cut point. `gm` marks the
+// GM's own narration, which fitHistory keeps one of however little room
+// there is.
+export type HistoryEntry = { id: string; text: string; gm?: boolean };
 
 export type HistoryFit = {
   kept: HistoryEntry[];
@@ -489,10 +491,14 @@ export function fitHistory(entries: HistoryEntry[], allowanceTokens: number): Hi
   const kept: HistoryEntry[] = [];
   let tokens = 0;
   let clipped = false;
+  // The newest index not kept once the walk stopped for room; -1 when every
+  // line fit.
+  let unkeptFrom = -1;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
     const cost = estimateTokens(entry.text);
     if (tokens + cost > allowanceTokens) {
+      unkeptFrom = index;
       // The newest line is always kept: a prompt with no transcript answers
       // nothing. When it alone is over the allowance it is cut to fit,
       // keeping its ends and saying so, rather than sent whole past the
@@ -502,11 +508,42 @@ export function fitHistory(entries: HistoryEntry[], allowanceTokens: number): Hi
         clipped = text !== entry.text.trim();
         kept.unshift({ ...entry, text });
         tokens += estimateTokens(text);
+        unkeptFrom = index - 1;
       }
       break;
     }
     kept.unshift(entry);
     tokens += cost;
   }
+  // And the newest narration, cut to the same floor: the player's line alone
+  // says what they try, not where they are. Issue #925 kept only "I try to
+  // use the crystal" and the GM placed the party in a courtyard an hour
+  // back, with the chained sage's cavern nowhere in the prompt.
+  if (unkeptFrom >= 0 && !kept.some((entry) => entry.gm)) {
+    for (let index = unkeptFrom; index >= 0; index -= 1) {
+      const entry = entries[index];
+      if (entry.gm) {
+        const text = clipLine(entry.text, NEWEST_LINE_FLOOR_CHARS);
+        clipped ||= text !== entry.text.trim();
+        kept.unshift({ ...entry, text });
+        tokens += estimateTokens(text);
+        break;
+      }
+    }
+  }
   return { kept, dropped: entries.length - kept.length, tokens, clipped };
+}
+
+// The note at the head of a transcript that had lines left out for room, so
+// the model reads a gap as a gap: with the summary above and a few lines
+// below it took the summary's last scene for the present one (issue #925).
+export function historyGapNote(dropped: number, summarized: boolean): string {
+  if (dropped <= 0) {
+    return "";
+  }
+  const lines = dropped === 1 ? "1 line" : `${dropped.toLocaleString("en-US")} lines`;
+  const were = dropped === 1 ? "was" : "were";
+  return summarized
+    ? `[Table note] ${lines} since the summary ${were} left out for room; the scene is where the lines below are.`
+    : `[Table note] ${lines} of the story so far ${were} left out for room; the scene is where the lines below are.`;
 }
