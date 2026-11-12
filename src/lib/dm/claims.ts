@@ -91,6 +91,9 @@ export function liveStateFor(campaignId: string): LiveState | null {
       status: enemy.status,
     })),
     ...(struck?.length ? { struck } : {}),
+    // The party's fighters, so a blow the prose lands on one of them is
+    // checked like a blow on an enemy (engine-boundary.ts unrolledBlowOn).
+    party: encounter.order.flatMap((entry) => (entry.kind === "pc" && entry.characterId ? [{ id: entry.characterId, name: entry.name }] : [])),
   };
 }
 
@@ -320,6 +323,20 @@ export async function readClaims(
     creatures.set(ref, fact.display);
   }
   const party = new Map(input.sheets.map((sheet) => [sheet.id, sheet.name]));
+  // In a running fight the party's fighters are creatures a blow can land on
+  // (issue 931): listed beside the enemies under the key the guard gives
+  // them, and a hit or a miss the reader files under a party ref is moved to
+  // that key. Kept out of the speakers, who already hold them as themselves.
+  const fighters = input.outcomes.party ?? new Map<string, { id: string; display: string }>();
+  const targets = new Map(creatures);
+  const partyKeys = new Map<string, string>();
+  for (const [key, member] of fighters) {
+    if (!targets.has(key)) {
+      targets.set(key, member.display);
+    }
+    partyKeys.set(member.id, key);
+    partyKeys.set(key, key);
+  }
   // Only the party's: a cast claim names a party character.
   const spent = input.outcomes.spends
     .flatMap((spend) => {
@@ -345,7 +362,7 @@ export async function readClaims(
       content: renderReaderInput(
         kinds,
         {
-          creatures: [...creatures].map(([ref, display]) => ({ ref, display })),
+          creatures: [...targets].map(([ref, display]) => ({ ref, display })),
           party: [...party].map(([ref, name]) => ({ ref, name })),
           speakers: [...named].map(([ref, speaker]) => ({ ref, name: speaker.name, aliases: speaker.aliases })),
           spent,
@@ -409,6 +426,7 @@ export async function readClaims(
     attackRefs: new Set(input.outcomes.attacks.keys()),
     creatureRefs: new Set(input.outcomes.creatures.keys()),
     party,
+    ...(partyKeys.size ? { partyKeys } : {}),
     leveledSpells: leveledSpellNames(),
     normalizeSpell: normalizeSpellName,
     skills: new Set(SKILL_IDS),

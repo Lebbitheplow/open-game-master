@@ -263,9 +263,10 @@ SKILL is one of: ${skillIds.join(", ")}.
 Rules:
 ${
     bonds
-      ? `- A passage headed "Player's words" holds what each player wrote this turn, after their character's name: it is read only for turn_over and bond, and there what the player says or does toward someone is a move their character makes now. Every other kind comes from the narration alone. In the narration, "you" is the party character whose player wrote.`
+      ? `- A passage headed "Player's words" holds what each player wrote this turn, after their character's name: it is read only for turn_over and bond, and there what the player says or does toward someone is a move their character makes now. Every other kind comes from the narration alone.`
       : `- A passage headed "Player's words" is asked only for turn_over: there the player's own word that their turn ends is the claim.`
   }
+- In the narration, "you" is a party character: the one whose player wrote, or the only one when the party has one ("the guard's blade bites into you" is a hit on them). When the passage does not make clear which, leave a claim on "you" out.
 - A claim only for what the narrator states as a fact happening now. Never for:
   - anything inside quoted dialogue, numbers included${bonds ? " (a bond excepted: a move or an answer made in words counts)" : ""};
   - what a character reports, boasts, swears or claims ("the innkeeper insists the boar was slain" is no death);
@@ -378,6 +379,10 @@ export type ClaimContext = {
   creatureRefs: ReadonlySet<string>;
   // Party character id to name.
   party: ReadonlyMap<string, string>;
+  // In a running fight, a party fighter's ref (their sheet id, or the key the
+  // guard gives them as a creature) to that key: a blow on one of the party
+  // is checked like a blow on an enemy (issue 931).
+  partyKeys?: ReadonlyMap<string, string>;
   // Every leveled spell the spell data knows, normalized (cantrips cost
   // nothing, so a cast of one proves nothing).
   leveledSpells: ReadonlySet<string>;
@@ -446,8 +451,13 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         // A blow on a creature the turn attacked is checked against the roll;
         // one on a creature of the fight that no tool touched is a blow the
         // prose alone resolved (engine-boundary.ts unrolledBlow).
-        if (context.attackRefs.has(claim.target) || context.creatureRefs.has(claim.target)) {
-          kept.push(claim);
+        // A blow on one of the party is filed under the key their creature
+        // ref carries, whichever of their refs the reader copied.
+        {
+          const target = context.partyKeys?.get(claim.target) ?? claim.target;
+          if (context.attackRefs.has(target) || context.creatureRefs.has(target) || context.partyKeys?.has(target)) {
+            kept.push({ ...claim, target });
+          }
         }
         break;
       case "dies":

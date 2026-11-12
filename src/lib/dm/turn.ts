@@ -122,8 +122,9 @@ import {
   fightAnnounced,
   initiativeStartsFight,
   unpaidCast,
-  unrolledBlow,
+  unrolledBlowAt,
   unrolledBlowPrompt,
+  unrolledEnemyBlowPrompt,
   unrolledFigure,
   unrolledDamagePrompt,
 } from "@/lib/dm/engine-boundary";
@@ -2633,7 +2634,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // the model is sent to the tool for the attack the player declared.
       const blow =
         !finalCall && !attackNudged && read && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration
-          ? unrolledBlow(claims, read.outcomes)
+          ? unrolledBlowAt(claims, read.outcomes)
           : null;
       if (blow) {
         attackNudged = true;
@@ -2645,7 +2646,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           tool_calls: echoedToolCalls,
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: unrolledBlowPrompt(blow) });
+        // A blow on one of the party is an enemy's: its tool is
+        // enemy_attack, which the hand-off end_turn made lets through
+        // (enemy-turn-order.ts), not the player's attack (issue 931).
+        turn.conversation.push({ role: "user", content: blow.onParty ? unrolledEnemyBlowPrompt(blow.quote) : unrolledBlowPrompt(blow.quote) });
         saveDmTurn(turn);
         continue;
       }

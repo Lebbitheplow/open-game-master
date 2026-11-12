@@ -107,7 +107,12 @@ export type LiveEnemy = { id: string; name: string; hp: number; maxHp: number; s
 // (action-budget.ts TurnBudget.struck): a player's later word in the same
 // turn gets narration that may recall them ("your blade already bit").
 export type EarlierSwing = { target: string; hit: boolean; damage?: number };
-export type LiveState = { enemies: readonly LiveEnemy[]; struck?: readonly EarlierSwing[] };
+// `party`: the characters fighting for the party, by sheet id and name. A
+// blow the prose lands on one of them with no enemy call behind it is no
+// blow (issue 931: the guard's round-1 hit on the hero was told again as new
+// when its real swing, rolled after, missed).
+export type LiveParty = { id: string; name: string };
+export type LiveState = { enemies: readonly LiveEnemy[]; struck?: readonly EarlierSwing[]; party?: readonly LiveParty[] };
 
 export type ResolvedOutcomes = {
   attacks: Map<string, AttackFact>;
@@ -133,6 +138,9 @@ export type ResolvedOutcomes = {
   // an area's damage, a refused swing), by its key: a blow the prose lands on
   // anyone else had no tool behind it.
   touched?: Set<string>;
+  // The party's fighters in a running fight, by the key a creature is given
+  // (normalizeCreatureName), with their sheet id and name (LiveState.party).
+  party?: Map<string, { id: string; display: string }>;
 };
 
 function parseJsonObject(raw: unknown): Record<string, unknown> | null {
@@ -369,6 +377,31 @@ function spentName(args: Record<string, unknown>): string {
     .join(" / ");
 }
 
+// Every creature a result names as the target of what it did, at any depth
+// (an enemy's swing on a hero, an opportunity attack a walk drew): touched,
+// whether or not hit points came with it.
+function walkTargets(value: unknown, into: Set<string>, language: TableLanguage) {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      walkTargets(entry, into, language);
+    }
+    return;
+  }
+  if (!value || typeof value !== "object") {
+    return;
+  }
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "target" && typeof entry === "string") {
+      const named = normalizeCreatureName(entry, language);
+      if (named.length >= 3) {
+        into.add(named);
+      }
+    } else if (entry && typeof entry === "object") {
+      walkTargets(entry, into, language);
+    }
+  }
+}
+
 // Tools whose refusal means a blow never landed on the enemy they named.
 const ATTACK_TOOLS = new Set(["pc_attack", "cast_at_enemy", "pet_attack"]);
 
@@ -384,6 +417,7 @@ export function resolveOutcomes(
   const spells = new Set<string>();
   const spends: ResolvedOutcomes["spends"] = [];
   const refusedTargets: string[] = [];
+  const targeted = new Set<string>();
   let toolResultCount = 0;
 
   // A call carrying a declaration's parts is read part by part, each as the
@@ -424,6 +458,7 @@ export function resolveOutcomes(
     }
     walkNumbers(result, numbers, damageNumbers);
     walkCreatures(result, creatures, language);
+    walkTargets(result, targeted, language);
 
     if (typeof result.hit === "boolean") {
       const display =
@@ -486,7 +521,14 @@ export function resolveOutcomes(
     }
   }
 
-  const touched = new Set([...creatures.keys(), ...attacks.keys()]);
+  const touched = new Set([...creatures.keys(), ...attacks.keys(), ...targeted]);
+  const party = new Map<string, { id: string; display: string }>();
+  for (const member of live?.party ?? []) {
+    const key = normalizeCreatureName(member.name, language);
+    if (key.length >= 3 && !party.has(key)) {
+      party.set(key, { id: member.id, display: member.name });
+    }
+  }
 
   if (live) {
     // How many live enemies answer to each name a narrator would write: two
@@ -549,6 +591,7 @@ export function resolveOutcomes(
     spends,
     toolResultCount,
     touched,
+    ...(party.size ? { party } : {}),
   };
 }
 
@@ -812,21 +855,32 @@ export function earlierFigures(live: LiveState | null): number[] {
 // Bandit 1 and Bandit 2 are both "bandit": a blow on one is unrolled only
 // when the turn touched none of them, whichever the prose meant. Null when it
 // touched one, when the creature is dead, or when no fight runs.
+// A party fighter counts the same way (issue 931): an enemy's blow on the hero
+// that no enemy call this turn made was told from the round before.
 function unrolledBlowOn(target: string, outcomes: ResolvedOutcomes): string | null {
   if (!outcomes.liveFight || !outcomes.touched || outcomes.touched.has(target)) {
     return null;
   }
   const creature = outcomes.creatures.get(target);
-  return creature && !creature.dead ? creature.display : null;
+  if (creature && !creature.dead) {
+    return creature.display;
+  }
+  return outcomes.party?.get(target)?.display ?? null;
 }
 
-export function unrolledBlow(claims: readonly NarrationClaim[], outcomes: ResolvedOutcomes): string | null {
+// The first blow the prose alone resolved, and whether it fell on one of the
+// party (an enemy's blow, whose tool is enemy_attack) rather than on a foe.
+export function unrolledBlowAt(claims: readonly NarrationClaim[], outcomes: ResolvedOutcomes): { quote: string; onParty: boolean } | null {
   for (const claim of claims) {
     if ((claim.kind === "hit" || claim.kind === "miss") && !outcomes.attacks.has(claim.target) && unrolledBlowOn(claim.target, outcomes)) {
-      return claim.quote;
+      return { quote: claim.quote, onParty: !outcomes.creatures.has(claim.target) && Boolean(outcomes.party?.has(claim.target)) };
     }
   }
   return null;
+}
+
+export function unrolledBlow(claims: readonly NarrationClaim[], outcomes: ResolvedOutcomes): string | null {
+  return unrolledBlowAt(claims, outcomes)?.quote ?? null;
 }
 
 // The first cast the reply narrates that no call this turn paid for, read
@@ -843,6 +897,15 @@ export function unpaidCast(claims: readonly NarrationClaim[], outcomes: Resolved
 
 export function unrolledBlowPrompt(clause: string): string {
   return `[System] Your narration resolves an attack that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed. Resolve only the attack the acting player declared, with its tool, and narrate from the result: pc_attack with their characterId and one entry in attacks per attack, each with its targetEnemyId and weapon (approach true when they close in on a target out of reach), cast_at_enemy for a spell; an enemy acts only on its own turn, through enemy_attack. Never act for a character whose player has not declared an action. If the attack cannot happen yet (out of reach, not their turn), say so instead of resolving it.`;
+}
+
+// An enemy's blow on one of the party that no enemy call rolled: in the turn
+// of issue 931 the guard's enemy_attack was refused out of turn, end_turn then
+// handed the guard over, and the model wrote the guard hitting the hero for
+// last round's 6 with no call at all. The hand-off lets enemy_attack through
+// (enemy-turn-order.ts), so the way out is that call, or no word of the turn.
+export function unrolledEnemyBlowPrompt(clause: string): string {
+  return `[System] Your narration resolves an enemy's attack on the party that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed, and a blow from an earlier round is not new. Call enemy_attack for the enemy end_turn handed you, then narrate from its result; otherwise leave its turn out. Never state a hit, a miss or a figure the server did not return.`;
 }
 
 export function unrolledDamagePrompt(clause: string): string {

@@ -225,6 +225,23 @@ await test("A claim quoting words the narration does not hold never acts; a quot
   assert.equal(checkClaims([{ kind: "fight_start", quote: '"Morirai", sibila' }], context(text, ALL)).length, 1);
 });
 
+// Issue 931: the guard's blow on the hero was no claim at all, the hero being
+// only a party ref, and "you" a party character only on a read for bonds.
+await test("In a fight a hit on one of the party is kept under their creature key, whether the reader copied their sheet id or that key; out of one it is dropped.", () => {
+  const text = "The guard's blade bites into you, and Mira staggers.";
+  const fight = { ...context(text, ALL), partyKeys: new Map([[mira.id, "mira"], ["mira", "mira"]]) };
+  assert.deepEqual(checkClaims([{ kind: "hit", target: mira.id, quote: "The guard's blade bites into you" }], fight), [{ kind: "hit", target: "mira", quote: "The guard's blade bites into you" }]);
+  assert.deepEqual(checkClaims([{ kind: "miss", target: "mira", quote: "The guard's blade bites into you" }], fight), [{ kind: "miss", target: "mira", quote: "The guard's blade bites into you" }]);
+  assert.deepEqual(checkClaims([{ kind: "downed", target: mira.id, quote: "Mira staggers" }], fight), [], "a drop is still a creature's alone");
+  assert.deepEqual(checkClaims([{ kind: "hit", target: mira.id, quote: "The guard's blade bites into you" }], context(text, ALL)), [], "no fight, no party targets");
+});
+
+await test("Every narration read is told who \"you\" is, with bonds asked or not.", () => {
+  for (const system of [readerSystem([], false), readerSystem([], false, true, "kindness"), readerSystem([], true, true, "romance")]) {
+    assert.match(system, /In the narration, "you" is a party character: the one whose player wrote, or the only one when the party has one/);
+  }
+});
+
 await test("An aside is asked only when the gate says so; its sentences leave the prose and the rest stays, and a passage that was all aside leaves nothing.", () => {
   assert.deepEqual(claimKindsFor({ ...GATE, guard: false, aside: true }), ["aside"]);
   assert.match(readerSystem([], false), /"kind":"aside"/);

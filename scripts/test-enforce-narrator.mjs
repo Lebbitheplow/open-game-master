@@ -763,6 +763,26 @@ await test("In a fight, a reply that ends the turn on a blow no tool rolled is h
   assert.match(text, /goes wide/);
 });
 
+// Issue 931: the model wrote the guard hitting the hero with no call, told
+// from the round before; the blow on one of the party was never a claim.
+await test("In a fight, a blow on one of the party that no enemy call rolled is held back, and the model is sent to enemy_attack, not pc_attack.", async () => {
+  const enemy = await karaUp();
+  model.script([
+    reply({ text: "The goblin's club cracks into you for 6 damage." }),
+    reply({ text: "Kara watches the goblin circle, its club low." }),
+  ]);
+  model.claims([[{ kind: "hit", target: kara.id, quote: "The goblin's club cracks into you for 6 damage." }], []]);
+  const message = await model.turn(world, "I hold my ground.", kara.id);
+  const asked = model.readerRequests[0]?.messages.at(-1)?.content ?? "";
+  assert.match(asked, /"kara" for Kara/, "the hero is listed as a creature a blow can land on");
+  const sent = JSON.stringify(model.requests[1]?.messages ?? []);
+  assert.match(sent, /resolves an enemy's attack on the party that no tool rolled this turn/);
+  assert.match(sent, /Call enemy_attack for the enemy end_turn handed you/);
+  assert.equal(world.sheet(kara.id).currentHp, world.sheet(kara.id).maxHp, "no hit points changed");
+  assert.doesNotMatch(message?.content ?? "", /cracks into you/, "the unrolled blow reached the table");
+  assert.ok(kit.enemy(enemy.id), "the fight still runs");
+});
+
 // Beside another call the turn goes on, so the prose stays until the guard
 // rules on it: here against the swing the turn went on to roll.
 await test("A blow written beside another call is ruled by the guard against the attack the turn then rolled.", async () => {
