@@ -101,26 +101,29 @@ await test("a host a co-admin demoted is still the one let back in, never the co
   setUserAdmin(coAdmin.id, false);
 });
 
-await test("wrong codes lock the address out", async () => {
-  const ip = "198.51.100.9";
-  let last = 0;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    last = (await recover({ setupCode: `guess-${attempt}`, password: "attacker-secret" }, ip)).status;
+await test("a caller on the Wi-Fi cannot lock the app out of its own door", async () => {
+  // The address a lockout would be counted against is whatever the caller
+  // says it is (cf-connecting-ip comes first in clientIp, and a world
+  // reached directly has no edge to set it), so a caller naming the app's
+  // own address could keep the host out with a few wrong codes, and one
+  // naming a new address each time was never counted. The code's length is
+  // what holds a guesser off; nothing a caller sends keeps the app out.
+  for (const ip of ["127.0.0.1", null]) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      assert.equal((await recover({ setupCode: `wifi-guess-${attempt}`, password: "attacker-secret" }, ip)).status, 403);
+    }
+    const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-6", username: "host" }, ip);
+    assert.equal(response.status, 200);
   }
-  assert.equal(last, 429);
-  assert.equal((await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-3" }, ip)).status, 429);
 });
 
-await test("a caller on the Wi-Fi cannot lock the app out of its own door", async () => {
-  // Reached directly, with no proxy in front, every caller is "local" and
-  // so is the app: one shared bucket would let anyone on the network keep
-  // the host out with a few wrong codes (login-throttle.ts sourceKey). The
-  // code is long enough that guessing it is no way in.
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    assert.equal((await recover({ setupCode: `wifi-guess-${attempt}`, password: "attacker-secret" }, null)).status, 403);
-  }
-  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-6", username: "host" }, null);
-  assert.equal(response.status, 200);
+await test("a host account that is gone is no one else's to take", async () => {
+  // A co-admin deleted the host's account: the name the app keeps is no
+  // account here, and the world's next admin is the co-admin, whose
+  // account the app must not be handed.
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-8", username: "host-who-was-deleted" });
+  assert.equal(response.status, 404);
+  assert.equal((await signIn("host", "app-made-new-6")).status, 200, "nobody's password moved");
 });
 
 await test("a code short enough to guess opens no such door", async () => {

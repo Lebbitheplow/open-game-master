@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PasswordBusyError, hashPassword, mintSession, passwordBusyResponse } from "@/lib/auth";
 import { getUserByUsername, isCompanionUserId, listUsers, setUserPassword } from "@/lib/db/users";
-import { checkLogin, clientIp, recordLoginFailure, recordLoginSuccess, recordPasswordSuccess } from "@/lib/login-throttle";
+import { clientIp, recordPasswordSuccess } from "@/lib/login-throttle";
 import { isDeviceWorld } from "@/lib/server-env";
 import { firstAccountTakesCode, setupCodeLength, setupCodeMatches } from "@/lib/setup-code";
 
@@ -20,26 +20,35 @@ export const dynamic = "force-dynamic";
 const recoverSchema = z.object({
   setupCode: z.string().trim().min(1).max(40),
   password: z.string().min(8).max(100),
-  // The account the app kept for its host. When it names neither an admin
-  // nor the world's first account (the app's record was lost), the world's
-  // first admin is its owner.
+  // The account the app kept for its host. Left out (the app's record was
+  // lost), or naming a guest, the world's first admin is its owner.
   username: z.string().trim().max(24).optional(),
 });
 
-// The door opens only to a code too long to guess. Both apps hand their
-// world 32 hex characters; a code typed by hand into ODM_SETUP_CODE that is
-// shorter would make the host's password anyone's for a few guesses, and
-// the per-address count below cannot hold a caller on the Wi-Fi to it.
+// The door opens only to a code too long to guess, and that length is
+// what holds a guesser off: there is no lockout. The address a lockout is
+// counted against is whatever the caller says (cf-connecting-ip comes first
+// in clientIp, and a world reached directly has no edge to set it), so a
+// caller naming the app's own address kept the host out with five wrong
+// codes, and one naming a new address each time was never counted. Both
+// apps hand their world 32 hex characters; a code typed by hand into
+// ODM_SETUP_CODE that is shorter opens no door. A wrong code costs one
+// digest, never a password hash.
 const MIN_CODE_CHARACTERS = 16;
 
 // The host is the world's first account, the one the app claimed with the
 // setup code. The named account is taken when it is an admin or that first
 // account: a co-admin the host made can take the host's admin away, and the
 // app must still get its own host back rather than the co-admin's account.
+// A name that is no account here was the host's and is gone (another admin
+// deleted it): the world's next admin is somebody else, whose account the
+// app must not be handed, so nobody is.
 function worldOwner(username: string | undefined) {
   const users = listUsers();
-  const named = username ? getUserByUsername(username) : null;
-  if (named && !isCompanionUserId(named.id) && (named.isAdmin || named.id === users[0]?.id)) return named;
+  if (!username) return users.find((user) => user.isAdmin) ?? null;
+  const named = getUserByUsername(username);
+  if (!named || isCompanionUserId(named.id)) return null;
+  if (named.isAdmin || named.id === users[0]?.id) return named;
   return users.find((user) => user.isAdmin) ?? null;
 }
 
@@ -53,27 +62,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid input." }, { status: 400 });
   }
 
-  // A device world can be on the Wi-Fi or behind a tunnel, so wrong codes
-  // share the login throttle's escalating lockout, keyed by address. Only
-  // where the address means something (the tunnel names each caller):
-  // reached directly, every caller is "local", the app included, and one
-  // shared bucket would let anyone on the network keep the host out with a
-  // few wrong codes (login-throttle.ts sourceKey keeps the same rule). The
-  // code's length is what holds a guesser there.
-  const ip = clientIp(request);
-  const throttle = ip && ip !== "local" ? `recover-owner:${ip}` : null;
-  const gate = throttle ? checkLogin(throttle) : { blocked: false, retryAfterSec: 0 };
-  if (gate.blocked) {
-    return Response.json(
-      { error: `Too many attempts. Try again in ${gate.retryAfterSec}s.` },
-      { status: 429, headers: { "Retry-After": String(gate.retryAfterSec) } },
-    );
-  }
   if (!setupCodeMatches(parsed.data.setupCode)) {
-    if (throttle) recordLoginFailure(throttle);
     return Response.json({ error: "Only the app that hosts this world can do that." }, { status: 403 });
   }
-  if (throttle) recordLoginSuccess(throttle);
 
   const owner = worldOwner(parsed.data.username);
   if (!owner) {
@@ -93,7 +84,7 @@ export async function POST(request: Request) {
   setUserPassword(owner.id, hash, false);
   // The failed renewals that led here may have locked the account's own
   // sign-in; the app signs in with the new password from now on.
-  recordPasswordSuccess(owner.username, ip);
+  recordPasswordSuccess(owner.username, clientIp(request));
   const session = mintSession(owner.id);
 
   return Response.json({
