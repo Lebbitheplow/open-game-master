@@ -62,17 +62,13 @@ const enemyFleesTool: ToolDef = {
   function: {
     name: "enemy_flees",
     description:
-      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. Breaking away from a character who has it in reach draws their opportunity attack, rolled by the server, unless it Disengaged this turn or teleports: the result lists them, and says so if one stopped it. When no enemies remain the encounter ends automatically with reduced XP.",
+      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. The server rolls the opportunity attacks its going draws: the result lists them, and one may stop it. When no enemies remain the encounter ends automatically with reduced XP.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         enemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
-        teleport: {
-          type: "boolean",
-          description:
-            "True only when it leaves by teleporting (Misty Step, Dimension Door, a trait that teleports it): no opportunity attacks, and speed 0 does not hold it. Omit when it runs, flies, swims or burrows away.",
-        },
+        teleport: { type: "boolean", description: "True when it teleports away: no opportunity attacks." },
         reason: { type: "string", description: "Short in-fiction cause." },
       },
       required: ["enemyId"],
