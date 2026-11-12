@@ -25,6 +25,10 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
 const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
 const { longRestPatch } = await import("../src/lib/dm/rest-logic.ts");
+const { foretoldWords } = await import("../src/lib/dm/foretold-logic.ts");
+const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+const { listAllMessages } = await import("../src/lib/db/messages.ts");
+const { advanceClock } = await import("../src/lib/db/clock.ts");
 
 const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const who = await seats(world);
@@ -84,6 +88,35 @@ await test("The take_rest tool stores them on the sheet.", async () => {
   wizard({ foretold: [] });
   await world.invoke("take_rest", { kind: "long" });
   assert.equal(world.sheet(who.sheet.id).foretold.length, 2);
+});
+
+// A player who asked the storyteller for new numbers after a rest got some
+// made up in prose, and the roll card then offered last night's: the rest
+// never said its numbers, and GAME STATE never showed them.
+await test("The rest says the new numbers to the table and the storyteller, and GAME STATE shows the ones held.", async () => {
+  wizard({ foretold: [] });
+  advanceClock(world.campaignId, 25, "hours");
+  const out = await world.invoke("take_rest", { kind: "long" });
+  const numbers = world.sheet(who.sheet.id).foretold;
+  const said = `${world.sheet(who.sheet.id).name}'s Portent foretells ${foretoldWords(numbers)}`;
+  assert.deepEqual(out.result.portents, [said], JSON.stringify(out));
+  const line = listAllMessages(world.campaignId).filter((message) => message.glyph === "rest-long").at(-1);
+  assert.ok(line?.content.includes(said), line?.content);
+  const state = describeSheet(world.sheet(who.sheet.id), "player", false);
+  assert.match(state, new RegExp(`Portent: foretold ${foretoldWords(numbers)}, rolled at their last long rest`));
+  assert.match(state, /Only a long rest \(take_rest\) rolls new ones; never invent them/);
+  wizard({ resources: { sub_portent: { max: 2, used: 2 } }, foretold: [] });
+  assert.match(describeSheet(world.sheet(who.sheet.id), "player", false), /Portent: no foretold numbers left/);
+  wizard({ resources: {}, foretold: [] });
+  assert.doesNotMatch(describeSheet(world.sheet(who.sheet.id), "player", false), /Portent:/);
+});
+
+await test("A long rest within 24 hours of the last one keeps the old numbers and says none.", async () => {
+  wizard();
+  const out = await world.invoke("take_rest", { kind: "long" });
+  assert.deepEqual(world.sheet(who.sheet.id).foretold, [17, 3]);
+  assert.equal(out.result.portents, undefined);
+  assert.match(out.result.unaffected ?? "", /less than 24 hours ago/);
 });
 
 await test("A check waits unthrown while a number is held, and a number replaces the d20 and keeps the modifier.", async () => {
