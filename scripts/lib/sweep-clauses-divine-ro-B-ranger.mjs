@@ -3,6 +3,7 @@
 // and answers one check per clause. See scripts/lib/sweep-clauses-divine.mjs
 // for how a scene answers its clauses.
 import { assert, profOf } from "./sweep-clauses-divine.mjs";
+import { hasPack } from "./enforce-world.mjs";
 
 const brief = (value, length = 200) => JSON.stringify(value)?.slice(0, length);
 const petOf = (rig, who) => (rig.world.sheet(who.id).pets ?? [])[0] ?? null;
@@ -42,7 +43,9 @@ export const RO_RANGER_B = {
     rig.note("companion", [brief(scene.pet, 600), order.length, brief(order.map((entry) => entry.characterId ?? entry.enemyId ?? entry.name)), own.ok, own.error, offTurn.ok, offTurn.error.slice(0, 160)]);
     const pet = scene.pet ?? {};
     return {
-      "saves-skills": () => assert.equal(pet.skills?.perception ?? pet.skills?.Perception, 3 + profOf(3), `a wolf's Perception +3 and the proficiency bonus: the companion's record holds ${brief(Object.keys(pet))}`),
+      // The wolf's skills are read from its stat block in the content pack; with
+      // no pack (CI) the companion is built from the bare form and has none.
+      "saves-skills": () => hasPack && assert.equal(pet.skills?.perception ?? pet.skills?.Perception, 3 + profOf(3), `a wolf's Perception +3 and the proficiency bonus: the companion's record holds ${brief(Object.keys(pet))}`),
       initiative: () => {
         assert.equal(own.ok, true, own.error);
         assert.equal(offTurn.ok, false, "the companion attacked on the goblin's turn");
