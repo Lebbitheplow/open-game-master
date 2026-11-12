@@ -1235,7 +1235,7 @@
     "lib/db/snapshots.ts#str-list": [["key",2,"SQL table names"]],
     "lib/db/subclass-extras.ts#toLowerCase": [["key",1,"class slug"]],
     "lib/db/table-hazards.ts#str-eq": [["key",3,"hazard kinds"]],
-    "lib/db/users.ts#LIKE": [["key",1,"companion ids"]],
+    "lib/db/users.ts#LIKE": [["key",2,"companion ids"]],
     "lib/db/workshop-bundle-export.ts#str-eq": [["key",5,"SQL column names, stored enum values and a ref kind"]],
     "lib/db/workshop-bundle-export.ts#str-key": [["key",1,"SQL column names and stored enum values"]],
     "lib/db/workshop-bundle-export.ts#str-list": [["key",10,"SQL column names and stored enum values"]],

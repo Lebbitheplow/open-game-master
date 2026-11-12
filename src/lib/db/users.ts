@@ -257,6 +257,16 @@ export function listUsers(): AdminUserSummary[] {
   }));
 }
 
+// The oldest account that is a person's: on a world one of the apps hosts,
+// the host's, which the app claimed with its setup code before anyone else
+// could join. Ties in created_at fall to the insert order.
+export function firstAccountId(): string | null {
+  const row = getDatabase()
+    .prepare(`SELECT id FROM users WHERE id NOT LIKE 'comp\\_%' ESCAPE '\\' ORDER BY created_at ASC, rowid ASC LIMIT 1`)
+    .get() as { id: string } | undefined;
+  return row?.id ?? null;
+}
+
 export function setUserPassword(userId: string, passwordHash: string, mustChange: boolean) {
   getDatabase()
     .prepare(`UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?`)

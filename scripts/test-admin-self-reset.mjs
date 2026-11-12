@@ -21,6 +21,7 @@ vi.mock("@/lib/admin-api", () => ({
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-admin-self-reset-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
 process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+process.env.ODM_ENV_FILE = path.join(dir, "no-env-file");
 
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -58,7 +59,22 @@ test("an admin cannot reset their own password, and still resets another's", asy
     assert.notEqual(changed.passwordHash, "player-hash");
     assert.equal(changed.mustChangePassword, true);
     assert.equal(sessions(player.id), 0, "and is signed out everywhere");
+  } catch (error) {
+    removeTempDir(dir);
+    throw error;
+  }
+});
+
+test("in a world one of the apps hosts, the refusal does not send the host to a Password section it lacks", async () => {
+  try {
+    process.env.ODM_DEVICE_WORLD = "1";
+    const own = await reset(admin.id);
+    assert.equal(own.status, 400);
+    const { error } = await own.json();
+    assert.match(error, /your own password/);
+    assert.doesNotMatch(error, /Settings/, "Settings has no Password section in a device world");
   } finally {
+    delete process.env.ODM_DEVICE_WORLD;
     removeTempDir(dir);
   }
 });

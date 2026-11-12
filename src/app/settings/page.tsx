@@ -155,7 +155,7 @@ export default function SettingsPage() {
       const response = await fetch("/api/profile", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(me.hasPassword ? { password: deleteConfirm } : {}),
+        body: JSON.stringify(askPassword ? { password: deleteConfirm } : {}),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -193,8 +193,10 @@ export default function SettingsPage() {
   }
 
   // The confirm button unlocks on the right password, or on typing DELETE for
-  // Discord-only accounts that have no password.
-  const deleteReady = me?.hasPassword ? deleteConfirm.length > 0 : deleteConfirm === "DELETE";
+  // Discord-only accounts that have no password and in a world one of the
+  // apps hosts, whose password nobody was shown (the session is the proof).
+  const askPassword = Boolean(me?.hasPassword) && !deviceWorld;
+  const deleteReady = askPassword ? deleteConfirm.length > 0 : deleteConfirm === "DELETE";
   const graceDays = about?.graceDays ?? 14;
   const graceCopy =
     graceDays === 0
@@ -469,7 +471,7 @@ export default function SettingsPage() {
 
       {confirmingDelete ? (
         <DeleteAccountDialog
-          hasPassword={Boolean(me.hasPassword)}
+          hasPassword={askPassword}
           graceCopy={graceCopy}
           graceDays={graceDays}
           value={deleteConfirm}

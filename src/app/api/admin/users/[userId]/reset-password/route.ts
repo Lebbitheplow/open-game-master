@@ -6,6 +6,8 @@ import {
   getUserById,
   setUserPassword,
 } from "@/lib/db/users";
+import { isDeviceWorld } from "@/lib/server-env";
+import { HOST_ACCOUNT_REFUSAL, deviceWorldHostId } from "@/lib/setup-code";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,9 +35,18 @@ export async function POST(
   }
   if (target.id === admin.id) {
     return Response.json(
-      { error: "You can't reset your own password: it would sign you out. Change it in Settings." },
+      {
+        // A world one of the apps hosts has no Password section in Settings:
+        // the app keeps the host's password, so there is nothing to change.
+        error: isDeviceWorld()
+          ? "You can't reset your own password: it would sign you out of your own world."
+          : "You can't reset your own password: it would sign you out. Change it in Settings.",
+      },
       { status: 400 },
     );
+  }
+  if (target.id === deviceWorldHostId()) {
+    return Response.json({ error: HOST_ACCOUNT_REFUSAL }, { status: 403 });
   }
   const tempPassword = randomBytes(9).toString("base64url");
   let hash: string;
