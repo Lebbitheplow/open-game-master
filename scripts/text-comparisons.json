@@ -14,6 +14,8 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/invoke-roll.ts#\\b": [["table-language",2,"backstop reader: the model naming a request_roll a hit die (#932), in English; the reading that serves every language is take_rest itself, which the rest result and the rest rule point to"]],
+    "lib/dm/invoke-roll.ts#re-word": [["table-language",1,"backstop reader: the model naming a request_roll a hit die (#932), in English; the reading that serves every language is take_rest itself, which the rest result and the rest rule point to"]],
     "lib/srd/infusion-picks.ts#str-includes": [["english-source", 2, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
     "lib/srd/infusion-picks.ts#str-eq": [["english-source", 3, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
     "lib/srd/infusion-picks.ts#str-list": [["english-source", 4, "a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
