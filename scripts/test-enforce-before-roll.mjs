@@ -211,6 +211,25 @@ await test("Restore Balance at the stop: an attack with advantage is thrown with
   await toggle(false);
 });
 
+await test("The GM's use_resource of either once the roll is on record is refused, nothing spent: they are used before the roll, at the watch.", async () => {
+  for (const [patch, name, id] of [[BALANCE(), "Restore Balance", "sub_restore_balance"], [OMEN("woe"), "Cosmic Omen", "sub_cosmic_omen"]]) {
+    holder(patch);
+    const encounter = world.encounter();
+    saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => entry.enemyId === goblin.id || entry.id === goblin.id), turnBudget: null, reactionsUsed: [], legendary: { ...encounter.legendary, due: [goblin.id], acted: null } });
+    world.dice(15, 3, 1);
+    const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: ally.id, advantage: "advantage", advantageSource: "other", advantageReason: "the goblin stands on higher ground" });
+    world.clearDice();
+    assert.equal(swing.ok, true, swing.error);
+    const out = await world.invoke("use_resource", { characterId: druid.id, resource: name });
+    assert.equal(out.ok ?? false, false, `${name} after the roll: ${JSON.stringify(out).slice(0, 200)}`);
+    assert.match(String(out.error), /before the roll/);
+    assert.match(String(out.error), /Watch/);
+    assert.match(String(out.error), /Nothing was spent/);
+    assert.equal(used(id), 0, `${name}: no use spent`);
+    assert.ok(!world.encounter().reactionsUsed.includes(druid.id), `${name}: no reaction spent`);
+  }
+});
+
 // ---- the Watch toggle out of a fight ----
 
 await test("Out of a fight the toggle holds an ally's check for the druid's Weal; off, it is thrown at once.", async () => {

@@ -3,9 +3,6 @@
 // one open (reaction-counters.ts planCounterReaction). Before this the use was
 // taken and the effect was the counter's guidance:
 //
-//   Restore Balance (Clockwork Soul 1): "A reaction cancels advantage or
-//     disadvantage on a roll within 60 feet". The attack that hit is settled
-//     on its first die, as a roll with neither is made of one.
 //   Violent Attraction (Graviturgy 10): "When a creature you can see within
 //     60 feet hits with a weapon attack, a reaction adds 1d10 to its damage".
 //     A party member's weapon hit of this turn hurts its creature by 1d10 more;
@@ -17,6 +14,9 @@
 //     spent (the creature is the call's targetCharacterId).
 //   Accursed Specter (Hexblade 6): a humanoid the warlock slew rises as a
 //     specter under their command (src/lib/dm/summon-arcane.ts).
+//
+// Restore Balance is no longer here: it is used before the roll (the
+// ruling on issue #908), and reaction-counters.ts refuses a spend after it.
 //
 // Planned before the use is spent, so a refusal costs nothing; applied once
 // it is. Must not import mutations.ts.
@@ -30,7 +30,7 @@ import { givenDieMarks } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
-import { heaviestHit, hitIdOf, openHits, plainOfReroll, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { heaviestHit, hitIdOf, openHits, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { openTriggersFor, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -56,39 +56,6 @@ function latest(input: Input, ask: TriggerAsk): TriggerEvent | null {
 
 function settle(input: Input, record: LastHit, corrected: SwingRecord[], label: string) {
   return settleLastHit(input.campaign, input.turnId, record, corrected, label, input.sheets, input.sheetsById);
-}
-
-function restoreBalance(input: Input, ask: TriggerAsk): Plan | ToolError {
-  const event = latest(input, ask);
-  const record = event ? hitOf(input.campaign.id, event) : null;
-  const index = record ? record.swings.findIndex((swing) => swing.advantage && swing.advantage !== "none" && swing.natural !== null) : -1;
-  if (!record || index < 0) {
-    return { error: "Restore Balance answers an attack roll made with advantage or disadvantage, and the server holds none it can settle again. Nothing was spent.", refused: "rules" };
-  }
-  const swing = record.swings[index];
-  // Neither advantage nor disadvantage: the roll is the first die alone.
-  const kept = swing.faces[0] ?? swing.natural!;
-  const total = swing.total - swing.natural! + kept;
-  const lands = kept === 20 || (kept !== 1 && total >= swing.vsAc);
-  if (!swing.hit && lands) {
-    // A miss whose first die hits: the damage was never rolled, so the
-    // engine cannot land it after the fact. Said before anything is spent.
-    return { error: `Without its ${swing.advantage}, ${record.attacker.name}'s ${total} would hit AC ${swing.vsAc}, and the server does not land a missed attack's damage after it is resolved. Nothing was spent.`, refused: "rules" };
-  }
-  return {
-    apply: () => {
-      if (!swing.hit) {
-        return { applied: `Without its ${swing.advantage}, ${record.attacker.name}'s attack is a ${total} against AC ${swing.vsAc}: it still misses.` };
-      }
-      const corrected = lands
-        ? { ...plainOfReroll(swing, kept), total, natural: kept, faces: [kept], advantage: "none" as const }
-        : { ...swing, hit: false, raw: 0, total, natural: kept, faces: [kept], advantage: "none" as const };
-      const settled = settle(input, record, record.swings.map((entry, at) => (at === index ? corrected : entry)), "restore balance");
-      return lands
-        ? { applied: `Without its ${swing.advantage}, the attack is a ${total} against AC ${swing.vsAc}: it still hits${settled.given ? `, ${settled.given} hit points come back` : ""}. HP ${settled.hp}.` }
-        : { applied: `Without its ${swing.advantage}, the attack is a ${total} against AC ${swing.vsAc}: it misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
-    },
-  };
 }
 
 function violentAttraction(input: Input, ask: TriggerAsk): Plan | ToolError {
@@ -195,8 +162,6 @@ export function planArcaneTrigger(input: Input, ask: TriggerAsk): Plan | ToolErr
   switch (input.defId) {
     case "sub_infectious_inspiration":
       return infectiousInspiration(input, ask);
-    case "sub_restore_balance":
-      return restoreBalance(input, ask);
     case "sub_violent_attraction":
       return violentAttraction(input, ask);
     case "sub_accursed_specter":

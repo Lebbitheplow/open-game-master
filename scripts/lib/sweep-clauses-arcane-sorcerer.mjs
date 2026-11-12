@@ -604,9 +604,12 @@ export function probes(rig, shared) {
       const out = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: clock().id, advantage: "advantage", advantageReason: "the sorcerer is flanked" }, [2, 19, 4]);
       assert.equal(out.ok, true, out.error);
       assert.ok(hp(clock()) < before, "the 19 kept by advantage hits");
-      const cancel = await spend(clock(), "Restore Balance");
-      assert.equal(cancel.ok, true, cancel.error);
-      assert.equal(hp(clock()), before, `on its first die alone, a 2, the attack misses: ${show(cancel).slice(0, 160)}`);
+      // Once the roll is on record it is too late: a spend then is refused,
+      // and the hit stands (the ruling on issue #908).
+      const late = await spend(clock(), "Restore Balance");
+      assert.equal(late.ok ?? false, false, `a spend after the roll: ${show(late).slice(0, 160)}`);
+      assert.match(String(late.error), /before the roll/);
+      assert.ok(hp(clock()) < before, "the hit stands");
       // Before the roll, as the watch stop sets it (foresight-before.ts, the
       // ruling on issue #908): the attack is thrown with one d20, and the use
       // and the reaction are paid only because it had advantage to cancel.
