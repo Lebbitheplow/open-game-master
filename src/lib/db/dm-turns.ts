@@ -841,6 +841,14 @@ export function setPendingAttack(id: string, attack: PendingAttack): PendingRoll
   return result.changes > 0 ? getPendingRoll(id) : null;
 }
 
+// A card taken off the table with nothing rolled against it, as a watch stop
+// closes: a to-hit roll whose dice were never entered when the lead skipped
+// its turn (src/lib/dm/pending-roll-land.ts keepRollsLeftBehind).
+export function withdrawPendingRoll(id: string): PendingRoll | null {
+  const result = getDatabase().prepare(`UPDATE pending_rolls SET status = 'fallback' WHERE id = ? AND status = 'pending'`).run(id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
+}
+
 export function resolvePendingRoll(
   id: string,
   status: "submitted" | "fallback",

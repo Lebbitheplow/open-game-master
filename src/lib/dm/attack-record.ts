@@ -121,6 +121,10 @@ export type AttackRecord = PendingAttack & {
   // The server threw the d20 and the roll waits on the player's choice: when
   // it lands, the server throws the damage too (pc-attack-parked.ts).
   serverDice?: boolean;
+  // The lead skipped the turn it was made on (pending-roll-land.ts
+  // keepRollsLeftBehind). A lone hero's skip can leave the pointer and round
+  // where they were, with the foe owed its turn, so only this says it is over.
+  skipped?: boolean;
   // The attacks declared after this one in the same pc_attack call. They are
   // made, in order, once this attack has landed (pc-attack-parts.ts
   // runQueuedParts), and what they did rides back with it (queuedResults). A
@@ -229,10 +233,16 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
 
 // Whether the turn a parked to-hit roll was declared on is over: the pointer
 // has moved off its attacker (the lead skipped them, the order was edited).
-// A roll the server threw for the player's choice also names its round, so a
-// lone hero whose turn came round again does not land last round's swing on
-// this one. A roll that lands then does nothing.
-export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "serverDice">, characterId: string | null): boolean {
+// A roll made on the attacker's own turn names its round, so a hero whose
+// turn came round again does not land last round's swing on this one. That
+// held only for dice the server threw: real dice the player had yet to
+// enter stay theirs after the lead's skip (pending-roll-land.ts
+// keepRollsLeftBehind), and entered on their next turn they hit for last
+// round. A roll that lands then does nothing.
+export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "skipped">, characterId: string | null): boolean {
+  if (record.skipped) {
+    return true;
+  }
   const fight = getActiveEncounter(campaignId);
   if (!fight?.orderReady) {
     return false;
@@ -241,7 +251,7 @@ export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "r
   if (!current || current.kind !== "pc" || current.characterId !== characterId) {
     return true;
   }
-  return Boolean(record.serverDice) && record.round !== undefined && fight.round !== record.round;
+  return record.round !== undefined && fight.round !== record.round;
 }
 
 // The AC a roll meets when it lands. An attack's parts are made together, so

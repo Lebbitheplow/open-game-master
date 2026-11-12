@@ -2542,6 +2542,10 @@ const FLASH_TITLE = "Flash of Insight";
 const flashTables = {};
 const TOUCH_TITLE = "Deathly Swing";
 const touchTables = {};
+// A fighter whose real d20 is never entered: the lead skips the turn and the
+// card leaves the screen with it (scenario after-roll-attack).
+const SKIPPED_TITLE = "Skipped Swing";
+const skippedTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2572,6 +2576,7 @@ const touchTables = {};
       features: [{ name: "Flash of Genius", source: "choice" }],
       resources: { art_flash_of_genius: { max: 3, used: 0 } },
     }],
+    [SKIPPED_TITLE, skippedTables, [], {}],
     [TOUCH_TITLE, touchTables, [], {
       class: "cleric",
       features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
@@ -3925,6 +3930,7 @@ const ids = {
   allyTables,
   flashTables,
   touchTables,
+  skippedTables,
   portentTables,
   watchTables,
   heldTurnTables,
@@ -4054,6 +4060,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(skippedTables).map(([viewport, table]) => [table.id, `${SKIPPED_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),

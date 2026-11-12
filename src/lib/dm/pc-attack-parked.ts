@@ -167,6 +167,12 @@ function parkDamage(pending: PendingRoll, scene: SwingScene, record: AttackRecor
   publishPersisted(pending.campaignId, "roll_pending", { pendingRoll: publicPendingRoll(damagePending) });
 }
 
+// What the turn hears of a to-hit roll its turn ended under: kept as it lay,
+// or taken off the table with its dice never entered.
+export function lostSwingNote(stored: Pick<AttackRecord, "attacker" | "weapon" | "serverDice">): string {
+  return `${stored.attacker}'s ${stored.weapon} attack was still ${stored.serverDice ? "waiting on its player's choice" : "unrolled"} when their turn ended, so it does not land. No damage roll happens; narrate the moment passing.`;
+}
+
 // Called from the pending-rolls submit route when a parked to-hit roll lands.
 // Returns the combat note the resumed turn surfaces to the model; a hit (or a
 // spell's graze) parks the damage roll, so the turn waits for those dice too.
@@ -179,7 +185,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   // the order was edited) must not land on a later turn as though nothing
   // had happened: the player declared it on a turn that is over.
   if (attackTurnOver(pending.campaignId, stored, pending.characterId)) {
-    return `${stored.attacker}'s ${stored.weapon} attack was still ${stored.serverDice ? "waiting on its player's choice" : "unrolled"} when their turn ended, so it does not land. No damage roll happens; narrate the moment passing.`;
+    return lostSwingNote(stored);
   }
   const found = sceneOf(pending);
   if (!found) {

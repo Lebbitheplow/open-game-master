@@ -2434,6 +2434,13 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // to act the pointer still rests on a PC (nextTurn), and this is what
   // moves the fight on round by round.
   const stuck = turnStuck(campaign);
+  // Their attack's d20 is still with the player (open-roll-logic.ts): a
+  // narration that handed the turn on, or their own words ending it, waits
+  // for it as End Turn and end_turn do. A turn told while the card was open
+  // (another player posted) moved the pointer here, and the swing was lost.
+  if (resolved && !stuck && toHitRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
+    return;
+  }
   if (!resolved && !stuck) {
     // AI companion turn the model never adjudicated: the server takes the
     // basic action (like skipped enemies), so combat cannot wedge on a
