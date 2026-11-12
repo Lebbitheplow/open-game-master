@@ -352,6 +352,38 @@ await test("The lead's skip keeps a thrown roll as it lies: no card outlives the
   assert.equal(hp(enemy), 400);
 });
 
+// Issue 931: a press of the lead's Skip made on one turn, reaching the server
+// after the pointer moved, skipped the next combatant's turn instead.
+await test("A floor press made against a turn that has passed is answered 409 and skips nothing; one against the floor as it stands goes through, and a body it cannot read is refused.", async () => {
+  await stage(NONE);
+  const { getFloor } = await import("../src/lib/db/campaigns.ts");
+  const { floorExpectOf, floorMoved } = await import("../src/lib/dm/floor-expect-logic.ts");
+  world.signIn({ id: world.owner.id });
+  const seen = floorExpectOf(getFloor(world.campaignId));
+  assert.equal(seen.mode, "initiative");
+  assert.equal(seen.currentName, world.sheet(hero.id).name);
+  const first = await call(route.floor, "POST", { expect: seen }, { campaignId: world.campaignId });
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  assert.equal(kit.current().characterId, ally.id, "the turn the press saw was skipped");
+  const stale = await call(route.floor, "POST", { expect: seen }, { campaignId: world.campaignId });
+  assert.equal(stale.status, 409, JSON.stringify(stale.json));
+  assert.match(stale.json.error, /^The floor changed before that reached the table \(.+\), so nothing was done\./);
+  assert.equal(kit.current().characterId, ally.id, "the ally's turn was not skipped by the stale press");
+  assert.equal((await call(route.floor, "POST", { expect: { mode: "open" } }, { campaignId: world.campaignId })).status, 409, "a press made on an open floor does not skip a fight's turn");
+  assert.equal((await call(route.floor, "POST", { expect: { mode: "sideways" } }, { campaignId: world.campaignId })).status, 400);
+  assert.equal(kit.current().characterId, ally.id);
+  const fresh = await call(route.floor, "POST", { expect: floorExpectOf(getFloor(world.campaignId)) }, { campaignId: world.campaignId });
+  assert.equal(fresh.status, 200, `a press on the floor as it stands goes through: ${JSON.stringify(fresh.json)}`);
+  // Pure: the mode decides off a fight, and the turn and round in one.
+  assert.equal(floorMoved({ mode: "open" }, { mode: "open" }), false);
+  assert.equal(floorMoved({ mode: "hold", next: { mode: "open" } }, { mode: "open" }), true);
+  const fight = { mode: "initiative", encounterId: "e", userIds: [], currentName: "Jason", round: 2 };
+  assert.equal(floorMoved(fight, { mode: "initiative" }), false, "an older screen names no turn");
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Jason", round: 2 }), false);
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Jason", round: 1 }), true);
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Rogue Guard", round: 2 }), true);
+});
+
 await test("A readied attack, made on another's turn, never waits: it would never land.", async () => {
   const enemy = await stage(LUCKY);
   const ready = await world.invoke("take_action", { characterId: hero.id, action: "ready", trigger: "when it moves" });
