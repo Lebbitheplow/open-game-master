@@ -12,6 +12,7 @@ import path from "node:path";
 import { createRequire, register, syncBuiltinESMExports } from "node:module";
 import zlib from "node:zlib";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
+import { staticImports } from "./lib/static-imports.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -435,30 +436,9 @@ try {
 // image-variant-url.ts. The native board client (an addon's board view in the
 // apps) imported it, and the table page took the polyfill with it.
 {
-  const src = path.join(repo, "src");
-  const resolveFrom = (from, spec) => {
-    const base = spec.startsWith("@/") ? path.join(src, spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(from), spec) : null;
-    if (!base) return null;
-    for (const candidate of [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts"), path.join(base, "index.tsx")]) {
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
-    }
-    return null;
-  };
-  const reached = new Set();
-  const walk = (file) => {
-    if (reached.has(file) || !/\.tsx?$/.test(file)) return;
-    reached.add(file);
-    const text = fs.readFileSync(file, "utf8");
-    // Static imports and re-exports; a type-only import brings no code.
-    for (const match of text.matchAll(/^\s*(import|export)\s+(?!type\b)[^;]*?from\s+"([^"]+)"/gms)) {
-      const next = resolveFrom(file, match[2]);
-      if (next) walk(next);
-    }
-  };
-  walk(path.join(src, "app/campaigns/[campaignId]/table/page.tsx"));
+  const reached = staticImports("app/campaigns/[campaignId]/table/page.tsx");
   assert.ok(reached.size > 100, `the walk reads the table page's imports (${reached.size} files)`);
-  const byteHalf = path.join(src, "lib/image-format.ts");
-  assert.ok(!reached.has(byteHalf), "the table page imports image-format.ts (Buffer); import variantUrl from image-variant-url.ts");
+  assert.ok(!reached.has("lib/image-format.ts"), "the table page imports image-format.ts (Buffer); import variantUrl from image-variant-url.ts");
   passed += 1;
 }
 

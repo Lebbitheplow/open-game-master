@@ -604,6 +604,14 @@ export function slotLine(slot: SlotPick): string {
 
 export const SAVE_LABEL: Record<string, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
 
+// The once-a-turn mark pc_attack leaves when a granted strike rode its
+// activation (pc-attack-spend.ts). Here rather than in hand-granted.ts so the
+// board's aim (hand-play.ts) reads it without the granted cards, which reach
+// the spell cards (hand-spells.ts), in the table display page's first load.
+export function grantedRideMark(name: string): string {
+  return `granted:${name.toLowerCase()}`;
+}
+
 // Swings the Attack action grants this character (1 + Extra Attack), which
 // is what afterCommit needs to know when the action closes. Here rather than
 // in hand.ts so the board's token menu (hand-hud.ts) asks it without pulling
