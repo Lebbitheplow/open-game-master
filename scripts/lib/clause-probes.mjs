@@ -17,8 +17,11 @@
 // runClauseSuite also refuse, when they run, an id they have no probe for.
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+// fileURLToPath, not URL.pathname: on Windows the pathname is "/D:/a/..." and
+// path.resolve turns it into "D:\\D:\\a\\...", so no ledger was found there.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const LEDGER_DIR = path.join(ROOT, "scripts/clauses");
 
 // The ledger files, by their name under scripts/clauses ("arcane.json").

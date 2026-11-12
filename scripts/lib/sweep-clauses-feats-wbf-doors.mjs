@@ -4,6 +4,7 @@
 // feat and for a character without it (scripts/clauses/feats.json; run by
 // test-enforce-sweep-clauses-feats.mjs; src/lib/dm/ar-wbf-feat-doors.ts).
 import { assert } from "./sweep-clauses-srd-rig.mjs";
+import { hasPack } from "./enforce-world.mjs";
 import { d20s, tableKit, worn } from "./sweep-clauses-feats-wbf-table.mjs";
 
 export function doorProbes(rig, P) {
@@ -46,18 +47,24 @@ export function doorProbes(rig, P) {
       assert.match(grasp.text, /casts Shocking Grasp/, `the move's lines name the spell: ${grasp.text.slice(0, 400)}`);
       // A levelled spell attack pays its slot: Ray of Sickness, 2d8 (8 + 8)
       // after the Constitution save its hit asks (the first 8).
-      assert.equal((await t.use(hero, "War Caster", { variant: "Ray of Sickness" })).ok, true);
-      const ray = await leaves([15, 8, 8, 8]);
+      // Ray of Sickness is known as a spell attack only from the content pack's
+      // record; with no pack (CI) War Caster cannot name it, so that leg is run
+      // where the pack is.
+      let ray = null;
+      if (hasPack) {
+        assert.equal((await t.use(hero, "War Caster", { variant: "Ray of Sickness" })).ok, true);
+        ray = await leaves([15, 8, 8, 8]);
+      }
       // A save spell: Poison Spray, a Constitution save (a 2 fails), 1d12.
       assert.equal((await t.use(hero, "War Caster", { variant: "Poison Spray" })).ok, true);
       const spray = await leaves([2, 12]);
       // Back to the weapon: the fist again (1 + Strength 10's 0).
       assert.equal((await t.use(hero, "War Caster", { variant: "weapon" })).ok, true);
       const fist = await leaves([15, 8]);
-      return { named: true, took: grasp.took, reacted: grasp.reacted, at: grasp.at, ray: [ray.took, ray.slot, ray.reacted], spray: [spray.took, spray.slot, spray.reacted], fist: fist.took };
+      return { named: true, took: grasp.took, reacted: grasp.reacted, at: grasp.at, ray: ray && [ray.took, ray.slot, ray.reacted], spray: [spray.took, spray.slot, spray.reacted], fist: fist.took };
     });
     assert.deepEqual(seen.plain, { named: false, took: 1, reacted: true }, `with no feat the spell cannot be named and the fist swings: ${JSON.stringify(seen)}`);
-    assert.deepEqual(seen.holder, { named: true, took: 8, reacted: true, at: [10, 5], ray: [16, 1, true], spray: [12, 0, true], fist: 1 }, `a War Caster's opportunity attacks: ${JSON.stringify(seen)}`);
+    assert.deepEqual(seen.holder, { named: true, took: 8, reacted: true, at: [10, 5], ray: hasPack ? [16, 1, true] : null, spray: [12, 0, true], fist: 1 }, `a War Caster's opportunity attacks: ${JSON.stringify(seen)}`);
   };
 
   // Intelligence 16 with the feat's +1 on record there: DC 8 + 2 + 3 = 13.

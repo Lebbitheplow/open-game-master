@@ -506,7 +506,7 @@ export function probes(rig, shared) {
       assert.equal(await missile(3), 6, "Magic Missile cast with a 3rd-level slot is a 3rd-level spell");
       // The slot counts on the other two paths a spell kills by as well.
       const area = await harvest("aoe_damage", (enemy) => ({ casterCharacterId: nec().id, spell: "Fireball", level: 5, enemyIds: [enemy.id] }), [1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
-      const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness", level: 2 }), [15, 5, 5, 5]);
+      const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness", level: 2, ...(hasPack ? {} : { damage: "2d8" }) }), [15, 5, 5, 5]);
       assert.deepEqual([area, attack], [10, 6], "[Fireball from a 5th-level slot, Ray of Sickness (necromancy) from a 2nd-level slot]");
     },
     "harvest-paths": async () => {
