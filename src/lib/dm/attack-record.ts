@@ -121,6 +121,10 @@ export type AttackRecord = PendingAttack & {
   // The server threw the d20 and the roll waits on the player's choice: when
   // it lands, the server throws the damage too (pc-attack-parked.ts).
   serverDice?: boolean;
+  // The lead skipped the turn it was made on (pending-roll-land.ts
+  // keepRollsLeftBehind). A lone hero's skip can leave the pointer and round
+  // where they were, with the foe owed its turn, so only this says it is over.
+  skipped?: boolean;
   // The attacks declared after this one in the same pc_attack call. They are
   // made, in order, once this attack has landed (pc-attack-parts.ts
   // runQueuedParts), and what they did rides back with it (queuedResults). A
@@ -235,7 +239,10 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
 // enter stay theirs after the lead's skip (pending-roll-land.ts
 // keepRollsLeftBehind), and entered on their next turn they hit for last
 // round. A roll that lands then does nothing.
-export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round">, characterId: string | null): boolean {
+export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "skipped">, characterId: string | null): boolean {
+  if (record.skipped) {
+    return true;
+  }
   const fight = getActiveEncounter(campaignId);
   if (!fight?.orderReady) {
     return false;

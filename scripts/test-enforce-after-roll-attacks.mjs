@@ -21,7 +21,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 const { test, finish } = suite("test-enforce-after-roll-attacks");
 const world = await openWorld({ campaign: { maxPlayers: 12 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
-const { getCampaignById, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { getCampaignById, setFloor, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { createDmTurn, getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getRoll, listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { fillQueuedParts, QUEUED_BEHIND, AWAITING_ROLL } = await import("../src/lib/dm/pc-attack-parts.ts");
@@ -258,33 +258,6 @@ await test("A card left open by a fight that is over holds no turn of the next o
   assert.equal(open().length, 0);
 });
 
-// The lead's skip leaves dice the player has yet to enter with them, and
-// End Turn passes a card from an earlier round: entered when the hero's turn
-// comes round again, last round's swing landed on this one.
-await test("Real dice left from a skipped turn, entered on the hero's next turn, land nothing.", async () => {
-  const enemy = await stage(NONE);
-  const userId = world.sheet(hero.id).userId;
-  setMemberRealDice(world.campaignId, userId, true);
-  try {
-    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
-    const [toHit] = open();
-    assert.equal(toHit.thrown, null, "no dice yet");
-    world.signIn({ id: world.owner.id });
-    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
-    assert.ok(open().some((entry) => entry.id === toHit.id), "dice not yet entered stay the player's");
-    // The turn comes round again, a round on.
-    const encounter = world.encounter();
-    kit.saveEncounter({ ...encounter, round: encounter.round + 1, turnIndex: encounter.order.findIndex((entry) => entry.characterId === hero.id), turnBudget: null });
-    world.signIn({ id: userId });
-    const entered = await call(route.pending, "POST", { dice: [19] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
-    assert.equal(entered.status, 200, JSON.stringify(entered.json));
-    assert.match(getPendingRoll(toHit.id).combatNote ?? "", /does not land/);
-    assert.equal(hp(enemy), 400, "last round's swing hit nothing this round");
-  } finally {
-    setMemberRealDice(world.campaignId, userId, false);
-  }
-});
-
 await test("Dice the player has yet to enter hold the turn the same way, at the button and at end_turn.", async () => {
   const enemy = await stage(NONE);
   const userId = world.sheet(hero.id).userId;
@@ -326,6 +299,41 @@ await test("A narration that hands the turn on leaves it with the player while t
   assert.equal((await choose(pending.id, { keep: true })).status, 200);
   assert.match(getPendingRoll(pending.id).combatNote, /MISS/, "the swing landed on its own turn");
   assert.equal(kit.endTurn(world.sheet(hero.id).userId), true);
+});
+
+// Dice the player had yet to enter when the lead skipped their turn: the card
+// stayed up, and could only land nothing (or, entered on the hero's next
+// turn, hit for last round). The skip takes it off the table, as it keeps
+// thrown dice as they lie.
+await test("The lead's skip takes a card whose dice were never entered off the table: nothing rolled, nothing spent, and the screen drops it.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  const heard = [];
+  const stop = subscribe(world.campaignId, (chunk) => heard.push(chunk), userId);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    assert.equal(toHit.thrown, null, "no dice yet");
+    const rollsBefore = listRecentRolls(world.campaignId, 100).length;
+    world.signIn({ id: world.owner.id });
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+    assert.ok(!open().some((entry) => entry.id === toHit.id), "the card went with the turn");
+    assert.notEqual(getPendingRoll(toHit.id).status, "pending");
+    assert.match(getPendingRoll(toHit.id).combatNote ?? "", /unrolled when their turn ended, so it does not land/);
+    assert.equal(listRecentRolls(world.campaignId, 100).length, rollsBefore, "no roll is written for dice nobody threw");
+    assert.ok(heard.some((chunk) => chunk.includes("roll_pending") && chunk.includes(toHit.id) && /"status":"fallback"/.test(chunk)), "the player's screen is told the card is gone");
+    assert.notEqual(getDmTurn(toHit.turnId).status, "awaiting_rolls", "the turn it was parked on is closed");
+    assert.equal(hp(enemy), 400);
+    world.signIn({ id: userId });
+    const late = await call(route.pending, "POST", { dice: [19] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.notEqual(late.status, 200, "dice entered afterwards land nothing");
+    assert.equal(hp(enemy), 400);
+  } finally {
+    stop();
+    setMemberRealDice(world.campaignId, userId, false);
+  }
 });
 
 await test("The lead's skip keeps a thrown roll as it lies: no card outlives the turn, and nothing is spent.", async () => {
@@ -508,6 +516,56 @@ await test("A swing lost with its turn, answered after the story has gone on, wa
   assert.equal(model.requests.length, told, "the narrator is not asked about the lost swing");
   assert.equal(lane.sheet(first.id).resources.luck_points.used, 0);
   lane.close();
+});
+
+// A table of one, the case #912 was written for: the skip of a lone hero
+// whose foe is owed its turn leaves the pointer where it was, so the roll's
+// turn read as still running, the card stayed up, and kept later it landed
+// as a live swing.
+await test("A lone hero's skipped turn takes its cards with it: thrown dice kept as they lie, dice never entered off the table.", async () => {
+  const solo = await openWorld({ gameSettings: { dicePolicy: "real_allowed", dmMode: "human" } });
+  const soloKit = await combatKit(solo);
+  const floor = await solo.route("campaigns/[campaignId]/floor");
+  const lone = solo.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+  solo.patch(lone.id, { feats: ["Lucky"], resources: { ...solo.sheet(lone.id).resources, luck_points: { max: 3, used: 0 } } });
+  const turnBack = () => {
+    const encounter = solo.encounter();
+    soloKit.saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => entry.characterId === lone.id), turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+    // The floor the fight gives the hero's turn, as the browser seed sets it.
+    setFloor(solo.campaignId, tools.initiativeFloorFor(solo.campaignId) ?? { mode: "open" });
+  };
+  const skip = async () => {
+    solo.signIn({ id: solo.owner.id });
+    assert.equal((await call(floor, "POST", {}, { campaignId: solo.campaignId })).status, 200);
+  };
+  const openHere = () => listOpenPendingRolls(solo.campaignId).filter((entry) => entry.kind === "attack");
+  await soloKit.fight(1, { heroFaces: { [lone.id]: 2 } });
+  const [foe] = solo.enemies();
+  soloKit.setEnemy(foe.id, { maxHp: 400, currentHp: 400, ac: 15 });
+  soloKit.place(lone.id, 5, 5);
+  soloKit.place(foe.id, 5, 6);
+  turnBack();
+  // Thrown, the choice open.
+  solo.dice(3);
+  await solo.invoke("pc_attack", { characterId: lone.id, targetEnemyId: foe.id });
+  solo.clearDice();
+  const [thrown] = openHere();
+  assert.ok(thrown?.thrown, "the miss waits on the choice");
+  await skip();
+  assert.equal(openHere().length, 0, "the thrown card went with the skipped turn");
+  assert.match(getPendingRoll(thrown.id).combatNote ?? "", /does not land/);
+  assert.equal(solo.sheet(lone.id).resources.luck_points.used, 0);
+  // Real dice, never entered.
+  turnBack();
+  setMemberRealDice(solo.campaignId, solo.sheet(lone.id).userId, true);
+  await solo.invoke("pc_attack", { characterId: lone.id, targetEnemyId: foe.id });
+  const [unrolled] = openHere();
+  assert.equal(unrolled?.thrown, null, "no dice yet");
+  await skip();
+  assert.equal(openHere().length, 0, "the unrolled card went with the skipped turn");
+  assert.match(getPendingRoll(unrolled.id).combatNote ?? "", /unrolled when their turn ended/);
+  assert.equal(soloKit.enemy(foe.id).currentHp, 400);
+  solo.close();
 });
 
 model.close();

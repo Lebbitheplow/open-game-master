@@ -12,6 +12,8 @@ import {
   getPendingRoll,
   setPendingAttack,
   setPendingCombatNote,
+  withdrawPendingRoll,
+  publicPendingRoll,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
 import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
@@ -25,7 +27,7 @@ import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
-import { parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
+import { lostSwingNote, parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
 import { attackTurnOver, type AttackRecord } from "@/lib/dm/attack-record";
 import { closeStaleDmTurn, resumeDmTurn } from "@/lib/dm/turn";
 import { parkedTurnIsStale, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
@@ -36,8 +38,9 @@ import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
 import { backstopTurn } from "@/lib/dm/backstop-calls";
 import { resumeBackstop } from "@/lib/dm/backstop-resume";
-import { publishWithSeq } from "@/lib/events";
+import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { getActiveEncounter } from "@/lib/db/encounters";
 
 export type RollLanding = {
   status: "submitted" | "fallback";
@@ -258,17 +261,49 @@ export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcom
   return roll;
 }
 
-// The lead skipped a turn with its attack's dice thrown and the choice still
-// open: the dice are kept as they lie, as the clock keeps them
-// (after-roll-timer.ts), so no card outlives the turn it was dealt on. The
-// turn is over, so the swing lands on nothing and nothing is spent. Dice the
-// player has yet to enter stay theirs to enter.
-export function keepRollsLeftBehind(campaign: Campaign): number {
-  const left = listOpenPendingRolls(campaign.id).filter(
-    (entry) => entry.thrown && entry.characterId && toHitRollWithPlayer([entry], entry.characterId) && attackTurnOver(campaign.id, entry.attack as AttackRecord, entry.characterId),
-  );
+// The lead skipped a turn with its attack's d20 still with the player, so no
+// card outlives the turn it was dealt on. Thrown dice with the choice still
+// open are kept as they lie, as the clock keeps them (after-roll-timer.ts):
+// the turn is over, so the swing lands on nothing and nothing is spent. Dice
+// the player never entered are taken off the table with nothing rolled: left
+// up, the card could only land nothing, or, entered once the hero's turn came
+// round again, hit for last round. The screen drops it on the roll_pending
+// event a watch stop closes with (useCampaignStream.ts).
+// `skippedId`: the character whose turn the skip ended. Their rolls are
+// marked as made on a skipped turn: a lone hero's skip can leave the pointer
+// and round where they were (the foe owed its turn first), and the turn read
+// as still running, so the card stayed up and, kept later, hit.
+export function keepRollsLeftBehind(campaign: Campaign, skippedId: string | null): number {
+  const fight = getActiveEncounter(campaign.id) ?? undefined;
+  const left = listOpenPendingRolls(campaign.id).flatMap((entry) => {
+    if (!entry.characterId || !toHitRollWithPlayer([entry], entry.characterId)) {
+      return [];
+    }
+    if (entry.characterId === skippedId && toHitRollWithPlayer([entry], skippedId, fight)) {
+      return [setPendingAttack(entry.id, { ...(entry.attack as AttackRecord), skipped: true }) ?? entry];
+    }
+    return attackTurnOver(campaign.id, entry.attack as AttackRecord, entry.characterId) ? [entry] : [];
+  });
   for (const pending of left) {
-    landPendingRoll(campaign, pending, pending.thrown!.outcome, pending.thrown!.landing);
+    if (pending.thrown) {
+      landPendingRoll(campaign, pending, pending.thrown.outcome, pending.thrown.landing);
+    } else {
+      withdrawUnrolled(campaign, pending);
+    }
   }
   return left.length;
+}
+
+function withdrawUnrolled(campaign: Campaign, pending: PendingRoll) {
+  const withdrawn = withdrawPendingRoll(pending.id);
+  if (!withdrawn) {
+    return;
+  }
+  setPendingCombatNote(pending.id, lostSwingNote(pending.attack as AttackRecord));
+  publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(withdrawn) });
+  // The turn it was parked on has nothing left to wait for, and nothing
+  // landed to tell: it closes untold, as a lost swing answered late does.
+  if (!listPendingForTurn(pending.turnId).some((entry) => entry.status === "pending") && !resumeHumanTurn(pending.turnId)) {
+    enqueueDmJob(campaign.id, () => closeStaleDmTurn(campaign.id, pending.turnId), { kind: "turn" });
+  }
 }
