@@ -1519,9 +1519,11 @@ html[data-theme="light"] .skeleton-block {
 }
 /* The track is drawn 24px tall; a finger gets 40: on a touch screen the switch
    takes a press from 8px above and below it, with nothing drawn there (the
-   Deploy dialog's "In a legendary creature's lair" on a phone). */
+   Deploy dialog's "In a legendary creature's lair" on a phone). The inset is
+   measured from inside the track's 1px border, so it reaches 1px further:
+   without it the press was 38px tall. */
 @media (pointer: coarse) {
-  .kit-switch::before { content: ""; position: absolute; inset: -0.5rem -0.25rem; }
+  .kit-switch::before { content: ""; position: absolute; inset: calc(-0.5rem - 1px) -0.25rem; }
 }
 .kit-switch:disabled { opacity: 0.5; cursor: not-allowed; }
 .kit-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(212, 171, 58, 0.3); }
