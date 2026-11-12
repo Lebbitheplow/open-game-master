@@ -69,6 +69,10 @@
       "count": 1,
       "why": "actingSheetId reads the entry and asks ownTurnOf of it"
     },
+    "lib/dm/intent-check.ts": {
+      "count": 1,
+      "why": "cardMoment stamps a played card with whose turn the pointer is on, and a later turn compares the two (issue 931): the pointer's own position, not whether it is anyone's own turn"
+    },
     "lib/dm/claims.ts": {
       "count": 2,
       "why": "the acting combatant's budget key and the turn finalize hands on: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
