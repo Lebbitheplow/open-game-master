@@ -238,6 +238,21 @@ await test("the Song of Rest die is in what the sheet asks for, asking does not 
   assert.equal(camp.sheet(sung.id).hitDice.spent, 1);
 });
 
+// "Who can hear your performance": the GM's spend leaves the song's die out
+// for a deafened listener (rest-tools.ts hearsSong), and the player's own
+// spend gave it to them all the same.
+await test("a deafened player's own hit die hears no Song of Rest, as the GM's spend does not", async () => {
+  await campRest();
+  camp.patch(sung.id, { conditions: ["deafened"] });
+  camp.signIn(guest);
+  const asked = await call(hitDice, "GET", undefined, campParams, `http://test/?characterId=${sung.id}`);
+  assert.deepEqual(asked.json.roll, { expression: "1d10+2", extras: [] }, "the sheet asked a deafened player for the song's die");
+  const reply = await call(hitDice, "POST", { dice: 1, characterId: sung.id, faces: [5] }, campParams);
+  assert.equal(reply.status, 200, reply.json.error);
+  assert.equal(camp.sheet(sung.id).currentHp, 12, "5 on the d10 and 2, with no song");
+  camp.patch(sung.id, { conditions: [] });
+});
+
 await test("a Chef's meal adds its die to a player's own hit dice, once a rest", async () => {
   camp.patch(camp.sheets()[0].id, { feats: ["Chef"] });
   await campRest();

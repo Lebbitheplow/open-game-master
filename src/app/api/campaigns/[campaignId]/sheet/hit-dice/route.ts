@@ -10,6 +10,7 @@ import { ownSheetFor } from "@/lib/character-seat";
 import { entryDice } from "@/lib/dice";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { hitDiceRoll, partyChefDie, partySongOfRestDie, spendHitDice } from "@/lib/dm/hit-dice";
+import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export const runtime = "nodejs";
@@ -60,7 +61,9 @@ function restDice(campaignId: string, sheet: CharacterSheet): { songDie: string 
   const song = partySongOfRestDie(party);
   const chef = partyChefDie(party);
   return {
-    songDie: song && restDieLeft(campaignId, sheet.id, "sung") ? song : null,
+    // "Who can hear your performance" (mt-srd-bard.ts), as the GM's spend
+    // asks it (rest-tools.ts): a deafened listener gets no song's die.
+    songDie: song && hearsSong(sheet) && restDieLeft(campaignId, sheet.id, "sung") ? song : null,
     chefDie: chef && restDieLeft(campaignId, sheet.id, "fed") ? chef : null,
   };
 }
