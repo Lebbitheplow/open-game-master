@@ -62,12 +62,17 @@ const enemyFleesTool: ToolDef = {
   function: {
     name: "enemy_flees",
     description:
-      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. Breaking away from a character who has it in reach draws their opportunity attack, rolled by the server, unless it Disengaged this turn: the result lists them, and says so if one stopped it. When no enemies remain the encounter ends automatically with reduced XP.",
+      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. Breaking away from a character who has it in reach draws their opportunity attack, rolled by the server, unless it Disengaged this turn or teleports: the result lists them, and says so if one stopped it. When no enemies remain the encounter ends automatically with reduced XP.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         enemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
+        teleport: {
+          type: "boolean",
+          description:
+            "True only when it leaves by teleporting (Misty Step, Dimension Door, a trait that teleports it): no opportunity attacks, and speed 0 does not hold it. Omit when it runs, flies, swims or burrows away.",
+        },
         reason: { type: "string", description: "Short in-fiction cause." },
       },
       required: ["enemyId"],
@@ -100,6 +105,8 @@ const enemyRefArgsSchema = z.object({
   level: z.coerce.number().int().min(1).max(6).optional(),
   // From magic: Magic Resistance applies to the save against it.
   magical: z.coerce.boolean().optional(),
+  // enemy_flees only: it teleports out of the fight instead of walking out.
+  teleport: z.coerce.boolean().optional(),
   reason: z.string().optional(),
 });
 
@@ -146,10 +153,14 @@ function handleEnemyFlees(
   if (!walks.ok) {
     return { error: `${walks.error} It cannot flee.`, refused: "rules" };
   }
-  if (enemySpeedTiles(enemy) === 0) {
+  // A teleport is not a walk: speed 0 does not hold it (a grappled mage's
+  // Misty Step), and it draws nothing (SRD 5.1, Opportunity Attacks: "You
+  // also don't provoke an opportunity attack when you teleport").
+  const teleports = args.teleport === true;
+  if (!teleports && enemySpeedTiles(enemy) === 0) {
     const held = enemy.conditions.find((entry) => isConditionNamed(entry, "grappled", "restrained"));
     return {
-      error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts.`,
+      error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts (teleport: true).`,
       refused: "rules",
     };
   }
@@ -161,7 +172,7 @@ function handleEnemyFlees(
   // had already fled. A Disengage it took this turn holds, as on move_token.
   const map = getBattleMapForEncounter(encounter.id);
   const token = map ? getTokenByRef(map.id, enemy.id) : null;
-  const struck = map && token
+  const struck = map && token && !teleports
     ? resolvePcOpportunityAttacks(campaign, enemy.id, { x: token.x, y: token.y }, pastEveryReach(map, token), undefined, enemyMoveBudget(encounter, enemy, token).disengaged)
     : [];
   const swings = struck.length
@@ -183,7 +194,7 @@ function handleEnemyFlees(
   // Stopped where it stands: Sentinel and Hold the Line leave a creature they
   // hit with speed 0 for the rest of the turn (opportunity-strike.ts).
   const live = getActiveEncounter(campaign.id) ?? encounter;
-  if (!canEnemyAct({ enemy: after, encounter: live, kind: "move" }).ok || enemySpeedTiles(after) === 0) {
+  if (!teleports && (!canEnemyAct({ enemy: after, encounter: live, kind: "move" }).ok || enemySpeedTiles(after) === 0)) {
     publishEncounter(campaign.id);
     return {
       ok: true,

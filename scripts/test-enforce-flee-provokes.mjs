@@ -138,4 +138,33 @@ await test("A Sentinel's hit stops it where it stands: speed 0 for the turn, sti
   assert.equal(again.refused, "rules");
 });
 
+await test("One that teleports away draws nothing, from beside a character with their reaction ready.", async () => {
+  const [mage] = await stage(2);
+  kit.place(hero.id, 6, 7);
+  const out = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true, reason: "Misty Step" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.fled, mage.displayName);
+  assert.equal(out.result.opportunityAttacks, undefined);
+  assert.equal(reacted(hero), false);
+  assert.equal(kit.enemy(mage.id).status, "fled");
+});
+
+await test("Speed 0 holds a walk out and not a teleport: grappled, it cannot run, and the refusal names the teleport.", async () => {
+  const [mage] = await stage(2, { conditions: ["grappled"] });
+  const run = await flee(mage);
+  assert.equal(run.refused, "rules");
+  assert.match(run.error, /speed is 0 \(grappled\): it cannot run from the fight\. .+ \(teleport: true\)\./);
+  assert.equal(kit.enemy(mage.id).status, "alive");
+  const gone = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true });
+  assert.equal(gone.ok, true, gone.error);
+  assert.equal(gone.result.fled, mage.displayName);
+});
+
+await test("A teleport is still held by what stops a creature acting: paralyzed, it goes nowhere.", async () => {
+  const [mage] = await stage(2, { conditions: ["paralyzed"] });
+  const out = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true });
+  assert.equal(out.refused, "rules");
+  assert.equal(kit.enemy(mage.id).status, "alive");
+});
+
 await finish();

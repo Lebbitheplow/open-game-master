@@ -384,6 +384,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     needsEncounter: true,
     fields: [
       { name: "enemyId", label: "Enemy", kind: "enemy", required: true },
+      { name: "teleport", label: "Teleports away", kind: "boolean", help: "Misty Step, Dimension Door, a trait that teleports it: nobody gets an opportunity attack as it goes." },
       REASON,
     ],
   },
