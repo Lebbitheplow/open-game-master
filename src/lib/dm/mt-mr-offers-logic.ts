@@ -19,9 +19,11 @@
 // offered where the roll waits, as Master Duelist and Lucky are.
 //
 // Pure: the sheet and the roll in, the options out. What they spend is
-// src/lib/dm/mt-mr-offers.ts.
+// src/lib/dm/mt-mr-offers.ts; their words are their rows in
+// src/lib/dm/after-roll-table.ts.
 
 import type { AfterRollId, AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { rowWords } from "@/lib/dm/after-roll-table";
 import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -64,14 +66,14 @@ export function mrAttackOffers(sheet: CharacterSheet, roll: { total: number; nat
   const options: AfterRollOption[] = [];
   // A fresh d20 can always save a miss: a natural 20 hits.
   if (swing.monkWeapon && swing.ownTurn && !swing.accuracyUsed && !roll.taken.has("unerring_accuracy") && holdsRow(sheet, "monk::Unerring Accuracy")) {
-    options.push({ id: "unerring_accuracy", label: "Unerring Accuracy: roll it again", note: "Once on each of your turns: roll this missed monk-weapon attack again, and the new roll stands." });
+    options.push({ id: "unerring_accuracy", ...rowWords("unerring_accuracy", {}) });
   }
   const blades = swing.psychicBlade ? holdsRow(sheet, "rogue::Soul Blades") : null;
   if (blades && !roll.taken.has("homing_strikes") && left(sheet, PSIONIC_ENERGY) > 0) {
     const die = psionicEnergyDie(blades.level);
     // A natural 1 misses whatever is added, and a die too small is not offered.
     if (roll.natural !== 1 && roll.total + sides(die) >= roll.ac) {
-      options.push({ id: "homing_strikes", label: `Homing Strikes: add 1${die}`, note: `Roll a Psionic Energy die and add it to this attack roll. The die is spent only if it turns the miss into a hit.` });
+      options.push({ id: "homing_strikes", ...rowWords("homing_strikes", { amount: die }) });
     }
   }
   return options;
@@ -106,13 +108,13 @@ export function mrCheckOffers(
   if (knack && !roll.taken.has("psi_knack") && left(sheet, PSIONIC_ENERGY) > 0 && proficientIn(sheet, check)) {
     const die = psionicEnergyDie(knack.level);
     if (roll.total + sides(die) >= dc) {
-      options.push({ id: "psi_knack", label: `Psi-Bolstered Knack: add 1${die}`, note: "Roll a Psionic Energy die and add it to this check. The die is spent only if it turns the failure into a success." });
+      options.push({ id: "psi_knack", ...rowWords("psi_knack", { amount: die }) });
     }
   }
   const skill = textKey(check.skill ?? "");
   const reaches = roll.natural === undefined || roll.total - roll.natural + 20 >= dc;
   if (PRESENCE_SKILLS.includes(skill) && reaches && roll.reactionFree && !roll.taken.has("draconic_presence") && left(sheet, DRACONIC_PRESENCE) > 0 && holdsRow(sheet, "monk::Draconic Disciple")) {
-    options.push({ id: "draconic_presence", label: "Draconic Presence: roll it again", note: "Use your reaction to roll this check again; the new roll stands. Once it turns a failure into a success, it waits for a long rest." });
+    options.push({ id: "draconic_presence", ...rowWords("draconic_presence", {}) });
   }
   return options;
 }

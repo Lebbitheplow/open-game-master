@@ -22,6 +22,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { extraD20Expression, withExtraD20, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { rowWords } from "@/lib/dm/after-roll-table";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { canReactNow } from "@/lib/dm/chronal-shift";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -86,11 +87,11 @@ export function propheticChoicesFor(campaignId: string, roller: CharacterSheet, 
   if (!advantageHelps(roll)) {
     return [];
   }
-  const what = "ac" in roll ? "attack roll" : roll.kind === "saving_throw" ? "save" : "check";
-  const note = `Use your reaction (the Storm Rune's prophetic state): this ${what} has advantage, one more d20 and the higher kept.`;
-  const own: AfterRollOption[] = ownToo && inPropheticReach(campaignId, roller, roller) ? [{ id: "prophetic_state", label: "Prophetic State: roll with advantage", note }] : [];
+  // The words are the row's (after-roll-table.ts).
+  const kind = "ac" in roll ? "attack" : roll.kind;
+  const own: AfterRollOption[] = ownToo && inPropheticReach(campaignId, roller, roller) ? [{ id: "prophetic_state", ...rowWords("prophetic_state", { kind }) }] : [];
   const help = others.flatMap((knight): AfterRollOption[] =>
-    knight.id !== roller.id && inPropheticReach(campaignId, knight, roller) ? [{ id: "prophetic_state", by: knight.id, label: `Prophetic State: ${roller.name} rolls with advantage`, note }] : [],
+    knight.id !== roller.id && inPropheticReach(campaignId, knight, roller) ? [{ id: "prophetic_state", by: knight.id, ...rowWords("prophetic_state", { kind, name: roller.name, other: true }) }] : [],
   );
   return [...own, ...help];
 }

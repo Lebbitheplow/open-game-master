@@ -28,6 +28,7 @@ import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { afterAttackOptions, afterRollOptions, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { afterRollRow } from "@/lib/dm/after-roll-table";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterRollDeadline } from "@/lib/dm/after-roll-timer";
 import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
@@ -85,12 +86,12 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
   const reactionFree = reactionFreeFor(campaign.id, sheet.id);
   if (roll.attack) {
     const critRange = roll.attack.critRange ?? 20;
-    // A hit's own choices (Touch of Death) ride a pc_attack's record; an
-    // attack thrown by another tool asks only about a miss.
-    const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(
-      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath" && option.id !== "combat_inspiration",
-    );
-    return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange })];
+    // A hit's choices (Touch of Death, Combat Inspiration, Violent
+    // Attraction) ride a pc_attack's record; an attack thrown by another
+    // tool asks only about a miss.
+    const onMiss = (option: AfterRollOption) => afterRollRow(option.id).when !== "hit";
+    const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(onMiss);
+    return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange }).filter(onMiss)];
   }
   const dc = typeof roll.dc === "number" ? roll.dc : null;
   return [

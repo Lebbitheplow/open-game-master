@@ -1,6 +1,7 @@
 "use client";
 
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
+import type { WatchPower } from "@/lib/dm/after-roll-table";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { isHaltedTurnNotice, type CampaignMember, type SessionUser } from "@/lib/campaign-types";
 import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
@@ -88,7 +89,7 @@ export type PendingRoll = {
   // A watch stop (src/lib/dm/foresight.ts): what it waits on, which feature
   // it is for, and whose roll it may answer when there is more than one
   // (`when`: the words a Chronal Shift waits for, "if it succeeds").
-  watch?: { line: string; deadline: string; power?: "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck" | "cloud_rune"; choices?: Array<{ name: string; when: string }> } | null;
+  watch?: { line: string; deadline: string; power?: WatchPower; choices?: Array<{ name: string; when: string }> } | null;
   userId: string;
   characterId: string | null;
   kind: string;

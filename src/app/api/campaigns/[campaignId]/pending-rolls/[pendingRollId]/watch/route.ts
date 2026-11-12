@@ -1,17 +1,35 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
-import { getPendingRoll, type WatchPower } from "@/lib/db/dm-turns";
+import { getPendingRoll } from "@/lib/db/dm-turns";
+import { isSaveHelp, WATCH_FEATURES, watchWords, type WatchPower } from "@/lib/dm/after-roll-table";
 import { getSheetById } from "@/lib/db/sheets";
 import { answerWatch } from "@/lib/dm/foresight-release";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { canHelpSaveNow, canReactNow, canShiftNow } from "@/lib/dm/chronal-shift";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { canTurnFate } from "@/lib/dm/fate-turn";
+import { isFatePower } from "@/lib/dm/fate-turn-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export const runtime = "nodejs";
 
-const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods", slayers_counter: "Slayer's Counter", convergent_future: "Convergent Future", bend_luck: "Bend Luck", cloud_rune: "Cloud Rune" };
 export const dynamic = "force-dynamic";
+
+// Whether the watcher could still pay for the power they say to use: the
+// stop's own (Slayer's Counter's reaction, the Cloud Rune's reaction and a use
+// of the rune) or a watch row of after-roll-table.ts (a save help's use and
+// reaction, Convergent Future's or Bend Luck's cost, a Chronal Shift).
+function canAnswerNow(campaignId: string, sheet: CharacterSheet, power: WatchPower): boolean {
+  if (power === "portent") return false;
+  if (power === "slayers_counter") return canReactNow(campaignId, sheet);
+  if (power === "cloud_rune") {
+    const rune = sheet.resources?.sub_cloud_rune;
+    return canReactNow(campaignId, sheet) && Boolean(rune) && rune!.max - rune!.used > 0;
+  }
+  if (isSaveHelp(power)) return canHelpSaveNow(campaignId, sheet, power);
+  if (isFatePower(power)) return canTurnFate(campaignId, sheet, power);
+  return canShiftNow(campaignId, sheet);
+}
 
 // `choice`: whose roll, by its place in the stop's list, when the stop offers
 // more than one (an area's saves).
@@ -25,7 +43,9 @@ const choiceSchema = z.union([
 // The watcher answers a stop before a roll (src/lib/dm/foresight.ts): a number
 // they hold goes on the roll's d20, a Chronal Shift is set to roll it again if
 // it goes the wrong way, Flash of Genius or Favored by the Gods to add to the
-// save if it fails (src/lib/dm/chronal-shift.ts), or the roll goes ahead.
+// save if it fails, Convergent Future or Bend Luck to turn it
+// (src/lib/dm/chronal-shift.ts, fate-turn.ts), Slayer's Counter or the Cloud
+// Rune to act at the stop itself, or the roll goes ahead.
 // Whoever runs the story may send a stop on, and so may anyone once its time
 // is up.
 export async function POST(
@@ -56,7 +76,7 @@ export async function POST(
   const due = Date.now() >= new Date(pending.watch.deadline).getTime();
   const data = parsed.data;
   const power = pending.watch.power ?? "portent";
-  const feature = FEATURES[power];
+  const feature = WATCH_FEATURES[power];
   const choices = pending.watch.choices ?? [];
   let chosen: number | undefined;
   if ("value" in data || "shift" in data) {
@@ -79,23 +99,8 @@ export async function POST(
     if ("value" in data && (!sheet || !foretoldLeft(sheet).includes(data.value))) {
       return Response.json({ error: `You hold no foretold ${data.value}.` }, { status: 409 });
     }
-    if ("shift" in data && power === "chronal_shift" && (!sheet || !canShiftNow(campaignId, sheet))) {
-      return Response.json({ error: "Your Chronal Shift is spent, or your reaction is." }, { status: 409 });
-    }
-    if ("shift" in data && (power === "flash_of_genius" || power === "favored_by_the_gods") && (!sheet || !canHelpSaveNow(campaignId, sheet, power))) {
-      return Response.json({ error: power === "flash_of_genius" ? "Your Flash of Genius is spent, or your reaction is." : "Your Favored by the Gods is spent." }, { status: 409 });
-    }
-    if ("shift" in data && (power === "convergent_future" || power === "bend_luck") && (!sheet || !canTurnFate(campaignId, sheet, power))) {
-      return Response.json({ error: power === "bend_luck" ? "Your sorcery points are spent, or your reaction is." : "Your reaction is spent." }, { status: 409 });
-    }
-    if ("shift" in data && power === "slayers_counter" && (!sheet || !canReactNow(campaignId, sheet))) {
-      return Response.json({ error: "Your reaction is spent." }, { status: 409 });
-    }
-    // The Cloud Rune: the creature it turns onto is one of the stop's choices,
-    // and the reaction and a use of the rune are still there to spend.
-    const rune = sheet?.resources?.sub_cloud_rune;
-    if ("shift" in data && power === "cloud_rune" && (!sheet || !canReactNow(campaignId, sheet) || !rune || rune.max - rune.used < 1)) {
-      return Response.json({ error: "Your reaction is spent, or the Cloud Rune's uses are." }, { status: 409 });
+    if ("shift" in data && (!sheet || !canAnswerNow(campaignId, sheet, power))) {
+      return Response.json({ error: watchWords(power).spentError }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
     return Response.json({ error: "This is not your choice yet." }, { status: 403 });

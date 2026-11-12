@@ -1,3 +1,4 @@
+import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { noteToolCallHealth } from "@/lib/tool-call-health";
 import { foesAboutBlock } from "@/lib/dm/foe-return";
@@ -37,7 +38,7 @@ import {
   type WatchStop,
   type DmTurn,
   watchChoiceOf,
-  answeredAtStop,
+
 } from "@/lib/db/dm-turns";
 import { haltDmTurn, haltUnbuiltTurn } from "@/lib/dm/turn-halt";
 import { assertJobLive, bindJobTurn, DmJobStopped, jobAbandoned, runInTurnScope, setJobStage } from "@/lib/dm/job-control";
@@ -1359,9 +1360,9 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     const picked = watchChoiceOf(stop);
     // Every power but Portent's number is armed to answer the roll once it goes wrong.
     // Slayer's Counter arms nothing: its attack is made before the call (below).
-    const shifting = Boolean(stop.power) && stop.power !== "portent" && !answeredAtStop(stop.power);
+    const shifting = armsWatchRow(stop.power);
     const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" && stop.power !== "slayers_counter" && stop.power !== "cloud_rune" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
+    const shift = at === 0 && shifting && stop.shift && picked && armsWatchRow(stop.power) ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;

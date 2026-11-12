@@ -2542,6 +2542,13 @@ const FLASH_TITLE = "Flash of Insight";
 const flashTables = {};
 const TOUCH_TITLE = "Deathly Swing";
 const touchTables = {};
+// A poisoned player's swing with the lead's Clockwork Soul sorcerer beside
+// them (Restore Balance), and a player's hit with the lead's Graviturgy
+// wizard beside them (Violent Attraction): scenario after-roll-helpers.
+const BALANCE_TITLE = "Balanced Swing";
+const balanceTables = {};
+const ATTRACTION_TITLE = "Heavy Swing";
+const attractionTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2577,6 +2584,19 @@ const touchTables = {};
       features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
       resources: { channel_divinity: { max: 1, used: 0 } },
     }],
+    [BALANCE_TITLE, balanceTables, [], {
+      class: "sorcerer",
+      otherRolls: true,
+      rollerPatch: { conditions: ["poisoned"] },
+      features: [{ name: "Restore Balance", source: "choice" }],
+      resources: { sub_restore_balance: { max: 2, used: 0 } },
+    }],
+    [ATTRACTION_TITLE, attractionTables, [], {
+      class: "wizard",
+      otherRolls: true,
+      features: [{ name: "Violent Attraction", source: "choice" }],
+      resources: { sub_violent_attraction: { max: 3, used: 0 } },
+    }],
   ]) for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(player.id, {
       title: `${title} (${viewport})`,
@@ -2598,11 +2618,14 @@ const touchTables = {};
       3,
       heroInput({ name: "Tamsin Reed", class: patch.class ?? "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
     );
-    const { class: _heroClass, otherRolls, ...heroPatch } = patch;
+    const { class: _heroClass, otherRolls, rollerPatch, ...heroPatch } = patch;
     sheets.patchSheet(hero.id, heroPatch);
     const roller = otherRolls
       ? sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Bren Ash", class: "fighter", level: 3, feats: [], equipment: [{ name: "Longsword", qty: 1, equipped: true }] }))
       : hero;
+    if (rollerPatch) {
+      sheets.patchSheet(roller.id, rollerPatch);
+    }
     const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
       name: "start_encounter",
       args: { enemies: [{ monster: "goblin", count: 1 }] },
@@ -3868,6 +3891,8 @@ const ids = {
   allyTables,
   flashTables,
   touchTables,
+  balanceTables,
+  attractionTables,
   portentTables,
   watchTables,
   heldTurnTables,
@@ -3995,6 +4020,8 @@ const ids = {
     ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(balanceTables).map(([viewport, table]) => [table.id, `${BALANCE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(attractionTables).map(([viewport, table]) => [table.id, `${ATTRACTION_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),
