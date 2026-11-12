@@ -42,8 +42,16 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
 import { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
 import { buildPet } from "@/lib/dm/pet-build";
+import type { CardMoment } from "@/lib/dm/direct-card-logic";
 
 const NO_HOOKS = { record: () => {}, publish: () => {} };
+
+// Where the fight stands now, as a card is stamped with it when played and
+// asked again when a turn reads it (direct-card-logic.ts cardStillDue).
+export function cardMoment(campaignId: string): CardMoment {
+  const encounter = getActiveEncounter(campaignId);
+  return encounter ? { encounterId: encounter.id, round: encounter.round, actingId: actingCombatantId(encounter) } : { encounterId: null, round: 0, actingId: null };
+}
 
 function kindOf(intent: MessageIntent): ActKind {
   switch (intent.card) {

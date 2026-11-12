@@ -39,7 +39,7 @@ import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
 import { spokenLine } from "@/lib/dm/speech";
-import { intentRefusal } from "@/lib/dm/intent-check";
+import { cardMoment, intentRefusal } from "@/lib/dm/intent-check";
 import { concentrationSwapFor } from "@/lib/dm/concentration-confirm";
 import { inCoordination } from "@/lib/dm/coordination";
 import { confirmsSwap, swapQuestion } from "@/lib/dm/concentration-confirm-logic";
@@ -417,7 +417,10 @@ export async function POST(
     userId: user.id,
     characterId: sheet.id,
     content,
-    intent,
+    // Stamped with where the fight stands, whatever the client sent: a turn
+    // that reads the card later gives it back once the fight has moved past
+    // it (issue 931, direct-card-logic.ts cardStillDue).
+    intent: intent ? { ...intent, declared: cardMoment(campaignId) } : intent,
   });
   publishWithSeq(campaignId, seq, "message_added", { message });
 

@@ -40,6 +40,15 @@ export const messageIntentSchema = z.object({
   targetName: text(120).optional(),
   targetKind: z.enum(["enemy", "ally", "self"]).optional(),
   riders: z.array(text(80)).max(6).optional(),
+  // Where in the fight the card was played: stamped by the actions route,
+  // never taken from the client (direct-card-logic.ts cardStillDue).
+  declared: z
+    .object({
+      encounterId: z.string().max(120).nullable(),
+      round: z.number().int().min(0).max(100_000),
+      actingId: z.string().max(120).nullable(),
+    })
+    .optional(),
 });
 
 export type MessageIntent = z.infer<typeof messageIntentSchema>;
@@ -461,7 +470,7 @@ function drawFirst(intent: MessageIntent): string {
 // so instead of asking for the call: the call and its result stand above in
 // the conversation, and a model that called the tool again would cast the
 // spell or swing the sword twice.
-export function describeIntent(intent: MessageIntent, characterId: string | null, options: { resolved?: boolean } = {}): string {
+export function describeIntent(intent: MessageIntent, characterId: string | null, options: { resolved?: boolean; returned?: boolean } = {}): string {
   const tools = intentTools(intent);
   const who = characterId ? ` for characterId=${characterId}` : "";
   if (isTypedReaction(intent)) {
@@ -470,6 +479,11 @@ export function describeIntent(intent: MessageIntent, characterId: string | null
   const card = `[Card played${who}: ${what(intent)}${describeHandExtras(intent)}.`;
   if (options.resolved) {
     return `${card} The engine has resolved it: its call and result are in this conversation. Narrate from that result and do not call the tool again.]`;
+  }
+  // A card given back (a halted turn's, once the fight moved on: issue 931)
+  // asked for its tool here, and a later turn rolled it again.
+  if (options.returned) {
+    return `${card} It went back to the player's hand unplayed: it did not happen. Do not resolve it or narrate it.]`;
   }
   return `${card} Resolve it with ${drawFirst(intent)}${tools.length > 1 ? `the spell's tool (${tools.join(", ")})` : tools[0]}.]`;
 }
