@@ -280,7 +280,8 @@ export function keepRollsLeftBehind(campaign: Campaign, skippedId: string | null
       return [];
     }
     if (entry.characterId === skippedId && toHitRollWithPlayer([entry], skippedId, fight)) {
-      return [setPendingAttack(entry.id, { ...(entry.attack as AttackRecord), skipped: true }) ?? entry];
+      const marked: AttackRecord = { ...(entry.attack as AttackRecord), skipped: true };
+      return [setPendingAttack(entry.id, marked) ?? entry];
     }
     return attackTurnOver(campaign.id, entry.attack as AttackRecord, entry.characterId) ? [entry] : [];
   });
