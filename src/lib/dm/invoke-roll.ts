@@ -53,6 +53,9 @@ import { badArguments, invalidArguments, toolError, type ToolResult } from "@/li
 import { swayUnasked } from "@/lib/dm/player-word";
 import { swaySkill } from "@/lib/dm/player-word-logic";
 
+// A roll the model names as a hit die (#932).
+const HIT_DIE = /\bhit[\s-]*di(?:e|ce)\b/i;
+
 export function handleRequestRoll(
   campaign: Campaign,
   turn: DmTurn,
@@ -83,6 +86,16 @@ export function handleRequestRoll(
     return invalidArguments(needs, parsed.error, raw);
   }
   let args: RollArgs = parsed.data;
+  // A hit die is spent, not rolled as a check: a request_roll for one rolled
+  // a d20 and healed nobody, and the narration healed the player anyway
+  // (#932). Asked before anything is rolled.
+  if (model && HIT_DIE.test(`${args.reason ?? ""} ${args.skill ?? ""} ${args.expression ?? ""}`)) {
+    return {
+      error:
+        "Hit dice are spent through take_rest, never request_roll: send take_rest kind short with spend [{characterId, dice}]. Inside the short rest just taken it spends them with no more time passing, and a player's own dice roll them. Nothing was rolled.",
+      retry: true,
+    };
+  }
   args = {
     ...args,
     dc: rollDcFor(args, raw, strictnessShift(campaign.gameSettings.gm?.strictness ?? "standard")),

@@ -120,6 +120,9 @@ export type ResolvedOutcomes = {
   // The subset that plausibly reads as damage or healing in prose; used to
   // allow narration that sums several hits into one figure.
   damageNumbers: number[];
+  // The numbers from every result but a check's (request_roll, group_check):
+  // a d20 total is never hit points regained. Unset, every number counts.
+  effectNumbers?: Set<number>;
   // Spells the turn actually accounted for: a slot spent, a ritual declared, a
   // cantrip acknowledged, a resource burned.
   spells: Set<string>;
@@ -232,6 +235,10 @@ const DAMAGE_KEYS = new Set([
   "healed",
   "healing",
 ]);
+
+// The tools that roll a check and change nothing: their totals are no
+// figure of damage or healing.
+const CHECK_TOOLS = new Set(["request_roll", "group_check"]);
 
 function walkNumbers(value: unknown, numbers: Set<number>, damage: number[], key = "") {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -381,6 +388,7 @@ export function resolveOutcomes(
   const creatures = new Map<string, CreatureFact>();
   const numbers = new Set<number>();
   const damageNumbers: number[] = [];
+  const effectNumbers = new Set<number>();
   const spells = new Set<string>();
   const spends: ResolvedOutcomes["spends"] = [];
   const refusedTargets: string[] = [];
@@ -423,6 +431,9 @@ export function resolveOutcomes(
       spends.push({ characterId, name: spent });
     }
     walkNumbers(result, numbers, damageNumbers);
+    if (!CHECK_TOOLS.has(exchange.name)) {
+      walkNumbers(result, effectNumbers, []);
+    }
     walkCreatures(result, creatures, language);
 
     if (typeof result.hit === "boolean") {
@@ -545,6 +556,7 @@ export function resolveOutcomes(
     liveFight: Boolean(live?.enemies.length),
     numbers,
     damageNumbers,
+    effectNumbers,
     spells,
     spends,
     toolResultCount,
@@ -573,8 +585,11 @@ export type Contradiction = {
 
 // Every subset sum of the turn's damage numbers, so prose that adds two hits
 // into one figure ("nine damage in all") is never called a contradiction.
-function allowedNumbers(outcomes: ResolvedOutcomes): Set<number> {
-  const allowed = new Set(outcomes.numbers);
+// A healing figure is held to what the effects produced: a check's total of
+// 8 let "healing 8 hit points" through on a short rest that healed nobody
+// (#932).
+function allowedNumbers(outcomes: ResolvedOutcomes, of: "damage" | "healing" = "damage"): Set<number> {
+  const allowed = new Set(of === "healing" && outcomes.effectNumbers ? outcomes.effectNumbers : outcomes.numbers);
   const damage = outcomes.damageNumbers.slice(0, 6);
   for (let mask = 1; mask < 1 << damage.length; mask += 1) {
     let sum = 0;
@@ -601,7 +616,9 @@ export function ruleClaims(claims: readonly NarrationClaim[], outcomes: Resolved
   // A figure is only checked when the turn produced numbers or a fight is
   // running: with no ground truth there is nothing to contradict, and in a
   // fight a figure no roll produced is invented whether or not a tool ran.
-  const allowed = outcomes.numbers.size || outcomes.liveFight ? allowedNumbers(outcomes) : null;
+  const checked = outcomes.numbers.size || outcomes.liveFight;
+  const allowed = checked ? allowedNumbers(outcomes) : null;
+  const allowedHealing = checked ? allowedNumbers(outcomes, "healing") : null;
 
   for (const claim of claims) {
     switch (claim.kind) {
@@ -660,7 +677,7 @@ export function ruleClaims(claims: readonly NarrationClaim[], outcomes: Resolved
       }
       // 3. A stated damage or healing figure the engine never produced.
       case "amount":
-        if (allowed && !allowed.has(claim.value)) {
+        if (claim.of === "healing" ? allowedHealing && !allowedHealing.has(claim.value) : allowed && !allowed.has(claim.value)) {
           add({
             kind: "number",
             detail: `the narration states ${claim.value} ${claim.of}, which no roll this turn produced`,

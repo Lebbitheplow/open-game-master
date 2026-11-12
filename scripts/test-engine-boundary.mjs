@@ -586,4 +586,16 @@ test("a figure no tool rolled and the model was never shown is a blow landed in 
   assert.equal(unrolledFigure([amount(8)], conversationOf([attackHit]), "english"), null);
 });
 
+// #932: a d20 check's total is no healing. The GM asked request_roll for a
+// "hit die", the check came up 8, and "healing 8 hit points" passed because
+// 8 was a number the turn produced; nobody was healed.
+test("a healing figure is held to what the effects produced, never a check's total", () => {
+  const check = { name: "request_roll", args: { kind: "ability_check", ability: "con" }, result: { ok: true, total: 8, rolls: [7], modifier: 1 } };
+  const rest = { name: "take_rest", args: { kind: "short" }, result: { ok: true, kind: "short", results: "No hit dice spent by the server." } };
+  assert.deepEqual(kinds(rule([amount(8, "healing")], [rest, check])), ["number"]);
+  assert.deepEqual(kinds(rule([amount(8, "damage")], [check])), [], "a damage figure keeps the old leeway");
+  const spent = { name: "take_rest", args: { kind: "short" }, result: { ok: true, kind: "short", results: [{ name: "Jason", diceSpent: 1, healed: 8, hp: "20/20" }] } };
+  assert.deepEqual(kinds(rule([amount(8, "healing")], [spent])), []);
+});
+
 console.log(`engine boundary: ${passed} tests passed`);

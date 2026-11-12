@@ -25,9 +25,10 @@ import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
+import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice } from "@/lib/dm/hit-dice";
+import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
+import { declaredThisTurn } from "@/lib/dm/player-word";
 import { goingWithout } from "@/lib/dm/supplies";
 import { MEAL_PROPERTY, MEAL_REFUSAL, mealArg, mealRefused } from "@/lib/dm/supplies-logic";
 import { afflictedRestPatch, afflictionsAfterLongRest } from "@/lib/dm/afflictions";
@@ -71,7 +72,7 @@ export const takeRestTool: ToolDef = {
         spend: {
           type: "array",
           description:
-            "Short rest: hit dice for a character with no player present. The server otherwise spends toward half HP for them. A connected player chooses their own hit dice on their sheet after the rest; the server rolls them.",
+            "Short rest: hit dice for a character with no player present. The server otherwise spends toward half HP for them. A connected player chooses their own: on their sheet after the rest, or, when they tell you a number, send take_rest short again with spend for them: inside the rest just taken it spends those dice with no more time passing, and their own dice roll them.",
           items: {
             type: "object",
             properties: {
@@ -180,6 +181,48 @@ function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
 
+// Hit dice spent inside the short rest just taken, for characters whose
+// players are still choosing (the window take_rest opened). No clock moves
+// and nothing refills again: it is the same rest. The count is the player's
+// (SRD 5.1, Short Rest), so the AI passes on only one its player said this
+// turn; the GM at the console spends as they are told. Their own dice roll
+// them (mayWait), with the song's and the meal's die the rest still owes.
+function spendInRestWindow(
+  campaign: Campaign,
+  turnId: string,
+  spends: Array<{ dice: number; sheet: CharacterSheet }>,
+  reason: string,
+): ToolResult {
+  if (getDmTurn(turnId)?.actor !== "human_dm") {
+    const unasked = spends.filter(({ sheet }) => !declaredThisTurn(campaign.id, sheet.id)).map(({ sheet }) => sheet.name);
+    if (unasked.length) {
+      return {
+        error: `${unasked.join(", ")} did not say this turn how many hit dice to spend. Ask them and wait, or let them spend on their own sheet. Nothing was spent and no time passed.`,
+        retry: true,
+      };
+    }
+  }
+  const results: Array<Record<string, unknown>> = [];
+  for (const { dice, sheet: stale } of spends) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const extra = windowRestDice(campaign.id, sheet);
+    const spent = spendHitDice({ campaign, turnId, sheetId: sheet.id, requested: dice, ...extra, reason, requestedBy: "dm", mayWait: true });
+    if ("error" in spent) {
+      results.push({ name: sheet.name, note: spent.error });
+      continue;
+    }
+    claimWindowRestDice(campaign.id, sheet.id, extra);
+    results.push({ name: spent.name, diceSpent: spent.diceSpent, healed: spent.healed, hp: spent.hp });
+  }
+  return {
+    ok: true,
+    kind: "short",
+    inTheRestJustTaken: true,
+    results,
+    note: "Spent inside the short rest just taken: no more time passed and nothing else came back. Narrate each one's healing exactly as reported.",
+  };
+}
+
 export function handleTakeRest(
   campaign: Campaign,
   turnId: string,
@@ -203,6 +246,16 @@ export function handleTakeRest(
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;
+  // A spend for characters still choosing in the short rest just taken
+  // (#932): their dice from that rest, with no more time passing. It used to
+  // rest a second hour, drop the spend as the player's to make, and leave
+  // the GM nothing but a d20 check to heal them with.
+  if (args.kind === "short" && args.spend?.length) {
+    const spends = args.spend.map((entry) => ({ dice: entry.dice, sheet: resolveSheetRef(entry.characterId, sheets, sheetsById) }));
+    if (spends.every(({ sheet }) => sheet && inShortRestWindow(campaign.id, sheet.id))) {
+      return spendInRestWindow(campaign, turnId, spends as Array<{ dice: number; sheet: CharacterSheet }>, reason);
+    }
+  }
   // A short rest while a Genie's Sanctuary Vessel holds someone is the
   // vessel's: ten minutes, for those inside (genie-vessel.ts).
   if (args.kind === "short" && !vessel) {
@@ -407,6 +460,8 @@ export function handleTakeRest(
         continue;
       }
       if (chooses(sheet.id) && !humanDm) {
+        // Theirs to choose; once this rest has opened their window, the
+        // number they say goes in a second call (spendInRestWindow).
         leftToPlayers.push(sheet.name);
         continue;
       }
@@ -493,11 +548,11 @@ export function handleTakeRest(
     ...(waiting.length
       ? {
           choosing: waiting.map((sheet) => sheet.name),
-          choosingNote: `${waiting.map((sheet) => sheet.name).join(", ")} choose${waiting.length === 1 ? "s" : ""} how many hit dice to spend on their own sheet; the server rolls each one. Wait for their rolls before narrating their healing.`,
+          choosingNote: `${waiting.map((sheet) => sheet.name).join(", ")} choose${waiting.length === 1 ? "s" : ""} how many hit dice to spend: on their own sheet, or tell you a number, and then you send take_rest kind short with spend for them, which spends them inside this rest with no more time passing. Never request_roll a hit die. Wait for the spend's result before narrating their healing.`,
         }
       : {}),
     ...(leftToPlayers.length
-      ? { notSpent: `${leftToPlayers.join(", ")}: the player chooses their own hit dice, so the spend list was not used for them.` }
+      ? { notSpent: `${leftToPlayers.join(", ")}: the player chooses their own hit dice, so the spend list was not used for them. Once they say how many, send take_rest kind short with spend again: it spends them inside this rest.` }
       : {}),
     ...(refilled.length ? { resourcesRefilled: refilled } : {}),
     // Only for a rest where somebody spent a Hit Die: the song adds to that.
