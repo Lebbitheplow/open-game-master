@@ -7,6 +7,7 @@ import {
   setUserPassword,
 } from "@/lib/db/users";
 import { isDeviceWorld } from "@/lib/server-env";
+import { HOST_ACCOUNT_REFUSAL, deviceWorldHostId } from "@/lib/setup-code";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,9 @@ export async function POST(
       },
       { status: 400 },
     );
+  }
+  if (target.id === deviceWorldHostId()) {
+    return Response.json({ error: HOST_ACCOUNT_REFUSAL }, { status: 403 });
   }
   const tempPassword = randomBytes(9).toString("base64url");
   let hash: string;

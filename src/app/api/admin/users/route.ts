@@ -1,5 +1,6 @@
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { listUsers } from "@/lib/db/users";
+import { deviceWorldHostId } from "@/lib/setup-code";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export async function GET() {
   if (isErrorResponse(admin)) {
     return admin;
   }
+  const hostId = deviceWorldHostId();
   return Response.json({
     users: listUsers().map((user) => ({
       id: user.id,
@@ -21,6 +23,9 @@ export async function GET() {
       campaignCount: user.campaignCount,
       createdAt: user.createdAt,
       deletionDueAt: user.deletionDueAt,
+      // The host of a world one of the apps runs, whose demote, reset and
+      // delete only the host may use (src/lib/setup-code.ts).
+      isHost: user.id === hostId,
     })),
   });
 }

@@ -9,6 +9,7 @@ import {
   setUserAvatar,
   updateUserSettings,
 } from "@/lib/db/users";
+import { isDeviceWorld } from "@/lib/server-env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,7 +118,10 @@ export async function DELETE(request: Request) {
     return unauthorized();
   }
 
-  if (account.passwordHash !== NO_PASSWORD_SENTINEL) {
+  // In a world one of the apps hosts, nobody was ever shown their password
+  // (the app made it up), so the signed-in session is the proof, as it is
+  // for an account with no password; the typed DELETE confirms it.
+  if (account.passwordHash !== NO_PASSWORD_SENTINEL && !isDeviceWorld()) {
     if (!parsed.data.password) {
       return Response.json({ error: "Password is required." }, { status: 400 });
     }

@@ -280,7 +280,6 @@
     "app/api/admin/ambience/route.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/api/auth/discord/callback/route.ts#partial": [["pattern",3,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/api/auth/discord/start/route.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "app/api/auth/recover-owner/route.ts#first": [["key",1,"the world's first account by creation order, the host the app claimed with its setup code; no text names it"]],
     "app/api/campaigns/[campaignId]/battle-map/move/route.ts#partial": [["key",1,"route keys, refs, slugs and data URLs"]],
     "app/api/campaigns/[campaignId]/dm/attributes/route.ts#whole": [["key",1,"attribute target kinds"]],
     "app/api/campaigns/[campaignId]/dm/invoke/route.ts#keyed": [["key",1,"the adjudications a table break lets through, by tool name"]],

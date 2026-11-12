@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PasswordBusyError, hashPassword, mintSession, passwordBusyResponse } from "@/lib/auth";
-import { getUserByUsername, isCompanionUserId, listUsers, setUserPassword } from "@/lib/db/users";
+import { firstAccountId, getUserByUsername, isCompanionUserId, listUsers, setUserPassword } from "@/lib/db/users";
 import { clientIp, recordPasswordSuccess } from "@/lib/login-throttle";
 import { isDeviceWorld } from "@/lib/server-env";
 import { firstAccountTakesCode, setupCodeLength, setupCodeMatches } from "@/lib/setup-code";
@@ -44,12 +44,12 @@ const MIN_CODE_CHARACTERS = 16;
 // deleted it): the world's next admin is somebody else, whose account the
 // app must not be handed, so nobody is.
 function worldOwner(username: string | undefined) {
-  const users = listUsers();
-  if (!username) return users.find((user) => user.isAdmin) ?? null;
+  const firstAdmin = () => listUsers().find((user) => user.isAdmin) ?? null;
+  if (!username) return firstAdmin();
   const named = getUserByUsername(username);
   if (!named || isCompanionUserId(named.id)) return null;
-  if (named.isAdmin || named.id === users[0]?.id) return named;
-  return users.find((user) => user.isAdmin) ?? null;
+  if (named.isAdmin || named.id === firstAccountId()) return named;
+  return firstAdmin();
 }
 
 export async function POST(request: Request) {
