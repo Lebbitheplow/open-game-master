@@ -89,9 +89,16 @@ and you can leave the key field empty. Each picture is billed to that key.
    ```bash
    # CPU
    docker run -d --name kokoro -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
-   # NVIDIA GPU
+   # NVIDIA GPU, up to the RTX 40 series
    docker run -d --name kokoro --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
+   # NVIDIA RTX 50 series (Blackwell)
+   docker run -d --name kokoro --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128
    ```
+
+   The plain `:latest` GPU image is built on CUDA 12.6, which has no kernels
+   for RTX 50 series cards: Kokoro starts, then fails on the card. Those
+   cards need the `cu128` image. On Windows, `--gpus all` needs Docker
+   Desktop's WSL 2 backend and a current NVIDIA driver.
 
    Other ways to run it are in the
    [Kokoro-FastAPI README](https://github.com/remsky/Kokoro-FastAPI). The first

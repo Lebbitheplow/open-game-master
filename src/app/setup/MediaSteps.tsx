@@ -154,8 +154,15 @@ function KokoroStartHints() {
           <CopyLine text="docker run -d --name kokoro --restart unless-stopped -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest" label="Kokoro CPU command" />
         </div>
         <div>
-          <span className="mb-1 block">On an NVIDIA graphics card, faster:</span>
+          <span className="mb-1 block">On an NVIDIA graphics card up to the RTX 40 series, faster:</span>
           <CopyLine text="docker run -d --name kokoro --restart unless-stopped --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest" label="Kokoro GPU command" />
+        </div>
+        {/* The gpu image's :latest carries CUDA 12.6 torch, which has no
+            kernels for the RTX 50 series (Blackwell): Kokoro starts there and
+            then fails on the card. Those cards take the cu128 build. */}
+        <div>
+          <span className="mb-1 block">On an NVIDIA RTX 50 series card:</span>
+          <CopyLine text="docker run -d --name kokoro --restart unless-stopped --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128" label="Kokoro RTX 50 series command" />
         </div>
         <p>
           It answers on port 8880 within a minute of starting. Press Look again and its voices appear.{" "}
