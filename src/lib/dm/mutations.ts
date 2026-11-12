@@ -71,7 +71,7 @@ import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
 import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
-import type { OneCasting } from "@/lib/dm/action-parts-logic";
+import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
@@ -639,6 +639,32 @@ export function applyDmMutation(
   return withActor(actorOfCall(toolName, rawArguments), () => dmMutation(campaign, turnId, toolName, rawArguments, sheets, sheetsById, turn, casting));
 }
 
+// Every creature one casting of a healing spell reaches, inside the one call
+// the list is: each entry the heal it always was, under a casting made here
+// and gone when the call returns. A roll one creature's healing waits on
+// holds the whole call (held-call.ts), which is rolled back and run again
+// from the first entry with the dice already in, so the slot is spent once
+// however many rolls the caster's player makes. The casting used to be made
+// by the caller and shared by a call for each entry: an entry held for a
+// roll ran again without it and paid a second time.
+function healList(
+  campaign: Campaign,
+  turnId: string,
+  each: Record<string, unknown>[],
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+): MutationOutcome {
+  const refused = listRefusal("heal", each);
+  if (refused) {
+    return { result: refused };
+  }
+  const shared = oneCasting("heal", each);
+  const casting = shared ? { ...shared, oneCall: true } : undefined;
+  const outcomes = each.map((one) => applyDmMutation(campaign, turnId, "heal", JSON.stringify(one), sheets, sheetsById, turn, casting).result as Record<string, unknown>);
+  return { result: partsResult(outcomes, PART_LISTS.heal.key) };
+}
+
 function dmMutation(
   campaign: Campaign,
   turnId: string,
@@ -658,6 +684,12 @@ function dmMutation(
     raw = JSON.parse(rawArguments || "{}");
   } catch (error) {
     return { result: badArguments("Invalid arguments.", error, rawArguments) };
+  }
+  // A heal list that reaches here whole is one casting over its creatures
+  // (turn.ts oneCastingCall): resolved here, entry by entry.
+  const listed = toolName === "heal" && !casting ? listedCalls(toolName, rawArguments) : null;
+  if (listed) {
+    return healList(campaign, turnId, listed, sheets, sheetsById, turn);
   }
   const parsed = argsSchema.safeParse(raw);
   if (!parsed.success) {

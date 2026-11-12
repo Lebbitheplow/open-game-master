@@ -30,7 +30,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { healWalk } from "@/lib/dm/heal-walk-logic";
 import { canRegain, healableHp, regainHitPoints } from "@/lib/dm/regain";
-import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { speedFor } from "@/lib/srd";
@@ -109,14 +109,18 @@ export function healArea(ctx: SpendContext, does: HealArea): ToolError | { resul
     return { error: `${ctx.spend.name} heals characters ${who}${does.hears ? " who can hear" : ""} ${reach}, and nobody is. Nothing was spent.`, refused: "rules" };
   }
   const dice = resolveFormula(does.formula, ctx.held.level, ctx.mods);
-  const roll = () => Math.max(1, Number(rollCard(campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, dice, null).total));
+  // The holder's own dice, whoever they heal (character-roll.ts rollOwnDice):
+  // one roll shared out, or one for each creature, which a seat on physical
+  // dice rolls one after another.
+  const roll = (target?: CharacterSheet) =>
+    Math.max(1, Number(rollOwnDice(campaign, sheet, target ? diceFor(`${ctx.spend.name}: healing`, sheet, target) : `${ctx.spend.name}: healing`, dice, { turn: ctx.turn }).total));
   const shared = does.each ? 0 : roll();
   const healed: string[] = [];
   for (const target of targets) {
     // A total shared out (Clockwork Cavalcade's 100 hit points among the
     // creatures in the cube), not each one's.
     const share = does.divided ? Math.max(1, Math.floor(shared / targets.length)) : shared;
-    const gained = regainHitPoints(campaign, ctx.turnId, target, does.each ? roll() : share, `${ctx.spend.name} (${sheet.name})`);
+    const gained = regainHitPoints(campaign, ctx.turnId, target, does.each ? roll(target) : share, `${ctx.spend.name} (${sheet.name})`);
     const now = getSheetById(target.id) ?? target;
     const hp = healableHp(now, effectiveMaxHp(now));
     healed.push(`${now.name} +${gained} (${hp.current}/${hp.max})`);

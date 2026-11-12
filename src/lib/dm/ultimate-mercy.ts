@@ -5,13 +5,12 @@
 // inside feature-spends.ts's spend order: every refusal below spends neither
 // the use nor the ki.
 import type { Campaign } from "@/lib/db/campaigns";
-import { getDmTurn } from "@/lib/db/dm-turns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { returnToLife } from "@/lib/dm/heal-spell";
 import { describeMinutes, minutesSinceDeath } from "@/lib/dm/revival";
-import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -37,7 +36,9 @@ export function ultimateMercy(campaign: Campaign, turnId: string, monk: Characte
   }
   const wis = computeSheetDerived(monk).abilityMods.wis;
   const expression = `4d10${wis >= 0 ? "+" : ""}${wis}`;
-  const rolled = rollCard(campaign, getDmTurn(turnId), monk.id, "custom", `${monk.name}: Hand of Ultimate Mercy`, expression, null).total;
+  // The monk's own dice (character-roll.ts rollOwnDice): on physical dice
+  // their player rolls them, before any ki is spent.
+  const rolled = rollOwnDice(campaign, monk, diceFor(`${monk.name}: Hand of Ultimate Mercy`, monk, target), expression).total;
   // The ki first, so the use's own patch (feature-spends.ts spend) reads it.
   const resources = { ...monk.resources, ki: { max: ki.max, used: ki.used + KI_COST } };
   const kiPatch = { resources };

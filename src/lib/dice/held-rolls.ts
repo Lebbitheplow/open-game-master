@@ -20,6 +20,20 @@
 // 2026-11-09 gap sweep, after issue #896). A roll made outside any of the
 // GM's calls (a death save as the turn passes once the GM has spoken, a
 // disease's save at a rest) has no call to hold, and is still thrown.
+// The healing dice of a character's own feature, potion, spell or Healer's
+// kit, and the temporary hit points a feature or spell gives, go through the
+// same door (character-roll.ts rollOwnDice; issue 902: Second Wind was rolled
+// for a seat on physical dice). The sentence does not name them; its second
+// half is what holds them. One healing spell over several creatures is one
+// call, so each creature's roll waits in turn (mutations.ts healList).
+// Hit dice at a short rest are the player's own request, with no call to
+// hold: the sheet takes the dice where the player asks for them
+// (sheet/hit-dice/route.ts), and the GM's spend for a player at the table
+// goes through the door (hit-dice.ts).
+// Not yet held: a character's other dice inside a call (the damage of a
+// spell that makes no attack roll, a reaction's or a rider's dice) are thrown
+// where they stand. scripts/test-enforce-sweep-dice-sites.mjs lists them as
+// class "D".
 export const REAL_DICE_SCOPE =
   "You roll your attacks and their damage, initiative, and every check and save your character makes, the saves a spell, trap or monster forces on you included. Only a roll that comes between the GM's moves, such as a death save as your turn begins, may be rolled for you.";
 

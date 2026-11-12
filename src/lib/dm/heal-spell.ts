@@ -31,12 +31,11 @@ import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertRoll } from "@/lib/db/rolls";
-import { rollExpression } from "@/lib/dice";
+import { rollOwnDiceStored } from "@/lib/dm/character-roll";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
 import { noteHealingRoll } from "@/lib/dm/ar-ws-empowered-healing";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
-import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -259,18 +258,21 @@ export function castHealingSpell(
     amount = maximumOf(full);
     riders.push("the dice at their maximum");
   } else {
-    const outcome = rollExpression(full);
-    const roll = insertRoll({
-      campaignId: campaign.id,
-      characterId: target.id,
-      requestedBy: "dm",
-      kind: "custom",
-      detail: `${name} on ${target.name} (${full})`,
-      result: outcome,
+    // The caster's own dice, whoever is healed: on physical dice their
+    // player rolls them (src/lib/dm/character-roll.ts), as they roll a
+    // spell's damage, and the card joins the turn's (issue 902). One casting
+    // over a list of creatures asks for each creature's roll in turn, inside
+    // the one call the list is (mutations.ts healList). A list split into a
+    // call for each entry (one that sends its own dice, a spell only this
+    // table wrote) is still thrown here: those calls share what the first
+    // one paid, in memory (action-parts-logic.ts OneCasting), and a call held
+    // for a roll is run again alone, without it.
+    const { outcome, roll } = rollOwnDiceStored(campaign, caster, `${name} on ${target.name} (${full})`, full, {
+      flatCard: true,
+      mayWait: !casting || casting.creatures < 2 || casting.oneCall === true,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
     // The dice Empowered Healing may roll again (ar-ws-empowered-healing.ts).
-    noteHealingRoll(campaign, { roll, caster, target, spell: name });
+    if (roll) noteHealingRoll(campaign, { roll, caster, target, spell: name });
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns

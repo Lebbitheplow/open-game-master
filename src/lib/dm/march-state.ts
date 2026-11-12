@@ -26,8 +26,9 @@ export type MarchState = {
   // The short rest a party has just finished, while its players choose how
   // many hit dice to spend (SRD 5.1: the player decides, one die at a time).
   // `ids` are the characters still choosing, `sung` those whose Song of Rest
-  // die is spent. Closed the moment the clock moves again.
-  shortRest?: { ids: string[]; sung: string[] };
+  // die is spent, `fed` those whose die from a Chef's meal is. Closed the
+  // moment the clock moves again.
+  shortRest?: { ids: string[]; sung: string[]; fed?: string[] };
   // Each named object by its name in lower case: the damage it has taken,
   // so a door struck twice remembers the first blow, and what the first call
   // naming it decided it is, so a later call that names no material or size
@@ -110,10 +111,10 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     .filter((entry): entry is [string, ObjectRecord] => entry[1] !== null)
     .slice(-40);
   const objects = objectEntries.length ? Object.fromEntries(objectEntries) : undefined;
-  const restRaw = record.shortRest as { ids?: unknown; sung?: unknown } | undefined;
+  const restRaw = record.shortRest as { ids?: unknown; sung?: unknown; fed?: unknown } | undefined;
   const ids = (list: unknown) =>
     Array.isArray(list) ? list.filter((id): id is string => typeof id === "string" && id.length <= 80).slice(0, 20) : [];
-  const shortRest = restRaw && ids(restRaw.ids).length ? { ids: ids(restRaw.ids), sung: ids(restRaw.sung) } : undefined;
+  const shortRest = restRaw && ids(restRaw.ids).length ? { ids: ids(restRaw.ids), sung: ids(restRaw.sung), fed: ids(restRaw.fed) } : undefined;
   const marched = (Array.isArray(record.marched) ? record.marched : [])
     .map((leg: { end?: unknown; minutes?: unknown; ids?: unknown } | null) => ({
       end: bounded(leg?.end, 0, Number.MAX_SAFE_INTEGER),

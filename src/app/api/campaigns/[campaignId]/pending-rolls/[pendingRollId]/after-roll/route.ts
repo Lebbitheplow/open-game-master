@@ -10,7 +10,7 @@ import { recordInspiredSuccess } from "@/lib/dm/last-save";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
-import { landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
 
@@ -73,7 +73,7 @@ export async function POST(
 
   const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = pending) => {
     const roll = landPendingRoll(context.campaign, landed, outcome, landing);
-    return roll ? Response.json({ roll }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   };
   // A new decision gets its own time; with nothing left to decide it lands.
   const next = (fields: Partial<ThrownRoll>) => {

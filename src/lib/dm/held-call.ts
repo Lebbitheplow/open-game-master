@@ -29,6 +29,7 @@ import {
   createPendingRoll,
   ensurePendingColumns,
   getDmTurn,
+  getPendingRoll,
   publicPendingRoll,
   saveDmTurn,
   type DecidedRoll,
@@ -68,6 +69,9 @@ export type HeldPark = {
 
 type Trial = {
   campaignId: string;
+  // The turn the call is made on: a dice card rolled inside it is that
+  // turn's (heldCallTurn below).
+  turn: DmTurn;
   // The dice the run has thrown, any kind, any source: a stop for a watcher
   // comes only before the first, so nothing thrown is thrown again.
   dice: number;
@@ -82,6 +86,11 @@ type Trial = {
   reopen?: (held: HeldCallSpecShape) => string | null;
   decided: DecidedRoll[];
   used: Set<number>;
+  // The decided rolls taken and not yet on record, and the roll each one's
+  // record became: the card a decided roll answers is linked to that roll
+  // (runHeldAgain), not to whichever roll of the character came first.
+  taken: Array<{ at: number; characterId: string; kind: RollKind }>;
+  recorded: Map<number, string>;
   feed: DiceTapeCursor;
   drawn: Array<[number, number]>;
   park: (HeldPark & { tapeAt: number }) | null;
@@ -89,6 +98,7 @@ type Trial = {
 
 declare global {
   var __odmHeldTrial: Trial | null | undefined;
+  var __odmRollRecorded: ((roll: { id: string; characterId: string | null; kind: RollKind }) => void) | undefined;
   // foresight.ts watchStopForRoll, registered there: the stop for the d20 a
   // call is about to throw, or null.
   var __odmWatchStop: ((campaign: Campaign, turn: DmTurn, call: HeldCallSpecShape, tag: RollTag, open?: boolean) => string | null) | undefined;
@@ -123,6 +133,13 @@ export function inHeldCall(): boolean {
   return Boolean(globalThis.__odmHeldTrial);
 }
 
+// The turn a held call is running on, for a site deep in the call that
+// cards its own dice and was handed no turn (resource-tools.ts rollHealing):
+// the card joins that turn's, so the chronicle shows it with the rest.
+export function heldCallTurn(): DmTurn | null {
+  return globalThis.__odmHeldTrial?.turn ?? null;
+}
+
 // The roll this character's run already has, of this kind, if any.
 export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | null {
   const trial = globalThis.__odmHeldTrial;
@@ -134,8 +151,29 @@ export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | 
     return null;
   }
   trial.used.add(at);
+  trial.taken.push({ at, characterId, kind });
   return trial.decided[at];
 }
+
+// A roll went on record (db/rolls.ts insertRoll calls this through
+// globalThis.__odmRollRecorded, as the db layer cannot import this module):
+// the first decided roll taken for that character and kind and not yet on
+// record is the one it records. A roll the server throws before the decided
+// one is taken (an elixir's effect die ahead of the drinker's temporary hit
+// points) is never mistaken for it.
+function noteRollRecorded(roll: { id: string; characterId: string | null; kind: RollKind }) {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || !roll.characterId) {
+    return;
+  }
+  const index = trial.taken.findIndex((entry) => entry.characterId === roll.characterId && entry.kind === roll.kind);
+  if (index < 0) {
+    return;
+  }
+  const [entry] = trial.taken.splice(index, 1);
+  trial.recorded.set(entry.at, roll.id);
+}
+globalThis.__odmRollRecorded = noteRollRecorded;
 
 // How many faces the run has drawn by chance so far: a park after its own
 // throw keeps only the faces before it, since the next run is handed that
@@ -187,7 +225,9 @@ export function stopAfterThrow(campaign: Campaign, turn: DmTurn, stop: OpenedSto
 export type HeldCallSpec = { name: string; rawArguments: string; toolCallId: string | null };
 
 // What a held call already has when it runs again.
-type Previous = Pick<HeldRollCall, "decided" | "tape">;
+// `recorded` is filled by the run: the roll each decided roll became, by its
+// place in `decided`.
+type Previous = Pick<HeldRollCall, "decided" | "tape"> & { recorded?: Map<number, string> };
 
 type Armed = { used: boolean; note?: string | null } & Record<string, unknown>;
 
@@ -225,11 +265,14 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   globalThis.__odmWatchAnswered?.delete(campaign.id);
   const trial: Trial = {
     campaignId: campaign.id,
+    turn,
     dice: 0,
     watched: answered,
     watchStop: null,
     decided: [...(previous?.decided ?? [])],
     used: new Set(),
+    taken: [],
+    recorded: previous?.recorded ?? new Map(),
     feed: new DiceTapeCursor(previous?.tape ?? answeredTape ?? []),
     drawn: [],
     park: null,
@@ -409,12 +452,19 @@ function runnerFor(name: string): HeldRunner | undefined {
 // is kept for the turn to hand on (turn.ts resumeDmTurn). The roll the run
 // recorded for the player is the card's; with none (the call was refused
 // this time) the player's dice are recorded as they landed.
+//
+// A call may wait again, on its next roll: a second creature's healing, a
+// second player's check. The dice just entered then stay with the call
+// (`decided`), and the run that finishes records them with the rest.
+// `waits` says so, and no roll is recorded here: recorded here as well, the
+// roll was on record twice, once as it landed and once by the run that
+// finished.
 export function runHeldAgain(
   campaign: Campaign,
   pending: PendingRoll,
   outcome: RollResult,
   landing: { status: "submitted" | "fallback"; physical: boolean; source: "digital" | "physical" },
-): { roll: StoredRoll | null; answer: ToolResult | null } {
+): { roll: StoredRoll | null; answer: ToolResult | null; waits?: boolean } {
   const call = pending.carry?.call;
   const turn = getDmTurn(pending.turnId);
   const runner = call ? runnerFor(call.name) : undefined;
@@ -422,21 +472,42 @@ export function runHeldAgain(
     return { roll: null, answer: null };
   }
   const since = nowIso();
-  const decided: DecidedRoll = { characterId: pending.characterId, kind: pending.kind, outcome, raw: !call.siteThrew };
+  const decided: DecidedRoll = {
+    characterId: pending.characterId,
+    kind: pending.kind,
+    outcome,
+    raw: !call.siteThrew,
+    landing: { physical: landing.physical, source: landing.source },
+  };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;
+  const previous: Previous = { decided: [...call.decided, decided], tape: call.tape, recorded: new Map() };
   try {
-    answer = runHeld(campaign, turn, spec, () => runner(campaign, turn, spec), { decided: [...call.decided, decided], tape: call.tape }) as ToolResult;
+    answer = runHeld(campaign, turn, spec, () => runner(campaign, turn, spec), previous) as ToolResult;
   } catch (error) {
     console.error(`[held-call] ${call.name} threw when its roll landed:`, error);
     answer = { error: `${call.name} failed on the server once the roll landed, so nothing came of it.`, retry: true };
   }
   saveDmTurn(turn);
-  const found = getDatabase()
-    .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1`)
-    .get(campaign.id, pending.characterId, pending.kind, since) as { id: string } | undefined;
+  const waits = isHeldPark(answer);
+  // The run records this character's rolls of this kind in the order it asked
+  // for them: this card's is the one after those the call's earlier cards
+  // were for.
+  const earlier = call.decided.filter((entry) => entry.characterId === pending.characterId && entry.kind === pending.kind).length;
+  // The roll this card's own dice became, when the run put them on record
+  // through insertRoll; else, by order, the run's rolls of this character and
+  // kind after those the call's earlier cards were for.
+  const own = waits ? undefined : previous.recorded?.get(call.decided.length);
+  const found = waits
+    ? undefined
+    : own
+      ? { id: own }
+      : (getDatabase()
+        .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1 OFFSET ?`)
+        .get(campaign.id, pending.characterId, pending.kind, since, earlier) as { id: string } | undefined);
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;
-  if (!roll) {
+  const recorded = Boolean(roll);
+  if (!roll && !waits) {
     roll = insertRoll({
       campaignId: campaign.id,
       characterId: pending.characterId,
@@ -451,11 +522,19 @@ export function runHeldAgain(
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, pendingRollId: pending.id, source: landing.source });
   }
-  const told = isHeldPark(answer) ? null : answer;
+  const told = waits ? null : answer;
   getDatabase()
     .prepare(`UPDATE pending_rolls SET roll_id = ?, carry_json = ? WHERE id = ?`)
     .run(roll?.id ?? null, JSON.stringify({ ...pending.carry, ...(told ? { answer: JSON.stringify(told) } : {}) }), pending.id);
-  return { roll, answer: told };
+  // The roll the run recorded was sent as any roll of the call's is, with no
+  // word of the card it answers, and a call that waits again sends no roll
+  // yet: the table is told the card is done. Without this it stayed up,
+  // asking for dice already entered, until the page was loaded again.
+  const answered = recorded || waits ? getPendingRoll(pending.id) : null;
+  if (answered && answered.status !== "pending") {
+    publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(answered) });
+  }
+  return { roll, answer: told, ...(waits ? { waits } : {}) };
 }
 
 // Takes the card off the table before its call runs again, so nothing in

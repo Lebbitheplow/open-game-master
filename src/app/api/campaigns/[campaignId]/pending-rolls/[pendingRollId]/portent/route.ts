@@ -8,7 +8,7 @@ import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { spendForetold } from "@/lib/dm/foretold";
 import { foretoldLeft, foretoldWithout, singleD20Expression, withForetoldD20 } from "@/lib/dm/foretold-logic";
-import { landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
 
@@ -94,5 +94,5 @@ export async function POST(
     return Response.json({ pendingRoll: publicPendingRoll(waiting) });
   }
   const roll = landPendingRoll(context.campaign, pending, outcome, landing);
-  return roll ? Response.json({ roll }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+  return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
 }

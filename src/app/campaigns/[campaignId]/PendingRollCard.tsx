@@ -1,23 +1,11 @@
 "use client";
 
 import { Dices, Loader2, Smartphone, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CampaignMember } from "@/lib/campaign-types";
 import { cn } from "@/lib/cn";
-import { OptionalStepper } from "@/app/workshop/kit";
-import { entryDice, entryRerollNotes, entryRerolls } from "@/lib/dice";
+import { FaceInputs, useFaceEntry } from "@/components/dice/FaceEntry";
 import { buzz, onShake, supportsShake, useShakeToRoll } from "@/lib/dice/shake-to-roll";
-import {
-  resolveFaceSource,
-  useDiceSources,
-  type FaceSource,
-} from "@/lib/dice/dice-sources";
-import {
-  getConnectedPixels,
-  getConnectedPixelsServer,
-  onPixelRoll,
-  onPixelsChanged,
-} from "@/lib/dice/pixels-dice";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campaignId]/SkillCheckCard";
@@ -56,7 +44,8 @@ const SUBMIT_BUTTON = cn(
 // docs/visual-overhaul-plan.md 5.4): the halo breathes while the roll is
 // parked, the die tumbles once it has been sent, and the landing itself
 // plays where the roll arrives, in the chronicle (RollCard.tsx). Every
-// source and control is as it was.
+// source and control is as it was. The dice themselves (a field for each,
+// a Pixels die filling its own) are FaceEntry.tsx's, shared with the sheet.
 export function PendingRollCard({
   campaignId,
   pending,
@@ -72,38 +61,11 @@ export function PendingRollCard({
   meUserId: string;
   steersStory: boolean;
 }) {
-  const [values, setValues] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Sampled once on mount; the fallback affordance appearing on the next
   // re-render after the threshold is fine for a courtesy button.
   const [mountedAt] = useState(() => Date.now());
-
-  // One field per die: a reroll the roll carries (a halfling's Lucky) is
-  // made with the die in hand, and the face kept is the one entered.
-  const faces = useMemo(() => {
-    try {
-      return entryDice(pending.expression);
-    } catch {
-      return [];
-    }
-  }, [pending.expression]);
-  const rerolls = useMemo(() => {
-    try {
-      return entryRerolls(pending.expression);
-    } catch {
-      return [];
-    }
-  }, [pending.expression]);
-  const rerollNotes = useMemo(() => {
-    try {
-      return entryRerollNotes(pending.expression);
-    } catch {
-      return [];
-    }
-  }, [pending.expression]);
-  // Faces a Pixels die filled and then filled again for their reroll.
-  const [rerolled, setRerolled] = useState<Record<number, boolean>>({});
 
   const mine = pending.userId === meUserId;
   // Held without real dice: no faces to type, the whole roll is digital
@@ -116,117 +78,18 @@ export function PendingRollCard({
   const [canShake] = useState(() => supportsShake());
   const shakeActive = mine && shakeOn && canShake;
 
-  const [diceSources] = useDiceSources();
-  const pixels = useSyncExternalStore(
-    onPixelsChanged,
-    getConnectedPixels,
-    getConnectedPixelsServer,
-  );
-
-  // Resolve every face to its source: the chosen preference, degraded to
-  // typing when the assigned Pixels die isn't currently connected.
-  const faceSources = useMemo<FaceSource[]>(
-    () => faces.map((sides) => resolveFaceSource(diceSources[sides], sides, pixels)),
-    [faces, diceSources, pixels],
-  );
-
-  // What a face has so far: the typed or Pixels-landed entry, else empty. A
-  // digital face never has a client value; the server rolls it on submit, so
-  // the browser has nothing a player could read ahead of time.
-  const faceValue = (index: number): string => values[index]?.trim() ?? "";
-
-  // The wire payload: numbers for typed and Pixels faces, the literal
-  // "digital" for server-rolled ones.
-  const submissionDice = (): Array<number | "digital"> =>
-    faces.map((_, index) =>
-      faceSources[index]?.kind === "digital" ? "digital" : Number(faceValue(index)),
-    );
-
-  // A Pixels face that landed low enough for the roll's own reroll (Lucky's
-  // 1) and has not taken it: the die's next landing goes in its place, and
-  // the card does not send itself until it has. Only one die of a kept pool
-  // is rerolled.
-  const landed = (current: Record<number, string>, index: number): number => Number(current[index]?.trim() || 0);
-  const rerollDue = (index: number, current: Record<number, string>, marks: Record<number, boolean>): boolean => {
-    const rule = rerolls[index];
-    const face = landed(current, index);
-    if (!rule?.at || faceSources[index]?.kind !== "pixel" || !face || face > rule.at || marks[index]) {
-      return false;
-    }
-    if (!rule.once) {
-      return true;
-    }
-    // The first face of the pool that qualifies, while none has been rerolled.
-    const qualifies = (position: number) =>
-      faceSources[position]?.kind === "pixel" && landed(current, position) > 0 && landed(current, position) <= rule.at;
-    return (
-      !rerolls.some((other, position) => other.term === rule.term && marks[position]) &&
-      rerolls.findIndex((other, position) => other.term === rule.term && qualifies(position)) === index
-    );
-  };
-  // What the Pixels listener reads: the faces as they stand, kept current
-  // between renders by the listener itself.
-  const latest = useRef({ values, rerolled });
-  useEffect(() => {
-    latest.current = { values, rerolled };
-  }, [values, rerolled]);
-
-  // A physical Pixels die landing fills the next empty face assigned to it,
-  // or the face still owed its reroll.
-  useEffect(() => {
-    if (!mine) {
-      return;
-    }
-    return onPixelRoll(({ systemId, faceCount, value }) => {
-      const { values: current, rerolled: marks } = latest.current;
-      const mineDie = (source: FaceSource, position: number) =>
-        source.kind === "pixel" && source.systemId === systemId && faces[position] === faceCount;
-      // Every die of the roll lands first (both of an advantage pair), and
-      // only then does a landing stand in for a face owed its reroll.
-      const index = faceSources.findIndex((source, position) => mineDie(source, position) && !current[position]?.trim());
-      if (index >= 0) {
-        const nextValues = { ...current, [index]: String(value) };
-        latest.current = { values: nextValues, rerolled: marks };
-        setValues(nextValues);
-        return;
-      }
-      const again = faceSources.findIndex((source, position) => mineDie(source, position) && rerollDue(position, current, marks));
-      if (again < 0) {
-        return;
-      }
-      const nextMarks = { ...marks, [again]: true };
-      const nextValues = { ...current, [again]: String(value) };
-      latest.current = { values: nextValues, rerolled: nextMarks };
-      setRerolled(nextMarks);
-      setValues(nextValues);
-    });
-    // rerollDue reads the rules and sources these deps already name.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mine, faceSources, faces, rerolls]);
+  // The dice as the roller enters them; a Pixels die fills its own face on
+  // the roller's screen only.
+  const entry = useFaceEntry(pending.expression, mine);
+  const { faces, rerollNotes, values, complete, fullyAutomatic, diceSummary, submissionDice } = entry;
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
   const detailText = pending.detail.replaceAll("_", " ");
   const label = `${character?.name ?? "Someone"}: ${pending.kind.replaceAll("_", " ")}${
     detailText ? ` (${detailText})` : ""
   }`;
-  // Plain-words instruction: "Roll 2× d20 and 1× d8" from the faces list.
-  const diceSummary = (() => {
-    if (!faces.length) {
-      return "";
-    }
-    const counts = new Map<number, number>();
-    for (const sides of faces) {
-      counts.set(sides, (counts.get(sides) ?? 0) + 1);
-    }
-    const parts = [...counts.entries()].map(
-      ([sides, count]) => `${count} × d${sides}`,
-    );
-    return parts.length > 1
-      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-      : parts[0];
-  })();
   // Enter raw die faces only; any flat bonus applies server-side.
-  const flatModifier = /([+-]\d+)$/.exec(pending.expression.replaceAll(" ", ""))?.[1];
+  const flatModifier = entry.flatModifier;
   const modifierNote = flatModifier
     ? `Enter the bare die numbers; the ${flatModifier} is added for you.`
     : "";
@@ -237,18 +100,6 @@ export function PendingRollCard({
         ? "disadvantage: roll both, lowest counts"
         : "";
   const stale = mountedAt - new Date(pending.createdAt).getTime() > OWNER_FALLBACK_AFTER_MS;
-  // A digital face is always ready (the server fills it); everything else
-  // needs its number in hand before the roll can go.
-  const complete =
-    faces.length > 0 &&
-    faces.every(
-      (_, index) => faceSources[index]?.kind === "digital" || (faceValue(index) && !rerollDue(index, values, rerolled)),
-    );
-  // Every face comes from a die that fills itself (digital or a Pixels die):
-  // no typing is needed, so the card submits on its own once all have landed.
-  const fullyAutomatic =
-    faceSources.length > 0 && faceSources.every((source) => source.kind !== "manual");
-
   async function submit(body: unknown) {
     setBusy(true);
     setError("");
@@ -506,59 +357,7 @@ export function PendingRollCard({
 
       {heldOnly ? null : (
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        {faces.map((sides, index) => {
-          const source = faceSources[index] ?? { kind: "manual" };
-          const filled = faceValue(index);
-          // Digital faces are rolled by the server on submit: marked, not
-          // typed, and showing no number the player could act on early.
-          if (source.kind === "digital") {
-            return (
-              <div key={index} className="block">
-                <span className="mb-0.5 block text-center text-[10px] text-sky-300/80">
-                  d{sides} · auto
-                </span>
-                <div
-                  aria-label={`d${sides} rolled for you`}
-                  className="flex h-[34px] w-14 items-center justify-center rounded-md border border-sky-800/70 bg-sky-950/30 text-sm text-sky-100"
-                >
-                  <Dices className="size-4 text-sky-300/80" />
-                </div>
-              </div>
-            );
-          }
-          // Pixels faces auto-fill when the die lands, but stay editable so a
-          // stubborn die never blocks the roll.
-          const isPixel = source.kind === "pixel";
-          return (
-            <div key={index} className="block">
-              <span
-                title={isPixel ? source.name : undefined}
-                className={cn(
-                  "mb-0.5 block max-w-24 truncate text-center text-[10px]",
-                  isPixel ? "text-sky-300/90" : "check-dim",
-                )}
-              >
-                {isPixel ? source.name : `d${sides}`}
-              </span>
-              <div className="relative">
-                {/* Blank means "not rolled yet", so the stepper is the optional
-                    one: the cross clears a mistyped die back to blank. */}
-                <OptionalStepper
-                  min={1}
-                  max={sides}
-                  fallback={1}
-                  value={filled === "" || !Number.isFinite(Number(filled)) ? undefined : Number(filled)}
-                  onChange={(next) => setValues((current) => ({ ...current, [index]: next === "" ? "" : String(next) }))}
-                  label={isPixel ? `${source.name}, d${sides}` : `d${sides}`}
-                  size="sm"
-                />
-                {isPixel && !filled ? (
-                  <Dices className="pointer-events-none absolute -right-1 -top-1 size-3 animate-pulse text-sky-400/70" />
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+        <FaceInputs entry={entry} dimClass="check-dim" />
         <button
           type="button"
           disabled={busy || !complete}

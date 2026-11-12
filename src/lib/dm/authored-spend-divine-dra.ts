@@ -9,6 +9,7 @@
 import { patchSheet, getSheetById } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { resolveFormula } from "@/lib/srd/authored-effects";
@@ -69,7 +70,8 @@ export function drinkerTempHp(ctx: SpendContext): string | null {
     return null;
   }
   const dice = resolveFormula(rider.tempHp, ctx.held.level, ctx.mods);
-  const rolled = Math.max(1, Number(rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${rider.feature}: temporary hit points`, String(dice), null).total));
+  // The artificer's own dice (character-roll.ts rollOwnDice), whoever drinks.
+  const rolled = Math.max(1, Number(rollOwnDice(ctx.campaign, ctx.sheet, diceFor(`${rider.feature}: temporary hit points`, ctx.sheet, drinker), String(dice), { turn: ctx.turn }).total));
   if (rolled <= drinker.tempHp) {
     return `${drinker.name} keeps their ${drinker.tempHp} temporary hit points (${rider.feature} rolled ${rolled}).`;
   }

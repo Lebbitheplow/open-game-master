@@ -16,7 +16,7 @@ import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logi
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import { publishPersisted } from "@/lib/events";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
@@ -136,7 +136,8 @@ function smiteTempHp(ctx: SpendContext, does: Extract<SpendDoes, { kind: "smite_
     return { error: `${named.name} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
   }
   const dice = resolveFormula(does.formula, ctx.held.level, ctx.mods);
-  const total = Math.max(0, Number(rollCard(campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: temporary hit points`, dice, null).total));
+  // The paladin's own dice (character-roll.ts rollOwnDice).
+  const total = Math.max(0, Number(rollOwnDice(campaign, sheet, `${ctx.spend.name}: temporary hit points`, dice, { turn: ctx.turn }).total));
   const theirs = named ? Math.max(0, Math.min(total, Math.floor(ctx.args.amount ?? total))) : 0;
   const mine = total - theirs;
   const lines: string[] = [];

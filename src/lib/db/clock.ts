@@ -295,7 +295,7 @@ export function openShortRestWindow(campaignId: string, characterIds: string[]) 
   const current = getClock(campaignId);
   const { shortRest: _old, ...rest } = current;
   void _old;
-  setClock(campaignId, characterIds.length ? { ...rest, shortRest: { ids: characterIds, sung: [] } } : rest);
+  setClock(campaignId, characterIds.length ? { ...rest, shortRest: { ids: characterIds, sung: [], fed: [] } } : rest);
 }
 
 // Whether this character may still spend hit dice from the rest just taken.
@@ -303,16 +303,28 @@ export function inShortRestWindow(campaignId: string, characterId: string): bool
   return getClock(campaignId).shortRest?.ids.includes(characterId) ?? false;
 }
 
-// Marks this character's Song of Rest die as spent in the open window, and
-// says whether it had been before.
-export function claimRestSong(campaignId: string, characterId: string): boolean {
+// The one die a rest adds for a creature that spends hit dice, once a rest
+// each: the Song of Rest's ("sung") and a Chef's meal's ("fed").
+export type RestDie = "sung" | "fed";
+
+// Whether this character's die of that kind is still unspent in the open
+// window. Reads only: the sheet shows a player what their next hit die rolls
+// before they roll it, and showing it must not spend it.
+export function restDieLeft(campaignId: string, characterId: string, which: RestDie): boolean {
+  const rest = getClock(campaignId).shortRest;
+  return Boolean(rest) && !(rest?.[which] ?? []).includes(characterId);
+}
+
+// Marks this character's die of that kind as spent in the open window, and
+// says whether it had been unspent.
+export function claimRestDie(campaignId: string, characterId: string, which: RestDie): boolean {
   const current = getClock(campaignId);
-  if (!current.shortRest || current.shortRest.sung.includes(characterId)) {
+  if (!current.shortRest || (current.shortRest[which] ?? []).includes(characterId)) {
     return false;
   }
   setClock(campaignId, {
     ...current,
-    shortRest: { ...current.shortRest, sung: [...current.shortRest.sung, characterId] },
+    shortRest: { ...current.shortRest, [which]: [...(current.shortRest[which] ?? []), characterId] },
   });
   return true;
 }

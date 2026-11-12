@@ -87,7 +87,10 @@ await test("A potion drunk through use_item, read as Cure Wounds and tied to tha
   );
   assert.equal(turn.served, 2, "a correction call was made");
   assert.match(turn.read, /^Spent refs: "s1" for Potion of Healing \(Vesper\)$/m);
-  assert.equal(turn.message?.content, narration);
+  // The potion's healing roll is a card above the narration (issue 902).
+  const card = /^\[roll:[0-9a-f-]{36}\]\s+/;
+  assert.match(turn.message?.content ?? "", card, "the potion's healing roll is not a card in the chronicle");
+  assert.equal(turn.message?.content.replace(card, ""), narration);
 });
 
 model.close();
