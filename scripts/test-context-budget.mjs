@@ -26,6 +26,7 @@ import {
   HISTORY_MAX_TOKENS,
   NEWEST_LINE_FLOOR_CHARS,
   clipLine,
+  compactionEvicted,
 } from "../src/lib/dm/context-budget.ts";
 
 let passed = 0;
@@ -415,6 +416,14 @@ check("the transcript a summary covers is left out, but the newest few at the se
   assert.deepEqual(cut.kept, entries.slice(9));
   assert.deepEqual(cutCoveredHistory(entries, 39).kept, entries.slice(14), "all covered: only the floor is left");
   assert.equal(cutCoveredHistory([], 39).cut, 0);
+});
+
+check("compaction is never handed lines a guessed window left out", () => {
+  assert.equal(compactionEvicted({ historyEvicted: 62, window: { tokens: 16_384, assumed: true } }), 0, "a 16K guess on a 64K server evicted nothing");
+  assert.equal(compactionEvicted({ historyEvicted: 62, window: { tokens: 65_536, assumed: false } }), 62);
+  assert.equal(compactionEvicted({ historyEvicted: 7 }), 7, "a turn from before the window was kept");
+  assert.equal(compactionEvicted(null), 0);
+  assert.equal(compactionEvicted({}), 0);
 });
 
 console.log(`context-budget: ${passed} tests passed`);

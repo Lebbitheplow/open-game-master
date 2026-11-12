@@ -151,6 +151,13 @@ export type ContextTrace = {
   // rolling compaction folds them next (src/lib/dm/compaction.ts), so play
   // that fell out of the window is in a summary rather than in nothing.
   historyEvicted?: number;
+  // The window the prompt was packed against, and whether it was only the
+  // stand-in for a server that reported none (model-client.ts
+  // storyWindowAssumed). Issue #925: a prompt packed against a guess is
+  // rebuilt by Retry once the real window is known (retry-turn-logic.ts
+  // promptOutgrown), and what it left out is never taken for evicted.
+  // Absent on turns taken before it was kept.
+  window?: { tokens: number; assumed: boolean };
   // Every model call the turn made, as it was sized and as the backend
   // reported it (the context audit's F09): the prompt grows call by call as
   // tool results come back, and this is where that shows.
@@ -413,6 +420,18 @@ export function packBlocks(
     kept,
     trace: { limitTokens: usable, promptTokens: spent, blocks: trace },
   };
+}
+
+// The lines a finished turn hands the rolling compaction as fallen out of
+// the window (ContextTrace.historyEvicted). None when the window was only
+// guessed: in issue #925 a 16K stand-in on a 64K server "evicted" 62 lines,
+// and the helper folded an hour of verbatim play into the summary for want
+// of room the prompt never lacked.
+export function compactionEvicted(trace: Pick<ContextTrace, "historyEvicted" | "window"> | null | undefined): number {
+  if (!trace || trace.window?.assumed) {
+    return 0;
+  }
+  return trace.historyEvicted ?? 0;
 }
 
 // History is the one kind that degrades well, so instead of dropping whole

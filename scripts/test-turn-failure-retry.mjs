@@ -30,6 +30,9 @@ const { DM_HALTED_PREFIX, haltedTurnPrefix } = await import("../src/lib/campaign
 const { RESTART_HALT } = await import("../src/lib/dm/restart-recovery.ts");
 const { register } = await import("../src/instrumentation.ts");
 const { requestDmTurn } = await import("../src/lib/dm/loop.ts");
+const { getCampaignById, getCampaignSummaryState, setCampaignSummaryState, updateStorySettings } = await import("../src/lib/db/campaigns.ts");
+const { learnContextWindow } = await import("../src/lib/model-client.ts");
+const { isUnbuiltTurn } = await import("../src/lib/dm/turn-halt.ts");
 
 // What a restart takes (test-real-dice-restart.mjs): the database handle and
 // the DM's maps on globalThis, with the job that was running. The job's own
@@ -394,6 +397,133 @@ await test("A restart while a reply of calls alone waits on its narration keeps 
     model.close();
     world.close();
   }
+});
+
+// Issue #925: the app's own llama-server was not up yet, so the turn's
+// prompt was packed against the 16K stand-in on a 64K server and kept one
+// line of history. These tables run with no window stated (the fake model
+// answers /props with a 404, like a server that is not llama.cpp), so the
+// stand-in is what the prompt is packed against.
+async function guessedWindow(run) {
+  const stated = process.env.OPENAI_COMPAT_CONTEXT;
+  process.env.OPENAI_COMPAT_CONTEXT = "";
+  try {
+    await run();
+  } finally {
+    process.env.OPENAI_COMPAT_CONTEXT = stated;
+  }
+}
+
+// Forty lines of the cavern scene after a summary that covers only the
+// first four, each GM line marked so a prompt can be searched for it.
+function cavern(world, kara) {
+  const hero = world.sheet(kara.id);
+  for (let line = 0; line < 20; line += 1) {
+    world.say("player", `I press on, step ${line}. ${"The tunnel winds down toward the water. ".repeat(6)}`, hero);
+    world.say("dm", `GM-LINE-${String(line).padStart(2, "0")}: ${"Water drips from the cavern roof onto the chained sage. ".repeat(6)}`);
+  }
+  setCampaignSummaryState(world.campaignId, "The party fought the Butcher in the courtyard and went down into the caverns.", 4);
+}
+
+const CRYSTAL = "Dammit. I try to use the crystal and see if it'll unlock his chains.";
+const asking = (model) => model.requests.find((request) => JSON.stringify(request.messages).includes("unlock his chains"));
+
+await test("Retry builds again a prompt that was packed against a guessed window once the real one is known, so the narration reads the scene, and the table sees one turn.", async () => {
+  const { world, kara, model } = await table();
+  await guessedWindow(async () => {
+    cavern(world, kara);
+    model.script([failure(500), failure(500), failure(500)]);
+    await model.turn(world, CRYSTAL, kara.id);
+    const turnId = getLatestDmTurnId(world.campaignId);
+    const halted = getDmTurn(turnId);
+    assert.equal(halted.status, "failed");
+    assert.deepEqual(halted.contextTrace?.window, { tokens: 16_384, assumed: true }, "the trace does not say the window was a guess");
+    assert.doesNotMatch(JSON.stringify(halted.conversation), /GM-LINE-15/, "the guessed window kept more history than this test starves it of");
+
+    // The server is up and has said its window.
+    const { settings } = getCampaignById(world.campaignId);
+    learnContextWindow(settings.customBaseUrl, settings.customModel, 65_536);
+    model.script([reply({ text: "The crystal flares, and the sage's chains fall away." })]);
+    const retried = await retry(world, world.owner, turnId);
+    assert.equal(retried.status, 200, JSON.stringify(retried.json));
+
+    const request = asking(model);
+    assert.ok(request, "the retry never asked the model");
+    const sent = JSON.stringify(request.messages);
+    assert.match(sent, /GM-LINE-15/, "the retry replayed the starved prompt instead of building it again");
+    assert.match(sent, /GM-LINE-10/);
+    assert.equal(sent.match(/unlock his chains/g)?.length, 1, "the player's line is in the prompt once");
+    assert.doesNotMatch(sent, RETRY_NOTE, "a prompt built again is not a re-entered one");
+
+    assert.equal(getDmTurn(turnId).status, "done", "the replaced row was left to be retried again");
+    const rebuilt = getLatestDmTurnId(world.campaignId);
+    assert.notEqual(rebuilt, turnId);
+    assert.equal(getDmTurn(rebuilt).status, "done");
+    assert.deepEqual(getDmTurn(rebuilt).contextTrace?.window, { tokens: 65_536, assumed: false });
+    const told = narrations(world).filter((message) => /chains fall away/.test(message.content));
+    assert.equal(told.length, 1, `expected one narration, found ${told.length}`);
+    const typed = listRecentMessages(world.campaignId, 80).filter((message) => message.content === CRYSTAL);
+    assert.equal(typed.length, 1, "the player's line was duplicated or lost");
+    assert.equal(getDmStatus(world.campaignId), "idle");
+  });
+  model.close();
+  world.close();
+});
+
+await test("A narrator with nothing listening and no window ever reported halts the turn before its prompt is built, with a notice whose Retry starts it over once the server is up.", async () => {
+  const { world, kara, model } = await table();
+  await guessedWindow(async () => {
+    const { settings } = getCampaignById(world.campaignId);
+    // A port nothing listens on: bound, then let go.
+    const http = await import("node:http");
+    const probe = http.createServer();
+    await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
+    const closed = `http://127.0.0.1:${probe.address().port}/v1`;
+    await new Promise((resolve) => probe.close(resolve));
+    updateStorySettings(world.campaignId, { customBaseUrl: closed });
+    model.script([]);
+    await model.turn(world, "I knock on the sexton's door.", kara.id);
+
+    const turnId = getLatestDmTurnId(world.campaignId);
+    const turn = getDmTurn(turnId);
+    assert.equal(turn.status, "failed");
+    assert.ok(isUnbuiltTurn(turn), "a prompt was built against a window nobody reported");
+    assert.equal(model.served(), 0);
+    const [notice] = notices(world);
+    assert.ok(notice, "the table was not told the GM is waiting");
+    assert.match(notice.content, /not answering yet \(it may still be loading\)\. Press Retry once it is up\./);
+    assert.equal(notice.dmTurnId, turnId, "the notice offers no Retry");
+    assert.equal(getDmStatus(world.campaignId), "idle", "the table was left on a GM at work");
+
+    updateStorySettings(world.campaignId, { customBaseUrl: settings.customBaseUrl });
+    model.script([reply({ text: "Nobody answers; the door gives a little under your knuckles." })]);
+    const retried = await retry(world, world.owner, turnId);
+    assert.equal(retried.status, 200, JSON.stringify(retried.json));
+    assert.equal(narrations(world).length, 1);
+    assert.equal(listRecentMessages(world.campaignId, 20).filter((message) => message.content === "I knock on the sexton's door.").length, 1);
+    assert.doesNotMatch(JSON.stringify(model.requests[0].messages), /ran into a problem/, "the halted notice was read to the model as part of the story");
+  });
+  model.close();
+  world.close();
+});
+
+await test("A turn told on a guessed window hands the rolling compaction nothing as evicted.", async () => {
+  const { world, kara, model } = await table();
+  await guessedWindow(async () => {
+    cavern(world, kara);
+    model.script([reply({ text: "The crystal hums against the iron." })]);
+    await model.turn(world, CRYSTAL, kara.id);
+    const turn = getDmTurn(getLatestDmTurnId(world.campaignId));
+    assert.equal(turn.status, "done");
+    assert.equal(turn.contextTrace?.window?.assumed, true);
+    assert.ok((turn.contextTrace?.historyEvicted ?? 0) >= 8, `the guess left out only ${turn.contextTrace?.historyEvicted} lines`);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const compacting = model.requests.filter((request) => /canonical campaign memory/.test(JSON.stringify(request.messages)));
+    assert.equal(compacting.length, 0, "the helper was asked to fold lines a guessed window left out");
+    assert.equal(getCampaignSummaryState(world.campaignId).coveredCount, 4);
+  });
+  model.close();
+  world.close();
 });
 
 finish();

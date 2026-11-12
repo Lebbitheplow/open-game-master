@@ -10,7 +10,7 @@ import { sceneIds } from "@/lib/ambience/catalog";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
+import { ADVENTURE_BEGINS_NOTE, haltedTurnPrefix, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
@@ -1964,7 +1964,11 @@ export function buildDmMessages(
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 
-  const rendered = history.map((message) => {
+  // A halted turn's notice ("The GM ran into a problem: ...") is for the
+  // table, not the story: a turn started over by Retry read it as a table
+  // note and could narrate the server's trouble into the scene.
+  const told = history.filter((message) => !(message.authorType === "system" && haltedTurnPrefix(message.content)));
+  const rendered = told.map((message) => {
     const name = message.characterId
       ? sheetsById.get(message.characterId)?.name ?? "Unknown"
       : "Unknown";
