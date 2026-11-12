@@ -167,6 +167,8 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       }
       if (delta.relentlessEndurance) return `${name} holds on at 1 HP (Relentless Endurance)`;
       if (delta.undyingSentinel) return `${name} holds on at 1 HP (Undying Sentinel)`;
+      if (delta.strengthOfTheGrave) return `${name} holds on at 1 HP (Strength of the Grave)`;
+      if (delta.blazingRevival) return `${name} rises again as their wildfire spirit falls (Blazing Revival)`;
       if (delta.relentlessRage) return `${name} holds on at 1 HP (Relentless Rage)`;
       if (delta.deathWard) return `${name} holds on at 1 HP (Death Ward)`;
       const type = word(delta.type);
@@ -243,6 +245,20 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       if (typeof delta.equipped !== "boolean") return `${name} changes what they wear`;
       return `${name} ${delta.equipped ? "puts on" : "takes off"} ${item}`;
     }
+    // Pact of the Blade (src/lib/dm/mt-srd-warlock.ts): the weapon made,
+    // bonded, sent away, or its bond broken.
+    case "pact_weapon": {
+      const created = word(delta.created);
+      const bonded = word(delta.bonded);
+      const unbonded = word(delta.unbonded);
+      if (created) return `${name} creates a pact weapon: ${created}`;
+      if (bonded) return `${name} bonds with ${bonded} as a pact weapon`;
+      if (unbonded) return `${name} breaks the pact bond with ${unbonded}`;
+      return `${name} dismisses ${word(delta.dismissed) ?? "the pact weapon"}`;
+    }
+    // Pact of the Tome: a new book, the old one gone with it.
+    case "book_of_shadows":
+      return delta.replaced === true ? `${name} makes a new Book of Shadows, and the old one is gone` : `${name} makes a Book of Shadows`;
     case "hand_item": {
       const to = word(delta.to);
       const from = word(delta.from);
@@ -250,6 +266,9 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
     }
     case "drop_item":
       return `${name} drops ${item}${times(amount(delta.dropped))}`;
+    // A net thrown, now on the ground (src/lib/dm/gear-ground.ts throwToGround).
+    case "throw_item":
+      return `${name} throws ${item}`;
     case "pick_up_item":
       return `${name} picks up ${item}${times(amount(delta.taken))}`;
     case "use_item":

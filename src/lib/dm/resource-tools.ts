@@ -1,28 +1,42 @@
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { breathAugment } from "@/lib/dm/mt-mr-dragon";
+import type { Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { breakConcentration } from "@/lib/dm/concentration";
+import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
-import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
+import { diceFor as healingOn, rollOwnDice } from "@/lib/dm/character-roll";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
-import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
+import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
+import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
+import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
+import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
+import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
+import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
+import { sheetSize } from "@/lib/dm/sheet-foe-stats";
+import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { unseenBecause, unseenByConditions, withinFeet } from "@/lib/dm/authored-saves";
 import { effectiveMaxHp, incapacitatedBy, wearsHeavyArmor } from "@/lib/dm/condition-logic";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { consumableEffect, findCarriedItem, notCarried } from "@/lib/dm/item-logic";
+import { metamagicPaid } from "@/lib/dm/ar-ws-lunar-boons";
 import { kiTechnique, spendKiTechnique, spendQuickenedSpell } from "@/lib/dm/bonus-actions";
+import { secondOptionProblem } from "@/lib/dm/mt-srd-metamagic";
 import { removeItemMath } from "@/lib/dm/mutation-math";
 import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions, optionsOfKind } from "@/lib/srd/options";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { holdsMote } from "@/lib/srd/authored-effects-more";
+import { givenDieMarks } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { planSwap } from "@/lib/dm/ar-ws-transposition";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
+import { planFeatureMove, type Square } from "@/lib/dm/feature-move";
+import { allyReachRefusal } from "@/lib/dm/ally-reach-dra";
 
 export { computePurchase } from "@/lib/dm/purchase-math";
 
@@ -44,33 +58,44 @@ export type Outcome = {
   event?: string;
   // Wild Shape: how many in-world hours the form lasts, for the clock.
   shapeHours?: number;
+  // A buff held by concentration: the caller takes it once the patch has
+  // landed (holdConcentration), so the spell it displaces ends after.
+  concentrate?: string;
 };
 
-// Rolls healing server-side as a visible dice card, exactly as a player's
-// own roll would appear. Shared by the potion path and the class-feature
-// healing path; the heal itself always rides the standard heal mutation so
-// the death engine wakes a dying target. Exported for the Combat Wild Shape
-// slot-heal in mutations.ts.
+// A feature buff held by concentration (Mantle of Majesty, Spirit
+// Projection): the holder concentrates on the feature's name, which ends
+// whatever they held before, and a broken concentration ends the buff, since
+// its condition carries the feature as its spell (spell-effects.ts
+// heldBySpell). Called by use_resource after the spend's patch has landed.
+export function holdConcentration(campaign: Campaign, turnId: string | null, sheetId: string, outcome: Outcome): ToolResult {
+  if (!outcome.concentrate) {
+    return {};
+  }
+  const { displaced } = setConcentration(campaign, turnId, sheetId, outcome.concentrate);
+  return displaced ? { concentrationEnded: droppedLine(displaced, outcome.concentrate) } : {};
+}
+
+// Rolls healing as a visible dice card. Shared by the potion path and the
+// class-feature healing path; the heal itself always rides the standard heal
+// mutation so the death engine wakes a dying target. Exported for the Combat
+// Wild Shape slot-heal in mutations.ts.
+//
+// The dice are the roller's own, whoever is healed: the character whose
+// feature it is, or who pours the potion. A seat on physical dice rolls them
+// (src/lib/dm/character-roll.ts), as it rolls its damage. They were thrown
+// here, so a fighter with real dice on the table had Second Wind rolled for
+// them (issue 902). The card joins the turn's cards, so the chronicle shows
+// it: it was sent to the table as it was rolled and then never seen again.
+// A flat amount (Unearthly Recovery's half the maximum) has nothing to roll
+// and is never waited on (character-roll.ts).
 export function rollHealing(
   campaign: Campaign,
-  target: CharacterSheet,
+  roller: CharacterSheet,
   detail: string,
   expression: string,
 ): number {
-  const outcome = rollExpression(expression);
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: target.id,
-    requestedBy: "dm",
-    kind: "custom",
-    detail: `${detail} (${expression})`,
-    result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
-  });
-  return outcome.total;
+  return rollOwnDice(campaign, roller, `${detail} (${expression})`, expression, { flatCard: true }).total;
 }
 
 export function computeUseItem(
@@ -101,7 +126,7 @@ export function computeUseItem(
     if (target.deathSaves?.dead) {
       return { error: `${target.name} is DEAD; a potion cannot help.`, refused: "rules" };
     }
-    const total = rollHealing(campaign, target, carried.name, effect.expression);
+    const total = rollHealing(campaign, sheet, healingOn(carried.name, sheet, target), effect.expression);
     base.healTarget = { characterId: target.id, amount: Math.max(1, total) };
     base.result.healingRolled = total;
   }
@@ -252,30 +277,39 @@ function computeFontOfMagic(
 type PoolState = CharacterSheet["resources"][string];
 
 // What pays for a use: the pool itself or, with no use left, a pool that
-// pays for one instead (Breath of the Dragon's 2 ki); the refusal when
-// neither can. Asked before an option is asked for too (mutations.ts).
+// pays for one instead (Breath of the Dragon's 2 ki, or five sorcery
+// points) or a spell slot of a level the row names;
+// the refusal when none can. Asked before an option is asked for too
+// (mutations.ts). Every other price a counter's text names goes on its row
+// (fallbackPool, slotFallback) and through here, never at one spend.
 export function payForUse(
   sheet: CharacterSheet,
   def: ResourceDef,
   state: PoolState,
   amount: number,
-): { fallback: { id: string; amount: number; state: PoolState } | null } | ToolError {
+): { fallback: { id: string; amount: number; state: PoolState } | null; slot?: number } | ToolError {
   const left = state.max - state.used;
   if (left >= amount) {
     return { fallback: null };
   }
   const fallback = def.fallbackPool ?? null;
   const fallbackState = fallback ? sheet.resources[fallback.id] : undefined;
-  if (fallback && fallbackState && fallbackState.max - fallbackState.used >= fallback.amount) {
-    return { fallback: { ...fallback, state: fallbackState } };
+  const other = otherPrice(def, sheet);
+  if (other && "pool" in other && fallbackState) {
+    return { fallback: { ...other.pool, state: fallbackState } };
   }
+  if (other && "slot" in other) {
+    return { fallback: null, slot: other.slot };
+  }
+  const slotWords = def.slotFallback ? ` With none left it costs a spell slot${def.slotFallback > 1 ? ` of level ${def.slotFallback} or higher` : ""}, and they have none unspent.` : "";
   return {
     error: `${sheet.name} has ${left}/${state.max} ${def.displayName} left; they cannot spend ${amount}.${
       fallback ? ` With none left it costs ${fallback.amount} ${fallback.id.replace(/_/g, " ")}, and they have ${fallbackState ? fallbackState.max - fallbackState.used : 0}.` : ""
-    } The feature is not available; narrate accordingly.`,
+    }${slotWords} The feature is not available; narrate accordingly.`,
     refused: "rules",
   };
 }
+
 
 // The marker a spend leaves when its use returns only after a rolled number
 // of long rests: "<name> recovering (n)", counted down by each long rest.
@@ -286,6 +320,83 @@ function recoveryMarker(campaign: Campaign, sheet: CharacterSheet, def: Resource
     conditions: [...sheet.conditions.filter((entry) => !isConditionNamed(entry, prefix)), `${prefix} (${rests})`],
     note: `${def.displayName} comes back after ${rests} long rest${rests === 1 ? "" : "s"}.`,
   };
+}
+
+// A counter's save, its row's terms filled in (src/lib/dm/counter-saves.ts).
+function rollCounterSave(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  def: ResourceDef,
+  base: { save: SaveAbilityId; dc: number; dice?: string | null; type?: string; half?: boolean; condition?: string },
+  variant: string | undefined,
+  aim: CounterSaveAim | undefined,
+  // A reach other than the row's (Augment Breath's).
+  reachFt?: number,
+): ReturnType<typeof resolveCounterSave> {
+  const effect = def.effect as SaveTerms;
+  let type = base.type ?? effect.type;
+  if (effect.typeFromVariant?.length) {
+    const named = effect.typeFromVariant.find((entry) => textKey(entry) === textKey(variant ?? ""));
+    if (variant?.trim() && !named) {
+      return noneNamed(`${def.displayName} has no damage type called`, variant.trim(), effect.typeFromVariant);
+    }
+    type = named ?? effect.typeFromVariant[0];
+  }
+  const mods = computeSheetDerived(sheet).abilityMods;
+  const most = typeof effect.most === "string" ? Math.max(1, mods[effect.most] ?? 0) : effect.most;
+  return resolveCounterSave(campaign, sheet, {
+    name: def.displayName,
+    save: base.save,
+    dc: base.dc,
+    dice: base.dice,
+    ...(type ? { type } : {}),
+    half: base.half ?? effect.half,
+    condition: base.condition,
+    rounds: effect.rounds,
+    rangeFt: reachFt ?? effect.rangeFt,
+    ...(effect.cone ? { cone: true } : {}),
+    types: effect.types,
+    ...(most ? { most } : {}),
+    magical: effect.magical ?? def.id !== "breath_weapon",
+  }, aim ?? {});
+}
+
+// The slot a counter's slotFallback is paid with: of that level at least,
+// and free, or the refusal (cast-rules.ts says which slots are free).
+function slotPayment(sheet: CharacterSheet, def: ResourceDef, level: number): ToolError | { spellcasting: NonNullable<CharacterSheet["spellcasting"]> } {
+  const casting = sheet.spellcasting;
+  const slot = casting?.slots?.[String(level)];
+  if (!casting || level < (def.slotFallback ?? 1) || !slot || slot.used >= slot.max) {
+    return spentSlotRefusal(sheet.name, casting, { level, lowest: def.slotFallback ?? 1, what: def.displayName, withPact: true });
+  }
+  return { spellcasting: { ...casting, slots: { ...casting.slots, [String(level)]: { ...slot, used: slot.used + 1 } } } };
+}
+
+// A counter that reaches another creature only so far, or only one its
+// holder can see (Healing Light: "a creature you can see within 60 feet"):
+// the board's distance and the sight every check reads, refused before
+// anything is spent. Out of a fight, or with no board, the GM keeps to it.
+function reachRefusal(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  target: CharacterSheet,
+  name: string,
+  reach: { rangeFt?: number; sight?: boolean },
+): ToolError | null {
+  if (target.id === sheet.id) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  if (reach.sight) {
+    const unseen = encounter ? unseenBecause(encounter.id, sheet, target, { hidden: false }) : unseenByConditions(null, sheet, target, { hidden: false });
+    if (unseen) {
+      return { error: `${sheet.name} cannot see ${target.name} (${unseen}), and ${name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+    }
+  }
+  if (encounter && reach.rangeFt && !withinFeet(encounter.id, sheet.id, target.id, reach.rangeFt)) {
+    return { error: `${target.name} is beyond ${reach.rangeFt} feet of ${sheet.name}; ${name} reaches no further. Nothing was spent.`, refused: "rules" };
+  }
+  return null;
 }
 
 export function computeUseResource(
@@ -300,7 +411,16 @@ export function computeUseResource(
   // that dropped them (a reaction that answers it, or one taken on dropping
   // to 0): the use goes ahead at 0 hit points (issue 233).
   reacting?: { beforeDrop?: boolean },
+  // The creatures a save the counter forces is rolled for, and the turn its
+  // dice cards belong to (src/lib/dm/counter-saves.ts).
+  aim?: CounterSaveAim,
+  // The square a teleport goes to, from the console or the Hand
+  // (src/lib/dm/feature-move.ts); without it the teleport is credited to
+  // move_token. `slotLevel`: the spell slot that pays once the uses are
+  // gone (ResourceDef.slotFallback).
+  more: { square?: Square; slotLevel?: number } = {},
 ): Outcome | ToolError {
+  const square = more.square;
   const def = matchResource(resourceName);
   const state = def ? (sheet.resources[def.id] ?? heldUnlimitedState(def, sheet) ?? undefined) : undefined;
   if (!def || !state) {
@@ -312,16 +432,22 @@ export function computeUseResource(
       ? { error: `${sheet.name} has no tracked resource "${resourceName}".${theirs}`, refused: "rules" }
       : { error: `No resource called "${resourceName}" is known.${theirs} Send the one meant, by the name on the sheet.`, retry: true };
   }
-  if (def.passive) {
+  // A pool another call spends refuses a bare spend, with that call named
+  // in its guidance; one whose options this tool spends takes them by
+  // variant (WAVE1 R10: "refuses a bare use_resource spend with a pointer
+  // to the right call, spending nothing").
+  if (def.passive && !(def.options && variant?.trim())) {
     return {
-      error: `${def.displayName} is not spent by choice: ${def.guidance} Do not call use_resource for it.`,
+      error: `${def.displayName} is not spent by a use_resource call of its own: ${def.guidance} Nothing was spent.`,
       retry: true,
     };
   }
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is dead and cannot use ${def.displayName}.`, refused: "rules" };
   }
-  const standing = Boolean(reacting?.beforeDrop) && def.action === "reaction";
+  // A reaction judged before the drop, or a feature used at 0 hit points by
+  // its own text (ResourceDef.atZeroHp: Defy Death after a death save).
+  const standing = (Boolean(reacting?.beforeDrop) && def.action === "reaction") || Boolean(def.atZeroHp);
   if (sheet.currentHp <= 0 && !standing) {
     return {
       error: `${sheet.name} is at 0 HP and cannot use ${def.displayName}; they are unconscious and take no actions.`,
@@ -360,7 +486,13 @@ export function computeUseResource(
   if (def.id === "sorcery_points") {
     // The variant as its rules text lists it (class-resources.ts).
     if (textKey(variant ?? "") === "quickened spell") {
-      return spendQuickenedSpell(campaign, sheet, state);
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, "Quickened Spell", true);
+      if (second) {
+        return second;
+      }
+      const quickened = spendQuickenedSpell(campaign, sheet, state);
+      return "error" in quickened ? quickened : metamagicPaid(campaign.id, sheet, quickened);
     }
     const direction = fontOfMagicDirection(variant);
     if (direction) {
@@ -381,6 +513,11 @@ export function computeUseResource(
         return priced;
       }
       metamagicPoints = priced.points;
+      // One option a spell (mt-srd-metamagic.ts).
+      const second = secondOptionProblem(sheet, option.n);
+      if (second) {
+        return second;
+      }
     }
   }
 
@@ -408,11 +545,17 @@ export function computeUseResource(
   const elemental = elementalAsk?.form ?? null;
   const cost = elemental ? ELEMENTAL_WILD_SHAPE_COST : (metamagicPoints ?? amount);
 
-  if (def.requires === "below_half" && sheet.currentHp >= effectiveMaxHp(sheet) / 2) {
-    return {
-      error: `${def.displayName} is used when ${sheet.name} has fewer than half of their hit points left, and they have ${sheet.currentHp}/${effectiveMaxHp(sheet)}. Nothing was spent.`,
-      refused: "rules",
-    };
+  // The counter's own preconditions, as its Hand card reads them
+  // (src/lib/srd/counter-rules.ts).
+  const live = getActiveEncounter(campaign.id);
+  const gate = counterGate(def, sheet, Boolean(live && (live.kind ?? "fight") === "fight"));
+  if (gate) {
+    return { error: `${gate} Nothing was spent.`, refused: "rules" };
+  }
+  // The reach the counter's text gives its target (mt-srd-reach.ts).
+  const beyond = targetReachProblem(campaign.id, def, sheet, target);
+  if (beyond) {
+    return { error: `${beyond} Nothing was spent.`, refused: "rules" };
   }
   // A pool a single use may only dip into (Balm of the Summer Court: half the
   // druid level of dice; Healing Light: the Charisma modifier).
@@ -429,33 +572,55 @@ export function computeUseResource(
     }
   }
   const left = state.max - state.used;
-  const payment = payForUse(sheet, def, state, cost);
+  // Drake's Breath: "Once per long rest, or by expending a spell slot of 3rd
+  // level or higher". With the use spent the slot named pays (use_resource
+  // level), and with none named the lowest unspent slot of that level or
+  // higher does (payForUse, counter-rules.ts otherPrice): one field on the
+  // row, slotFallback, for both.
+  const slotPays = def.slotFallback && left < cost && more.slotLevel !== undefined ? slotPayment(sheet, def, more.slotLevel) : null;
+  if (slotPays && "error" in slotPays) {
+    return slotPays;
+  }
+  const payment = slotPays ? { fallback: null } : payForUse(sheet, def, state, cost);
   if ("error" in payment) {
     return payment;
   }
   const paid = payment.fallback;
+  // A spell slot paid for the use (slotFallback, none named in the call).
+  const paidSlot = payment.slot ?? null;
   // A feature with no limit is used, not counted down.
   const unlimited = isUnlimited(state);
-  const spent = paid
+  const spent = slotPays
+    ? sheet.resources
+    : paid
     ? { ...sheet.resources, [paid.id]: { max: paid.state.max, used: paid.state.used + paid.amount } }
-    : unlimited
+    : unlimited || paidSlot !== null
       ? sheet.resources
       : { ...sheet.resources, [def.id]: { max: state.max, used: state.used + cost } };
+  const slotSpent = paidSlot !== null && sheet.spellcasting
+    ? { spellcasting: { ...sheet.spellcasting, slots: { ...sheet.spellcasting.slots, [String(paidSlot)]: { ...sheet.spellcasting.slots[String(paidSlot)], used: sheet.spellcasting.slots[String(paidSlot)].used + 1 } } } }
+    : {};
   // A use that returns only after several long rests (Limited Wish): the
   // marker the rest counts down (src/lib/dm/rest-logic.ts).
-  const recovering = def.recovers && !paid && !unlimited ? recoveryMarker(campaign, sheet, def) : null;
+  const recovering = def.recovers && !paid && paidSlot === null && !unlimited ? recoveryMarker(campaign, sheet, def) : null;
   const outcome: Outcome = {
-    patch: { resources: spent, ...(recovering ? { conditions: recovering.conditions } : {}) },
+    patch: { resources: spent, ...slotSpent, ...(recovering ? { conditions: recovering.conditions } : {}), ...(slotPays ? { spellcasting: slotPays.spellcasting } : {}) },
     result: {
       ok: true,
       ...(recovering ? { returns: recovering.note } : {}),
       resource: def.displayName,
-      spent: paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : cost,
-      left: unlimited ? "unlimited" : paid ? `0/${state.max}` : `${left - cost}/${state.max}`,
+      spent: slotPays ? `a level ${more.slotLevel} spell slot (no use was left)` : paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : paidSlot !== null ? `a level ${paidSlot} spell slot (no use was left)` : cost,
+      left: unlimited ? "unlimited" : paid || paidSlot !== null ? `0/${state.max}` : `${left - cost}/${state.max}`,
       refills: def.recharge === "short" ? "on any rest" : "on a long rest",
       effect: def.guidance,
     },
   };
+
+  // Lunar Boons: a Metamagic option paid waits for its spell, or takes the
+  // boon of one already cast this turn (src/lib/dm/ar-ws-lunar-boons.ts).
+  if (metamagicPoints !== null) {
+    metamagicPaid(campaign.id, sheet, outcome);
+  }
 
   // One with Shadows: dim light or darkness, then invisible until the warlock
   // moves or acts (src/lib/dm/one-with-shadows.ts).
@@ -467,6 +632,14 @@ export function computeUseResource(
     Object.assign(outcome.patch, shadowInvisibility(sheet));
     outcome.result.invisible = `${sheet.name} is invisible until they move or take an action or a reaction.`;
     return outcome;
+  }
+  // Steps of Night (Twilight Domain 6): "while in dim light or darkness" the
+  // cleric takes wing; before this the cleric flew on a brightly lit board.
+  if (def.id === "sub_steps_of_night") {
+    const bright = shadowLightProblem(campaign.id, sheet, def.displayName);
+    if (bright) {
+      return bright;
+    }
   }
 
   const derived = computeSheetDerived(sheet);
@@ -495,7 +668,18 @@ export function computeUseResource(
       if (target.deathSaves?.dead) {
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
-      const total = rollHealing(campaign, target, def.displayName, `${amount}${def.effect.die}`);
+      // The pool's own reach and sight (Balm of the Summer Court: "a creature
+      // you can see within 120 feet"), before a die is rolled: a creature
+      // 125 feet off and an invisible one were healed all the same.
+      const outOfReach = allyReachRefusal(campaign.id, sheet, target, { feature: def.displayName, rangeFt: def.effect.rangeFt, sight: def.effect.sight });
+      if (outOfReach) {
+        return outOfReach;
+      }
+      const beyond = reachRefusal(campaign, sheet, target, def.displayName, def.effect);
+      if (beyond) {
+        return beyond;
+      }
+      const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), `${amount}${def.effect.die}`);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
       outcome.result.healed = `${total} HP to ${target.name}`;
@@ -517,16 +701,26 @@ export function computeUseResource(
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
-      const total = rollHealing(campaign, target, def.displayName, expression);
+      const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
       return outcome;
     }
     case "temp_hp": {
+      // Inspiring Leader reaches a creature once until it rests (ar-wbf-feat-rally.ts).
+      const rallied = rallyRefusal(def.id, target);
+      if (rallied) {
+        return rallied;
+      }
+      // Chef's treats keep 8 hours from the cook's long rest (ar-wbf-feat-treats.ts).
+      const spoiled = treatsRefusal(campaign.id, def.id, sheet);
+      if (spoiled) {
+        return spoiled;
+      }
       const expression = def.effect.dice(fxLevel, derived.abilityMods);
       const total = Math.max(
         1,
-        rollHealing(campaign, target, `${def.displayName} (temporary HP)`, expression),
+        rollHealing(campaign, sheet, healingOn(`${def.displayName} (temporary HP)`, sheet, target), expression),
       );
       // 5e temporary hit points never stack; the higher value stands.
       if (target.tempHp >= total) {
@@ -535,8 +729,9 @@ export function computeUseResource(
       }
       if (target.id === sheet.id) {
         outcome.patch.tempHp = total;
+        Object.assign(outcome.patch, rallyMark(def.id, target));
       } else {
-        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total } };
+        outcome.patchTarget = { characterId: target.id, patch: { tempHp: total, ...rallyMark(def.id, target) } };
       }
       outcome.result.tempHp = `${total} temporary hit points to ${target.name}`;
       return outcome;
@@ -565,9 +760,12 @@ export function computeUseResource(
         conditions: [...recipient.conditions, condition],
         conditionMeta: {
           ...recipient.conditionMeta,
-          [condition]: { rounds: effect.rounds },
+          [condition]: { rounds: effect.rounds, ...(effect.concentration ? { spell: def.displayName, source: sheet.id } : {}) },
         },
       };
+      if (effect.concentration) {
+        outcome.concentrate = def.displayName;
+      }
       // Temporary hit points riding the buff (Fighting Spirit, Form of
       // Dread); 5e temp HP never stacks, the higher value stands.
       let tempHpPatch: { tempHp: number } | null = null;
@@ -576,8 +774,8 @@ export function computeUseResource(
           1,
           rollHealing(
             campaign,
-            recipient,
-            `${def.displayName} (temporary HP)`,
+            sheet,
+            healingOn(`${def.displayName} (temporary HP)`, sheet, recipient),
             effect.tempHp(sheet.level, derived.abilityMods),
           ),
         );
@@ -598,6 +796,10 @@ export function computeUseResource(
           patch: { ...conditionPatch, ...(tempHpPatch ?? {}) },
         };
       }
+      if (effect.teleportFeet) {
+        creditFeatureTeleport(sheet.id, def.displayName, effect.teleportFeet);
+        outcome.result.teleport = `${sheet.name} teleports up to ${effect.teleportFeet} feet: if a battle map is live, move their token with move_token, teleport true, spell "${def.displayName}" and casterCharacterId ${sheet.id}.`;
+      }
       const summary = conditionEffectsFor(condition)?.summary;
       outcome.result.applied = `${condition} on ${recipient.name} for ${effect.rounds} rounds`;
       if (summary) {
@@ -606,29 +808,46 @@ export function computeUseResource(
       return outcome;
     }
     case "enemy_save": {
-      // The spend hands back the real numbers under aoe_damage's own
-      // names; that call rolls each creature's save from its stat block and
-      // lays the condition on a failure. A feature is no spell, so
-      // cast_at_enemy (which needs a caster and takes their spell DC) is not it.
-      const dc =
-        derived.spellSaveDc ??
-        8 +
-          derived.proficiencyBonus +
-          Math.max(...Object.values(derived.abilityMods));
-      outcome.result.resolveWith = "aoe_damage";
-      outcome.result.casterCharacterId = sheet.id;
-      outcome.result.saveAbility = def.effect.save;
-      outcome.result.dc = dc;
-      if (def.effect.condition) {
-        outcome.result.condition = def.effect.condition;
-      }
-      if (def.effect.dice) {
-        outcome.result.damage = def.effect.dice(fxLevel, derived.abilityMods);
-      }
-      outcome.result.note = "Resolve it with aoe_damage, these fields and the creatures it catches (enemyIds, characterIds).";
-      return outcome;
+      // Rolled here, on the creatures the call names: it handed the numbers
+      // back for an aoe_damage call, which a person's table never made.
+      const effect = def.effect;
+      const saved = rollCounterSave(campaign, sheet, def, {
+        save: effect.save,
+        dc: counterSaveDc(effect.dcAbility, derived, Math.max(...Object.values(derived.abilityMods))),
+        dice: effect.dice ? effect.dice(fxLevel, derived.abilityMods) : null,
+        condition: effect.condition,
+      }, variant, aim);
+      return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...saved.result } };
+    }
+    case "hit_damage": {
+      // Fury of the Small: rolled here onto the creature hit, after the hit.
+      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, derived.abilityMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
+      return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {
+      // A square named: the move is made in the spend, a willing creature
+      // the feature brings along with it (Misty Wanderer: "bringing a
+      // willing creature within 5 feet along"). Before this the step was
+      // handed back as words.
+      if (square) {
+        const along = def.effect.along && target.id !== sheet.id ? { refId: target.id, withinFeet: def.effect.along } : null;
+        const move = planFeatureMove(campaign, { refId: sheet.id, square, feet: def.effect.feet, what: def.displayName, teleport: true, along });
+        if ("error" in move) {
+          return move;
+        }
+        outcome.result.teleport = move.go();
+        return outcome;
+      }
+      // With a willing creature named, the two change places (Benign
+      // Transposition); the plain jump below is left for move_token.
+      if (def.effect.swap && target.id !== sheet.id) {
+        const swap = planSwap(campaign, sheet, target, def.displayName, def.effect.feet);
+        if ("error" in swap) {
+          return swap;
+        }
+        outcome.result.swapped = swap.apply();
+        return outcome;
+      }
       creditFeatureTeleport(sheet.id, def.displayName, def.effect.feet);
       outcome.result.teleport = `${sheet.name} teleports up to ${def.effect.feet} feet: if a battle map is live, move their token with move_token, teleport true, spell "${def.displayName}" and casterCharacterId ${sheet.id}.`;
       return outcome;
@@ -649,9 +868,13 @@ export function computeUseResource(
           outcome.result.concentrationEnded = `${sheet.name} stops concentrating on ${ended} as the rage takes hold.`;
         }
       }
-      outcome.patch.conditions = [...holder.conditions, condition];
+      // Feral Instinct's hold on a surprised first turn ends with the rage
+      // it waited for (mt-srd-barbarian.ts).
+      const entered = condition === RAGING ? withoutRageFirst(holder) : holder;
+      const metaKept = Object.fromEntries(Object.entries(holder.conditionMeta ?? {}).filter(([name]) => name !== RAGE_FIRST));
+      outcome.patch.conditions = [...entered.conditions, condition];
       outcome.patch.conditionMeta = {
-        ...holder.conditionMeta,
+        ...metaKept,
         [condition]: { rounds: def.effect.rounds },
       };
       outcome.result.applied = `${condition} for ${def.effect.rounds} rounds`;
@@ -661,7 +884,9 @@ export function computeUseResource(
       return outcome;
     }
     case "inspire": {
-      if (target.id === sheet.id) {
+      // "one creature other than yourself" (SRD 5.1, Bardic Inspiration);
+      // Cosmic Omen answers "a roll near you", the druid's own among them.
+      if (target.id === sheet.id && def.effect.othersOnly) {
         return {
           error: `${def.displayName} goes to another creature, never to the bard themselves. Pass targetCharacterId.`,
           retry: true,
@@ -683,8 +908,11 @@ export function computeUseResource(
           conditionMeta: {
             ...target.conditionMeta,
             // Who gave it, and a Creation bard's mote with it
-            // (src/lib/dm/authored-mote.ts).
-            [condition]: { rounds: INSPIRATION_ROUNDS, ...(holdsMote(sheet) ? { source: sheet.id, mote: true } : {}) },
+            // (src/lib/dm/authored-mote.ts); what a Valor or an Eloquence
+            // bard's die may do (ar-wbf-bard-dice-logic.ts).
+            // The bard is kept as the die's source: a roll it makes succeed is
+            // recorded as theirs (Infectious Inspiration, last-save.ts).
+            [condition]: { rounds: INSPIRATION_ROUNDS, source: sheet.id, ...(holdsMote(sheet) ? { mote: true } : {}), ...givenDieMarks(sheet) },
           },
         },
       };
@@ -692,22 +920,26 @@ export function computeUseResource(
       return outcome;
     }
     case "aoe": {
+      // Half on a success, rolled here on the creatures the area catches.
       const spend = aoeSpendFor(def, sheet, fxLevel, derived)!;
-      outcome.result.resolveWith = "aoe_damage";
-      outcome.result.casterCharacterId = sheet.id;
-      outcome.result.damage = spend.dice;
-      outcome.result.saveAbility = spend.saveAbility;
-      outcome.result.dc = spend.dc;
-      if (spend.damageType) {
-        outcome.result.type = spend.damageType;
+      // Augment Breath, asked for in Breath of the Dragon's own variant
+      // (mt-mr-dragon.ts): four rolls, the longer reach, 1 ki more.
+      const augment = breathAugment(sheet, def.id, variant, outcome.patch.resources ?? sheet.resources);
+      if (augment && "error" in augment) {
+        return augment;
       }
-      if (spend.area) {
-        outcome.result.area = spend.area;
+      const saved = rollCounterSave(campaign, sheet, def, { save: spend.saveAbility, dc: spend.dc, dice: augment?.dice ?? spend.dice, type: spend.damageType, half: def.effect.half ?? true }, augment ? augment.variant : variant, aim, augment?.rangeFt);
+      if (augment && !("error" in saved)) {
+        outcome.patch.resources = augment.resources;
+        outcome.result.augmented = `Augment Breath: 1 ki more, ${augment.dice} to ${augment.rangeFt} feet.`;
       }
-      return outcome;
+      return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...(spend.area && !augment ? { area: spend.area } : {}), ...saved.result } };
     }
     case "wild_shape": {
-      return wildShapeUse(sheet, outcome, def.displayName, form, elemental);
+      // The Hand's card names the beast as its pick (variant); the console
+      // and the AI GM in form.
+      const asked = form?.name?.trim() ? form : variant?.trim() ? { ...form, name: variant.trim() } : form;
+      return wildShapeUse(sheet, outcome, def.displayName, asked, elemental);
     }
     case "recover_slots": {
       // Spent through take_rest, which reads the counter and returns the

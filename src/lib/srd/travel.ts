@@ -118,13 +118,16 @@ export function forcedMarchSaveDc(extraHour: number): number {
 // halved in difficult terrain (SRD 5.1, Difficult Terrain: "you can cover
 // only half the normal distance in a minute, an hour, or a day"), times what
 // the weather leaves of it. Rounded to the half mile.
+// `paceFactor`: what a feature multiplies the pace by (Aspect of the Beast,
+// Elk: 2).
 export function milesCovered(input: {
   pace: TravelPace;
   terrain?: "normal" | "difficult";
   hours: number;
   weatherFactor?: number;
+  paceFactor?: number;
 }): number {
-  const factor = (input.terrain === "difficult" ? 0.5 : 1) * (input.weatherFactor ?? 1);
+  const factor = (input.terrain === "difficult" ? 0.5 : 1) * (input.weatherFactor ?? 1) * (input.paceFactor ?? 1);
   return Math.round(paceMiles(input.pace, input.hours) * factor * 2) / 2;
 }
 
@@ -137,9 +140,10 @@ export function travelLeg(input: {
   hours?: number;
   miles?: number;
   weatherFactor?: number;
+  paceFactor?: number;
 }): { hours: number; minutes: number; miles: number } | ToolError {
   if (input.miles !== undefined && input.miles > 0) {
-    const factor = (input.terrain === "difficult" ? 0.5 : 1) * (input.weatherFactor ?? 1);
+    const factor = (input.terrain === "difficult" ? 0.5 : 1) * (input.weatherFactor ?? 1) * (input.paceFactor ?? 1);
     const minutes = Math.ceil(paceHours(input.pace, input.miles / factor) * 60);
     if (minutes > 24 * 60) {
       return {

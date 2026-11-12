@@ -27,6 +27,21 @@ export function useDocked(): boolean {
   return useSyncExternalStore(subscribeDocked, readDocked, () => true);
 }
 
+// A window tall enough for the Hand to lie on the staged board's lower edge
+// with the board still showing above it. Under it the Hand is the rail in
+// the desk, as it is on a tablet on its side (hand.css).
+const HAND_ON_BOARD_QUERY = "(min-height: 45rem)";
+
+function subscribeHandOnBoard(callback: () => void) {
+  const media = window.matchMedia(HAND_ON_BOARD_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+export function useHandOnBoardRoom(): boolean {
+  return useSyncExternalStore(subscribeHandOnBoard, () => window.matchMedia(HAND_ON_BOARD_QUERY).matches, () => false);
+}
+
 // A phone on its side: too short to give the board's order a row of its own.
 const SHORT_QUERY = "(max-height: 30rem)";
 

@@ -31,7 +31,10 @@ const redemption = hero("paladin", "Oath of Redemption");
 const glory = hero("paladin", "Oath of Glory");
 const watchers = hero("paladin", "Oath of the Watchers");
 const crown = hero("paladin", "Oath of the Crown");
-const everyone = [light, nature, trickery, order, ancients, redemption, glory, watchers, crown];
+// The healing rows' holders (scripts/test-enforce-cd-healing.mjs tests them).
+const peace = hero("cleric", "Peace Domain");
+const twilight = hero("cleric", "Twilight Domain");
+const everyone = [light, nature, trickery, order, ancients, redemption, glory, watchers, crown, peace, twilight];
 
 // Two foes beside the hero and one out of 30 feet, of the types given.
 async function stage(who, types = ["beast", "fiend", "beast"]) {
@@ -109,7 +112,13 @@ await test("Order's Demand charms every foe in reach that fails until the end of
   const meta = foe(near.id).conditionMeta.charmed;
   assert.equal(meta.untilTurnEndOf, order.id);
   assert.equal(meta.endsOnDamage, true);
-  assert.match(JSON.stringify(out.result), /drop what it is holding/);
+  // "You can also cause any of the charmed creatures to drop what they are
+  // holding when they fail the saving throw": the drop is laid as the
+  // disarmed mark on the creature that failed (authored-effects-channel.ts),
+  // where a line telling the GM to do it was pinned before.
+  assert.ok(foe(near.id).conditions.includes("disarmed"), JSON.stringify(foe(near.id).conditions));
+  assert.equal(foe(beside.id).conditions.includes("disarmed"), false, "the one that saved keeps its grip");
+  assert.match(JSON.stringify(out), /is charmed, and is disarmed/);
 });
 
 await test("Cloak of Shadows makes the cleric invisible until their next turn ends, and an attack ends it.", async () => {
@@ -321,7 +330,7 @@ await test("The Hand deals each row once, with its cost and aim, and the card's 
     world.clearDice();
     assert.equal(out.ok, true, `${name}: ${out.error}`);
     assert.equal(used(who), 1, `${name} spends its use`);
-    assert.equal(/Divine power channelled into a subclass effect/.test(JSON.stringify(out.result)), false, `${name} is resolved, not handed back as the pool's reminder`);
+    assert.equal(/A subclass effect\. In a fight, name the option/.test(JSON.stringify(out.result)), false, `${name} is resolved, not handed back as the pool's reminder`);
   }
 });
 

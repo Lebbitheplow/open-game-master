@@ -1,0 +1,356 @@
+{
+ "issue": "https://github.com/Lebbitheplow/open-game-master/issues/845",
+ "review": "https://github.com/Lebbitheplow/open-game-master/issues/845#issuecomment-6758787273",
+ "encoding": "WebP with alpha. grokbot's originals ship as he encoded them (128x128, quality 90, alpha 95, method 6); the Codex paintings and the code recolours are 256x256, sharp quality 92, alpha quality 95. Every glyph ships byte for byte as the council approved it (fromSha256 equals sha256).",
+ "glyphs": [
+  {
+   "glyph": "acid",
+   "file": "public/assets/icons/glyph/spell-acid.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/acid.webp",
+   "fromSha256": "869a3ca72d95e25615f718c90de297acdedb0754851945012f533a0c96d86ba0",
+   "sha256": "869a3ca72d95e25615f718c90de297acdedb0754851945012f533a0c96d86ba0",
+   "width": 128,
+   "height": 128,
+   "bytes": 4274
+  },
+  {
+   "glyph": "cold",
+   "file": "public/assets/icons/glyph/spell-cold.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/cold.webp",
+   "fromSha256": "8f87ac858bd4bf6c8b93d49656348ae375e7c4b8b7ddab79da380e6c8cc22e6e",
+   "sha256": "8f87ac858bd4bf6c8b93d49656348ae375e7c4b8b7ddab79da380e6c8cc22e6e",
+   "width": 128,
+   "height": 128,
+   "bytes": 8658
+  },
+  {
+   "glyph": "fire",
+   "file": "public/assets/icons/glyph/spell-fire.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/fire.webp",
+   "fromSha256": "c4307d5969d166766a513e2ccc70f8ac8f57e647a84c3db61aca35224538ae97",
+   "sha256": "c4307d5969d166766a513e2ccc70f8ac8f57e647a84c3db61aca35224538ae97",
+   "width": 128,
+   "height": 128,
+   "bytes": 6402
+  },
+  {
+   "glyph": "force",
+   "file": "public/assets/icons/glyph/spell-force.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/force.webp",
+   "fromSha256": "8d24b4538299e1b31ab3200be29796b91279fc81d7185a95ae3281059b2c02ae",
+   "sha256": "8d24b4538299e1b31ab3200be29796b91279fc81d7185a95ae3281059b2c02ae",
+   "width": 128,
+   "height": 128,
+   "bytes": 8252
+  },
+  {
+   "glyph": "lightning",
+   "file": "public/assets/icons/glyph/spell-lightning.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/lightning.webp",
+   "fromSha256": "f6037f22cbcb61c92684638189fb9eb2713107ac22622d7ae7364afbe8a7c4dd",
+   "sha256": "f6037f22cbcb61c92684638189fb9eb2713107ac22622d7ae7364afbe8a7c4dd",
+   "width": 128,
+   "height": 128,
+   "bytes": 4374
+  },
+  {
+   "glyph": "necrotic",
+   "file": "public/assets/icons/glyph/spell-necrotic.webp",
+   "source": "Codex, redrawn after benchmark",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/necrotic-white.webp",
+   "fromSha256": "726f4de2fd6dfec27c9d74af7cc613ad4bbdfb3eb732439aaaa9feea253635fb",
+   "prompt": "One painted game icon on a square canvas. A skeletal hand of pale bone white reaching upward from below, fingers spread and curled like claws, with a firm dark contour around every bone, and thick wisps of dark violet-black shadow curling around the wrist and between the lower bones. Bold, clear silhouette that holds on both dark and pale backgrounds.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure green, hex 00FF00. Use no bright green in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T18:42:33.752Z",
+   "sha256": "726f4de2fd6dfec27c9d74af7cc613ad4bbdfb3eb732439aaaa9feea253635fb",
+   "width": 256,
+   "height": 256,
+   "bytes": 23584
+  },
+  {
+   "glyph": "physical",
+   "file": "public/assets/icons/glyph/spell-physical.webp",
+   "source": "Codex, redrawn after benchmark",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/physical.webp",
+   "fromSha256": "f90830caf8357e4cd575cecd620b8774bdabca77ca56cbd66da3375d60bb4b36",
+   "prompt": "One painted game icon on a square canvas. One plain straight steel longsword on a diagonal from lower left to upper right, point up, with a simple crossguard, a leather-wrapped grip and a round pommel. Grey steel blade with a darker edge line, brown grip, dull brass guard. No ornament, no glow.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T17:34:37.592Z",
+   "sha256": "f90830caf8357e4cd575cecd620b8774bdabca77ca56cbd66da3375d60bb4b36",
+   "width": 256,
+   "height": 256,
+   "bytes": 9520
+  },
+  {
+   "glyph": "poison",
+   "file": "public/assets/icons/glyph/spell-poison.webp",
+   "source": "Codex, redrawn after benchmark",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/poison-bone.webp",
+   "fromSha256": "43ba0f30dcdfa0f36740d4a188d218ba944ed293fbe63025087a302c77d75003",
+   "prompt": "One painted game icon on a square canvas. A classic poison skull and crossbones: a front-facing skull with two crossed bones behind it, all painted in pale bone white with soft warm grey shading. The only colour is a toxic green glow deep in the eye sockets and nose, and one small green drip running from the jaw. Bold, compact, readable when tiny.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T18:31:20.354Z",
+   "sha256": "43ba0f30dcdfa0f36740d4a188d218ba944ed293fbe63025087a302c77d75003",
+   "width": 256,
+   "height": 256,
+   "bytes": 20212
+  },
+  {
+   "glyph": "psychic",
+   "file": "public/assets/icons/glyph/spell-psychic.webp",
+   "source": "Codex, redrawn after benchmark",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/psychic-rings.webp",
+   "fromSha256": "9245dc3daac4cf07d9811bc96c96b4ec1e51eef3597da397770a235ad6cffb57",
+   "prompt": "One painted game icon on a square canvas. A dark plum-violet human head and shoulders seen from the front, plain and featureless like a silhouette, with two or three thick pink-magenta rings radiating outward around the top of the head, centred on the forehead like ripples spreading from the mind. Nothing comes out of the mouth. The rings circle the head; they are not sound waves to one side.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure green, hex 00FF00. Use no bright green in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T17:35:55.822Z",
+   "sha256": "9245dc3daac4cf07d9811bc96c96b4ec1e51eef3597da397770a235ad6cffb57",
+   "width": 256,
+   "height": 256,
+   "bytes": 21218
+  },
+  {
+   "glyph": "radiant",
+   "file": "public/assets/icons/glyph/spell-radiant.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/radiant.webp",
+   "fromSha256": "826f3cea8bcdcb963098cca067a801079e42a959a726f34dceb59ad8889eb01d",
+   "sha256": "826f3cea8bcdcb963098cca067a801079e42a959a726f34dceb59ad8889eb01d",
+   "width": 128,
+   "height": 128,
+   "bytes": 6754
+  },
+  {
+   "glyph": "thunder",
+   "file": "public/assets/icons/glyph/spell-thunder.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/thunder.webp",
+   "fromSha256": "e2d428fd51863f45403411a3e11f64d8505b057cdb6f398cd76f761eae18e24b",
+   "sha256": "e2d428fd51863f45403411a3e11f64d8505b057cdb6f398cd76f761eae18e24b",
+   "width": 128,
+   "height": 128,
+   "bytes": 6198
+  },
+  {
+   "glyph": "heal",
+   "file": "public/assets/icons/glyph/spell-heal.webp",
+   "source": "Codex, redrawn: red heart, green cross",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/heal-heart.webp",
+   "fromSha256": "9480dfcbe5e154f7d0c32570d90e4398adcb25c24f38345fc092fb50b062ec58",
+   "prompt": "One painted game icon on a square canvas. One plump rounded heart painted in warm deep red, with a bold green plus-shaped cross in its centre, the cross edged with a thin pale outline so it stands out from the red. Simple, solid, readable when tiny.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T18:38:11.309Z",
+   "sha256": "9480dfcbe5e154f7d0c32570d90e4398adcb25c24f38345fc092fb50b062ec58",
+   "width": 256,
+   "height": 256,
+   "bytes": 13782
+  },
+  {
+   "glyph": "restore",
+   "file": "public/assets/icons/glyph/spell-restore.webp",
+   "source": "Codex, new",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/restore-wheel.webp",
+   "fromSha256": "c29fd6c71b0926bdcd4c48aa6960b14d6f09075cef19e0fd915fd4773436415b",
+   "sha256": "c29fd6c71b0926bdcd4c48aa6960b14d6f09075cef19e0fd915fd4773436415b",
+   "width": 256,
+   "height": 256,
+   "bytes": 15562
+  },
+  {
+   "glyph": "guard",
+   "file": "public/assets/icons/glyph/spell-guard.webp",
+   "source": "Grokbot's shield, recoloured silver",
+   "generator": "code: grokbot's protection shield recoloured silver (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/guard-silver.webp",
+   "fromSha256": "208c5636d56d599f2dffc0e2711d7713771b6c67307dd8b7ed1509631ad54841",
+   "sha256": "208c5636d56d599f2dffc0e2711d7713771b6c67307dd8b7ed1509631ad54841",
+   "width": 128,
+   "height": 128,
+   "bytes": 7884
+  },
+  {
+   "glyph": "dispel",
+   "file": "public/assets/icons/glyph/spell-dispel.webp",
+   "source": "Codex, new",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/dispel.webp",
+   "fromSha256": "e8eeaad714970fc1946526022a2f0c0793f46fc1c1687a1f91ea7850f7d99c92",
+   "prompt": "One painted game icon on a square canvas. A blue-violet four-point magic star snapped across its middle by a broad jagged break, with the two halves pushed apart and offset. Keep the attached earlier version's shape, but paint it as matte pigment with visible brushwork, with no airbrushed glow.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure green, hex 00FF00. Use no bright green in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T04:52:59.226Z",
+   "sha256": "e8eeaad714970fc1946526022a2f0c0793f46fc1c1687a1f91ea7850f7d99c92",
+   "width": 256,
+   "height": 256,
+   "bytes": 14664
+  },
+  {
+   "glyph": "buff",
+   "file": "public/assets/icons/glyph/spell-buff.webp",
+   "source": "Grokbot",
+   "generator": "grokbot (Grok image generation), issue 845 proposal",
+   "from": "Smoebo/open-dungeon-master@art/spell-glyph-proposal:docs/art/proposals/spell-glyphs/effects/buff.webp",
+   "fromSha256": "39ee95f48027b7205a060105ee0da8d29b0ee58749369a85fb226c43d6d73ae9",
+   "sha256": "39ee95f48027b7205a060105ee0da8d29b0ee58749369a85fb226c43d6d73ae9",
+   "width": 128,
+   "height": 128,
+   "bytes": 7124
+  },
+  {
+   "glyph": "debuff",
+   "file": "public/assets/icons/glyph/spell-debuff.webp",
+   "source": "Buff, flipped and recoloured",
+   "generator": "code: grokbot's buff glyph flipped and recoloured purple (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/debuff.webp",
+   "fromSha256": "4ca559f315377e2a832838cc1a0eaeb6490c6bb409afc5e00b28fd7c25811f62",
+   "sha256": "4ca559f315377e2a832838cc1a0eaeb6490c6bb409afc5e00b28fd7c25811f62",
+   "width": 128,
+   "height": 128,
+   "bytes": 7040
+  },
+  {
+   "glyph": "summon",
+   "file": "public/assets/icons/glyph/spell-summon.webp",
+   "source": "Codex, adjusted",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/summon.webp",
+   "fromSha256": "80d0e2db337a52ca697b795aa8ce686f1804230d2a9efe038b9b504900617d20",
+   "prompt": "One painted game icon on a square canvas. A low golden magic circle with a featureless spirit figure rising from it, with a solid head and shoulders. Keep the attached earlier version's shape, but paint it as matte pigment with visible brushwork, not polished metal. It must stay dark enough at its edge to hold on a pale background.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T04:53:42.553Z",
+   "sha256": "80d0e2db337a52ca697b795aa8ce686f1804230d2a9efe038b9b504900617d20",
+   "width": 256,
+   "height": 256,
+   "bytes": 19368
+  },
+  {
+   "glyph": "teleport",
+   "file": "public/assets/icons/glyph/spell-teleport.webp",
+   "source": "Codex, redrawn: figure between two portals",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/teleport-portals.webp",
+   "fromSha256": "b720f4193c8bee1c339d43143e8605f85a2751fe29ad7bffbe44d160ec20819d",
+   "prompt": "One painted game icon on a square canvas. Two glowing violet-blue portal rings seen at an angle, one at lower left and one at upper right, with a simple bold pale person figure stepping out of the upper-right ring, and a curved dotted arc of light linking the two rings. The lower-left ring is empty. Rings and figure are bold and clearly separate, readable when small.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure green, hex 00FF00. Use no bright green in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T18:42:33.357Z",
+   "sha256": "b720f4193c8bee1c339d43143e8605f85a2751fe29ad7bffbe44d160ec20819d",
+   "width": 256,
+   "height": 256,
+   "bytes": 16774
+  },
+  {
+   "glyph": "detection",
+   "file": "public/assets/icons/glyph/spell-detection.webp",
+   "source": "Codex, adjusted",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/detection.webp",
+   "fromSha256": "35ae5ecd8ead3d78076f603528acd56862fde2da50c107ff551b512f00851581",
+   "prompt": "One painted game icon on a square canvas. A horizontal almond eye with a dark continuous lid contour, a large pupil, an amber iris and four short thick rays. Keep the attached earlier version's shape, but paint it as matte pigment with visible brushwork, not glossy.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T04:53:43.778Z",
+   "sha256": "35ae5ecd8ead3d78076f603528acd56862fde2da50c107ff551b512f00851581",
+   "width": 256,
+   "height": 256,
+   "bytes": 16762
+  },
+  {
+   "glyph": "utility",
+   "file": "public/assets/icons/glyph/spell-utility.webp",
+   "source": "Codex, redrawn after benchmark",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/redraw/cut/utility.webp",
+   "fromSha256": "d770afab11e5b38132791f77fe2073060fba5e6ed9878ac029088d4f8f125550",
+   "prompt": "One painted game icon on a square canvas. One open spectral hand seen from the side, palm turned up and fingers relaxed and slightly cupped, painted in pale silver-blue, holding a small bright white-gold ball of light just above the palm. Not a raised stop gesture: the palm faces the sky.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T17:34:07.187Z",
+   "sha256": "d770afab11e5b38132791f77fe2073060fba5e6ed9878ac029088d4f8f125550",
+   "width": 256,
+   "height": 256,
+   "bytes": 15724
+  },
+  {
+   "glyph": "choice",
+   "file": "public/assets/icons/glyph/spell-choice.webp",
+   "source": "Codex, new",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/choice.webp",
+   "fromSha256": "e2234137c0c10a557861af2b8d6c9389e0f3ed9e915b436a90d32c05ebd60fef",
+   "prompt": "One painted game icon on a square canvas. One upright cut diamond gem with four equal facets in fire orange, ice blue, lightning violet and yellow-lime, with dark seams. Keep the attached earlier version's shape, but paint it as matte pigment with visible brushwork, not glass and not glossy.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T04:52:58.919Z",
+   "sha256": "e2234137c0c10a557861af2b8d6c9389e0f3ed9e915b436a90d32c05ebd60fef",
+   "width": 256,
+   "height": 256,
+   "bytes": 14022
+  },
+  {
+   "glyph": "unknown",
+   "file": "public/assets/icons/glyph/spell-unknown.webp",
+   "source": "Codex, new",
+   "generator": "Codex built-in image tool, then cut from its background and centred (sharp)",
+   "from": "brainstorms/open-game-master/2026-11-08-spell-glyphs/conventions/finish/cut/unknown.webp",
+   "fromSha256": "baffc02560b3523155e2212e4b2a73bf29bb4c58d9485d32e54933a8e2d852cb",
+   "prompt": "One painted game icon on a square canvas. One thick plain question mark of rough warm grey stone with a round dot below. Keep the attached earlier version's shape, but paint it as matte chiselled stone with visible grain, not polished, not plastic, with no bevel highlight.\n\nStyle: match the first two attached icons exactly: matte hand-painted pigment with fine visible grain, soft shading, a thin dark contour, and one light from the upper left. No gloss, no specular highlights, no bevel, no glow. One subject as one solid mass, filling about 90 percent of the canvas, with bold shapes that stay readable very small. No frame, no plate, no shadow on the background. Original art. No text, letters, numbers or runes other than the subject described.\n\nBackground: perfectly flat solid pure magenta, hex FF00FF. Use no magenta or hot pink in the subject. No gradient or texture on the background.",
+   "styleReference": [
+    "effects/buff.webp",
+    "effects/protection.webp"
+   ],
+   "promptedAt": "2026-11-09T04:53:01.087Z",
+   "sha256": "baffc02560b3523155e2212e4b2a73bf29bb4c58d9485d32e54933a8e2d852cb",
+   "width": 256,
+   "height": 256,
+   "bytes": 13640
+  }
+ ],
+ "notes": "grokbot's prompts were not recorded with his proposal; his originals are on the fork branch named in from. The restore wheel was chosen from a later Codex finish pass whose prompt was not kept; restore-burst and restore-chevrons in the same folder were the rejected candidates."
+}

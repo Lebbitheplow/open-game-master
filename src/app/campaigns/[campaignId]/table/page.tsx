@@ -11,6 +11,7 @@ import { MapPanel } from "@/app/campaigns/[campaignId]/MapPanel";
 import { useCampaignStream } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { HandoutStage } from "@/components/HandoutStage";
 import { SceneTitle } from "@/components/SceneTitle";
+import { useCoversBackdrop } from "@/lib/backdrop-cover";
 
 // The table view (docs/vtt-parity-implementation-plan.md 13.2): the player
 // projection of the board, the scene art, the sky and the current title
@@ -22,6 +23,9 @@ import { SceneTitle } from "@/components/SceneTitle";
 export default function TablePage({ params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = use(params);
   const { state, refreshBattleMap, markFxPlayed, markCameraDone, markTitleCardShown } = useCampaignStream(campaignId);
+  // The view fills the window once it is up, and the layout's backdrop rests
+  // behind it (src/lib/backdrop-cover.ts); its loading and error states do not.
+  useCoversBackdrop(!state.loading && !state.error && Boolean(state.campaign) && Boolean(state.me));
 
   if (state.loading) {
     return (

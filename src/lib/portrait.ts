@@ -2,6 +2,7 @@ import { copyFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { imagesAvailable } from "@/lib/capabilities";
 import { generateStoryImage } from "@/lib/image-generate";
+import { scheduleImageVariants } from "@/lib/image-variants";
 import type { LibraryCharacter } from "@/lib/db/characters";
 import { getCharacter, updateCharacterPortrait } from "@/lib/db/characters";
 import { listSheetsForLibraryCharacter, patchSheet } from "@/lib/db/sheets";
@@ -99,7 +100,14 @@ export function copyIntoUploads(generatedUrl: string): { id: string; url: string
   const id = crypto.randomUUID();
   const uploadsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "uploads");
   mkdirSync(uploadsDir, { recursive: true });
-  copyFileSync(source, path.join(/*turbopackIgnore: true*/ uploadsDir, `${id}.png`));
+  const saved = path.join(/*turbopackIgnore: true*/ uploadsDir, `${id}.png`);
+  copyFileSync(source, saved);
+  // The copy gets its own smaller copies, as an upload does
+  // (src/lib/uploads-store.ts). It had none: the render's stayed beside the
+  // render under its other name, so every painted portrait and cover, the
+  // pictures drawn smallest and most often, went out whole (about 3 MB) to
+  // each token that asked for 256 pixels of it.
+  scheduleImageVariants(saved);
   recordMediaFile(`/uploads/${id}.png`);
   return { id, url: `/uploads/${id}.png` };
 }

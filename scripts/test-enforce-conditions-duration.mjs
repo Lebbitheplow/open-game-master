@@ -507,6 +507,22 @@ await test("an untimed condition outlasts any amount of time", async () => {
   assert.deepEqual(held(), ["blinded"]);
 });
 
+// Standing costs half a move (SRD 5.1, Being Prone), and out of a fight
+// there is no turn to pay it from: before, a hero who woke on the ground
+// after a fight stayed prone through any wait or road and met the next fight
+// there. A rest is one such stretch (test-enforce-long-rest.mjs); pass_time
+// and travel are the others, and an unconscious or restrained creature has
+// speed 0 and stays down.
+await test("out of a fight, time passing stands up whoever is awake and able to move", async () => {
+  kit.reset(hero.id, { conditions: ["prone"] });
+  kit.reset(ally.id, { conditions: ["restrained", "prone"] });
+  const out = await wait(10);
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(held(), [], "ten minutes on, the hero is still lying down");
+  assert.deepEqual(held(ally.id), ["restrained", "prone"]);
+  kit.reset(ally.id);
+});
+
 await test("outside a fight the save that ends a condition is rolled once for the stretch", async () => {
   kit.reset(hero.id);
   await set({ condition: "frightened", saveAbility: "wis", saveDc: 12 });
@@ -526,10 +542,12 @@ await test("outside a fight the save that ends a condition is rolled once for th
 await test("a rest moves the clock: an hour's poison is gone after a short rest", async () => {
   kit.reset(hero.id);
   await set({ condition: "poisoned", hours: 1 });
-  await set({ condition: "prone" });
+  // A condition with no clock of its own stays. Not prone: a rest ends it
+  // for whoever can stand (test-enforce-short-rest.mjs).
+  await set({ condition: "blinded" });
   const out = await world.invoke("take_rest", { kind: "short" });
   assert.equal(out.ok, true, out.error);
-  assert.deepEqual(held(), ["prone"]);
+  assert.deepEqual(held(), ["blinded"]);
 });
 kit.reset(hero.id);
 

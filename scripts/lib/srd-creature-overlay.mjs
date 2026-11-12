@@ -87,6 +87,10 @@ export const CORRECTIONS = {
 // the row agrees with. Each names the field the comparison leaves to the
 // row, and why.
 export const PACK_KEEPS = {
+  // The text's block has no Skills line; the row has Stealth +5, which is its
+  // Dexterity (-1) and twice its proficiency bonus (+3), as the crocodile's
+  // own +2 is its Dexterity and twice +2.
+  "Giant Crocodile": { skills: "the text's block dropped the Skills line" },
   // Dagger "4 (1d4 + 1)", but its Dexterity is 14 and its +5 to hit counts
   // the +2; the row has 1d4 + 2.
   Mage: { attacks: "the dagger's damage counts its Dexterity modifier" },

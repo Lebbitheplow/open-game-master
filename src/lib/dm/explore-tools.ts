@@ -15,6 +15,7 @@ import { describeDuration, describeInstant } from "@/lib/dm/calendar";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { liftLimits, weighed } from "@/lib/dm/load-rules";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { sizeForRace } from "@/lib/srd";
 import { LIFESTYLES } from "@/lib/dm/between-state";
 import { tableNote, writeLifestyle } from "@/lib/dm/between-io";
@@ -27,9 +28,10 @@ import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { DISEASES, MADNESS_KINDS, POISONS, findDisease } from "@/lib/srd/afflictions";
 import { formatPrice, purseCoins } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 type ToolDef = {
   type: "function";
@@ -160,7 +162,7 @@ const liftSchema = z.object({
   characterId: z.string(),
   weightLb: z.coerce.number().min(1),
   how: z.enum(["lift", "push", "drag"]).optional(),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>): ToolResult {
@@ -193,6 +195,8 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
     coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sizeForRace(sheet.race),
     wearer: sheet,
+    // The capacity liftLimits read (Peerless Athlete doubles it).
+    carryFactor: authoredCarryFactor(sheet),
   });
   const total = load.carriedLb + args.weightLb;
   const slowed = total > limits.capacityLb;
@@ -213,7 +217,7 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
 const lifestyleSchema = z.object({
   characterIds: z.array(z.string()).optional(),
   lifestyle: z.enum([...LIFESTYLES, "none"]),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 // ---- downtime ----
@@ -236,7 +240,7 @@ const entrySchema = z.object({
 const downtimeSchema = entrySchema.partial().extend({
   days: z.coerce.number().int().min(1).max(365),
   activities: z.array(entrySchema).max(12).optional(),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 // ---- afflict ----
@@ -250,7 +254,7 @@ const afflictSchema = z.object({
   saveDc: z.coerce.number().int().min(1).max(30).optional(),
   saveAbility: z.enum(["wis", "cha"]).optional(),
   symptomsNow: z.boolean().optional(),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 function parse<T>(schema: z.ZodType<T>, rawArguments: string): T | null {
@@ -271,12 +275,12 @@ export function handleExploreCall(
 ): ToolResult {
   if (name === "lift") {
     const args = parse(liftSchema, rawArguments);
-    return args ? handleLift(args, sheets, sheetsById) : { error: "Invalid arguments: lift needs characterId and weightLb.", retry: true };
+    return args ? handleLift(args, sheets, sheetsById) : argumentsRefusal("Invalid arguments: lift needs characterId and weightLb.", liftSchema, rawArguments);
   }
   if (name === "set_lifestyle") {
     const args = parse(lifestyleSchema, rawArguments);
     if (!args) {
-      return { error: `Invalid arguments: set_lifestyle needs a lifestyle (${LIFESTYLES.join(", ")}, or none).`, retry: true };
+      return argumentsRefusal(`Invalid arguments: set_lifestyle needs a lifestyle (${LIFESTYLES.join(", ")}, or none).`, lifestyleSchema, rawArguments);
     }
     const targets = resolveTargets(args.characterIds, sheets, sheetsById);
     if (!targets.length) {
@@ -298,7 +302,7 @@ export function handleExploreCall(
   if (name === "downtime") {
     const args = parse(downtimeSchema, rawArguments);
     if (!args) {
-      return { error: "Invalid arguments: downtime needs days, and a characterId with an activity (or activities).", retry: true };
+      return argumentsRefusal("Invalid arguments: downtime needs days, and a characterId with an activity (or activities).", downtimeSchema, rawArguments);
     }
     if (getActiveEncounter(campaign.id)) {
       return { error: "Downtime is time between adventures; end the fight first.", refused: "rules" };
@@ -347,7 +351,7 @@ export function handleExploreCall(
   if (name === "afflict") {
     const args = parse(afflictSchema, rawArguments);
     if (!args) {
-      return { error: "Invalid arguments: afflict needs characterId and kind (disease, madness, poison), with a name, or a duration for madness.", retry: true };
+      return argumentsRefusal("Invalid arguments: afflict needs characterId and kind (disease, madness, poison), with a name, or a duration for madness.", afflictSchema, rawArguments);
     }
     const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
     const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;

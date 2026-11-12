@@ -1,0 +1,3193 @@
+{
+ "scavenger::Scrap Sense": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 1,
+  "sha": "bd9942ea1693",
+  "clauses": [
+   {
+    "c": "1/short rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Scrap Sense#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_scrap_sense",
+     "n": 1,
+     "rest": "short"
+    }
+   },
+   {
+    "c": "search any ruin or wreck for 10 minutes and find one genuinely useful item (the GM decides what plausibly exists)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Improvised Weapon Mastery": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 1,
+  "sha": "2689b63571b7",
+  "clauses": [
+   {
+    "c": "Improvised weapons count as proficient simple weapons dealing 1d6, or 1d8 two-handed",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Improvised Weapon Mastery#0:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d6",
+     "args": {
+      "improvised": true,
+      "weapon": "chair leg"
+     }
+    },
+    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d6"
+   },
+   {
+    "c": "1d8",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Improvised Weapon Mastery#1:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d8",
+     "args": {
+      "improvised": true,
+      "weapon": "chair leg",
+      "twoHanded": true
+     }
+    },
+    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d8"
+   }
+  ]
+ },
+ "scavenger::Packrat": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 2,
+  "sha": "a842c04a7c7b",
+  "clauses": [
+   {
+    "c": "Carry capacity doubles",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Packrat#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Packrat: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "you always have basic supplies (rope, tape, wire, a light source)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Haunt": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 3,
+  "sha": "7a91d570cb1b",
+  "clauses": [
+   {
+    "c": "Chooses a scavenger haunt (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Haunt#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "scavenger::Extra Attack": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "scavenger::Trap Eye": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 6,
+  "sha": "69f700d7a3dd",
+  "clauses": [
+   {
+    "c": "Advantage to spot traps, ambushes, and unstable ground",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Trap Eye#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Trap Eye: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+2 initiative in ruins",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Trap Eye#0:unhooked"
+   }
+  ]
+ },
+ "scavenger::Make It Work": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 7,
+  "sha": "2219402581c2",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Make It Work#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_make_it_work",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "repair or rig a device, vehicle, or weapon in 1 minute",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "it works for a scene",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for a scene",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Waste-Wise": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 9,
+  "sha": "d6f602b3f870",
+  "clauses": [
+   {
+    "c": "Advantage on saves against radiation, poison, and disease",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Waste-Wise#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "poisoned",
+      "disease"
+     ]
+    },
+    "observed": "a save against poisoned threw 1 d20 with Waste-Wise (1 without it)"
+   }
+  ]
+ },
+ "scavenger::Deep Pockets": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 10,
+  "sha": "ac15c9cfd60e",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Deep Pockets#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_deep_pockets",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "produce exactly the mundane item the party needs",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "you scavenged it earlier",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Junkyard Strikes": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 11,
+  "sha": "3d645aae06e0",
+  "clauses": [
+   {
+    "c": "Your improvised and simple weapons deal +1d6 damage and count as magical",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Junkyard Strikes#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Junkyard Strikes: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+1d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Junkyard Strikes#1:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d6",
+     "gear": "simple"
+    },
+    "observed": "a hit rolls 1d4+3 with Junkyard Strikes (1d4+3 without it), and the text makes it 1d6"
+   }
+  ]
+ },
+ "scavenger::Escape Artist": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 13,
+  "sha": "0bf60107ae6a",
+  "clauses": [
+   {
+    "c": "Disengage or Hide as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (bonus_route), src/lib/dm/bonus-routes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Escape Artist#0:bonus_route",
+    "k": "bonus_route",
+    "p": {
+     "actions": [
+      "disengage",
+      "hide"
+     ]
+    }
+   },
+   {
+    "c": "escape grapples and restraints with advantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Escape Artist#1:escape_adv",
+    "k": "escape_adv",
+    "observed": "the escape threw 2 d20 with Escape Artist and 2 without it"
+   }
+  ]
+ },
+ "scavenger::Scrap Sense (2 uses)": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 14,
+  "sha": "152bf80dbce1",
+  "clauses": [
+   {
+    "c": "Scrap Sense has 2 uses per short rest and takes only 1 minute",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "Scrap Sense has 2 uses per short rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Scrap Sense (2 uses)#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_scrap_sense",
+     "n": 2,
+     "rest": "short"
+    }
+   }
+  ]
+ },
+ "scavenger::Built From Salvage": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 15,
+  "sha": "2f2abefa3532",
+  "clauses": [
+   {
+    "c": "Your rigged devices from Make It Work last a day and can be handed to allies",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::The Good Stuff": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 17,
+  "sha": "b23c85fd585b",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::The Good Stuff#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_the_good_stuff",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "your search turns up something rare: old-world tech, ammo cache, or medicine (GM picks the form)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Never Unarmed": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 18,
+  "sha": "f291bef9d28c",
+  "clauses": [
+   {
+    "c": "When disarmed or emptied, you always find another weapon within reach this turn",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::King of the Heap": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "scavenger",
+  "level": 20,
+  "sha": "e6c0d8cc1660",
+  "clauses": [
+   {
+    "c": "Scrap Sense always finds two items",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "1/day one of them is exactly what you ask for",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "1/day",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::King of the Heap#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_king_of_the_heap",
+     "n": 1,
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "scavenger::Rust Reader": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Rustpicker",
+  "level": 3,
+  "sha": "c6cbab870407",
+  "clauses": [
+   {
+    "c": "A glance tells you what a ruin held, when it fell, and what has moved through since",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "scavenger::Silent Salvage": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Rustpicker",
+  "level": 3,
+  "sha": "5487b5253899",
+  "clauses": [
+   {
+    "c": "Advantage on Stealth while in ruins or wreckage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Silent Salvage#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Silent Salvage: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "scavenger::Tetanus Edge": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Rustpicker",
+  "level": 7,
+  "sha": "373819a5c2b5",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Tetanus Edge: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "your improvised weapons deal +1d4 poison and the target cannot regain HP until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+   },
+   {
+    "c": "+1d4 poison",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#3:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d4",
+     "args": {
+      "improvised": true,
+      "weapon": "rusty pipe"
+     }
+    },
+    "observed": "a hit rolls 1d4+3 with Tetanus Edge (1d4+3 without it), and the text makes it 1d4"
+   }
+  ]
+ },
+ "scavenger::Collapse Instinct": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Rustpicker",
+  "level": 11,
+  "sha": "1ec03c887a2d",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_collapse_instinct",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "trigger or predict a structural collapse: creatures in a 15-ft cube save (DEX) or take 4d6 bludgeoning and are restrained by rubble",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_collapse_instinct",
+     "condition": "restrained",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "15-ft cube",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_collapse_instinct",
+     "resolve": "far",
+     "feet": 15
+    },
+    "observed": "a creature 15 ft and more away was caught: [\"restrained\"]"
+   },
+   {
+    "c": "save (DEX)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_collapse_instinct",
+     "save": "dex",
+     "made": {
+      "dice": "4d6",
+      "takes": "none"
+     }
+    }
+   },
+   {
+    "c": "4d6 bludgeoning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_collapse_instinct",
+     "dice": "4d6",
+     "type": "bludgeoning"
+    },
+    "observed": "the spend hands back no bludgeoning damage type ({\"ok\":true,\"resource\":\"Collapse Instinct\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, trigger or predict a structural collapse: creatures in a 15-ft cube save (DEX) or take 4d6 bludgeoning and are re)"
+   }
+  ]
+ },
+ "scavenger::One With the Ruins": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Rustpicker",
+  "level": 15,
+  "sha": "4f4a6cda3fdc",
+  "clauses": [
+   {
+    "c": "In ruins you cannot be surprised, tracked, or flanked, and your Scrap Sense recharges on any rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::One With the Ruins#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to One With the Ruins: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "your Scrap Sense recharges on any rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::One With the Ruins#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_scrap_sense",
+     "n": 2,
+     "rest": "short"
+    }
+   }
+  ]
+ },
+ "road_warrior::Death or Glory": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 1,
+  "sha": "a51448bea9bf",
+  "clauses": [
+   {
+    "c": "You may attack recklessly: advantage on melee attacks this turn, but attacks against you have advantage until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Death or Glory#0:reckless",
+    "k": "reckless",
+    "observed": "a reckless attack: Holder has no Reckless Attack (a barbarian's feature from 2nd level). They can make the attack without it."
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Death or Glory#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Death or Glory: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "road_warrior::Hardened": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 1,
+  "sha": "80f2d330dc5e",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Hardened#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_hardened",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "reduce all damage you take this round by your CON modifier",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "road_warrior::Wheelman": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 2,
+  "sha": "7683fd3a998a",
+  "clauses": [
+   {
+    "c": "Advantage on checks to drive, ride, or repair vehicles",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Wheelman#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Wheelman: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "attacking from a moving vehicle carries no penalty",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "road_warrior::Crew": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 3,
+  "sha": "6b1e05d38592",
+  "clauses": [
+   {
+    "c": "Chooses a road crew (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Crew#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "road_warrior::Extra Attack": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "road_warrior::Fear No Rust": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 6,
+  "sha": "4fc2f616301c",
+  "clauses": [
+   {
+    "c": "Advantage on saves against fear",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "frightened"
+     ]
+    },
+    "observed": "a save against frightened threw 1 d20 with Fear No Rust (1 without it)"
+   },
+   {
+    "c": "allies within 10 ft add +1d4 to fear saves while you fight on",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Fear No Rust: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+   },
+   {
+    "c": "+1d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+   }
+  ]
+ },
+ "road_warrior::Ram Speed": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 7,
+  "sha": "4db500f2e12e",
+  "clauses": [
+   {
+    "c": "When you move 20+ ft straight toward a target and hit with a melee attack, deal +2d6 and shove it 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Ram Speed: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+2d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked"
+   }
+  ]
+ },
+ "road_warrior::Scar Tissue": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 9,
+  "sha": "3a9e3b17a028",
+  "clauses": [
+   {
+    "c": "Resistance to bludgeoning damage from nonmagical attacks",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Scar Tissue#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "bludgeoning"
+     ],
+     "nonmagical": true
+    },
+    "observed": "20 bludgeoning damage took 20 hit points with Scar Tissue (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "road_warrior::Hardened (2 uses)": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 10,
+  "sha": "7656e336c955",
+  "clauses": [
+   {
+    "c": "Hardened has 2 uses and reduces damage by twice your CON modifier",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened#GUIDANCE_ONLY"
+   },
+   {
+    "c": "Hardened has 2 uses",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Hardened (2 uses)#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_hardened",
+     "n": 2,
+     "rest": "short"
+    }
+   }
+  ]
+ },
+ "road_warrior::Extra Attack (2)": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 11,
+  "sha": "dcc718f1a4eb",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack three times when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Extra Attack (2)#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 3
+    }
+   }
+  ]
+ },
+ "road_warrior::Blood and Chrome": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 13,
+  "sha": "02acec8525cb",
+  "clauses": [
+   {
+    "c": "While below half HP, your melee attacks deal +1d8 damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Blood and Chrome#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Blood and Chrome: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+1d8",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Blood and Chrome#1:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d8",
+     "gear": "simple",
+     "belowHalf": true
+    },
+    "observed": "a hit rolls 1d4+3 with Blood and Chrome (1d4+3 without it), and the text makes it 1d8"
+   }
+  ]
+ },
+ "road_warrior::Road Rage": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 14,
+  "sha": "f2babfce0f60",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Road Rage#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_road_rage",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "when an ally within 30 ft drops to 0 HP, immediately move your speed and make one attack",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "road_warrior::Unstoppable": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 15,
+  "sha": "f7870ab449be",
+  "clauses": [
+   {
+    "c": "Your speed cannot be reduced and you cannot be knocked prone while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Unstoppable#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Unstoppable: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "you cannot be knocked prone while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Unstoppable#1:immune_cond",
+    "k": "immune_cond",
+    "p": {
+     "condition": "prone"
+    },
+    "observed": "set_condition laid prone on the holder of Unstoppable"
+   }
+  ]
+ },
+ "road_warrior::Witnessed": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 17,
+  "sha": "236892ba8fc6",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Witnessed#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_witnessed",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "when you drop to 0 HP, keep fighting: you remain conscious at 0 for 1 minute, then fall",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+   }
+  ]
+ },
+ "road_warrior::Warlord of the Wastes": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 18,
+  "sha": "8aa9fa22f105",
+  "clauses": [
+   {
+    "c": "Allies within 30 ft gain +1 to attack rolls while they can see you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Warlord of the Wastes#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Warlord of the Wastes: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Warlord of the Wastes#0:unhooked"
+   }
+  ]
+ },
+ "road_warrior::Ride Eternal": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "road_warrior",
+  "level": 20,
+  "sha": "4ad1c2240311",
+  "clauses": [
+   {
+    "c": "Death or Glory no longer grants enemies advantage against you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ride Eternal#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Ride Eternal: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "road_warrior::Chained Hook": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Highway Reaver",
+  "level": 3,
+  "sha": "27c487192806",
+  "clauses": [
+   {
+    "c": "A hooked chain (1d8 piercing, 15-ft reach): on hit, drag the target 10 ft toward you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Chained Hook: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "15-ft reach",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked"
+   },
+   {
+    "c": "1d8 piercing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked"
+   }
+  ]
+ },
+ "road_warrior::Reaver's Toll": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Highway Reaver",
+  "level": 3,
+  "sha": "3f01d0597e4e",
+  "clauses": [
+   {
+    "c": "Advantage on Intimidation against travelers, traders, and rival crews",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Reaver's Toll#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Reaver's Toll: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "road_warrior::Skull Takers": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Highway Reaver",
+  "level": 7,
+  "sha": "662fd361af8b",
+  "clauses": [
+   {
+    "c": "When you drop a creature, enemies within 15 ft save (WIS) or are frightened of you until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Skull Takers: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 15 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+   }
+  ]
+ },
+ "road_warrior::Gore Drift": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Highway Reaver",
+  "level": 11,
+  "sha": "a46c2ccaeebb",
+  "clauses": [
+   {
+    "c": "After you hit with Ram Speed, make one extra attack against a different creature within reach",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Gore Drift#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Gore Drift: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "road_warrior::Last Ride of the Reaver": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Highway Reaver",
+  "level": 15,
+  "sha": "8e9a41bbd3dd",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Last Ride of the Reaver#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_last_ride_of_the_reaver",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute your speed doubles, Ram Speed deals +4d6, and you resist all damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+   },
+   {
+    "c": "+4d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aberrant::Unstable Genome": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 1,
+  "sha": "3f3b17a94041",
+  "clauses": [
+   {
+    "c": "Casts sorcerer-list spells as mutations using CHA",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Unstable Genome#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "sorcerer",
+     "ability": "cha"
+    }
+   },
+   {
+    "c": "casting visibly warps your flesh for a moment",
+    "is": "flavor"
+   }
+  ]
+ },
+ "aberrant::Adaptive Hide": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 1,
+  "sha": "5d4cd75bdd48",
+  "clauses": [
+   {
+    "c": "While unarmored, AC equals 13 + DEX modifier",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Adaptive Hide#0:ac",
+    "k": "ac",
+    "p": {
+     "equals": 16,
+     "gear": "none"
+    },
+    "observed": "AC is 13 (Unarmored 10, DEX +3), and the text makes it 16"
+   }
+  ]
+ },
+ "aberrant::Rapid Adaptation": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 2,
+  "sha": "0d9b1a5d4424",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Rapid Adaptation#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_rapid_adaptation",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "after taking elemental damage, gain resistance to that type until you rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_rapid_adaptation#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aberrant::Predator Senses": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 3,
+  "sha": "b3c1d135225a",
+  "clauses": [
+   {
+    "c": "Darkvision 60 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Predator Senses#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Predator Senses: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "advantage on Perception checks using smell",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Predator Senses#0:unhooked"
+   }
+  ]
+ },
+ "aberrant::Surge of Change": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 5,
+  "sha": "dcab41fdb109",
+  "clauses": [
+   {
+    "c": "2/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Surge of Change#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_surge_of_change",
+     "n": 2,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "cast a cantrip as a bonus action after casting a leveled mutation",
+    "is": "held",
+    "by": "src/lib/dm/cast-rules.ts SURGE_FEATURES",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Surge of Change#1:surge",
+    "k": "surge",
+    "p": {
+     "id": "post_apocalyptic_surge_of_change"
+    }
+   }
+  ]
+ },
+ "aberrant::Regenerative Strain": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 7,
+  "sha": "966b1ccd86b3",
+  "clauses": [
+   {
+    "c": "Spend a hit die as a bonus action to heal",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_regenerative_strain#GUIDANCE_ONLY"
+   },
+   {
+    "c": "CHA-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Regenerative Strain#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_regenerative_strain",
+     "ability": "cha",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "aberrant::Toxic Blood": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 9,
+  "sha": "228f30de8393",
+  "clauses": [
+   {
+    "c": "Immune to poison and disease",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "poison"
+     ],
+     "immune": true
+    },
+    "observed": "20 poison damage took 20 hit points with Toxic Blood (20 without it), and the text makes it 0"
+   },
+   {
+    "c": "a creature that hits you with a bite takes 2d6 poison",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Toxic Blood: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "2d6 poison",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#1:unhooked"
+   }
+  ]
+ },
+ "aberrant::Chameleon Skin": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 11,
+  "sha": "ef3acb380199",
+  "clauses": [
+   {
+    "c": "Advantage on Stealth",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chameleon Skin#0:skill",
+    "k": "skill",
+    "p": {
+     "skill": "stealth",
+     "advantage": true
+    },
+    "observed": "a stealth check threw 1 d20 with Chameleon Skin (1 without it)"
+   },
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Chameleon Skin#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_chameleon_skin",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "turn near-invisible until you attack or cast",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_chameleon_skin#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aberrant::Grafted Power": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 13,
+  "sha": "f2dfa38890f7",
+  "clauses": [
+   {
+    "c": "Learn two spells from any spell list",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Grafted Power#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Grafted Power: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "they count as mutations for you",
+    "is": "flavor"
+   }
+  ]
+ },
+ "aberrant::Hardened Mutation": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 15,
+  "sha": "035abb0d0619",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Hardened Mutation#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_hardened_mutation",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "regain expended slot levels equal to your CHA modifier when you drop below half HP",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened_mutation#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aberrant::Apex Genome": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 17,
+  "sha": "aabeff6a8bfd",
+  "clauses": [
+   {
+    "c": "Resistance to two damage types of your choice, chosen each dawn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Apex Genome#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Apex Genome: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aberrant::Perfected Instability": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 18,
+  "sha": "4205159d9ea1",
+  "clauses": [
+   {
+    "c": "Your mutations ignore resistance to their damage type",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfected Instability#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Perfected Instability: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aberrant::The Next Step": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "aberrant",
+  "level": 20,
+  "sha": "3aa76b1f42a6",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::The Next Step#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_the_next_step",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute your mutations of 3rd level or lower cost no slots and your Adaptive Hide grants +2 more AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+   }
+  ]
+ },
+ "aberrant::Chimeric Limb": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Chimeric Strain",
+  "level": 1,
+  "sha": "47f8d15e4bec",
+  "clauses": [
+   {
+    "c": "A claw, tendril, or bone blade: a natural weapon dealing 1d8 + CHA slashing, and you can cast mutations through it",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Chimeric Limb: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "1d8 + CHA slashing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#1:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d8",
+     "gear": "none",
+     "args": {
+      "weapon": "Chimeric Limb"
+     }
+    },
+    "observed": "a hit rolls refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) with Chimeric Limb (refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) withou"
+   }
+  ]
+ },
+ "aberrant::Second Adaptation": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Chimeric Strain",
+  "level": 6,
+  "sha": "0b0c5a163c9b",
+  "clauses": [
+   {
+    "c": "Rapid Adaptation has 2 uses and can also grant a climb or swim speed for an hour",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Second Adaptation#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Second Adaptation: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "Rapid Adaptation has 2 uses",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Second Adaptation#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_rapid_adaptation",
+     "n": 2,
+     "rest": "long"
+    },
+    "observed": "post_apocalyptic_rapid_adaptation holds 1 use(s) at level 6, and the text gives 2"
+   }
+  ]
+ },
+ "aberrant::Splintered Form": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Chimeric Strain",
+  "level": 10,
+  "sha": "50e2158e11c9",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Splintered Form#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_splintered_form",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "reaction",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Splintered Form#1:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "post_apocalyptic_splintered_form",
+     "cost": "reaction"
+    }
+   },
+   {
+    "c": "when hit",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#TRIGGER_UNCHECKED"
+   },
+   {
+    "c": "split into a swarm shape until your next turn, taking half damage from the attack and moving through gaps freely",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aberrant::Perfect Chimera": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Chimeric Strain",
+  "level": 14,
+  "sha": "80902b680a44",
+  "clauses": [
+   {
+    "c": "Your Chimeric Limb deals 2d8, counts as magical, and grants 10-ft reach",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Perfect Chimera: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "10-ft reach",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+   },
+   {
+    "c": "2d8",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+   }
+  ]
+ },
+ "salvage_tech::Old-World Interface": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 1,
+  "sha": "c5c5a829675c",
+  "clauses": [
+   {
+    "c": "You can operate, unlock, and read any pre-Fall technology given a minute of fiddling",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "salvage_tech::Percussive Maintenance": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 1,
+  "sha": "9587de36c791",
+  "clauses": [
+   {
+    "c": "2/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Percussive Maintenance#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_percussive_maintenance",
+     "n": 2,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "whack a machine or construct: restore 1d8 + INT HP to it or clear one malfunction",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_percussive_maintenance#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1d8 + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_percussive_maintenance#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "salvage_tech::Rebuilt Arsenal": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 2,
+  "sha": "9acf16feb27e",
+  "clauses": [
+   {
+    "c": "Casts wizard-list spells as reclaimed-tech effects using INT",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Rebuilt Arsenal#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "wizard",
+     "ability": "int"
+    }
+   },
+   {
+    "c": "your rebuilt rig is the focus",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "salvage_tech::Doctrine": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 3,
+  "sha": "ee30b627a41f",
+  "clauses": [
+   {
+    "c": "Chooses a salvage doctrine (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Doctrine#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "salvage_tech::Power Cell Cache": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 5,
+  "sha": "acada005ba90",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Power Cell Cache#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_power_cell_cache",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "cast a 1st-level tech effect without expending a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "post_apocalyptic_power_cell_cache"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Power Cell Cache\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, cast a 1st-level tech effect without expending a slot.\"}"
+   }
+  ]
+ },
+ "salvage_tech::EMP Coil": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 6,
+  "sha": "600a9a41bc98",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_emp_coil",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "constructs and machines within 15 ft save (CON) or are stunned until your next turn",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_emp_coil",
+     "condition": "stunned",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "within 15 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_emp_coil",
+     "resolve": "far",
+     "feet": 15
+    },
+    "observed": "a creature 15 ft and more away was caught: [\"stunned\"]"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_emp_coil",
+     "resolve": "rounds",
+     "rounds": 1
+    },
+    "observed": "the condition's record is {\"source\":\"62fa2122-d63f-4001-962a-fe8f577b8c4e\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+   },
+   {
+    "c": "save (CON)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_emp_coil",
+     "save": "con"
+    }
+   }
+  ]
+ },
+ "salvage_tech::Scrap Armor Weave": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 7,
+  "sha": "210b07a96ec9",
+  "clauses": [
+   {
+    "c": "+1 AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Scrap Armor Weave#0:ac",
+    "k": "ac",
+    "p": {
+     "delta": 1,
+     "gear": "armor"
+    },
+    "observed": "AC is 15 with Scrap Armor Weave and 15 without it"
+   },
+   {
+    "c": "resistance to lightning damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Scrap Armor Weave#1:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "lightning"
+     ]
+    },
+    "observed": "20 lightning damage took 20 hit points with Scrap Armor Weave (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "salvage_tech::Signal Whisperer": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 9,
+  "sha": "568a72acee1c",
+  "clauses": [
+   {
+    "c": "Detect and trace active tech, signals, and power sources within 1 mile",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "salvage_tech::Overcharged Rounds": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 10,
+  "sha": "5bb338a8e128",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Overcharged Rounds: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "a firearm hit deals +1d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#0:unhooked"
+   },
+   {
+    "c": "+1d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#2:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d8",
+     "gear": "firearm",
+     "args": {
+      "weapon": "Pistol"
+     }
+    },
+    "observed": "a hit rolls 1d10+3 with Overcharged Rounds (1d10+3 without it), and the text makes it 1d8"
+   }
+  ]
+ },
+ "salvage_tech::Field Fabricator": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 11,
+  "sha": "55704fd2c0ce",
+  "clauses": [
+   {
+    "c": "During a long rest, build one temporary device that duplicates a 2nd-level tech effect",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Field Fabricator: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "anyone can trigger it",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked"
+   }
+  ]
+ },
+ "salvage_tech::Salvaged Shield Node": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 13,
+  "sha": "fa84fa57b81e",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Salvaged Shield Node#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_salvaged_shield_node",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "project a 10-ft energy dome for 1 minute: allies inside gain +2 AC and resistance to ranged weapon damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+   },
+   {
+    "c": "10-ft energy dome",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "salvage_tech::Power Cell Cache (3rd)": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 14,
+  "sha": "17692f739a29",
+  "clauses": [
+   {
+    "c": "Power Cell Cache works for tech effects up to 3rd level",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache (3rd)#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Power Cell Cache (3rd): no typed effect, no authored row, no typed counter (its counter: post_apocalyptic_power_cell_cache:narrative)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "salvage_tech::Machine Empathy": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 15,
+  "sha": "b541ab5ab0d1",
+  "clauses": [
+   {
+    "c": "Constructs and automated defenses must save (WIS) to target you over other creatures",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Machine Empathy: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked"
+   }
+  ]
+ },
+ "salvage_tech::Prototype Rig": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 17,
+  "sha": "d3b257f6faff",
+  "clauses": [
+   {
+    "c": "Choose one 5th-level tech effect",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "cast it 1/long rest without a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Prototype Rig#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "post_apocalyptic_prototype_rig"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Prototype Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"Choose one 5th-level tech effect; cast it 1/long rest without a slot.\"}"
+   },
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Prototype Rig#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_prototype_rig",
+     "n": 1,
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "salvage_tech::The Old World Answers": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 18,
+  "sha": "6c613cb386af",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::The Old World Answers#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_the_old_world_answers",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "ask the GM one question answerable from pre-Fall records",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "you recall the answer",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "salvage_tech::Reactor Heart": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "salvage_tech",
+  "level": 20,
+  "sha": "6e41e9656b8a",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Reactor Heart#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_reactor_heart",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute your tech effects of 4th level or lower cost no slots",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "post_apocalyptic_reactor_heart"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Reactor Heart\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, for 1 minute your tech effects of 4th level or lower cost no slots; y"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves"
+   },
+   {
+    "c": "you glow visibly",
+    "is": "flavor"
+   }
+  ]
+ },
+ "salvage_tech::Blessed Isotope": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Reactor Cultist",
+  "level": 3,
+  "sha": "9460ef047a2a",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Blessed Isotope: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "a damaging tech effect deals +1d6 radiant as the core flares",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+   },
+   {
+    "c": "+1d6 radiant",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+   }
+  ]
+ },
+ "salvage_tech::Geiger Sense": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Reactor Cultist",
+  "level": 3,
+  "sha": "1f965230187b",
+  "clauses": [
+   {
+    "c": "You sense radiation precisely and are resistant to its effects",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Geiger Sense#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Geiger Sense: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "salvage_tech::Halo of the Core": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Reactor Cultist",
+  "level": 7,
+  "sha": "4e0777d7e61d",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_halo_of_the_core",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "emit a 10-ft flare: enemies save (CON) or are blinded until your next turn",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_halo_of_the_core",
+     "condition": "blinded",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "10-ft flare",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_halo_of_the_core",
+     "resolve": "far",
+     "feet": 10
+    },
+    "observed": "a creature 10 ft and more away was caught: [\"blinded\"]"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_halo_of_the_core",
+     "resolve": "rounds",
+     "rounds": 1
+    },
+    "observed": "the condition's record is {\"source\":\"31875fe1-d92a-4c42-9400-d27d147b676f\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+   },
+   {
+    "c": "save (CON)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_halo_of_the_core",
+     "save": "con"
+    }
+   }
+  ]
+ },
+ "salvage_tech::Meltdown Ward": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Reactor Cultist",
+  "level": 11,
+  "sha": "ba13821cd23f",
+  "clauses": [
+   {
+    "c": "Immunity to radiant and necrotic damage from tech and radiation sources",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Meltdown Ward#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Meltdown Ward: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "salvage_tech::Second Sun": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Reactor Cultist",
+  "level": 15,
+  "sha": "77745791fb28",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_second_sun",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+   },
+   {
+    "c": "30-ft radius",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+   },
+   {
+    "c": "(CON save halves)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_second_sun",
+     "save": "con",
+     "made": {
+      "dice": "8d6",
+      "takes": "half"
+     }
+    }
+   },
+   {
+    "c": "8d6 radiant",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Second Sun#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_second_sun",
+     "dice": "8d6",
+     "type": "radiant"
+    },
+    "observed": "the spend hands back no radiant damage type ({\"ok\":true,\"resource\":\"Second Sun\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves); allies are spared.\",\"resolveWith\":)"
+   },
+   {
+    "c": "allies are spared",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+   }
+  ]
+ },
+ "waste_preacher::Words for the End": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 1,
+  "sha": "5aef844b7611",
+  "clauses": [
+   {
+    "c": "Casts cleric-list spells as sermons using WIS",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Words for the End#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "cleric",
+     "ability": "wis"
+    }
+   },
+   {
+    "c": "your voice carries conviction, not liturgy",
+    "is": "flavor"
+   }
+  ]
+ },
+ "waste_preacher::Flock's Shepherd": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 1,
+  "sha": "ec3e2d6c29cc",
+  "clauses": [
+   {
+    "c": "Bonus action",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Flock's Shepherd#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "post_apocalyptic_flock_s_shepherd",
+     "cost": "bonus"
+    }
+   },
+   {
+    "c": "one ally within 30 ft gains temp HP equal to your level + WIS mod",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+   },
+   {
+    "c": "WIS-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Flock's Shepherd#3:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_flock_s_shepherd",
+     "ability": "wis",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "waste_preacher::Testify": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 2,
+  "sha": "0b2bbe675437",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Testify#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_testify",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "an audible sermon gives allies within 30 ft advantage on their next save against fear or despair",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "waste_preacher::Water From Stone": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 3,
+  "sha": "da62ff4b77c3",
+  "clauses": [
+   {
+    "c": "1/day",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Water From Stone#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_water_from_stone",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "find or purify enough water and food for six people",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "waste_preacher::Lay On the Word": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 5,
+  "sha": "18f5cd200cae",
+  "clauses": [
+   {
+    "c": "Your healing sermons add your WIS modifier again to HP restored",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Lay On the Word#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Lay On the Word: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "waste_preacher::Shepherd's Stare": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 7,
+  "sha": "da6f080c99ca",
+  "clauses": [
+   {
+    "c": "Advantage on Intimidation and Persuasion against raiders, cultists, and the desperate",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Shepherd's Stare#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Shepherd's Stare: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "waste_preacher::Deliverance": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 9,
+  "sha": "4bb2e485c1e3",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Deliverance#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_deliverance",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "end one fear, charm, or curse effect on a creature within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Deliverance#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "post_apocalyptic_deliverance"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Deliverance\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, end one fear, charm, or curse effect on a creature within 30 ft.\"}"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Deliverance#1:spend_moves"
+   }
+  ]
+ },
+ "waste_preacher::Judgment": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 11,
+  "sha": "ff2b2cb10757",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Judgment: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "a damaging sermon deals +1d8 radiant to one target",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+   },
+   {
+    "c": "+1d8 radiant",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+   }
+  ]
+ },
+ "waste_preacher::Congregation": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 13,
+  "sha": "522fafe3b673",
+  "clauses": [
+   {
+    "c": "Flock's Shepherd can target two allies at once",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "waste_preacher::Walk Through the Valley": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 15,
+  "sha": "bbe714dc346d",
+  "clauses": [
+   {
+    "c": "You and allies within 10 ft have resistance to necrotic damage and advantage against fear",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Walk Through the Valley: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#0:unhooked"
+   },
+   {
+    "c": "resistance to necrotic damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#2:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "necrotic"
+     ]
+    },
+    "observed": "20 necrotic damage took 20 hit points with Walk Through the Valley (20 without it), and the text makes it 10"
+   },
+   {
+    "c": "advantage against fear",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#3:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "frightened"
+     ]
+    },
+    "observed": "a save against frightened threw 1 d20 with Walk Through the Valley (1 without it)"
+   }
+  ]
+ },
+ "waste_preacher::Prophet of the Wastes": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 17,
+  "sha": "8cbe3f7324f4",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Prophet of the Wastes#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_prophet_of_the_wastes",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "receive a true omen about a planned course of action (weal, woe, or both)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "waste_preacher::The Word Made Iron": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 18,
+  "sha": "fd2d82bc0133",
+  "clauses": [
+   {
+    "c": "Concentration on your sermons cannot be broken by damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Word Made Iron#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to The Word Made Iron: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "waste_preacher::Revelation": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "waste_preacher",
+  "level": 20,
+  "sha": "a9719ff4daf5",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Revelation#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_revelation",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "deliver the full sermon: allies within 60 ft regain 5d8 HP and are freed of fear, charm, and exhaustion by one level",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Revelation#1:fx_heal",
+    "k": "fx_heal",
+    "p": {
+     "id": "post_apocalyptic_revelation",
+     "count": 5,
+     "all": true
+    },
+    "observed": "one spend healed the ally 15 and the holder 0: the text heals every ally in reach",
+    "note": "the generator typed \"allies ... regain 5d8 HP\" as heal_target: one creature per spend, and nothing ends fear, charm or a level of exhaustion"
+   },
+   {
+    "c": "within 60 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Revelation#2:fx_heal",
+    "k": "fx_heal",
+    "p": {
+     "id": "post_apocalyptic_revelation",
+     "count": 5,
+     "allyAt": [
+      18,
+      3
+     ]
+    },
+    "observed": "the heal reached an ally 65 feet away (15 hit points)"
+   },
+   {
+    "c": "5d8",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx heal_target",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Revelation#3:fx_heal",
+    "k": "fx_heal",
+    "p": {
+     "id": "post_apocalyptic_revelation",
+     "count": 5
+    }
+   }
+  ]
+ },
+ "waste_preacher::Dawnlight": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Church of the Last Dawn",
+  "level": 1,
+  "sha": "37a66ffd50f3",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Dawnlight#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_dawnlight",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "your raised hand sheds sunlight in a 30-ft radius for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+   },
+   {
+    "c": "30-ft radius",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+   },
+   {
+    "c": "undead and mutants in it have disadvantage on attacks",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "waste_preacher::Baptism of Ash": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Church of the Last Dawn",
+  "level": 6,
+  "sha": "68445ff8e1a6",
+  "clauses": [
+   {
+    "c": "When you heal a creature below half HP, it also gains +1 to attack rolls until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Baptism of Ash: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked"
+   }
+  ]
+ },
+ "waste_preacher::Stand at the Dawn": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Church of the Last Dawn",
+  "level": 10,
+  "sha": "fcf286ca5f4b",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Stand at the Dawn#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_stand_at_the_dawn",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "when an ally within 30 ft drops to 0 HP, they instead drop to WIS-mod x 5 HP",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_stand_at_the_dawn#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_stand_at_the_dawn#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "waste_preacher::The Last Dawn Rises": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Church of the Last Dawn",
+  "level": 14,
+  "sha": "3eeb7794a9eb",
+  "clauses": [
+   {
+    "c": "Your Dawnlight damages: hostile undead and aberrations take 2d8 radiant entering or starting their turn in it",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to The Last Dawn Rises: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "2d8 radiant",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Bonded Beast": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 1,
+  "sha": "a12f54a9e326",
+  "clauses": [
+   {
+    "c": "A loyal wasteland beast fights beside you (AC 13 + your proficiency, HP 5 x level, attack 1d8 + WIS, obeys your commands)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Bonded Beast#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Bonded Beast: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "1d8 + WIS",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Bonded Beast#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Pack Tactics Training": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 1,
+  "sha": "47f75e45621f",
+  "clauses": [
+   {
+    "c": "You and your beast have advantage on attacks against a creature the other is adjacent to",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Pack Tactics Training#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Pack Tactics Training: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Pack Tactics Training#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Green Tongue": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 2,
+  "sha": "19bcbf4e9f14",
+  "clauses": [
+   {
+    "c": "Casts druid-list spells as old bonds using WIS",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Green Tongue#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "druid",
+     "ability": "wis"
+    }
+   },
+   {
+    "c": "you can always communicate simple ideas with beasts",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "packmaster::Pack Law": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 3,
+  "sha": "9be5300bec94",
+  "clauses": [
+   {
+    "c": "Chooses a pack law (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Pack Law#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "packmaster::Extra Attack": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 5,
+  "sha": "3799ba26bab6",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   },
+   {
+    "c": "your beast attacks when you command it as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (spends)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Extra Attack#1:spend_row",
+    "k": "spend_row",
+    "p": {
+     "name": "Command Beast"
+    }
+   }
+  ]
+ },
+ "packmaster::Scent the Wind": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 6,
+  "sha": "97f2e8b77ed2",
+  "clauses": [
+   {
+    "c": "You and your beast track with advantage and cannot be surprised by beasts or mutants",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Scent the Wind#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Scent the Wind: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "packmaster::Mended Hide": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 7,
+  "sha": "9f0db7cfdfa8",
+  "clauses": [
+   {
+    "c": "Your healing bonds may target your beast at double effect",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Mended Hide#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Mended Hide: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "packmaster::Call the Wild": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 9,
+  "sha": "09e58b906213",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Call the Wild#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_call_the_wild",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "summon 1d4 local beasts to aid you for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "packmaster::Alpha's Roar": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 10,
+  "sha": "d4408affd044",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Alpha's Roar#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_alpha_s_roar",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward you) for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "post_apocalyptic_alpha_s_roar"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Alpha's Roar\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward yo"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+   }
+  ]
+ },
+ "packmaster::War Beast": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 11,
+  "sha": "b6cf72606efb",
+  "clauses": [
+   {
+    "c": "Your beast's attacks deal 2d8 + WIS, count as magical, and it gains +2 AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::War Beast#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to War Beast: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "2d8 + WIS",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::War Beast#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Twin Bond": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 13,
+  "sha": "4d1793e08c4b",
+  "clauses": [
+   {
+    "c": "Bond a second, smaller beast (scout stats)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Twin Bond#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Twin Bond: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "see through either beast's senses within 1 mile",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "packmaster::Pack Endurance": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 14,
+  "sha": "dedc21ac3a82",
+  "clauses": [
+   {
+    "c": "When your beast would drop to 0 HP, 1/long rest it drops to 1 instead",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_pack_endurance#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Pack Endurance#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_pack_endurance",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "the same holds for you while it lives",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_pack_endurance#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "packmaster::Coordinated Takedown": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 15,
+  "sha": "77ce05582ab6",
+  "clauses": [
+   {
+    "c": "When you and your beast hit the same target in a turn, it saves (STR) or is knocked prone and grappled",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Coordinated Takedown#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Coordinated Takedown: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "saves (STR)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Coordinated Takedown#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Lord of the Green": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 17,
+  "sha": "07585f309b82",
+  "clauses": [
+   {
+    "c": "Beasts and plants will not harm you unless magically forced",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "advantage on all WIS checks involving them",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Lord of the Green#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Lord of the Green: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "packmaster::The Pack Provides": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 18,
+  "sha": "d9ea9e178e0e",
+  "clauses": [
+   {
+    "c": "Call the Wild summons 2d4 beasts and recharges on a short rest 1/day",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_the_pack_provides#GUIDANCE_ONLY"
+   },
+   {
+    "c": "2d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_the_pack_provides#GUIDANCE_ONLY"
+   },
+   {
+    "c": "recharges on a short rest 1/day",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::The Pack Provides#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_call_the_wild",
+     "n": 1,
+     "rest": "short"
+    },
+    "observed": "post_apocalyptic_call_the_wild did not come back on a short rest (left used 1)",
+    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, post_apocalyptic_the_pack_provides (1 a long rest), whose spend does nothing, and the feature it upgrades keeps its count"
+   }
+  ]
+ },
+ "packmaster::One Blood": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "packmaster",
+  "level": 20,
+  "sha": "cd98426e7252",
+  "clauses": [
+   {
+    "c": "While within 30 ft of your beast, you both resist all damage from creatures neither of you has yet wounded this fight",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::One Blood#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to One Blood: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::One Blood#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Shared Fury": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Alpha Bond",
+  "level": 3,
+  "sha": "48842286717e",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Shared Fury#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_shared_fury",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "you and your beast each gain +2 to damage rolls for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_shared_fury#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_shared_fury#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "packmaster::Den Mother's Eye": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Alpha Bond",
+  "level": 3,
+  "sha": "dded6280ab72",
+  "clauses": [
+   {
+    "c": "Your beast can guard a person or place independently and alert you at any distance within a mile",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/post-apocalyptic-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "packmaster::Blood Bond": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Alpha Bond",
+  "level": 7,
+  "sha": "bee7a6b0e06e",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "gap",
+    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
+    "read_only": true
+   },
+   {
+    "c": "when your beast within 30 ft takes damage, split it evenly between you",
+    "is": "gap",
+    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
+    "read_only": true
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
+    "read_only": true
+   }
+  ]
+ },
+ "packmaster::Apex Pair": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Alpha Bond",
+  "level": 11,
+  "sha": "a34f06fc7273",
+  "clauses": [
+   {
+    "c": "Your Pack Tactics Training advantage extends to all allies adjacent to your beast",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Apex Pair#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Apex Pair: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Apex Pair#0:unhooked"
+   }
+  ]
+ },
+ "packmaster::Legend of the Pack": {
+  "source": "src/lib/classes/post-apocalyptic-features.json",
+  "group": "Alpha Bond",
+  "level": 15,
+  "sha": "5492bf24693b",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Legend of the Pack#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "post_apocalyptic_legend_of_the_pack",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "your beast grows monstrous for 1 minute: double HP, +10 ft speed, attacks deal +2d8 and frighten (WIS save)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+   },
+   {
+    "c": "(WIS save)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Legend of the Pack#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_legend_of_the_pack",
+     "save": "wis",
+     "made": {
+      "dice": "2d8",
+      "takes": "none"
+     }
+    }
+   },
+   {
+    "c": "+2d8",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+   },
+   {
+    "c": "frighten (WIS save)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Legend of the Pack#5:fx",
+    "k": "fx",
+    "p": {
+     "id": "post_apocalyptic_legend_of_the_pack",
+     "condition": "frightened"
+    },
+    "observed": "the spend hands back condition undefined, and the text's is frightened ({\"ok\":true,\"resource\":\"Legend of the Pack\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, your beast grows monstrous for 1 minute: double HP, +10 ft speed, attacks deal +2d8 )",
+    "note": "the generator joined the text's two effects: the spend hands aoe_damage a WIS save against 2d8 damage, where the 2d8 rides the beast's attacks and the save is against being frightened",
+    "kind": "rule-wrong"
+   }
+  ]
+ }
+}

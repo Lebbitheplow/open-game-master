@@ -31,6 +31,15 @@ const TABLE_MAGIC = [
   "forcecage",
   "glyph of warding",
   "wall of stone",
+  // A save whose failure is a compulsion or a pull the engine keeps no
+  // state for: Compulsion (SRD 5.1, "moves in a direction of your choice"),
+  // and the subclass spells Compelled Duel and Grasping Vine
+  // (authored-spells.json, no mechanics row of their own). Read as a save
+  // with no damage and no condition, their cards were sent to cast_at_enemy,
+  // which answered that nothing would happen and cast nothing.
+  "compulsion",
+  "compelled duel",
+  "grasping vine",
 ];
 
 export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
@@ -40,6 +49,19 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
       { resolution: "utility", note: "Its effect is the table's to narrate; cast it with use_spell_slot." } as SpellMech,
     ]),
   ),
+
+  // Symbol (SRD 5.1): a glyph inscribed over a minute that fires later, when its
+  // trigger is met, with the one effect chosen at the inscribing. Like Glyph of
+  // Warding it does nothing to anyone as it is cast, so it casts with
+  // use_spell_slot; the triggered glyph is the GM's, with each glyph's own save
+  // and effect below. The prose reader took the Death glyph's CON save and
+  // necrotic dice and the Fear glyph's frightened for one effect, so a death
+  // glyph laid frightened.
+  symbol: {
+    resolution: "utility",
+    noDamage: true,
+    note: "use_spell_slot; when it triggers, each creature in 60 feet (or entering or ending a turn there, 10 min) meets the chosen glyph at the caster's DC, by aoe_damage, no spell: Death CON 10d10 necrotic, half; Discord CON, disadvantage; Fear WIS frightened; Hopelessness CHA, can't harm; Insanity INT, no actions; Pain CON incapacitated; Sleep WIS unconscious 10 min; Stunning WIS stunned; others 1 min.",
+  },
 
   // ---- a push on a failed save ----
   thunderwave: {
@@ -417,6 +439,13 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
   },
 
   // ---- healing that goes on ----
+  // Aura of Vitality (authored-spells.json): "a bonus action lets you
+  // restore 2d6 hit points", no modifier. The heal tool added the caster's
+  // spellcasting modifier and the card showed the dice alone.
+  "aura of vitality": {
+    resolution: "heal",
+    healNoModifier: true,
+  },
   regenerate: {
     resolution: "heal",
     dice: { base: "4d8+15", baseLevel: 7 },

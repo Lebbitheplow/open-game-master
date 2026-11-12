@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cancelAccountDeletion, purgeAccount } from "@/lib/account-deletion";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { countAdmins, getUserById, setUserAdmin } from "@/lib/db/users";
+import { HOST_ACCOUNT_REFUSAL, deviceWorldHostId } from "@/lib/setup-code";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,9 @@ export async function PATCH(
     if (target.id === admin.id) {
       return Response.json({ error: "You can't demote yourself." }, { status: 400 });
     }
+    if (target.id === deviceWorldHostId()) {
+      return Response.json({ error: HOST_ACCOUNT_REFUSAL }, { status: 403 });
+    }
     if (target.isAdmin && countAdmins() <= 1) {
       return Response.json({ error: "There must be at least one admin." }, { status: 400 });
     }
@@ -61,6 +65,9 @@ export async function DELETE(
   }
   if (target.id === admin.id) {
     return Response.json({ error: "You can't delete your own account." }, { status: 400 });
+  }
+  if (target.id === deviceWorldHostId()) {
+    return Response.json({ error: HOST_ACCOUNT_REFUSAL }, { status: 403 });
   }
   purgeAccount(target.id);
   return Response.json({ ok: true });

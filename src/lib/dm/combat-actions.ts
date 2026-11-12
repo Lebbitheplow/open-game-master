@@ -5,6 +5,7 @@
 // these with the `spend` that pays for it once nothing refuses.
 
 import { helpReachTiles } from "@/lib/srd/feat-combat";
+import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -12,12 +13,12 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { sizeForRace } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import type { TurnBudget } from "@/lib/dm/action-budget";
-import { addSheetCondition, rollEnemyContest } from "@/lib/dm/action-common";
-import { handsBusy } from "@/lib/dm/cast-rules";
+import { addSheetCondition, enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
+import { grappleHandsProblem } from "@/lib/dm/cast-rules";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
-import { seenClearlyDespiteTraits } from "@/lib/dm/hide-traits";
-import { rollCharacterCheck } from "@/lib/dm/contest-roll";
+import { hideRefusal } from "@/lib/dm/hide-traits";
+import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -65,12 +66,10 @@ export function hide(
   // fight that is read from the board: a sight line with no cover and
   // no darkness between is a clear view.
   // Naturally Stealthy and Mask of the Wild answer some watchers (hide-traits.ts).
-  const watcher = seenClearlyDespiteTraits(campaign, encounter.id, sheet);
-  if (watcher) {
-    return {
-      error: `${sheet.name} cannot hide: ${watcher} sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.`,
-      refused: "rules",
-    };
+  // The board view sends the same refusal to the Hand (hide-traits.ts).
+  const seen = hideRefusal(campaign, encounter.id, sheet);
+  if (seen) {
+    return seen;
   }
   spend();
   // A Stealth check like any other (src/lib/dm/contest-roll.ts): noisy
@@ -141,7 +140,8 @@ export function help(
   if (foe && encounter) {
     const apart = tilesBetween(encounter.id, sheet.id, foe.id);
     // Tactical Support: the creature may be 30 feet away (feat-combat.ts).
-    const reach = helpReachTiles(sheet);
+    // Master of Tactics: "at up to 30 feet" for a Mastermind (mt-mr-turn.ts).
+    const reach = Math.max(helpReachTiles(sheet), holdsRow(sheet, "rogue::Master of Tactics") ? 6 : 0);
     if (apart !== null && (apart > reach || wallBetween(encounter.id, sheet.id, foe.id))) {
       return {
         error: `${sheet.name} is ${apart * 5} ft from ${foe.displayName}; Help on an attack is against a creature within ${reach * 5} ft of the helper. They move next to it first, or help an ability check instead.`,
@@ -149,6 +149,10 @@ export function help(
       };
     }
   }
+  // Help with a task has no range in SRD 5.1 ("You can lend your aid to
+  // another creature in the completion of a task"), so the ally may stand
+  // anywhere, in a fight or out of one. Only the attack form has a reach,
+  // and it is the foe's to the helper (above), never the ally's.
   spend();
   const fresh = getSheetById(target.id) ?? target;
   addSheetCondition(campaign, fresh, HELPED, { untilTurnOf: sheet.id }, foe ? foe.id : HELP_FOR_A_CHECK);
@@ -172,6 +176,9 @@ export function contest(
   // A die bought for the Athletics check (Grappling Strike's Superiority
   // Die), paid once the contest's own checks pass, or its refusal.
   checkDie?: () => { die: string; label: string } | ToolError,
+  // Squares a push carries past the shove's own 5 feet (Charger's shove
+  // after a straight run: src/lib/dm/ar-wbf-feat-turn.ts chargerShove).
+  pushFurther = 0,
 ): ToolResult {
   const action = args.action as "grapple" | "shove";
   if (!encounter) {
@@ -199,12 +206,11 @@ export function contest(
       refused: "rules",
     };
   }
-  // SRD 5.1, Grappling: "Using at least one free hand" (cast-rules.ts handsBusy).
-  if (action === "grapple" && handsBusy(sheet) >= 2) {
-    return {
-      error: `${sheet.name} has no free hand: a weapon and a shield (or two weapons) fill both. A grapple takes at least one free hand; unequip one on the sheet first. Nothing was spent.`,
-      refused: "rules",
-    };
+  // SRD 5.1, Grappling: "Using at least one free hand" (cast-rules.ts; the
+  // Hand's Grapple card asks the same).
+  const handsFull = action === "grapple" ? grappleHandsProblem(sheet) : null;
+  if (handsFull) {
+    return handsFull;
   }
   // Hands on the target: it has to be within reach, with no wall between.
   const apart = tilesBetween(encounter.id, sheet.id, enemy.id);
@@ -236,8 +242,18 @@ export function contest(
     if (die) {
       costs.superiorityDie = `${die.label}: +${extra} on the Athletics check (one Superiority Die)`;
     }
-    const theirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}`);
-    return { text: `${mine.total} vs ${theirs}`, won: !mine.autoFailed && mine.total > theirs };
+    const rolledTheirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}`);
+    if (mine.autoFailed) {
+      return { text: `${mine.total} vs ${rolledTheirs}`, won: false };
+    }
+    // A Chronal Shift a watch stop armed for either side (contest-roll.ts).
+    const settled = contestShift(
+      campaign.id,
+      { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}, rolled again`).total + extra },
+      { tag: enemyContestTag(enemy), total: rolledTheirs, again: () => rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}, rolled again`) },
+      (a, b) => a > b,
+    );
+    return { text: `${settled.mine} vs ${settled.theirs}`, won: settled.mine > settled.theirs };
   };
   const outcome = helpless ? { text: `no contest: ${enemy.displayName} is ${helpless}`, won: true } : rollContest(bought);
   const contested = outcome.text;
@@ -254,7 +270,17 @@ export function contest(
   const condition = action === "grapple" ? "grappled" : "prone";
   if (action === "shove" && args.shove === "push") {
     // Five feet straight away from the shover, when the square is free.
-    const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+    let pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+    let feet = 5;
+    // Each further square on the same line, until something is in the way.
+    for (let more = 0; pushed.moved && more < pushFurther; more += 1) {
+      const next = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+      if (!next.moved) {
+        break;
+      }
+      pushed = next;
+      feet += 5;
+    }
     return {
       ok: true,
       action,
@@ -262,7 +288,7 @@ export function contest(
       contest: contested,
       success: true,
       applied: pushed.moved
-        ? `${enemy.displayName} is shoved 5 feet back to (${pushed.at.x},${pushed.at.y}). The server moved its token; the push provokes nothing.`
+        ? `${enemy.displayName} is shoved ${feet} feet back to (${pushed.at.x},${pushed.at.y}). The server moved its token; the push provokes nothing.`
         : `${enemy.displayName} is shoved but has nowhere to go: ${pushed.reason}. It stays where it is.`,
     };
   }

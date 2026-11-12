@@ -33,7 +33,6 @@ import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { latestSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
@@ -41,6 +40,7 @@ import { listRecentRolls, type RollAttacker } from "@/lib/db/rolls";
 import { spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
+import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
 
 export type SwingRecord = {
@@ -173,6 +173,9 @@ export type VitalsSnapshot = {
   relentlessRage?: number | null;
   // Undying Sentinel's uses spent, for the same refund.
   undyingSentinel?: number | null;
+  // Blazing Revival's and Strength of the Grave's, likewise (pc-damage.ts).
+  blazingRevival?: number | null;
+  strengthOfTheGrave?: number | null;
   // An abjurer's Arcane Ward's hit points, which take a blow first; null
   // with no ward raised. Absent on records written before it.
   ward?: number | null;
@@ -216,7 +219,11 @@ export type LastHit = {
   // missiles that hit without a roll (Magic Missile, which Shield answers:
   // SRD 5.1, "when you are hit by an attack or targeted by the magic missile
   // spell").
-  source: "attack" | "fall" | "missile";
+  // "effect": damage from no attack and no fall (a spell's save, a hazard,
+  // harm the GM applies by name), kept so a reaction to damage taken answers
+  // it (openEffect). Only a reader that asks for it by source, or for any
+  // damage, takes one: it is nobody's attack.
+  source: "attack" | "fall" | "missile" | "effect";
   swings: SwingRecord[];
   before: VitalsSnapshot;
   // Where the hit left them. `track` and `ward` are absent on records
@@ -446,32 +453,10 @@ function attackedSince(campaignId: string, record: LastHit): boolean {
     .all(campaignId, record.at) as Array<{ payload_json: string }>;
   return later.some((row) =>
     hitsIn(row.payload_json).some(
-      (other) => hitIdOf(other) !== id && other.at > record.at && (!record.dmTurn || other.dmTurn !== record.dmTurn),
+      // Damage from no attack (openEffect) is nobody's next attack: it closes nothing.
+      (other) => hitIdOf(other) !== id && other.source !== "effect" && other.at > record.at && (!record.dmTurn || other.dmTurn !== record.dmTurn),
     ),
   );
-}
-
-// Whether the creature whose turn it is has done anything with it yet: an
-// attack, a cast, an action card (anything its action economy records), or
-// a step on the board.
-function actedThisTurn(encounter: Encounter): boolean {
-  const current = encounter.order[encounter.turnIndex];
-  if (!current) {
-    return false;
-  }
-  const id = orderEntryId(current);
-  const budget = encounter.turnBudget;
-  if (
-    budget &&
-    budget.ownerId === id &&
-    budget.round === encounter.round &&
-    (budget.actionUsed || budget.bonusUsed || budget.attacksMade > 0 || budget.dashed || budget.disengaged)
-  ) {
-    return true;
-  }
-  const map = getBattleMapForEncounter(encounter.id);
-  const token = map ? getTokenByRef(map.id, id) : null;
-  return Boolean(token && token.movedThisRound > 0);
 }
 
 // The record a reaction may still answer, or null: the same encounter, and
@@ -600,12 +585,15 @@ function preferred(records: LastHit[], prefer: HitPreference): LastHit | null {
 export function freshLastHit(
   campaignId: string,
   characterId: string,
-  which: (record: LastHit) => boolean = () => true,
+  which?: (record: LastHit) => boolean,
   prefer: HitPreference = "latest",
 ): LastHit | null {
   const open = openHits(campaignId, characterId);
   const aimed = aimedAmong(open, aims.getStore() ?? "");
-  return preferred((aimed ?? open).filter(which), prefer);
+  // Asked for with no test of its own, "the last hit" is an attack or a fall,
+  // never an effect's damage (which a reader names by its source).
+  const fits = which ?? ((record: LastHit) => record.source !== "effect");
+  return preferred((aimed ?? open).filter(fits), prefer);
 }
 
 // The open hit an aim names on one character, or on anyone in the campaign,
@@ -635,8 +623,14 @@ export function heaviestRaw(record: LastHit, which: (swing: SwingRecord) => bool
 // every hit still open in the fight closes, except one that landed in that
 // creature's own turn, which the creature after it may still let pass.
 // Ending the turn is the last thing the next turn's creature can do first.
+// It is also the trigger the reactions to a turn's end, and to the next
+// turn's start, answer: kept with the others a hit record does not hold
+// (last-save.ts).
 export function closeHitsAtTurnEnd(campaignId: string, encounter: Pick<Encounter, "id" | "round">, ending: OrderEntry) {
   const endingKey = turnKey({ round: encounter.round, order: [ending], turnIndex: 0 });
+  const endingId = orderEntryId(ending);
+  const name = ending.kind === "pc" ? (getSheetById(endingId)?.name ?? "a character") : (listEnemies(encounter.id).find((enemy) => enemy.id === endingId)?.displayName ?? "a creature");
+  recordTurnEnd(campaignId, encounter, ending, name);
   const rows = db()
     .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
     .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
@@ -731,6 +725,8 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
     relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
     undyingSentinel: sheet.resources?.sub_undying_sentinel?.used ?? null,
+    blazingRevival: sheet.resources?.sub_blazing_revival?.used ?? null,
+    strengthOfTheGrave: sheet.resources?.sub_strength_of_the_grave?.used ?? null,
     ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),
@@ -915,6 +911,49 @@ export function recordFall(
     at: nowIso(),
     ...(openSeq !== undefined ? { seqs: { open: openSeq, close: latestSeq(campaignId) } } : {}),
   });
+}
+
+// Damage that came from no attack and no fall, kept the way a fall is so a
+// reaction to damage taken can answer it (Deflect Energy, Stone's Endurance,
+// Absorb Elements, Bastion of Law): one "swing" that always hits for the
+// damage as dealt, of its type, made by nobody. Opened before the damage
+// lands and closed after, by the door that deals it: apply_damage called on
+// its own (mutations.ts) and a spell's save damage (cast-at-player.ts). A
+// door inside an attack's own record must not open one: the attack keeps it.
+export function openEffect(campaignId: string, characterId: string) {
+  const sheet = getSheetById(characterId);
+  const before = sheet ? snapshotVitals(campaignId, sheet) : null;
+  const startedAt = nowIso();
+  const openSeq = latestSeq(campaignId);
+  return {
+    close(what: { raw: number; type: string; name: string }) {
+      const now = getSheetById(characterId);
+      if (!before || !now || what.raw <= 0) {
+        return;
+      }
+      const encounter = getActiveEncounter(campaignId);
+      writeLastHit(campaignId, {
+        id: newHitId(),
+        characterId,
+        encounterId: encounter?.id ?? null,
+        turn: encounter ? turnKey(encounter) : "",
+        ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+        ...rollingTurn(),
+        attacker: { kind: "hazard", id: null, name: what.name },
+        attack: "damage",
+        type: what.type,
+        ranged: false,
+        source: "effect",
+        swings: [{ total: 0, faces: [], natural: null, advantage: "none", vsAc: 0, hit: true, crit: false, raw: what.raw, type: what.type }],
+        before,
+        after: afterOf(now),
+        answered: [],
+        startedAt,
+        at: nowIso(),
+        seqs: { open: openSeq, close: latestSeq(campaignId) },
+      });
+    },
+  };
 }
 
 // Opened before a fall's damage lands and closed after, by the falling

@@ -7,6 +7,7 @@ import { heroFell } from "@/lib/characters/fallen-logic";
 import { fightOwnsFloor, floorAfterRelease, skipCurrentTurn } from "@/lib/dm/encounter-tools";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { handOnFromBanner } from "@/lib/dm/invoke";
+import { keepRollsLeftBehind } from "@/lib/dm/pending-roll-land";
 import { requestDmTurn } from "@/lib/dm/loop";
 import { settleTableWait, tableWaitHasAnswers } from "@/lib/dm/table-wait";
 import { publishPersisted } from "@/lib/events";
@@ -107,7 +108,11 @@ export async function POST(
   // In combat, "release" means skip the absent player's turn: the pointer
   // advances and the DM plays any intervening enemies.
   if (floor.mode === "initiative") {
+    const before = getActiveEncounter(campaignId);
+    const skipped = before?.orderReady ? before.order[before.turnIndex] : undefined;
     if (skipCurrentTurn(campaignId)) {
+      // A card the skipped player left open goes with their turn.
+      keepRollsLeftBehind(context.campaign, skipped?.kind === "pc" ? skipped.characterId : null);
       requestDmTurn(campaignId);
     }
     return Response.json({ ok: true });

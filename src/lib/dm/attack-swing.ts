@@ -4,16 +4,26 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
+import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
+import { getSheetById } from "@/lib/db/sheets";
+import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
+import { NET_HOLD } from "@/lib/dm/net-hold";
+import { DIVINE_SMITE_LANDED } from "@/lib/dm/divine-marks";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { RollResult } from "@/lib/dice";
-import { budgetApplies, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
+import { budgetApplies, SNEAK_HIT, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
+import { payHelperHit } from "@/lib/dm/after-roll";
+import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
-import { moteBurst } from "@/lib/dm/authored-mote";
+import { moteBurst, withMoteRoll } from "@/lib/dm/authored-mote";
+import { spendCombatDie } from "@/lib/dm/ar-wbf-bard-dice";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { tryParry } from "@/lib/dm/enemy-reactions";
@@ -25,11 +35,22 @@ import { getFoe } from "@/lib/dm/sheet-foe";
 import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
+import { chargedBudget } from "@/lib/dm/mt-fb-charge";
+import { growBeastForm } from "@/lib/dm/mt-fb-beast";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
+import { NATURAL_HIT } from "@/lib/srd/mt-fb-run";
+import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { hasCondition } from "@/lib/srd/authored-effects";
+
+// The once-a-turn mark of Living Legend's turned miss, and its condition.
+const LIVING_LEGEND = "living legend";
 
 // Who the attack is between, read live when the stage runs.
 export type SwingScene = {
@@ -80,24 +101,49 @@ export function markAttackTurn(campaignId: string, record: AttackRecord, key: st
 // Stroke of Luck on a miss. On a hit, the once-a-turn riders it carried are spent.
 export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollResult, notes: string[]): Judged {
   const { campaign } = scene;
+  // A steel defender that attacks was commanded, and is not dodging until its
+  // next turn (defender-dodge.ts).
+  markDefenderCommanded(campaign.id, scene.sheet.id);
+  // The mote's burst deals what its die showed on this roll (authored-mote.ts).
+  if (record.mote) {
+    record.mote = withMoteRoll(record.mote, toHit);
+  }
   const targetAc = recordTargetAc(campaign.id, record);
   const natural1 = toHit.crit === "nat1";
   const judged = adjudicateHit(toHit.total, toHit.crit, targetAc, { natural: toHit.natural, critRange: record.critRange });
   // Foe Slayer is once on each of the ranger's turns: an earlier part of the
   // attack may have spent it since.
   const turn = attackTurn(campaign.id, record);
+  // A melee attack ends the run that brought the attacker to this creature,
+  // and the turn keeps how far it ran (mt-fb-charge.ts).
+  if (turn && record.melee) {
+    storeBudget(turn.encounter, chargedBudget(turn.encounter, turn.budget, record.targetEnemyId));
+  }
+  // A Beguiling Arrow's charm ends when the ally it charmed the creature by
+  // attacks it (mt-fb-arrow-riders.ts).
+  beguilingBroken(campaign.id, scene.sheet.id, record.targetEnemyId);
+  // The natural weapon a rage grows is the first one it attacks with (mt-fb-beast.ts).
+  growBeastForm(campaign.id, scene.sheet.id, authoredNaturalWeapon(scene.sheet, record.weapon));
   const foeSlayer = turn && !turn.budget.oncePerTurn.includes(FOE_SLAYER) ? (record.extras?.foeSlayer ?? 0) : 0;
   const metTotal = totalAReactionMeets({ total: toHit.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1, foeSlayer });
+  // The creature's reaction is decided once, against the best total the
+  // attacker can reach (the roll and an unspent Foe Slayer), and it is the
+  // smaller one that still turns that total (Parry's +2 before Shield's +5,
+  // tryParry's order). Asked of the roll as rolled, a Parry that the lift then
+  // beat let a d8 hit where a d9 and a d10 met a Shield and missed: a better
+  // roll must never miss where a worse one hits (gap study L819).
+  const best = metTotal === null ? null : natural1 ? metTotal : Math.max(metTotal, toHit.total + foeSlayer);
   const encounter = getActiveEncounter(campaign.id);
   const foe = getFoe(record.targetEnemyId);
   const parry =
-    metTotal !== null && encounter && foe
-      ? tryParry({ encounter, enemy: foe, total: metTotal, natural20: false, ac: targetAc, melee: record.melee === true, attackerUnseen: record.attackerUnseen === true })
+    best !== null && encounter && foe
+      ? tryParry({ encounter, enemy: foe, total: best, natural20: false, ac: targetAc, melee: record.melee === true, attackerUnseen: record.attackerUnseen === true })
       : null;
   if (parry) {
     notes.push(parry.note);
-    // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
-    // this roll, so it is spent, and cannot draw a second reaction or lift again.
+    // A roll that missed as rolled reached the hit the reaction answered only
+    // with Foe Slayer's bonus: it went on this roll, so it is spent, and cannot
+    // lift again. A roll that hit as rolled needed none of it.
     if (metTotal !== toHit.total && markAttackTurn(campaign.id, record, FOE_SLAYER)) {
       notes.push(`Foe Slayer: +${foeSlayer} lifted ${toHit.total} to ${metTotal} before the reaction, and is spent`);
     }
@@ -116,17 +162,50 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     notes.push("Stroke of Luck: the miss becomes a hit (the use is spent)");
     rescuedHit = true;
   }
+  // Living Legend (Oath of Glory 20): "once on each of your turns a weapon
+  // attack that misses can hit instead". Taken on the first weapon miss of
+  // the paladin's own turn: a hit is what the miss's player wants, and the
+  // mark keeps it to once a turn (no turn running, no mark, no rescue).
+  if (!adjudicated.hit && !rescuedHit && !parry && (record.weaponAttack ?? !record.spell) && hasCondition(scene.sheet, LIVING_LEGEND) && markAttackTurn(campaign.id, record, LIVING_LEGEND)) {
+    notes.push("Living Legend: the miss hits instead (once this turn)");
+    rescuedHit = true;
+  }
   const hit = adjudicated.hit || rescuedHit;
-  const crit = adjudicated.crit || (hit && record.autoCrit === true);
+  // A face in the critical range is a critical hit once the attack hits,
+  // whatever lifted it to a hit: "A natural 19 for a Champion that hits
+  // because of Foe Slayer is a critical hit" (the maintainer's decision R2 of
+  // the 2026-11-09 gap sweep; SRD 5.1 Improved Critical, "score a critical hit
+  // on a roll of 19 or 20").
+  const widened = rescuedHit && !natural1 && toHit.natural !== undefined && toHit.natural >= (record.critRange ?? 20);
+  const crit = adjudicated.crit || widened || (hit && record.autoCrit === true);
   if (hit) {
     // Sneak Attack and the other once-a-turn riders are spent by the hit.
     const live = attackTurn(campaign.id, record);
     if (live) {
       claimHitRiders(live.encounter, live.budget, record.hitClaims);
     }
-    // A weapon's hit opens Arcane Jolt this turn, at the creature it hit.
-    if ((record.weaponAttack ?? !record.spell) && holdsFeature(scene.sheet, "arcane jolt")) {
+    // A weapon's hit is kept on the turn, at the creature it hit, for every
+    // weapon hit: it opens what rides one this turn (Arcane Jolt, Blade
+    // Flourish, Psionic Strike, Gathered Swarm's push: authored-spends.ts
+    // afterWeaponHit), and it is the trigger the features that answer a hit
+    // this turn read (src/lib/dm/reaction-triggers.ts), so it is not limited
+    // to the holders of a rider.
+    if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
+    }
+    // The hit that spent the turn's Sneak Attack names its creature, so a
+    // feature that answers a Sneak Attack (Wails from the Grave) knows the
+    // first creature, and that one landed at all.
+    // A natural weapon's hit is kept as one, for what rides it (Infectious Fury).
+    // An arrow from a shortbow or longbow, for an Arcane Shot to ride.
+    if (isBow(record.weapon)) {
+      markAttackTurn(campaign.id, record, `${BOW_HIT}${record.targetEnemyId}`);
+    }
+    if (authoredNaturalWeapon(scene.sheet, record.weapon)) {
+      markAttackTurn(campaign.id, record, `${NATURAL_HIT}${record.targetEnemyId}`);
+    }
+    if (record.hitClaims?.includes("sneak_attack")) {
+      markAttackTurn(campaign.id, record, `${SNEAK_HIT}${record.targetEnemyId}`);
     }
   }
   return { hit, crit, rolledHit: adjudicated.hit, total: toHit.total, targetAc, natural1, natural20: toHit.crit === "nat20" };
@@ -159,10 +238,23 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
     visibility,
   });
   const fresh = getFoe(enemy.id);
+  // The half a miss deals is rolled too: a held Destructive Wrath takes it
+  // when it is lightning or thunder.
+  const wrath = spellRider?.halfOnMiss && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet)
+    ? attackWrathDice(record.damageExpression, record.damageType ?? "", [], { crit: false })
+    : null;
+  // A natural 1 is a miss, and the spell's miss deals half ("On a miss, the
+  // arrow splashes the target with acid for half as much of the initial
+  // damage"): the maintainer's decision R1 of the 2026-11-09 gap sweep,
+  // overturning #825's rule call that a natural 1 dealt nothing.
   const graze =
-    spellRider?.halfOnMiss && !judged.natural1 && fresh?.status === "alive"
-      ? { expression: record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0 }
+    spellRider?.halfOnMiss && fresh?.status === "alive"
+      ? { expression: wrath?.expression ?? record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0, ...(wrath?.noDice ? { noDice: true } : {}) }
       : null;
+  if (graze && wrath) {
+    spendWrath(campaign.id, sheet.id);
+    notes.push(WRATH_NOTE);
+  }
   if (!graze) {
     pushLine(notes, finishSwing(scene, record, { hit: false }));
   }
@@ -175,6 +267,15 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
 export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged, toHit: RollResult, visibility: RollVisibility, notes: string[]): { ask: DamageAsk } | { done: Record<string, unknown> } {
   const { campaign, turn, sheet, enemy } = scene;
   const crit = judged.crit;
+  // Great Weapon Master's critical opens the bonus attack the moment it is
+  // scored, at the stage both dice share: opened when the damage landed, a
+  // critical entered on real dice whose target something else dropped before
+  // the damage dice came opened nothing (finding L820-crit-then-target-dies).
+  // The kill's half stays with the blow (attack-blow.ts bonusActionsOpened).
+  // The blow says so, once it knows the fight goes on.
+  if (crit && record.weaponAttack === true && record.ranged !== true && record.melee === true && holdsFeat(sheet, "Great Weapon Master") && markAttackTurn(campaign.id, record, GREAT_WEAPON_MASTER_READY)) {
+    (record as AttackRecord & { gwmOpened?: boolean }).gwmOpened = true;
+  }
   if (record.hitSpent?.length) {
     clearHitSpent(campaign, sheet.id, record.hitSpent);
   }
@@ -183,13 +284,15 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   // smaller and can be restrained at all.
   if (record.special === "net") {
     emitAttackFx(campaign.id, stage, { hit: true, crit: false, ranged: true, damageType: "", visibility });
-    const held = applyRiderCondition(campaign, getFoe(enemy.id) ?? enemy, "restrained", { maxSize: "Large" });
+    // Its own source, so breaking or cutting the net ends this restraint
+    // and no other (net-hold.ts).
+    const held = applyRiderCondition(campaign, getFoe(enemy.id) ?? enemy, "restrained", { maxSize: "Large", meta: { source: NET_HOLD } });
     pushLine(notes, finishSwing(scene, record, { hit: true, damage: 0 }));
     return {
       done: {
         damage: 0,
         note: held.applied
-          ? `The net lands: ${enemy.displayName} is restrained until it is freed (a DC 10 Strength check, or 5 slashing damage to the net). The server applied the condition; a net deals no damage.`
+          ? `The net lands: ${enemy.displayName} is restrained until it is freed: a DC 10 Strength check (take_action escape), or 5 slashing damage to the net (damage_object name "Net", AC 10). The server applied the condition; a net deals no damage.`
           : `The net lands and slides off: ${held.reason} A net deals no damage.`,
       },
     };
@@ -206,8 +309,10 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     }
     maneuverPaid = maneuverPaid || paid.maneuverPaid;
     if (record.onHit.smite && paid.suffix.includes(`+${record.onHit.smite.dice}d8`)) {
-      // A smite the hit paid for rides as radiant.
+      // A smite the hit paid for rides as radiant, and is on the turn's
+      // record for what comes right after one (Inspiring Smite).
       riders.push({ dice: `${record.onHit.smite.dice}d8`, type: "radiant" });
+      markAttackTurn(campaign.id, record, DIVINE_SMITE_LANDED);
     }
     expression = `${expression}${paid.suffix}`;
   }
@@ -233,6 +338,30 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     riders.push(...critGear.typed);
     notes.push(...critGear.notes);
   }
+  // Touch of Death, chosen on the card the hit waited on and paid for only
+  // now the hit stands. Flat, so a critical does not double it.
+  if (record.touchOfDeath && spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player")) {
+    expression = `${expression}+${record.touchOfDeath}`;
+    riders.push({ dice: "", type: "necrotic", flat: record.touchOfDeath });
+    notes.push(`Touch of Death: +${record.touchOfDeath} necrotic damage`);
+  }
+  // Combat Inspiration, chosen on the same card and paid the same way: the
+  // die the attacker holds joins the damage dice.
+  const combatDie = record.combatInspiration ? spendCombatDie(campaign.id, sheet.id) : null;
+  if (combatDie) {
+    expression = `${expression}+1${combatDie}`;
+    notes.push(`Combat Inspiration: +1${combatDie} damage`);
+  }
+  // A helper's dice chosen on the card the hit waited on (Violent
+  // Attraction's 1d10), paid now the hit stands, as Touch of Death is: the
+  // use and the reaction. Dice, so a critical doubles them.
+  for (const help of record.helperHits ?? []) {
+    const dice = payHelperHit(campaign, help);
+    if (dice) {
+      expression = `${expression}+${dice.expression}`;
+      notes.push(dice.note);
+    }
+  }
   // Foe Slayer not needed on the roll rides the hit's damage.
   if (judged.rolledHit && (record.extras?.foeSlayer ?? 0) > 0 && markAttackTurn(campaign.id, record, FOE_SLAYER)) {
     expression = `${expression}+${record.extras?.foeSlayer}`;
@@ -247,14 +376,34 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   const rolled = crit && !stunShot
     ? critDamageExpression(expression, record.critExtraDice ?? 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods })
     : expression;
+  // Destructive Wrath: chosen on the card the hit waited on, or held from
+  // before the roll (destructive-wrath.ts). Only the lightning and thunder
+  // dice are dealt at their maximum, the attack's own or a rider's.
+  // Chosen on the card: the use is paid here, once the hit stands, so a Parry
+  // or a Shield that turned the roll as it landed costs nothing.
+  const chosen = record.destructiveWrath === true && spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Destructive Wrath", "player");
+  const held = !record.destructiveWrath && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet);
+  const wrath = chosen || held
+    ? attackWrathDice(rolled, record.damageType ?? "", riders, { crit, trailingTerms: crit ? (record.critExtraDice ?? 0) : 0 })
+    : null;
+  if (wrath) {
+    if (held) {
+      spendWrath(campaign.id, sheet.id);
+    }
+    notes.push(WRATH_NOTE);
+  }
+  const asked = wrath?.expression ?? rolled;
   return {
     ask: {
-      expression: rolled,
-      riders,
+      expression: asked,
+      riders: wrath?.riders ?? riders,
+      ...(wrath?.noDice ? { noDice: true } : {}),
       crit,
       stunShot,
-      feats: spendDamageFeats(scene, record, rolled),
+      feats: spendDamageFeats(scene, record, asked),
       rerollBelow: record.rerollBelow ?? 0,
+      // Empowered Spell paid for the spell this attack is (mt-srd-metamagic.ts).
+      ...(record.spell ? empoweredRoll(campaign, sheet.id) : {}),
       ...(stunDc !== undefined ? { stunDc } : {}),
       ...(record.maneuver && maneuverPaid ? { maneuver: true } : {}),
       ...(critGear ? { critGear: true } : {}),

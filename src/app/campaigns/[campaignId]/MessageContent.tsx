@@ -3,7 +3,7 @@
 import { ImageOff, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { stripToolText } from "@/lib/dm/tool-text";
-import { segmentsOf, type Speaker, type SpokenLine } from "@/lib/dm/speech";
+import { cardsOf, segmentsOf, type Speaker, type SpokenLine } from "@/lib/dm/speech";
 import type { CastMember } from "@/lib/dm/cast";
 import { speakerFaces } from "@/lib/speaker-faces";
 import { SpeechLine } from "@/app/campaigns/[campaignId]/SpeechLine";
@@ -156,14 +156,21 @@ export function DmContent({ content, rollsById, sheetsById, cast = [], lines, sp
       {parts.map((part, index) =>
         part.kind === "text" ? (
           <div key={index} className="space-y-2">
-            {segmentsOf(part.text.trim(), faced).map((segment, at) =>
-              segment.kind === "speech" ? (
-                <SpeechLine key={at} speaker={segment.speaker} cast={cast} faces={speakerFaces(segment.speaker, sheetsById)}>
-                  <Prose text={segment.text} />
+            {cardsOf(segmentsOf(part.text.trim(), faced)).map((card, at) =>
+              card.kind === "speech" ? (
+                <SpeechLine key={at} speaker={card.speaker} cast={cast} faces={speakerFaces(card.speaker, sheetsById)}>
+                  {/* The tag that split the line stays in it, set upright
+                      and quieter than the words (cardsOf). */}
+                  {card.parts.map((piece, step) => (
+                    <span key={step} className={piece.kind === "tag" ? "speech-tag not-italic text-stone-400" : undefined}>
+                      {step > 0 ? " " : null}
+                      <Prose text={piece.text} />
+                    </span>
+                  ))}
                 </SpeechLine>
               ) : (
                 <p key={at} className="whitespace-pre-wrap text-pretty font-serif text-base leading-relaxed text-stone-100">
-                  <Prose text={segment.text.trim()} />
+                  <Prose text={card.text.trim()} />
                 </p>
               ),
             )}

@@ -14,7 +14,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { initiativeRefills } from "@/lib/srd/resource-refills";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { priceTheAction } from "@/lib/dm/combat-features";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { isNamed } from "@/lib/srd/feature-names";
@@ -141,7 +141,9 @@ export function stillnessOfMind(
   if (!ending) {
     return { error: `${sheet.name} is neither charmed nor frightened; Stillness of Mind has nothing to end.`, refused: "rules" };
   }
-  const charge = prepareResourceCharge(campaign, sheet, "stillness of mind", "action");
+  // "you can use your action": the feature has no counter for the charge to
+  // read a cost from, so the action is priced as any uncounted feature's is.
+  const charge = priceTheAction(sheet, getActiveEncounter(campaign.id), "Stillness of Mind");
   if ("error" in charge) {
     return charge;
   }
@@ -150,5 +152,6 @@ export function stillnessOfMind(
   patchSheet(sheet.id, patch);
   audit(campaign, turnId, sheet, { stillnessOfMind: ending }, reason, patch);
   publishSheet(campaign, sheet.id);
-  return { ok: true, ended: `${sheet.name} is no longer ${ending}.`, ...charge.commit() };
+  charge.commit();
+  return { ok: true, ended: `${sheet.name} is no longer ${ending}.`, cost: "their action" };
 }

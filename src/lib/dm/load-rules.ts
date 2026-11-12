@@ -17,14 +17,20 @@
 
 import { itemWeightByName } from "@/lib/content";
 import { carryMultiplier, encumbranceFor, type CarriedItem } from "@/lib/srd/encumbrance";
+import { densityCarryFactor } from "@/lib/srd/ar-ws-density";
 import { sizeForRace } from "@/lib/srd";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { rowName } from "@/lib/srd/item-row";
 import { purseCoins, type Purse } from "@/lib/srd/currency";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
+import type { AuthoredSheet } from "@/lib/srd/authored-effects";
+import { carrySize } from "@/lib/srd/mt-species-traits";
 
-type Carrier = Pick<CharacterSheet, "name" | "abilities" | "race" | "gold"> & Partial<Pick<CharacterSheet, "copper">> & Partial<Wearer>;
+// The authored fields too: a feature that multiplies what the character
+// carries (Peerless Athlete) is read from them (authoredCarryFactor).
+type Carrier = Pick<CharacterSheet, "name" | "abilities" | "race" | "gold"> & Partial<Pick<CharacterSheet, "copper">> & Partial<Wearer> & Pick<AuthoredSheet, "features" | "conditions" | "classes">;
 
 // Per-unit weights the rows lack, from the content pack.
 export function weighed(equipment: CarriedItem[]): CarriedItem[] {
@@ -37,6 +43,13 @@ export function weighed(equipment: CarriedItem[]): CarriedItem[] {
   });
 }
 
+// The feature's factor on what this carrier bears, read once for the load,
+// the refusal and the lift alike. Typed on the Carrier alone: the pack's item
+// shape is not the authored sheet's, and the gate reads only the mark.
+function carryFactorOf(sheet: Carrier): number {
+  return authoredCarryFactor(sheet);
+}
+
 function loadOf(sheet: Carrier, equipment: CarriedItem[], purse?: Purse) {
   return encumbranceFor({
     strength: sheet.abilities.str,
@@ -44,6 +57,7 @@ function loadOf(sheet: Carrier, equipment: CarriedItem[], purse?: Purse) {
     coins: purseCoins(purse ?? { gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sheet.race ? sizeForRace(sheet.race) : undefined,
     wearer: sheet as Wearer,
+    carryFactor: carryFactorOf(sheet),
   });
 }
 
@@ -61,7 +75,10 @@ export function capacityProblem(
   if (!then.overCapacity || then.carriedLb <= now.carriedLb) {
     return null;
   }
-  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
+  // Both doublings are named, since both can hold at once (a goliath totem warrior).
+  const factor = carryFactorOf(sheet);
+  const powerful = carrySize("Medium", sheet as Wearer) !== "Medium";
+  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15${powerful ? ", doubled by Powerful Build" : ""}${factor > 1 ? `, x ${factor} by a feature of theirs` : ""}) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
 }
 
 // A character's carrying capacity and push, drag or lift limit, in pounds.
@@ -69,6 +86,8 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
-  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined);
+  // The same size and factor loadOf weighs by, so the lift and the capacity
+  // agree; Adjust Density doubles or halves both (src/lib/srd/ar-ws-density.ts).
+  const multiplier = carryMultiplier(carrySize(sheet.race ? sizeForRace(sheet.race) : undefined, sheet as Wearer)) * carryFactorOf(sheet) * densityCarryFactor(sheet.conditions);
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

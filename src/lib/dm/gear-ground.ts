@@ -33,6 +33,7 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { magicItemNamed } from "@/lib/srd/magic-items";
 
 // ---- the ground ----
 
@@ -58,6 +59,22 @@ export function drop(
 ): ToolResult {
   // Strapped on or worn, it does not simply fall: a shield takes an action
   // to take off, armor minutes (SRD 5.1, Getting Into and Out of Armor).
+  // Free does not mean any time: dropping is the turn's own object
+  // interaction (SRD 5.1, Other Activity on Your Turn: "for free, during
+  // either your move or your action"), as picking up is, and an unconscious
+  // character lets go of nothing by choice. A dying hero, a hero on another's
+  // turn and one whose turn is held for the enemies before them dropped
+  // their weapon on the AI's word.
+  if (encounter) {
+    const able = canAct({ sheet, encounter, kind: "free" });
+    if (!able.ok) {
+      return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
+    }
+  }
   const kind = gearKindOf(row);
   if (encounter && (kind === "armor" || kind === "shield") && inHand(row, sheet.equipment)) {
     return refuse(
@@ -89,6 +106,56 @@ export function drop(
     applied: `${sheet.name} drops ${removal.removed > 1 ? `${removal.removed} ` : ""}${row.name}. It lies ${token ? `at their feet (${token.x},${token.y})` : "where they stand"}${encounter ? ": dropping costs nothing" : ""}. Anyone within 5 ft can pick it up (handle_item pick_up, item "${fell.id}").`,
     groundId: fell.id,
   };
+}
+
+// A weapon thrown, a net or a dagger, leaves the thrower's hands and pack,
+// hit or miss, and lies where it landed: at the square of the creature it
+// was thrown at (a net over it, while it holds it restrained), for anyone
+// within 5 ft to take up again (handle_item pick_up; the end of the fight
+// lists what lies about). Kept on the sheet, a net stayed in hand after the
+// throw and filled a hand the thrower no longer used, and a held javelin
+// could be thrown every attack. The held line goes first, when the sheet
+// carries the same weapon on two lines. Null when it carries no such line.
+export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: CharacterSheet, name: string, targetRefId: string): string | null {
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const named = linesNamed(fresh.equipment, name);
+  const row = named.find((item) => item.equipped === true) ?? named[0];
+  if (!row) {
+    return null;
+  }
+  const index = fresh.equipment.indexOf(row);
+  // The hand that held one is empty now: a second on the line is drawn
+  // before it is thrown.
+  const equipment =
+    row.qty > 1
+      ? fresh.equipment.map((item, at) => (at === index ? { ...item, qty: item.qty - 1, ...(item.equipped === true ? { equipped: false } : {}) } : item))
+      : fresh.equipment.filter((_, at) => at !== index);
+  const target = standing(campaign.id, targetRefId);
+  const { map, token } = target.token ? target : standing(campaign.id, sheet.id);
+  const fell = insertDroppedItem({
+    campaignId: campaign.id,
+    mapId: map && token ? map.id : null,
+    x: token?.x ?? null,
+    y: token?.y ?? null,
+    place: placeName(campaign.id),
+    item: handedOverRow(row, 1),
+    droppedBy: sheet.name,
+  });
+  saveEquipment(campaign, turn, fresh, equipment, "throw_item", { name: row.name, thrown: 1 }, `Threw ${row.name}`);
+  if (map) {
+    publishBattleMapUpdate(campaign.id);
+  }
+  return `${row.name} leaves ${sheet.name}'s hands and lies ${token ? `at (${token.x},${token.y})` : "where it landed"}; anyone within 5 ft can pick it up (handle_item pick_up, item "${fell.id}")`;
+}
+
+// A magic weapon whose own text brings it back after the throw: "Immediately
+// after the attack, the weapon flies back to your hand" (SRD 5.1, Dwarven
+// Thrower). It stays where it was.
+const RETURNS_TO_HAND = new Set(["dwarven thrower"]);
+
+export function returnsToHand(name: string): boolean {
+  const magic = magicItemNamed(name);
+  return Boolean(magic && RETURNS_TO_HAND.has(textKey(magic.name)));
 }
 
 // The items a creature standing here may take: on the live board within

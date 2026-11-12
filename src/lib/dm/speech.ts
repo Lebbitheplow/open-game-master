@@ -373,6 +373,50 @@ export function segmentsOf(text: string, lines: readonly SpokenLine[]): SpeechSe
   return out.filter((segment) => segment.text.trim().length > 0);
 }
 
+// One card of the transcript: a speaker's line, or the prose between lines.
+// A line's parts are its words and the short tags that split it.
+export type SpeechCardPart = { kind: "words" | "tag"; text: string };
+export type SpeechCard = { kind: "prose"; text: string } | { kind: "speech"; speaker: Speaker; parts: SpeechCardPart[] };
+
+function sameSpeaker(one: Speaker, other: Speaker): boolean {
+  return one.kind === other.kind && one.id === other.id;
+}
+
+// A tag that only splits one line ("Marla," she says. "Which one."): short,
+// on one line, and holding no quote of its own, which would be someone
+// else's words.
+function splitsOneLine(between: string): boolean {
+  return !between.includes("\n") && !QUOTE_OPEN.test(between) && wordCount(between) <= SPEECH_WINDOW_WORDS;
+}
+
+// The cards the transcript draws for a message's segments. Two lines of one
+// speaker around a short tag are one card with the tag kept inside it:
+// drawn apart, the reader met the same face twice with the tag stranded
+// between (issue #917). Only the transcript folds them; the narration
+// voices read the segments as they are.
+export function cardsOf(segments: readonly SpeechSegment[]): SpeechCard[] {
+  const out: SpeechCard[] = [];
+  for (const segment of segments) {
+    if (segment.kind === "prose") {
+      out.push({ kind: "prose", text: segment.text });
+      continue;
+    }
+    const last = out.at(-1);
+    const before = out.at(-2);
+    if (last?.kind === "speech" && sameSpeaker(last.speaker, segment.speaker)) {
+      last.parts.push({ kind: "words", text: segment.text });
+      continue;
+    }
+    if (last?.kind === "prose" && before?.kind === "speech" && sameSpeaker(before.speaker, segment.speaker) && splitsOneLine(last.text)) {
+      out.pop();
+      before.parts.push({ kind: "tag", text: last.text.trim() }, { kind: "words", text: segment.text });
+      continue;
+    }
+    out.push({ kind: "speech", speaker: segment.speaker, parts: [{ kind: "words", text: segment.text }] });
+  }
+  return out;
+}
+
 // The lines a message keeps after a rewrite: every earlier line, so an
 // edit or a take switched back to keeps the speakers of the lines it did not
 // change, and the new text's lines that are new.

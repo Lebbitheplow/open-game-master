@@ -91,6 +91,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "history": 12,
+        "perception": 10
+      },
       "attacks": [
         {
           "name": "Tentacle",
@@ -154,6 +158,10 @@
         "wis": 14,
         "cha": 11
       },
+      "skills": {
+        "medicine": 4,
+        "religion": 2
+      },
       "attacks": [
         {
           "name": "Club",
@@ -196,6 +204,10 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 11,
+        "stealth": 7
       },
       "immune": "acid",
       "attacks": [
@@ -281,6 +293,10 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 12,
+        "stealth": 5
+      },
       "immune": "lightning",
       "attacks": [
         {
@@ -364,6 +380,12 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "history": 7,
+        "perception": 11,
+        "persuasion": 8,
+        "stealth": 5
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -440,6 +462,11 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 7,
+        "perception": 12,
+        "stealth": 5
       },
       "immune": "lightning",
       "attacks": [
@@ -520,6 +547,11 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "deception": 8,
+        "perception": 12,
+        "stealth": 6
+      },
       "immune": "acid",
       "attacks": [
         {
@@ -596,6 +628,12 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 8,
+        "perception": 14,
+        "persuasion": 13,
+        "stealth": 8
       },
       "immune": "fire",
       "attacks": [
@@ -675,6 +713,13 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 8,
+        "insight": 7,
+        "perception": 12,
+        "persuasion": 8,
+        "stealth": 6
       },
       "immune": "poison",
       "conditionImmune": "poisoned",
@@ -761,6 +806,10 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 13,
+        "stealth": 6
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -843,6 +892,12 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "arcana": 8,
+        "history": 8,
+        "perception": 11,
+        "stealth": 5
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -921,6 +976,10 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 11,
+        "stealth": 5
       },
       "immune": "cold",
       "attacks": [
@@ -1055,6 +1114,10 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 16,
+        "stealth": 9
+      },
       "immune": "acid",
       "attacks": [
         {
@@ -1140,6 +1203,10 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 17,
+        "stealth": 7
+      },
       "immune": "lightning",
       "attacks": [
         {
@@ -1224,6 +1291,12 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "history": 9,
+        "perception": 14,
+        "persuasion": 10,
+        "stealth": 6
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -1302,6 +1375,11 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 10,
+        "perception": 17,
+        "stealth": 7
       },
       "immune": "lightning",
       "attacks": [
@@ -1383,6 +1461,11 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "deception": 11,
+        "perception": 17,
+        "stealth": 8
+      },
       "immune": "acid",
       "attacks": [
         {
@@ -1461,6 +1544,12 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 10,
+        "perception": 17,
+        "persuasion": 16,
+        "stealth": 9
       },
       "immune": "fire",
       "attacks": [
@@ -1541,6 +1630,13 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 11,
+        "insight": 10,
+        "perception": 17,
+        "persuasion": 11,
+        "stealth": 8
       },
       "immune": "poison",
       "conditionImmune": "poisoned",
@@ -1628,6 +1724,10 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 16,
+        "stealth": 7
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -1711,6 +1811,12 @@
         "blindsight": 60,
         "darkvision": 120
       },
+      "skills": {
+        "arcana": 11,
+        "history": 11,
+        "perception": 16,
+        "stealth": 7
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -1790,6 +1896,10 @@
       "senses": {
         "blindsight": 60,
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 13,
+        "stealth": 6
       },
       "immune": "cold",
       "attacks": [
@@ -1873,6 +1983,11 @@
       ],
       "senses": {
         "truesight": 120
+      },
+      "skills": {
+        "arcana": 9,
+        "perception": 10,
+        "religion": 15
       },
       "immune": "psychic; bludgeoning, piercing, and slashing from nonmagical attacks",
       "conditionImmune": "charmed, frightened",
@@ -2013,6 +2128,10 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "athletics": 5,
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Fist",
@@ -2065,6 +2184,10 @@
         "int",
         "wis"
       ],
+      "skills": {
+        "arcana": 13,
+        "history": 13
+      },
       "resist": "damage from spells; nonmagical bludgeoning, piercing, and slashing (from stoneskin)",
       "attacks": [
         {
@@ -2105,6 +2228,12 @@
         "dex",
         "int"
       ],
+      "skills": {
+        "acrobatics": 6,
+        "deception": 3,
+        "perception": 3,
+        "stealth": 9
+      },
       "resist": "poison",
       "attacks": [
         {
@@ -2512,6 +2641,10 @@
         "dex",
         "wis"
       ],
+      "skills": {
+        "athletics": 4,
+        "deception": 4
+      },
       "attacks": [
         {
           "name": "Scimitar",
@@ -2580,6 +2713,11 @@
       ],
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 5,
+        "insight": 5,
+        "perception": 8
       },
       "resist": "cold; bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "immune": "fire, poison",
@@ -2813,6 +2951,10 @@
       "senses": {
         "darkvision": 90
       },
+      "skills": {
+        "perception": 6,
+        "stealth": 7
+      },
       "immune": "lightning",
       "attacks": [
         {
@@ -2910,6 +3052,9 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -2972,6 +3117,10 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4,
+        "stealth": 4
       },
       "immune": "acid",
       "attacks": [
@@ -3064,6 +3213,10 @@
         "wis": 13,
         "cha": 11
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -3096,6 +3249,9 @@
         "int": 3,
         "wis": 14,
         "cha": 5
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -3140,6 +3296,10 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
       },
       "immune": "lightning",
       "attacks": [
@@ -3219,6 +3379,10 @@
       ],
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 7,
+        "insight": 6
       },
       "resist": "cold; bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "immune": "fire, poison",
@@ -3302,6 +3466,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -3346,6 +3514,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
+      },
       "immune": "lightning",
       "attacks": [
         {
@@ -3379,6 +3551,9 @@
         "int": 2,
         "wis": 13,
         "cha": 7
+      },
+      "skills": {
+        "perception": 3
       },
       "attacks": [
         {
@@ -3434,6 +3609,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "stealth": 6,
+        "survival": 2
+      },
       "attacks": [
         {
           "name": "Morningstar",
@@ -3484,6 +3663,9 @@
       "senses": {
         "darkvision": 60,
         "tremorsense": 60
+      },
+      "skills": {
+        "perception": 6
       },
       "attacks": [
         {
@@ -3547,6 +3729,10 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Claws",
@@ -3577,6 +3763,11 @@
         "int": 9,
         "wis": 13,
         "cha": 11
+      },
+      "skills": {
+        "athletics": 6,
+        "perception": 3,
+        "survival": 3
       },
       "attacks": [
         {
@@ -3710,6 +3901,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 8
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -3774,6 +3968,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4
       },
       "immune": "poison",
       "conditionImmune": "poisoned",
@@ -3888,6 +4085,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -3958,6 +4158,10 @@
         "wis",
         "cha"
       ],
+      "skills": {
+        "insight": 7,
+        "perception": 7
+      },
       "attacks": [
         {
           "name": "Morningstar",
@@ -4139,6 +4343,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 3
+      },
       "immune": "acid",
       "attacks": [
         {
@@ -4245,6 +4453,9 @@
       "senses": {
         "blindsight": 30
       },
+      "skills": {
+        "stealth": 2
+      },
       "attacks": [
         {
           "name": "Claw",
@@ -4276,6 +4487,9 @@
         "int": 2,
         "wis": 10,
         "cha": 5
+      },
+      "skills": {
+        "stealth": 2
       },
       "attacks": [
         {
@@ -4316,6 +4530,11 @@
         "wis": 13,
         "cha": 14
       },
+      "skills": {
+        "deception": 4,
+        "persuasion": 4,
+        "religion": 2
+      },
       "attacks": [
         {
           "name": "Dagger",
@@ -4353,6 +4572,10 @@
         "wis": 11,
         "cha": 10
       },
+      "skills": {
+        "deception": 2,
+        "religion": 2
+      },
       "attacks": [
         {
           "name": "Scimitar",
@@ -4387,6 +4610,9 @@
       },
       "senses": {
         "blindsight": 60
+      },
+      "skills": {
+        "stealth": 3
       },
       "attacks": [
         {
@@ -4433,6 +4659,10 @@
       },
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 5,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -4485,6 +4715,11 @@
       },
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "investigation": 3,
+        "perception": 2,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -4571,6 +4806,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "insight": 9,
+        "perception": 9
+      },
       "resist": "radiant; bludgeoning, piercing, and slashing from nonmagical attacks",
       "conditionImmune": "charmed, exhaustion, frightened",
       "attacks": [
@@ -4615,6 +4854,10 @@
         "int": 3,
         "wis": 12,
         "cha": 7
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -4713,6 +4956,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "deception": 6,
+        "insight": 3
       },
       "conditionImmune": "charmed",
       "attacks": [
@@ -4923,6 +5170,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "perception": 5,
+        "stealth": 9
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -5003,6 +5254,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "perception": 2,
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Shortsword",
@@ -5054,6 +5309,11 @@
         "wis": 15,
         "cha": 11
       },
+      "skills": {
+        "medicine": 4,
+        "nature": 3,
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Quarterstaff",
@@ -5092,6 +5352,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4,
+        "stealth": 5
       },
       "attacks": [
         {
@@ -5189,6 +5453,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 2,
+        "stealth": 4
+      },
       "immune": "poison",
       "vulnerable": "fire",
       "conditionImmune": "poisoned",
@@ -5225,6 +5493,9 @@
         "int": 2,
         "wis": 14,
         "cha": 7
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -5537,6 +5808,11 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 4,
+        "survival": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -5608,6 +5884,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -5721,6 +6000,10 @@
         "con",
         "cha"
       ],
+      "skills": {
+        "athletics": 11,
+        "perception": 6
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -5909,6 +6192,10 @@
       "senses": {
         "darkvision": 30
       },
+      "skills": {
+        "perception": 1,
+        "stealth": 3
+      },
       "attacks": [],
       "traits": [
         "Amphibious: The frog can breathe air and water",
@@ -5939,6 +6226,10 @@
         "wis",
         "cha"
       ],
+      "skills": {
+        "athletics": 9,
+        "perception": 3
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -6232,6 +6523,10 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "athletics": 9,
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Fist",
@@ -6450,6 +6745,9 @@
       "senses": {
         "blindsight": 10
       },
+      "skills": {
+        "perception": 2
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -6498,6 +6796,9 @@
       "senses": {
         "blindsight": 30
       },
+      "skills": {
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Claw",
@@ -6536,6 +6837,9 @@
         "int": 2,
         "wis": 10,
         "cha": 7
+      },
+      "skills": {
+        "stealth": 5
       },
       "attacks": [
         {
@@ -6603,6 +6907,9 @@
         "wis": 14,
         "cha": 10
       },
+      "skills": {
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -6653,6 +6960,9 @@
         "int": 7,
         "wis": 14,
         "cha": 10
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -6731,6 +7041,10 @@
       "senses": {
         "darkvision": 30
       },
+      "skills": {
+        "perception": 2,
+        "stealth": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -6804,6 +7118,9 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -6872,6 +7189,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Tentacles",
@@ -6919,6 +7240,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "perception": 5,
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Talons",
@@ -6954,6 +7279,9 @@
       },
       "senses": {
         "blindsight": 10
+      },
+      "skills": {
+        "perception": 2
       },
       "attacks": [
         {
@@ -7173,6 +7501,9 @@
       "senses": {
         "blindsight": 60
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -7209,6 +7540,9 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "stealth": 7
       },
       "attacks": [
         {
@@ -7306,6 +7640,9 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -7401,6 +7738,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -7436,6 +7777,10 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 7
       },
       "attacks": [
         {
@@ -7609,6 +7954,10 @@
         "dex",
         "con"
       ],
+      "skills": {
+        "athletics": 10,
+        "intimidation": 5
+      },
       "attacks": [
         {
           "name": "Spear",
@@ -7745,6 +8094,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "stealth": 6
+      },
       "attacks": [
         {
           "name": "Scimitar",
@@ -7796,6 +8148,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 4
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -7831,6 +8187,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4
       },
       "conditionImmune": "petrified",
       "attacks": [
@@ -7874,6 +8233,9 @@
       },
       "senses": {
         "blindsight": 60
+      },
+      "skills": {
+        "stealth": 2
       },
       "resist": "acid, cold, fire",
       "conditionImmune": "blinded, charmed, deafened, exhaustion, frightened, prone",
@@ -7934,6 +8296,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 3
+      },
       "immune": "poison",
       "conditionImmune": "poisoned",
       "attacks": [
@@ -7976,6 +8342,12 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "arcana": 3,
+        "deception": 4,
+        "perception": 4,
+        "stealth": 3
       },
       "attacks": [
         {
@@ -8073,6 +8445,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 5
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -8127,6 +8502,11 @@
       "senses": {
         "blindsight": 30
       },
+      "skills": {
+        "athletics": 5,
+        "perception": 3,
+        "stealth": 3
+      },
       "conditionImmune": "blinded",
       "attacks": [
         {
@@ -8166,6 +8546,9 @@
         "int": 10,
         "wis": 11,
         "cha": 10
+      },
+      "skills": {
+        "perception": 2
       },
       "attacks": [
         {
@@ -8270,6 +8653,12 @@
       "senses": {
         "truesight": 120
       },
+      "skills": {
+        "arcana": 12,
+        "history": 12,
+        "perception": 8,
+        "religion": 8
+      },
       "resist": "bludgeoning, piercing, and slashing from nonmagical attacks",
       "immune": "psychic",
       "conditionImmune": "charmed, frightened",
@@ -8322,6 +8711,10 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "athletics": 5,
+        "perception": 2
       },
       "resist": "fire",
       "attacks": [
@@ -8436,6 +8829,9 @@
         "wis": 14,
         "cha": 6
       },
+      "skills": {
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Talons",
@@ -8469,6 +8865,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 5
       },
       "immune": "fire",
       "attacks": [
@@ -8573,6 +8972,9 @@
         "wis": 9,
         "cha": 6
       },
+      "skills": {
+        "perception": 2
+      },
       "attacks": [
         {
           "name": "Greatclub",
@@ -8622,6 +9024,9 @@
         "int": 2,
         "wis": 12,
         "cha": 8
+      },
+      "skills": {
+        "perception": 5
       },
       "attacks": [
         {
@@ -8854,6 +9259,9 @@
       "senses": {
         "blindsight": 30
       },
+      "skills": {
+        "perception": 2
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -8889,6 +9297,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 6
       },
       "attacks": [
         {
@@ -8926,6 +9337,9 @@
         "int": 2,
         "wis": 12,
         "cha": 5
+      },
+      "skills": {
+        "perception": 3
       },
       "attacks": [
         {
@@ -9057,6 +9471,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 2,
+        "stealth": 3
+      },
       "immune": "cold, poison",
       "vulnerable": "bludgeoning, fire",
       "conditionImmune": "poisoned",
@@ -9103,6 +9521,12 @@
       },
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 4,
+        "insight": 3,
+        "persuasion": 4,
+        "stealth": 5
       },
       "resist": "cold; bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "immune": "fire, poison",
@@ -9151,6 +9575,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 8,
+        "stealth": 10
       },
       "resist": "bludgeoning, piercing, and slashing from nonmagical attacks",
       "immune": "poison",
@@ -9246,6 +9674,9 @@
         "wis": 12,
         "cha": 6
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -9281,6 +9712,9 @@
       },
       "senses": {
         "blindsight": 120
+      },
+      "skills": {
+        "perception": 3
       },
       "attacks": [
         {
@@ -9492,6 +9926,11 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "deception": 7,
+        "insight": 4,
+        "stealth": 3
+      },
       "attacks": [
         {
           "name": "Claws",
@@ -9611,6 +10050,12 @@
       "senses": {
         "truesight": 120
       },
+      "skills": {
+        "arcana": 19,
+        "history": 12,
+        "insight": 9,
+        "perception": 9
+      },
       "resist": "cold, lightning, necrotic",
       "immune": "poison; bludgeoning, piercing, and slashing from nonmagical attacks",
       "conditionImmune": "charmed, exhaustion, frightened, paralyzed, poisoned",
@@ -9658,6 +10103,10 @@
         "int": 3,
         "wis": 12,
         "cha": 8
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 6
       },
       "attacks": [
         {
@@ -9732,6 +10181,11 @@
         "int": 7,
         "wis": 12,
         "cha": 7
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 4,
+        "survival": 5
       },
       "attacks": [
         {
@@ -9833,6 +10287,10 @@
         "int",
         "wis"
       ],
+      "skills": {
+        "arcana": 6,
+        "history": 6
+      },
       "attacks": [
         {
           "name": "Dagger",
@@ -9870,6 +10328,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "stealth": 3
       },
       "immune": "fire, poison",
       "vulnerable": "cold",
@@ -10139,6 +10600,9 @@
         "wis": 12,
         "cha": 7
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -10177,6 +10641,12 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "deception": 5,
+        "insight": 4,
+        "perception": 4,
+        "stealth": 5
       },
       "attacks": [
         {
@@ -10255,6 +10725,9 @@
         "int": 11,
         "wis": 11,
         "cha": 12
+      },
+      "skills": {
+        "perception": 2
       },
       "attacks": [
         {
@@ -10372,6 +10845,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "stealth": 5
+      },
       "immune": "acid",
       "conditionImmune": "prone",
       "attacks": [
@@ -10427,6 +10903,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 7
       },
       "attacks": [
         {
@@ -10607,6 +11086,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "history": 5,
+        "religion": 5
+      },
       "immune": "necrotic, poison; bludgeoning, piercing, and slashing from nonmagical attacks",
       "vulnerable": "fire",
       "conditionImmune": "charmed, exhaustion, frightened, paralyzed, poisoned",
@@ -10734,6 +11217,12 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "deception": 7,
+        "insight": 6,
+        "perception": 6,
+        "stealth": 6
+      },
       "resist": "cold, fire; bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "conditionImmune": "charmed",
       "attacks": [
@@ -10811,6 +11300,11 @@
         "int": 12,
         "wis": 14,
         "cha": 16
+      },
+      "skills": {
+        "deception": 5,
+        "insight": 4,
+        "persuasion": 5
       },
       "attacks": [
         {
@@ -10892,6 +11386,10 @@
       },
       "senses": {
         "darkvision": 30
+      },
+      "skills": {
+        "perception": 2,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -11024,6 +11522,11 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "arcana": 5,
+        "deception": 8,
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Claw (Oni Form Only)",
@@ -11088,6 +11591,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "intimidation": 2
       },
       "attacks": [
         {
@@ -11213,6 +11719,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 3
+      },
       "attacks": [
         {
           "name": "Talons",
@@ -11247,6 +11757,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 3
       },
       "attacks": [
         {
@@ -11300,6 +11813,10 @@
         "wis": 14,
         "cha": 7
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 6
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -11344,6 +11861,9 @@
         "wis",
         "cha"
       ],
+      "skills": {
+        "perception": 6
+      },
       "attacks": [
         {
           "name": "Hooves",
@@ -11376,6 +11896,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "stealth": 6
       },
       "attacks": [
         {
@@ -11533,6 +12056,9 @@
       "senses": {
         "truesight": 120
       },
+      "skills": {
+        "perception": 11
+      },
       "resist": "radiant; bludgeoning, piercing, and slashing from nonmagical attacks",
       "conditionImmune": "charmed, exhaustion, frightened",
       "attacks": [
@@ -11578,6 +12104,10 @@
         "int": 2,
         "wis": 12,
         "cha": 5
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -11651,6 +12181,9 @@
         "int": 2,
         "wis": 13,
         "cha": 7
+      },
+      "skills": {
+        "perception": 3
       },
       "attacks": [
         {
@@ -11732,6 +12265,11 @@
         "wis": 16,
         "cha": 13
       },
+      "skills": {
+        "medicine": 7,
+        "persuasion": 3,
+        "religion": 5
+      },
       "attacks": [
         {
           "name": "Mace",
@@ -11768,6 +12306,10 @@
       "senses": {
         "blindsight": 10,
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -11895,6 +12437,9 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "stealth": 5
+      },
       "resist": "cold, fire, lightning; bludgeoning, piercing, and slashing from nonmagical attacks",
       "immune": "poison",
       "conditionImmune": "poisoned",
@@ -11979,6 +12524,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "deception": 10,
+        "insight": 8
       },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks",
       "vulnerable": "piercing from magic weapons wielded by good creatures",
@@ -12067,6 +12616,9 @@
         "wis": 12,
         "cha": 6
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -12110,6 +12662,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -12151,6 +12707,9 @@
       },
       "senses": {
         "blindsight": 30
+      },
+      "skills": {
+        "perception": 2
       },
       "attacks": [
         {
@@ -12304,6 +12863,9 @@
         "wis",
         "cha"
       ],
+      "skills": {
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -12367,6 +12929,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 6,
+        "stealth": 5
       },
       "attacks": [
         {
@@ -12514,6 +13080,10 @@
         "wis": 12,
         "cha": 8
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 6
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -12555,6 +13125,9 @@
       },
       "senses": {
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 5
       },
       "attacks": [
         {
@@ -12710,6 +13283,11 @@
         "wis": 10,
         "cha": 14
       },
+      "skills": {
+        "perception": 2,
+        "performance": 6,
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Ram",
@@ -12793,6 +13371,12 @@
         "int": 11,
         "wis": 13,
         "cha": 11
+      },
+      "skills": {
+        "nature": 4,
+        "perception": 5,
+        "stealth": 6,
+        "survival": 5
       },
       "attacks": [
         {
@@ -12901,6 +13485,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "stealth": 4
+      },
       "resist": "acid, cold, fire, lightning, thunder; bludgeoning, piercing, and slashing from nonmagical attacks",
       "immune": "necrotic, poison",
       "vulnerable": "radiant",
@@ -12949,6 +13536,9 @@
       },
       "senses": {
         "blindsight": 60
+      },
+      "skills": {
+        "stealth": 2
       },
       "resist": "cold, fire",
       "immune": "lightning",
@@ -13085,6 +13675,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -13168,6 +13762,9 @@
       ],
       "senses": {
         "truesight": 120
+      },
+      "skills": {
+        "perception": 14
       },
       "resist": "radiant; bludgeoning, piercing, and slashing from nonmagical attacks",
       "immune": "necrotic, poison",
@@ -13297,6 +13894,9 @@
       "senses": {
         "darkvision": 30
       },
+      "skills": {
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -13388,6 +13988,10 @@
         "wis": 13,
         "cha": 11
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 8
+      },
       "attacks": [
         {
           "name": "Longsword",
@@ -13434,6 +14038,15 @@
         "int": 12,
         "wis": 14,
         "cha": 16
+      },
+      "skills": {
+        "deception": 5,
+        "insight": 4,
+        "investigation": 5,
+        "perception": 6,
+        "persuasion": 5,
+        "sleight_of_hand": 4,
+        "stealth": 4
       },
       "attacks": [
         {
@@ -13573,6 +14186,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "athletics": 12,
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Greatclub",
@@ -13685,6 +14302,12 @@
         "wis",
         "cha"
       ],
+      "skills": {
+        "arcana": 8,
+        "athletics": 14,
+        "history": 8,
+        "perception": 9
+      },
       "resist": "cold",
       "immune": "lightning, thunder",
       "attacks": [
@@ -13742,6 +14365,13 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "deception": 9,
+        "insight": 5,
+        "perception": 5,
+        "persuasion": 9,
+        "stealth": 7
       },
       "resist": "cold, fire, lightning, poison; bludgeoning, piercing, and slashing from nonmagical attacks",
       "attacks": [
@@ -13885,6 +14515,9 @@
         "wis": 10,
         "cha": 11
       },
+      "skills": {
+        "intimidation": 2
+      },
       "attacks": [
         {
           "name": "Mace",
@@ -13928,6 +14561,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 6
       },
       "attacks": [
         {
@@ -14095,6 +14732,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 2
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -14146,6 +14786,9 @@
         "int": 2,
         "wis": 12,
         "cha": 9
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -14280,6 +14923,10 @@
       "senses": {
         "darkvision": 120
       },
+      "skills": {
+        "perception": 7,
+        "stealth": 9
+      },
       "resist": "necrotic; bludgeoning, piercing, and slashing from nonmagical attacks",
       "attacks": [
         {
@@ -14374,6 +15021,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 6
+      },
       "resist": "necrotic; bludgeoning, piercing, and slashing from nonmagical attacks",
       "attacks": [
         {
@@ -14451,6 +15102,10 @@
         "int": 10,
         "wis": 11,
         "cha": 10
+      },
+      "skills": {
+        "athletics": 5,
+        "perception": 2
       },
       "attacks": [
         {
@@ -14623,6 +15278,9 @@
         "wis": 12,
         "cha": 4
       },
+      "skills": {
+        "perception": 3
+      },
       "attacks": [
         {
           "name": "Beak",
@@ -14771,6 +15429,10 @@
         "wis": 12,
         "cha": 3
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 5
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -14801,6 +15463,9 @@
         "int": 11,
         "wis": 12,
         "cha": 12
+      },
+      "skills": {
+        "perception": 7
       },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "attacks": [
@@ -14867,6 +15532,9 @@
         "int": 10,
         "wis": 11,
         "cha": 8
+      },
+      "skills": {
+        "perception": 2
       },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "attacks": [
@@ -14935,6 +15603,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 2,
+        "stealth": 4
       },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "attacks": [
@@ -15027,6 +15699,10 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 5,
+        "stealth": 4
+      },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "attacks": [
         {
@@ -15107,6 +15783,10 @@
         "int": 10,
         "wis": 11,
         "cha": 10
+      },
+      "skills": {
+        "perception": 4,
+        "stealth": 3
       },
       "immune": "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "attacks": [
@@ -15194,6 +15874,10 @@
         "blindsight": 10,
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4,
+        "stealth": 2
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -15234,6 +15918,10 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
       },
       "resist": "necrotic; bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered",
       "immune": "poison",
@@ -15350,6 +16038,10 @@
         "wis": 12,
         "cha": 8
       },
+      "skills": {
+        "perception": 5,
+        "stealth": 3
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -15390,6 +16082,10 @@
         "wis": 12,
         "cha": 6
       },
+      "skills": {
+        "perception": 3,
+        "stealth": 4
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -15429,6 +16125,9 @@
       },
       "senses": {
         "darkvision": 60
+      },
+      "skills": {
+        "perception": 4
       },
       "attacks": [
         {
@@ -15515,6 +16214,9 @@
       "senses": {
         "darkvision": 60
       },
+      "skills": {
+        "perception": 4
+      },
       "attacks": [
         {
           "name": "Bite",
@@ -15585,6 +16287,10 @@
         "darkvision": 60,
         "tremorsense": 60
       },
+      "skills": {
+        "perception": 6,
+        "stealth": 3
+      },
       "resist": "piercing and slashing from nonmagical attacks that aren't adamantine",
       "attacks": [
         {
@@ -15650,6 +16356,10 @@
       "senses": {
         "blindsight": 30,
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 6,
+        "stealth": 5
       },
       "immune": "acid",
       "attacks": [
@@ -15723,6 +16433,10 @@
         "blindsight": 30,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 9,
+        "stealth": 4
+      },
       "immune": "lightning",
       "attacks": [
         {
@@ -15794,6 +16508,11 @@
         "blindsight": 30,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 6,
+        "persuasion": 5,
+        "stealth": 3
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -15858,6 +16577,11 @@
       "senses": {
         "blindsight": 30,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 4,
+        "perception": 7,
+        "stealth": 3
       },
       "immune": "lightning",
       "attacks": [
@@ -15925,6 +16649,11 @@
         "blindsight": 30,
         "darkvision": 120
       },
+      "skills": {
+        "deception": 5,
+        "perception": 7,
+        "stealth": 4
+      },
       "immune": "acid",
       "attacks": [
         {
@@ -15989,6 +16718,12 @@
       "senses": {
         "blindsight": 30,
         "darkvision": 120
+      },
+      "skills": {
+        "insight": 5,
+        "perception": 9,
+        "persuasion": 9,
+        "stealth": 6
       },
       "immune": "fire",
       "attacks": [
@@ -16055,6 +16790,11 @@
       "senses": {
         "blindsight": 30,
         "darkvision": 120
+      },
+      "skills": {
+        "deception": 5,
+        "perception": 7,
+        "stealth": 4
       },
       "immune": "poison",
       "conditionImmune": "poisoned",
@@ -16129,6 +16869,10 @@
         "blindsight": 30,
         "darkvision": 120
       },
+      "skills": {
+        "perception": 8,
+        "stealth": 4
+      },
       "immune": "fire",
       "attacks": [
         {
@@ -16199,6 +16943,12 @@
         "blindsight": 30,
         "darkvision": 120
       },
+      "skills": {
+        "arcana": 6,
+        "history": 6,
+        "perception": 8,
+        "stealth": 4
+      },
       "immune": "cold",
       "attacks": [
         {
@@ -16264,6 +17014,10 @@
       "senses": {
         "blindsight": 30,
         "darkvision": 120
+      },
+      "skills": {
+        "perception": 6,
+        "stealth": 3
       },
       "immune": "cold",
       "attacks": [

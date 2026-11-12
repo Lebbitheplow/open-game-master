@@ -58,14 +58,14 @@ export default function LicensesPage() {
         {!installed ? (
           <p className="reveal rounded border border-stone-700 bg-stone-900 p-3 text-stone-400">
             The Open5e content pack is not installed on this server. Run
-            <span className="font-mono"> node scripts/import-open5e.mjs</span> to download
+            <span className="font-code"> node scripts/import-open5e.mjs</span> to download
             it; until then the app uses only the bundled SRD 5.1 data.
           </p>
         ) : null}
         {stale ? (
           <p className="reveal rounded border border-stone-700 bg-stone-900 p-3 text-stone-400">
             This server&rsquo;s content pack was built by an older release. Run
-            <span className="font-mono"> npm run setup</span> to replace it with the one this release plays.
+            <span className="font-code"> npm run setup</span> to replace it with the one this release plays.
           </p>
         ) : null}
       </PageSection>

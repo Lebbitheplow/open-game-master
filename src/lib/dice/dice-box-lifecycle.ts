@@ -1,7 +1,8 @@
 // The parts of the 3D dice tray's lifecycle that are plain logic: catching
 // the window listener dice-box-threejs adds during initialize() and never
 // removes, the idle window after which an unused tray is torn down, and the
-// deadlines that keep a stuck throw from staying drawn on the page.
+// deadline that keeps a stuck throw from staying drawn on the page. The order
+// rolls are shown in, and which wait, is roll-stage-logic.ts.
 //
 // The library calls window.addEventListener("resize", ...) synchronously
 // inside initialize(), before its first await, with no matching remove. A
@@ -72,16 +73,6 @@ export const DICE_IDLE_MS = 30_000;
 // generous for a real throw and short enough that a stuck one clears.
 export const DICE_ROLL_DEADLINE_MS = 10_000;
 
-// A roll that waited this long behind others is old news: the chip in chat
-// already shows it, and replaying it after the fight has moved on is what
-// left dice tumbling "through fights and after them" (issue 668).
-export const DICE_STALE_MS = 8_000;
-
-// The most rolls kept waiting at once. An enemy's multiattack publishes
-// faster than one throw every few seconds; the newest are the ones worth
-// seeing.
-export const DICE_QUEUE_MAX = 3;
-
 // A failed tray build is retried once (a theme texture that failed to load
 // is often a passing network blip). A device with no WebGL never retries.
 export const DICE_INIT_TRIES = 2;
@@ -124,29 +115,8 @@ export function settleWithin(
   });
 }
 
-export type QueuedRoll = { at: number; notations: string[] };
-
-// The rolls still worth throwing: younger than `staleMs`, oldest first, at
-// most `max` of them (the newest win).
-export function freshRolls(
-  queue: readonly QueuedRoll[],
-  now: number,
-  staleMs: number = DICE_STALE_MS,
-  max: number = DICE_QUEUE_MAX,
-): QueuedRoll[] {
-  const fresh = queue.filter((entry) => now - entry.at < staleMs);
-  return fresh.slice(Math.max(0, fresh.length - max));
-}
-
 // Whether the overlay may try to build a tray again after `failures`
 // failed builds.
 export function trayBuildAllowed(failures: number, webgl: boolean): boolean {
   return webgl && failures < DICE_INIT_TRIES;
-}
-
-// How long a landed throw stays on screen before the dice are cleared: the
-// full beat when nothing waits, a short one when the next roll is queued so
-// a burst of rolls does not stretch into the next turn.
-export function holdAfterThrow(waiting: number): number {
-  return waiting > 0 ? 300 : 1_200;
 }

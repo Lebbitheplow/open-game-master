@@ -38,6 +38,7 @@ import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
 import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
+import { swayUnasked } from "@/lib/dm/player-word";
 import {
   approachSkill,
   reactionAttitude,
@@ -45,13 +46,15 @@ import {
   socialCheckDc,
 } from "@/lib/dm/social";
 import { resolveRollExpression, resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { stepTakenThisExchange } from "@/lib/dm/step-exchange";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The social-interaction engine: NPC disposition was pure narration with no
 // state, so a shopkeeper the party bullied yesterday greeted them warmly today
@@ -229,21 +232,21 @@ function bootstrapAgency(
 const setNpcSchema = z.object({
   name: z.string().min(1).max(80),
   attitude: z.enum(["hostile", "indifferent", "friendly"]).optional(),
-  trait: z.string().max(300).optional(),
+  trait: fittedText(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS).optional(),
   race: z.string().max(40).optional(),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
-  goal: z.string().max(300).optional(),
-  ambition: z.string().max(300).optional(),
+  goal: fittedText(300).optional(),
+  ambition: fittedText(300).optional(),
 });
 
 export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResult {
   let args: z.infer<typeof setNpcSchema>;
   try {
     args = setNpcSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_npc needs at least a name.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_npc needs at least a name.", error, rawArguments);
   }
   // gender is optional so an update need not restate it, which leaves a
   // registration free to forget it: the result then asks, never refuses.
@@ -301,7 +304,7 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
 const reactionSchema = z.object({
   name: z.string().min(1).max(80),
   modifier: z.coerce.number().int().min(-10).max(10).optional(),
-  trait: z.string().max(300).optional(),
+  trait: fittedText(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS),
 });
@@ -314,8 +317,8 @@ export function handleNpcReaction(
   let args: z.infer<typeof reactionSchema>;
   try {
     args = reactionSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: npc_reaction needs a name and a gender (Female, Male, Nonbinary or Unknown).", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_reaction needs a name and a gender (Female, Male, Nonbinary or Unknown).", error, rawArguments);
   }
   // A reaction roll decides how a stranger takes the party, once. Someone
   // the party has dealt with keeps the attitude play gave them, and so does
@@ -401,13 +404,20 @@ export function handleSocialCheck(
   let args: z.infer<typeof socialCheckSchema>;
   try {
     args = socialCheckSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: social_check needs characterId, npc, and approach.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: social_check needs characterId, npc, and approach.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? getSheetById(stale.id) ?? stale : null;
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
+  }
+  // Swaying answers an attempt; a player who only asked a question or
+  // listened made none, and is answered in character
+  // (src/lib/dm/player-word.ts).
+  const unasked = swayUnasked(campaign.id, turn, sheet);
+  if (unasked) {
+    return unasked;
   }
   // A lasting companion is reached through the row behind their sheet
   // (#503 Phase 0.1), so a companion can be talked round like anyone else.
@@ -454,12 +464,17 @@ export function handleSocialCheck(
   // An NPC keeping up an act is swayed as the warmth they show would be
   // (src/lib/dm/scheme-logic.ts): the roll's modifier is on the table.
   const standingModifier = approvalRollModifier(outwardApproval(relationship));
-  const thrown = rollExpression(
-    standingModifier === 0
-      ? resolved.expression
-      : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
-  );
-  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+  // they roll it (issue #896), and a roll that falls short waits on what
+  // they hold.
+  const rolled = rollCharacterD20(campaign, sheet, {
+    kind: "skill_check",
+    expression: standingModifier === 0 ? resolved.expression : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
+    detail: `${sheet.name}: ${skill} on ${npc.name}`,
+    dc,
+    ...(args.reason ? { reason: args.reason } : {}),
+    settleHeldDie: waits,
+  });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

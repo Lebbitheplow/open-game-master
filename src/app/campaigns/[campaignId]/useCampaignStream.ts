@@ -1,6 +1,7 @@
 "use client";
 
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
+import type { WatchPower } from "@/lib/dm/after-roll-table";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { isHaltedTurnNotice, type CampaignMember, type SessionUser } from "@/lib/campaign-types";
 import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
@@ -53,6 +54,7 @@ import { registerBrowserTableFeats } from "@/lib/srd/feat-effects";
 import type { TableBreak } from "@/lib/dm/table-break-logic";
 import { sessionHoldFrom, type SessionHold } from "@/lib/dm/session-hold-logic";
 import { registerWorkshopClasses } from "@/lib/classes/workshop-registry";
+import { revealIsNews, STAGE_HEARD_MAX } from "@/lib/dice/roll-stage-logic";
 import type { WorkshopClass } from "@/lib/homebrew/class-data";
 
 export type DmStatus =
@@ -83,6 +85,14 @@ export type NarrationStatus = {
 export type PendingRoll = {
   id: string;
   parkedFor?: string | null;
+  status?: string;
+  // A watch stop (src/lib/dm/foresight.ts): what it waits on, which feature
+  // it is for, and whose roll it may answer when there is more than one
+  // (`when`: the words a Chronal Shift waits for, "if it succeeds").
+  watch?: { line: string; deadline: string; power?: WatchPower; choices?: Array<{ name: string; when: string }> } | null;
+  // What the roll carries that its card reads: the before-the-roll features
+  // already used on it (src/lib/dm/before-roll-logic.ts).
+  carry?: { before?: Array<"cosmic_omen" | "restore_balance"> } | null;
   userId: string;
   characterId: string | null;
   kind: string;
@@ -321,10 +331,10 @@ export type CampaignState = {
   // `live` marks a passage offered while it is still being rendered
   // (tts_stream): heard now, by whoever is at the table now.
   latestTts: { messageId: string; url: string; seq: number; live?: boolean } | null;
-  latestRoll: { roll: StoredRoll; source: string; seq: number } | null;
-  // The last few rolls, oldest first, for the 3D dice: two rolls handled in
-  // one render (an enemy's attack and its damage) used to animate only the
-  // second, because latestRoll holds one (issue 668).
+  // The last few rolls, oldest first, for the dice stage (the 3D dice and the
+  // roll toast): two rolls handled in one render (an enemy's attack and its
+  // damage) used to animate only the second (issue 668), and a burst of more
+  // than six lost its oldest before the stage heard it (issue 843).
   recentRolls: { roll: StoredRoll; source: string; seq: number }[];
   lastSeq: number;
   dmStatus: DmStatus;
@@ -447,7 +457,6 @@ const initialState: CampaignState = {
   sessionHold: null,
   narrationAudio: {},
   latestTts: null,
-  latestRoll: null,
   recentRolls: [],
   lastSeq: 0,
   dmStatus: "idle",
@@ -619,22 +628,27 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           }
           return next;
         }
-        case "roll_result":
+        case "roll_result": {
+          const roll = payload.roll as StoredRoll;
+          const held = state.rolls.find((entry) => entry.id === roll.id) as (StoredRoll & { hidden?: boolean }) | undefined;
           // A hidden roll revealed (issue 503) arrives again under its own id:
           // it replaces the copy its player had, rather than doubling it.
-          next.rolls = [...state.rolls.filter((entry) => entry.id !== (payload.roll as StoredRoll).id).slice(-30), payload.roll as StoredRoll];
-          next.latestRoll = {
-            roll: payload.roll as StoredRoll,
-            source: String(payload.source ?? "digital"),
-            seq: action.seq ?? 0,
-          };
-          next.recentRolls = [...state.recentRolls.slice(-5), next.latestRoll];
+          next.rolls = [...state.rolls.filter((entry) => entry.id !== roll.id).slice(-30), roll];
+          // The stage throws and toasts it only where it is news: the roller
+          // and the GM watched it land the first time (issue 843).
+          if (!payload.revealed || revealIsNews(held)) {
+            next.recentRolls = [
+              ...state.recentRolls.slice(-(STAGE_HEARD_MAX - 1)),
+              { roll, source: String(payload.source ?? "digital"), seq: action.seq ?? 0 },
+            ];
+          }
           if (payload.pendingRollId) {
             next.pendingRolls = state.pendingRolls.filter(
               (pending) => pending.id !== payload.pendingRollId,
             );
           }
           return next;
+        }
         case "beat_recorded": {
           const beat = payload.beat as DmBeat | undefined;
           // Only the DM seat is given a beat list to append to; for everyone
@@ -648,7 +662,10 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
         case "roll_pending": {
           const pending = payload.pendingRoll as PendingRoll | undefined;
           if (pending) {
-            next.pendingRolls = upsertBy(state.pendingRolls, pending, (entry) => entry.id);
+            // A watch stop closes with no roll to say so.
+            next.pendingRolls = pending.status && pending.status !== "pending"
+              ? state.pendingRolls.filter((entry) => entry.id !== pending.id)
+              : upsertBy(state.pendingRolls, pending, (entry) => entry.id);
           }
           return next;
         }

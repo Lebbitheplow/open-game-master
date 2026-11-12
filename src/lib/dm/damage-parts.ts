@@ -8,7 +8,10 @@ import type { RollResult } from "@/lib/dice";
 
 // Dice that ride an attack under a type of their own: Divine Favor's 1d4
 // radiant, a smite's 3d8 radiant, Hex's 1d6 necrotic.
-export type TypedRider = { dice: string; type: string };
+// `flat`: a rider with no dice at all (Touch of Death's necrotic), its number on
+// the roll; a critical never doubles it unless the table's variant doubles
+// modifiers.
+export type TypedRider = { dice: string; type: string; flat?: number };
 
 export type DamagePart = { type: string; amount: number };
 
@@ -31,21 +34,35 @@ export function damageParts(
   const last = terms.length - Math.max(0, options.trailingTerms ?? 0);
   const claimed = new Set<number>();
   const byType = new Map<string, number>();
+  const ownType = weaponType.trim().toLowerCase();
   for (const rider of [...riders].reverse()) {
     // A monster's rider can carry its own flat part ("plus 17 (2d10 + 6)
     // slashing damage", a behir's Constrict): that number is the rider's
     // share of the rolled total, once, as a critical never doubles it.
     const match = /^(\d+)d(\d+)(?:([+-])(\d+))?$/i.exec(rider.dice.replace(/\s+/g, ""));
     const type = rider.type.trim().toLowerCase();
-    if (!match || !type || type === weaponType.trim().toLowerCase()) {
+    const fixed = rider.flat;
+    if ((!match && fixed === undefined) || !type || type === ownType) {
       continue;
     }
-    const count = Number(match[1]);
-    const sides = Number(match[2]);
-    const flat = match[4] ? (match[3] === "-" ? -1 : 1) * Number(match[4]) : 0;
+    const count = match ? Number(match[1]) : 0;
+    const sides = match ? Number(match[2]) : 0;
+    const flat = match?.[4] ? (match[3] === "-" ? -1 : 1) * Number(match[4]) : 0;
     const copies = options.crit ? 2 : 1;
-    let wanted = copies;
+    let wanted = match ? copies : 0;
     let amount = 0;
+    // No dice: its number on the roll. A critical that doubles modifiers
+    // doubles it too.
+    if (fixed !== undefined) {
+      for (let index = last - 1; index >= 0; index -= 1) {
+        const term = terms[index];
+        if (!claimed.has(index) && term.kind === "modifier" && term.sign === 1 && (term.value === fixed || (options.crit && term.value === fixed * 2))) {
+          claimed.add(index);
+          amount = term.value;
+          break;
+        }
+      }
+    }
     for (let index = last - 1; index >= 0 && wanted > 0; index -= 1) {
       const term = terms[index];
       if (claimed.has(index) || term.kind !== "dice" || term.count !== count || term.sides !== sides) {
@@ -82,4 +99,12 @@ export function damageParts(
     { type: weaponType, amount: Math.max(0, outcome.total - ridden) },
     ...[...byType.entries()].map(([type, amount]) => ({ type, amount })),
   ];
+}
+
+// How much of a rolled two-type spell its second type's dice came to, or null
+// when none of them are in the roll. `trailingTerms`: the riders' own dice,
+// which follow the spell's and belong to its first type.
+export function secondTypeShare(outcome: RollResult, firstType: string, second: TypedRider, trailingTerms = 0): number | null {
+  const [, rider] = damageParts(outcome, firstType, [second], { crit: false, trailingTerms });
+  return rider ? rider.amount : null;
 }

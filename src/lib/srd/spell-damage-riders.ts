@@ -36,8 +36,17 @@ export { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
 export type SpellDamageRiders = {
   // Added once to the spell's damage total.
   flat: number;
+  // Added once as well, to a two-type spell's second type, so it meets that
+  // type's resistance (Elemental Affinity's cold on Ice Storm).
+  flatSecond: number;
   // Dice added to the spell's damage roll (Enhanced Bond, Arcane Firearm).
   dice: string[];
+  // Dice only a two-type spell's second type earned (Enhanced Bond on a
+  // spell whose fire is its second type): they deal that type.
+  diceSecond: string[];
+  // The part of `flat` / `flatSecond` that lands on one target only (Radiant
+  // Soul): an area spell gives it to its first creature alone (aoe-spell.ts).
+  oneTarget: { first: number; second: number };
   // A successful save against this cantrip still takes half.
   potentCantrip: boolean;
   notes: string[];
@@ -48,12 +57,14 @@ export function spellDamageRiders(
   spell: {
     school?: string | null;
     damageType?: string | null;
+    // The second type of a spell that deals two at once.
+    secondType?: string | null;
     level: number;
     // The classes whose lists carry the spell, lowercased.
     classes?: string[];
   },
 ): SpellDamageRiders {
-  const riders: SpellDamageRiders = { flat: 0, dice: [], potentCantrip: false, notes: [] };
+  const riders: SpellDamageRiders = { flat: 0, flatSecond: 0, dice: [], diceSecond: [], oneTarget: { first: 0, second: 0 }, potentCantrip: false, notes: [] };
   const school = (spell.school ?? "").toLowerCase();
   const wizardSpell = !spell.classes?.length || spell.classes.includes("wizard");
   if (school === "evocation" && wizardSpell && holdsFeature(sheet, "empowered evocation")) {
@@ -66,15 +77,18 @@ export function spellDamageRiders(
   // The dragon's damage type, or a workshop bloodline's chosen element
   // (issue #833: a "Storm" option dealing lightning).
   const ancestor = chosenElementType(sheet);
-  if (
-    ancestor &&
-    spell.damageType &&
-    spell.damageType.toLowerCase() === ancestor &&
-    holdsFeature(sheet, "elemental affinity")
-  ) {
+  const isAncestor = (type: string | null | undefined) => Boolean(ancestor && type && type.toLowerCase() === ancestor);
+  const firstMatches = isAncestor(spell.damageType);
+  if ((firstMatches || isAncestor(spell.secondType)) && holdsFeature(sheet, "elemental affinity")) {
     const bonus = mod(sheet.abilities.cha);
     if (bonus > 0) {
-      riders.flat += bonus;
+      // A spell that deals the type as its second counts (a cold dragon's Ice
+      // Storm): it read the first type alone and added nothing.
+      if (firstMatches) {
+        riders.flat += bonus;
+      } else {
+        riders.flatSecond += bonus;
+      }
       riders.notes.push(`Elemental Affinity: +${bonus} ${ancestor} (Charisma)`);
     }
   }
@@ -83,8 +97,13 @@ export function spellDamageRiders(
   }
   // The subclass features that add a die to the spell's damage.
   const mods = Object.fromEntries(Object.entries(sheet.abilities).map(([key, score]) => [key, mod(score)]));
-  const authored = authoredSpellDice(sheet, { damageType: spell.damageType, level: spell.level }, mods);
+  const authored = authoredSpellDice(sheet, { damageType: spell.damageType, secondType: spell.secondType, level: spell.level }, mods);
   riders.dice.push(...authored.dice);
+  riders.diceSecond.push(...authored.diceSecond);
+  for (const one of authored.oneTarget) {
+    riders.oneTarget[one.second ? "second" : "first"] += one.amount;
+    riders[one.second ? "flatSecond" : "flat"] += one.amount;
+  }
   riders.notes.push(...authored.notes);
   return riders;
 }

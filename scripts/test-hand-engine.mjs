@@ -10,6 +10,7 @@
 // (/tmp/odm-enf2/fixes/ui-play.md). Pure: no database, no server.
 import assert from "node:assert/strict";
 import { register } from "node:module";
+import { staticImports } from "./lib/static-imports.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -92,10 +93,14 @@ const mine = (extra = {}) => ({
 
 // ---- U:UA3 standing: the engine's canAct ----
 
-test("a card off the character's turn is refused with canAct's own sentence, and a reaction stays open", () => {
+// A reaction spell's card waits for what it answers: the reaction strip deals
+// it then (hand-react.ts), in this card's place. Open here it was refused by
+// use_reaction in every state, a fight's turn or none (SRD 5.1 Shield: "which
+// you take when you are hit by an attack").
+test("a card off the character's turn is refused with canAct's own sentence, and a reaction waits for its trigger", () => {
   const cards = deriveHand(caster({ id: "s1" }), talias(), { spells: FACTS });
   assert.match(byId(cards, "spell:fire bolt").disabled, /^It is Talia's turn, not Lys's\. Off their own turn a character can only use their reaction\. What they declared waits for their turn\.$/);
-  assert.equal(byId(cards, "spell:shield").disabled, null);
+  assert.equal(byId(cards, "spell:shield").disabled, "Shield is cast as a reaction: its card comes up when an attack hits you.");
   assert.equal(byId(cards, "spell:shield").intent.card, "reaction");
 });
 
@@ -527,7 +532,11 @@ test("a versatile weapon offers two hands only when no shield is worn", () => {
 // that can be thrown offers two hands in melee.
 test("a thrown versatile weapon offers two hands in melee", () => {
   const spear = byId(deriveHand(sheet({ equipment: [item("Spear", { equipped: true })] }), mine()), "attack:spear");
-  assert.equal(spear.range, "5 ft / 20 ft");
+  // Both ranges (SRD 5.1, Range: "The smaller number is the normal range,
+  // and the larger number is the long range"): pc_attack takes a spear
+  // thrown 60 feet, at disadvantage, and the card said 20.
+  assert.equal(spear.range, "5 ft / 20/60 ft");
+  assert.deepEqual(spear.shot, { reachFt: 5, normalFt: 20, longFt: 60, thrown: true });
   assert.match(spear.rules, /Versatile: say two hands in melee for the bigger die\./);
   const sword = byId(deriveHand(sheet({ equipment: [item("Longsword", { equipped: true })] }), mine()), "attack:longsword");
   assert.doesNotMatch(sword.rules, /in melee/);
@@ -614,6 +623,19 @@ test("the End turn refusal lapses when the round or the turn moves on", () => {
   assert.equal(liveNotice(entry, floorNoticeKey({ ...floor, round: 3 })), "");
   assert.equal(liveNotice(entry, floorNoticeKey({ ...floor, currentName: "Hollis", userIds: ["u2"] })), "");
   assert.equal(liveNotice(entry, floorNoticeKey({ mode: "open" })), "");
+});
+
+// The table display page (the board on a television) draws the board and
+// deals no hand, so the Hand's card builders stay out of its first load:
+// the token menu's gates (hand-hud.ts) and the board's aim events
+// (hand-play.ts) read light modules, never hand-spells.ts or hand.ts, which
+// pull every spell, item and subclass card behind them (about 60 KiB gzip).
+test("the board reaches no card builder of the Hand", () => {
+  const reached = staticImports("app/campaigns/[campaignId]/table/page.tsx");
+  assert.ok(reached.has("lib/battlemap/hand-hud.ts") && reached.has("lib/battlemap/hand-play.ts"), "the walk reaches the board's Hand helpers");
+  for (const heavy of ["lib/battlemap/hand.ts", "lib/battlemap/hand-spells.ts", "lib/battlemap/hand-granted.ts"]) {
+    assert.ok(!reached.has(heavy), `the table page's first load imports ${heavy}`);
+  }
 });
 
 console.log(`test-hand-engine: ${passed} passed`);

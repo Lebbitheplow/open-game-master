@@ -36,7 +36,9 @@ export type ResourceEffect =
   | { kind: "heal_pool" }
   // Each spent use is one die of healing to the target (Balm of the Summer
   // Court: a pool of d6s), and `tempPerDie` temporary hit points per die.
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  // `rangeFt` and `sight`: only a creature that near, and one the spender
+  // can see (Balm: "a creature you can see within 120 feet").
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   // Heals the target for a rolled expression (Healing Light-likes).
   | { kind: "heal_target"; dice: (level: number, abilityMods: Record<string, number>) => string }
   // Grants the spender (or a target) temporary hit points; 5e temp HP never
@@ -55,24 +57,41 @@ export type ResourceEffect =
       target: "self" | "ally";
       variants?: string[];
       tempHp?: (level: number, abilityMods: Record<string, number>) => string;
+      // Held by the holder's concentration, as a spell is (Mantle of Majesty,
+      // Spirit Projection): the spend takes it, and a broken concentration
+      // ends the buff (src/lib/dm/resource-tools.ts holdConcentration).
+      concentration?: boolean;
+      // The holder also teleports up to this far (Misty Escape: "turn
+      // invisible and teleport up to 60 feet"): a teleport credit for
+      // move_token (src/lib/dm/feature-teleport.ts).
+      teleportFeet?: number;
     }
   // Hands a target a bonus die their next d20 roll consumes (Bardic
-  // Inspiration).
-  | { kind: "inspire"; die: (level: number) => string }
-  // The payload is a multi-target save-for-half effect the aoe_damage
-  // engine resolves; the spend reports the dice and DC to use.
-  | { kind: "aoe"; dice: (level: number) => string; save: SaveAbilityId }
-  // A save-or-suffer aimed at one enemy: the spend reports the save, DC,
-  // condition, and dice for the cast_at_enemy call that resolves it.
-  | {
+  // Inspiration). `othersOnly`: never the holder ("one creature other than
+  // yourself"); a die that answers any roll near them (Cosmic Omen) may be
+  // their own.
+  | { kind: "inspire"; die: (level: number) => string; othersOnly?: boolean }
+  // A save-for-half area: the spend rolls each creature it names
+  // (src/lib/dm/counter-saves.ts).
+  | ({ kind: "aoe"; dice: (level: number) => string; save: SaveAbilityId } & SaveTerms)
+  // A save-or-suffer: the spend rolls each creature it names, the dice and
+  // the condition landing on a failure (src/lib/dm/counter-saves.ts).
+  | ({
       kind: "enemy_save";
       save: SaveAbilityId;
       condition?: string;
       dice?: (level: number, abilityMods: Record<string, number>) => string;
-    }
+    } & SaveTerms)
   // Repositioning the server cannot fully own (maps are player-moved);
   // reported with the distance so move_token resolves it.
-  | { kind: "teleport"; feet: number }
+  // along: a willing creature within that many feet comes too (Misty Wanderer).
+  // `swap`: with a willing creature named, the two change places instead
+  // (Benign Transposition: src/lib/dm/ar-ws-transposition.ts).
+  | { kind: "teleport"; feet: number; along?: number; swap?: boolean }
+  // Extra damage onto the creature a weapon hit landed on this turn
+  // (Fury of the Small: the level, against a creature larger than the
+  // holder), dealt by the spend (src/lib/dm/counter-saves.ts).
+  | { kind: "hit_damage"; dice: (level: number, abilityMods: Record<string, number>) => string; larger?: boolean }
   // Swaps in a beast form with its own hit point pool.
   | { kind: "wild_shape" }
   // Returns expended spell slots on a short rest (Arcane/Natural Recovery),
@@ -80,6 +99,30 @@ export type ResourceEffect =
   | { kind: "recover_slots"; levels: (level: number) => number }
   // No server-enforceable payload; guidance only.
   | { kind: "narrative" };
+
+// What a save a counter forces is held to beyond its ability, read by the
+// spend that rolls it (src/lib/dm/counter-saves.ts) and the Hand's card.
+export type SaveTerms = {
+  // The DC: "spell" is the spell save DC, an ability 8 + proficiency + its
+  // modifier. Absent, the area features' 8 + proficiency + Constitution and
+  // the others' best modifier, as before.
+  dcAbility?: SaveAbilityId | "spell";
+  type?: string;
+  // A damage type the holder chooses, named in the variant (Drake's Breath);
+  // the first when none is named.
+  typeFromVariant?: string[];
+  half?: boolean;
+  rounds?: number;
+  rangeFt?: number;
+  // The area opens as a cone from the holder (Drake's Breath): the creatures
+  // named must fit one (src/lib/dm/cone-logic.ts).
+  cone?: boolean;
+  types?: string[];
+  // The most creatures one use takes: a number, or an ability's modifier
+  // (at least one).
+  most?: number | SaveAbilityId;
+  magical?: boolean;
+};
 
 // The JSON form of an effect, carried on resource rows in resources.json /
 // authored-resources.json. Dice formulas are strings with `level`, `prof`,
@@ -91,7 +134,7 @@ export type DiceFormula = string | Array<[number, string]>;
 export type ResourceFx =
   | { kind: "heal_self"; dice: DiceFormula }
   | { kind: "heal_pool" }
-  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number }
+  | { kind: "heal_dice_pool"; die: string; tempPerDie?: number; rangeFt?: number; sight?: boolean }
   | { kind: "heal_target"; dice: DiceFormula }
   | { kind: "temp_hp"; dice: DiceFormula }
   | { kind: "condition"; condition: string; rounds: number }
@@ -102,11 +145,15 @@ export type ResourceFx =
       target?: "self" | "ally";
       variants?: string[];
       tempHp?: DiceFormula;
+      concentration?: boolean;
+      teleportFeet?: number;
     }
   | { kind: "inspire"; die: string }
-  | { kind: "aoe"; dice: DiceFormula; save: SaveAbilityId }
-  | { kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula }
-  | { kind: "teleport"; feet: number };
+  | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
+  | ({ kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula } & SaveTerms)
+  // along: a willing creature within that many feet comes too (Misty Wanderer).
+  | { kind: "teleport"; feet: number; along?: number; swap?: boolean }
+  | { kind: "hit_damage"; dice: DiceFormula; larger?: boolean };
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
 // Negative modifiers fold into the sign so the dice grammar stays valid.
@@ -141,6 +188,11 @@ export function resolveDiceFormula(
     .replace(/\+$/, "");
 }
 
+function saveTermsOf(fx: SaveTerms): SaveTerms {
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
+}
+
 // Lifts a JSON fx row into the executable effect shape.
 export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
   if (!fx) {
@@ -152,7 +204,15 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
     case "heal_pool":
       return { kind: "heal_pool" };
     case "heal_dice_pool":
-      return { kind: "heal_dice_pool", die: fx.die, ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}) };
+      return {
+        kind: "heal_dice_pool",
+        die: fx.die,
+        ...(fx.tempPerDie ? { tempPerDie: fx.tempPerDie } : {}),
+        // "A creature you can see within 60 feet" (Healing Light): read by
+        // resource-tools.ts reachRefusal.
+        ...(fx.rangeFt ? { rangeFt: fx.rangeFt } : {}),
+        ...(fx.sight ? { sight: true } : {}),
+      };
     case "heal_target":
       return {
         kind: "heal_target",
@@ -169,6 +229,8 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
         rounds: fx.rounds,
         target: fx.target ?? "self",
         ...(fx.variants ? { variants: fx.variants } : {}),
+        ...(fx.concentration ? { concentration: true } : {}),
+        ...(fx.teleportFeet ? { teleportFeet: fx.teleportFeet } : {}),
         ...(fx.tempHp
           ? {
               tempHp: (level: number, mods: Record<string, number>) =>
@@ -180,12 +242,14 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
       return { kind: "inspire", die: () => fx.die };
     case "aoe":
       return {
+        ...saveTermsOf(fx),
         kind: "aoe",
         dice: (level) => resolveDiceFormula(fx.dice, level, {}),
         save: fx.save,
       };
     case "enemy_save":
       return {
+        ...saveTermsOf(fx),
         kind: "enemy_save",
         save: fx.save,
         ...(fx.condition ? { condition: fx.condition } : {}),
@@ -194,7 +258,9 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
           : {}),
       };
     case "teleport":
-      return { kind: "teleport", feet: fx.feet };
+      return { kind: "teleport", feet: fx.feet, ...(fx.along ? { along: fx.along } : {}), ...(fx.swap ? { swap: true } : {}) };
+    case "hit_damage":
+      return { kind: "hit_damage", dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods), ...(fx.larger ? { larger: true } : {}) };
   }
 }
 
@@ -234,8 +300,21 @@ export type ResourceDef = {
   effect: ResourceEffect;
   action?: ResourceAction;
   // Never spent by choice: the server burns it on a trigger of its own, so
-  // use_resource refuses rather than wasting the charge.
+  // use_resource refuses rather than wasting the charge. A pool another call
+  // spends (sorcery points, Lucky's points, a free casting the cast tool
+  // pays with) is passive too: a bare spend of it moved the counter and did
+  // nothing (WAVE1 R10).
   passive?: boolean;
+  // A passive pool whose named options use_resource still spends with the
+  // option in variant (Font of Magic, a Metamagic option, a maneuver that
+  // rides a check): only the bare spend is refused.
+  options?: boolean;
+  // Used only out of a fight: a minute or more of work (Eldritch Master's
+  // entreaty, an hour with tinker's tools). The Hand shuts its card in a
+  // fight and use_resource refuses it there (src/lib/srd/counter-rules.ts).
+  outOfFight?: boolean;
+  // Used only in a fight (Draconic Presence's aura on the creatures of one).
+  fightOnly?: boolean;
   // The character level the counter starts at (a tiefling's hellish rebuke
   // at 3rd); below it the sheet holds no counter.
   minLevel?: number;
@@ -249,12 +328,34 @@ export type ResourceDef = {
   rechargeFor?: (level: number) => Recharge;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
+  // What a rest leaves held, in place of a refill (Power Surge: "After a long
+  // rest you have one ... and you gain one at the end of a short rest if you
+  // have none"): src/lib/srd/resource-refills.ts.
+  restHolds?: { long?: number; shortIfNone?: number };
+  // Every spent use comes back when its holder casts a spell of this school
+  // and level or higher (Benign Transposition: "or when you cast a
+  // conjuration spell"): src/lib/dm/ar-ws-transposition.ts castRefills, called
+  // by the one door every casting passes (cast-guard.ts castSpell).
+  castRefill?: { school: string; minLevel: number };
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
+  // With no use left, a spell slot of this level or higher pays for one
+  // instead ("or by expending a spell slot of 3rd level or higher"): the slot
+  // the call names (use_resource level), else the lowest such slot unspent.
+  slotFallback?: number;
+  // A use takes the place of one attack of the Attack action, not the whole
+  // action (Breath of the Dragon: "replace one of the attacks"): the turn
+  // spends a swing (resource-turn.ts spendAttack), and the Hand gates the
+  // card as an attack.
+  replacesAttack?: boolean;
+  // Used at 0 hit points: the moment it answers happens there (Defy Death
+  // on a death save the warlock succeeds on, "when you succeed on a death
+  // saving throw"). Anything else at 0 is refused as unconscious.
+  atZeroHp?: boolean;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
-  requires?: "below_half";
+  requires?: "below_half" | "tools_in_hand";
   // The most one use may spend: half the class level (Balm of the Summer
   // Court's dice) or the Charisma modifier, at least one (Healing Light's).
   perUse?: "half_level" | "cha";
@@ -354,8 +455,11 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     maxFor: (level) => Math.max(1, level),
     recharge: "long",
     effect: { kind: "narrative" },
+    // Spent through a named option, never bare (WAVE1 R10).
+    passive: true,
+    options: true,
     guidance:
-      "Sorcery points buy Metamagic on a spell being cast (use_resource with the option the sorcerer learned as the variant: the server charges its price, and for Twinned Spell the spell's level in amount, 1 for a cantrip), or convert to and from spell slots: call use_resource with variant 'create slot' (costs 2/3/5/6/7 points for levels 1-5) or 'convert slot' (the slot back into points equal to its level), the slot's level in amount, and the server moves the points and slots. Either conversion is a bonus action on their turn in a fight. Created slots vanish on a long rest. Quickened Spell: call use_resource with variant 'Quickened Spell' before the cast; the server spends 2 points and the next spell of one action this turn takes the bonus action. The spell itself still goes through use_spell_slot or cast_at_enemy as normal.",
+      "Sorcery points buy Metamagic on a spell being cast (use_resource with the option the sorcerer learned as the variant, before the spell: the server charges its price, for Twinned Spell the spell's level, and applies the option to the next spell they cast), or convert to and from spell slots: call use_resource with variant 'create slot' (costs 2/3/5/6/7 points for levels 1-5) or 'convert slot' (the slot back into points equal to its level), the slot's level in amount, and the server moves the points and slots. Either conversion is a bonus action on their turn in a fight. Created slots vanish on a long rest. Quickened Spell: call use_resource with variant 'Quickened Spell' before the cast; the server spends 2 points and the next spell of one action this turn takes the bonus action. The spell itself still goes through use_spell_slot or cast_at_enemy as normal.",
   },
   // ---- the feats' counters (src/lib/srd/feat-combat.ts) ----
   {
@@ -367,6 +471,8 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     maxFor: () => 3,
     recharge: "long",
     effect: { kind: "narrative" },
+    // Spent by the roll it changes, never on its own.
+    passive: true,
     guidance:
       "Lucky (or Level Up's Fortunate): three luck points a long rest. On their own ability check or saving throw the player chooses after they see the roll: request_roll offers it and waits, so do not spend it for them. On their attack roll, or when they say so before the roll, a point rolls an extra d20 and keeps the best (pc_attack luck: true, request_roll luck: true; the server spends the point), or on an attack made against them (use_reaction 'lucky' after the hit: the attacker's d20 is rolled again and the lower kept; no reaction is spent).",
   },
@@ -410,9 +516,26 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     displayName: "Inspiring Leader",
     maxFor: () => 6,
     recharge: "short",
+    // "You can spend 10 minutes rallying": never in the middle of a fight.
+    outOfFight: true,
     effect: { kind: "temp_hp", dice: (level, mods) => `${Math.max(1, level + Math.max(0, mods.cha ?? 0))}` },
     guidance:
       "Inspiring Leader (or Level Up's Rallying Speaker): ten minutes of rallying words give up to six friendly creatures within 30 feet who can hear and understand them temporary hit points equal to the speaker's level plus Charisma modifier; one use per creature (targetCharacterId), and a creature cannot benefit again until it finishes a rest.",
+  },
+  {
+    id: "chef_treats",
+    match: ["chef"],
+    exact: true,
+    displayName: "Chef's Treats",
+    // "a number of treats equal to your proficiency bonus", made as a long
+    // rest ends; what the 8 hours and the eater's bonus action ask is
+    // src/lib/dm/ar-wbf-feat-treats.ts.
+    maxFor: (level) => 2 + Math.floor((Math.max(1, level) - 1) / 4),
+    recharge: "long",
+    action: "bonus",
+    effect: { kind: "temp_hp", dice: (level) => `${2 + Math.floor((Math.max(1, level) - 1) / 4)}` },
+    guidance:
+      "Chef: the treats made as a long rest ends, as many as the cook's proficiency bonus, keeping 8 hours. The creature that eats one (targetCharacterId, else the cook) gains temporary hit points equal to the cook's proficiency bonus, for the eater's own bonus action in a fight.",
   },
   {
     id: "second_wind",
@@ -448,7 +571,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "short",
     effect: { kind: "narrative" },
     guidance:
-      "Divine power channelled into a subclass effect. In a fight, name the option in variant: each costs what its own text says (most an action; Vow of Enmity, Champion Challenge, Turn the Tide, Emissary of Peace, Peerless Athlete and Inspiring Smite a bonus action; War God's Blessing a reaction; Rebuke the Violent goes through use_reaction, for the ally the attack hit; Guided Strike, Destructive Wrath and Touch of Death nothing more than the roll they ride; Artisan's Blessing is an hour's ritual). The server resolves these itself: 'vow of enmity' (pass targetEnemyId, a creature within 10 feet: the paladin has advantage on attacks against it for a minute), 'turn undead' (every undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 an undead at or under the Destroy Undead CR is destroyed instead), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum), 'turn the faithless', 'abjure the extraplanar' and 'arcane abjuration' (targetEnemyId; each by its creature types, turned on a failed WIS save), 'conquering presence' and 'dreadful aspect' (every enemy within 30 feet, frightened on a failed WIS save), 'abjure enemy' (targetEnemyId within 60 feet: frightened and speed 0 on a failed WIS save, half speed on a success). Never apply turned or frightened by hand: the save decides it.",
+      "A subclass effect. In a fight, name the option in variant: each costs what its own text says (most an action; Vow of Enmity, Champion Challenge, Turn the Tide, Emissary of Peace, Peerless Athlete and Inspiring Smite a bonus action; War God's Blessing a reaction; Rebuke the Violent goes through use_reaction, for the ally the attack hit; Guided Strike, Destructive Wrath and Touch of Death ride a roll; Artisan's Blessing is an hour's ritual). The server resolves: 'destructive wrath' (before a roll that cannot wait: the next lightning or thunder damage is at its maximum), 'vow of enmity' (targetEnemyId within 10 feet: advantage on attacks against it for a minute), 'turn undead' (each undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 one at or under the Destroy Undead CR is destroyed), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum), 'turn the faithless', 'abjure the extraplanar' and 'arcane abjuration' (targetEnemyId; each by its creature types, turned on a failed WIS save), 'conquering presence' and 'dreadful aspect' (every enemy within 30 feet, frightened on a failed WIS save), 'abjure enemy' (targetEnemyId within 60 feet: frightened and speed 0 on a failed WIS save, half speed on a success). Never apply turned or frightened by hand: the save decides it.",
   },
   {
     id: "bardic_inspiration",
@@ -461,7 +584,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "long",
     rechargeFor: (level) => (level >= 5 ? "short" : "long"),
     action: "bonus",
-    effect: { kind: "inspire", die: inspirationDie },
+    effect: { kind: "inspire", die: inspirationDie, othersOnly: true },
     guidance:
       "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll takes it only to turn a failure into a success. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
   },
@@ -547,7 +670,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     action: "action",
     effect: { kind: "aoe", dice: breathDice, save: "dex" },
     guidance:
-      "A cone or line of the breath's damage type. Resolve it with aoe_damage using the dice, save, DC and damage type this call reports (the ancestry, or the species option the player picked, sets the type and the save).",
+      "A cone or line of the breath's damage type, half on a save (the ancestry, or the species option the player picked, sets the type and the save). Name the creatures it catches in targetEnemyIds: the server rolls each one's save and deals the damage.",
   },
   {
     id: "indomitable",
@@ -585,8 +708,10 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     maxFor: () => 1,
     recharge: "short",
     effect: { kind: "narrative" },
+    // Spent on the missed attack or failed check it turns (attack-swing.ts).
+    passive: true,
     guidance:
-      "An attack that missed a target in range hits instead, or a failed ability check is treated as a 20 on the d20.",
+      "An attack that missed a target in range hits instead, or a failed ability check is treated as a 20 on the d20. A missed attack waits on a card that offers it; the server spends the use there.",
   },
   ...LATE_RESOURCE_DEFS,
   ...[6, 7, 8, 9].map(
@@ -600,7 +725,9 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
       maxFor: () => 1,
       recharge: "long",
       effect: { kind: "narrative" },
-      guidance: `The warlock's one ${spellLevel}th level arcanum is cast once without a spell slot, and again only after a long rest. Resolve the spell with its own tool.`,
+      // Spent by the cast that uses it (src/lib/dm/counter-cast-arcanum.ts).
+      passive: true,
+      guidance: `The warlock's one ${spellLevel}th level arcanum is cast once without a spell slot, and again only after a long rest: cast the spell with its own tool at ${spellLevel}th level and the cast spends this use (no use_resource call).`,
     }),
   ),
 ];
@@ -659,6 +786,10 @@ type SubclassResourceRow = {
   displayName: string;
   match: string[];
   uses: number;
+  // The character level the counter starts at (Celestial Revelation, 3rd).
+  minLevel?: number;
+  // Used only in a fight (Feline Agility's doubled speed for a turn).
+  fightOnly?: boolean;
   ability: "str" | "dex" | "con" | "int" | "wis" | "cha" | null;
   // Uses = this multiple of the proficiency bonus (1 for most, 2 for the
   // psionic pools).
@@ -679,12 +810,19 @@ type SubclassResourceRow = {
   // Never spent by choice (reaction-triggered features the server or model
   // invokes at the trigger, not on the holder's turn).
   passive?: boolean;
+  options?: boolean;
+  outOfFight?: boolean;
   // What a use costs of the turn, when the guidance names it.
   action?: ResourceAction;
   fallbackPool?: { id: string; amount: number };
-  requires?: "below_half";
+  slotFallback?: number;
+  replacesAttack?: boolean;
+  atZeroHp?: boolean;
+  requires?: "below_half" | "tools_in_hand";
   perUse?: "half_level" | "cha";
   recovers?: string;
+  restHolds?: { long?: number; shortIfNone?: number };
+  castRefill?: { school: string; minLevel: number };
 };
 
 function proficiencyBonus(level: number): number {
@@ -719,11 +857,20 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   effect: effectFromFx(row.fx),
   guidance: row.guidance,
   ...(row.passive ? { passive: true } : {}),
+  ...(row.options ? { options: true } : {}),
+  ...(row.outOfFight ? { outOfFight: true } : {}),
   ...(row.action ? { action: row.action } : {}),
+  ...(row.minLevel ? { minLevel: row.minLevel } : {}),
+  ...(row.fightOnly ? { fightOnly: true } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
+  ...(row.slotFallback ? { slotFallback: row.slotFallback } : {}),
+  ...(row.replacesAttack ? { replacesAttack: true } : {}),
+  ...(row.atZeroHp ? { atZeroHp: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),
+  ...(row.restHolds ? { restHolds: row.restHolds } : {}),
+  ...(row.castRefill ? { castRefill: row.castRefill } : {}),
 }));
 
 // One with Shadows (SRD 5.1, a warlock invocation): an action, as often as
@@ -786,11 +933,53 @@ const DRACONIC_ACTION_DEFS: ResourceDef[] = [
     atWill: true,
     recharge: "long",
     action: "action",
+    fightOnly: true,
     effect: { kind: "buff", condition: "draconic presence", rounds: 10, target: "self", variants: ["fear", "charm"] },
     guidance:
       "Draconic Presence: 5 sorcery points and the action raise an aura of fear or awe to 60 feet for a minute, held by concentration. Each hostile creature that starts its turn in it makes a WIS save against their spell save DC or is frightened (or charmed) until the aura ends; one that succeeds is immune for 24 hours.",
   },
 ];
+
+// The pools whose uses cost what the option named costs (Ki's techniques,
+// Channel Divinity's options, a maneuver, a psionic use, a Metamagic option):
+// the tool that resolves the option charges the turn.
+const COST_BY_OPTION = new Set(["ki", "sorcery_points", "channel_divinity", "sub_superiority_dice", "sub_psionic_energy"]);
+// The counters whose words name a cost another call charges (the bonus
+// attack a War Priest's use buys, the spell an Embodiment of the Law or a
+// surge moves to the bonus action, the move a genre feature makes): their own
+// spend costs nothing, and scripts/test-class-resources.mjs CHARGED_ELSEWHERE
+// says why for each.
+const CHARGED_BY_ANOTHER_CALL = new Set([
+  "sub_war_priest", "race_hungry_jaws", "sub_unwavering_mark", "sub_embodiment_of_the_law",
+  "cyberpunk_surge_momentum", "horror_the_rite_remembers", "post_apocalyptic_surge_of_change", "steampunk_surge_casting",
+  "dark_fantasy_the_crown_descends", "steampunk_arc_coil", "horror_last_one_out", "mystery_general_strike", "horror_adrenaline_surge", "mystery_vanish",
+  "sub_telekinetic_master", "sub_waxing_and_waning",
+]);
+
+// The cost a counter's own words state, for a row that names none: "a bonus
+// action", "as an action". A row that states none costs nothing of the turn
+// (it rides an attack, a hit or a roll). A reaction is never read from the
+// words: a reaction counter answers a trigger, and its row says so.
+export function statedAction(text: string): ResourceAction | undefined {
+  if (/\bbonus[ -]action\b/i.test(text)) return "bonus";
+  if (/\b(?:as an|an|use (?:an|your)|takes? (?:an|the|your)|with (?:an|your)|their|your) action\b/i.test(text.replace(/\battack action\b/gi, ""))) return "action";
+  return undefined;
+}
+
+// Every counter carries its turn cost in ResourceDef.action, the one field
+// the Hand's cost pill (src/lib/battlemap/hand-spells.ts featureCards) and
+// use_resource's charge (src/lib/dm/resource-turn.ts prepareResourceCharge)
+// both read. Before this the card read the guidance's words and the engine
+// only the rows that wrote a cost, and about forty counters showed one cost
+// and charged none. A cost added to a counter goes on its row; this fills
+// the rows that name none from their own words.
+function withStatedCost(def: ResourceDef): ResourceDef {
+  if (def.action || def.into || COST_BY_OPTION.has(def.id) || CHARGED_BY_ANOTHER_CALL.has(def.id)) {
+    return def;
+  }
+  const stated = statedAction(def.guidance);
+  return stated ? { ...def, action: stated } : def;
+}
 
 export const RESOURCE_DEFS: ResourceDef[] = [
   ...SRD_RESOURCE_DEFS,
@@ -799,7 +988,7 @@ export const RESOURCE_DEFS: ResourceDef[] = [
   ...COMBAT_RESOURCE_DEFS,
   ...INVOCATION_ACTION_DEFS,
   ...DRACONIC_ACTION_DEFS,
-];
+].map(withStatedCost);
 
 // The marker a counter that returns after several long rests leaves on the
 // sheet while it waits: "limited wish recovering (3)".
@@ -970,6 +1159,13 @@ const withoutUses = (name: string) => name.replace(/\s*\((?:\d+|[a-z]+) uses?\)\
 // class was kept) is matched on its name alone.
 function featureHolds(def: ResourceDef, feature: { name: string; classId?: string; source?: string }): boolean {
   if (def.featOnly && feature.source === "race") {
+    return false;
+  }
+  // A subclass's counter is never a lineage trait's of the same name: a
+  // changeling's "Shapechanger (alter your appearance...)" is not the
+  // Transmuter's Shapechanger, and held as it gave every changeling a free
+  // Polymorph to cast.
+  if (feature.source === "race" && def.id.startsWith("sub_")) {
     return false;
   }
   if (def.grantedBy?.length && feature.classId) {

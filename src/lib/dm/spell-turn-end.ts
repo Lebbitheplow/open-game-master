@@ -32,6 +32,7 @@ import { removeConditions, type ConditionMeta, type ConditionMetaMap } from "@/l
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
+import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
@@ -72,7 +73,9 @@ function acidArrowBurn(campaign: Campaign, enemy: EncounterEnemy, meta: Conditio
   const dice = addDice("2d4", "1d4", Math.max(0, slot - 2));
   const caster = meta.source ? getSheetById(meta.source) : null;
   const burn = rollCard(campaign, null, caster?.id ?? null, "damage", rollAgainst("Acid Arrow (second burn)", enemy.displayName), dice, caster ? sheetAttacker(caster) : null).total;
-  return hurtHeld(campaign, encounter, enemy, burn, "acid", "Acid Arrow's acid");
+  const line = hurtHeld(campaign, encounter, enemy, burn, "acid", "Acid Arrow's acid");
+  // The burn killed it (Grim Harvest, ar-ws-harvest.ts).
+  return [line, ...runningSpellKill(campaign, encounter, enemy, caster?.id, { spell: "Acid Arrow", slotLevel: slot })].join(" ");
 }
 
 // The mark goes back on for the next turn's end.

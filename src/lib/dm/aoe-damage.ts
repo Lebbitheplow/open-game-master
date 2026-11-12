@@ -2,8 +2,10 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
+import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
-import { abilityAreaShape, areaProblem, creaturesInBlast, spellAreaShape } from "@/lib/dm/aoe-shape";
+import { abilityAreaShape, areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { spellFactsFor } from "@/lib/content";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
@@ -16,6 +18,8 @@ import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps
 import { rollOn } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression, rollExpression } from "@/lib/dice";
+import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { expressionMaximum } from "@/lib/dm/destructive-wrath-logic";
 import { publishWithSeq } from "@/lib/events";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
@@ -29,32 +33,37 @@ import { canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { planAoeSpell, type AoeSpellPlan } from "@/lib/dm/aoe-spell";
-import { freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
+import { boardCatch, freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
 import { aoePool } from "@/lib/dm/spell-pool";
 import { commanderOf } from "@/lib/dm/companion-command";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { afterEnemySave, concentrationShaken, layAreaConditions, spellAutoSave, spellSaveOptions } from "@/lib/dm/spell-riders";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { getSheetById } from "@/lib/db/sheets";
+import { empoweredLine, empoweredRoll, extendedMeta, factsAsCast } from "@/lib/dm/mt-srd-metamagic";
 import { rollEnemySave, settleFailedSave } from "@/lib/dm/forced-save";
 import { aoeOnCharacters } from "@/lib/dm/aoe-characters";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { curseBurn } from "@/lib/dm/spell-retort";
-import { holdEnemyAreaConcentration, placeSpellZone } from "@/lib/dm/zone-cast";
+import { holdEnemyAreaConcentration, placementReachProblem, placeSpellZone } from "@/lib/dm/zone-cast";
 import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { coverFor, coverFromPoint } from "@/lib/dm/attack-spatial";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
-import { spellWardOn } from "@/lib/dm/cast-reach";
+import { spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
+import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
-import { unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
+import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -100,11 +109,8 @@ export function handleAoeDamage(
   let args: z.infer<typeof aoeArgsSchema>;
   try {
     args = aoeArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error: "Invalid arguments: aoe_damage needs targets, and saveAbility and dc unless a caster's spell or an enemy's ability sets them.",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: aoe_damage needs targets, and saveAbility and dc unless a caster's spell or an enemy's ability sets them.", error, rawArguments);
   }
   // A trap or a collapsing ceiling names no spell and no caster: its save
   // and DC are the caller's, and nothing else could supply them.
@@ -166,25 +172,22 @@ export function handleAoeDamage(
   }
   // A player's blast laid on the battle map that names nobody catches
   // everyone standing in it (issue 570): the engine reads the board where it
-  // used to check a list the model wrote. A lasting area (a Web) is laid by
-  // its zone row and catches nobody when cast, as before.
+  // used to check a list the model wrote. So does a lasting area that
+  // catches whoever stands in it as it appears (Ice Storm's hail, Entangle,
+  // a Wall of Fire); one that bites only later (a Web) is laid by its zone
+  // row and catches nobody when cast (area-casting.ts boardCatch).
   const named = Boolean(args.enemyIds?.length || args.characterIds?.length || args.targets?.trim());
-  const blastCaster = !named && args.spell && args.casterCharacterId && !args.casterEnemyId && !zoneRowFor(engineSpell)
+  const blastCaster = !named && args.spell && args.casterCharacterId && !args.casterEnemyId
     ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById)
     : null;
-  const blastArea = blastCaster && args.spell ? spellAreaShape(args.spell, spellAuthorsFor(campaign)) : null;
+  const onBoard = blastCaster && args.spell && engineSpell
+    ? boardCatch({ authors: spellAuthorsFor(campaign), encounterId: encounter.id, caster: blastCaster, spell: args.spell, runsAs: engineSpell.runsAs, slotLevel: args.level, placement: zonePlacement(args) })
+    : null;
   let caughtByArea = false;
-  if (blastCaster && blastArea && args.spell) {
-    const range = spellFactsFor(args.spell, spellAuthorsFor(campaign))?.range;
-    const caught = creaturesInBlast({
-      encounterId: encounter.id,
-      casterId: blastCaster.id,
-      casterName: blastCaster.name,
-      label: args.spell,
-      area: blastArea,
-      rangeFeet: range?.kind === "feet" ? range.feet : null,
-      ...zonePlacement(args),
-    });
+  // The Echo Knight's echoes the blast's squares hold (mt-fb-echo.ts echoAreaSave).
+  let echoesCaught: string[] = [];
+  if (blastCaster && onBoard && args.spell) {
+    const { caught, blast: blastArea } = onBoard;
     // What bars the cast itself (no slot, not their turn) is said before a
     // question about where it lands (src/lib/dm/tool-errors.ts).
     const barred = caught && ("error" in caught || !(caught.enemyIds.length + caught.characterIds.length))
@@ -197,10 +200,13 @@ export function handleAoeDamage(
       return caught;
     }
     if (caught) {
-      if (!caught.enemyIds.length && !caught.characterIds.length) {
+      // A blast on nobody is refused, to be aimed again; Ice Storm's hail
+      // laid on empty ground is still cast, for the area it leaves.
+      if (!caught.enemyIds.length && !caught.characterIds.length && blastArea && !zoneRowFor(engineSpell)) {
         return { error: `${args.spell} laid there catches nobody: no creature stands in its ${blastArea.feet}-foot ${blastArea.shape}. Ask the player where to aim it. Nothing was spent.`, retry: true };
       }
-      caughtByArea = true;
+      caughtByArea = Boolean(caught.enemyIds.length || caught.characterIds.length);
+      echoesCaught = "echoes" in caught && Array.isArray(caught.echoes) ? caught.echoes : [];
       for (const id of [...caught.enemyIds, ...caught.characterIds]) {
         addRef(id);
       }
@@ -312,6 +318,30 @@ export function handleAoeDamage(
   if (charmedCaster && charmer) {
     return { error: `${charmedCaster.name} is charmed by ${charmer.displayName} and cannot catch it in harmful magic. Nothing was spent; leave it out of the area.`, refused: "rules" };
   }
+  // "The target of a spell must be within the spell's range" (SRD 5.1,
+  // Casting a Spell: Range), held here as use_spell_slot and cast_buff hold
+  // it: a Web or a Flaming Sphere laid by atX/atY went on any square of the
+  // board, and Acid Splash's enemyIds were taken 100 feet off, though the
+  // card said 60 ft. Asked before the slot is spent; what bars the cast
+  // itself (no slot, not their turn) is said first (tool-errors.ts).
+  if (args.spell && !args.casterEnemyId && charmedCaster) {
+    const facts = factsAsCast(getSheetById(charmedCaster.id) ?? charmedCaster, spellFactsFor(args.spell, spellAuthorsFor(campaign)));
+    const at = zonePlacement(args).at;
+    const laid = at
+      ? placementReachProblem(campaign, { casterId: charmedCaster.id, casterName: charmedCaster.name, spell: args.spell, runsAs: engineSpell ? engineSpell.runsAs : null, facts, at })
+      : null;
+    // A spell with no area of its own names its targets in range; an area's
+    // reach is held by aoe-spell.ts (its range plus its size).
+    const named = !laid && !spellAreaShape(args.spell, spellAuthorsFor(campaign))
+      ? [...enemyTargets.map((enemy) => ({ id: enemy.id, name: enemy.displayName })), ...pcTargets.map((sheet) => ({ id: sheet.id, name: sheet.name }))]
+          .map((target) => spellReachProblem({ encounterId: encounter.id, casterId: charmedCaster.id, casterName: charmedCaster.name, targetId: target.id, targetName: target.name, facts }))
+          .find(Boolean) ?? null
+      : null;
+    const beyond = laid ?? named;
+    if (beyond) {
+      return castBarred(campaign, turn.id, { characterId: charmedCaster.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "aoe" }, sheets, sheetsById) ?? beyond;
+    }
+  }
   // A named player spell is cast and paid for, and its own numbers apply
   // (src/lib/dm/aoe-spell.ts): the slot, the save, the DC, the dice, the
   // conditions. A spell named with no caster is refused, not cast for free.
@@ -362,7 +392,7 @@ export function handleAoeDamage(
     plan = planned;
     // Prismatic Spray rolls a ray for each creature (prismatic.ts).
     if (isPrismaticSpray(planned.runsAs ?? planned.spell)) {
-      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
+      const results = castPrismaticSpray({ campaign, turn, caster: planned.caster, dc: planned.dc, slotLevel: planned.slotLevel, enemies: enemyTargets, characters: pcTargets.filter((sheet) => !planned.sculpted.includes(sheet.id)), sheets, sheetsById });
       return { ok: true, spell: planned.spell, caster: planned.caster.name, dc: planned.dc, saveAbility: "dex", results, ...(planned.corrections.length ? { corrected: planned.corrections } : {}), ...(skippedDead.length ? { skippedDead } : {}) };
     }
     // Limited Magic Immunity (the rakshasa): the area washes over it.
@@ -465,6 +495,9 @@ export function handleAoeDamage(
   // A character's area that names no spell (a dragonborn's breath) is still
   // theirs. A caster whose token is hidden is not named, as a hidden
   // creature it catches is not (the tracker's word for it).
+  let wrathNote: string | null = null;
+  let empoweredNote: string | null = null;
+  let bombardNote: string | null = null;
   const areaBy: RollAttacker | null = plan
     ? { kind: "sheet", id: plan.caster.id, name: plan.caster.name }
     : enemyUse
@@ -479,12 +512,40 @@ export function handleAoeDamage(
     if (!isValidExpression(args.damage)) {
       return { error: `Invalid damage expression "${args.damage}".`, retry: true };
     }
-    const split = splitDamageExpression(args.damage, plan?.mech?.secondType);
-    for (const [index, expression] of (split ?? [args.damage]).entries()) {
-      const type = index === 0 ? args.type : plan?.mech?.secondType;
-      // Elemental Adept: the caster's chosen type floors its dice at 2.
-      const adept = plan ? elementalAdeptApplies(plan.caster, type) : false;
-      const outcome = rollExpression(adept ? floorDamageDice(expression) : expression);
+    // A creature's spell as well as a character's (a mage's Ice Storm).
+    const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
+    // A character's plan split its dice before the riders' joined (aoe-spell.ts).
+    const split = plan?.damageParts ?? splitDamageExpression(args.damage, secondType);
+    // Elemental Adept: a spell that deals the chosen type has every 1 on its
+    // damage dice count as 2 (the feat's text: "their damage dice"), both
+    // types' dice; resistance is set aside for the chosen type alone, below.
+    const adept = plan ? elementalAdeptApplies(plan.caster, args.type) || Boolean(split && elementalAdeptApplies(plan.caster, secondType)) : false;
+    const parts = (split ?? [args.damage]).map((expression, index) => ({ expression, type: index === 0 ? args.type : secondType }));
+    // Destructive Wrath, held from before the cast (destructive-wrath.ts): the
+    // area's lightning and thunder dice at their maximum and the other type's
+    // rolled, one use for the whole casting. Decided once, so a spell whose
+    // two types are lightning and thunder has both at their maximum.
+    // A character's area that names no spell (a blue dragonborn's breath) too.
+    const owner = plan?.caster ?? awayCaster;
+    const holder = owner ? (getSheetById(owner.id) ?? owner) : null;
+    const wrathParts = holder ? parts.map((part) => wrathApplies(holder, part.type)) : [];
+    if (holder && wrathParts.includes(true)) {
+      spendWrath(campaign.id, holder.id);
+      wrathNote = WRATH_NOTE;
+    }
+    // Empowered Spell paid for this cast throws the low dice of its damage
+    // again (mt-srd-metamagic.ts): the spell's first roll takes it.
+    const empowered = plan ? empoweredRoll(campaign, plan.caster.id) : {};
+    if (empowered.empower) {
+      empoweredNote = empoweredLine(empowered.empower);
+    }
+    for (const [index, { expression, type }] of parts.entries()) {
+      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
+      // Spell Bombardment: a die at its highest number is rolled again, once
+      // a turn, on the roll's own card (src/lib/dm/ar-ws-bombardment.ts).
+      const burst = plan ? spellBombardment({ campaign, turn, sheet: plan.caster, outcome: thrown, spell: plan.spell, card: false }) : null;
+      const outcome = burst?.outcome ?? thrown;
+      bombardNote = burst?.note ?? bombardNote;
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -506,20 +567,23 @@ export function handleAoeDamage(
     total = partsTotal(rolled);
   }
   if (args.damage !== undefined && args.damage !== 0 && args.damage !== "0") {
-    total = Math.max(1, total + (plan?.flat ?? 0));
+    total = Math.max(1, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
   }
   // The blast as it lands: one part, or the first type with the caster's
-  // flat bonus and the second type's own roll.
-  const blast: DamagePart[] = rolled.length > 1 ? [{ ...rolled[0], amount: total - rolled[1].amount }, rolled[1]] : [{ amount: total, type: args.type }];
+  // flat bonus and the second type's own roll with its own (Elemental
+  // Affinity's cold on Ice Storm).
+  const secondShare = rolled.length > 1 ? rolled[1].amount + (plan?.flatSecond ?? 0) : 0;
+  const blast: DamagePart[] = rolled.length > 1 ? [{ ...rolled[0], amount: total - secondShare }, { ...rolled[1], amount: secondShare }] : [{ amount: total, type: args.type }];
   const halfOnSave = args.halfOnSave ?? true;
   const ability = (args.saveAbility ?? "dex") as SaveAbility;
   // What a failed save lays on an enemy, recorded with the spell and caster.
+  // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
   const conditionMeta = plan?.mech?.condition
-    ? spellConditionMeta(
+    ? extendedMeta(plan.caster, spellConditionMeta(
         plan.mech.condition,
         { spell: plan.spell, casterId: plan.caster.id, slotLevel: plan.slotLevel },
         { ability, dc: saveDc },
-      )
+      ))
     : null;
 
   const results: Array<Record<string, unknown>> = [];
@@ -533,8 +597,18 @@ export function handleAoeDamage(
   const saveCover = (refId: string): number =>
     plan?.mech?.ignoresCover ? 0 : origin ? coverFromPoint(encounter.id, origin, refId) : originRef ? coverFor(encounter.id, originRef, refId) : 0;
 
+  // Radiant Soul's bonus rides the first creature's damage alone (aoe-spell.ts oneTarget).
+  const blastFor = (index: number): DamagePart[] => {
+    const one = index === 0 && args.damage !== undefined && args.damage !== 0 && args.damage !== "0" ? plan?.oneTarget : null;
+    if (!one || (!one.first && !one.second)) {
+      return blast;
+    }
+    return blast.map((part, at) => ({ ...part, amount: part.amount + (at === 0 ? one.first + (blast.length === 1 ? one.second : 0) : one.second) }));
+  };
   // Enemy saves roll silently from stat blocks; results ride the table.
-  for (const enemy of enemyTargets) {
+  for (const [index, enemy] of enemyTargets.entries()) {
+    // A Beguiling Arrow's charm ends on its ally's damage or forced save.
+    if (charmedCaster) beguilingBroken(campaign.id, charmedCaster.id, enemy.id);
     // The creature's conditions decide the save as a character's would.
     // Stinking Cloud cannot touch a creature immune to poison.
     const untouched = plan ? spellAutoSave(plan.mech, enemy) : null;
@@ -549,11 +623,14 @@ export function handleAoeDamage(
             : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
           against: plan?.conditions ?? (enemyUse?.condition ? [enemyUse.condition] : laysCondition ? [laysCondition] : []),
           cover: saveCover(enemy.id),
+          // The spell's damage types, for a save that leans only against some
+          // (Corona of Light: fire and radiant).
+          ...(plan ? { damageType: [args.type, plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
           ...(plan ? spellSaveOptions(plan.mech, enemy) : {}),
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });
     const success = untouched ? true : save ? save.success : false;
-    const taken = partsTaken(blast, success ? (halfOnSave ? "half" : "none") : "full");
+    const taken = partsTaken(blastFor(index), success ? (halfOnSave ? "half" : "none") : "full");
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: enemy.displayName,
@@ -602,26 +679,17 @@ export function handleAoeDamage(
       }
     }
     const hpBefore = enemy.currentHp;
-    // Each damage type lands on its own, meeting its own resistance.
-    for (const part of taken.filter((entry) => entry.amount > 0)) {
-      const now = getEnemy(enemy.id) ?? enemy;
-      if (now.status !== "alive") {
-        break;
-      }
-      const applied = applyEnemyDamage(
-        campaign,
-        turn,
-        encounter,
-        now,
-        part.amount,
-        sheets,
-        sheetsById,
-        part.type,
-        // An enemy's spell is a spell's damage too (casterEnemyId).
-        plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, part.type) ? { ignoreResistance: true } : {}) } : undefined,
-      );
+    const noteLanded = (applied: Record<string, unknown>) => {
       if (applied.damageNote) {
         row.note = [row.note, applied.damageNote].filter(Boolean).join(" ");
+      }
+      if (applied.damageByType) {
+        row.damageByType = applied.damageByType;
+      }
+      // `damage` is what the save left, before resistance. Alone it read as
+      // what landed: a live model told the table 29 when the goblin lost 19.
+      if (typeof applied.damageApplied === "number" && applied.damageApplied !== row.damage) {
+        row.damageApplied = applied.damageApplied;
       }
       row.health = applied.health;
       if (applied.dead) {
@@ -634,6 +702,53 @@ export function handleAoeDamage(
           ...(applied.xpAwarded ? { xpAwarded: applied.xpAwarded } : {}),
         };
       }
+    };
+    const landing = taken.filter((entry) => entry.amount > 0);
+    const [firstPart, secondPart] = landing;
+    // A character's spell that hurt the creature: Power Surge reads it
+    // (spell-damage-mark.ts).
+    if (plan && landing.length) {
+      markSpellDamage(campaign.id, plan.caster.id, enemy.id, plan.spell);
+    }
+    const now = getEnemy(enemy.id) ?? enemy;
+    if (firstPart && secondPart && now.status === "alive") {
+      // Two types are one wound, each meeting its own resistance. Landed one
+      // at a time, an enemy concentrating saved twice at the lower DCs.
+      noteLanded(
+        landTypedParts({
+          campaign,
+          turn,
+          encounter,
+          enemy: now,
+          parts: landing.map((part) => ({ amount: part.amount, type: part.type ?? "" })),
+          sheets,
+          sheetsById,
+          weapon: { magical: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistanceBy: "Elemental Adept" } : {}) },
+          ...(plan && secondPart.type && elementalAdeptApplies(plan.caster, secondPart.type) ? { ignoreTypes: { types: [secondPart.type], by: "Elemental Adept" } } : {}),
+          spell: true,
+        }),
+      );
+    } else if (firstPart && now.status === "alive") {
+      noteLanded(
+        applyEnemyDamage(
+          campaign,
+          turn,
+          encounter,
+          now,
+          firstPart.amount,
+          sheets,
+          sheetsById,
+          firstPart.type,
+          // An enemy's spell is a spell's damage too (casterEnemyId).
+          plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistance: true } : {}) } : undefined,
+        ),
+      );
+    }
+    // A character's spell killed it: Grim Harvest and the features that answer
+    // any kill (ar-ws-harvest.ts).
+    const onKill = plan && row.dead ? spellKill(campaign, encounter, enemy, plan.caster.id, { spell: plan.spell, spellLevel: plan.spellLevel, slotLevel: plan.slotLevel }) : [];
+    if (onKill.length) {
+      row.subclassFeatures = onKill;
     }
     // What the failure cost, so legendary_resist can settle it as a success
     // (src/lib/dm/legendary-tools.ts): the conditions and the hit points a
@@ -700,6 +815,11 @@ export function handleAoeDamage(
       coverOf: saveCover,
     }),
   );
+
+  for (const refId of echoesCaught) {
+    const echo = echoAreaSave(campaign, turn, refId, { ability, dc: saveDc, damage: total, halfOnSave, label: args.spell ?? "the area" });
+    if (echo) results.push(echo);
+  }
 
   // Sleet Storm: whoever concentrates in it saves or loses the spell.
   const shaken = plan
@@ -787,6 +907,9 @@ export function handleAoeDamage(
   return {
     ok: true,
     ...(plan ? { spell: plan.spell, caster: plan.caster.name } : {}),
+    ...(wrathNote ? { destructiveWrath: wrathNote } : {}),
+    ...(empoweredNote ? { empowered: empoweredNote } : {}),
+    ...(bombardNote ? { spellBombardment: bombardNote } : {}),
     ...(plan?.mech?.note ? { spellNote: plan.mech.note } : {}),
     ...(shaken.length ? { concentration: shaken } : {}),
     damageRolled: total,

@@ -1,3 +1,9 @@
+import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
+import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
+import { hearsSong } from "@/lib/dm/mt-srd-bard";
+import { breakConcentration } from "@/lib/dm/concentration";
+import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
+import { sleeplessBy } from "@/lib/srd/mt-species-traits";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -37,8 +43,9 @@ import {
 } from "@/lib/dm/calendar";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
+import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
@@ -179,20 +186,36 @@ export function handleTakeRest(
   rawArguments: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  vessel: VesselRest | null = null,
 ): ToolResult {
   if (getActiveEncounter(campaign.id)) {
     return { error: "The party cannot rest during combat. End the encounter first.", refused: "rules" };
   }
   const args = parseRestArgs(rawArguments);
   if (!args) {
-    return {
-      error:
-        `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
-      retry: true,
-    };
+    // With each field zod refused and why (#875): the fixed line answered
+    // a reason sent as a list with how to send kind, which it had.
+    return argumentsRefusal(
+      `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
+      restArgsSchema,
+      rawArguments,
+    );
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;
+  // A short rest while a Genie's Sanctuary Vessel holds someone is the
+  // vessel's: ten minutes, for those inside (genie-vessel.ts).
+  if (args.kind === "short" && !vessel) {
+    const inVessel = sanctuaryShortRest(sheets);
+    if (inVessel) {
+      const inside = new Set(inVessel.inside);
+      const out = handleTakeRest(campaign, turnId, rawArguments, sheets.filter((sheet) => inside.has(sheet.id)), new Map([...sheetsById].filter(([id]) => inside.has(id))), inVessel);
+      return "error" in out ? out : {
+        ...out,
+        sanctuaryVessel: `Inside the genie's vessel ten minutes give the benefit of a short rest, and each Hit Die spent there restores the warlock's proficiency bonus more.${inVessel.outside.length ? ` ${inVessel.outside.join(", ")} stayed outside: they only waited, and rest once the vessel is left.` : ""}`,
+      };
+    }
+  }
 
   // Who gains from a long rest is decided from how they START it: alive, at
   // least 1 hit point, and no long rest ended in the 24 hours before this
@@ -241,7 +264,7 @@ export function handleTakeRest(
   // realism, five minutes and an hour under the heroic option. Those two
   // settings existed only as a line in the prompt until there was a clock to
   // count against (src/lib/dm/calendar.ts).
-  const restedMinutes = restMinutes(args.kind, variant);
+  const restedMinutes = vessel ? Math.min(vessel.minutes, restMinutes(args.kind, variant)) : restMinutes(args.kind, variant);
   // A party at rest is no longer on the march.
   setTravelPace(campaign.id, null);
   // A long rest charges the resters' lifestyle for its dawns (below), so
@@ -261,10 +284,32 @@ export function handleTakeRest(
   // Whoever rested with an item they asked to attune to is attuned now,
   // short rest or long (a long rest holds a short one).
   const attuned = settleAttunements(campaign, turnId, sheets, reason);
+  // A held Destructive Wrath ends with the rest that gives the use back: a
+  // long rest for those who gain from it, a short one for everyone standing
+  // (its uses come back below). Read from `resting` alone, a short rest left
+  // the hold beside a full set of uses.
+  const regaining = args.kind === "long" ? resting : sheets.filter((stale) => !getSheetById(stale.id)?.deathSaves?.dead).map((stale) => stale.id);
+  for (const id of regaining) {
+    const sheet = getSheetById(id);
+    if (sheet && holdsDestructiveWrath(sheet)) {
+      spendWrath(campaign.id, id);
+    }
+  }
 
   if (args.kind === "long") {
     const rested: string[] = [];
+    const omens: string[] = [];
     for (const id of resting) {
+      // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
+      // incapacitated, and incapacitation ends concentration): the spell
+      // ends whole, through the one function that ends one, before the rest
+      // is read from the sheet it leaves.
+      // An elf in Trance and a warforged at Sentry's Rest never sleep
+      // (src/lib/srd/mt-species-traits.ts): the spell they hold is still held.
+      const resting = getSheetById(id);
+      if (resting?.concentratingOn && !sleeplessBy(resting)) {
+        breakConcentration(campaign, turnId, id, "fell asleep for the long rest");
+      }
       const sheet = getSheetById(id);
       if (!sheet || sheet.deathSaves?.dead) {
         continue;
@@ -279,8 +324,13 @@ export function handleTakeRest(
         campaign.gameSettings.variantRules.supplies === true && goingWithout(hunger?.[sheet.id]);
       // A disease shapes the rest itself: sewer plague restores no hit
       // points, cackle fever keeps its level of exhaustion (afflictions.ts).
-      auditRest(campaign, turnId, sheet, "rest_long", afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving })), reason);
+      const restPatch = afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving }));
+      auditRest(campaign, turnId, sheet, "rest_long", restPatch, reason);
       rested.push(sheet.name);
+      // The omen the stars give for the day (before-roll-logic.ts), said in the rest's line.
+      if (restPatch.omen) {
+        omens.push(`${sheet.name}'s Cosmic Omen reads ${OMEN_WORDS[restPatch.omen]}`);
+      }
     }
     recordLongRests(campaign.id, resting, endsAt);
     // The saves a disease asks at the end of a long rest.
@@ -293,11 +343,13 @@ export function handleTakeRest(
     const resilience = authoredRestTempHp(campaign, resting);
     // Tranquility: an Open Hand monk wakes under Sanctuary (srd-defenses.ts).
     tranquilityAfterLongRest(campaign, resting);
+    // Death's Friend: a soul trinket in hand when none is carried (mt-mr-trinkets.ts).
+    soulTrinketAtRestEnd(campaign, resting);
     tableNote(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
         unaffected.length ? ` No benefit from it for ${unaffected.join("; ")}.` : ""
-      }`,
+      }${omens.length ? ` ${omens.join("; ")}.` : ""}`,
       "rest-long",
     );
     // A night passing is a timeskip: the off-screen world moves too (world
@@ -320,6 +372,7 @@ export function handleTakeRest(
       ...(living.length ? { lifestyle: living } : {}),
       ...(leaving.length ? { companionsLeft: leaving } : {}),
       ...(unaffected.length ? { unaffected: unaffected.join("; ") } : {}),
+      ...(omens.length ? { omens } : {}),
       ...(deathSaves.length ? { deathSaves } : {}),
       restedFor,
       ...(nowReads ? { now: nowReads } : {}),
@@ -385,10 +438,15 @@ export function handleTakeRest(
       turnId,
       sheetId,
       requested,
-      songDie,
+      // "who can hear your performance" (mt-srd-bard.ts).
+      songDie: songDie && hearsSong(getSheetById(sheetId) ?? { conditions: [] }) ? songDie : null,
       chefDie,
       reason,
       requestedBy: "dm",
+      // The GM at the console spends for a player who is at the table: the
+      // dice are still that player's, and on physical dice they roll them.
+      // The server rolls for one who is away, as it spends for them.
+      mayWait: chooses(sheetId),
     });
     if ("error" in spent) {
       const sheet = getSheetById(sheetId);
@@ -422,7 +480,7 @@ export function handleTakeRest(
 
   tableNote(
     campaign,
-    `The party takes a short rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.`,
+    `${vessel ? "Inside the genie's vessel, the party takes" : "The party takes"} a short rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.`,
     "rest-short",
   );
   return {

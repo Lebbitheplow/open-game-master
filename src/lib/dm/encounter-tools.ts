@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { hiddenNow } from "@/lib/dm/board-hidden";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
 import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
@@ -40,9 +41,11 @@ import {
   setEncounterAway,
 } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
-import { closeStandInTurn, listOpenPendingRolls, openStandInTurn, saveDmTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
+import { endTurnToolLine, endTurnWaitsLine, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -55,8 +58,10 @@ import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/bui
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
 import { askShares, conductGate } from "@/lib/dm/party-conduct";
 import { registerFightStarter } from "@/lib/dm/turncoat";
+import { askThoseTheOpeningLeft } from "@/lib/dm/fight-opening-ask";
+import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { hasHumanDm } from "@/lib/dm/viewer";
-import { decideAmbush, rollOpeningInitiative } from "@/lib/dm/encounter-open";
+import { decideAmbush, hasAlert, rollOpeningInitiative } from "@/lib/dm/encounter-open";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { healthState } from "@/lib/bestiary/health";
 import {
@@ -128,14 +133,17 @@ import {
 import { incapacitatedBy, isIncapacitated } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { attackLine, attackStopOf, standStillLine, stillFromStop, tableName, type StandStill } from "@/lib/dm/turn-lines-logic";
-import { endTurnSaves, startTurnConditions, tickEncounterConditions } from "@/lib/dm/condition-tick";
+import { endTurnSaves, startTurnConditions, tickEncounterConditions, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { endTurns } from "@/lib/dm/turn-end";
+import { isHeldPark, registerNamedHeldRunner, runHeld } from "@/lib/dm/held-call";
+import { BACKSTOP_CALL, backstopWaiting } from "@/lib/dm/backstop-calls";
 import { turnStartEffects } from "@/lib/dm/turn-start-effects";
 import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { rollDeathSave } from "@/lib/dm/death";
+import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
 
@@ -144,18 +152,19 @@ import { settleLegendaryFollowUp } from "@/lib/dm/legendary-purchase";
 import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
+import { heldMoveLine, holdMoveForWatch } from "@/lib/dm/turn-hold";
 import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
 import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostTurns } from "@/lib/dm/enemies-due";
 import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
+import { recordEnemyTurnEnds } from "@/lib/dm/last-save";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
-import { holdsFeat } from "@/lib/srd/feat-effects";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
 import { beamTurnEnd } from "@/lib/dm/witch-bolt";
@@ -212,9 +221,6 @@ function crLabel(cr: number): string {
 }
 
 // ---- start_encounter ----
-
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
 
 // Who is not at this fight. A weak caller's one string ("Alice" or "Alice,
 // Bob") counts as the list; any other shape is refused, because dropping it
@@ -463,6 +469,11 @@ function handleStartEncounter(
     encounter.surprisedIds = ambush.surprisedIds;
     ambushLines = ambush.lines;
   }
+  // Feral Instinct: a surprised barbarian keeps their first turn if they rage
+  // first (mt-srd-barbarian.ts).
+  const feral = feralInstinctOpening(encounter.surprisedIds, sheets);
+  encounter.surprisedIds = feral.surprisedIds;
+  ambushLines = [...ambushLines, ...feral.lines];
   const partySurprised = sheets.some((sheet) => encounter.surprisedIds.includes(sheet.id));
   // Legendary pools and the lair flag (docs/vtt-parity-implementation-
   // plan.md 4.1), written with the fight so the tracker shows them at once.
@@ -584,9 +595,18 @@ function handleStartEncounter(
 // src/lib/dm/turncoat.ts): the same start_encounter, its roster that
 // companion alone, the initiative rolled as the storyteller's own fight rolls
 // it where the AI runs the table.
+// At a table a person runs nobody reads the answer's "Now call request_roll
+// with kind=initiative for EACH character": the heroes are asked here, as the
+// console's start_encounter asks them (fight-opening-ask.ts). At an AI-run table
+// the next GM turn asks whoever the opening left (turn.ts prepareTurn).
 export function startFightAgainst(campaign: Campaign, name: string, summary: string): ToolResult {
   const actor = hasHumanDm(campaignSeats(campaign)) ? "human_dm" : "ai";
-  return handleStartEncounter(campaign, JSON.stringify({ enemies: [{ monster: name }], summary }), listSheets(campaign.id), actor);
+  const started = handleStartEncounter(campaign, JSON.stringify({ enemies: [{ monster: name }], summary }), listSheets(campaign.id), actor);
+  if (actor !== "human_dm" || typeof started.error === "string") {
+    return started;
+  }
+  const asked = askThoseTheOpeningLeft(campaign);
+  return asked ? { ...started, ...asked } : started;
 }
 registerFightStarter(startFightAgainst);
 
@@ -599,6 +619,11 @@ registerFightStarter(startFightAgainst);
 function entryAlive(entry: OrderEntry, enemiesById: Map<string, EncounterEnemy>): boolean {
   if (entry.kind === "pc") {
     const sheet = getSheetById(entry.characterId);
+    // A dying warlock whose death save is Searing Vengeance rises as the turn
+    // starts and takes it: the pointer stops for them (searing-vengeance.ts).
+    if (risesWithVengeance(sheet)) {
+      return true;
+    }
     return ((sheet?.currentHp ?? 0) > 0 || Boolean(sheet && holdsOn(sheet))) && !isIncapacitated(sheet?.conditions ?? []);
   }
   if (entry.kind === "enemy") {
@@ -898,7 +923,13 @@ function openAfterAmbush(
 }
 
 // Deadlock guard: if combat is stuck collecting initiative with nothing
-// pending, roll the stragglers digitally so a fight can never wedge.
+// pending, roll the stragglers digitally so a fight can never wedge. A
+// player who rolls real dice or holds their rolls is not rolled for: the AI's
+// turn sends them their card before the model speaks (turn.ts openTurn,
+// initiative-ask.ts), and the lead can roll it digitally from the card. Rolled
+// here, a fight opened outside a model call (a companion turning on the
+// party) or a model that never asked took those players' initiative from
+// them, even as they said they would roll it (play-test 2026-11-07, B3).
 export function ensureInitiativeProgress(campaign: Campaign): string | null {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || encounter.orderReady) {
@@ -913,7 +944,10 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
       .map((entry) => entry.characterId),
   );
   // Rolling for one who is away would bring them to the fight.
-  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter((sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead);
+  const held = heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaign.id));
+  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter(
+    (sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead && !held.has(sheet.userId),
+  );
   if (!missing.length) {
     return null;
   }
@@ -967,8 +1001,8 @@ function handleDamageEnemy(
   let args: z.infer<typeof damageArgsSchema>;
   try {
     args = damageArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_damage on an enemy needs enemyId and amount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_damage on an enemy needs enemyId and amount.", error, rawArguments);
   }
   if (args.amount === undefined && args.fallFeet === undefined) {
     return { error: "apply_damage on an enemy needs the amount, or fallFeet for a fall.", retry: true };
@@ -1068,16 +1102,29 @@ function handleEndEncounter(
     }
     return { error: "No active encounter: there is no fight to end.", retry: true };
   }
+  // A refused parse keeps the outcome it can read: one unreadable optional
+  // field (reason null, or a list) discarded the readable "victory" beside
+  // it, and the fight was recorded as a truce at half the XP.
   let args: z.infer<typeof endArgsSchema>;
   try {
     args = endArgsSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    args = { outcome: undefined };
+    let raw: unknown = null;
+    try {
+      raw = JSON.parse(rawArguments || "{}");
+    } catch {
+      raw = null;
+    }
+    const outcome = raw && typeof raw === "object" ? endArgsSchema.shape.outcome.safeParse((raw as Record<string, unknown>).outcome) : null;
+    args = { outcome: outcome?.success ? outcome.data : undefined };
   }
   // A foe lying knocked out is beaten, not standing (issue #667: the fight
   // read as a truce, paid half and marked the beaten foe fled).
   const statuses = listEnemies(encounter.id).map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
   const { outcome, inferred } = resolveEncounterOutcome(args.outcome, statuses);
+  // Its creatures let go of whoever they held: none of them is in reach
+  // once the fight is over (grapple.ts releaseGrapplesHeldByAny).
+  releaseGrapplesHeldByAny(campaign, listEnemies(encounter.id).map((enemy) => enemy.id));
   return {
     ok: true,
     ...(inferred
@@ -1151,8 +1198,8 @@ function handleEndTurn(
   let args: z.infer<typeof endTurnArgsSchema>;
   try {
     args = endTurnArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: end_turn needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: end_turn needs characterId.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
@@ -1165,6 +1212,14 @@ function handleEndTurn(
   if (actingCombatantId(encounter) !== sheet.id || !current || current.kind !== "pc") {
     return { error: `It is ${current?.name ?? "someone else"}'s turn, not ${sheet.name}'s.`, retry: true };
   }
+  // Their attack's d20 waits on the player's choice (after-roll.ts): ended
+  // now, the swing would never land, and what they chose would be spent on
+  // nothing. The resumed turn ends it once the roll lands.
+  // Nor would one whose dice the player has yet to enter (open-roll-logic.ts).
+  const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+  if (withPlayer) {
+    return { error: endTurnToolLine(sheet.name, withPlayer), retry: true };
+  }
   // A pass now would leave the enemies before this turn behind
   // (src/lib/dm/enemies-due.ts).
   const waiting = enemiesOwedTurn(encounter).map((enemy) => enemy.displayName);
@@ -1173,6 +1228,12 @@ function handleEndTurn(
       error: `${waiting.join(" and ")} act${waiting.length === 1 ? "s" : ""} before ${sheet.name}: take ${waiting.length === 1 ? "its turn" : "their turns"} first, then end the turn.`,
       retry: true,
     };
+  }
+  // A player's End Turn already ended it, and the move waits on a watch stop
+  // (turn-hold.ts).
+  const ending = heldMoveLine(encounter, sheet.id);
+  if (ending) {
+    return { error: `${ending} Nothing was changed.`, refused: "rules" };
   }
   markTurnResolved(turn, sheet.id);
   finishPassBeforeMove(campaign);
@@ -1248,6 +1309,17 @@ function handleEndTurn(
 // who acts next. Any other refused attack ends nothing: the model hears why
 // first. A parked one
 // (physical dice) waits on its roll, and its player ends the turn.
+// The turn an attack sent with endTurn asked to end, ended once its last
+// roll has landed on dice entered at the table (pending-roll-land.ts).
+export function endTurnOnLanding(campaign: Campaign, turnId: string, characterId: string): ToolResult {
+  const turn = getDmTurn(turnId);
+  if (!turn) {
+    return { error: "The turn the attack was made in is gone.", refused: "rules" };
+  }
+  const sheets = listSheets(campaign.id);
+  return handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+}
+
 function endTurnAfterAttack(
   campaign: Campaign,
   turn: DmTurn,
@@ -1257,6 +1329,18 @@ function endTurnAfterAttack(
   result: ToolResult,
 ): ToolResult {
   const characterId = endTurnAsked(rawArguments);
+  // Parked for dice entered at the table: the turn ends once the last of the
+  // attack's rolls has landed (pending-roll-land.ts carryEndTurn), so the
+  // open rolls carry the ask. Dropped here, "and end the turn" was lost on
+  // real dice while the server's dice ended it.
+  if (characterId && result[PC_ATTACK_PARKED]) {
+    for (const open of listPendingForTurn(turn.id)) {
+      if (open.status === "pending" && open.attack && open.characterId === characterId) {
+        setPendingAttack(open.id, { ...open.attack, endTurn: true });
+      }
+    }
+    return result;
+  }
   if (!characterId || result[PC_ATTACK_PARKED] || (result.error && !result.outOfReach)) {
     return result;
   }
@@ -1393,7 +1477,7 @@ function encounterCall(
     case "use_reaction":
       return { result: handleUseReaction(campaign, turn, rawArguments, sheets, sheetsById) };
     case "end_turn": {
-      const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
+      const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId", true);
       return { result: unasked ? unasked : handleEndTurn(campaign, turn, rawArguments, sheets, sheetsById) };
     }
     case "damage_enemy":
@@ -1498,7 +1582,7 @@ export function settleTurn(campaign: Campaign, before: TurnHolder | null): strin
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
     // stable character, the death save a pass rolled).
-    partyFallen(campaign, before.partyCouldRise);
+    partyFallen(campaign, before.partyCouldRise, before.order);
   }
   return fireFightEvents(campaign);
 }
@@ -1728,13 +1812,18 @@ function advancePointer(
   // was, by the characters the pointer walks past (their turns start and end
   // in this move), and by the enemies walked past last move, whose turns the
   // DM turn since has taken (src/lib/dm/condition-tick.ts endTurnSaves).
+  // Those enemies save only against what held them as their turns began: a
+  // hold laid after a creature's turn, by the character after it, waits for
+  // the end of its next turn.
   const landingId = orderEntryId(encounter.order[next.turnIndex]);
+  const walkedBefore = (encounter.legendary.walked ?? []).filter((id) => enemiesById.has(id));
   const savers = new Set<string>([
     ...(leaving && leaving.kind === "pc" ? [orderEntryId(leaving)] : []),
     ...starting.filter((id) => id !== landingId && !enemiesById.has(id)),
-    ...(encounter.legendary.walked ?? []).filter((id) => enemiesById.has(id)),
+    ...walkedBefore,
   ]);
-  endTurnSaves(campaign, encounter, [...savers]);
+  const heldAtStart = encounter.legendary.walkedHolds ? { holders: walkedBefore, keys: encounter.legendary.walkedHolds } : undefined;
+  endTurnSaves(campaign, encounter, [...savers], heldAtStart);
   encounter.legendary.walked = starting.filter((id) => enemiesById.has(id));
   // Initiative count 20, losing ties: the lair acts in the DM turn that
   // follows the move that passes it, or that round it does not
@@ -1752,6 +1841,12 @@ function advancePointer(
   // it is thrown away, so they never depend on when this row is saved.
   const endedTurn = { budget: encounter.turnBudget };
   encounter.turnBudget = null;
+  // Kept as the ended turn's record (legendary-logic.ts endedTurn).
+  if (endedTurn.budget) {
+    encounter.legendary.endedTurn = endedTurn.budget;
+  } else {
+    delete encounter.legendary.endedTurn;
+  }
   // The character landed on after enemies this walk hands out, who act
   // first: their turn begins once those enemies have acted
   // (src/lib/dm/held-turn.ts). Until then their spent reaction stays spent
@@ -1773,7 +1868,7 @@ function advancePointer(
   // back with the defender's own turn too.
   const startsNow = starting.filter((id) => id !== heldTurn);
   encounter.reactionsUsed = encounter.reactionsUsed.filter(
-    (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`)),
+    (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`) || id.startsWith(`${PET_REACTION_PREFIX}${owner}:`)),
   );
   startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
   if (heldTurn) {
@@ -1782,6 +1877,14 @@ function advancePointer(
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
   turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd, ...(beamEnd ? [beamEnd] : [])]);
+  // What holds the enemies walked past now that their turns have begun,
+  // read after what their turns' starts lay: the saves at the next move are
+  // against these only.
+  if (encounter.legendary.walked.length) {
+    encounter.legendary.walkedHolds = turnHoldKeys(campaign, encounter.id, encounter.legendary.walked);
+  } else {
+    delete encounter.legendary.walkedHolds;
+  }
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1
@@ -1927,12 +2030,6 @@ function advancePointer(
   return { enemiesPassed: handedOut, wrapped: wraps, dyingPassed };
 }
 
-// The creatures the GM keeps off the board now (the tracker's "someone
-// unseen"), read fresh: a line may not name one.
-function hiddenNow(encounterId: string): Set<string> {
-  const map = getBattleMapForEncounter(encounterId);
-  return new Set(map ? listHiddenRefIds(map.id) : []);
-}
 
 // The lines for the enemies a pass recorded as losing their turns (stunned,
 // paralyzed, held when it came: enemies-due.ts holdForEnemies), cleared as
@@ -1970,13 +2067,46 @@ function sayLostTurns(campaign: Campaign, encounter: Encounter) {
   }
 }
 
+// One enemy's turn the model left, played by the server as a held call of
+// its own (backstop-calls.ts says why): its lines, or null when a d20 in it
+// waits on a watcher or a player's dice, and the pass stops there.
+function playSkippedEnemy(
+  campaign: Campaign,
+  turn: DmTurn,
+  encounter: Encounter,
+  enemyId: string,
+  hidden: Set<string>,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): string[] | null {
+  const played = runHeld(campaign, turn, { name: BACKSTOP_CALL, rawArguments: JSON.stringify({ enemyId }), toolCallId: null }, () =>
+    playSkippedEnemyNow(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById),
+  );
+  return isHeldPark(played) ? null : (played as string[]);
+}
+
+// The held call run again once its roll or its watcher has answered: that
+// creature's turn, played and said in a note of its own. The pass goes on
+// from the creature after it (continueBackstop).
+registerNamedHeldRunner(BACKSTOP_CALL, (campaign, turn, call) => {
+  const { enemyId } = JSON.parse(call.rawArguments || "{}") as { enemyId?: unknown };
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter || typeof enemyId !== "string") {
+    return { ok: true, lines: [] };
+  }
+  const sheets = listSheets(campaign.id);
+  const lines = playSkippedEnemyNow(campaign, turn, encounter, enemyId, hiddenNow(encounter.id), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  postSkippedNote(campaign, turn, lines, true);
+  return { ok: true, lines };
+});
+
 // One enemy's turn the model left, played by the server: the lines it
 // earns, its attack or why it made none (issue #666: the turn note named four
 // foes and two lines followed; an enemy out of reach walked across the board
 // with no word). Nothing only for one no longer in the fight (dead or fled,
 // announced when it happened) or one whose action was already played, by
 // whoever played it, who posted its line.
-function playSkippedEnemy(
+function playSkippedEnemyNow(
   campaign: Campaign,
   turn: DmTurn,
   encounter: Encounter,
@@ -2116,7 +2246,7 @@ export function autoActSkippedEnemies(
   // A person who played the enemies themselves hands the turn on with
   // play=false: only the end of those turns is applied.
   options: { play?: boolean } = {},
-) {
+): string[] | null {
   const play = options.play !== false;
   const notes: string[] = [];
   // Who the table may not be told is there (the tracker's "someone unseen").
@@ -2124,28 +2254,87 @@ export function autoActSkippedEnemies(
   // The ones a pass walked past while they could not act lost their turns:
   // said first, as the turns came (issue #666).
   notes.push(...lostTurnLines(campaign.id, enemyIds, hidden));
-  for (const enemyId of play ? enemyIds : []) {
-    notes.push(...playSkippedEnemy(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById));
+  // The enemies not played because one of them waits on a roll or a
+  // watcher (playSkippedEnemy): it and the ones after it, in order.
+  let rest: string[] | null = null;
+  for (const [at, enemyId] of (play ? enemyIds : []).entries()) {
+    const lines = playSkippedEnemy(campaign, turn, encounter, enemyId, hidden, sheets, sheetsById);
+    if (!lines) {
+      rest = enemyIds.slice(at);
+      break;
+    }
+    notes.push(...lines);
   }
   // The enemies handed out have had their turns: what lasted until the end
-  // of one of them ends now (src/lib/dm/turn-end.ts).
-  const ended = endTurns(campaign, encounter.id, enemyIds);
+  // of one of them ends now (src/lib/dm/turn-end.ts). Those still to play
+  // end theirs when the pass goes on.
+  const ended = endTurns(campaign, encounter.id, rest ? enemyIds.slice(0, enemyIds.length - rest.length) : enemyIds);
   notes.push(...ended.lines);
   if (ended.enemiesChanged) {
     publishEncounter(campaign.id);
   }
-  if (notes.length) {
-    const seq = tableNoteSeq(campaign.id);
-    const message = insertCampaignMessage({
-      campaignId: campaign.id,
-      seq,
-      authorType: "system",
-      glyph: "cue-battle",
-      content: play ? `Skipped enemy turns resolve automatically: ${notes.join(" ")}` : notes.join(" "),
-    });
-    publishWithSeq(campaign.id, seq, "message_added", { message });
-    saveDmTurn(turn);
+  postSkippedNote(campaign, turn, notes, play);
+  return rest;
+}
+
+function postSkippedNote(campaign: Campaign, turn: DmTurn, notes: string[], play: boolean) {
+  if (!notes.length) {
+    return;
   }
+  const seq = tableNoteSeq(campaign.id);
+  const message = insertCampaignMessage({
+    campaignId: campaign.id,
+    seq,
+    authorType: "system",
+    glyph: "cue-battle",
+    content: play ? `Skipped enemy turns resolve automatically: ${notes.join(" ")}` : notes.join(" "),
+  });
+  publishWithSeq(campaign.id, seq, "message_added", { message });
+  saveDmTurn(turn);
+}
+
+// The backstop stopped on a held roll: where the close of the turn goes on
+// once it is in (continueBackstop).
+function holdBackstop(campaign: Campaign, turn: DmTurn, then: "narration" | "follow") {
+  const live = getActiveEncounter(campaign.id);
+  if (live) {
+    live.legendary.backstop = { turnId: turn.id, then };
+    saveEncounter(live);
+  }
+}
+
+// The roll or the watcher the backstop stopped for has answered and its
+// creature's turn was played (the held call's runner, above): the close of
+// the turn goes on from where it stopped, the enemies after that one played
+// in order, and the turn that follows woken. Called once per answer
+// (backstop-resume.ts); a later creature that waits stops it again.
+export function continueBackstop(campaign: Campaign, turn: DmTurn) {
+  if (backstopWaiting(turn.id)) {
+    return;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const held = encounter?.legendary.backstop;
+  if (encounter && held) {
+    delete encounter.legendary.backstop;
+    saveEncounter(encounter);
+  }
+  // A person's hand-on (onPersonsTurn): it plays the rest of what is due.
+  if (turn.actor === "human_dm") {
+    if (encounter && enemiesDue(encounter).length) {
+      handOnEnemyTurns(campaign, turn, true);
+    }
+    return;
+  }
+  if (!held || held.turnId !== turn.id || held.then === "narration") {
+    advanceAfterTurn(campaign, turn);
+    return;
+  }
+  playEnemiesDue(campaign, turn);
+  if (backstopWaiting(turn.id)) {
+    holdBackstop(campaign, turn, "follow");
+    return;
+  }
+  followTurn(campaign, turn);
 }
 
 // Called from finalize() on a successful DM turn: the pointer moves only
@@ -2183,6 +2372,12 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // played: the backstop plays the rest, and the turn they held up begins.
   if (turn && enemiesDue(encounter).length) {
     playEnemiesDue(campaign, turn);
+    // One of them waits on a roll or a watcher: the close goes on, from the
+    // top, once it is in.
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "narration");
+      return;
+    }
     Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   }
   // The model's end_turn already moved the pointer in this DM turn and
@@ -2196,8 +2391,19 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     // An enemy it plays may take out the summon whose turn it is.
     const holder = turnHolder(campaign.id);
-    autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
-    beginHeldTurn(campaign);
+    const rest = autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
+    // One of them waits on a roll or a watcher: the handoff keeps the ones
+    // still to play, and the close goes on from here once it is in.
+    if (rest) {
+      const live = getActiveEncounter(campaign.id);
+      if (live) {
+        live.legendary.handoff = { ...handoff, enemyIds: rest };
+        saveEncounter(live);
+      }
+      holdBackstop(campaign, turn, "narration");
+      return;
+    }
+    beginHeldTurn(campaign, true);
     passOnFrom(campaign, holder);
     // The pass the model's end_turn made, said now that the narration is in,
     // with what waited for the enemies it handed over (issue 713).
@@ -2228,6 +2434,13 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // to act the pointer still rests on a PC (nextTurn), and this is what
   // moves the fight on round by round.
   const stuck = turnStuck(campaign);
+  // Their attack's d20 is still with the player (open-roll-logic.ts): a
+  // narration that handed the turn on, or their own words ending it, waits
+  // for it as End Turn and end_turn do. A turn told while the card was open
+  // (another player posted) moved the pointer here, and the swing was lost.
+  if (resolved && !stuck && toHitRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
+    return;
+  }
   if (!resolved && !stuck) {
     // AI companion turn the model never adjudicated: the server takes the
     // basic action (like skipped enemies), so combat cannot wedge on a
@@ -2254,6 +2467,10 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // for them (followTurn).
   if (turn && !stuck) {
     playEnemiesDue(campaign, turn);
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "follow");
+      return;
+    }
   }
   followTurn(campaign, turn);
 }
@@ -2265,6 +2482,10 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 function playEnemiesDue(campaign: Campaign, turn: DmTurn) {
   const holder = turnHolder(campaign.id);
   handOnEnemyTurns(campaign, turn, true);
+  // Stopped on a held roll: the hold stays up until the pass goes on.
+  if (backstopWaiting(turn.id)) {
+    return;
+  }
   passOnFrom(campaign, holder);
 }
 
@@ -2278,6 +2499,9 @@ function followTurn(campaign: Campaign, turn?: DmTurn) {
   const encounter = getActiveEncounter(campaign.id);
   if (encounter && enemiesDue(encounter).length) {
     playEnemiesDue(campaign, turn);
+    if (backstopWaiting(turn.id)) {
+      holdBackstop(campaign, turn, "follow");
+    }
   }
 }
 
@@ -2453,7 +2677,7 @@ function enemyStanding(encounter: Encounter): boolean {
 // engine calls a victory. Somebody only stable (healing brings them round,
 // SRD 5.1) or a DM's combatant in the order: the ending is the story's, so
 // the table is told and the DM woken once to say it.
-function partyFallen(campaign: Campaign, couldRise: boolean) {
+function partyFallen(campaign: Campaign, couldRise: boolean, orderBefore?: OrderEntry[]) {
   const encounter = getActiveEncounter(campaign.id);
   // The party is the characters on its side: a companion fighting against
   // it is no member whose fall loses the fight (src/lib/dm/combatant.ts).
@@ -2462,6 +2686,16 @@ function partyFallen(campaign: Campaign, couldRise: boolean) {
     return;
   }
   if (!enemyStanding(encounter) || partyCanRise(encounter)) {
+    return;
+  }
+  // A character who left the order alive in this call (a Fathomless Plunge
+  // taking the living away from a dead friend) went, they did not fall: the
+  // fight is the GM's to end as the story has it (party_fled), never lost
+  // because only the dead are left on the board.
+  const leftAlive = (orderBefore ?? []).some((entry) => entry.kind === "pc"
+    && !encounter.order.some((now) => now.kind === "pc" && now.characterId === entry.characterId)
+    && getSheetById(entry.characterId)?.deathSaves?.dead !== true);
+  if (leftAlive) {
     return;
   }
   // A DM's own combatant in the order (an "npc" slot) may yet raise them:
@@ -2650,11 +2884,20 @@ function nearestTo(sheetId: string, encounterId: string, enemies: EncounterEnemy
 // The player's own End Turn. In a fight whose plan still holds an event it
 // runs as a turn of its own (fight-events.ts asEventTurn), so an event it
 // brings on goes back with the round it began.
-export function endOwnTurn(campaignId: string, userId: string): boolean {
+// "held": the move waits on a watcher's stop (src/lib/dm/turn-hold.ts).
+export function endOwnTurn(campaignId: string, userId: string): boolean | "held" {
   return asEventTurn(campaignId, () => endOwnTurnNow(campaignId, userId));
 }
 
-function endOwnTurnNow(campaignId: string, userId: string): boolean {
+// The held move, once its stop has closed (turn-hold.ts runHeldMove).
+export function endHeldOwnTurn(campaignId: string, characterId: string): boolean {
+  return asEventTurn(campaignId, () => {
+    const campaign = getCampaignById(campaignId);
+    return campaign ? passOwnTurn(campaign, characterId) : false;
+  });
+}
+
+function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   const campaign = getCampaignById(campaignId);
   const encounter = getActiveEncounter(campaignId);
   if (!campaign || !encounter || !encounter.orderReady) {
@@ -2670,11 +2913,31 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean {
   }
   // The enemies before this turn have not had theirs yet: a second pass
   // would leave them behind.
-  if (enemiesOwedTurn(encounter).length) {
+  if (enemiesOwedTurn(encounter).length || encounter.legendary.heldMove) {
+    return false;
+  }
+  // Their attack's d20 is still with them: ended now, the swing would never
+  // land (open-roll-logic.ts). endTurnRefusal says which card to answer.
+  if (toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
+    return false;
+  }
+  // A watcher who could answer a save this move rolls: the move waits on
+  // their choice (src/lib/dm/turn-hold.ts).
+  if (holdMoveForWatch(campaign, encounter, current.characterId)) {
+    return "held";
+  }
+  return passOwnTurn(campaign, current.characterId);
+}
+
+// The move off a character's turn as their End Turn makes it.
+function passOwnTurn(campaign: Campaign, characterId: string): boolean {
+  const encounter = getActiveEncounter(campaign.id);
+  const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  if (!encounter || current?.kind !== "pc" || current.characterId !== characterId) {
     return false;
   }
   finishPassBeforeMove(campaign);
-  Object.assign(encounter, getActiveEncounter(campaignId) ?? encounter);
+  Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   const couldRise = partyCanRise(encounter);
   // A person moved the fight on: the rounds it may go round alone start
   // again (idledOut). The pass below saves it.
@@ -2705,6 +2968,10 @@ function owedNamesForTable(encounter: Encounter): string[] {
 export function endTurnRefusal(campaignId: string, userId: string): string {
   const encounter = getActiveEncounter(campaignId);
   const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  const waiting = current?.kind === "pc" ? heldMoveLine(encounter, current.characterId) : null;
+  if (waiting) {
+    return waiting;
+  }
   const campaign = getCampaignById(campaignId);
   // A dominated character's turn is the DM's (companion-command.ts).
   const held = current?.kind === "pc" && current.userId === userId ? getSheetById(current.characterId) : null;
@@ -2713,6 +2980,10 @@ export function endTurnRefusal(campaignId: string, userId: string): string {
     return dominated;
   }
   if (encounter && campaign && current?.kind === "pc" && turnUserId(campaign, current) === userId) {
+    const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
+    if (withPlayer && !enemiesOwedTurn(encounter).length) {
+      return endTurnWaitsLine(withPlayer);
+    }
     const waiting = owedNamesForTable(encounter);
     if (waiting.length) {
       const one = waiting.length === 1;
@@ -2737,12 +3008,29 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
   if (due.length) {
     const sheets = fieldedSheets(campaign);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
-    autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
+    const rest = autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
+    // One of them waits on a roll or a watcher (playSkippedEnemy): it and the
+    // ones after it stay due and the hold stays up; the pass goes on once the
+    // answer is in (continueBackstop).
+    if (rest) {
+      const live = getActiveEncounter(campaign.id);
+      if (live) {
+        live.legendary.due = [...new Set([...rest, ...(live.legendary.due ?? [])])];
+        saveEncounter(live);
+      }
+      publishEncounter(campaign.id);
+      return null;
+    }
+  }
+  // Their turns have ended: what answers a creature ending its turn near
+  // has that record now, before the character up next acts.
+  if (due.length) {
+    recordEnemyTurnEnds(campaign.id, encounter, due);
   }
   releaseEnemyHold(campaign);
   // The enemies before the character up next have had their turns: theirs
   // begins (src/lib/dm/held-turn.ts).
-  beginHeldTurn(campaign);
+  beginHeldTurn(campaign, true);
   // What the pass left for after them: the round turning over, the dying's
   // saves (issue 713).
   finishPass(campaign);

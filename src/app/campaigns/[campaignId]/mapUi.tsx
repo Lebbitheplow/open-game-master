@@ -15,7 +15,7 @@ import type { Catalogue } from "@/app/campaigns/[campaignId]/useMapPaint";
 export function PanelHead({ children, aside, className }: { children: ReactNode; aside?: ReactNode; className?: string }) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <h3 className="shrink-0 font-display text-[10px] uppercase tracking-[0.2em] text-amber-400/90">{children}</h3>
+      <h3 className="shrink-0 font-display text-[10px] uppercase tracking-[0.14em] text-amber-400/90">{children}</h3>
       <span aria-hidden="true" className="h-px flex-1 bg-gradient-to-r from-amber-500/30 to-transparent" />
       {aside ? <span className="shrink-0 font-mono text-[9px] text-stone-500">{aside}</span> : null}
     </div>

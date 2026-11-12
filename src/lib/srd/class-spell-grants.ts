@@ -118,7 +118,49 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
       sources: tome ? [{ feature: "Pact of the Tome", count: 3, onTop: true }] : [],
     };
   }
+  if (classId === "cleric") {
+    return clericGrants(view, features);
+  }
+  // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
+  // at 2nd level, you learn one additional druid cantrip of your choice."
+  if (view.level >= 2 && subclassNamedBare(view.subclass ?? "", "Circle of the Land")) {
+    return { ...NONE, extraCantrips: 1 };
+  }
   return NONE;
+}
+
+// The domains that teach spells from another list, on top of the cleric's
+// counts (the divine clause ledger): "One druid cantrip" (Acolyte of Nature),
+// "two wizard cantrips of your choice" (Arcane Initiate), "Learn a
+// necromancy cantrip" (Reaper), and Arcane Mastery's wizard spell of each of
+// 6th to 9th level, "always prepared and counted as a cleric spell". Before
+// this the builder held a Nature, Arcana or Death cleric to the class's own
+// count and list, so the cantrip the domain teaches could not be taken.
+const CLERIC_GRANTS = [
+  { feature: "Acolyte of Nature", subclass: "Nature Domain", level: 1, count: 1, spells: false },
+  { feature: "Arcane Initiate", subclass: "Arcana Domain", level: 1, count: 2, spells: false },
+  { feature: "Reaper", subclass: "Death Domain", level: 1, count: 1, spells: false },
+  { feature: "Arcane Mastery", subclass: "Arcana Domain", level: 17, count: 4, spells: true },
+];
+
+function clericGrants(view: GrantView, features: Array<{ name: string }>): ClassSpellGrants {
+  const held = CLERIC_GRANTS.filter(
+    (grant) => view.level >= grant.level && (subclassNamedBare(view.subclass ?? "", grant.subclass) || holdsFeature({ features }, grant.feature)),
+  );
+  if (!held.length) {
+    return NONE;
+  }
+  const cantrips = held.filter((grant) => !grant.spells).reduce((sum, grant) => sum + grant.count, 0);
+  const spells = held.filter((grant) => grant.spells).reduce((sum, grant) => sum + grant.count, 0);
+  return {
+    ...NONE,
+    anyList: cantrips + spells,
+    anyListSpells: spells > 0,
+    extraCantrips: cantrips,
+    extraSpells: spells,
+    feature: held.map((grant) => grant.feature).join(" and "),
+    sources: held.map((grant) => ({ feature: grant.feature, count: grant.count, onTop: true })),
+  };
 }
 
 // Whether a Pact of the Chain warlock casts this spell as a ritual: find

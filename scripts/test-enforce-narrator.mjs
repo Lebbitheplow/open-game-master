@@ -332,8 +332,8 @@ await test("The feature rules match the feature engine: Inspiration, the Channel
   const text = systemText();
   assert.match(text, /set_condition condition "inspiration"/);
   assert.match(text, /pass useInspiration true on their request_roll/);
-  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'turn the faithless', 'abjure the extraplanar', 'conquering presence', 'dreadful aspect', 'sacred weapon', 'preserve life', or 'vow of enmity', 'arcane abjuration' or 'abjure enemy' with targetEnemyId/);
-  assert.match(text, /never set turned or frightened by hand/);
+  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'turn the faithless', 'abjure the extraplanar', 'conquering presence', 'dreadful aspect', 'sacred weapon', 'preserve life', or 'vow of enmity', 'arcane abjuration', 'abjure enemy' or 'control undead' with targetEnemyId/);
+  assert.match(text, /never set turned, frightened or charmed by hand/);
   assert.match(text, /'empty body' or 'diamond soul'/);
   assert.match(text, /Indomitable rerolls the last failed save by itself/);
   assert.match(text, /The server applies Aura of Protection \(on and off the map\), Danger Sense, Evasion, Relentless Rage, Survivor, and the racial save advantages/);

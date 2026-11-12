@@ -18,6 +18,7 @@ const {
   fromCopper,
   packCostCopper,
   parseCoins,
+  priceText,
   purseCoins,
   purseCopper,
   splitCopper,
@@ -29,6 +30,22 @@ function test(name, fn) {
   fn();
   passed += 1;
 }
+
+// The pack prints a part of a gold piece as a decimal and its newer rows a
+// bare gold figure; the builder's gear list showed them as printed beside a
+// receipt that wrote the same price in coins.
+test("a price the pack or an author wrote reads as every other price does", () => {
+  assert.equal(priceText("0.05 gp"), "5 cp");
+  assert.equal(priceText("0.4 gp"), "4 sp");
+  assert.equal(priceText("1.5 gp"), "1 gp 5 sp");
+  assert.equal(priceText("0.15"), "1 sp 5 cp");
+  assert.equal(priceText("17"), "17 gp");
+  // Already in the codes: kept as written, its thousands mark too.
+  assert.equal(priceText("2,000 gp"), "2,000 gp");
+  assert.equal(priceText("5 sp"), "5 sp");
+  assert.equal(priceText("varies"), "varies");
+  assert.equal(priceText(""), "");
+});
 
 test("a price reads in gold, with silver and copper only for the remainder", () => {
   assert.equal(formatPrice(5500), "55 gp");

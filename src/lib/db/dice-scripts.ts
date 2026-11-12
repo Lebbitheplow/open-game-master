@@ -1,5 +1,6 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { registerScriptedDice, type RollFrame } from "@/lib/dice";
+import { registerRolledHook, registerScriptedDice, rollExpression, type RollFrame, type RollResult } from "@/lib/dice";
+import { OMEN_SIDES, withOmenDie, withoutEdge, type BeforeRollPower, type Omen } from "@/lib/dm/before-roll-logic";
 import {
   describeUsed,
   diceScriptSchema,
@@ -15,12 +16,14 @@ import {
   type DiceScript,
   type ForcedFace,
   type RollPurpose,
+  type RollTag,
   type SeedRun,
   type SpentFace,
   type UsedFace,
 } from "@/lib/dice-script-logic";
 import { liveTurnChangeOf, recordTurnChange, updateTurnChange, type TurnChange } from "@/lib/db/turn-changes";
 import { currentDmJob, currentTurnId } from "@/lib/dm/job-control";
+import { textKey } from "@/lib/language/text-logic";
 import { currentUsageScope } from "@/lib/usage/scope";
 import { isPlaytest, normalizeCampaignKind } from "@/lib/workshop/kind";
 
@@ -267,6 +270,80 @@ export function giveBackDice(campaignId: string, changes: readonly TurnChange[])
     .run(JSON.stringify(back.queue), JSON.stringify(back.used), seed.state, seed.rolls, nowIso(), campaignId);
 }
 
+// A number Portent foretold, armed on the d20 of the one roll it answers while
+// the held call runs (src/lib/dm/foresight.ts). The one exception to the honest
+// dice of a live table, and it is the rules': the player rolled it at dawn.
+// `tags`: the rolls it may land on, the first d20 to match taking it (a spell
+// at a creature is either the caster's attack or the creature's save).
+type ArmedFace = { face: number; tags: readonly RollTag[]; used: boolean };
+declare global {
+  var __odmArmedFaces: Map<string, ArmedFace> | undefined;
+}
+
+export function armForetold(campaignId: string, armed: { face: number; tags: readonly RollTag[] }) {
+  (globalThis.__odmArmedFaces ??= new Map()).set(campaignId, { ...armed, used: false });
+}
+
+// Whether a d20 took it.
+export function disarmForetold(campaignId: string): boolean {
+  const armed = globalThis.__odmArmedFaces?.get(campaignId);
+  globalThis.__odmArmedFaces?.delete(campaignId);
+  return armed?.used ?? false;
+}
+
+// Whether a roll's purpose is one of the rolls an armed answer may land on.
+function fitsTags(tags: readonly RollTag[], purpose: RollTag): boolean {
+  const names = [purpose.who ?? []].flat().map(textKey);
+  return tags.some((tag) => purpose.roller === tag.roller && purpose.kind === tag.kind && [tag.who ?? []].flat().map(textKey).some((name) => names.includes(name)));
+}
+
+function takeArmedFace(campaignId: string | null, sides: number, purpose: RollTag | null): number | null {
+  const armed = campaignId ? globalThis.__odmArmedFaces?.get(campaignId) : undefined;
+  if (!armed || armed.used || sides !== 20 || !purpose || !fitsTags(armed.tags, purpose)) {
+    return null;
+  }
+  armed.used = true;
+  return armed.face;
+}
+
+// Cosmic Omen's d6 or Restore Balance's one d20, set at a watch stop before
+// the roll it answers and taken by the first roll whose d20 fits its tags
+// (src/lib/dm/foresight.ts runWithForetold). Applied however the roll turns
+// out, as the features are chosen before it. `took`: the roll before and
+// after, once one did; Restore Balance takes only a roll that threw more than
+// one d20 (it had an edge to cancel), and the first fitting roll ends the
+// wait either way.
+type ArmedBefore = { power: BeforeRollPower; omen: Omen | null; tags: readonly RollTag[]; seen: boolean; took: { before: number; after: number; who: string } | null };
+declare global {
+  var __odmArmedBefore: Map<string, ArmedBefore> | undefined;
+}
+
+export function armBeforeRoll(campaignId: string, armed: { power: BeforeRollPower; omen: Omen | null; tags: readonly RollTag[] }) {
+  (globalThis.__odmArmedBefore ??= new Map()).set(campaignId, { ...armed, seen: false, took: null });
+}
+
+export function disarmBeforeRoll(campaignId: string): { before: number; after: number; who: string } | null {
+  const armed = globalThis.__odmArmedBefore?.get(campaignId);
+  globalThis.__odmArmedBefore?.delete(campaignId);
+  return armed?.took ?? null;
+}
+
+function takeArmedBefore(result: RollResult, purpose: RollTag): RollResult {
+  const campaignId = globalThis.__odmArmedBefore?.size ? rollingTable() : null;
+  const armed = campaignId ? globalThis.__odmArmedBefore?.get(campaignId) : undefined;
+  const lead = result.terms[0];
+  if (!armed || armed.seen || !lead || lead.kind !== "dice" || lead.sides !== 20 || !fitsTags(armed.tags, purpose)) {
+    return result;
+  }
+  armed.seen = true;
+  const after = armed.power === "restore_balance" ? withoutEdge(result) : withOmenDie(result, rollExpression(`1d${OMEN_SIDES}`).total, armed.omen ?? "weal");
+  if (!after) {
+    return result;
+  }
+  armed.took = { before: result.total, after: after.total, who: [purpose.who ?? []].flat().join(" and ") || "the roller" };
+  return after;
+}
+
 // The hook (src/lib/dice.ts defaultRng): the face this die must show, or
 // null to roll it honestly.
 function scriptedDie(sides: number, frame: RollFrame): number | null {
@@ -277,6 +354,11 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
   }
   try {
     const campaignId = rollingTable();
+    const foretold = globalThis.__odmArmedFaces?.size ? takeArmedFace(campaignId, sides, frame.purpose) : null;
+    if (foretold !== null) {
+      frame.forcedD20 = foretold;
+      return foretold;
+    }
     if (!campaignId || !isTestTable(campaignId)) {
       return null;
     }
@@ -327,3 +409,4 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
 }
 
 registerScriptedDice(scriptedDie);
+registerRolledHook(takeArmedBefore);

@@ -41,12 +41,16 @@ import { creditStoredSpell, putInRing, storeRefusal, storerNamed } from "@/lib/d
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { storeInBead } from "@/lib/dm/ar-ws-abeyance";
+import { isBeadSlot } from "@/lib/srd/ar-ws-conjured";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { takeItemCast } from "@/lib/srd/item-cast-credit";
-import { ringBarrier, ringDrawnMark, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
+import { spellDrawnMark, takeItemCast } from "@/lib/srd/item-cast-credit";
+import { ringBarrier, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
 
 export type StoreRequest = {
   storeIn: string;
@@ -66,6 +70,10 @@ export function storeSpell(
   request: StoreRequest,
   cast: (input: { spell: string; level?: number; dryRun?: boolean; storing: CastStoring }) => CastResult,
 ): ToolResult {
+  // An Arcane Abeyance bead is made by the cast that fills it (ar-ws-abeyance.ts).
+  if (isBeadSlot(request.storeIn)) {
+    return storeInBead(campaign, turnId, caster, holder, request, cast);
+  }
   const ring = storerNamed(holder, request.storeIn);
   if (!ring) {
     return { error: `${holder.name} carries no Ring of Spell Storing named "${request.storeIn}". Nothing was spent.`, retry: true };
@@ -205,7 +213,7 @@ export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, it
       if (!paid.ok) {
         return toolError(paid);
       }
-      spent = { ...paid.budget, oncePerTurn: [...paid.budget.oncePerTurn, ringDrawnMark(entry.spell)] };
+      spent = { ...paid.budget, oncePerTurn: [...paid.budget.oncePerTurn, spellDrawnMark(entry.spell)] };
       if (!dryRun) {
         storeBudget(encounter, spent);
       }

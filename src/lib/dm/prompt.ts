@@ -16,6 +16,7 @@ import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace,
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { classFeatureDescription, findCustomClass } from "@/lib/classes";
 import { backgroundWords, classWords, raceWords } from "@/lib/sheet-words";
@@ -72,7 +73,7 @@ import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/cu
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
 import { normalizeGm, normalizeSafety, renderGmBlock, renderSafetyBlock } from "@/lib/dm/safety-logic";
-import { renderNarrationStyle } from "@/lib/dm/narration-style-logic";
+import { fightNarrationRule, renderNarrationStyle } from "@/lib/dm/narration-style-logic";
 import { renderChapterLod } from "@/lib/dm/chapter-lod";
 import { buildPinnedMemoriesBlock } from "@/lib/dm/pin-logic";
 import { NPC_PROMPT_MAX, rankNpcsForPrompt } from "@/lib/dm/npc-rank-logic";
@@ -89,6 +90,7 @@ import {
 } from "@/lib/dm/context-budget";
 import type { ChatMessage } from "@/lib/model-client";
 import { describeIntent } from "@/lib/dm/intent-logic";
+import { withoutServerLines } from "@/lib/dm/tool-text";
 import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
@@ -192,6 +194,10 @@ export type DmEncounterState = {
   // The current combatant's name while their turn waits on their player
   // (src/lib/dm/player-word.ts characterAwaitingPlayer).
   awaitingPlayer: string | null;
+  // The current character's name while their player keeps them where they
+  // stand (src/lib/dm/player-word.ts characterHeld); optional for a state
+  // built before it existed.
+  holding?: string | null;
   // The enemies a pass made outside the model's turn left owed their turns
   // before the current character's (src/lib/dm/enemies-due.ts); absent when
   // none are. The pass's table note names them too
@@ -449,10 +455,10 @@ ${setting}
 - An ally who will fight or be targeted MUST go through add_companion BEFORE you narrate them joining, exactly like add_enemies for the other side; an ally who never went through add_companion has no sheet and cannot fight, be attacked, or be healed. Ordinary background NPCs (shopkeepers, quest-givers) are NOT companions; only use add_companion for someone who will act alongside the party.
 - A character's OWN bound creature (a familiar from Find Familiar, a Beast Master's companion, a Drakewarden's drake, a story pet) is a pet on their sheet, not a companion: a caster's Find Familiar is cast with cast_buff (the form in variant; the server pays the casting and binds the pet), and the others come with summon_pet (the server validates the granting feature and refuses characters who lack it), attack with pet_attack on the owner's own turn (it costs what the bond says: a Beast Master's companion the owner's action, a drake the bonus action, a Pact of the Chain familiar one attack of the Attack action; ordinary familiars cannot attack, and a downed owner commands nothing), route enemy damage at it with apply_damage, its petName and the damage's type (its own hit points and defenses, never the owner's; a familiar at 0 HP vanishes), and end the bond with dismiss_pet. Pets listed in GAME STATE are real; a pet not listed there does not exist.
 - You play companions fully. Speak their dialogue inline in your narration with a voice matching their personality brief. They are supporting cast: they advise, banter, and fight, but never make the party's decisions, never outshine the players, and never speak for a player character.
-- In combat, on a companion's initiative turn, act for them: move_token with no forced if they need to reposition (it spends their speed and draws opportunity attacks like any walk), then pc_attack or cast_at_enemy with their characterId (or another tool that fits), then end_turn for them if no attack fits. If you do nothing on their turn, the server makes a basic attack for them automatically.
+- In combat, on a companion's initiative turn, act for them: move_token with no forced if they need to reposition (it spends their speed and draws opportunity attacks like any walk), then pc_attack or cast_at_enemy with their characterId (or another tool that fits), then end_turn for them if no attack fits. Their turn ends with your reply: a move after their action is yours to make now with move_token, never a question to the players. If you do nothing on their turn, the server makes a basic attack for them automatically.
 - A companion GAME STATE says a player commands in fights is the exception: on its turn that player gives its orders, and you resolve them from the player's message exactly as you resolve a player character's, never moving or attacking for it on your own. Its voice and choices out of fights stay yours.
 - All sheet rules apply to companions: their tools, spells, slots, and resources work exactly like a player character's, through the same tool calls.
-- Never call request_player_input for a companion and never send_whisper to one; no human is behind them.
+- Never call request_player_input for a companion you play and never send_whisper to a companion; no human is behind them. To ask about a commanded companion's turn, name its commander's own character.
 - When a companion dies, narrate it, record_event the death, and then dismiss_companion once the story moves on.`;
 }
 
@@ -684,6 +690,9 @@ export function describeSheet(
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         size: sizeForRace(sheet.race),
+        // The capacity the pack is refused by (Peerless Athlete doubles it).
+        carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   const loadLine = load
@@ -1139,6 +1148,10 @@ export function buildGameStateBlock(state: DmGameState): string {
         lines.push(
           `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
         );
+      }
+      if (encounter.holding) {
+        const name = encounter.holding;
+        lines.push(`${name}'s player said ${name} stays where they are: never walk ${name} this turn (no move_token, approach or toward); resolve only what they asked from where they stand.`);
       }
       if (encounter.openHits?.length) {
         const who = encounter.openHits.map(
@@ -1815,7 +1828,7 @@ export const sendWhisperTool = {
         },
         message: {
           type: "string",
-          description: "The private note, addressed to those characters in second person.",
+          description: "The private note, addressed to those characters in second person. Up to 2,000 characters.",
         },
       },
       required: ["characterIds", "message"],
@@ -1913,7 +1926,9 @@ function turnRuleParts(state: TurnRuleState): {
     rulesCarrySecret = Boolean(secretRules);
   }
   const dmSystem = buildDmSystem(state.campaign, settingsRules, state.ruleContext ?? null);
-  const fightRules = state.encounter ? encounterRulesText(tracksAmmunition(state.campaign), state.ruleContext ?? null) : "";
+  const fightRules = state.encounter
+    ? `${encounterRulesText(tracksAmmunition(state.campaign), state.ruleContext ?? null)}\n${fightNarrationRule(state.campaign.gameSettings?.narrationLength)}`
+    : "";
   return { dmSystem, fightRules, secretRules, rulesCarrySecret };
 }
 
@@ -1942,7 +1957,12 @@ export function buildDmMessages(
   // A small model reads the server's "[roll:<id>]" markers in its own past
   // narration as something to write: Qwen3.5 9B wrote "[roll:pc_attack]" in
   // place of the attack. The short rules leave them out of the transcript.
-  const dmText = (text: string) => (state.ruleContext?.brief ? text.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : text);
+  // A passage stored before issue 900's fix may hold the card line the model
+  // copied then: read back as the model's own words, it would be copied again.
+  const dmText = (text: string) => {
+    const said = withoutServerLines(text);
+    return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
+  };
 
   const rendered = history.map((message) => {
     const name = message.characterId

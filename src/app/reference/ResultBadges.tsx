@@ -4,6 +4,7 @@ import { needsLabel, offeredInPlay } from "@/lib/content/levelup-logic";
 import type { Need } from "@/lib/content/needs-logic";
 import { BEST_EFFORT_CHIP } from "@/lib/content/reading-logic";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { priceText } from "@/lib/srd/currency";
 
 // What a reference result is, at a glance: its kind, its level or rarity or
 // challenge, and where it came from, as chips. A chip wears a painted family
@@ -72,7 +73,8 @@ export function badgesFor(category: string, row: BadgeRow): Badge[] {
     }
     const rarity = text(row.rarity);
     if (rarity) badges.push({ key: "rarity", text: rarity.toLowerCase(), tone: rarityTone(rarity) });
-    const cost = text(row.cost);
+    // In the notation every price takes: the pack prints "0.05 gp".
+    const cost = priceText(text(row.cost));
     if (cost) badges.push({ key: "cost", text: cost, tone: "gold" });
   } else if (category === "monsters") {
     const cr = text(row.data.challenge_rating ?? row.data.cr);

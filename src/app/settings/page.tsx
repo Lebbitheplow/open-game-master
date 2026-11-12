@@ -90,9 +90,10 @@ export default function SettingsPage() {
     version: string;
     graceDays: number;
   } | null>(null);
-  // A world one of the apps hosts: guests never chose a password (the app
-  // minted one and renews their session with it), so offering to change it
-  // would lock them out of their own seat. The host keeps the option.
+  // A world one of the apps hosts: nobody there chose a password. The app
+  // made one up for the host and for each guest and renews their session
+  // with it, so changing it only locks the app out of its own seat, and
+  // the current password the form asks for is one nobody was ever shown.
   const [deviceWorld, setDeviceWorld] = useState(false);
   // Seeded from the Discord link redirect (?linked=1 / ?error=...).
   const [discordNotice] = useState(() => {
@@ -154,7 +155,7 @@ export default function SettingsPage() {
       const response = await fetch("/api/profile", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(me.hasPassword ? { password: deleteConfirm } : {}),
+        body: JSON.stringify(askPassword ? { password: deleteConfirm } : {}),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -192,8 +193,10 @@ export default function SettingsPage() {
   }
 
   // The confirm button unlocks on the right password, or on typing DELETE for
-  // Discord-only accounts that have no password.
-  const deleteReady = me?.hasPassword ? deleteConfirm.length > 0 : deleteConfirm === "DELETE";
+  // Discord-only accounts that have no password and in a world one of the
+  // apps hosts, whose password nobody was shown (the session is the proof).
+  const askPassword = Boolean(me?.hasPassword) && !deviceWorld;
+  const deleteReady = askPassword ? deleteConfirm.length > 0 : deleteConfirm === "DELETE";
   const graceDays = about?.graceDays ?? 14;
   const graceCopy =
     graceDays === 0
@@ -247,7 +250,7 @@ export default function SettingsPage() {
         {[
           { id: "settings-profile", label: "Profile", glyph: "tab-characters" },
           { id: "settings-dice", label: "Dice", glyph: "die-d20" },
-          ...(deviceWorld && !me.isAdmin ? [] : [{ id: "settings-signin", label: "Sign-in", glyph: "tab-admin" }]),
+          ...(deviceWorld ? [] : [{ id: "settings-signin", label: "Sign-in", glyph: "tab-admin" }]),
           { id: "settings-appearance", label: "Appearance", glyph: "tab-settings" },
           { id: "settings-dictation", label: "Dictation", glyph: "ui-speech" },
           { id: "settings-blocked", label: "Blocked", glyph: "ui-lock" },
@@ -320,7 +323,7 @@ export default function SettingsPage() {
         <DiceLookSummary />
       </PageSection>
 
-      {deviceWorld && !me.isAdmin ? null : (
+      {deviceWorld ? null : (
       <PageSection id="settings-signin" heading={me.hasPassword === false ? "Set a password" : "Password"} glyph="tab-admin">
         {me.hasPassword === false ? (
           <>
@@ -468,7 +471,7 @@ export default function SettingsPage() {
 
       {confirmingDelete ? (
         <DeleteAccountDialog
-          hasPassword={Boolean(me.hasPassword)}
+          hasPassword={askPassword}
           graceCopy={graceCopy}
           graceDays={graceDays}
           value={deleteConfirm}

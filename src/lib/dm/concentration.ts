@@ -1,4 +1,5 @@
 import { concentrationFeat } from "@/lib/srd/feat-combat";
+import { bladesongConcentrationBonus } from "@/lib/dm/ar-ws-bladesong";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
@@ -25,12 +26,23 @@ import { endSpellSummons } from "@/lib/dm/summon-store";
 import { authoredConcentrationGuard } from "@/lib/srd/authored-effects-more";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { textKey } from "@/lib/language/text-logic";
+import { mindSharpenerSave } from "@/lib/dm/infusion-charges";
 
 // Server-tracked concentration: casting a concentration spell sets it (and
 // breaks the previous one), taking damage forces the CON save server-side,
 // and dropping to 0 HP always ends it. This module must not import
 // mutations.ts (which imports it). Enemy concentration is out of scope;
 // enemies have no tracked spells.
+//
+// One function ends a held spell: endHeldSpell below, reached through
+// breakConcentration (damage, a condition, a rage, the clock, a long rest's
+// sleep, a beam that missed) or setConcentration (a new spell). Every path
+// that drops a character's concentration goes through them, so the spell's
+// conditions, areas and creatures end with it: a sheet patch that only set
+// concentratingOn to null left an ally polymorphed by Animal Shapes for the
+// sixteen hours left of it after the night's rest (LC-CONC-02).
+// scripts/test-concentration-ends-once.mjs fails on a source file that
+// clears it any other way.
 
 function writeConcentration(
   campaign: Campaign,
@@ -99,12 +111,20 @@ export function setConcentration(
   const casting = castingHeldBy(sheet, displaced);
   writeConcentration(campaign, turnId, sheet, spell, `casting ${spell}`, slotLevel);
   if (displaced) {
-    clearSpellConditionsByName(campaign, displaced, sheet.userId, sheet.id);
-  }
-  if (casting) {
-    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, `${spell} was cast, and it takes concentration`));
+    endHeldSpell(campaign, sheet, displaced, casting, `${spell} was cast, and it takes concentration`);
   }
   return { displaced, failedCasting: casting?.spell ?? null };
+}
+
+// What ends with a held spell, however its concentration ended: Bless's
+// dice, Haste's action, Hold Person's paralysis, its areas and the creatures
+// it called stop here instead of waiting for their duration to expire, and a
+// spell of a minute or more still being cast fails (long-casting-logic.ts).
+function endHeldSpell(campaign: Campaign, sheet: CharacterSheet, spell: string, casting: ReturnType<typeof castingHeldBy>, cause: string) {
+  clearSpellConditionsByName(campaign, spell, sheet.userId, sheet.id);
+  if (casting) {
+    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, cause));
+  }
 }
 
 // The line a cast's result carries for the concentration it ended.
@@ -130,13 +150,7 @@ export function breakConcentration(
   // its "casting" condition already, so its completion is no failure.
   const casting = castingHeldBy(sheet, spell);
   writeConcentration(campaign, turnId, sheet, null, cause);
-  // The spell's lingering effect conditions end with the concentration:
-  // Bless's dice, Haste's action, Hold Person's paralysis all stop here
-  // instead of waiting for their duration to expire.
-  clearSpellConditionsByName(campaign, spell, sheet.userId, sheet.id);
-  if (casting) {
-    castingFailedNote(campaign, sheet.id, failLine(sheet.name, casting.spell, cause));
-  }
+  endHeldSpell(campaign, sheet, spell, casting, cause);
   return spell;
 }
 
@@ -385,6 +399,9 @@ export function concentrationDamageHook(
   const feat = concentrationFeat(fresh);
   const warCaster = feat?.advantage === true;
   const floor = conditionConcentrationFloor(fresh.conditions);
+  // The Bladesong's Intelligence modifier on this save alone (ar-ws-bladesong.ts).
+  const song = bladesongConcentrationBonus(fresh);
+  const added = [feat?.die, song ? String(song) : null].filter(Boolean).join("+");
   const save = rollCharacterSave(
     campaign,
     null,
@@ -396,9 +413,12 @@ export function concentrationDamageHook(
     null,
     warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : null,
     false,
-    { ...(feat?.die ? { die: feat.die } : {}), ...(floor ? { floor } : {}) },
+    { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
   );
-  const held = save.success;
+  // An artificer's Mind Sharpener turns the failure into a success with a
+  // charge and the reaction (src/lib/dm/infusion-charges.ts).
+  const sharpened = save.success ? null : mindSharpenerSave(campaign, fresh);
+  const held = save.success || Boolean(sharpened);
   if (!held) {
     breakConcentration(campaign, turnId, fresh.id, `failed the DC ${dc} CON save`);
   }
@@ -409,6 +429,8 @@ export function concentrationDamageHook(
       rolled: save.total,
       held,
       ...(feat ? { [feat.advantage ? "warCaster" : "battleCaster"]: feat.advantage ? "advantage on the save" : `+${feat.die} on the save` } : {}),
+      ...(song ? { bladesong: `+${song} on the save (Intelligence, while the Bladesong runs)` } : {}),
+      ...(sharpened ? { mindSharpener: sharpened } : {}),
       ...(save.notes.length ? { riders: save.notes } : {}),
     },
   };

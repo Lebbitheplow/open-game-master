@@ -329,7 +329,7 @@ function CallRow({ call, id }: { call: TraceCall; id: string }) {
           {outcomeLabel(call)}
         </span>
         <span className="min-w-0 flex-1 text-xs">
-          <span className="break-all font-mono text-amber-100">{call.tool}</span>
+          <span className="break-all font-code text-amber-100">{call.tool}</span>
           <span className="text-stone-400"> {SOURCE_LABEL[call.source]}</span>
           {call.afterCorrection ? <span className="text-ember-300">, after the engine sent it back</span> : null}
           {call.summary || call.names.length ? (
@@ -342,13 +342,13 @@ function CallRow({ call, id }: { call: TraceCall; id: string }) {
       </button>
       <div id={id} hidden={!open} className="animate-fade-up space-y-1.5 border-t border-stone-700/50 px-2 py-2">
         <p className={ui.sectionEyebrow}>Sent with</p>
-        <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-950/60 p-2 font-mono text-[11px] text-stone-300">
+        <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-950/60 p-2 font-code text-[11px] text-stone-300">
           {call.args || "{}"}
         </pre>
         {call.answer ? (
           <>
             <p className={ui.sectionEyebrow}>The engine answered</p>
-            <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-950/60 p-2 font-mono text-[11px] text-stone-300">
+            <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-950/60 p-2 font-code text-[11px] text-stone-300">
               {call.answer}
             </pre>
           </>

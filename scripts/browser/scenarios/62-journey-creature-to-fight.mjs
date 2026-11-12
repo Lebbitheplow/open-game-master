@@ -193,6 +193,11 @@ export default {
       await eventually(() => row.count(), { timeoutMs: 20_000, label: "the prepared fight in the console" });
       await row.scrollIntoViewIfNeeded();
       await t.tap(row.getByRole("button", { name: "Deploy", exact: true }));
+      // A GM's Deploy first asks how the fight opens (DeployOpeningDialog.tsx);
+      // every field left empty deploys it as prepared.
+      const opening = page.getByRole("dialog", { name: `Deploy ${fight.name}` }).locator("visible=true").first();
+      await eventually(() => opening.count(), { timeoutMs: 15_000, label: "the Deploy dialog" });
+      await t.tap(opening.getByRole("button", { name: "Deploy", exact: true }));
       // The table turns to the fight at once, so the console's own note is
       // gone by the time it could be read: the fight itself is the answer,
       // or the console's refusal.

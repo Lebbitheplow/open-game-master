@@ -54,7 +54,7 @@ export function ConsoleOutcomeBanner({ campaignId, encounterId = null }: { campa
       className="reveal-banner mb-2 rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-2 text-xs"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="gold-title font-display text-[11px] uppercase tracking-[0.18em]">{shown.title}</p>
+        <p className="gold-title font-display text-[11px] uppercase tracking-[0.14em]">{shown.title}</p>
         <button
           type="button"
           onClick={dismiss}

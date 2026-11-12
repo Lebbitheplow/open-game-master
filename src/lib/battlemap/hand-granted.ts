@@ -21,14 +21,10 @@ import type { GrantedAttack } from "@/lib/srd/condition-effect-types";
 import { grantedAttackDice } from "@/lib/srd/granted-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
-import { addFlat, attackGate, costGate, gated, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
+import { namedSpellGlyph } from "@/lib/battlemap/hand-spells";
+import { addFlat, attackGate, costGate, gated, grantedRideMark, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
 
 type GrantedMeta = { rounds?: number; spell?: string; slotLevel?: number };
-
-// The once-a-turn mark pc_attack leaves when the strike rode the activation.
-export function grantedRideMark(name: string): string {
-  return `granted:${name.toLowerCase()}`;
-}
 
 // Whether this strike would ride the activation's own action now, as
 // pc-attack-spend.ts ridesActivation asks it.
@@ -43,7 +39,9 @@ function rangeOf(attack: GrantedAttack): string {
   if (attack.from) {
     return attack.ranged ? `${attack.from.reachFeet} ft` : `${attack.from.reachFeet} ft of it`;
   }
-  return attack.ranged ? `${attack.rangeFeet ?? 60} ft` : "5 ft";
+  // A melee strike's own reach (Dread Lord's shadows, 30 feet), as
+  // pc_attack measures it (pc-attack-profile.ts reachTiles).
+  return attack.ranged ? `${attack.rangeFeet ?? 60} ft` : `${attack.reachFeet ?? 5} ft`;
 }
 
 function rulesOf(attack: GrantedAttack, rides: boolean): string {
@@ -100,6 +98,8 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
       resource: "",
       condition: "",
       icon: { kind: "spell", key: meta?.spell ?? attack.name, family: null },
+      // The spell that grants it wears its glyph here too (issue 845).
+      ...(meta?.spell ? { glyph: namedSpellGlyph(meta.spell), targetWords: "1 creature" } : {}),
       target: "enemy",
       toHit,
       damage,

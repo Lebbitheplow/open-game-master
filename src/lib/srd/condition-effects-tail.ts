@@ -189,4 +189,82 @@ export const TAIL_CONDITION_EFFECTS: ConditionEffectRow[] = [
     match: ["flesh to stone"],
     summary: "Flesh to Stone: it saves at the end of each of its turns; three failures turn it to stone, three successes free it.",
   },
+  // Zealous Presence (Path of the Zealot 10): "advantage on attack rolls and
+  // saving throws until the start of your next turn".
+  {
+    id: "zealous_presence",
+    match: ["zealous presence"],
+    summary: "Zealous Presence: advantage on attack rolls and saving throws until the barbarian's next turn.",
+    attackAdvantage: true,
+    advantageOn: [{ kind: "save" }],
+  },
+  // Bolstering Magic (Path of Wild Magic 6): "for 10 minutes the creature can
+  // roll a d3 whenever making an attack roll or an ability check".
+  {
+    id: "bolstering_magic",
+    match: ["bolstering magic (d3)", "bolstering magic"],
+    summary: "Bolstering Magic: +1d3 on attack rolls and ability checks for 10 minutes.",
+    attackDie: "1d3",
+    checkDie: "1d3",
+  },
+  // Unbreakable Majesty (College of Glamour 14): an attacker makes a Charisma
+  // save or picks a new target, the GM holding the save.
+  {
+    id: "unbreakable_majesty",
+    match: ["unbreakable majesty"],
+    summary: "Unbreakable Majesty: a creature that attacks the bard first makes a Charisma save against their spell save DC; on a failure it cannot attack them this turn and must pick a new target.",
+  },
+  // The record the counter repair's spends lay (src/lib/srd/authored-effects-
+  // sweep-counters.ts): what each holds while it lasts.
+  {
+    id: "universal_speech",
+    match: ["universal speech"],
+    summary: "Universal Speech: the creatures the bard chose understand them for an hour, whatever language they speak.",
+  },
+  {
+    id: "eyes_of_night",
+    match: ["eyes of night (300 ft darkvision)", "eyes of night"],
+    summary: "Eyes of Night: darkvision out to 300 feet for an hour, shared by a Twilight cleric.",
+  },
+  {
+    id: "ghost_walk",
+    match: ["ghost walk"],
+    summary: "Ghost Walk: spectral for 10 minutes, a 10-foot flying speed, attacks against them at disadvantage, and they move through creatures and objects.",
+    attacksAgainstDisadvantage: true,
+  },
+  {
+    id: "third_eye",
+    match: ["the third eye (darkvision 60 ft)", "the third eye (ethereal sight)", "the third eye (reads any language)", "the third eye (sees invisibility 10 ft)"],
+    summary: "The Third Eye: the sense the wizard chose (darkvision 60 feet, sight into the Ethereal Plane, reading any language, or seeing the invisible within 10 feet) until they are incapacitated or rest.",
+  },
+  {
+    id: "elixir_swiftness",
+    match: ["elixir of swiftness (+10 ft speed)"],
+    summary: "Elixir of Swiftness: walking speed +10 feet for an hour.",
+    speedBonus: 10,
+  },
+  {
+    id: "elixir_resilience",
+    match: ["elixir of resilience (+1 ac)"],
+    summary: "Elixir of Resilience: +1 AC for 10 minutes.",
+    acBonus: 1,
+  },
+  {
+    id: "elixir_boldness",
+    match: ["elixir of boldness (d4)"],
+    summary: "Elixir of Boldness: +1d4 on attack rolls and saving throws for a minute.",
+    attackDie: "1d4",
+    saveDie: "1d4",
+  },
+  {
+    id: "elixir_transformation",
+    match: ["elixir of transformation"],
+    summary: "Elixir of Transformation: the drinker's body is altered as by alter self for 10 minutes.",
+  },
+  // Bottled Respite (the Genie's vessel): the warlock is inside the vessel.
+  {
+    id: "genie_vessel",
+    match: ["in the genie's vessel"],
+    summary: "Bottled Respite: inside the genie's vessel, out of reach of the world outside, until they leave as a bonus action or the time runs out.",
+  },
 ];

@@ -5,7 +5,8 @@
 // the board, the conditions, the effects and the settings are looked at,
 // nothing is written and nothing is refused.
 
-import { holdsMoteDie } from "@/lib/dm/after-roll-logic";
+import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
+import { bondRider } from "@/lib/dm/emboldening-bond";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -16,7 +17,7 @@ import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { thrownAtRange } from "@/lib/dm/attack-rules";
-import { attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import {
   characterFlanks,
   characterShootsInMelee,
@@ -32,8 +33,8 @@ import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { sizeForRace } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
-import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
@@ -46,22 +47,9 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 import { heldHelp } from "@/lib/dm/help-logic";
 import { authoredAttackSituation } from "@/lib/dm/authored-hooks";
-import { hasFeralSenses, seenTargetConditions } from "@/lib/dm/attack-features";
 import { featUsable } from "@/lib/srd/feat-use";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
-
-// An unspent Bardic Inspiration die: the size rides in the condition name,
-// "bardic inspiration (d8)", as use_resource writes it.
-function heldInspiration(conditions: string[]): { condition: string; die: string } | null {
-  for (const condition of conditions) {
-    const match = /^bardic inspiration \((d\d{1,2})\)$/i.exec(condition.trim());
-    if (match) {
-      return { condition, die: match[1].toLowerCase() };
-    }
-  }
-  return null;
-}
 
 export type AttackGeometry = ReturnType<typeof attackGeometry>;
 
@@ -138,20 +126,15 @@ export function attackSituation(input: {
 
   // Conditions on both sides drive advantage and auto-crits; the model's
   // situational claim merges in as one more source.
-  // Feral Senses: a creature the ranger cannot see costs the roll nothing
-  // (src/lib/dm/attack-features.ts).
-  const feral = hasFeralSenses(sheet);
-  // Light on a mapped fight: who can see whom (src/lib/dm/attack-light.ts).
-  const sight = attackSight({
-    campaignId: campaign.id,
-    encounterId: encounter.id,
-    attacker: { refId: sheet.id, senses: characterSenses(sheet) },
-    target: { refId: enemy.id, senses: enemySenses(enemy) },
-  });
+  // Light on a mapped fight, blindsight or truesight past an invisible side,
+  // Feral Senses and a fear out of sight: attack-sight.ts, which the board
+  // view's edges send to the Hand's preview as well.
+  const seen = attackSightVerdict({ campaignId: campaign.id, encounterId: encounter.id, sheet, enemy });
+  const sight = seen.sight;
   const conditionContext = attackContext({
-    // Frightened weighs on the roll only with its source in sight.
-    attackerConditions: fearAsRolled(encounter.id, sheet.id, sheet.conditions, sheet.conditionMeta),
-    targetConditions: seenTargetConditions(sheet, enemy.conditions),
+    ...seen.senses,
+    attackerConditions: seen.attackerConditions,
+    targetConditions: seen.targetConditions,
     melee: !atRange,
     adjacent: geometry.withinFiveFeet,
     requested: input.requested ?? "none",
@@ -160,14 +143,8 @@ export function attackSituation(input: {
     attackerType: sheetCreatureType(sheet),
     targetSeesAttacker: sight?.targetSees !== false,
   });
-  const light = lightOnAttack(sight && feral ? { ...sight, attackerSees: true } : sight, {
-    attacker: sheet.name,
-    target: enemy.displayName,
-  });
-  if (feral && ((sight !== null && !sight.attackerSees) || enemy.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())))) {
-    conditionContext.notes.push("Feral Senses: not seeing the target costs no disadvantage");
-  }
-  conditionContext.notes.push(...light.notes);
+  const light = { sources: seen.light };
+  conditionContext.notes.push(...seen.notes);
   const exhaustion = exhaustionRollState(sheet.exhaustion ?? 0, "attack");
   if (exhaustion.note) {
     conditionContext.notes.push(exhaustion.note);
@@ -261,18 +238,9 @@ export function attackSituation(input: {
   }
 
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
-  // -1d4, True Strike's one-shot advantage.
-  const attackRiders = conditionRollRiders(sheet.conditions, "attack");
-  // A held Bardic Inspiration die is the holder's to add once the d20 is
-  // rolled (SRD 5.1): the attack adds it only to a miss it can turn into a
-  // hit (forced-save.ts settleHeldDie). A mote's die bursts at the throw
-  // (authored-mote.ts), so it still rides the roll from the start.
-  const inspiration = holdsMoteDie(sheet) ? heldInspiration(sheet.conditions) : null;
-  if (inspiration) {
-    attackRiders.diceSuffix += `+1${inspiration.die}`;
-    attackRiders.notes.push(`spends their Bardic Inspiration die: +1${inspiration.die} to the attack roll`);
-    attackRiders.spent.push(inspiration.condition);
-  }
+  // -1d4, True Strike's one-shot advantage, a mote's inspiration die
+  // (attack-roll-extras.ts, which the Hand's cards print from too).
+  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet));
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
@@ -314,6 +282,9 @@ export function attackSituation(input: {
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
+        // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
+        carryFactor: authoredCarryFactor(sheet),
+        wearer: sheet,
       })
     : null;
   if (load?.disadvantage && load.note) {

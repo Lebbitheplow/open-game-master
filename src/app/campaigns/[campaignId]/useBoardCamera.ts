@@ -32,6 +32,31 @@ const CLEAR_SELECTOR = ":scope > [data-fit-clear]";
 // Room between that chrome and the first tile.
 const CLEAR_GAP = 6;
 
+// What stands over the frame's bottom: the Hand on the fight stage, a
+// sibling of the board in the stage's frame (SessionView.tsx), not a child of
+// this one. The cards lie on the map and the map keeps its size under them:
+// the resting view fits the whole frame, Hand or no Hand (fitted above the
+// cards instead, the board shrank to a small picture every time the Hand was
+// shown). What the Hand does change is where a turn is followed to: the
+// figure whose turn it is is centred in what the cards leave uncovered, and
+// one under them counts as off screen, so the player's own figure is never
+// dealt over. The cards overlap the board by design, so the foot is what
+// they cover less FOOT_LAP, and never more than FOOT_SHARE of the frame.
+const STAGE_SELECTOR = "[data-fit-stage]";
+const FOOT_SELECTOR = "[data-fit-foot]";
+const FOOT_LAP = 24;
+const FOOT_SHARE = 0.55;
+
+function footOf(frame: HTMLElement | null): HTMLElement | null {
+  return frame?.closest(STAGE_SELECTOR)?.querySelector<HTMLElement>(FOOT_SELECTOR) ?? null;
+}
+
+function footToClear(frame: HTMLElement | null): number {
+  const foot = footOf(frame);
+  if (!frame || !foot || !foot.offsetHeight) return 0;
+  return Math.max(0, frame.getBoundingClientRect().bottom - foot.getBoundingClientRect().top - FOOT_LAP);
+}
+
 function cornerToClear(frame: HTMLElement | null): { width: number; height: number } | null {
   const corner = frame?.querySelector<HTMLElement>(CLEAR_SELECTOR);
   if (!corner || !corner.offsetWidth) return null;
@@ -152,13 +177,16 @@ export function useBoardCamera(
       return null;
     }
     const width = frame.clientWidth;
-    const height = frame.clientHeight || (width * boardHeight) / boardWidth;
-    return { width, height, unit: width / (boardWidth * TILE) };
+    const whole = frame.clientHeight || (width * boardHeight) / boardWidth;
+    // `height` is what shows above the Hand, where a figure is centred and
+    // looked for; `whole` is the frame, which the resting view fits.
+    const height = Math.max(whole * (1 - FOOT_SHARE), whole - footToClear(frame));
+    return { width, height, whole, unit: width / (boardWidth * TILE) };
   }, [boardWidth, boardHeight]);
 
   const fit = useCallback((): Camera => {
     const m = metrics();
-    return m ? fitCamera(m, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
+    return m ? fitCamera({ width: m.width, height: m.whole }, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
   }, [metrics, boardWidth, boardHeight]);
   const clampZoom = useCallback((zoom: number) => clampZoomTo(zoom, minZoomFor(fit())), [fit]);
 

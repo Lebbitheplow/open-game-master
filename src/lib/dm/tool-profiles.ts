@@ -103,7 +103,15 @@ export type ToolGroupId =
   | "gear"
   | "pets"
   | "relationships"
-  | "picture";
+  | "picture"
+  | "core"
+  | "fight";
+
+// The fight's core less the tools another group already names (cast_at_enemy
+// in spells, use_reaction in hazards, apply_damage and stabilize in sheet):
+// out of a fight none of these is in the set, so the group is never named
+// there.
+const FIGHT_ONLY = CORE_COMBAT.filter((name) => !["cast_at_enemy", "use_reaction", "apply_damage", "stabilize"].includes(name));
 
 export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly string[] }> = {
   // Opened by itself when anyone at the table casts (ProfileSignals.caster).
@@ -142,6 +150,15 @@ export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly
   pets: { summary: "familiars, pets and animal companions", tools: ["summon_pet", "pet_attack", "dismiss_pet", "apply_damage"] },
   relationships: { summary: "bonds, romance and their endings", tools: ["relationship_beat", "romance_advance", "relationship_end", "relationship_scheme"] },
   picture: { summary: "a picture of the scene", tools: ["generate_image"] },
+  // The cores, last so a tool another group names opens that group first
+  // (groupOfTool). Every compact call offers them whole but the narrowest,
+  // the essentials step of compactToolsThatFit (src/lib/dm/turn.ts), where
+  // these two are what more_tools names to get them back: before they were
+  // groups, heal, set_condition, use_resource, take_action, move_token,
+  // end_encounter and the rest sat in no list the model was shown, on every
+  // 16K table but a lone level 1 fighter (gap sweep 2026-11-09).
+  core: { summary: "healing, conditions, uses, items, checks, NPCs, notes", tools: CORE_ALWAYS },
+  fight: { summary: "the rest of a round: areas, saves, actions, moving, foes joining or fleeing, the end", tools: FIGHT_ONLY },
 };
 
 export const MORE_TOOLS = "more_tools";
@@ -205,6 +222,8 @@ export type ProfileSignals = {
   // An NPC is ready to make a romantic move (issue 501, src/lib/dm/advance-
   // tick.ts): romance_advance is offered while the window is open.
   advanceReady?: boolean;
+  // A faction is in play (src/lib/dm/faction-attention.ts factionsInPlay).
+  factions?: boolean;
   // The newest player lines at an English table, read for the English words
   // of ENGLISH_INTENT (none at another table), and the tool a card played
   // from the Hand names.
@@ -244,6 +263,7 @@ export function autoGroups(signals: ProfileSignals): Set<ToolGroupId> {
   if (signals.inEncounter && signals.legendary) groups.add("legendary");
   if (signals.caster) groups.add("spells");
   if (signals.advanceReady) groups.add("relationships");
+  if (signals.factions) groups.add("factions");
   const text = signals.englishPlayerText ?? "";
   for (const [group, pattern] of ENGLISH_INTENT) {
     if (pattern.test(text)) groups.add(group);
@@ -279,17 +299,22 @@ export function closedGroups(fullNames: readonly string[], offered: ReadonlySet<
   return GROUP_IDS.filter((id) => TOOL_GROUPS[id].tools.some((name) => fullNames.includes(name) && !offered.has(name)));
 }
 
+// The groups and what each holds ride in the group argument's description,
+// which no reader caps: in the function's description they ran to 1,609
+// characters with every group closed, past the 1,024 OpenAI's Chat
+// Completions (and the hosts that copy its validation) take for one, and the
+// 400 cost the table its turn (gap sweep 2026-11-09).
 export function moreToolsTool(closed: readonly ToolGroupId[]): ToolDefLike {
   return {
     type: "function",
     function: {
       name: MORE_TOOLS,
-      description: `More actions than the ones listed here. Name a group and its actions are offered from your next reply on; call it before narrating anything that needs them. Groups: ${closed.map((id) => `${id} (${TOOL_GROUPS[id].summary})`).join("; ")}.`,
+      description: "More actions than the ones listed here. Name a group and its actions are offered from your next reply on; call it before narrating anything that needs them.",
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
-          group: { type: "string", enum: [...closed], description: "The group whose actions you need." },
+          group: { type: "string", enum: [...closed], description: `The group whose actions you need: ${closed.map((id) => `${id} (${TOOL_GROUPS[id].summary})`).join("; ")}.` },
           tool: { type: "string", description: "An action's name, to read its full instructions." },
         },
       },
@@ -347,6 +372,12 @@ function withoutOmitted(name: string, parameters: unknown): unknown {
 // follows is detail, examples and edge cases a cut may drop.
 // scripts/test-tool-descriptions.mjs holds it.
 export function compactTool<T extends ToolDefLike>(tool: T): T {
+  // more_tools is the compact profile's own and already short; its group
+  // argument lists what each group holds, which a cut to one sentence would
+  // lose.
+  if (tool.function.name === MORE_TOOLS) {
+    return tool;
+  }
   return {
     ...tool,
     function: {

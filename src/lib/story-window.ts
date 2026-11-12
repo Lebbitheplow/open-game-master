@@ -1,19 +1,36 @@
 // How big a context window the storyteller needs, measured through the
-// request fitter (src/lib/dm/request-fit.ts) on qwen3.6-35b and Gemma 4 E4B
-// (docs/agent-context-efficiency-audit-2026-10-17.md). The DM's instructions
-// and the compact tool set take about 15K tokens before any story is told:
-// 16K plays narration, exploration and checks; a fight adds its tools and the
-// turn order (about 18K on the narrowest set), so 24K runs fights with room
-// to reply; 32K keeps recent turns in view as well. The README, the guided
-// setup, the model pickers and the window-too-small refusal all quote these,
-// and scripts/test-story-window.mjs keeps the docs saying the same.
+// request fitter (src/lib/dm/request-fit.ts): the first call of a turn, with
+// the compact tool set whole and the reply's 1,024 tokens, over a party of
+// one to four heroes, exploring and in a fight
+// (scripts/test-enforce-sweep-modelio-schema.mjs budget rows, 2026-11-09):
+//
+//   exploring  lone level 1 fighter 15,353; lone level 3 fighter 15,806;
+//              lone level 5 wizard 18,707 (the casting rules); fighter and
+//              wizard 18,997; four level 5 heroes 19,720
+//   fighting   lone level 1 fighter 24,369; lone level 3 fighter 25,043;
+//              fighter and wizard 28,480; four level 5 heroes 29,678 (the
+//              fight's rules and turn order are about 6K on their own)
+//
+// So 24K narrates, explores and checks for a party of four, and 40K runs
+// its fights. These were 16K and 24K, measured on a lone level 1 fighter:
+// every other party fell to the four essential tools on a 16K window, and
+// every fight measured on a 24K one (gap sweep 2026-11-09). The fight floor
+// is 40K, not the 32K the four heroes' 29,678 would clear: the figures are
+// the budget's estimate (characters over four, context-budget.ts), not a
+// tokenizer's count, and 32K left about 2,000 tokens spare, which a tokenizer
+// 7% over the estimate, the later calls of a turn, a fifth hero or a
+// campaign's own history use up (the review of #906). 48K plays on
+// the trimmed set, with recent turns in view (src/lib/dm/model-tuning-
+// logic.ts). The README, the guided setup, the model pickers and the
+// window-too-small refusal all quote these, and scripts/test-story-window.mjs
+// keeps the docs saying the same.
 //
 // Round thousands, as the model catalog counts them, so a model sold as
-// "16K" (16,000 tokens) is not told it is short of 16K; the llama-server
-// commands the docs give (-c 16384, 24576, 32768) clear each one.
-export const MIN_NARRATION_WINDOW = 16_000;
-export const MIN_COMBAT_WINDOW = 24_000;
-export const RECOMMENDED_WINDOW = 32_000;
+// "24K" (24,000 tokens) is not told it is short of 24K; the llama-server
+// commands the docs give (-c 24576, 40960, 49152) clear each one.
+export const MIN_NARRATION_WINDOW = 24_000;
+export const MIN_COMBAT_WINDOW = 40_000;
+export const RECOMMENDED_WINDOW = 48_000;
 // The window the docs' llama-server commands start with (-c 65536): the
 // full tool set with a long transcript. The app asks Ollama for no more than
 // this unless LOCAL_TEXT_CONTEXT says otherwise (model-client.ts
@@ -33,9 +50,12 @@ export function aWindow(tokens: number): string {
   return `${/^(8|11|18)/.test(size) ? "An" : "A"} ${size}`;
 }
 
-// The value to start llama-server with (-c) for at least this many tokens.
+// The value to start llama-server with (-c) for at least this many tokens:
+// the same count of K in 1,024s (48,000 is -c 49152, the "48K" a server
+// runs, not the 48,128 that merely clears it). A count already in 1,024s is
+// its own flag.
 export function windowFlag(tokens: number): number {
-  return Math.ceil(tokens / 1_024) * 1_024;
+  return tokens % 1_024 === 0 ? tokens : Math.ceil(tokens / 1_000) * 1_024;
 }
 
 // The one sentence every surface uses for the requirement itself.

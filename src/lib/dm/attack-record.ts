@@ -5,6 +5,7 @@
 // resolve it as each roll lands (pc-attack-parked.ts). A rule reads the record,
 // never the plan, so it reaches both paths or neither.
 
+import { conditionMeleeCritRange } from "@/lib/srd/condition-effects";
 import type { PendingAttack } from "@/lib/db/dm-turns";
 import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -19,15 +20,20 @@ import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import type { BlowSource, WeaponMaterial } from "@/lib/dm/damage-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { getActiveEncounter } from "@/lib/db/encounters";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
 import type { GearWeapon } from "@/lib/srd/gear-weapons";
 import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "@/lib/srd/feat-combat";
+import { hasElvenAccuracy } from "@/lib/srd/feature-effects";
 
 // The damage roll a hit or a graze asks for, decided once the d20 is known
 // (attack-swing.ts askDamage). The server throws it at once; real dice park it
 // on the damage roll's record, and attack-blow.ts lands it either way.
 export type DamageAsk = {
+  // Destructive Wrath wrote every die at its maximum: nothing to enter, so
+  // real dice are not asked for.
+  noDice?: boolean;
   expression: string;
   // The dice riding the blow under a type of their own (damage-parts.ts).
   riders: TypedRider[];
@@ -40,6 +46,9 @@ export type DamageAsk = {
   // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
   feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
   rerollBelow: number;
+  // Empowered Spell on a spell attack's damage: how many low dice are thrown
+  // again (src/lib/dm/mt-srd-metamagic.ts, src/lib/dice.ts).
+  empower?: number;
   // Paid on the hit, resolved once the blow has landed.
   stunDc?: number;
   maneuver?: boolean;
@@ -62,6 +71,11 @@ export type AttackRecord = PendingAttack & {
   ranged?: boolean;
   // Made within reach: what a monster's Parry answers (enemy-reactions.ts).
   melee?: boolean;
+  // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
+  touchOfDeath?: number;
+  // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
+  // thunder dice are dealt at their maximum.
+  destructiveWrath?: boolean;
   unarmed?: boolean;
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.
@@ -72,6 +86,8 @@ export type AttackRecord = PendingAttack & {
   blow?: BlowSource;
   // Elemental Adept or Poisoner: the target's resistance to the type is ignored.
   ignoreResistanceBy?: string;
+  // A two-type spell's other type Elemental Adept covers (pc-attack-plan.ts).
+  adeptOthers?: string[];
   mageSlayer?: boolean;
   nonlethal?: boolean;
   onHit?: OnHitSpends;
@@ -83,6 +99,9 @@ export type AttackRecord = PendingAttack & {
   hitSpent?: string[];
   hitClaims?: string[];
   spell?: string;
+  // The slot that spell attack spent: the level the spell is of for a kill
+  // (Grim Harvest, ar-ws-harvest.ts).
+  spellSlot?: number;
   stunShot?: boolean;
   maneuver?: ManeuverRider;
   typeFeat?: DamageTypeFeat;
@@ -93,6 +112,28 @@ export type AttackRecord = PendingAttack & {
   // What the engine said of the attack before the roll (advantage, Sneak Attack).
   notes?: string[];
   mote?: HeldMote;
+  // Advantage on this attack throws a third d20 (Elven Accuracy: not a
+  // Strength attack). Master Duelist's reroll with advantage reads it.
+  elvenAccuracy?: boolean;
+  // A luck point was bought with the attack (pc_attack luck: true): the roll
+  // has had its one, so the pause offers no other (after-roll.ts).
+  luck?: boolean;
+  // The server threw the d20 and the roll waits on the player's choice: when
+  // it lands, the server throws the damage too (pc-attack-parked.ts).
+  serverDice?: boolean;
+  // The lead skipped the turn it was made on (pending-roll-land.ts
+  // keepRollsLeftBehind). A lone hero's skip can leave the pointer and round
+  // where they were, with the foe owed its turn, so only this says it is over.
+  skipped?: boolean;
+  // The attacks declared after this one in the same pc_attack call. They are
+  // made, in order, once this attack has landed (pc-attack-parts.ts
+  // runQueuedParts), and what they did rides back with it (queuedResults). A
+  // hit whose damage the player rolls hands the queue on to that damage roll
+  // (queueMovedTo, its id), whose record then holds the queue and its results;
+  // `toolCallId` is the call's, which the damage roll does not carry.
+  queue?: { characterId: string; parts: Record<string, unknown>[]; toolCallId?: string | null };
+  queuedResults?: Record<string, unknown>[];
+  queueMovedTo?: string;
   critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
   extras?: {
     foeSlayer?: number;
@@ -120,7 +161,9 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
   const typeFeat = plan.weaponAttack ? damageTypeFeat(sheet, profile.damageType) : null;
   // Piercer: a piercing critical hit rolls one more of the weapon's dice.
   const critExtraDice = strike.critExtraDice + (typeFeat === "Piercer" ? 1 : 0);
-  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  // A condition's melee critical range (Invincible Conqueror's 19) rides
+  // melee weapon attacks only.
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies), plan.weaponAttack && !plan.atRange ? conditionMeleeCritRange(sheet.conditions) : 20);
   const critGear = gearCritRiders(profile, enemy.stats.type);
   const typedRiders = liveTypedRiders(plan.typedRiders, plan.droppedRiders);
   const ignoreBy = plan.elementalAdept ? "Elemental Adept" : poisonerIgnoresResistance(sheet, profile.damageType) ? "Poisoner" : null;
@@ -159,6 +202,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.material ? { material: profile.material } : {}),
     ...(blow.spell || blow.goodWielder ? { blow } : {}),
     ...(ignoreBy ? { ignoreResistanceBy: ignoreBy } : {}),
+    ...(plan.adeptOthers.length ? { adeptOthers: plan.adeptOthers } : {}),
     ...(plan.mageSlayer ? { mageSlayer: true } : {}),
     ...(plan.options.nonlethal ? { nonlethal: true } : {}),
     ...(attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) ? { attackerUnseen: true } : {}),
@@ -171,6 +215,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(plan.hitSpent.length ? { hitSpent: plan.hitSpent } : {}),
     ...(plan.hitClaims.length ? { hitClaims: plan.hitClaims } : {}),
     ...(plan.kind === "spell" && plan.args.spell ? { spell: plan.args.spell } : {}),
+    ...(plan.kind === "spell" && plan.spellSlotLevel ? { spellSlot: plan.spellSlotLevel } : {}),
     ...(critGear.suffix ? { critGear } : {}),
     ...(extras.stunShot ? { stunShot: true } : {}),
     ...(rider && plan.maneuver
@@ -180,8 +225,33 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(plan.budget ? { round: plan.budget.round } : {}),
     ...(context.notes.length ? { notes: [...context.notes] } : {}),
     ...(mote ? { mote } : {}),
+    ...(extras.luck ? { luck: true } : {}),
+    ...(profile.ability !== "str" && hasElvenAccuracy(sheet) ? { elvenAccuracy: true } : {}),
     ...(Object.keys(kept).length ? { extras: kept } : {}),
   };
+}
+
+// Whether the turn a parked to-hit roll was declared on is over: the pointer
+// has moved off its attacker (the lead skipped them, the order was edited).
+// A roll made on the attacker's own turn names its round, so a hero whose
+// turn came round again does not land last round's swing on this one. That
+// held only for dice the server threw: real dice the player had yet to
+// enter stay theirs after the lead's skip (pending-roll-land.ts
+// keepRollsLeftBehind), and entered on their next turn they hit for last
+// round. A roll that lands then does nothing.
+export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "skipped">, characterId: string | null): boolean {
+  if (record.skipped) {
+    return true;
+  }
+  const fight = getActiveEncounter(campaignId);
+  if (!fight?.orderReady) {
+    return false;
+  }
+  const current = fight.order[fight.turnIndex];
+  if (!current || current.kind !== "pc" || current.characterId !== characterId) {
+    return true;
+  }
+  return record.round !== undefined && fight.round !== record.round;
 }
 
 // The AC a roll meets when it lands. An attack's parts are made together, so

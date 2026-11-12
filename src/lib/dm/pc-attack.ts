@@ -1,4 +1,7 @@
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -8,13 +11,15 @@ import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { markBondSpent } from "@/lib/dm/emboldening-bond";
+import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { publishPersisted } from "@/lib/events";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { applyDmMutation } from "@/lib/dm/mutations";
+import { spendManeuverDie } from "@/lib/dm/maneuver-die";
 import { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import { FRENZIED } from "@/lib/dm/frenzy";
 import { ADVANTAGE_SOURCES, BONUS_ATTACKS, RECKLESS } from "@/lib/dm/pc-attack-options";
-import { parkPcAttack } from "@/lib/dm/pc-attack-parked";
+import { parkPcAttack, throwForChoice } from "@/lib/dm/pc-attack-parked";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { planPcAttack, type AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { rollPcAttack, strikeToHit } from "@/lib/dm/pc-attack-resolve";
@@ -25,17 +30,20 @@ import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
 import { lineNamed } from "@/lib/srd/item-row";
+import { returnsToHand, throwToGround } from "@/lib/dm/gear-ground";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
 import { moteOf } from "@/lib/dm/authored-mote";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { approachForAttack, withApproach } from "@/lib/dm/pc-attack-approach";
+import { walkHeld } from "@/lib/dm/player-word";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
 import { swallowCover } from "@/lib/dm/swallow";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // Re-exported for the callers that learned it here.
 export { resolvePendingPcAttack } from "@/lib/dm/pc-attack-parked";
@@ -90,7 +98,7 @@ export const pcAttackTool: ToolDef = {
               approach: {
                 type: "boolean",
                 description:
-                  "True when the player said their character moves to the target first and it is out of melee reach. Closing in or charging counts. The server walks them beside it out of their movement, drawing opportunity attacks, then attacks; too far to reach this turn, they close in as far as they can and nothing is attacked.",
+                  "True when the player said their character moves to the target first and it is out of melee reach. Closing in or charging counts; holding still or staying put never does. The server walks them beside it out of their movement, drawing opportunity attacks, then attacks; too far to reach this turn, they close in as far as they can and nothing is attacked.",
               },
               spell: {
                 type: "string",
@@ -101,7 +109,7 @@ export const pcAttackTool: ToolDef = {
                 type: "string",
                 description: "A homebrew spell attack only: its damage dice ('1d10', '4d6').",
               },
-              damageType: { type: "string", description: "Spell attacks only: the damage type." },
+              damageType: { type: "string", description: "Spell attacks: the damage type. Grave Touched: necrotic." },
               advantage: {
                 type: "string",
                 enum: ["none", "advantage", "disadvantage"],
@@ -245,7 +253,7 @@ export const pcAttackArgsSchema = z.object({
   smite: z.coerce.number().int().min(1).max(9).optional(),
   maneuver: z.string().max(60).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
-  advantageReason: z.string().max(200).optional(),
+  advantageReason: fittedText(200).optional(),
   bonusAttack: z.preprocess(
     (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
     z.enum(BONUS_ATTACKS).optional(),
@@ -285,6 +293,14 @@ export type PcAttackArgs = z.infer<typeof pcAttackArgsSchema>;
 // Sentinel the turn loop checks: a parked pc_attack pushes no tool result
 // now; the resumed turn answers it with the adjudicated roll.
 export const PC_ATTACK_PARKED = "_parked";
+// A parked d20 of the pc_attack tool's own (`mayWait`), with the parked roll's
+// id: the attacks declared after it wait behind it (pc-attack-parts.ts), on
+// the player's physical dice as on the server's throw that waits for their
+// after-the-roll choice (pc-attack-parked.ts throwForChoice). Each later part
+// is then planned once the one before it has landed, reading the attacker and
+// the creature as that left them (a hidden archer's hit gives them away
+// before the sword swings), as the server's dice make the parts in turn.
+export const PC_ATTACK_WAITS = "_waitsOnChoice";
 
 export function handlePcAttack(
   campaign: Campaign,
@@ -297,21 +313,27 @@ export function handlePcAttack(
   // The engine's own attacks (Confusion's random target): `anySide` lets the
   // target be an ally (pc-attack-gate.ts). `reactionAttack`: a reaction feature's
   // attack, paid for by its caller, which touches neither the turn nor a readied action.
-  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
+  // `mayWait`: the pc_attack tool's own attacks, whose d20 may wait on the
+  // player's choice (pc-attack-parked.ts throwForChoice); an attack the engine
+  // makes inside another call never waits.
+  engine: { anySide?: boolean; reactionAttack?: boolean; mayWait?: boolean } = {},
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: "No active encounter. Call start_encounter first.", retry: true };
   }
+  // A condition that rode a rage now over goes before the riders are read
+  // (rage-bound.ts: Call the Hunt's d6).
+  endRageBound(campaign.id);
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: pc_attack needs characterId and targetEnemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", error, rawArguments);
   }
   const parsed = pcAttackArgsSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error);
+    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error, raw);
   }
   const args: PcAttackArgs = parsed.data;
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
@@ -339,6 +361,13 @@ export function handlePcAttack(
       if ("refused" in beside) {
         return beside.refused;
       }
+      // Their player said they stay where they are: the swing from here was
+      // refused for reach, and no walk is made to fix that (the walk drew
+      // opportunity attacks for a fight its player never moved in).
+      const held = walkHeld(campaign.id, turn, sheet, " Nothing was moved or attacked.");
+      if (held) {
+        return { ...held, error: `${dry.refused.error} ${held.error}` };
+      }
       const approach = approachForAttack(campaign, encounter, sheet, args, dry.refused);
       if (!approach) {
         return dry.refused;
@@ -348,6 +377,22 @@ export function handlePcAttack(
       }
       const attack = attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
       return attack[PC_ATTACK_PARKED] ? attack : withApproach(attack, approach.walked);
+    }
+  }
+  // Distant Strike: a swing refused for reach alone, at a creature within
+  // the ranger's 10-foot teleport of a square beside it, teleports them
+  // there first (src/lib/dm/distant-strike.ts).
+  if (!args.approach && !engine.reactionAttack && holdsFeature(sheet, "Distant Strike")) {
+    const dry = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
+    if ("refused" in dry) {
+      const beside = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, skipReach: true, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
+      const enemyId = resolveEnemyRef(encounter.id, args.targetEnemyId)?.id;
+      const square = !("refused" in beside) && enemyId ? distantStrikeSquare(encounter.id, sheet.id, enemyId) : null;
+      if (square) {
+        const line = distantStrikeTeleport(campaign.id, encounter.id, sheet.id, square);
+        const attack = attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
+        return attack[PC_ATTACK_PARKED] || !line ? attack : { ...attack, teleport: line };
+      }
     }
   }
   return attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
@@ -362,7 +407,7 @@ function attackFrom(
   sheetsById: Map<string, CharacterSheet>,
   realDiceUserIds: Set<string>,
   toolCallId: string | null,
-  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
+  engine: { anySide?: boolean; reactionAttack?: boolean; mayWait?: boolean } = {},
 ): ToolResult {
   // The walk may have changed the fight: read it again.
   const encounter = getActiveEncounter(campaign.id);
@@ -405,19 +450,46 @@ function attackFrom(
   // Physical dice: park the to-hit roll for the player; the submit route
   // adjudicates it and, on a hit, parks the damage roll too.
   if (realDiceUserIds.has(sheet.userId)) {
-    parkPcAttack(plan, strike, toolCallId, mote);
-    return { [PC_ATTACK_PARKED]: true };
+    const parked = parkPcAttack(plan, strike, toolCallId, mote);
+    return engine.mayWait ? { [PC_ATTACK_PARKED]: true, [PC_ATTACK_WAITS]: parked.id } : { [PC_ATTACK_PARKED]: true };
   }
-  return rollPcAttack(plan, strike, mote);
+  // The server's dice, for a player who may still change a miss once they see
+  // it: the roll waits thrown, or resolves with that throw. Only on the
+  // attacker's own turn (a turn budget): a readied strike or Giant Killer is
+  // made on another's turn, and a roll waiting past it would never land.
+  const choice = engine.mayWait && !engine.reactionAttack && plan.budget ? throwForChoice(plan, strike, toolCallId, mote) : null;
+  if (choice && "parked" in choice) {
+    return { [PC_ATTACK_PARKED]: true, [PC_ATTACK_WAITS]: choice.parked.id };
+  }
+  return rollPcAttack(plan, strike, mote, choice?.thrown ?? null);
 }
 
 // What the attack costs, paid now that nothing can refuse it: the turn
 // budget, the cast or the reaction, the round from the quiver, Precision
 // Attack's die, and the conditions this roll uses up. Returns the refusal of
 // a spell Counterspell stopped (spent, and nothing else follows), or null.
+// A weapon thrown is not spent but no longer held: a net, a dagger or a
+// javelin thrown at range, a carried weapon thrown as an improvised one, a
+// torch hurled; unless its own text brings it back (a Dwarven Thrower). A
+// flask shatters instead (spent above), and a swing within reach keeps the
+// weapon in hand.
+function throwsAway(plan: AttackPlan): boolean {
+  return (
+    plan.special === "net" ||
+    (plan.kind === "weapon" && plan.atRange && plan.profile.thrown && !plan.profile.gearWeapon?.spent && !plan.profile.returns && !returnsToHand(plan.profile.weapon))
+  );
+}
+
 function spendPcAttack(plan: AttackPlan): ToolError | null {
-  const { campaign, turn, encounter, sheet, sheets, sheetsById, budget, ammo, context } = plan;
+  const { campaign, turn, encounter, sheet, budget, ammo, context } = plan;
+  const thrownAway = throwsAway(plan);
   if (budget) {
+    // The weapon thrown still counts as the one that was in the first hand
+    // when two-weapon fighting asks for a second (attack-rules.ts
+    // offHandProblem): a dagger thrown, then the off-hand dagger.
+    if (thrownAway) {
+      budget.thrownAway = (budget.thrownAway ?? 0) + 1;
+    }
     storeBudget(encounter, budget);
   }
   // Spiritual Weapon's weapon flies to the square it strikes from (issue
@@ -449,6 +521,10 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     // (an approach asks it first) and may still be refused after it.
     if (plan.kind === "spell") {
       markAffinityCast(campaign, sheet, plan.profile.damageType);
+      // A two-type spell's second type rides as a typed rider.
+      for (const rider of plan.profile.gearTyped ?? []) {
+        markAffinityCast(campaign, sheet, rider.type);
+      }
     }
   } else if (!budget) {
     markReactionUsed(encounter, sheet.id);
@@ -512,22 +588,18 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
       context.notes.push(`one ${plan.profile.weapon} spent`);
     }
   }
+  // A weapon thrown leaves the hand whatever the roll and lies at the
+  // creature it was thrown at (gear-ground.ts).
+  if (thrownAway) {
+    const thrown = throwToGround(campaign, turn, sheet, plan.profile.weapon, plan.enemy.id);
+    if (thrown) {
+      context.notes.push(thrown);
+    }
+  }
   if (plan.maneuver?.precision) {
     // Validated above, so this spend lands; were it to fail the roll simply
-    // goes without the die.
-    const spent = applyDmMutation(
-      campaign,
-      turn.id,
-      "use_resource",
-      JSON.stringify({
-        characterId: sheet.id,
-        resource: "Superiority Dice",
-        reason: plan.maneuver.name,
-      }),
-      sheets,
-      sheetsById,
-    ).result;
-    if ("error" in spent) {
+    // goes without the die. The shared door names the maneuver (maneuver-die.ts).
+    if (spendManeuverDie(campaign, turn.id, sheet, plan.maneuver.name)) {
       plan.maneuver = null;
     }
   }
@@ -545,8 +617,12 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     ...(plan.helped ? [plan.helped] : []),
     ...plan.attackRiders.spent,
   ];
+  // Emboldening Bond's d4 is spent by stamping its turn, not by taking the bond off.
+  markBondSpent(campaign.id, sheet.id, plan.attackRiders.spent);
   if (spentConditions.length) {
-    const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, spentConditions);
+    // Read again when the bond was stamped just above, so the stamp stays.
+    const meta = plan.attackRiders.spent.includes(BOND_SPEND) ? (getSheetById(sheet.id) ?? sheet).conditionMeta : sheet.conditionMeta;
+    const cleared = removeConditions(sheet.conditions, meta, spentConditions);
     const revealed = patchSheet(sheet.id, {
       conditions: cleared.conditions,
       conditionMeta: cleared.meta,

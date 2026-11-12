@@ -176,7 +176,7 @@ the pick for that card, and about 28 GB runs the recommended Qwen3.6-35B-A3B
 and the [system requirements](https://opengamemaster.com/guide/start/system-requirements/)).
 Below 16 GB a local model is not supported; use an API key, an agent program or
 a human Game Master. Run it on llama.cpp, with a **context window of at
-least 16K tokens to narrate and 24K to run fights; 32K or more is
+least 24K tokens to narrate and 40K to run fights; 48K or more is
 recommended**. The default storyteller runs at 64K, and the guided setup's
 **Test backend** reads the window a server runs
 ([what each size plays](docs/text-backends.md#context-window)). Hosted models
@@ -207,8 +207,21 @@ docker compose logs         # open the setup link it prints
 The link creates the admin account and starts the same guided setup
 ([Run with Docker](docs/docker.md): Windows, your model server, backing up the key).
 
-Both follow the stable releases. Nightly betas, and how a beta becomes stable:
-[docs/releases.md](docs/releases.md).
+Both follow the stable releases. To run the newest beta instead (a GitHub
+pre-release, promoted to stable unchanged once it holds up), switch Docker to the
+`beta` image in the same folder:
+
+```bash
+echo "ODM_IMAGE=lebbi/open-game-master" >> .env
+echo "ODM_IMAGE_TAG=beta" >> .env
+docker compose pull && docker compose up -d   # run again to update
+```
+
+From a clone, check out the beta's tag instead. The
+[beta channel](https://opengamemaster.com/download/#beta) on opengamemaster.com
+links the current beta's release archive and content pack, and says when there is
+none because the newest release is stable. How the channels work and how a beta
+becomes stable: [docs/releases.md](docs/releases.md).
 
 ## Documentation
 

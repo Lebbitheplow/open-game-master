@@ -17,7 +17,8 @@ import { tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { liveCardChanges, recordTurnChange, type TurnChange } from "@/lib/db/turn-changes";
 import { directContextFor } from "@/lib/dm/direct-context";
-import { directCardCalls, isTypedReaction, type DirectCall } from "@/lib/dm/intent-logic";
+import { directCardCalls, drawStopsCast, isStoredCast, isTypedReaction, type DirectCall } from "@/lib/dm/intent-logic";
+import { takeBackItemCast } from "@/lib/dm/item-use";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { publishPersisted } from "@/lib/events";
 
@@ -52,7 +53,8 @@ export async function resolveAsPlayed(
   userId: string,
   messageId: string,
 ): Promise<{ ok: true; message: CampaignMessage } | ({ ok: false } & Refusal)> {
-  const calls = waitingCardCalls(campaign, getCampaignMessage(messageId));
+  const waiting = getCampaignMessage(messageId);
+  const calls = waitingCardCalls(campaign, waiting);
   if (!Array.isArray(calls)) {
     return { ok: false, ...calls };
   }
@@ -62,7 +64,7 @@ export async function resolveAsPlayed(
   // A casting shared out among creatures is one call each, in order: the
   // first spends the slot, the rest draw on the same casting.
   const turns: string[] = [];
-  // A spell drawn from a ring has not happened until its tool casts it, and the
+  // A spell drawn from an item has not happened until its tool casts it, and the
   // draw pays only once, so a refused cast lets the card go again too.
   const firstCast = calls.some((call) => call.name === "use_item") ? 1 : 0;
   for (const [index, call] of calls.entries()) {
@@ -70,6 +72,11 @@ export async function resolveAsPlayed(
     if (!resolved.ok) {
       if (index <= firstCast) {
         releaseCardResolution(messageId);
+        // The spell did not happen: what its item spent comes back, so resolving it
+        // again pays afresh.
+        if (waiting?.intent && waiting.characterId && isStoredCast(waiting.intent)) {
+          takeBackItemCast(campaign, waiting.characterId, waiting.intent.spell ?? "");
+        }
       } else {
         keepUnderTurns(campaign.id, messageId, turns);
         settled(campaign.id, messageId);
@@ -78,6 +85,10 @@ export async function resolveAsPlayed(
     }
     if (!turns.includes(resolved.turnId)) {
       turns.push(resolved.turnId);
+    }
+    // A scroll misread is the card answered: no spell's tool follows it.
+    if (drawStopsCast(call.name, resolved.result)) {
+      break;
     }
   }
   keepUnderTurns(campaign.id, messageId, turns);

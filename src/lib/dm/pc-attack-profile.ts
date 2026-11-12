@@ -4,13 +4,14 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
-import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
+import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
 import { getMounts } from "@/lib/db/mounts";
 import { isValidExpression } from "@/lib/dice";
 import { acBreakdownFor, computeSheetDerived, spellAbilityFor, spellAttackFor, type SheetDerived, castsSpells } from "@/lib/srd";
 import { spellDamageFor, spellEngineName, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import { isMeleeSpellAttack } from "@/lib/dm/spell-attack-riders";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -25,10 +26,15 @@ import {
 } from "@/lib/dm/attack-logic";
 import { handsRuling, otherHandArmed, thrownAtRange } from "@/lib/dm/attack-rules";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
+import { kenseiStance } from "@/lib/srd/mt-mr-kensei";
+import { unarmedForm } from "@/lib/srd/mt-mr-unarmed";
 import { shillelaghSwing, hexWarriorSwing } from "@/lib/dm/attack-features";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { authoredNaturalWeapon, authoredReachBonus, naturalWeaponGated } from "@/lib/srd/authored-effects-more";
+import { longLimbedFeet } from "@/lib/srd/mt-species-traits";
+import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
+import { beastFormRefusal } from "@/lib/dm/mt-fb-beast";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
@@ -41,7 +47,7 @@ import type { CreatureAttack } from "@/lib/srd/creature-attacks";
 import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
-import { hasName, namesOf } from "@/lib/dm/cast-rules";
+import { grantedCastOf, hasName, namesOf } from "@/lib/dm/cast-rules";
 import { paidByItem, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { itemCastOpen } from "@/lib/dm/item-casts";
@@ -91,7 +97,8 @@ export function buildAttackProfile(
   },
   // How many tiles lie between the attacker and the target, when the board
   // knows (a thrown weapon past its reach is a ranged attack).
-  target: { apart: number | null } = { apart: null },
+  // `ownTurn`: the swing is made on the attacker's own turn (Long-Limbed).
+  target: { apart: number | null; ownTurn?: boolean } = { apart: null },
 ): BuiltAttack | ToolError {
   const derived = computeSheetDerived(sheet);
   const riders = combatRiders(sheet);
@@ -149,7 +156,9 @@ export function buildAttackProfile(
       damageType: granted.attack.type,
       ranged: granted.attack.ranged,
       thrown: false,
-      reachTiles: 1,
+      // A melee strike with a reach of its own (Dread Lord's shadows: "a
+      // creature in the aura", 30 feet); 5 feet otherwise.
+      reachTiles: Math.max(1, Math.round((granted.attack.reachFeet ?? 5) / 5)),
       rangeTiles,
       longRangeTiles: rangeTiles,
       proficient: true,
@@ -179,7 +188,13 @@ export function buildAttackProfile(
     // of theirs, as it runs on too.
     // So is a later ray of a casting an item made this turn.
     const fromItem = paidByItem(sheet, spellName) ?? itemCastOpen(campaignId, sheet, spellName);
-    if (!castsSpells(sheet) && !fromItem) {
+    // A spell the species or its chosen option gives (a workshop Mistkin's
+    // Fire Bolt), or an invocation's, sits on no class list and needs no
+    // Spellcasting feature: the cast guard reads the same grant
+    // (src/lib/srd/granted-casts.ts), so this check reads it too. It read
+    // only the class lists, and refused a cantrip the Hand dealt.
+    const grant = grantedCastOf(sheet, spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
+    if (!castsSpells(sheet) && !fromItem && !grant) {
       return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
     }
     // The content pack knows how a known spell resolves; a save or buff
@@ -192,7 +207,7 @@ export function buildAttackProfile(
     const mechDamageType = resolvedMech?.mech.damageType;
     const spellList = allSpellNames(sheet.spellcasting);
     const spellNames = namesOf(spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
-    const onList = Boolean(fromItem) || hasName(spellList, spellNames);
+    const onList = Boolean(fromItem) || Boolean(grant) || hasName(spellList, spellNames);
     if (!onList) {
       // A spell the rules know is one they lack; a name nobody knows is the
       // call's to fix, from their list.
@@ -222,15 +237,43 @@ export function buildAttackProfile(
     if (scaled) {
       scalingNote = scaled.note;
     }
+    // Empowered Evocation, Elemental Affinity, a subclass die
+    // (src/lib/srd/spell-damage-riders.ts).
+    const facts = spellFactsFor(spellName, sheetSpellAuthors(sheet));
+    // A spell attack of two types (Storm Kick's thunder and lightning): its
+    // last dice ride the blow under their own type, as a magic weapon's do,
+    // so each meets its own resistance and a critical doubles both. The whole
+    // sum used to land as the first type.
+    const secondType = resolvedMech?.mech.secondType;
+    const [firstDice, secondDice] = splitDamageExpression(damageArg, secondType) ?? [];
+    const spellRiders = spellDamageRiders(sheet, { school: spellSchoolFor(spellName, sheetSpellAuthors(sheet)), damageType: mechDamageType || args.damageType, secondType, level: facts?.level ?? 0, classes: facts?.classes });
+    // A rider's die is written beside the dice of the type that earned it:
+    // the first type's after the first dice, the second's after the second,
+    // so the second type's dice are read back from the end (damage-parts.ts)
+    // and never take a first-type die of the same size for their own.
+    const spellDice = firstDice && secondDice
+      ? [firstDice, ...spellRiders.dice, secondDice, ...spellRiders.diceSecond].join("+")
+      : [damageArg, ...spellRiders.dice, ...spellRiders.diceSecond].join("+");
     // Multiclass: the to-hit follows the class whose list carries the spell.
-    const spellProfile = spellAttackProfile(
+    const baseSpellProfile = spellAttackProfile(
       { spellAttack: spellAttackFor(sheet, spellName) ?? scrollNumbers(fromItem?.level ?? 1).attackBonus },
       spellName,
-      damageArg,
+      spellDice,
       // A known spell deals its own damage type; the caller's word counts
       // only for a spell the content does not know (SRD 5.1).
       (mechDamageType || args.damageType || "").trim().toLowerCase(),
     );
+    // Affinity's Charisma on the second type rides those dice as their own
+    // flat part, once, as a critical never doubles it (damage-parts.ts).
+    const spellProfile = secondDice && secondType
+      ? {
+          ...baseSpellProfile,
+          gearTyped: [
+            { dice: spellRiders.flatSecond > 0 ? `${secondDice}+${spellRiders.flatSecond}` : secondDice, type: secondType },
+            ...spellRiders.diceSecond.map((dice) => ({ dice, type: secondType })),
+          ],
+        }
+      : baseSpellProfile;
     // A melee spell attack (a touch) is a melee attack: it reaches only the
     // creature beside the caster, and the rules for ranged attacks do not
     // apply to it.
@@ -252,12 +295,13 @@ export function buildAttackProfile(
         }
       }
     }
-    // Empowered Evocation, Elemental Affinity (src/lib/srd/spell-damage-riders.ts).
-    const facts = spellFactsFor(spellName, sheetSpellAuthors(sheet));
-    const spellRiders = spellDamageRiders(sheet, { school: spellSchoolFor(spellName, sheetSpellAuthors(sheet)), damageType: mechDamageType || args.damageType, level: facts?.level ?? 0, classes: facts?.classes });
-    if (spellRiders.flat > 0 || spellRiders.dice.length) {
-      const extra = [...spellRiders.dice, ...(spellRiders.flat > 0 ? [String(spellRiders.flat)] : [])].join("+");
-      profile = { ...profile, damageExpression: `${profile.damageExpression}+${extra}`, riderNotes: [...profile.riderNotes, ...spellRiders.notes] };
+    // The riders' flat bonuses (their dice are already in the spell's).
+    const flatTotal = spellRiders.flat + spellRiders.flatSecond;
+    if (flatTotal > 0) {
+      profile = { ...profile, damageExpression: `${profile.damageExpression}+${flatTotal}` };
+    }
+    if (spellRiders.notes.length) {
+      profile = { ...profile, riderNotes: [...profile.riderNotes, ...spellRiders.notes] };
     }
   } else if (sheet.summon && !sheet.wildShape) {
     // A creature a spell made fights with its stat block (summon-rules.ts).
@@ -285,9 +329,18 @@ export function buildAttackProfile(
     if (!natural) {
       return { error: `${sheet.name}'s ${args.weapon} exists only while raging (${naturalWeaponGated(sheet, weaponName)}). They rage first (use_resource Rage), or attack with a weapon they carry.`, refused: "rules" };
     }
+    // One natural weapon a rage (Form of the Beast: mt-fb-beast.ts).
+    const otherForm = beastFormRefusal(sheet, natural);
+    if (otherForm) {
+      return otherForm;
+    }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
-    profile = weaponAttackProfile(derived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
+    // A weapon whose feature names its ability (Armor Model: Intelligence)
+    // rolls with it, whatever its kind would use.
+    const own = natural.weapon.ability;
+    const swingDerived = own ? { ...derived, abilityMods: { ...derived.abilityMods, str: derived.abilityMods[own], dex: derived.abilityMods[own] } } : derived;
+    profile = weaponAttackProfile(swingDerived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
       riders,
       martialArts: false,
     });
@@ -362,11 +415,13 @@ export function buildAttackProfile(
     const material = weaponMaterial(sheet.equipment.find((item) => item.name === used.displayName));
     // SRD 5.1, Pact of the Blade: "You are proficient with it while you
     // wield it" (src/lib/srd/pact-weapon.ts).
-    const pactForm = used.srd?.kind === "melee" && holdsPactOfTheBlade(sheet) ? [used.srd.name.toLowerCase()] : [];
+    const pactForm = used.srd && isPactWeapon(sheet, used.displayName, used.srd.kind === "melee") ? [used.srd.name.toLowerCase()] : [];
     const swing = (twoHanded: boolean, weapon = used) => ({
       ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? weapon, {
         riders,
         martialArts: martialArtsApplies(sheet),
+        kensei: kenseiStance(sheet),
+        unarmedForm: unarmedForm(sheet, derived.abilityMods),
         brawler: brawlerUnarmed(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
@@ -392,7 +447,7 @@ export function buildAttackProfile(
     // ranged attack, as attackGeometry will find, so it rolls the one-handed
     // die and gives Great Weapon Fighting nothing to reroll.
     if (profile.twoHanded && profile.thrown && !profile.ranged && !properties.includes("two-handed")) {
-      const reachTiles = profile.reachTiles + (authoredReachBonus(sheet)?.tiles ?? 0);
+      const reachTiles = profile.reachTiles + (authoredReachBonus(sheet)?.tiles ?? 0) + longLimbedFeet(sheet, target.ownTurn === true) / 5;
       if (thrownAtRange({ thrown: true, reachTiles }, target.apart)) {
         profile = swing(false);
         handsNote = `${used.displayName} is thrown: one-handed die`;
@@ -411,9 +466,27 @@ export function buildAttackProfile(
     special = lance ? "lance" : used.srd?.name === SPECIAL_WEAPONS.net ? "net" : null;
   }
   // Demiurgic Colossus: a raging giant's melee reach grows by 5 feet.
-  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
+  const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet, profile.unarmed === true) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
+  }
+  // Long-Limbed (bugbear): 5 more feet on a melee attack of their own turn
+  // (src/lib/srd/mt-species-traits.ts).
+  const limbs = !profile.ranged && profile.reachTiles >= 1 ? longLimbedFeet(sheet, target.ownTurn === true) : 0;
+  if (limbs) {
+    profile = { ...profile, reachTiles: profile.reachTiles + limbs / 5, riderNotes: [...profile.riderNotes, `Long-Limbed: ${limbs} more feet of reach on their own turn`] };
+  }
+  // Elemental Cleaver: the infused weapon deals the element, and can be
+  // thrown and comes back (authored-mt-fb.ts authoredInfusion).
+  const infusion = kind === "weapon" ? authoredInfusion(sheet) : null;
+  if (infusion) {
+    profile = {
+      ...profile,
+      damageType: infusion.type,
+      returns: true,
+      ...(profile.ranged ? {} : { thrown: true, rangeTiles: Math.max(profile.thrown ? profile.rangeTiles : 0, infusion.rangeFt / 5), longRangeTiles: Math.max(profile.thrown ? (profile.longRangeTiles ?? 0) : 0, infusion.longRangeFt / 5) }),
+      riderNotes: [...profile.riderNotes, `${infusion.feature}: ${infusion.type} damage, thrown ${infusion.rangeFt}/${infusion.longRangeFt} ft, returning to the hand`],
+    };
   }
   return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWholeAction: granted?.attack.wholeAction === true, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
 }

@@ -28,6 +28,7 @@ import { choiceDamageTypeOf } from "@/lib/srd/chosen-element";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { ABILITY_NAMES, type FeatFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { isSwapRecord } from "@/lib/dm/ar-ws-spell-swap-record";
 
 let tableNames: Set<string> | null = null;
 
@@ -68,6 +69,10 @@ export function isMechanicalFeature(name: string): boolean {
     return false;
   }
   if (grantedNames().has(key)) {
+    return true;
+  }
+  // A spell swap's record is the level-up's to write (src/lib/dm/ar-ws-spell-swap-record.ts).
+  if (isSwapRecord(name)) {
     return true;
   }
   if (findOptionByFeatureName(name) || chosenFightingStyles([{ name }]).length) {

@@ -313,6 +313,20 @@ const ROWS = {
       assert.deepEqual(swap.after().spellcasting.known, ["Magic Missile", "Sleep", "Burning Hands"]);
     },
   },
+  // The acceptance (Storm Aura's environment at a barbarian level) is
+  // test-enforce-sweep-clauses-martial-barbarian.mjs's storm probe.
+  levelUpChanges: {
+    rule: "A choice changes with a level only where its rule says so, and only to an option it offers (Storm Aura: \"changed when you gain a barbarian level\").",
+    severity: "medium",
+    note: "",
+    attempt: async () => {
+      const fighter = { class: "fighter", level: 1, maxHp: 12, abilities: { str: 16, con: 14 } };
+      const stranger = await earned(fighter);
+      const refused = await stranger.send({ levelUpChanges: [{ from: "Second Wind", to: "Action Surge" }] });
+      assert.equal(refused.status, 400, JSON.stringify(refused.json));
+      assert.equal(stranger.after().level, 1);
+    },
+  },
   asiChoices: {
     rule: "An Ability Score Improvement is taken at the class's improvement levels: a fighter's first is at 4th.",
     severity: "high",

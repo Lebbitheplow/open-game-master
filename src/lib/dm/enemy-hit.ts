@@ -1,3 +1,4 @@
+import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
@@ -299,6 +300,11 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   const sheet = getSheetById(targetId);
   if (!sheet || sheet.deathSaves?.dead) {
     return null;
+  }
+  // Inured to Undeath (ar-ws-inured-logic.ts): nothing is taken.
+  const fixed = maxHpCannotFall(sheet);
+  if (fixed) {
+    return `${sheet.name}'s hit point maximum cannot be reduced (${fixed}): it stays at ${effectiveMaxHp(sheet)}.`;
   }
   const meta = { ...(sheet.conditionMeta as ConditionMetaMap) };
   const before = maxHpRiders(sheet.conditions, meta).drain;

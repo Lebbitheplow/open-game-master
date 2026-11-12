@@ -28,6 +28,14 @@ import { authoredTurnEnd } from "@/lib/dm/authored-turns";
 import { zoneTurnEnd } from "@/lib/dm/zone-triggers";
 import { blinkTurnEnd } from "@/lib/dm/spell-planes";
 import { endLeashes } from "@/lib/dm/condition-leash";
+import { speciesTurnEnd } from "@/lib/dm/mt-species-turns";
+import { endRageBound } from "@/lib/dm/rage-bound";
+import { echoTurnEnd } from "@/lib/dm/mt-fb-echo";
+import { projectionTurnEnd } from "@/lib/dm/spirit-projection";
+import { mindTurnEnd } from "@/lib/dm/scribe-mind";
+import { eagleBurstFalls } from "@/lib/dm/fall-landing";
+import { endBrokenPerformances } from "@/lib/dm/mt-srd-bard";
+import { endPresenceOutOfReach } from "@/lib/dm/mt-srd-barbarian";
 import {
   instancesOf,
   packInstances,
@@ -211,12 +219,32 @@ export function endTurns(
   // A hold its source has let go of (Champion Challenge): condition-leash.ts.
   const leashes = endLeashes(encounterId);
   lines.push(...leashes.lines);
+  // Feline Agility's refresh, Inner Radiance's burn (mt-species-turns.ts).
+  lines.push(...speciesTurnEnd(campaign, encounterId, combatantIds));
   enemiesChanged ||= leashes.enemiesChanged;
+  // A fear held only within sight and 60 feet of its source (mt-srd-barbarian.ts).
+  const presence = endPresenceOutOfReach(encounterId, combatantIds);
+  lines.push(...presence.lines);
+  enemiesChanged ||= presence.enemiesChanged;
+  // A Countercharm whose bard is silenced, or whose listener no longer hears (mt-srd-bard.ts).
+  lines.push(...endBrokenPerformances(campaign.id));
+  // What lasted until a rage now over ended (rage-bound.ts).
+  const rageBound = endRageBound(campaign.id);
+  lines.push(...rageBound.lines);
+  enemiesChanged ||= rageBound.enemiesChanged;
+  // An echo more than 30 feet from its knight as their turn ends (mt-fb-echo.ts).
+  lines.push(...echoTurnEnd(campaign, combatantIds));
+  // A spellbook mind more than 300 feet from its wizard (scribe-mind.ts).
+  lines.push(...mindTurnEnd(campaign, combatantIds));
+  // An Eagle totem barbarian in the air on the burst alone falls (fall-landing.ts).
+  lines.push(...eagleBurstFalls(campaign, combatantIds));
   // What an authored subclass feature does as a turn ends (Protective Spirit): authored-hooks.ts.
   lines.push(...authoredTurnEnd(campaign, combatantIds));
   // A spell area that strikes as a turn ends there (Grease, Wall of Fire): zone-triggers.ts.
   lines.push(...zoneTurnEnd(campaign, encounterId, combatantIds));
   // Blink's d20 as its caster's turn ends: spell-planes.ts.
   lines.push(...blinkTurnEnd(campaign, combatantIds));
+  // A spirit projection's body and its passage through things: spirit-projection.ts.
+  lines.push(...projectionTurnEnd(campaign, combatantIds));
   return { lines, enemiesChanged };
 }

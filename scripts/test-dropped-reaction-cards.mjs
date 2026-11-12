@@ -185,16 +185,29 @@ await test("Armor of Hexes turns the cursed creature's hit aside: a card for a w
 await test("A fallen Rune Knight or Echo Knight is refused for an ally's hit for being down, not for following damage.", async () => {
   const enemy = await stage(friend, 50);
   for (const who of [runeKnight, echoKnight]) {
-    world.patch(who.id, { currentHp: 0, conditions: ["unconscious", "prone"], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false } });
+    // The Echo Knight's echo is still marked out as they fall, so the card is
+    // dealt and the bar that holds is their being down.
+    const echo = who === echoKnight ? ["echo manifested"] : [];
+    world.patch(who.id, { currentHp: 0, conditions: ["unconscious", "prone", ...echo], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false } });
   }
   await strike(enemy, friend, [16, 4]);
   for (const [who, name] of [[runeKnight, "Runic Shield"], [echoKnight, "Shadow Martyr"]]) {
     const card = cardOf(who, name);
-    assert.ok(card, `${name} is dealt, shut`);
-    assert.match(card.disabled, /at 0 HP/);
-    const refused = intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), { ...card.intent, targetKind: "ally", targetId: friend.id }) ?? "";
-    assert.match(refused, /at 0 HP/);
-    assert.doesNotMatch(refused, /follows the damage/);
+    if (who === echoKnight) {
+      // Manifest Echo lasts "until it is destroyed, you dismiss it, you
+      // manifest another or you are incapacitated": the fallen knight's echo
+      // is gone at the hit's settle point (mt-fb-echo.ts endLostEchoes), so
+      // no card is dealt for the reaction that sends it. The mark outlived
+      // the fall here before the echo stood on the board.
+      assert.ok(!card, `${name} is not dealt: the echo fell with its knight`);
+      assert.ok(!world.sheet(who.id).conditions.includes("echo manifested"), "the echo's mark is gone");
+    } else {
+      assert.ok(card, `${name} is dealt, shut`);
+      assert.match(card.disabled, /at 0 HP/);
+      const refused = intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), { ...card.intent, targetKind: "ally", targetId: friend.id }) ?? "";
+      assert.match(refused, /at 0 HP/);
+      assert.doesNotMatch(refused, /follows the damage/);
+    }
     world.dice(2);
     const out = await world.invoke("use_reaction", { characterId: who.id, feature: name, targetCharacterId: friend.id });
     world.clearDice();

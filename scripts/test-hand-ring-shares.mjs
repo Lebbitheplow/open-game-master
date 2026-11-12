@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { clearDice, dice, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
+import { call } from "./lib/enforce-campaign.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-hand-ring-shares");
@@ -134,8 +135,21 @@ await test("On real dice each ray of a ring's Scorching Ray is parked at the rin
     const earlier = new Set(listOpenPendingRolls(world.campaignId).map((roll) => roll.id));
     const results = await play(brute, ringCard(brute), aimAt(goblin));
     for (const entry of entries(results.at(-1))) assert.notEqual(entry.ok, false, JSON.stringify(entry));
-    const parked = listOpenPendingRolls(world.campaignId).filter((roll) => !earlier.has(roll.id) && roll.kind === "attack");
-    assert.deepEqual(parked.map((roll) => roll.expression), ["1d20+7", "1d20+7", "1d20+7"]);
+    // Each ray is parked once the one before it has landed (pc-attack-parts.ts
+    // afterToHitLanded), as the server's dice make them in turn: a 1 on each
+    // misses, and the next ray comes up at the ring's +7 too.
+    const submit = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+    const seen = [];
+    for (let ray = 0; ray < 3; ray += 1) {
+      const open = listOpenPendingRolls(world.campaignId).filter((roll) => !earlier.has(roll.id) && roll.kind === "attack");
+      assert.equal(open.length, 1, `ray ${ray + 1}: ${open.length} to-hit rolls open at once`);
+      seen.push(open[0].expression);
+      earlier.add(open[0].id);
+      world.signIn({ id: brute.userId });
+      const landed = await call(submit, "POST", { dice: [1] }, { campaignId: world.campaignId, pendingRollId: open[0].id });
+      assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    }
+    assert.deepEqual(seen, ["1d20+7", "1d20+7", "1d20+7"]);
   } finally {
     setMemberRealDice(world.campaignId, brute.userId, false);
   }

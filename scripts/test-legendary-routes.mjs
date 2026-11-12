@@ -17,11 +17,9 @@
 // with it, played on a table through the GM's console.
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { register } from "node:module";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
 
-register("./lib/register-alias.mjs", import.meta.url);
 
 const { readPage, rowOfBlock } = await import("./lib/srd-bestiary.mjs");
 const { parseMonster } = await import("../src/lib/bestiary/statblock.ts");

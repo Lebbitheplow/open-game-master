@@ -1,0 +1,3171 @@
+{
+ "machinist::Arcanomechanical Casting": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 1,
+  "sha": "f4cc36420201",
+  "clauses": [
+   {
+    "c": "Casts wizard-list spells as assembled schematics using INT",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Arcanomechanical Casting#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "wizard",
+     "ability": "int"
+    }
+   },
+   {
+    "c": "the toolbelt is the focus",
+    "is": "flavor"
+   }
+  ]
+ },
+ "machinist::Field Repair": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 1,
+  "sha": "443e99c006d4",
+  "clauses": [
+   {
+    "c": "2/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Field Repair#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_field_repair",
+     "n": 2,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_field_repair#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1d8 + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_field_repair#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "machinist::Blueprint Memory": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 2,
+  "sha": "4e4ac4bfb16e",
+  "clauses": [
+   {
+    "c": "After studying a machine or mechanism for a minute, you can describe, operate, or sabotage it competently",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "machinist::Guild Chapter": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 3,
+  "sha": "95390fc0df54",
+  "clauses": [
+   {
+    "c": "Chooses an engineering chapter (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Guild Chapter#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "machinist::Overpressure Valve": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 5,
+  "sha": "55f23bd72722",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Overpressure Valve#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_overpressure_valve",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "cast a 1st-level schematic without expending a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Overpressure Valve#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_overpressure_valve"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Overpressure Valve\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, cast a 1st-level schematic without expending a slot.\"}"
+   }
+  ]
+ },
+ "machinist::Clockwork Familiar": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 6,
+  "sha": "7cd8e9a4542a",
+  "clauses": [
+   {
+    "c": "A small brass automaton assists you: it carries, fetches, and grants advantage on one check per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Clockwork Familiar#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Clockwork Familiar: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "machinist::Reinforced Chassis": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 7,
+  "sha": "ef663a40c721",
+  "clauses": [
+   {
+    "c": "+1 AC while wearing armor you have tuned (any armor after a long rest)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Reinforced Chassis#0:ac",
+    "k": "ac",
+    "p": {
+     "delta": 1,
+     "gear": "armor"
+    },
+    "observed": "AC is 15 with Reinforced Chassis and 15 without it"
+   }
+  ]
+ },
+ "machinist::Steamvent Burst": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 9,
+  "sha": "1d97964f42ab",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Steamvent Burst#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_steamvent_burst",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "adjacent creatures save (DEX) or take 3d8 fire and are pushed 10 ft when you vent your armor",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_steamvent_burst#HANDS_BACK"
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_steamvent_burst#HANDS_BACK"
+   },
+   {
+    "c": "save (DEX)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Steamvent Burst#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steamvent_burst",
+     "save": "dex",
+     "made": {
+      "dice": "3d8",
+      "takes": "none"
+     }
+    }
+   },
+   {
+    "c": "3d8 fire",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Steamvent Burst#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steamvent_burst",
+     "dice": "3d8",
+     "type": "fire"
+    },
+    "observed": "the spend hands back no fire damage type ({\"ok\":true,\"resource\":\"Steamvent Burst\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, adjacent creatures save (DEX) or take 3d8 fire and are pushed 10 ft when you vent your armor.\",\"resolveWith\":\"aoe_d)"
+   }
+  ]
+ },
+ "machinist::Precision Engineering": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 10,
+  "sha": "b2fa5eab32f2",
+  "clauses": [
+   {
+    "c": "Your schematics ignore half cover and treat three-quarters cover as half",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Precision Engineering#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Precision Engineering: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "machinist::Field Repair (2d8)": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 11,
+  "sha": "efacddc7df78",
+  "clauses": [
+   {
+    "c": "Field Repair restores 2d8 + INT and has 4 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Field Repair (2d8): no typed effect, no authored row, no typed counter (its counter: steampunk_field_repair:narrative)",
+    "sev": "medium"
+   },
+   {
+    "c": "2d8 + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#0:unhooked"
+   },
+   {
+    "c": "has 4 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_field_repair",
+     "n": 4,
+     "rest": "any"
+    },
+    "observed": "steampunk_field_repair holds 2 use(s) at level 11, and the text gives 4"
+   }
+  ]
+ },
+ "machinist::Aether Capacitor": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 13,
+  "sha": "2dc374f811bb",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Aether Capacitor#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_aether_capacitor",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "regain expended slot levels equal to your INT modifier",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_aether_capacitor#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "machinist::Master Schematic": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 14,
+  "sha": "7236b257f55f",
+  "clauses": [
+   {
+    "c": "Choose one 3rd-level schematic",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "cast it 1/long rest without a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Master Schematic#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_master_schematic"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Master Schematic\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"Choose one 3rd-level schematic; cast it 1/long rest without a slot.\"}"
+   },
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Master Schematic#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_master_schematic",
+     "n": 1,
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "machinist::Redundant Systems": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 15,
+  "sha": "29d6f55cf418",
+  "clauses": [
+   {
+    "c": "Advantage on CON saves to maintain concentration on schematics",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Redundant Systems#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Redundant Systems: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "CON save",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Redundant Systems#0:unhooked"
+   }
+  ]
+ },
+ "machinist::Difference Engine Mind": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 17,
+  "sha": "ed4854c6bcf9",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Difference Engine Mind#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_difference_engine_mind",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "take the calculated answer: treat one INT-based check as a natural 20",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Difference Engine Mind#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_difference_engine_mind"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Difference Engine Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, take the calculated answer: treat one INT-based check as a natural 2"
+   }
+  ]
+ },
+ "machinist::Perpetual Motion": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 18,
+  "sha": "f80429d6e06d",
+  "clauses": [
+   {
+    "c": "Overpressure Valve works for schematics up to 3rd level, twice per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Perpetual Motion#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Perpetual Motion: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "twice per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Perpetual Motion#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_overpressure_valve",
+     "n": 2,
+     "rest": "any"
+    },
+    "observed": "steampunk_overpressure_valve holds 1 use(s) at level 18, and the text gives 2"
+   }
+  ]
+ },
+ "machinist::Magnum Opus": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "machinist",
+  "level": 20,
+  "sha": "717d841cc31f",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Magnum Opus#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_magnum_opus",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "cast one schematic of 6th level or lower without a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Magnum Opus#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_magnum_opus"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Magnum Opus\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast one schematic of 6th level or lower without a slot; constructs and"
+   },
+   {
+    "c": "constructs and machines cannot resist it",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Magnum Opus#1:spend_moves"
+   }
+  ]
+ },
+ "machinist::Improved Familiar Frame": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Clockwork Savant",
+  "level": 3,
+  "sha": "a1991fd49798",
+  "clauses": [
+   {
+    "c": "Your familiar gains a sting (1d8 + INT piercing, 30 ft) and HP equal to 3 x your level",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Improved Familiar Frame: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "1d8 + INT piercing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked"
+   }
+  ]
+ },
+ "machinist::Wind-Up Ally": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Clockwork Savant",
+  "level": 3,
+  "sha": "0085aaee80f2",
+  "clauses": [
+   {
+    "c": "Command your familiar as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (spends)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Wind-Up Ally#0:spend_row",
+    "k": "spend_row",
+    "p": {
+     "name": "Wind-Up Ally"
+    }
+   }
+  ]
+ },
+ "machinist::Gear Swarm": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Clockwork Savant",
+  "level": 7,
+  "sha": "b8ef9302ca7e",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Gear Swarm#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_gear_swarm",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+   },
+   {
+    "c": "15-ft cube",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+   },
+   {
+    "c": "2d6 slashing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "machinist::Twin Automata": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Clockwork Savant",
+  "level": 11,
+  "sha": "4a6b1a0abc25",
+  "clauses": [
+   {
+    "c": "Build a second familiar",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Twin Automata: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "both act on your command",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked"
+   }
+  ]
+ },
+ "machinist::The Great Work Walks": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Clockwork Savant",
+  "level": 15,
+  "sha": "4798bff9ae50",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::The Great Work Walks#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_the_great_work_walks",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "your familiars merge into a brass juggernaut for 10 minutes (double HP, 2d10 + INT slam, you may ride it)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+   },
+   {
+    "c": "2d10 + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aeronaut::Sky Legs": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 1,
+  "sha": "3ed618b5f51a",
+  "clauses": [
+   {
+    "c": "Advantage on checks to climb, balance, and keep footing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Legs#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Sky Legs: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "falling damage you take is halved",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Legs#1:fall",
+    "k": "fall",
+    "p": {
+     "want": 9
+    },
+    "observed": "a 60-foot fall took 18 with Sky Legs, and the text makes it 9"
+   }
+  ]
+ },
+ "aeronaut::Daring Maneuver": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 1,
+  "sha": "ab349b00cade",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Daring Maneuver: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "add +1d6 damage to an attack made after moving at least 15 ft in a straight or swinging line",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked"
+   },
+   {
+    "c": "+1d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked"
+   }
+  ]
+ },
+ "aeronaut::Rigging Runner": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 2,
+  "sha": "25a6fd033f1a",
+  "clauses": [
+   {
+    "c": "Climbing costs no extra movement",
+    "is": "gap",
+    "probe": "not run: the scratch board has no surface to climb; read from src/lib/srd/authored-effects-genre.ts, where the Rigging Runner row carries the bonus-action Dash and nothing about climbing",
+    "read_only": true
+   },
+   {
+    "c": "Dash as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (bonus_route), src/lib/dm/bonus-routes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Rigging Runner#1:bonus_route",
+    "k": "bonus_route",
+    "p": {
+     "actions": [
+      "dash"
+     ]
+    }
+   }
+  ]
+ },
+ "aeronaut::Commission": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 3,
+  "sha": "96bf33eaed3f",
+  "clauses": [
+   {
+    "c": "Chooses an aeronaut commission (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Commission#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "aeronaut::Extra Attack": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "aeronaut::Grapnel Line": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 6,
+  "sha": "b99761897423",
+  "clauses": [
+   {
+    "c": "A launcher and line: swing or pull yourself 30 ft as part of your movement",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Grapnel Line: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "INT-mod uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_grapnel_line",
+     "ability": "int",
+     "rest": "any"
+    },
+    "observed": "a level 6 aeronaut holds no counter steampunk_grapnel_line (counters: none)"
+   }
+  ]
+ },
+ "aeronaut::Evasion": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 7,
+  "sha": "d5881517e899",
+  "name": {
+   "effects": [
+    "evasion"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "DEX saves for half damage deal none on a success, half on a failure",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"evasion\", src/lib/dm/aoe-characters.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Evasion#0:evasion",
+    "k": "evasion"
+   }
+  ]
+ },
+ "aeronaut::Duelist's Flourish": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 9,
+  "sha": "6f0cc0f6d8f9",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (reaction attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Duelist's Flourish#0:riposte",
+    "k": "riposte"
+   },
+   {
+    "c": "when missed in melee",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:genre::duelist s flourish::Duelist's Flourish#TRIGGER_UNCHECKED"
+   },
+   {
+    "c": "riposte with one weapon attack",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (reaction attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Duelist's Flourish#2:riposte",
+    "k": "riposte"
+   }
+  ]
+ },
+ "aeronaut::Weather Eye": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 10,
+  "sha": "17ebb484ed09",
+  "clauses": [
+   {
+    "c": "You read wind and weather a day ahead and are never surprised by conditions aloft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "aeronaut::Greater Daring": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 11,
+  "sha": "ea7271c04edd",
+  "clauses": [
+   {
+    "c": "Daring Maneuver rises to +2d6 and also applies to ranged attacks made while airborne or elevated",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Greater Daring#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Greater Daring: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+2d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Greater Daring#0:unhooked"
+   }
+  ]
+ },
+ "aeronaut::Boarding Action": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 13,
+  "sha": "9bd3cb00a38d",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Boarding Action#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_boarding_action",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "when combat starts, immediately move your speed and make one attack",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_boarding_action#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aeronaut::Cat's Grace": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 14,
+  "sha": "664790ef7dda",
+  "clauses": [
+   {
+    "c": "Immune to falling damage while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Cat's Grace#0:fall",
+    "k": "fall",
+    "p": {
+     "want": 0
+    },
+    "observed": "a 60-foot fall took 18 with Cat's Grace, and the text makes it 0"
+   },
+   {
+    "c": "opportunity attacks against you have disadvantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Cat's Grace#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Cat's Grace: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aeronaut::Grapnel Ace": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 15,
+  "sha": "b37b19e5dcb2",
+  "clauses": [
+   {
+    "c": "Grapnel Line can also disarm or trip (contested by STR) at 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Ace#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Grapnel Ace: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aeronaut::Sky Duelist": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 17,
+  "sha": "30e08c8ca42a",
+  "clauses": [
+   {
+    "c": "Your critical hits with one-handed weapons knock the target prone or disarm it (your choice)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Duelist#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Sky Duelist: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aeronaut::Master of the High Wire": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 18,
+  "sha": "034c67e05012",
+  "clauses": [
+   {
+    "c": "Your speed increases by 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Master of the High Wire#0:speed",
+    "k": "speed",
+    "p": {
+     "delta": 10
+    },
+    "observed": "speed is 30 with Master of the High Wire and 30 without it"
+   },
+   {
+    "c": "difficult terrain never slows you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Master of the High Wire#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Master of the High Wire: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "aeronaut::Legend of the Skies": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aeronaut",
+  "level": 20,
+  "sha": "18be17194ec3",
+  "clauses": [
+   {
+    "c": "When you roll initiative, gain a full extra turn before the first round begins",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Legend of the Skies#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Legend of the Skies: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "aeronaut::Pistol and Blade": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Sky Corsair",
+  "level": 3,
+  "sha": "142f133bc11a",
+  "clauses": [
+   {
+    "c": "When you attack with a melee weapon, make one firearm attack as a bonus action",
+    "is": "held",
+    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Pistol and Blade#0:pistol_blade",
+    "k": "pistol_blade"
+   }
+  ]
+ },
+ "aeronaut::Corsair's Swagger": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Sky Corsair",
+  "level": 3,
+  "sha": "c2ccacec47a6",
+  "clauses": [
+   {
+    "c": "Advantage on Intimidation and Persuasion aboard ships and in ports",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Corsair's Swagger#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Corsair's Swagger: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aeronaut::Powder Discipline": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Sky Corsair",
+  "level": 7,
+  "sha": "675630a96dc5",
+  "clauses": [
+   {
+    "c": "Your firearm attacks ignore half cover",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Powder Discipline#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Powder Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "reloading never costs you an attack",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Powder Discipline#0:unhooked"
+   }
+  ]
+ },
+ "aeronaut::Broadside": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Sky Corsair",
+  "level": 11,
+  "sha": "d23d43160f23",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Broadside#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_broadside",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "fire at up to three targets in a 15-ft cone with a single attack roll each",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Broadside#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_broadside"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Broadside\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, fire at up to three targets in a 15-ft cone with a single attack roll each.\"}"
+   },
+   {
+    "c": "15-ft cone",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Broadside#1:spend_moves"
+   }
+  ]
+ },
+ "aeronaut::Terror of the Trade Winds": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Sky Corsair",
+  "level": 15,
+  "sha": "6668c906e135",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_terror_of_the_trade_winds",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute your Daring Maneuver applies to every attack and enemies who see you save (WIS) or are frightened",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_terror_of_the_trade_winds",
+     "condition": "frightened",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Terror of the Trade Winds#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_terror_of_the_trade_winds",
+     "resolve": "rounds",
+     "rounds": 10
+    },
+    "observed": "the condition's record is {\"source\":\"95f4cc07-4023-40c0-872b-8345728a1b36\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":16}}, and the text says 10 round(s)"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_terror_of_the_trade_winds",
+     "save": "wis"
+    }
+   }
+  ]
+ },
+ "alchemist::Volatile Concoctions": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 1,
+  "sha": "bedb652fed25",
+  "clauses": [
+   {
+    "c": "Casts wizard-list spells as brewed formulae using INT",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Volatile Concoctions#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "wizard",
+     "ability": "int"
+    }
+   },
+   {
+    "c": "damaging formulae may be hurled as flasks",
+    "is": "flavor"
+   }
+  ]
+ },
+ "alchemist::Catalyst Stone": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 1,
+  "sha": "e1d40a483aa5",
+  "clauses": [
+   {
+    "c": "A prepared stone: 1/rest, add +1d4 to one formula's damage or healing",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_catalyst_stone#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Catalyst Stone#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_catalyst_stone",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "+1d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_catalyst_stone#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "alchemist::School of Practice": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 2,
+  "sha": "d25fe1f3d583",
+  "clauses": [
+   {
+    "c": "Chooses an alchemical school (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::School of Practice#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "alchemist::Reagent Pouch": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 3,
+  "sha": "662d085f8a25",
+  "clauses": [
+   {
+    "c": "You can identify any potion, poison, or chemical by smell and taste safely",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alchemist::Emergency Draught": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 5,
+  "sha": "af0c29d26ad0",
+  "clauses": [
+   {
+    "c": "Brew 2 draughts per long rest: drinker regains 2d4 + INT HP as a bonus action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Emergency Draught: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "2d4 + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#0:unhooked"
+   },
+   {
+    "c": "Brew 2 draughts per long rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Emergency Draught#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_emergency_draught",
+     "n": 2,
+     "rest": "long"
+    },
+    "observed": "a level 5 alchemist holds no counter steampunk_emergency_draught (counters: steampunk_catalyst_stone)"
+   }
+  ]
+ },
+ "alchemist::Acid Resistant Apron": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 6,
+  "sha": "aa3db2ddfba5",
+  "clauses": [
+   {
+    "c": "Resistance to acid and poison damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Acid Resistant Apron#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "acid",
+      "poison"
+     ]
+    },
+    "observed": "20 acid damage took 20 hit points with Acid Resistant Apron (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "alchemist::Fumes and Vapors": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 7,
+  "sha": "06d46c1da2dc",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Fumes and Vapors#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_fumes_and_vapors",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save (CON) or retch, losing their action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Fumes and Vapors#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_fumes_and_vapors"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Fumes and Vapors\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save "
+   },
+   {
+    "c": "10-ft radius",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Fumes and Vapors#1:spend_moves"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Fumes and Vapors#1:spend_moves"
+   },
+   {
+    "c": "save (CON)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Fumes and Vapors#1:spend_moves"
+   }
+  ]
+ },
+ "alchemist::Improved Catalyst": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 9,
+  "sha": "e7a19b432040",
+  "clauses": [
+   {
+    "c": "Catalyst Stone adds +1d8 and has 3 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Improved Catalyst: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+1d8",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#0:unhooked"
+   },
+   {
+    "c": "has 3 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_catalyst_stone",
+     "n": 3,
+     "rest": "any"
+    },
+    "observed": "steampunk_catalyst_stone holds 1 use(s) at level 9, and the text gives 3"
+   }
+  ]
+ },
+ "alchemist::Transmuter's Touch": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 10,
+  "sha": "e124d621aa8d",
+  "clauses": [
+   {
+    "c": "10 minutes converts up to 1 cubic foot of one common material to another (wood to iron, water to acid)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alchemist::Sublimation": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 11,
+  "sha": "0893b911a4bc",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Sublimation#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_sublimation",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "cast a formula of 3rd level or lower without expending a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Sublimation#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_sublimation"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Sublimation\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast a formula of 3rd level or lower without expending a slot.\"}"
+   }
+  ]
+ },
+ "alchemist::Philosopher's Draught": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 13,
+  "sha": "7e598dbb88ae",
+  "clauses": [
+   {
+    "c": "Emergency Draughts also cure one poison or disease and grant 1 hour of poison immunity",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Philosopher's Draught#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Philosopher's Draught: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alchemist::Volatile Chain": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 14,
+  "sha": "d334de65e854",
+  "clauses": [
+   {
+    "c": "Your damaging formulae may splash: one creature adjacent to the target takes your INT mod in the same damage type",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Volatile Chain#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Volatile Chain: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Volatile Chain#0:unhooked"
+   }
+  ]
+ },
+ "alchemist::Stone of the Magnum Opus": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 15,
+  "sha": "da51f034f742",
+  "clauses": [
+   {
+    "c": "Catalyst Stone can instead reroll all of a formula's dice, keeping the better total",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Stone of the Magnum Opus#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Stone of the Magnum Opus: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "alchemist::Elixir of Mastery": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 17,
+  "sha": "f4f436772c13",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Elixir of Mastery#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_elixir_of_mastery",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "brew a greater elixir: drinker gains advantage on everything for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_elixir_of_mastery#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_elixir_of_mastery#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "alchemist::Alkahest": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 18,
+  "sha": "5fa44299f32a",
+  "clauses": [
+   {
+    "c": "Your acid formulae ignore resistance and melt nonmagical barriers of 1 ft thickness or less",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Alkahest#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Alkahest: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alchemist::The Great Work": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "alchemist",
+  "level": 20,
+  "sha": "c9298e94a0ec",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::The Great Work#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_the_great_work",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "cast one formula of 7th level or lower without a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::The Great Work#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_the_great_work"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Great Work\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast one formula of 7th level or lower without a slot; its dice are "
+   },
+   {
+    "c": "its dice are maximized",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::The Great Work#1:spend_moves"
+   }
+  ]
+ },
+ "alchemist::Corrosive Focus": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "The Vitriolic School",
+  "level": 2,
+  "sha": "bd77afa95ab8",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Corrosive Focus: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "a damaging formula deals +1d6 acid",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+   },
+   {
+    "c": "+1d6 acid",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+   },
+   {
+    "c": "you may change any formula's damage type to acid",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+   }
+  ]
+ },
+ "alchemist::Etching Acid": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "The Vitriolic School",
+  "level": 2,
+  "sha": "d3a6476f9310",
+  "clauses": [
+   {
+    "c": "Your acid damage reduces a hit target's AC by 1 until your next turn (not cumulative)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Etching Acid#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Etching Acid: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Etching Acid#0:unhooked"
+   }
+  ]
+ },
+ "alchemist::Vitriol Ampoule": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "The Vitriolic School",
+  "level": 6,
+  "sha": "925d3e32eb5f",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Vitriol Ampoule#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "steampunk_vitriol_ampoule",
+     "cost": "reaction"
+    }
+   },
+   {
+    "c": "when hit in melee",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_vitriol_ampoule#TRIGGER_UNCHECKED"
+   },
+   {
+    "c": "the attacker takes 2d6 acid as an ampoule bursts",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_vitriol_ampoule#GUIDANCE_ONLY"
+   },
+   {
+    "c": "2d6 acid",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_vitriol_ampoule#GUIDANCE_ONLY"
+   },
+   {
+    "c": "INT-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Vitriol Ampoule#4:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_vitriol_ampoule",
+     "ability": "int",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "alchemist::Dissolving Mist": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "The Vitriolic School",
+  "level": 10,
+  "sha": "6401628a04bc",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_dissolving_mist",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+   },
+   {
+    "c": "20-ft radius",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+   },
+   {
+    "c": "(CON save halves)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_dissolving_mist",
+     "save": "con",
+     "made": {
+      "dice": "3d6",
+      "takes": "half"
+     }
+    }
+   },
+   {
+    "c": "3d6 acid",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Dissolving Mist#5:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_dissolving_mist",
+     "dice": "3d6",
+     "type": "acid"
+    },
+    "observed": "the spend hands back no acid damage type ({\"ok\":true,\"resource\":\"Dissolving Mist\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)"
+   }
+  ]
+ },
+ "alchemist::Universal Solvent": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "The Vitriolic School",
+  "level": 14,
+  "sha": "c84d703667e0",
+  "clauses": [
+   {
+    "c": "Your acid formulae treat immunity as resistance",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Universal Solvent#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Universal Solvent: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "Etching Acid stacks to -3 AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Universal Solvent#0:unhooked"
+   }
+  ]
+ },
+ "gadgeteer::Utility Gadgets": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 1,
+  "sha": "0662a438ade8",
+  "clauses": [
+   {
+    "c": "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton key, pocket shield)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Utility Gadgets: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "each usable INT-mod times per rest with sensible effects",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_utility_gadgets",
+     "ability": "int",
+     "rest": "any"
+    },
+    "observed": "a level 1 gadgeteer holds no counter steampunk_utility_gadgets (counters: steampunk_overclock)"
+   }
+  ]
+ },
+ "gadgeteer::Overclock": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 1,
+  "sha": "0cb92796c09a",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Overclock#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_overclock",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "a gadget or machine you hold works at double effect for 1 minute",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 1 minute",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "gadgeteer::Tinker's Speed": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 2,
+  "sha": "85add4126254",
+  "clauses": [
+   {
+    "c": "Draw, swap, or deploy gadgets as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (spends)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Tinker's Speed#0:spend_row",
+    "k": "spend_row",
+    "p": {
+     "name": "Tinker's Speed"
+    }
+   }
+  ]
+ },
+ "gadgeteer::Workshop": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 3,
+  "sha": "e0f21e630818",
+  "clauses": [
+   {
+    "c": "Chooses a workshop lineage (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Workshop#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "gadgeteer::Extra Attack": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "gadgeteer::Third Gadget": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 6,
+  "sha": "a2de6b8474fe",
+  "clauses": [
+   {
+    "c": "Learn a third gadget",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Third Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "gadget saves against your effects use 8 + proficiency + INT",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked"
+   }
+  ]
+ },
+ "gadgeteer::Spring Heels": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 7,
+  "sha": "004cd10c60c3",
+  "clauses": [
+   {
+    "c": "Your jump distance triples",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Spring Heels#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Spring Heels: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "ignore the first 20 ft of any fall",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Spring Heels#1:fall",
+    "k": "fall",
+    "p": {
+     "want": 12
+    },
+    "observed": "a 60-foot fall took 18 with Spring Heels, and the text makes it 12"
+   }
+  ]
+ },
+ "gadgeteer::Smoke Discipline": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 9,
+  "sha": "49bff55df0ee",
+  "clauses": [
+   {
+    "c": "Your smoke bombs fill a 15-ft radius and you see through your own smoke",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Smoke Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "15-ft radius",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked"
+   }
+  ]
+ },
+ "gadgeteer::Fourth Gadget": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 10,
+  "sha": "bd963bc42208",
+  "clauses": [
+   {
+    "c": "Learn a fourth gadget",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fourth Gadget#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Fourth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "Overclock has 2 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fourth Gadget#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_overclock",
+     "n": 2,
+     "rest": "any"
+    },
+    "observed": "steampunk_overclock holds 1 use(s) at level 10, and the text gives 2"
+   }
+  ]
+ },
+ "gadgeteer::Sabotage": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 11,
+  "sha": "c4c56e0e07d5",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Sabotage#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_sabotage",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "a touched machine, trap, or construct malfunctions at the worst moment for its owner (GM adjudicates)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "gadgeteer::Backup Rig": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 13,
+  "sha": "f2f1d8830c4e",
+  "clauses": [
+   {
+    "c": "When an effect would destroy or disable a held gadget, it survives",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Backup Rig#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_backup_rig",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "ignore being disarmed",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Backup Rig#2:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_backup_rig"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Backup Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"When an effect would destroy or disable a held gadget, it survives; 1/long rest, igno"
+   }
+  ]
+ },
+ "gadgeteer::Fifth Gadget": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 14,
+  "sha": "4634b2c902ad",
+  "clauses": [
+   {
+    "c": "Learn a fifth gadget",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fifth Gadget#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Fifth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "gadgeteer::Chain Deployment": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 15,
+  "sha": "565f88af8eb8",
+  "clauses": [
+   {
+    "c": "Use two different gadgets with the same bonus action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Chain Deployment#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Chain Deployment: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "gadgeteer::Signature Invention": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 17,
+  "sha": "5aaf832d34bf",
+  "clauses": [
+   {
+    "c": "Design one custom gadget with the GM",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "it is yours alone and recharges per short rest",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "gadgeteer::Perpetual Toolkit": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 18,
+  "sha": "b5a9a28633b5",
+  "clauses": [
+   {
+    "c": "All gadget uses recharge on a short rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Perpetual Toolkit#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Perpetual Toolkit: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "gadgeteer::One Gadget for Everything": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "gadgeteer",
+  "level": 20,
+  "sha": "4403184af798",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::One Gadget for Everything#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_one_gadget_for_everything",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "declare you prepared exactly the right device for this situation",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM makes it work once",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "gadgeteer::Prodigy's Precision": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Tinker Prodigy",
+  "level": 3,
+  "sha": "541b847b7d1c",
+  "clauses": [
+   {
+    "c": "Add +1d4 to attack rolls made with gadget-augmented weapons (tech blades and firearms you have tuned)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Prodigy's Precision: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+1d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked"
+   }
+  ]
+ },
+ "gadgeteer::Quick Study": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Tinker Prodigy",
+  "level": 3,
+  "sha": "eec9572d7976",
+  "clauses": [
+   {
+    "c": "Advantage on checks to understand or copy unfamiliar technology",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Quick Study#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Quick Study: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "gadgeteer::Arc Coil": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Tinker Prodigy",
+  "level": 7,
+  "sha": "46b708e6fafb",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Arc Coil#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_arc_coil",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "your tuned weapon deals +2d8 lightning on one hit",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+   },
+   {
+    "c": "+2d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+   },
+   {
+    "c": "the target cannot take reactions until its next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+   },
+   {
+    "c": "until its next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "gadgeteer::Auto-Loader Harness": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Tinker Prodigy",
+  "level": 11,
+  "sha": "eaf93940eafb",
+  "clauses": [
+   {
+    "c": "Once per turn, make one extra firearm attack as part of the Attack action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Auto-Loader Harness#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Auto-Loader Harness: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "gadgeteer::Masterwork Arsenal": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Tinker Prodigy",
+  "level": 15,
+  "sha": "d0570215b346",
+  "clauses": [
+   {
+    "c": "Your tuned weapons count as +2 magical weapons and their critical range improves to 19-20",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Masterwork Arsenal#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Masterwork Arsenal: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aether_channeler::Conduit Body": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 1,
+  "sha": "209d9c221ff0",
+  "clauses": [
+   {
+    "c": "Casts sorcerer-list spells as aetheric arts using CHA",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Conduit Body#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "sorcerer",
+     "ability": "cha"
+    }
+   },
+   {
+    "c": "sparks visibly arc across you when you cast",
+    "is": "flavor"
+   }
+  ]
+ },
+ "aether_channeler::Galvanic Discharge": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 1,
+  "sha": "298db0115f48",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Galvanic Discharge#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_galvanic_discharge",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "a creature that touches or melee-hits you takes 1d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_galvanic_discharge#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_galvanic_discharge#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Static Sense": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 2,
+  "sha": "962bda499037",
+  "clauses": [
+   {
+    "c": "Detect active machines, aether lines, and charged creatures within 30 ft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "within 30 ft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "aether_channeler::Grounded Stance": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 3,
+  "sha": "3d8b32f0fcbb",
+  "clauses": [
+   {
+    "c": "Resistance to lightning damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Grounded Stance#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "lightning"
+     ]
+    },
+    "observed": "20 lightning damage took 20 hit points with Grounded Stance (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "aether_channeler::Surge Casting": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 5,
+  "sha": "8aa5f314d839",
+  "clauses": [
+   {
+    "c": "2/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Surge Casting#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_surge_casting",
+     "n": 2,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "cast a cantrip as a bonus action after casting a leveled art",
+    "is": "held",
+    "by": "src/lib/dm/cast-rules.ts SURGE_FEATURES",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Surge Casting#1:surge",
+    "k": "surge",
+    "p": {
+     "id": "steampunk_surge_casting"
+    }
+   }
+  ]
+ },
+ "aether_channeler::Power the Works": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 7,
+  "sha": "29c1028bd394",
+  "clauses": [
+   {
+    "c": "Your touch runs any machine without fuel for 1 hour",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 1 hour",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "CHA-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Power the Works#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_power_the_works",
+     "ability": "cha",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "aether_channeler::Capacitor Soul": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 9,
+  "sha": "ff86c8915d6b",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Capacitor Soul#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_capacitor_soul",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "absorb a lightning or aether effect targeting you: negate it and regain a 1st-level slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_capacitor_soul#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Storm Step": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 11,
+  "sha": "2502099acc6b",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Storm Step#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_storm_step",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "turn to crackling energy and move 30 ft through creatures and objects as a bonus action",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Storm Step#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_storm_step"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Storm Step\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, turn to crackling energy and move 30 ft through creatures and objects as a bonus"
+   },
+   {
+    "c": "as a bonus action",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Storm Step#2:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "steampunk_storm_step",
+     "cost": "bonus"
+    }
+   }
+  ]
+ },
+ "aether_channeler::Overcharge": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 13,
+  "sha": "6d93dfb96483",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Overcharge#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_overcharge",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a damaging art rolls maximum dice",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+   },
+   {
+    "c": "you take 1d10 lightning backlash",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+   },
+   {
+    "c": "1d10 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Aetheric Battery": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 15,
+  "sha": "ea4c98f49912",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Aetheric Battery#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_aetheric_battery",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "regain expended slot levels equal to your CHA modifier",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_aetheric_battery#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Lightning Rod": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 17,
+  "sha": "4950fcaf8cfb",
+  "clauses": [
+   {
+    "c": "Immunity to lightning damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Lightning Rod#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "lightning"
+     ],
+     "immune": true
+    },
+    "observed": "20 lightning damage took 10 hit points with Lightning Rod (10 without it), and the text makes it 0"
+   },
+   {
+    "c": "Galvanic Discharge is always active",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Lightning Rod#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Lightning Rod: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "aether_channeler::The Grid Bows": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 18,
+  "sha": "fb508795a1e1",
+  "clauses": [
+   {
+    "c": "Machines and constructs have disadvantage on saves against your arts",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::The Grid Bows#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to The Grid Bows: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "aether_channeler::Living Dynamo": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "aether_channeler",
+  "level": 20,
+  "sha": "439175ba1e36",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Living Dynamo#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_living_dynamo",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute your arts of 3rd level or lower cost no slots",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Living Dynamo#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "steampunk_living_dynamo"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Living Dynamo\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, for 1 minute your arts of 3rd level or lower cost no slots.\"}"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Living Dynamo#1:spend_moves"
+   }
+  ]
+ },
+ "aether_channeler::Dynamo Spark": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Storm Dynamo",
+  "level": 1,
+  "sha": "c7f462540e86",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Dynamo Spark#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Dynamo Spark: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "add your CHA modifier as lightning damage to a damaging art",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Dynamo Spark#0:unhooked"
+   }
+  ]
+ },
+ "aether_channeler::Chain Arc": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Storm Dynamo",
+  "level": 6,
+  "sha": "94e520a2938f",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Chain Arc#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_chain_arc",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "a single-target lightning art jumps to a second target within 15 ft for half damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_chain_arc#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 15 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_chain_arc#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Tempest Shell": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Storm Dynamo",
+  "level": 10,
+  "sha": "fabfec1bc780",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Tempest Shell#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_tempest_shell",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a whirling storm shield for 1 minute: +2 AC and melee attackers take 2d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+   },
+   {
+    "c": "2d8 lightning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "aether_channeler::Heart of the Storm": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Storm Dynamo",
+  "level": 14,
+  "sha": "ea89033d2361",
+  "clauses": [
+   {
+    "c": "Your lightning arts ignore resistance and treat immunity as resistance",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Heart of the Storm#0:stray",
+    "k": "stray",
+    "observed": "by its name the engine also gives Heart of the Storm: effect resistance(lightning,thunder)",
+    "note": "the Storm Sorcery feature of the same name (src/lib/srd/feature-effects.ts, parsed from src/lib/srd/subclasses.json) answers for it: the aether channeler gains resistance to lightning and thunder damage, which this text does not give, and nothing does what it does say",
+    "kind": "rule-wrong"
+   }
+  ]
+ },
+ "steam_knight::Boiler Plate": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 1,
+  "sha": "c2a78967fa83",
+  "clauses": [
+   {
+    "c": "Your tuned armor grants +1 AC and immunity to being pushed while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Boiler Plate: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "Your tuned armor grants +1 AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#1:ac",
+    "k": "ac",
+    "p": {
+     "delta": 1,
+     "gear": "armor"
+    },
+    "observed": "AC is 15 with Boiler Plate and 15 without it"
+   },
+   {
+    "c": "immunity to being pushed while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#0:unhooked"
+   }
+  ]
+ },
+ "steam_knight::Piston Strike": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 1,
+  "sha": "87f9f82edb8f",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Piston Strike: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+1d6 bludgeoning on a melee hit as the pistons slam",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#0:unhooked"
+   },
+   {
+    "c": "+1d6 bludgeoning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#2:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d6"
+    },
+    "observed": "a hit rolls 1d8+3 with Piston Strike (1d8+3 without it), and the text makes it 1d6"
+   }
+  ]
+ },
+ "steam_knight::Head of Steam": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 2,
+  "sha": "b903b3b6f882",
+  "clauses": [
+   {
+    "c": "Bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (spends)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Head of Steam#0:spend_row",
+    "k": "spend_row",
+    "p": {
+     "name": "Head of Steam",
+     "condition": "head of steam"
+    }
+   },
+   {
+    "c": "build pressure. Your next Piston Strike this turn deals +2d6 instead",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Head of Steam#1:rider",
+    "k": "rider",
+    "p": {
+     "dice": "2d6",
+     "pre": "Head of Steam"
+    },
+    "observed": "a hit rolls 1d8+3 with Head of Steam (1d8+3 without it), and the text makes it 2d6",
+    "where": "src/lib/srd/authored-conditions.ts head_of_steam (summaryOnly: the buff lands and nothing reads it)"
+   }
+  ]
+ },
+ "steam_knight::Order of the Boiler": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 3,
+  "sha": "e5c82d3eea6b",
+  "clauses": [
+   {
+    "c": "Chooses a knightly order (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Order of the Boiler#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "steam_knight::Extra Attack": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "steam_knight::Steam Vent": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 6,
+  "sha": "471ff99da2ca",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_steam_vent",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "adjacent creatures save (CON) or are blinded by scalding mist until your next turn",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steam_vent",
+     "condition": "blinded",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Steam Vent#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steam_vent",
+     "resolve": "far",
+     "feet": 5
+    },
+    "observed": "a creature 5 ft and more away was caught: [\"blinded\"]"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Steam Vent#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steam_vent",
+     "resolve": "rounds",
+     "rounds": 1
+    },
+    "observed": "the condition's record is {\"source\":\"2bb45d7f-b149-45e9-aafb-75e19ecbcc46\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+   },
+   {
+    "c": "save (CON)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_steam_vent",
+     "save": "con"
+    }
+   }
+  ]
+ },
+ "steam_knight::Locomotive Charge": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 7,
+  "sha": "0734cdc2daae",
+  "clauses": [
+   {
+    "c": "When you move 15+ ft straight toward a creature and hit it, it saves (STR) or is knocked prone",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Locomotive Charge#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Locomotive Charge: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "saves (STR)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Locomotive Charge#0:unhooked"
+   }
+  ]
+ },
+ "steam_knight::Pressure Seal": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 9,
+  "sha": "ae2ec3967469",
+  "clauses": [
+   {
+    "c": "Advantage on saves against poison gas and drowning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Pressure Seal#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "poisoned"
+     ]
+    },
+    "observed": "a save against poisoned threw 1 d20 with Pressure Seal (1 without it)"
+   },
+   {
+    "c": "the armor is airtight for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/steampunk-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "steam_knight::Reinforced Boiler": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 10,
+  "sha": "c4a472d05706",
+  "clauses": [
+   {
+    "c": "Boiler Plate grants +2 AC",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Reinforced Boiler#0:ac",
+    "k": "ac",
+    "p": {
+     "delta": 1,
+     "gear": "armor"
+    },
+    "observed": "AC is 15 with Reinforced Boiler and 15 without it",
+    "note": "measured as one more than Boiler Plate's +1, which is not applied either"
+   },
+   {
+    "c": "resistance to fire damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Reinforced Boiler#1:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "fire"
+     ]
+    },
+    "observed": "20 fire damage took 20 hit points with Reinforced Boiler (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "steam_knight::Extra Attack (2)": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 11,
+  "sha": "dcc718f1a4eb",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack three times when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Extra Attack (2)#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 3
+    }
+   }
+  ]
+ },
+ "steam_knight::Emergency Release": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 13,
+  "sha": "2abf53d671ba",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_emergency_release",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "when reduced below half HP, vent: attackers within 10 ft take 3d8 fire (DEX save halves)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_emergency_release#HANDS_BACK"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_emergency_release#HANDS_BACK"
+   },
+   {
+    "c": "(DEX save halves)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_emergency_release",
+     "save": "dex",
+     "made": {
+      "dice": "3d8",
+      "takes": "half"
+     }
+    }
+   },
+   {
+    "c": "3d8 fire",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Emergency Release#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "steampunk_emergency_release",
+     "dice": "3d8",
+     "type": "fire"
+    },
+    "observed": "the spend hands back no fire damage type ({\"ok\":true,\"resource\":\"Emergency Release\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, when reduced below half HP, vent: attackers within 10 ft take 3d8 fire (DEX save halves).\",\"resolveWith\":\"aoe_dam)"
+   }
+  ]
+ },
+ "steam_knight::Juggernaut Frame": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 14,
+  "sha": "9045f50b6427",
+  "clauses": [
+   {
+    "c": "Your speed cannot be reduced",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Juggernaut Frame: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   },
+   {
+    "c": "difficult terrain never slows you while armored",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked"
+   }
+  ]
+ },
+ "steam_knight::Piston Barrage": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 15,
+  "sha": "aa5fdeefcf3f",
+  "clauses": [
+   {
+    "c": "Piston Strike applies to every melee hit, not once per turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Barrage#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Piston Barrage: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "steam_knight::Adamant Boiler": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 17,
+  "sha": "de6c4578b3b6",
+  "clauses": [
+   {
+    "c": "Critical hits against you become normal hits",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Adamant Boiler#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Adamant Boiler: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "steam_knight::Full Throttle": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 18,
+  "sha": "0372cab33769",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Full Throttle#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_full_throttle",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "double your speed and gain an extra action each turn for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+   },
+   {
+    "c": "take 3d10 fire when it ends",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+   },
+   {
+    "c": "3d10 fire",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "steam_knight::The Engine Eternal": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "steam_knight",
+  "level": 20,
+  "sha": "f8edc45b65d8",
+  "clauses": [
+   {
+    "c": "While conscious, regain 5 HP at the start of your turn if below half HP",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::The Engine Eternal#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to The Engine Eternal: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "Head of Steam is free once per turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::The Engine Eternal#0:unhooked"
+   }
+  ]
+ },
+ "steam_knight::Hold the Line": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Boilerplate Vanguard",
+  "level": 3,
+  "sha": "0ebf9ed01b2e",
+  "clauses": [
+   {
+    "c": "Enemies within your reach treat the area as difficult terrain",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Hold the Line#0:stray",
+    "k": "stray",
+    "observed": "by its name the engine also gives Hold the Line: authored row fighter::Hold the Line; use_reaction \"Hold the Line\" accepted: {\"ok\":true,\"reaction\":\"Hold the Line\",\"spent\":\"Holder's reaction is used until the start of their next turn.\",\"attack\":{\"ok\":true,\"name\":\"Goblin 1\",\"hp\":\"293/30",
+    "note": "the Cavalier fighter's feature of the same name (src/lib/srd/authored-effects-data-b.ts \"fighter::Hold the Line\") is held through heldAuthored's borrowedRow: use_reaction \"Hold the Line\" gives the steam knight the Cavalier's reaction attack that stops a creature, and nothing makes the ground within reach difficult",
+    "kind": "rule-wrong"
+   }
+  ]
+ },
+ "steam_knight::Shield Coupling": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Boilerplate Vanguard",
+  "level": 3,
+  "sha": "93365057df2f",
+  "clauses": [
+   {
+    "c": "Adjacent allies gain +1 AC while you hold a shield",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Shield Coupling#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Shield Coupling: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "steam_knight::Intercept Protocol": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Boilerplate Vanguard",
+  "level": 7,
+  "sha": "48f96ff7af6b",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Intercept Protocol#0:take_hit",
+    "k": "take_hit"
+   },
+   {
+    "c": "swap places with an adjacent ally targeted by an attack",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Intercept Protocol#1:take_hit",
+    "k": "take_hit",
+    "p": {
+     "swap": true
+    },
+    "observed": "the two did not swap places"
+   },
+   {
+    "c": "adjacent",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Intercept Protocol#2:take_hit",
+    "k": "take_hit",
+    "p": {
+     "allyAt": [
+      5,
+      5
+     ],
+     "foeAt": [
+      6,
+      5
+     ],
+     "refused": true
+    }
+   },
+   {
+    "c": "you become the target",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Intercept Protocol#3:take_hit",
+    "k": "take_hit"
+   }
+  ]
+ },
+ "steam_knight::Bulwark Advance": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Boilerplate Vanguard",
+  "level": 11,
+  "sha": "f68508e13500",
+  "clauses": [
+   {
+    "c": "Allies behind you have three-quarters cover against ranged attacks",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Bulwark Advance#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Bulwark Advance: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "steam_knight::Unbreakable Vanguard": {
+  "source": "src/lib/classes/steampunk-features.json",
+  "group": "Boilerplate Vanguard",
+  "level": 15,
+  "sha": "328b50eaf438",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Unbreakable Vanguard#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "steampunk_unbreakable_vanguard",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "for 1 minute you and adjacent allies have resistance to all damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+   },
+   {
+    "c": "adjacent",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+   }
+  ]
+ }
+}

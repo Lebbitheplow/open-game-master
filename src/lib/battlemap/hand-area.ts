@@ -38,10 +38,16 @@ export type HandArea = {
   tone: ZoneTone;
   // The spell row's own line, for the aim bar ("difficult terrain; ...").
   summary: string;
+  // A lasting area's size in feet at this slot (a burst's radius, a cube's
+  // side, a wall's length), for the words on its card (spell-glyph-logic.ts).
+  feet?: number;
   // An instant blast's template (Fireball's sphere, Burning Hands' cone):
   // nothing stays on the ground, and the creatures on its squares are the
   // ones it catches. Absent for a lasting area.
   blast?: AreaShape;
+  // The square a move goes to, not an area (Mantle of Inspiration's stride,
+  // hand-feature-doors.ts): one square, sent as the tool's x and y.
+  move?: true;
 };
 
 export type AreaPick = { at?: XY; toward?: XY };
@@ -56,7 +62,9 @@ export function areaFor(named: ZoneNamed, slotLevel: number | null = null): Hand
   const runsAs = typeof named === "string" ? undefined : named.runsAs;
   const pick: AreaPickKind =
     row.shape === "aura" || row.self ? "none" : row.shape === "line" ? "direction" : row.shape === "wall" ? "wall" : "point";
-  return { spell, ...(runsAs ? { runsAs } : {}), slotLevel, pick, shape: row.shape, tone: row.tone, summary: row.summary };
+  // Fog Cloud's radius grows with the slot, as layZone lays it.
+  const feet = row.feet + (row.perSlotFeet ?? 0) * Math.max(0, (slotLevel ?? row.level) - row.level);
+  return { spell, ...(runsAs ? { runsAs } : {}), slotLevel, pick, shape: row.shape, tone: row.tone, summary: row.summary, feet };
 }
 
 // The colour a blast is drawn in, by what it deals.
@@ -178,6 +186,7 @@ export function describePick(area: HandArea, pick: AreaPick): string {
       ? `from ${square(pick.at)} toward ${square(pick.toward)}`
       : `from ${square(pick.at)}`;
   }
+  if (area.move) return pick.at ? `to ${square(pick.at)}` : "";
   return pick.at ? `centred on ${square(pick.at)}` : "";
 }
 
@@ -199,6 +208,7 @@ export function pickHint(area: HandArea, pick: AreaPick): string {
           ? "Tap again to start the wall over."
           : "Tap where it runs toward, or leave it across your view.";
     case "point":
+      if (area.move) return pick.at ? "Tap another square to go there instead." : "Tap the square to move to.";
       return pick.at ? "Tap another square to move it." : "Tap the board where it is centred.";
   }
 }

@@ -24,14 +24,17 @@ import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst, rollOn } from "@/lib/roll-labels";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishWithSeq } from "@/lib/events";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
 import { objectProfile, type ObjectMaterial, type ObjectSize } from "@/lib/srd/objects";
 import { breakWallSection, sectionHit, wallSectionFor } from "@/lib/dm/zone-walls";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
+import { freeFromNet, NET_AC, NET_HP, netObject, nettedId } from "@/lib/dm/net-hold";
+import { vesselObject } from "@/lib/dm/genie-vessel";
 
 export const OBJECT_MATERIALS: ObjectMaterial[] = [
   "cloth", "paper", "rope", "crystal", "glass", "ice", "wood", "bone", "stone", "iron", "steel", "mithral", "adamantine",
@@ -95,6 +98,13 @@ function recordObject(campaignId: string, name: string, record: ObjectRecord) {
   setClock(campaignId, { ...current, objects: Object.fromEntries(kept) });
 }
 
+function forgetObject(campaignId: string, name: string) {
+  const current = getClock(campaignId);
+  const objects = { ...(current.objects ?? {}) };
+  delete objects[keyOf(campaignId, name)];
+  setClock(campaignId, { ...current, objects });
+}
+
 export function damageObject(
   campaign: Campaign | null,
   turn: DmTurn | null,
@@ -103,26 +113,36 @@ export function damageObject(
   let args: z.infer<typeof objectSchema>;
   try {
     args = objectSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments for damage_object.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments for damage_object.", error, rawArguments);
   }
   // A section of a Wall of Ice has its own numbers (src/lib/dm/zone-walls.ts).
   const section = campaign && args.name ? wallSectionFor(campaign.id, args.name, args.section) : null;
   if (section && "error" in section) {
     return section;
   }
+  // A net holding a creature has the net's own numbers, kept per creature
+  // it holds (net-hold.ts).
+  const net = campaign && args.name && !section ? netObject(campaign.id, args.name) : null;
+  if (net && "error" in net) {
+    return net;
+  }
+  // A Genie warlock's vessel has its warlock's numbers (genie-vessel.ts).
+  const vessel = campaign && args.name && !section && !net ? vesselObject(campaign.id, args.name) : null;
   // Each section keeps its own damage between blows.
-  const kept = section ? `${section.zoneId} ${section.section}` : args.name;
+  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : vessel ? vessel.key : args.name;
   const record = campaign && kept ? objectRecord(campaign.id, kept) : null;
   const profile = objectProfile(args.material ?? "wood", args.size ?? "medium", args.fragile);
   // A section's numbers are its wall's; an object already named keeps the
   // numbers its first call decided; only a new one reads this call's.
-  const ac = section?.ac ?? record?.ac ?? args.ac ?? profile.ac;
-  const hp = section?.hp ?? record?.hp ?? args.hp ?? profile.hp;
+  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
+  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
   const threshold = record ? record.threshold : args.threshold;
   const already = record?.taken ?? 0;
   const restated =
-    record && !section && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+    vessel && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+      ? `${vessel.owner}'s vessel is a Tiny object of their own numbers: AC ${ac} (their spell save DC), ${hp} HP (warlock level + proficiency bonus)`
+      : record && !section && !net && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `kept as it was first described: AC ${ac}, ${hp} HP${threshold ? `, damage threshold ${threshold}` : ""}`
       : null;
   if (record?.broken) {
@@ -152,7 +172,14 @@ export function damageObject(
     if ("error" in built) {
       return toolError(built);
     }
-    const attack = rollExpression(`1d20${built.profile.toHit >= 0 ? "+" : ""}${built.profile.toHit}`);
+    // The character's own attack roll (src/lib/dm/character-roll.ts): on
+    // physical dice their player rolls it, and a miss waits on what they hold.
+    const attack = rollCharacterD20(campaign, sheet, {
+      kind: "attack",
+      expression: `1d20${built.profile.toHit >= 0 ? "+" : ""}${built.profile.toHit}`,
+      detail: rollAgainst(built.profile.weapon, args.name ?? "an object"),
+      attack: { ac },
+    });
     const striker: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
     publishRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker);
     const natural = attack.natural ?? 0;
@@ -172,7 +199,7 @@ export function damageObject(
       };
     }
     const expression = natural === 20 ? critDamageExpression(built.profile.damageExpression) : built.profile.damageExpression;
-    const damage = rollExpression(expression);
+    const damage = rollCharacterD20(campaign, sheet, { kind: "damage", expression, detail: rollAgainst(built.profile.weapon, args.name ?? "an object") });
     publishRoll(campaign, turn, sheet.id, "damage", rollAgainst(built.profile.weapon, args.name ?? "an object"), damage, striker);
     dealt = Math.max(0, damage.total);
     type = type || built.profile.damageType;
@@ -198,6 +225,11 @@ export function damageObject(
     dealt = 0;
   }
   dealt = section && dealt ? sectionHit(section, dealt, type, notes) : dealt;
+  // "Dealing 5 slashing damage to the net": no other kind cuts it.
+  if (net && dealt && type !== "slashing") {
+    notes.push(`only slashing damage cuts a net, and this was ${type || "untyped"}`);
+    dealt = 0;
+  }
   if (dealt !== null && threshold && dealt > 0 && dealt < threshold) {
     notes.push(`${dealt} is under its damage threshold of ${threshold}: superficial, nothing comes off`);
     dealt = 0;
@@ -214,6 +246,12 @@ export function damageObject(
   }
   if (campaign && section && broken) {
     notes.push(breakWallSection(campaign, section));
+  }
+  // Cut through, the net frees the creature unharmed and is destroyed; the
+  // next net thrown at it starts whole.
+  if (campaign && net && broken) {
+    notes.push(freeFromNet(campaign, net.netted, true));
+    forgetObject(campaign.id, `net ${nettedId(net.netted)}`);
   }
   return {
     ok: true,

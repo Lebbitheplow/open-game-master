@@ -1,3 +1,4 @@
+import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { z } from "zod";
 import { type Campaign } from "@/lib/db/campaigns";
 import {
@@ -24,7 +25,7 @@ import {
   type FieldOutcome,
 } from "@/lib/dm/effects-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
@@ -219,8 +220,8 @@ export function handleSetEffect(
   let args: z.infer<typeof setSchema>;
   try {
     args = setSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_effect needs a name and at least one modifier.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_effect needs a name and at least one modifier.", error, rawArguments);
   }
   const target = resolveTarget(campaign, args, sheets, sheetsById);
   if (!target) {
@@ -259,6 +260,12 @@ export function handleSetEffect(
       };
     }
   }
+  // Inured to Undeath: a holder's maximum cannot be lowered, by the GM's own
+  // hand either (ar-ws-inured-logic.ts). Refused before anything is written.
+  const fixed = target.kind === "character" && maxHpShift(checked.effect.modifiers) < 0 ? maxHpCannotFall(getSheetById(target.id)) : null;
+  if (fixed) {
+    return { error: `${target.name}'s hit point maximum cannot be reduced (${fixed}). Send the effect without its maxHp modifier. Nothing was changed.`, refused: "rules" };
+  }
   // Reapplying by the same name replaces rather than stacks: casting Bless
   // twice on the same target does not double it, and two rows would leave the
   // second one impossible to lift. The old rows and the new one change in one
@@ -289,8 +296,8 @@ export function handleClearEffect(
   let args: z.infer<typeof clearSchema>;
   try {
     args = clearSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: clear_effect needs a name.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: clear_effect needs a name.", error, rawArguments);
   }
   const target = resolveTarget(campaign, args, sheets, sheetsById);
   if (!target) {

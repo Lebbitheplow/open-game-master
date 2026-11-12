@@ -81,6 +81,21 @@ export function thrownAtRange(
   return profile.thrown && apart !== null && apart > profile.reachTiles;
 }
 
+// The far end of a ranged or thrown attack: its printed long range, or
+// twice its normal range for an attack-roll spell or a homebrew weapon
+// saved without one (SRD 5.1, Range).
+export function longRangeTilesOf(profile: Pick<AttackProfile, "rangeTiles" | "longRangeTiles">): number {
+  return profile.longRangeTiles ?? profile.rangeTiles * 2;
+}
+
+// A shot past the normal range, at disadvantage ("Your attack roll has
+// disadvantage when your target is beyond normal range", SRD 5.1). The
+// engine's spatials (map-tools.ts pcAttackSpatials) and the Hand's hit
+// preview both ask this, so the preview carries the roll's disadvantage.
+export function pastNormalRange(profile: Pick<AttackProfile, "ranged" | "thrown" | "rangeTiles">, apart: number): boolean {
+  return (profile.ranged || profile.thrown) && apart > profile.rangeTiles;
+}
+
 // ---- two-weapon fighting ----
 
 // Whether the pack holds a second weapon for the other hand: two of the
@@ -125,7 +140,8 @@ export function offHandProblem(input: {
   if (input.shieldName) {
     return { error: `${input.who} has ${input.shieldName} in their other hand, so there is no second weapon to strike with. Two-weapon fighting needs a ${dualWielder ? "weapon" : "light weapon"} in each hand.`, refused: "rules" };
   }
-  if (offHandWeaponsCarried(input.equipment, dualWielder) < 2) {
+  // A weapon thrown this turn has left the pack but was held in one hand.
+  if (offHandWeaponsCarried(input.equipment, dualWielder) + (input.budget?.thrownAway ?? 0) < 2) {
     return { error: dualWielder
       ? `Two-weapon fighting needs a one-handed melee weapon in each hand, and ${input.who} carries only one.`
       : `Two-weapon fighting needs a light melee weapon in each hand, and ${input.who} carries only one.`, refused: "rules" };

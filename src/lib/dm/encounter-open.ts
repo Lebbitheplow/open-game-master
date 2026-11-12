@@ -2,16 +2,20 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { d20Expression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import { passiveScore } from "@/lib/dm/check-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-spends";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { initiativeWaits, rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { holdsFeat } from "@/lib/srd/feat-effects";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { optionFeatureName } from "@/lib/srd/options";
+import { infusionWorn } from "@/lib/srd/infusions";
 
 // What happens as a fight opens (SRD 5.1, Combat Step by Step): who is
 // surprised, decided by the hiders' Stealth against each opponent's passive
@@ -19,8 +23,13 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 // for. Split from encounter-tools.ts, which calls it; it must not import
 // encounter-tools (the initiative totals go back through a callback).
 
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
+// Who cannot be surprised while conscious: the Alert feat, and a Rune Knight
+// carrying the Storm Rune, or wearing an artificer's Helm of Awareness
+// ("can't be surprised, provided it isn't incapacitated": src/lib/srd/
+// infusions.ts). Every door that decides surprise asks this (the ambush here
+// and start_encounter's named side, encounter-tools.ts).
+export const hasAlert = (sheet: CharacterSheet) =>
+  holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || Boolean(infusionWorn(sheet.equipment, "Helm of Awareness"));
 
 // A creature's Stealth: its block's skill, else its Dexterity.
 function enemyStealth(enemy: EncounterEnemy): number {
@@ -86,8 +95,16 @@ export function decideAmbush(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: sheet.name } });
-    const outcome = waits && unseen !== null ? settleHeldDie(campaign.id, sheet.id, thrown, unseen) : thrown;
+    // The player's own Stealth (src/lib/dm/character-roll.ts): a seat on
+    // physical dice rolls it before the surprise is decided, as it then
+    // rolls its initiative.
+    const outcome = rollCharacterD20(campaign, sheet, {
+      kind: "skill_check",
+      expression: resolved.expression,
+      detail: "stealth, lying in wait",
+      dc: unseen,
+      settleHeldDie: waits,
+    });
     publish(
       campaign,
       insertRoll({
@@ -131,7 +148,11 @@ export function rollOpeningInitiative(
   let note: string | null = null;
   for (const stale of sheets) {
     const sheet = getSheetById(stale.id) ?? stale;
-    if (heldUserIds.has(sheet.userId) || sheet.deathSaves?.dead) {
+    // One whose initiative would wait on what they hold (Lucky, Bardic
+    // Inspiration: WAVE1 R4) is asked through request_roll with the rest the
+    // opening leaves out (initiative-ask.ts), so the fight opens and their
+    // card waits in it as a real-dice seat's does.
+    if (heldUserIds.has(sheet.userId) || sheet.deathSaves?.dead || initiativeWaits(campaign, sheet)) {
       waiting.push(sheet);
       continue;
     }
@@ -145,7 +166,9 @@ export function rollOpeningInitiative(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "initiative", who: sheet.name } });
+    // Thrown by the server, and still the player's to answer with what they
+    // hold (Lucky, Bardic Inspiration: WAVE1 R4) before the order locks.
+    const outcome = rollCharacterD20(campaign, sheet, { kind: "initiative", expression: resolved.expression, detail: resolved.detail, mayWait: false });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

@@ -29,18 +29,36 @@ import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, 
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
-import { endTurnStartHolds } from "@/lib/dm/condition-tick";
+import { endTurnStartHolds, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
 import { lateFor } from "@/lib/dm/last-hit";
-import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
-// The reactions a character's turn gives back: their own, and Vigilant
-// Defender's per-turn ones ("vigilant:<id>:<mover>").
+// The reactions a character's turn gives back: their own, Vigilant
+// Defender's per-turn ones ("vigilant:<id>:<mover>") and their pet's
+// ("pet-reaction:<id>:<pet>", summon-reactions.ts).
 function withoutReactionsOf(reactionsUsed: string[], id: string): string[] {
-  return reactionsUsed.filter((entry) => entry !== id && !entry.startsWith(`${VIGILANT_PREFIX}${id}:`));
+  return reactionsUsed.filter((entry) => entry !== id && !entry.startsWith(`${VIGILANT_PREFIX}${id}:`) && !entry.startsWith(`${PET_REACTION_PREFIX}${id}:`));
+}
+
+// The enemies of the pass before the held turn have had their turns, which
+// were theirs to play until now (enemiesAhead): what holds them now is what
+// those turns ended under, and so what they save against when the pointer
+// next moves (condition-tick.ts turnHoldKeys). A hold laid during one of
+// them, a readied Hold Person released as the creature moved, is saved
+// against as that turn ends; one the held character lays once their turn
+// has begun waits for the end of the creature's next turn. Only where the
+// pass is known to be over (the character acts, the GM hands the turn on,
+// the reply that played them is narrated): a turn begun by the pointer
+// moving again keeps the list the pass began with.
+function passTurnsEnded(campaign: Campaign, encounter: Encounter) {
+  const walked = encounter.legendary.walked ?? [];
+  if (walked.length) {
+    encounter.legendary.walkedHolds = turnHoldKeys(campaign, encounter.id, walked);
+  }
 }
 
 // The held turn begins on the encounter in hand, which the caller saves.
@@ -80,6 +98,7 @@ export function beginHeldTurnOf(encounter: Encounter, id: string) {
   if (!campaign) {
     return;
   }
+  passTurnsEnded(campaign, encounter);
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);
 }
@@ -120,6 +139,21 @@ export function turnHeldForEnemies(encounter: Encounter | null, id: string): boo
   return Boolean(encounter && entry && orderEntryId(entry) === id && enemiesAhead(encounter, id).length);
 }
 
+// Whether it is `id`'s own turn: the pointer rests on them AND their turn is
+// not held for the enemies grouped before them. Every reader that asks "is
+// this X's turn" goes through here, never through order[turnIndex] or
+// actingCombatantId alone: a reader of the bare pointer answered "it is
+// Brom's own turn" in the middle of the goblins' before him, so a shove by
+// the first goblin was refused as a walk of Brom's (map-tools.ts move_token)
+// and a reaction to the goblin's move was refused as one taken on his own
+// turn. scripts/test-turn-pointer-readers.mjs holds every remaining raw read
+// to its ledger (scripts/turn-pointer-readers.json), each with its reason
+// (the pointer's own mechanics, a display of whose place it is).
+export function ownTurnOf(encounter: Encounter | null, id: string): boolean {
+  const entry = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return Boolean(encounter && entry && orderEntryId(entry) === id && !enemiesAhead(encounter, id).length);
+}
+
 // What they readied on their turn before, released while the enemies of the
 // pass before their turn are taking theirs (their turn begins once the turn
 // is handed on or the reply is narrated): off their own turn, with their
@@ -146,6 +180,12 @@ export function releasesReadiedOffTurn(encounter: Encounter | null, sheet: { id:
 // skipped or played after them. A reaction, an opportunity attack and a
 // readied release are not their turn's, and pass.
 export function heldTurnRefusal(encounter: Encounter | null, sheet: { id: string; name: string; conditions: string[]; conditionMeta?: unknown }): ToolError | null {
+  // Their End Turn is in, and the move waits on a watch stop (turn-hold.ts):
+  // the turn is over, so nothing more of it is taken.
+  const held = encounter?.legendary.heldMove;
+  if (held && held.characterId === sheet.id && reacting.getStore() !== sheet.id) {
+    return { error: `${sheet.name}'s turn is ending: it passes once ${held.watcher || "the watcher"} has answered the roll it brings. Nothing was spent.`, retry: true };
+  }
   if (!encounter || reacting.getStore() === sheet.id || readiedHeld(sheet) || !turnHeldForEnemies(encounter, sheet.id)) {
     return null;
   }
@@ -158,19 +198,27 @@ function heldActionLine(name: string, ahead: string[]): string {
   return `${who} ${one ? "acts" : "act"} before ${name}: play ${one ? "its turn" : "their turns"} (enemy_attack / take_action with ${one ? "its" : "each one's"} enemyId) first, then resolve ${name}'s action. Nothing was spent.`;
 }
 
-// The refusal of a walk on a turn that has not begun.
-export function heldTurnLine(name: string, ahead: string[]): string {
+// The refusal of a walk on a turn that has not begun, in a player's words
+// (the board's walk; `does` the act, "acts" for the sheet's gear toggle, whose
+// route relayed heldActionLine's sentence for the model, tool names and all).
+export function heldTurnLine(name: string, ahead: string[], does = "moves"): string {
   const who = ahead.length > 1 ? `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}` : ahead[0];
   return who
-    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} moves once their turn begins.`
-    : `The enemies before ${name} are taking their turns; ${name} moves once the GM hands the turn on.`;
+    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} ${does} once their turn begins.`
+    : `The enemies before ${name} are taking their turns; ${name} ${does} once the GM hands the turn on.`;
 }
 
 // The enemies before the held character have acted: their turn begins.
-export function beginHeldTurn(campaign: Campaign) {
+// `passOver`: the caller knows the enemies' turns are over (the GM handed the
+// turn on, the reply that played them is narrated), not a turn ending while
+// the rest of a pass waited (encounter-tools.ts finishPassBeforeMove).
+export function beginHeldTurn(campaign: Campaign, passOver = false) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter?.legendary.turnStart) {
     return;
+  }
+  if (passOver) {
+    passTurnsEnded(campaign, encounter);
   }
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);

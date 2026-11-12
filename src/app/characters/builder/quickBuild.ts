@@ -23,17 +23,20 @@ import { featChoice, withFeatChoice, type Ability, type AsiChoice } from "@/lib/
 import { SRD_SKILLS } from "@/lib/srd";
 import { companionImprovements, preferredSpellOrder } from "@/lib/srd/companion-build";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
-import type { FeatChoices, FeatPicks, FeatGrantSpec } from "@/lib/srd/feat-grants";
+import type { FeatChoices } from "@/lib/srd/feat-grants";
 import { FIGHTING_STYLES, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { expertiseAllowed, expertiseSlotsFor, subclassLevelFor, subclassNamesFor } from "@/lib/srd/features";
-import { optionFeatureName, picksFromSpellbook } from "@/lib/srd/options";
+import { optionFeatureName, optionReqProblem, picksFromSpellbook } from "@/lib/srd/options";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { DRACONIC_ANCESTRIES, findDraconicAncestry, repeatedGrants, takesDraconicAncestry } from "@/lib/srd/racial-grants";
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { pickedVariant, withSpeciesVariant } from "@/lib/content/species-variants";
-import { checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
+import { checklistSpell, checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
+import { thirdCasterAnySchoolPicks, thirdCasterSchools } from "@/lib/srd/third-caster";
 import { classRoles, type ClassRole } from "@/lib/srd/class-roles";
 import { spellClassFor } from "@/lib/classes";
+import { builderCasting } from "./casting";
+import { fillFeatPicks, type FeatFillFacts, type HeldTraining } from "./fillFeatPicks";
 import { abilityPriority, poolSlotsFor, standardFor } from "./classAbilities";
 import { rollHeroName } from "./heroNames";
 import { EASY_CLASSES, PLAYSTYLES, fillClassSkills, type PlaystyleId } from "./playstyles";
@@ -287,36 +290,37 @@ function skillOrder(ctx: FillContext, held: ReadonlySet<string>, from: readonly 
   return [...new Set(ordered)].filter((skill) => from.includes(skill) && !held.has(skill));
 }
 
-// A feat-shaped grant's open picks (a subclass's training, a feat): the
-// languages, skills, expertise and tools it leaves to the player. Weapons,
-// damage types and taught spells are left for the player.
-function fillFeatPicks(
-  spec: FeatGrantSpec,
-  picks: FeatPicks | undefined,
-  ctx: FillContext,
-  held: { skills: Set<string>; languages: Set<string>; tools: Set<string> },
-): FeatPicks | null {
-  const out: FeatPicks = { ...picks };
-  let changed = false;
-  const top = (kind: "languages" | "skills" | "expertise" | "tools", count: number, candidates: string[]) => {
-    const have = (out[kind] ?? []).filter(Boolean);
-    const room = count - have.length;
-    if (room <= 0) return;
-    const add = candidates.filter((entry) => !has(have, entry)).slice(0, room);
-    if (add.length) {
-      out[kind] = [...have, ...add];
-      changed = true;
+// The same order for a pick that is not the class's own (a species', a
+// background's, a feat's), with the class's list held back while the class
+// still has picks to make: only as many of its skills come early as the
+// class can spare. Leading with the class's list starved it: a half-elf
+// cleric's two free skills took History and Medicine after an Acolyte's
+// Insight and Religion, and the cleric (SRD 5.1: "Choose two from History,
+// Insight, Medicine, Persuasion, and Religion") was left one to pick two from.
+export function skillOrderSparingClass(
+  order: readonly string[],
+  held: ReadonlySet<string>,
+  klassSkills: { from: readonly string[]; count: number } | undefined,
+  classChosen: number,
+): string[] {
+  const need = klassSkills ? klassSkills.count - classChosen : 0;
+  if (!klassSkills || need <= 0) {
+    return [...order];
+  }
+  let spare = Math.max(0, klassSkills.from.filter((skill) => !held.has(skill)).length - need);
+  const early: string[] = [];
+  const late: string[] = [];
+  for (const skill of order) {
+    if (!klassSkills.from.includes(skill)) {
+      early.push(skill);
+    } else if (spare > 0) {
+      spare -= 1;
+      early.push(skill);
+    } else {
+      late.push(skill);
     }
-  };
-  top("languages", spec.languages, STANDARD_LANGUAGES.filter((language) => !held.languages.has(textKey(language))));
-  // Held from here on, so the next grant picks another: a ranger's three
-  // Favored Enemy languages were all the same one.
-  for (const language of out.languages ?? []) held.languages.add(textKey(language));
-  top("skills", spec.skills + (spec.anyKinds.includes("skills") ? spec.any : 0), skillOrder(ctx, held.skills));
-  for (const skill of out.skills ?? []) held.skills.add(skill);
-  top("expertise", spec.expertise, [...held.skills]);
-  top("tools", spec.tools, spec.toolsFrom.filter((tool) => !held.tools.has(textKey(tool))));
-  return changed ? out : null;
+  }
+  return [...early, ...late];
 }
 
 // A feat the fill may hand a variant human: one with no prerequisite and
@@ -395,9 +399,19 @@ export function fillRound(ctx: FillContext): FillRound {
   const background = ctx.background;
   klass = ctx.klass;
 
-  const proficient = new Set(derived.proficientSkills);
+  // Every skill held, the subclass's and the feats' picks among them
+  // (derived.expertiseSkills, what the save counts): from the class's,
+  // background's and race's alone, a Lore bard's species pick took Arcana
+  // the college already gave, and "Pick for me" on the expertise dropped
+  // the picks made on the college's skills.
+  const proficient = new Set(derived.expertiseSkills ?? derived.proficientSkills);
   const languages = new Set(derived.training.languages.map((language) => textKey(language)));
   const tools = new Set((derived.training.tools ?? []).map((tool) => textKey(tool)));
+  // A pick that is not the class's own spares the class's list while the
+  // class still has picks to make (skillOrderSparingClass).
+  const classSkills = klass && srdClass(klass) ? klass.skillChoices : undefined;
+  const freeSkillOrder = (held: ReadonlySet<string>, from: readonly string[] = ALL_SKILLS) =>
+    skillOrderSparingClass(skillOrder(ctx, held, from), held, classSkills, (patch.chosenSkills ?? fields.chosenSkills).filter(Boolean).length);
 
   // The species' own choice first, the list's first option: the picks below
   // read the race with it, so none lands on what it already gives.
@@ -413,7 +427,7 @@ export function fillRound(ctx: FillContext): FillRound {
 
   // The background's own skill pick.
   if (background.skillChoice && wants("backgroundSkills")) {
-    const { next, added } = fillSlots(fields.backgroundSkills, background.skillChoice.count, skillOrder(ctx, proficient, background.skillChoice.from));
+    const { next, added } = fillSlots(fields.backgroundSkills, background.skillChoice.count, freeSkillOrder(proficient, background.skillChoice.from));
     if (added.length) {
       patch.backgroundSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -454,7 +468,7 @@ export function fillRound(ctx: FillContext): FillRound {
   }
   if (race.skillChoice && wants("racialSkills")) {
     const from = race.skillChoice.from?.length ? race.skillChoice.from : ALL_SKILLS;
-    const { next, added } = fillSlots(fields.racialSkills, race.skillChoice.count, skillOrder(ctx, proficient, from));
+    const { next, added } = fillSlots(fields.racialSkills, race.skillChoice.count, freeSkillOrder(proficient, from));
     if (added.length) {
       patch.racialSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -502,7 +516,7 @@ export function fillRound(ctx: FillContext): FillRound {
   }
   const repeats = repeatedGrants(background.skills, race.skills).length;
   if (repeats && wants("repeatSkills")) {
-    const { next, added } = fillSlots(fields.repeatSkills, repeats, skillOrder(ctx, proficient));
+    const { next, added } = fillSlots(fields.repeatSkills, repeats, freeSkillOrder(proficient));
     if (added.length) {
       patch.repeatSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -561,12 +575,28 @@ export function fillRound(ctx: FillContext): FillRound {
   // What the subclass's training leaves open (a Lore bard's three skills).
   // And what the class itself leaves open (a ranger's Favored Enemy
   // language), with or without a subclass.
+  // The subclass's skills join the ones the expertise below may double
+  // (derived.expertiseSkills). One held set for the subclass's grants and the
+  // feats', so no pick repeats another.
+  const held: HeldTraining = {
+    skills: proficient,
+    languages,
+    tools,
+    weapons: new Set((derived.training.weapons ?? []).map((weapon) => textKey(weapon))),
+    spells: new Set(
+      [...fields.cantrips, ...fields.spells, ...derived.racialCantrips, ...derived.featSpells.cantrips, ...derived.featSpells.spells, ...(derived.subclassSpells ?? [])].map(textKey),
+    ),
+  };
+  const featFacts: FeatFillFacts = {
+    skillOrder: (heldSkills, from) => freeSkillOrder(heldSkills, from),
+    abilities: derived.abilities,
+    classList: derived.spellSearchClass ?? null,
+  };
+  let featChoices: FeatChoices = fields.featChoices;
   if (wants("subclass")) {
-    let featChoices: FeatChoices = fields.featChoices;
-    const held = { skills: proficient, languages, tools };
     const added: string[] = [];
     for (const grant of (derived.subclassTraining ?? []).filter((entry) => fields.subclass || entry.optional)) {
-      const picks = fillFeatPicks(grant.spec, featChoice(featChoices, grant.name), ctx, held);
+      const picks = fillFeatPicks(grant.spec, featChoice(featChoices, grant.name), featFacts, held);
       if (picks) {
         featChoices = withFeatChoice(featChoices, grant.name, picks);
         added.push(grant.name);
@@ -575,6 +605,24 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.featChoices = featChoices;
       note("subclass", added.join(", "), "Subclass training");
+    }
+  }
+  // What a feat the player took leaves open (Linguist's three languages,
+  // Skilled's three skills or tools, Magic Initiate's list and spells,
+  // Elemental Adept's damage type), each where the gate asks for it: an
+  // improvement's feat on the improvements, the species' own feat with the
+  // species. The fill made a subclass's training picks and never a feat's.
+  if (derived.featSpecOf) {
+    const racial = new Set((patch.feats ?? fields.feats).map(textKey));
+    for (const feat of derived.featNames ?? []) {
+      const target: BlockerTarget = racial.has(textKey(feat)) ? "racialFeat" : "asi";
+      if (!wants(target)) continue;
+      const picks = fillFeatPicks(derived.featSpecOf(feat), featChoice(featChoices, feat), featFacts, held);
+      if (picks) {
+        featChoices = withFeatChoice(featChoices, feat, picks);
+        patch.featChoices = featChoices;
+        note(target, feat, `${feat}'s picks`);
+      }
     }
   }
   if (derived.styleSlots > fields.stylePicks.length && wants("styles")) {
@@ -601,6 +649,12 @@ export function fillRound(ctx: FillContext): FillRound {
   }
   if (wants("options")) {
     const picks = [...fields.optionPicks];
+    const classLevels = derived.classList?.length ? derived.classList : [{ id: klass.id, level: derived.primaryLevel ?? derived.effectiveLevel }];
+    const reqFacts = {
+      classLevel: (classId: string) => classLevels.find((entry) => textKey(entry.id) === textKey(classId))?.level ?? 0,
+      features: [...(derived.grantedFeatures ?? []), ...fields.optionPicks.map((name) => ({ name }))],
+      cantrips: [...fields.cantrips, ...derived.racialCantrips, ...derived.featSpells.cantrips],
+    };
     const added: string[] = [];
     // A sensible first choice where the list has one, the same every time: a
     // dragonborn sorcerer's own dragon, else red (fire, the most common damage
@@ -620,8 +674,14 @@ export function fillRound(ctx: FillContext): FillRound {
       // Spell Mastery and Signature Spells take spells the book holds: none
       // until the spell round has written it.
       const book = new Set(fields.spells.map(textKey));
+      // An option with a prerequisite the character meets is open too
+      // (optionReqProblem, the check the owed picks and the level-up make):
+      // an artificer's later infusions and a Rune Knight's later runes all
+      // have one, and leaving them out left a level 17 artificer two
+      // infusions short.
       const open = slot.options
-        .filter((option) => !option.req && !option.half && !slot.chosen.includes(option.n))
+        .filter((option) => !option.half && !slot.chosen.includes(option.n))
+        .filter((option) => !optionReqProblem(option, reqFacts))
         .filter((option) => !picksFromSpellbook(slot.kind) || book.has(textKey(option.n)))
         .map((option, index) => ({ option, index }))
         .sort((a, b) => rank(a.option.n) - rank(b.option.n) || a.index - b.index)
@@ -719,14 +779,21 @@ export function fillSpells(
   );
   const starters = derived.starters;
   // A third caster (an Eldritch Knight: a class that casts nothing, given
-  // spells by its subclass) keeps to its own two schools, so it takes only
-  // its starters, which are chosen from them.
+  // spells by its subclass) keeps to its own two schools: its starters
+  // first, then its list's spells of those schools, and of any other only
+  // as many as its level allows. Taking the starters alone left an Eldritch
+  // Knight at 10th level three spells short and an Arcane Trickster a
+  // cantrip short.
   const third = ctx.klass?.casterType === "none";
-  const listed = third || !derived.spellSearchClass
+  const profile = third ? builderCasting(ctx.klass, derived.casterSubclass, derived.casterLevel).profile : null;
+  const schools: readonly string[] = profile ? thirdCasterSchools(profile) : [];
+  const listed = !derived.spellSearchClass
     ? []
-    : ctx.spellPool?.length
-      ? [...ctx.spellPool]
-      : checklistSpellsOn(derived.spellSearchClass);
+    : third
+      ? checklistSpellsOn(derived.spellSearchClass)
+      : ctx.spellPool?.length
+        ? [...ctx.spellPool]
+        : checklistSpellsOn(derived.spellSearchClass);
   const levelOf = new Map(listed.map((spell) => [textKey(spell.name), spell.level]));
   const ordered = (names: string[], cantrip: boolean) => {
     const fromList = preferredSpellOrder(
@@ -758,7 +825,13 @@ export function fillSpells(
   const listRoom = wizard ? derived.spellbookAdvice! - derived.chosenSpells.length : (derived.spellAdvice?.count ?? 0) - derived.chosenPrepared.length;
   let spells = fields.spells;
   if (listRoom > 0 && derived.maxSpellLevel > 0) {
-    const add = spreadByLevel(ordered(starterSpells, false).filter((name) => !has(spells, name)), listRoom, levelOf, starterSpells);
+    let candidates = ordered(starterSpells, false).filter((name) => !has(spells, name));
+    if (profile) {
+      const outside = (name: string) => !schools.includes(textKey(checklistSpell(name)?.school ?? ""));
+      const room = Math.max(0, thirdCasterAnySchoolPicks(derived.casterLevel) - spells.filter(outside).length);
+      candidates = [...candidates.filter((name) => !outside(name)), ...candidates.filter(outside).slice(0, room)];
+    }
+    const add = spreadByLevel(candidates, listRoom, levelOf, starterSpells);
     if (add.length) {
       spells = [...spells, ...add];
       patch.spells = spells;

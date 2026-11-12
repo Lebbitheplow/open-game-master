@@ -1,4 +1,6 @@
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
+import { PRIVATE_SOURCE_REFUSAL } from "@/lib/db/private-sources";
+import { workshopPrivateSource } from "@/lib/db/workshop-bundle-export";
 import { exportWorkshopBundle } from "@/lib/db/workshop-bundle";
 import { compileToPack } from "@/lib/workshop/to-pack";
 
@@ -18,6 +20,10 @@ export async function POST(
   const context = await requireDm(campaignId);
   if (isErrorResponse(context)) {
     return context;
+  }
+  // A workshop imported from a published book never becomes a pack.
+  if (workshopPrivateSource(campaignId)) {
+    return Response.json({ error: PRIVATE_SOURCE_REFUSAL }, { status: 403 });
   }
   const raw = await request.json().catch(() => ({}));
   const exported = exportWorkshopBundle(campaignId, (raw as { manifest?: unknown }).manifest);

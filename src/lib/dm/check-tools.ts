@@ -1,5 +1,4 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
-import { heroRollTag } from "@/lib/dice-script-logic";
 import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
@@ -8,14 +7,15 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById } from "@/lib/db/sheets";
 import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived, SRD_SKILLS } from "@/lib/srd";
 import { dcForDifficulty, difficultyOfDc, normalizeDifficulty } from "@/lib/srd/dc";
 import { strictnessShift } from "@/lib/dm/safety-logic";
 import { resolveRollExpression, resolveSheetRef } from "@/lib/dm/rolls";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { canAct } from "@/lib/dm/can-act";
 import { rollEffectExtras } from "@/lib/dm/effect-tools";
 import { exhaustionRollState, mergeAdvantage, rollDerivation, type AdvantageState } from "@/lib/dm/condition-logic";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -26,12 +26,13 @@ import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
 import { sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
 import { lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
+import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
 import { obscuredFor, silencedImmunity } from "@/lib/dm/zone-rules";
 import { senseCheckFailure } from "@/lib/srd/sense-checks";
 import { sightRotPenalty } from "@/lib/srd/afflictions";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { npcDeceiver, seeThroughActs } from "@/lib/dm/scheme-tools";
 
 // Two exploration-pillar tools that were pure narration before: a group skill
@@ -222,8 +223,8 @@ export function handleGroupCheck(
   let args: z.infer<typeof groupCheckSchema>;
   try {
     args = groupCheckSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: group_check needs a skill or ability and a difficulty.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: group_check needs a skill or ability and a difficulty.", error, rawArguments);
   }
   if (!args.skill && !args.ability) {
     return { error: "group_check needs a skill (e.g. stealth) or an ability (e.g. str).", retry: true };
@@ -268,8 +269,11 @@ export function handleGroupCheck(
       terrain: args.terrain,
       by: args.by,
     } as unknown as RollArgs;
-    // The dead take no part, and count as a failure for the group.
-    if (sheet.deathSaves?.dead) {
+    // The dead take no part, and count as a failure for the group; so do
+    // those who cannot act, at 0 hit points, asleep or turned to stone (SRD
+    // 5.1: "incapacitated ..., can't move or speak, and is unaware of its
+    // surroundings"; finding doors-14 of the 2026-11-09 gap sweep).
+    if (!canAct({ sheet, encounter: null, kind: "action" }).ok) {
       results.push({ name: sheet.name, total: 0, success: false });
       continue;
     }
@@ -287,8 +291,17 @@ export function handleGroupCheck(
     }
     // An inspiration die or a held Help is spent by the roll it rides.
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const thrown = rollExpression(resolved.expression, undefined, { purpose: heroRollTag(rollArgs.kind, sheet.name) });
-    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc.dc) : thrown;
+    // Each player's own d20 (src/lib/dm/character-roll.ts): a seat on
+    // physical dice rolls theirs (issue #896), and the group is settled once
+    // every roll is in.
+    const rolled = rollCharacterD20(campaign, sheet, {
+      kind,
+      expression: resolved.expression,
+      detail: `${sheet.name}: group ${args.skill ?? args.ability} check`,
+      dc: dc.dc,
+      ...(args.reason ? { reason: args.reason } : {}),
+      settleHeldDie: waits,
+    });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
@@ -399,8 +412,8 @@ export function handleCheckNotice(
   let args: z.infer<typeof checkNoticeSchema>;
   try {
     args = checkNoticeSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: check_notice needs a difficulty and optionally a sense.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: check_notice needs a difficulty and optionally a sense.", error, rawArguments);
   }
   const sense = args.sense ?? "perception";
   const targets = resolveTargets(args.characterIds, sheets, sheetsById);
@@ -492,6 +505,7 @@ export function handleCheckNotice(
         ? sightPassiveShift({
             pace: clock.travelPace,
             byEar: args.by === "hearing",
+            spared: dimLightSpares(fresh),
             ...(ambient ? { light: lightForSheet(ambient, fresh) } : {}),
           })
         : { shift: 0, blind: false, disadvantage: false, notes: [] };

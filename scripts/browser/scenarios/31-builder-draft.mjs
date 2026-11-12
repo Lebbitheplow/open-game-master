@@ -70,14 +70,20 @@ export default {
     // A draft kept before the new order counted its steps by place, the
     // class third: it resumes on the class, not on the step now third.
     await eventually(async () => (await drafts(page)).some((kept) => kept?.fields), { label: "a kept draft to rewrite" });
-    const rewritten = await page.evaluate(() => {
-      const key = "odm:builder-draft:library";
-      const draft = JSON.parse(window.localStorage.getItem(key) ?? "null");
-      if (!draft?.fields) return false;
-      window.localStorage.setItem(key, JSON.stringify({ v: 1, savedAt: Date.now(), step: 2, fields: draft.fields }));
-      return true;
-    });
-    check(rewritten, "a kept draft to rewrite as an old one");
+    // The resumed builder writes its draft again 400 ms after a change; on a
+    // busy runner that write landed after the rewrite and the old draft was
+    // never read. It is rewritten until it has stayed old for a second.
+    await eventually(
+      () =>
+        page.evaluate(() => {
+          const key = "odm:builder-draft:library";
+          const draft = JSON.parse(window.localStorage.getItem(key) ?? "null");
+          if (draft?.v === 1 && draft.step === 2) return Date.now() - draft.savedAt > 1000;
+          if (draft?.fields) window.localStorage.setItem(key, JSON.stringify({ v: 1, savedAt: Date.now(), step: 2, fields: draft.fields }));
+          return false;
+        }),
+      { timeoutMs: 15_000, label: "a kept draft rewritten as an old one" },
+    );
     await reopen(t);
     await eventually(() => resume.count(), { timeoutMs: 15_000, label: "the Resume offer for an old draft" });
     const old = (await page.locator(`${root}[role="status"]`).filter({ hasText: "unfinished character" }).first().innerText()).replace(/\s+/g, " ");

@@ -168,7 +168,7 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
   aside:
     '{"kind":"aside","quote":Q}: the narrator steps out of the story to talk to itself about its own work: what it will do, check, look up or set up next, or the game\'s bookkeeping that work waits on ("The quay is not on the map yet.", "I\'ll check how the table records that first."). Unlike the other kinds it is not about what happens in the story. One claim per such sentence; quote is copied from that one sentence. Never for: any character\'s words, however they are written (quoted in any style, a letter, an inscription, a song, a voice in someone\'s head); an out-of-character answer to a player; a question or an offer to the players ("What do you do?", "Let me know if you search the boat."); the story itself, even told by a narrator who says "I" because the table asked for one.',
   turn_over:
-    '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for a question about what they do next, or an offer of what they could still do.',
+    '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for: a question, whether about what they do next or about ending the turn ("Do you use your last step or end your turn here?"); an offer of what they could still do; a turn that ends only later or not yet ("Don\'t end my turn yet.", "Before I end my turn I cast Web."); an action taken on its own, such as an attack, a spell, a Dash or a Dodge, since movement and a bonus action can still follow it.',
   deed: `{"kind":"deed","actor":PARTY_REF,"deed":DEED,"quote":Q}: a party character commits one of these deeds now. DEED is one of: murder_helpless (kills someone who cannot fight back: a prisoner, the bound, the surrendered, the sleeping), torture, theft_from_poor, necromancy (raises or commands the dead), desecration (of graves, the dead or a holy place), slaving (takes, sells or keeps slaves), cruelty, betrayal (of an ally), broke_word, mercy (spares a beaten foe who could be killed), laid_to_rest (buries or gives rites to the dead), freed_captives (sets prisoners, slaves or hostages free), upheld_law (hands a wrongdoer to the law instead of killing, freeing or selling them). Never for a threat, a plan, a deed someone else does, or killing an enemy who is still fighting.`,
   speaker:
     '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody listed ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line.',
@@ -179,7 +179,14 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
 // readTurnEndInWords): gpt-oss-20b as the reader found "then I end my turn"
 // in one reading and missed it in the next. A miss here costs what a table in
 // any other language pays: the reader's reading alone.
-const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/gi;
+// The apostrophe is either kind: a phone keyboard writes "That’s my turn";
+// and "end turn" is the button's own words.
+// "I'm done" and "that's all" close a turn only as a sentence of their own
+// ("I'm done for", "that's all I've got" say something else): beside a
+// turned-down attack ("No more attacks, I'm done.") they were asked again
+// instead of ending it (issue 761).
+const ENGLISH_ENDS_TURN =
+  /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:(?:my|the|his|her|their) )?turn\b|\bthat['’]?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b|\b(?:i['’]?m|i am) (?:all )?(?:done|finished)(?: for (?:now|this turn|the turn))?(?=\s*(?:[.!;\n]|$))|\bthat['’]?s all(?: for (?:me|now|this turn))?(?=\s*(?:[.!;\n]|$))/gi;
 
 // Words before the phrase, in its own clause, that say the turn is not ending
 // now: "Don't end my turn yet" and "I'll tell you when I end my turn" ended it
@@ -194,6 +201,38 @@ export function englishEndsTurn(text: string): boolean {
     const asks = /^[^.!;\n]*\?/.test(text.slice(match.index + match[0].length));
     return !asks && !ENGLISH_NOT_YET.test(clause);
   });
+}
+
+// A player's English words that name the end of their turn only to keep it
+// open or to ask about it ("Don't end my turn yet, I want to move after"):
+// they answer for themselves, and the reader is not asked to read them again.
+// A reader that reads the end in them costs the turn and its movement (issue
+// 761).
+export function englishKeepsTurn(text: string): boolean {
+  return [...text.matchAll(ENGLISH_ENDS_TURN)].length > 0 && !englishEndsTurn(text);
+}
+
+// A passage's sentences, each with the marks that close it and any closing
+// quotation mark after them.
+const SENTENCE = /[^.!?;…？\n]+[.!?;…？]*["'”’»)\]]*/g;
+const ASKED = /[?？]["'”’»)\]]*$/;
+
+// Whether a quote stands only in questions: every sentence it spans is one
+// the passage asks. A turn_over claim on such a quote ends nothing, in any
+// language the table plays in: at an Italian table the GM asked "ti resta
+// giusto un passo: lo usi o chiudi qui il turno?", the reader read the turn
+// handed on, and the player lost the step they were being offered (issue
+// 761).
+export function quoteAsks(text: string, quote: string): boolean {
+  const sentences = text.match(SENTENCE) ?? [];
+  const pieces = (quote.match(SENTENCE) ?? []).map(squash).filter(Boolean);
+  return (
+    pieces.length > 0 &&
+    pieces.every((piece) => {
+      const holding = sentences.filter((sentence) => squash(sentence).includes(piece));
+      return holding.length > 0 && holding.every((sentence) => ASKED.test(sentence.trim()));
+    })
+  );
 }
 
 // The reader's instructions. Every claim kind about the game is listed so the
@@ -420,8 +459,13 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
       case "amount":
       case "fight_start":
       case "aside":
-      case "turn_over":
         kept.push(claim);
+        break;
+      // A question about the turn only asks (quoteAsks).
+      case "turn_over":
+        if (!quoteAsks(context.text, claim.quote)) {
+          kept.push(claim);
+        }
         break;
       case "cast": {
         const caster = context.party.get(claim.caster);

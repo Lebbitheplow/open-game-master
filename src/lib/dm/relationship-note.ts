@@ -8,7 +8,7 @@
 // the whole step (issue 634). Only a note far past any line is refused.
 import { z, type ZodType } from "zod";
 import { fitName } from "@/lib/schemas/sheet";
-import { invalidArguments, type ToolError } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, type ToolError } from "@/lib/dm/tool-errors";
 
 export const NOTE_MAX = 200;
 const NOTE_REFUSED_PAST = 4_000;
@@ -24,9 +24,9 @@ export function parseToolArguments<T>(schema: ZodType<T>, rawArguments: string, 
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: needs, retry: true };
+  } catch (error) {
+    return badArguments(needs, error, rawArguments);
   }
   const parsed = schema.safeParse(raw);
-  return parsed.success ? { args: parsed.data } : invalidArguments(needs, parsed.error);
+  return parsed.success ? { args: parsed.data } : invalidArguments(needs, parsed.error, raw);
 }

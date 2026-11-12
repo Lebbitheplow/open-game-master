@@ -46,8 +46,8 @@
   .cine-row[data-presentation="stage"] .party-card { padding: 8px; }
   .cine-row[data-presentation="stage"] .party-card-heading { gap: 6px; font-size: 13px; }
   .cine-row[data-presentation="stage"] .party-card-portrait { width: 36px; height: 36px; }
-  .cine-row[data-presentation="stage"] .party-card-stats { margin-top: 4px; gap: 4px; }
-  .cine-row[data-presentation="stage"] .party-card-stats > span { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; }
+  .cine-row[data-presentation="stage"] .party-card-stats { margin-top: 4px; gap: 2px 10px; }
+  .cine-row[data-presentation="stage"] .party-card-stats > span { gap: 4px; }
   .cine-row[data-presentation="stage"] .party-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
   .cine-row[data-presentation="stage"] .party-card-actions > * { margin: 0; min-width: 0; min-height: 30px; padding: 4px; gap: 4px; flex-wrap: nowrap; font-size: 11px; }
   .cine-row[data-presentation="stage"] .party-card-actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -164,6 +164,9 @@
     padding: 6px;
     transform: none;
   }
+  /* The details lie over the card here, as on a tablet (hand.css): the
+     aim bar writes the rules. */
+  .cine-row[data-presentation="stage"] .hand-slot > .hand-preview .hand-preview-rules { display: none; }
   .cine-row[data-presentation="stage"] .hand-card-body {
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr);
@@ -184,7 +187,7 @@
   .cine-row[data-presentation="stage"] .session-compose-entry { grid-area: 5 / 1; padding: 8px; }
   .cine-row[data-presentation="stage"] .session-compose-support:empty,
   .cine-row[data-presentation="stage"] .session-compose-notices:empty,
-  .cine-row[data-presentation="stage"] .session-compose-hand:empty { display: none; }
+  .cine-row[data-presentation="stage"] .session-compose-hand:not(:has(.session-hand-host > *)) { display: none; }
   /* Keep the status owner and the mode buttons' positioned animation intact. */
   @supports (position-anchor: --session-chronicle) and (anchor-scope: --session-chronicle) {
     .cine-row[data-presentation="stage"] {
@@ -361,7 +364,7 @@ html[data-theme="light"] .tlay-pane { background: rgba(241, 235, 222, 0.96); }
   font-family: var(--font-display);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   text-align: left;
   cursor: grab;
@@ -494,7 +497,7 @@ html[data-theme="light"] .tlay-pane { background: rgba(241, 235, 222, 0.96); }
   font-family: var(--font-display);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #e3c15c;
 }

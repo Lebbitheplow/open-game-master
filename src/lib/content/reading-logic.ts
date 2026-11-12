@@ -39,7 +39,17 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //   6: the monster reader takes a poisoned hit's sleep (a couatl's bite, a
 //      drow's bolt) and the second condition a hit's failed save lays.
 //   7: Witch Bolt's reading carries the beam's damage on later turns (PR 821).
-export const READER_REVISION = 7;
+//   8: Symbol reads as the hand-written row of a glyph the GM fires later, each
+//      glyph with its own save; the prose reader mixed the Death glyph's save
+//      and dice with the Fear glyph's frightened.
+//   9: Aura of Vitality, Compulsion, Compelled Duel and Grasping Vine read as
+//      hand-written rows (the Hand's rules helpers), and Armor of Agathys,
+//      Crown of Stars, Elemental Weapon, Flame Arrows, Gift of Alacrity, Holy
+//      Weapon and Intellect Fortress last the duration their line says.
+//  10: the species traits read by the race reader changed with the gap sweep's
+//      second wave (a firbolg's and a genasi's magic are innate spells, and
+//      the lineage traits carry the numbers their lines state).
+export const READER_REVISION = 10;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

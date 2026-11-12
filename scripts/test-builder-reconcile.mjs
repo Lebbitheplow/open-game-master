@@ -149,6 +149,25 @@ test("expertise in a skill the character is no longer proficient in goes", () =>
   assert.deepEqual(fighter.picks.expertisePicks, []);
 });
 
+// SRD 5.1, Rogue, Expertise: "or one of your skill proficiencies and your
+// proficiency with thieves' tools". The class step offers it; the check
+// dropped it as no skill on every change, and at the save.
+test("a rogue's expertise in thieves' tools stays, a rogue taken second's too, and only a rogue's", () => {
+  const before = { ...empty, chosenSkills: ["stealth", "insight", "perception", "acrobatics"], expertisePicks: ["stealth", "thieves' tools"] };
+  const rogue = reconcilePicks(before, { race: race("human"), klass: klass("rogue"), background: background("sage"), level: 1 });
+  assert.deepEqual(rogue.picks.expertisePicks, ["stealth", "thieves' tools"]);
+  assert.deepEqual(rogue.dropped, []);
+  const second = reconcilePicks(
+    { ...empty, chosenSkills: ["athletics", "perception"], expertisePicks: ["athletics", "thieves' tools"] },
+    { race: race("human"), klass: klass("fighter"), background: background("sage"), level: 4, extras: [{ klass: klass("rogue"), subclass: "", level: 1, skills: ["stealth"] }] },
+  );
+  assert.deepEqual(second.picks.expertisePicks, ["athletics", "thieves' tools"]);
+  const bard = reconcilePicks({ ...empty, chosenSkills: ["stealth", "insight", "perception"], expertisePicks: ["stealth", "thieves' tools"] }, {
+    race: race("human"), klass: klass("bard"), background: background("sage"), level: 3,
+  });
+  assert.deepEqual(bard.picks.expertisePicks, ["stealth"]);
+});
+
 test("a wizard lowered to level 1 loses the 3rd-level spell the spell book can no longer show", () => {
   const before = { ...empty, cantrips: ["Fire Bolt"], spells: ["Magic Missile", "Fireball", "Shield"], bookPrepared: ["Fireball", "Shield"] };
   const five = reconcilePicks(before, { race: race("human"), klass: klass("wizard"), background: background("sage"), level: 5 });
@@ -429,6 +448,59 @@ test("every class at every level: the subclass menu is shut exactly when a pick 
     assert.ok(!lockedAtOne.includes(id), `${id} open at level 1`);
   }
   console.log(`  (${lockedAtOne.length} of ${classes.length} classes shut at level 1)`);
+});
+
+// The live builder's own check (useBuilderState.ts), driven through the
+// server renderer as the wizard renders it: each pass takes one step.
+const { createElement, useState } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { useBuilderState } = await import("../src/app/characters/builder/useBuilderState.ts");
+function runBuilder(steps) {
+  let pass = 0;
+  let result = null;
+  function Probe() {
+    const state = useBuilderState({ races, classes, backgrounds });
+    const [, bump] = useState(0);
+    const step = steps[pass];
+    pass += 1;
+    if (step) {
+      step(state);
+      bump((count) => count + 1);
+    } else {
+      result = state;
+    }
+    return null;
+  }
+  renderToStaticMarkup(createElement(Probe));
+  assert.ok(result, "the builder never settled");
+  return result;
+}
+
+// A Lore bard at 10th with expertise in its college's Arcana, History and
+// Nature. The live check read no feat or subclass picks, so a change of
+// species or background dropped all three; once it read them, a change of
+// college kept them with nothing left to double.
+test("the builder keeps expertise in a Lore bard's college skills while the college holds, and sets it aside with the college", () => {
+  const college = ["arcana", "history", "nature"];
+  const lore = [
+    (state) => state.changeClass("bard"),
+    (state) => state.changeLevel(10),
+    (state) => state.changeSubclass("College of Lore"),
+    (state) => {
+      state.setChosenSkills(["performance", "persuasion", "deception"]);
+      state.setFeatPicks("Bonus Proficiencies (Lore)", { skills: college });
+      state.setExpertisePicks(["performance", ...college]);
+    },
+  ];
+  for (const [label, change] of [["species", (state) => state.changeRace("half_elf")], ["background", (state) => state.changeBackground("folk_hero")], ["level", (state) => state.changeLevel(11)]]) {
+    const after = runBuilder([...lore, change]);
+    assert.deepEqual(after.expertisePicks, ["performance", ...college], `a change of ${label} dropped ${JSON.stringify(after.dropped)}`);
+  }
+  const valor = runBuilder([...lore, (state) => state.changeSubclass("College of Valor")]);
+  assert.deepEqual(valor.expertisePicks, ["performance"]);
+  assert.deepEqual(valor.dropped?.drops.map((drop) => drop.value), college);
+  // The college's picks themselves are kept, for "Put it back".
+  assert.deepEqual(valor.featChoices["bonus proficiencies lore"]?.skills, college);
 });
 
 console.log(`\ntest-builder-reconcile: ${passed} tests passed.`);

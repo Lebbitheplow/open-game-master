@@ -1,10 +1,13 @@
 import { getCampaignById } from "@/lib/db/campaigns";
+import { isHeldMove, runHeldMove } from "@/lib/dm/turn-hold";
 import {
   getDmTurn,
   getLatestAiTurnId,
   listOrphanedParkedTurns,
   listRunningAiTurns,
   saveDmTurn,
+  listOpenWatchStops,
+  resolvePendingWatch,
 } from "@/lib/db/dm-turns";
 import { failPendingLocationMaps } from "@/lib/db/locations";
 import { isAgentTurn } from "@/lib/dm/agent-turn";
@@ -12,6 +15,7 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { restoreXCardPauses } from "@/lib/dm/safety";
 import { restoreTableBreaks } from "@/lib/dm/table-break";
 import { restoreSessionHolds } from "@/lib/dm/session-hold";
+import { rearmAfterRollKeeps } from "@/lib/dm/after-roll-timer";
 import { haltDmTurn, resumeDmTurn } from "@/lib/dm/turn";
 
 // What a restart leaves wrong in the DM's state, put right once when a
@@ -66,7 +70,20 @@ export function recoverDmAfterRestart(): RestartRecovery | null {
   const breaks = restoreTableBreaks().length;
   const sessions = restoreSessionHolds().length;
   const halted = haltInterruptedTurns();
+  // A stop before a roll has outlived its moment, and its timer did not
+  // survive: the roll goes ahead when its turn resumes just below.
+  for (const stop of listOpenWatchStops()) {
+    resolvePendingWatch(stop.id, null);
+    // A held pointer move is no GM turn's to resume: it runs now, with
+    // nothing chosen (turn-hold.ts).
+    if (isHeldMove(stop)) {
+      enqueueDmJob(stop.campaignId, () => runHeldMove(stop.id), { kind: "turn" });
+    }
+  }
   const { resumed, closed } = resumeOrphanedParkedTurns();
+  // A roll waiting on its player's choice keeps waiting, on a timer again; its
+  // turn resumes when it lands, so it is armed after the parked turns above.
+  rearmAfterRollKeeps();
   // The map queue was in memory too: a place still waiting on a render
   // would chart forever under the narration that introduced it.
   const maps = failPendingLocationMaps(RESTART_MAP_FAILED);

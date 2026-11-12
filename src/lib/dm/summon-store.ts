@@ -11,6 +11,7 @@
 // must not import mutations.ts, enemy-damage.ts, map-tools.ts or
 // companion-tools.ts (each of them reaches those two).
 
+import { houndsWithoutQuarry } from "@/lib/dm/ar-ws-hound-quarry";
 import { rollCard } from "@/lib/dm/roll-card";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
@@ -353,6 +354,11 @@ export function endSpellSummons(campaign: Campaign, spell: string, casterId?: st
 export function sweepSummons(campaign: Campaign): string[] {
   const lines: string[] = [];
   const sheets = listSheets(campaign.id);
+  // A Hound of Ill Omen whose quarry has fallen is gone (ar-ws-hound-quarry.ts).
+  for (const hound of houndsWithoutQuarry(sheets, getActiveEncounter(campaign.id)?.id ?? null)) {
+    removeSummon(campaign, hound);
+    lines.push(`${hound.name} fades into shadow: its quarry has fallen.`);
+  }
   for (const stale of sheets) {
     const sheet = getSheetById(stale.id) ?? stale;
     if (!sheet.summon || sheet.conditions.some((name) => name.toLowerCase() === SUMMONED)) {

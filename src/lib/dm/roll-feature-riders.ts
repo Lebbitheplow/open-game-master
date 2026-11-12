@@ -12,6 +12,9 @@ import { heldInspiration } from "@/lib/dm/roll-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { computeSheetDerived, findSkill } from "@/lib/srd";
 import { authoredCheckTraits, authoredRollRiders } from "@/lib/srd/authored-effects";
+import { authoredCheckMod } from "@/lib/srd/authored-check-mod";
+import { authoredFloorKeys } from "@/lib/srd/authored-effects-more";
+import { authoredCheckBonus } from "@/lib/srd/authored-mt-fb";
 import { heldCheckTraits, traitCheckRiders } from "@/lib/srd/check-traits";
 import { heldFeatChecks } from "@/lib/srd/feat-combat";
 import { unnamedRollKeys, type RollGap, type RollKey } from "@/lib/srd/roll-keys";
@@ -21,6 +24,7 @@ import { cursedAgainst } from "@/lib/srd/magic-items";
 import { heldSaveTraits, initiativeAdvantage, traitSaveAdvantages } from "@/lib/srd/trait-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { withMovementFacts } from "@/lib/dm/mt-mr-checks";
 
 // An unspent bonus die a character is holding for their next check or save:
 // Bardic Inspiration from a bard, or the warlock's own Dark One's Own Luck.
@@ -58,7 +62,7 @@ function proficientIn(sheet: CharacterSheet, skill: string | undefined): boolean
 // Every key the roller's traits, feats and conditions hold, for the ask
 // below and for GAME STATE (prompt.ts rollKeyCue).
 export function heldRollKeys(sheet: CharacterSheet): Array<RollKey & { feat?: string }> {
-  return [...heldCheckTraits(sheet), ...authoredCheckTraits(sheet), ...lostSenses(sheet.conditions), ...heldFeatChecks(sheet), ...heldSaveTraits(sheet)];
+  return [...heldCheckTraits(sheet), ...authoredCheckTraits(sheet), ...authoredFloorKeys(sheet), ...lostSenses(sheet.conditions), ...heldFeatChecks(sheet), ...heldSaveTraits(sheet)];
 }
 
 // The fields a model's request_roll leaves unnamed that a trait the roller
@@ -170,6 +174,11 @@ export function rollFeatureRiders(
           movedLittle: context.movedLittle,
         })
       : { advantage: [], bonus: 0, notes: [] };
+  // A modifier a feature adds to checks of one ability (Otherworldly
+  // Glamour: Wisdom on Charisma checks; src/lib/srd/authored-check-mod.ts).
+  const checkMod = sheet && checkDerived ? authoredCheckMod(sheet, derivationAbility, checkDerived.abilityMods) : { bonus: 0, notes: [] };
+  // An ability modifier a subclass feature adds to a skill (Elegant Courtier).
+  const authoredChecks = sheet && checkDerived ? authoredCheckBonus(sheet, checkSkill, checkDerived.abilityMods) : { bonus: 0, notes: [] };
   const peerless = sheet && checkKind ? sheet.conditions.find((entry) => /^peerless skill \(d\d{1,2}\)$/i.test(entry.trim())) : undefined;
   // Inspiration the DM awarded, spent for advantage when the roll asks.
   if (args.useInspiration && derivationKind && sheet && !heldInspiration(sheet)) {
@@ -190,7 +199,8 @@ export function rollFeatureRiders(
   // Authored subclass features on checks (Steady Eye, a spent Elegant
   // Maneuver or Vigilant Blessing): src/lib/srd/authored-effects.ts.
   const authoredRolls = sheet && effectKind
-    ? authoredRollRiders(sheet, { kind: effectKind, ability: derivationAbility, skill: skillId, about: named(args.about) })
+    // With the turn's movement as the board has it (Steady Eye; mt-mr-checks.ts).
+    ? authoredRollRiders(withMovementFacts(sheet), { kind: effectKind, ability: derivationAbility, skill: skillId, about: named(args.about) })
     : { advantage: [], spent: [] };
   // A held Bardic Inspiration die rides along on the next d20 the character
   // rolls and is spent by doing so; the caller clears the condition.
@@ -213,7 +223,7 @@ export function rollFeatureRiders(
       ...(inspired ? ["advantage" as const] : []),
     ],
     dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}`,
-    checkBonus: itemChecks.bonus + traitChecks.bonus,
+    checkBonus: itemChecks.bonus + traitChecks.bonus + checkMod.bonus + authoredChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,
     authoredSpent: authoredRolls.spent,
@@ -226,9 +236,11 @@ export function rollFeatureRiders(
       ...(cursedSave ? [cursedSave] : []),
       ...(feral ? [feral] : []),
       ...itemChecks.notes,
+      ...authoredChecks.notes,
       ...authoredRolls.advantage,
       ...traitChecks.advantage,
       ...traitChecks.notes,
+      ...checkMod.notes,
       ...(peerless ? [`Peerless Skill: ${peerlessDie.slice(1)} on the check`] : []),
       ...(inspired ? ["spends their Inspiration: advantage"] : []),
     ],

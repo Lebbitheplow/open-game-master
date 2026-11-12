@@ -11,7 +11,8 @@
 // squares from the caster toward the nearest foe. A spell recast while the
 // first casting still holds moves the area; a concentration spell ends the
 // caster's other areas. Gust of Wind blows away the clouds it crosses;
-// Daylight dispels overlapping darkness of 3rd level or lower.
+// Daylight dispels overlapping darkness of 3rd level or lower, and Radiance
+// of the Dawn any darkness within 30 feet of the cleric (dispelZones).
 //
 // Off the map nothing is laid, and the spell resolves as before.
 
@@ -22,9 +23,11 @@ import { getActiveBoard, getEnemy, patchEnemyConditions, setEnemyConcentration }
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { chebyshev, TERRAIN, type XY } from "@/lib/battlemap/types";
-import { layZone, type SpellZone, type ZoneCasterKind } from "@/lib/battlemap/zones";
+import { darknessWithin, layZone, type SpellZone, type ZoneCasterKind } from "@/lib/battlemap/zones";
+import { spaceOf } from "@/lib/dm/board-reach";
 import { LIGHT_SPELLS, zoneKey, zoneOwnKey, zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { holdGasesBack } from "@/lib/battlemap/zones-walls";
+import { castFromElsewhere } from "@/lib/dm/cast-origin";
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -57,6 +60,8 @@ export type ZoneCast = {
   // Lay it in the open square beside this creature nearest the caster (a
   // Flaming Sphere cast to roll at a foe), rather than on it.
   beside?: string;
+  // The creature that sees through the area (SpellZone.seenThroughBy).
+  seenThroughBy?: string;
 };
 
 function middleOf(points: XY[]): XY | null {
@@ -127,11 +132,20 @@ export function placementReachProblem(campaign: Campaign, input: { casterId: str
   if (!map || !caster || rangeFeet === null || !inside(input.at, map.width, map.height)) {
     return null;
   }
-  const apart = chebyshev(caster.x, caster.y, input.at.x, input.at.y) * 5;
+  const own = layFrom(map, caster, { ...input, facts: input.facts }, rangeFeet);
+  // A spell laid from another square when it does not reach from their own
+  // (cast-origin.ts: a Scribes wizard's spellbook mind, a wildfire spirit).
+  return own && castFromElsewhere({ encounterId: encounter!.id, casterId: input.casterId, facts: input.facts, reachesFrom: (from) => layFrom(map, from, { ...input, facts: input.facts! }, rangeFeet) === null }) ? null : own;
+}
+
+// The square's range and clear path from `from`: the caster's own token, or
+// one their spell is cast from.
+function layFrom(map: BattleMap, from: XY, input: { casterName: string; facts: SpellFacts; at: XY }, rangeFeet: number): ToolError | null {
+  const apart = chebyshev(from.x, from.y, input.at.x, input.at.y) * 5;
   if (apart > rangeFeet) {
     return { error: `${input.facts.name} is laid within ${rangeFeet} feet of ${input.casterName}, and (${input.at.x},${input.at.y}) is ${apart} feet away. Name a square within range. Nothing was spent.`, retry: true };
   }
-  if (!hasLineOfSight(map.terrain, map.width, caster.x, caster.y, input.at.x, input.at.y)) {
+  if (!hasLineOfSight(map.terrain, map.width, from.x, from.y, input.at.x, input.at.y)) {
     return { error: `A wall stands between ${input.casterName} and (${input.at.x},${input.at.y}): ${input.facts.name} needs a clear path to where it is laid. Name a square ${input.casterName} can see. Nothing was spent.`, retry: true };
   }
   return null;
@@ -210,6 +224,7 @@ export function placeSpellZone(campaign: Campaign, cast: ZoneCast): string | nul
     slotLevel: cast.slotLevel ?? null,
     dc: cast.dc ?? null,
     ...(cast.named && named ? { named: true } : {}),
+    ...(cast.seenThroughBy ? { seenThroughBy: cast.seenThroughBy } : {}),
   };
   // A concentration spell the server cannot see held (a homebrew caster, a
   // row the checklist lacks) runs for its duration instead of vanishing.
@@ -262,6 +277,41 @@ export function moveZoneTo(map: BattleMap, zoneId: string, origin: XY): boolean 
   const layout = layZone(row, { origin, slotLevel: zone.slotLevel }, map);
   saveZones(map.id, map.spellZones.map((entry) => (entry.id === zoneId ? { ...entry, origin, cells: layout.cells } : entry)));
   return true;
+}
+
+// Radiance of the Dawn (SRD 5.1): "Any magical darkness within 30 feet of
+// you is dispelled", whatever the level of the spell that made it, where
+// Daylight stops at 3rd. Without this the drow's Darkness stayed on the
+// board, still held, after the cleric's burst. The areas in reach are found
+// first and ended by dispelZones, so a use refused for another reason
+// leaves them be.
+export function darknessNear(campaign: Campaign, refId: string, feet: number): SpellZone[] {
+  const encounter = getActiveBoard(campaign.id);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, refId) : null;
+  if (!encounter || !map || !token) {
+    return [];
+  }
+  return darknessWithin(liveZones(map, encounter), map.width, spaceOf(token), Math.floor(feet / 5));
+}
+
+// The areas leave the board and their casters' concentration on them ends,
+// as Daylight's dispel does. Returns a line for each, naming the caster.
+export function dispelZones(campaign: Campaign, zones: SpellZone[], by: string): string[] {
+  const encounter = getActiveBoard(campaign.id);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  if (!map || !zones.length) {
+    return [];
+  }
+  const ids = new Set(zones.map((zone) => zone.id));
+  saveZones(map.id, map.spellZones.filter((zone) => !ids.has(zone.id)));
+  for (const zone of zones) {
+    endCasting(campaign, zone);
+  }
+  publishZones(campaign.id);
+  return zones.map(
+    (zone) => `${by} dispels ${zone.casterName}'s ${zone.spell}: its area leaves the board${zone.concentration ? ` and ${zone.casterName} no longer concentrates on it` : ""}.`,
+  );
 }
 
 // A spell dispelled or blown away: its caster's concentration on it ends,

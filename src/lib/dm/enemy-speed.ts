@@ -6,6 +6,7 @@ import { exhaustedTiles } from "@/lib/dm/monster-abilities";
 import { listEffects } from "@/lib/db/active-effects";
 import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { dashesOf, enemyTilesLeft, enemyTurnEntry, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
+import { auraHoldsSpeed } from "@/lib/dm/aura-hold";
 
 type SpeedEnemy = { stats: Pick<EnemyStats, "speed">; conditions: string[]; id?: string; campaignId?: string };
 
@@ -47,7 +48,9 @@ export function enemyMoveBudget(
   enemy: SpeedEnemy & { id: string },
   token: Pick<BattleToken, "movement" | "movedThisRound">,
 ): EnemyMoveBudget {
-  const speedTiles = enemySpeedTiles(enemy, { flying: token.movement === "fly" });
+  // A frightened creature in Aura of Conquest has speed 0 (aura-hold.ts).
+  const held = "encounterId" in enemy && typeof enemy.encounterId === "string" ? auraHoldsSpeed(enemy as typeof enemy & { encounterId: string }) : null;
+  const speedTiles = held ? 0 : enemySpeedTiles(enemy, { flying: token.movement === "fly" });
   const entry = enemyTurnEntry(encounter, enemy.id);
   return {
     speedTiles,

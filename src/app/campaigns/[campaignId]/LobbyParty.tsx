@@ -182,7 +182,7 @@ export function LobbyParty({
                       </SeatBadge>
                     ) : null}
                     {member.useRealDice ? (
-                      <SeatBadge tip="Rolls physical dice: the GM waits for this player to enter real rolls">
+                      <SeatBadge tip="Rolls physical dice: the GM waits for this player's attacks, damage, initiative and the checks and saves it asks for">
                         real dice
                       </SeatBadge>
                     ) : null}

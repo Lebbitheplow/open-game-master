@@ -28,9 +28,9 @@ import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMa
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
-import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { seesOnBoard, unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
-import { healDeathHook } from "@/lib/dm/death";
+import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { turnDefence } from "@/lib/dm/turn-defiance";
@@ -39,26 +39,37 @@ import { commandersStrike, commandersStrikeCharge, knowsManeuver, rally } from "
 import type { ResourceAction } from "@/lib/srd/class-resources";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { chooseFiendishResilience, stillnessOfMind } from "@/lib/dm/feature-hooks";
+import { sacredWeaponMeta, shedLight } from "@/lib/dm/mt-srd-paladin";
+import { seesOrHears, undeadOrConstruct } from "@/lib/dm/mt-srd-reach";
 
 // Re-exported for the callers that reached it here first.
 export { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath";
 import { TURNED } from "@/lib/dm/flee-logic";
+import { ultimateMercy } from "@/lib/dm/ultimate-mercy";
+import { DEAD_TARGET_COUNTERS } from "@/lib/srd/dead-targets";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
 // The turnings beyond Turn Undead and Turn the Unholy, each by its own creature
-// types, within 30 feet. Banishing (Arcane Abjuration from 5th level) rests on a
-// creature's plane of origin, which no stat block records, so it stays the GM's.
+// types, within 30 feet. Arcane Abjuration from 5th level banishes instead: "a
+// creature that fails, isn't on its plane of origin, and has a challenge
+// rating at or below a limit (1/2 at 5th level, 1 at 8th, 2 at 11th, 3 at
+// 14th, 4 at 17th) is banished for a minute instead". No stat block records a
+// plane of origin: a celestial, elemental, fey or fiend on the table is taken
+// to be away from its own, the world's plane being the Material. Before this
+// the banishment was only a sentence for the GM, and the creature was turned.
 const CHANNEL_TURNINGS = [
-  { name: "Turn the Faithless", beyond: true, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
-  { name: "Abjure the Extraplanar", beyond: true, types: /aberration|celestial|elemental|fey|fiend/i },
-  { name: "Arcane Abjuration", beyond: true, types: /celestial|elemental|fey|fiend/i, single: true, note: "From 5th level a creature that failed, away from its plane of origin, at or under the limit for this level (CR 1/2 at 5th, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th) is banished for a minute instead: that is the GM's call." },
+  { name: "Turn the Faithless", beyond: true, ability: "cha" as const, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
+  { name: "Abjure the Extraplanar", beyond: true, ability: "cha" as const, types: /aberration|celestial|elemental|fey|fiend/i },
+  { name: "Arcane Abjuration", beyond: true, ability: "wis" as const, types: /celestial|elemental|fey|fiend/i, single: true, banish: true },
 ];
 
 // Destroy Undead's challenge rating threshold by cleric level (SRD 5.1).
@@ -126,6 +137,21 @@ function within(campaignId: string, fromRef: string, toRef: string, feet: number
 
 }
 
+// How far a Channel Divinity option reaches when it makes the creatures it
+// reaches save (a turning, a fear, Control Undead), for a watch stop before
+// the call (src/lib/dm/foresight-saves.ts); null for an option that asks no
+// save. Read as featureVariantSpend below reads the option.
+export function channelSaveReach(resourceName: string, variant: string | undefined): number | null {
+  if (matchResource(resourceName)?.id !== "channel_divinity") {
+    return null;
+  }
+  const wanted = variant ?? nameChoice(resourceName) ?? "";
+  if (isNamed(wanted, "turn the unholy", "turn undead", "destroy undead", "control undead") || CHANNEL_TURNINGS.some((entry) => isNamed(wanted, entry.name))) {
+    return TURN_RANGE_FEET;
+  }
+  return CHANNEL_FEAR.find((entry) => isNamed(wanted, entry.name))?.rangeFt ?? null;
+}
+
 // A use_resource call this module resolves, or null for the generic path.
 export function featureVariantSpend(
   campaign: Campaign,
@@ -152,7 +178,7 @@ export function featureVariantSpend(
   if (def?.id === "channel_divinity") {
     if (isNamed(wanted, "turn the unholy")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () =>
-        turnUndead(campaign, turnId, sheet, { types: /undead|fiend/i, destroy: false, name: "Turn the Unholy" }),
+        turnUndead(campaign, turnId, sheet, { types: /undead|fiend/i, destroy: false, name: "Turn the Unholy", ability: "cha" }),
       );
     }
     // The other turnings run as Turn the Unholy does. Each is refused to a sheet
@@ -168,11 +194,39 @@ export function featureVariantSpend(
     if (fear) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => channelFear(campaign, getSheetById(sheet.id) ?? sheet, fear, targetEnemyId, targetEnemyIds));
     }
+    if (isNamed(wanted, "control undead")) {
+      if (!channelOptions(sheet).some((entry) => isNamed(entry.name, "control undead"))) {
+        return { error: `${sheet.name} does not hold Control Undead. Nothing was spent.`, refused: "rules" };
+      }
+      // Outside a fight there is no creature row to command: the generic
+      // path spends the use and the GM plays the undead's obedience.
+      if (getActiveEncounter(campaign.id)) {
+        return spend(campaign, turnId, sheet, def.id, "action", reason, () => controlUndead(campaign, turnId, sheet, targetEnemyId));
+      }
+      return null;
+    }
     if (isNamed(wanted, "turn undead", "destroy undead")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet));
     }
+    if (isNamed(wanted, DESTRUCTIVE_WRATH)) {
+      if (!channelOptions(sheet).some((entry) => isNamed(entry.name, DESTRUCTIVE_WRATH))) {
+        return { error: `${sheet.name} does not hold Destructive Wrath. Nothing was spent.`, refused: "rules" };
+      }
+      if (holdsDestructiveWrath(sheet)) {
+        return { error: `${sheet.name} already holds Destructive Wrath for their next lightning or thunder damage. Nothing was spent.`, refused: "rules" };
+      }
+      return spend(campaign, turnId, sheet, def.id, "none", reason, () => ({
+        patch: { conditions: [...sheet.conditions, DESTRUCTIVE_WRATH] },
+        result: { applied: "Destructive Wrath: their next lightning or thunder damage before a rest is dealt at its maximum." },
+      }));
+    }
     if (isNamed(wanted, "sacred weapon")) {
-      return spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      const imbued = spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+      if (!("error" in imbued)) {
+        // "bright light in a 20-foot radius and dim light 20 feet beyond that".
+        shedLight(campaign.id, sheet.id, 20, 20, 1);
+      }
+      return imbued;
     }
     if (isNamed(wanted, "vow of enmity")) {
       // Inside the spend, so a use or bonus action already gone answers first.
@@ -200,18 +254,23 @@ export function featureVariantSpend(
       commandersStrike(campaign, sheet, targetId),
     );
   }
+  // Hand of Ultimate Mercy brings back the dead its heal path refused
+  // (src/lib/dm/ultimate-mercy.ts): the use, 5 ki and the action.
+  if (def && DEAD_TARGET_COUNTERS.includes(def.id)) {
+    return spend(campaign, turnId, sheet, def.id, "action", reason, () => ultimateMercy(campaign, turnId, getSheetById(sheet.id) ?? sheet, targetId));
+  }
   if (def?.id === "eldritch_master") {
     return spend(campaign, turnId, sheet, def.id, "none", reason, () => eldritchMaster(sheet));
   }
   if (def?.id === "indomitable") {
-    return spend(campaign, turnId, sheet, def.id, "none", reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "diamond soul")) {
     // Diamond Soul (monk 14): 1 ki rerolls a failed save, as Indomitable does.
     if (!holdsFeature(sheet, "diamond soul")) {
       return { error: `${sheet.name} does not have Diamond Soul.`, refused: "rules" };
     }
-    return spend(campaign, turnId, sheet, def.id, "none", reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "empty body")) {
     // Empty Body (monk 18): 4 ki, an action, invisible for a minute and
@@ -229,6 +288,16 @@ type Resolution = ToolError | { result: Record<string, unknown>; patch?: FullPat
 // The shared order: the feature is held with a use left, the character can
 // act, the turn is charged, the effect resolves, and only then the use is
 // spent. A resolution that refuses costs nothing.
+// A reroll of the save just failed answers that roll, on whoever's turn it
+// was failed: "you can reroll a saving throw that you fail" (SRD 5.1, Fighter:
+// Indomitable; Diamond Soul the same). It costs nothing of the turn, so it is
+// not held to the holder's own turn as a free action is: refused off their
+// turn, a save failed on a goblin's turn (where nearly every save is made)
+// could be rerolled only once the failure had stood the whole round (finding
+// spends-indomitable-own-turn-only). indomitable() still asks for the failed
+// save on record.
+const ANSWERS_A_FAILED_SAVE = (): ResourceCharge => ({ commit: () => ({}) });
+
 function spend(
   campaign: Campaign,
   turnId: string,
@@ -258,7 +327,7 @@ function spend(
   }
   // An action or a bonus action needs someone able to take one; a reroll
   // (Indomitable) does not.
-  const stoppedBy = cost !== "none" && cost !== "reaction" ? incapacitatedBy(sheet.conditions) : null;
+  const stoppedBy = cost !== "none" && cost !== "reaction" && cost !== ANSWERS_A_FAILED_SAVE ? incapacitatedBy(sheet.conditions) : null;
   if (stoppedBy) {
     return { error: `${sheet.name} is ${stoppedBy} and cannot use ${def.displayName} until the condition ends.`, refused: "rules" };
   }
@@ -299,15 +368,19 @@ function turnUndead(
   turnId: string,
   sheet: CharacterSheet,
   // `beyond`: a turning of other creatures than undead (CHANNEL_TURNINGS).
-  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean } = { types: /undead/i, destroy: true, name: "Turn Undead" },
+  // `ability`: the class's spellcasting ability the DC is read with (a
+  // cleric's Wisdom, a paladin's Charisma), so a multiclass sheet whose first
+  // caster class is another does not lend that class's DC.
+  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean; ability?: Ability; banish?: boolean } = { types: /undead/i, destroy: true, name: "Turn Undead", ability: "wis" },
 ): Resolution {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: `${kind.name} needs something to turn: start the encounter first.`, retry: true };
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(derived.abilityMods.wis, derived.abilityMods.cha);
+  const dc = classSaveDc(sheet, kind.ability ?? "wis");
   const destroyAt = kind.destroy ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
+  // The same ladder of challenge ratings bounds Arcane Abjuration's banishment.
+  const banishAt = kind.banish ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
   // Nothing across a swallower's wall sees or hears the cleric (swallow.ts).
   const named = kind.single && kind.target ? resolveTargetFoe(campaign.id, encounter, kind.target) : null;
   if (kind.single && !named) {
@@ -320,6 +393,10 @@ function turnUndead(
       (!named || enemy.id === named.id) &&
       kind.types.test(String(enemy.stats.type ?? "")) &&
       within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET) &&
+      // "That can see or hear you" (SRD 5.1, Turn Undead; Arcane Abjuration):
+      // a creature both deafened and unable to see the cleric is left out
+      // (mt-srd-reach.ts seesOrHears, which every turning asks).
+      seesOrHears(encounter.id, enemy, sheet) &&
       !swallowCoverBetween(sheet.id, enemy.id),
   );
   if (!undead.length) {
@@ -339,13 +416,22 @@ function turnUndead(
       continue;
     }
     // Turned: a legendary creature spends a resistance to stand its ground.
-    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage), ...(kind.beyond ? { magical: true, against: TURNED, record: { detail: `${enemy.displayName}: WIS save against ${kind.name}` } } : {}) });
+    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { channel: true, resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage), ...(kind.beyond ? { magical: true, against: TURNED, record: { detail: `${enemy.displayName}: WIS save against ${kind.name}` } } : {}) });
     const lean = [defence.advantage ? `advantage from ${defence.advantage}` : "", defence.disadvantage ? `disadvantage from ${defence.disadvantage}` : ""].filter(Boolean).join(", ");
     if (save.success) {
       outcomes.push(`${enemy.displayName} resists (WIS ${save.total ?? "failed outright"} vs DC ${dc}${lean ? `, ${lean}` : ""})${save.legendaryResistance ? " with Legendary Resistance" : ""}.`);
       continue;
     }
     const cr = Number(enemy.stats.cr ?? enemy.cr ?? 99);
+    if (banishAt !== null && cr <= banishAt) {
+      const standing = resolveTargetFoe(campaign.id, encounter, enemy.id) ?? enemy;
+      patchEnemyConditions(enemy.id, [...standing.conditions.filter((entry) => entry !== "banished"), "banished"], {
+        ...(standing.conditionMeta as ConditionMetaMap),
+        banished: { rounds: 10, source: sheet.id },
+      });
+      outcomes.push(`${enemy.displayName} is banished for a minute (WIS ${save.total ?? "failed"} vs DC ${dc}; CR ${cr} at or under ${banishAt}).`);
+      continue;
+    }
     if (destroyAt !== null && cr <= destroyAt && turn) {
       applyEnemyDamage(campaign, turn, encounter, enemy, Math.max(1, enemy.currentHp), sheets, byId, undefined, {
         magical: true,
@@ -421,6 +507,11 @@ function vowRefusal(campaign: Campaign, sheet: CharacterSheet, enemyId: string |
   if (!withinFeet(encounter.id, sheet.id, enemy.id, 10)) {
     return { error: `${enemy.displayName} is beyond 10 feet of ${sheet.name}; Vow of Enmity reaches 10 feet. Nothing was spent.`, refused: "rules" };
   }
+  // "A creature you can see", as Abjure Enemy beside it (channel-fear.ts).
+  const unseen = unseenBecause(encounter.id, sheet, enemy);
+  if (unseen) {
+    return { error: `${sheet.name} cannot see ${enemy.displayName} (${unseen}), and Vow of Enmity takes a creature they can see. Nothing was spent.`, refused: "rules" };
+  }
   return null;
 }
 
@@ -445,9 +536,9 @@ function sacredWeapon(sheet: CharacterSheet): Resolution {
   return {
     patch: {
       conditions: [...held, condition],
-      conditionMeta: { ...sheet.conditionMeta, [condition]: { rounds: 10 } },
+      conditionMeta: { ...sheet.conditionMeta, [condition]: sacredWeaponMeta(sheet, 10) },
     },
-    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light.` },
+    result: { applied: `${condition} for 10 rounds: +${bonus} to weapon attack rolls, and the weapon sheds bright light for 20 feet and dim light 20 feet beyond.` },
   };
 }
 
@@ -464,7 +555,9 @@ function preserveLife(
   let pool = 5 * Math.max(1, classLevelOf(sheet, "cleric"));
   const party = fieldedSheets(campaign, listSheets(campaign.id))
     .map((entry) => getSheetById(entry.id) ?? entry)
-    .filter((entry) => !entry.deathSaves?.dead && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
+    // One Chill Touch grips, or one suffocating, regains nothing (regain.ts).
+    // "You can't use this feature on an undead or a construct" (mt-srd-reach.ts).
+    .filter((entry) => canRegain(entry) && !undeadOrConstruct(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
   const room = (entry: CharacterSheet) =>
     Math.max(0, Math.floor(effectiveMaxHp(entry) / 2) - entry.currentHp);
   const ordered = [
@@ -481,12 +574,8 @@ function preserveLife(
     }
     const amount = Math.min(pool, room(target));
     pool -= amount;
-    const currentHp = target.currentHp + amount;
-    patchSheet(target.id, { currentHp });
-    audit(campaign, turnId, target, { healed: amount, by: "Preserve Life" }, reason, { currentHp });
-    healDeathHook(campaign, turnId, target);
-    publishSheet(campaign, target.id);
-    healed.push(`${target.name} +${amount} (${currentHp}/${effectiveMaxHp(target)})`);
+    const gained = regainHitPoints(campaign, turnId, target, amount, reason || "Preserve Life");
+    healed.push(`${target.name} +${gained} (${(getSheetById(target.id) ?? target).currentHp}/${effectiveMaxHp(target)})`);
   }
   return { result: { healed } };
 }

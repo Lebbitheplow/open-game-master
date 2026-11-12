@@ -50,7 +50,7 @@ import {
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
-import { blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
+import { blowDefenses, meetDefenses, WILDFIRE_SPIRIT } from "@/lib/dm/pc-damage";
 import { PRONE } from "@/lib/dm/vitals-logic";
 
 const UNCONSCIOUS = "unconscious";
@@ -237,6 +237,8 @@ export function settleLastHit(
 // order they landed: what changing that one changes (hit-replay-logic.ts).
 function chainFrom(campaignId: string, answers: Array<{ record: LastHit }>): LastHit[] {
   const ids = new Set(answers.map((answer) => hitIdOf(answer.record)));
+  // Damage from no attack (last-hit.ts openEffect) is a link of the chain
+  // like a hit: replayed as it was dealt, and kept as the corrected fight has it.
   const open = openHits(campaignId, answers[0].record.characterId);
   const from = open.findIndex((record) => ids.has(hitIdOf(record)));
   const chain = from >= 0 ? open.slice(from) : [];
@@ -461,6 +463,17 @@ export function settleHits(
       patch.resources = { ...(patch.resources ?? sheet.resources), sub_undying_sentinel: { ...sentinel, used: before.undyingSentinel } };
       notes.push("Undying Sentinel was never needed and is unspent.");
     }
+    const grave = sheet.resources?.sub_strength_of_the_grave;
+    if (typeof before.strengthOfTheGrave === "number" && grave && grave.used > before.strengthOfTheGrave) {
+      patch.resources = { ...(patch.resources ?? sheet.resources), sub_strength_of_the_grave: { ...grave, used: before.strengthOfTheGrave } };
+      notes.push("Strength of the Grave was never needed and is unspent.");
+    }
+    const revival = sheet.resources?.sub_blazing_revival;
+    const revived = typeof before.blazingRevival === "number" && revival && revival.used > before.blazingRevival;
+    if (revived) {
+      patch.resources = { ...(patch.resources ?? sheet.resources), sub_blazing_revival: { ...revival, used: before.blazingRevival as number } };
+      notes.push("Blazing Revival was never needed and is unspent.");
+    }
     const rage = sheet.resources?.relentless_rage;
     if (typeof before.relentlessRage === "number" && rage && rage.used > before.relentlessRage) {
       patch.resources = { ...(patch.resources ?? sheet.resources), relentless_rage: { ...rage, used: before.relentlessRage } };
@@ -472,6 +485,13 @@ export function settleHits(
         conditions = [...conditions, warded];
         meta = { ...meta, [warded]: (before.conditionMeta as Record<string, unknown>)[warded] ?? {} };
         notes.push(`Death Ward was never needed and still holds on ${sheet.name}.`);
+      }
+      // The spirit that gave itself up for a fall that no longer happens.
+      const spirit = revived ? heldAs(before.conditions, WILDFIRE_SPIRIT) : null;
+      if (spirit && !has(conditions, WILDFIRE_SPIRIT)) {
+        conditions = [...conditions, spirit];
+        meta = { ...meta, [spirit]: (before.conditionMeta as Record<string, unknown>)[spirit] ?? {} };
+        notes.push(`${sheet.name}'s wildfire spirit is back.`);
       }
     }
   }

@@ -204,7 +204,36 @@ await test("Mounting costs half the rider's speed during their own move; the AI 
   const on = await ai.invoke("mount_up", { characterId: kara.id, mount: "Riding horse" });
   assert.equal(on.ok, true, on.error);
   assert.equal(kit.token(kara.id).movedThisRound, 3, "mounting cost no movement");
-  assert.equal((await world.invoke("mount_up", { characterId: brom.id, mount: "Riding horse" })).ok, true, "the console lost its free hand");
+  // WAVE1 ruling R9: "the console may mount or dismount off turn (a person
+  // GM adjudicates), but never charges movement to a turn that is not
+  // running". It was added to the movement of Brom's token on Kara's turn.
+  const before = kit.token(brom.id).movedThisRound;
+  const console = await world.invoke("mount_up", { characterId: brom.id, mount: "Riding horse" });
+  assert.equal(console.ok, true, `the console lost its free hand: ${console.error}`);
+  assert.equal(kit.token(brom.id).movedThisRound, before, "the console's off-turn mount charged movement to a turn that is not running");
+  assert.doesNotMatch(JSON.stringify(console.result ?? console), /taken from this turn.s movement/);
+  // Nothing was taken, so nothing is reported as spent: the result said
+  // "Mounting cost half their movement" and carried movementSpent.
+  assert.doesNotMatch(JSON.stringify(console.result ?? console), /movementSpent|Mounting cost/, "the console's uncharged mount reported movement spent");
+  const off2 = await world.invoke("dismount", { characterId: brom.id });
+  assert.equal(off2.ok, true, `the console lost its free hand: ${off2.error}`);
+  assert.equal(kit.token(brom.id).movedThisRound, before, "the console's off-turn dismount charged movement");
+  assert.doesNotMatch(JSON.stringify(off2.result ?? off2), /movementSpent|costs half their movement/, "the console's uncharged dismount reported movement spent");
+});
+
+await test("Mounting is the rider's move: a stunned rider is refused at the console and the AI's door alike, and nothing is charged.", async () => {
+  await stage();
+  const { setMount } = await import("../src/lib/db/mounts.ts");
+  setMount(world.campaignId, kara.id, null);
+  world.patch(kara.id, { conditions: ["stunned"] });
+  const moved = kit.token(kara.id).movedThisRound;
+  for (const door of [world, ai]) {
+    const out = await door.invoke("mount_up", { characterId: kara.id, mount: "Riding horse" });
+    assert.equal(out.ok, false, "a stunned rider mounted up");
+    assert.equal(out.refused, "rules", out.error);
+    assert.match(out.error, /stunned/);
+  }
+  assert.equal(kit.token(kara.id).movedThisRound, moved, "a refused mount charged movement");
 });
 
 await kit.endFight();

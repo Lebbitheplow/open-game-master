@@ -1,4 +1,5 @@
 import { inflateSync } from "node:zlib";
+import { BOOK_TEXT_MAX } from "@/lib/pdf-import/reading";
 
 // A small text extractor for the PDFs a table owns (docs/vtt-parity-
 // implementation-plan.md section 5.3). It walks the file's content streams,
@@ -22,7 +23,7 @@ const MAX_INFLATED_BYTES = 64 * 1024 * 1024;
 const MAX_STREAMS = 20_000;
 const DEFLATE_MAX_RATIO = 1032;
 // The text a caller gets when it names no budget of its own.
-export const PDF_TEXT_MAX = 1_000_000;
+export const PDF_TEXT_MAX = BOOK_TEXT_MAX;
 
 // The strings in one content stream, in the order they are drawn.
 function textFromContent(content: string): string {

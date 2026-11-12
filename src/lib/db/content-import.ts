@@ -1,10 +1,11 @@
 import { getDatabase, parseJson } from "@/lib/db/core";
+import { copyPrivateSource } from "@/lib/db/private-sources";
 import { byName, textKey } from "@/lib/language/text-logic";
 import { resolveMonster } from "@/lib/bestiary";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { rosterMonsters } from "@/lib/db/workshop-bundle-shelf";
 import { getCampaignById, updateGameSettings, type Campaign } from "@/lib/db/campaigns";
-import { embedPendingLore } from "@/lib/db/lore";
+import { embedPendingLore, listLoreEntriesWithAttachments } from "@/lib/db/lore";
 import { getBeat, listBeats } from "@/lib/db/workshop-beats";
 import { compileBoard, summarizeCompile, type CompiledBoard } from "@/lib/workshop/board-compile";
 import {
@@ -585,6 +586,24 @@ export function runContentImport(input: {
       // A missing vector only means keyword fallback for that entry.
     });
   }
+
+  // A copied entry's rules PDF used to arrive with its file but none of its
+  // passages: the rules search read nothing from it here until someone
+  // edited the entry. Each one is read for this table now.
+  if (selected.has("lore")) {
+    const copiedLore = new Set([...idMap].filter(([key]) => key.startsWith("lore:")).map(([, id]) => id));
+    void import("@/lib/dm/lore-attachments")
+      .then(async ({ feedsRules, ingestLoreAttachment }) => {
+        for (const entry of listLoreEntriesWithAttachments()) {
+          if (entry.campaignId === campaignId && copiedLore.has(entry.id) && feedsRules(entry)) await ingestLoreAttachment(entry);
+        }
+      })
+      .catch((error) => console.error("[content-import] could not read a copied rules PDF", error));
+  }
+
+  // Content from a workshop imported from a published book keeps that
+  // book's privacy at the table it lands on (src/lib/db/private-sources.ts).
+  if (counts.copied > 0) copyPrivateSource(sourceId, campaignId);
 
   // A Cast member's stat block or a fight's monster that nothing at this
   // table answers to: the source table's homebrew is its authors', not this

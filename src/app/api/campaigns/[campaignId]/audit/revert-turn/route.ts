@@ -7,13 +7,14 @@ import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
 import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { liveTurnChanges } from "@/lib/db/turn-changes";
-import { REVERT_WINDOW_TURNS, revertWindowStart } from "@/lib/db/turn-rows";
+import { forgetTurnItemCasts } from "@/lib/db/item-cast-credits";
+import { REVERT_WINDOW_TURNS, revertWindowStart, turnHasKeptRows } from "@/lib/db/turn-rows";
 import { describeInstant } from "@/lib/dm/calendar";
 import { forgetTurnAnswers, forgetTurnHits } from "@/lib/dm/last-hit";
 import { turnStillPlaying } from "@/lib/dm/queue";
 import { publishSceneState } from "@/lib/dm/scene-state";
 import { currentScene } from "@/lib/dm/sky";
-import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings } from "@/lib/dm/turn-revert";
+import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings, turnRevertRefusal } from "@/lib/dm/turn-revert";
 import { publishPersisted } from "@/lib/events";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
 
@@ -26,14 +27,22 @@ const bodySchema = z.object({
 });
 
 // Party lead reverts every live sheet change from one DM turn, newest
-// first, so each field lands back on its pre-turn value, and puts back the
-// time the turn moved the clock on (issue #622). It takes back what else the
+// first, so each field lands back on its pre-turn value, and puts back what
+// the turn changed on the clock (issue #622). It takes back what else the
 // turn kept for it (issue 685, src/lib/db/turn-changes.ts): the fight and the
 // board as the turn found them (hit points, conditions, creatures it brought
 // in, tokens, areas, effects, the order of turns), the creatures it called
 // up, a prepared fight's event it fired (armed again), the test dice it
-// spent, a card the GM resolved in it. World events and a companion's leaving
-// stay: the chapter rewind is what takes those back.
+// spent, a card the GM resolved in it, and every other row the turn wrote
+// (src/lib/db/turn-journal.ts): the floor and the scene, the party's place,
+// an NPC, a bond, a quest, a whisper, a companion who joined or left, a
+// disease, the weather. A fight the turn ended is opened again; a turn that
+// ended a fight with another on since is refused, saying why (WAVE1
+// maintainer decisions on LC-REV-11, LC-REV-12 and LC-REV-13: "a revert takes
+// back afflictions, scene trackers, location and party moves, and a turn
+// that ended a fight reopens it (or refuses with a sentence saying why it
+// cannot, if reopening is unsafe)"). The transcript stays: what was said was
+// said.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
@@ -79,8 +88,13 @@ export async function POST(
   );
   const clock = previewTurnClockRewind(campaignId, turnId);
   const changes = liveTurnChanges(campaignId, turnId);
-  if (!entries.length && !clock && !changes.length) {
+  const rows = turnHasKeptRows(turnId);
+  if (!entries.length && !clock && !changes.length && !rows) {
     return Response.json({ error: "Nothing left to revert for that turn." }, { status: 400 });
+  }
+  const refusal = rows ? turnRevertRefusal(turnId) : null;
+  if (refusal) {
+    return Response.json({ error: refusal }, { status: 400 });
   }
 
   // Changes recorded after this turn conflict; changes inside it are being
@@ -103,7 +117,7 @@ export async function POST(
   const outcome = getDatabase().transaction(() => {
     // A creature the turn sent away comes back first, so its sheet's own
     // changes can be put back on it.
-    if (changes.length) {
+    if (rows) {
       bringBackTakenRows(context.campaign, turnId);
     }
     const errors: string[] = [];
@@ -117,7 +131,7 @@ export async function POST(
         corrections.push(undone.correctionId);
       }
     }
-    if (entries.length && errors.length === entries.length && !clock && !changes.length) {
+    if (entries.length && errors.length === entries.length && !clock && !changes.length && !rows) {
       return Response.json({ error: errors[0] }, { status: 400 });
     }
     // The turn's blows are taken back with the hit points they took: no
@@ -126,14 +140,10 @@ export async function POST(
     // And a reaction the turn took puts the hit it answered back as it was,
     // open to be answered again (the refund and the spend are its audit rows).
     forgetTurnAnswers(campaignId, turnId);
-    // After the sheets too: the fight's events, the test dice, the cards.
-    const takenBack = changes.length ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
-    if (takenBack) {
-      // `reverted`: the event log stops offering what the turn kept.
-      publishPersisted(campaignId, "turn_changed", { reverted: turnId });
-    }
+    forgetTurnItemCasts(campaignId, turnId);
     // After the sheets, so what their undo wrote to the clock (a long rest
-    // forgotten) is kept.
+    // forgotten) is kept, and before the turn's rows are marked taken back:
+    // the clock as the turn found it is read from them (clock.ts).
     const rewound = rewindTurnClock(campaignId, turnId);
     if (rewound) {
       const now = "restored" in rewound ? rewound.restored : rewound.kept;
@@ -144,6 +154,12 @@ export async function POST(
       if (campaign) {
         publishSceneState(campaignId, currentScene(campaign));
       }
+    }
+    // After the sheets too: the fight's events, the test dice, the cards.
+    const takenBack = changes.length || rows ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
+    if (takenBack) {
+      // `reverted`: the event log stops offering what the turn kept.
+      publishPersisted(campaignId, "turn_changed", { reverted: turnId });
     }
     // The test fight's turn trace reads the turn as taken back from here on.
     markDmTurnReverted(turnId);

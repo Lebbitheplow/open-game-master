@@ -14,10 +14,14 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { counterSpend, kiSpend } from "@/lib/dm/bonus-actions";
 import { ACTIONS, priceAction, type Price } from "@/lib/dm/action-price";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
+import { chargerShove } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { charmedBy } from "@/lib/dm/enemy-profile";
+import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
+import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
 import { readyAction, searchAction, objectAction } from "@/lib/dm/object-actions";
@@ -37,8 +41,9 @@ import { handleMountAction } from "@/lib/dm/mount-combat";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
 import { payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasDestination, planActionWalk, walkActionPlan, type ActionWalk } from "@/lib/dm/action-walk";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
 // reactions. Dodge, Dash, Disengage, Hide, Help, Grapple, and Shove all had
@@ -217,7 +222,7 @@ const takeActionSchema = z.object({
   targetEnemyId: z.string().optional(),
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
-  trigger: z.string().max(200).optional(),
+  trigger: fittedText(200).optional(),
   // The schema offers no skill enum (it cost a 48K table's trimmed set its
   // room), so a skill by its name ("Sleight of Hand") is its id here, and a
   // wrong one is refused with the list.
@@ -336,8 +341,8 @@ export function handleTakeAction(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: take_action's arguments are not JSON.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: take_action's arguments are not JSON.", error, rawArguments);
   }
   const parsed = takeActionSchema.safeParse(raw);
   if (!parsed.success) {
@@ -367,6 +372,12 @@ export function handleTakeAction(
     return handleMountAction(campaign, sheet, args.action);
   }
   const encounter = getActiveEncounter(campaign.id);
+  // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5
+  // feet of movement, no action and no check (ar-ws-squeeze.ts).
+  const slip = args.action === "escape" ? squeezeSlip(campaign, sheet, encounter) : null;
+  if (slip && "done" in slip) {
+    return slip.done;
+  }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
   // A pin is never readied (it is not among the readiable actions).
@@ -398,7 +409,7 @@ export function handleTakeAction(
   const allyDown = sheets.some((entry) => entry.id !== sheet.id && (getSheetById(entry.id) ?? entry).currentHp <= 0 && !(getSheetById(entry.id) ?? entry).deathSaves?.dead);
   const price: Price | ToolError = readied
     ? { budget: null }
-    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown });
+    : priceAction(sheet, budget && encounter ? budget : null, args.action, args.bonus === true, { allyDown, skill: args.skill });
   if ("error" in price) {
     return toolError(price);
   }
@@ -466,6 +477,12 @@ export function handleTakeAction(
       };
     }
     case "dash": {
+      // "The increase equals your speed, after applying any modifiers" (SRD
+      // 5.1, Dash): at speed 0 it buys nothing, as the Hand's card says, and
+      // a grappled hero's action was spent on it.
+      if (inFight && effectiveSpeed(sheet.conditions, sheet.speed) === 0) {
+        return { error: `${sheet.name}'s speed is 0, so a Dash goes nowhere. Nothing was spent.`, refused: "rules" };
+      }
       // Each Dash adds the speed again, so a second one (Cunning Action,
       // Action Surge) is never a spend that buys nothing.
       spend(price.budget ? { dashed: true, dashes: dashCount(price.budget) + 1 } : { dashed: true });
@@ -496,13 +513,27 @@ export function handleTakeAction(
       return help(campaign, sheet, encounter, args, sheets, sheetsById, spend);
     case "grapple":
     case "shove": {
+      // Each is "a special melee attack" (SRD 5.1, Grappling; Shoving a
+      // Creature), and "a charmed creature can't attack the charmer" (Charmed):
+      // refused as pc_attack refuses it (pc-attack-gate.ts). Brom, charmed by
+      // a goblin, grappled it and shoved it prone.
+      const ref = args.targetEnemyId?.trim() ?? "";
+      const aimed = ref && encounter ? resolveEnemyRef(encounter.id, ref) : null;
+      if (ref && charmedBy(sheet.conditions, sheet.conditionMeta, aimed?.id ?? ref)) {
+        return { error: `${sheet.name} is charmed by ${aimed?.displayName ?? "that creature"} and cannot attack it: a ${args.action} is a melee attack. Nothing was spent; pick another target.`, refused: "rules" };
+      }
       if (price.feature !== "Grappling Strike") {
-        return contest(campaign, turn, sheet, encounter, args, spend, costs);
+        // Charger's shove after a 10-foot straight run pushes 10 feet more.
+        const charge = chargerShove(encounter, sheet.id, price.feature);
+        if (charge) {
+          costs.charger = charge.note;
+        }
+        return contest(campaign, turn, sheet, encounter, args, spend, costs, undefined, charge?.tiles ?? 0);
       }
       // The Superiority Die rides the Athletics check; it is paid with the
       // bonus action, once the contest's own checks pass.
       return contest(campaign, turn, sheet, encounter, args, spend, costs, () => {
-        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId, sheets, sheetsById);
+        const strike = payGrapplingStrike(campaign, turn.id, sheet, args.targetEnemyId);
         return "error" in strike ? strike : { die: strike.die, label: "Grappling Strike" };
       });
     }
@@ -524,6 +555,8 @@ export function handleTakeAction(
     }
     case "use_object":
       return objectAction(
+        campaign,
+        turn,
         sheet,
         args.item,
         args.reason,
@@ -557,5 +590,5 @@ export function handleTakeAction(
   }
   };
   const outcome = resolveAction();
-  return "error" in outcome ? outcome : { ...costs, ...outcome };
+  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
 }

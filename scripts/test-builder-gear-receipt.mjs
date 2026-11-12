@@ -7,15 +7,19 @@ import assert from "node:assert/strict";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
+register("./lib/register-dialog-inline.mjs", import.meta.url);
 
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
 const { openBuilder } = await import("./lib/enforce-builder.mjs");
 const receiptMath = await import("../src/app/characters/builder/receiptMath.ts");
+const { default: GearReceipt } = await import("../src/app/characters/builder/GearReceipt.tsx");
 const { purseViewFor } = await import("../src/app/characters/builder/derivedReasons.ts");
 const { judgeStartingGear } = await import("../src/lib/srd/starting-wealth.ts");
 const { deriveHand } = await import("../src/lib/battlemap/hand.ts");
 const { storedSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 
-const { buildReceipt, settleQty, stepDown, withAddedQty, formatCoin, MAX_QTY } = receiptMath;
+const { buildReceipt, settleQty, stepDown, withAddedQty, MAX_QTY } = receiptMath;
 
 let passed = 0;
 function test(name, fn) {
@@ -129,10 +133,28 @@ test("the player's added list takes a count, adds a line, or drops it", () => {
   assert.equal(withAddedQty(list, "Dagger", 0), list);
 });
 
-test("coin reads as the purse line writes it", () => {
-  assert.equal(formatCoin(0), "0 gp");
-  assert.equal(formatCoin(1525), "15 gp 25 cp");
-  assert.equal(formatCoin(7), "7 cp");
+// The foot's coin reads in gold, silver and copper, as the purse line does:
+// a play-test's 10 gp purse left 3 gp 9 sp and the foot said "3 gp 90 cp".
+test("the receipt's foot writes the coin in silver as well as gold and copper", () => {
+  const foot = (coinCopper, spentCopper) => {
+    const markup = renderToStaticMarkup(
+      createElement(GearReceipt, {
+        receipt: {
+          rows: [{ name: "Net", qty: 1, preAdded: 0, free: 0, bought: 1, unitCopper: spentCopper, costCopper: spentCopper, refused: null, weapon: null }],
+          coinCopper,
+          spentCopper,
+          leftCopper: coinCopper - spentCopper,
+          setQty: () => {},
+        },
+      }),
+    );
+    // A coin's number and code are held together by a no-break space.
+    const cells = (label) => markup.match(new RegExp(`${label}</th><td[^>]*></td><td[^>]*>([^<]*)</td>`))?.[1]?.replace(/\u00a0/g, " ");
+    return { start: cells("Starting coin"), spent: cells("Spent"), left: cells("Coin left") };
+  };
+  assert.deepEqual(foot(1000, 610), { start: "10 gp", spent: "6 gp 1 sp", left: "3 gp 9 sp" });
+  assert.deepEqual(foot(1525, 18), { start: "15 gp 2 sp 5 cp", spent: "1 sp 8 cp", left: "15 gp 7 cp" });
+  assert.deepEqual(foot(5, 5), { start: "5 cp", spent: "5 cp", left: "0 gp" });
 });
 
 // The rogue's kit carries two daggers; the acolyte's purse is 15 gp.

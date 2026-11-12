@@ -76,6 +76,9 @@ export function enemyStrikesEnemy(
     bonus?: boolean;
     // The swing Haste's extra action buys (enemy-actions.ts).
     haste?: boolean;
+    // One swing made with its reaction, off its turn (Infectious Fury's
+    // forced attack, mt-fb-spend.ts): its action and its turn are untouched.
+    reaction?: boolean;
     sheets: CharacterSheet[];
     sheetsById: Map<string, CharacterSheet>;
   },
@@ -127,6 +130,8 @@ export function enemyStrikesEnemy(
     markEnemyBonus(live, enemy.id);
   } else if (input.haste) {
     recordEnemyTurn(live, enemy.id, { hasteUsed: true });
+  } else if (input.reaction) {
+    live.reactionsUsed = [...live.reactionsUsed, enemy.id];
   } else if (input.single) {
     markEnemyActed(live, enemy.id);
   } else {

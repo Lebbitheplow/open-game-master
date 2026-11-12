@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { dominatorOf } from "@/lib/dm/combat-sides-logic";
+import { dominatorOf, isDominationSpell } from "@/lib/dm/combat-sides-logic";
 import { patchEnemyConditions } from "@/lib/db/encounters";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, packInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { resolveCombatant } from "@/lib/dm/combatant";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -12,8 +12,9 @@ import { INTENT_VERB_KINDS } from "@/lib/battlemap/intent";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { canEnemyAct } from "@/lib/dm/can-act";
 
 // declare_intent (docs/visual-overhaul-plan.md 5.6): the DM, model or person,
 // says what an enemy is about to do, and the board telegraphs it for the
@@ -72,8 +73,8 @@ export function handleDeclareIntent(
   let args: z.infer<typeof declareIntentArgsSchema>;
   try {
     args = declareIntentArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: declare_intent needs actor and verb.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: declare_intent needs actor and verb.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.actor);
   if (!enemy) {
@@ -81,6 +82,13 @@ export function handleDeclareIntent(
   }
   if (enemy.status !== "alive") {
     return { error: `${enemy.displayName} is already ${enemy.status}.`, retry: true };
+  }
+  // The board showed a sleeping goblin raising its club: a creature
+  // "unaware of its surroundings" (SRD 5.1, Unconscious, Petrified) plans
+  // nothing (can-act.ts canEnemyAct "intent").
+  const aware = canEnemyAct({ enemy, encounter, kind: "intent" });
+  if (!aware.ok) {
+    return { error: aware.error, refused: "rules" };
   }
   // Its mark is any combatant (src/lib/dm/combatant.ts): a character, or a
   // creature the party has turned to its side.
@@ -123,18 +131,20 @@ export function handleDeclareIntent(
   };
 }
 
-// The order written on the domination's charm, when one holds the creature.
+// The order written on the domination's charm, when one holds the creature:
+// on the dominating instance, not on another source of the same charm.
 function commandDominated(enemy: { id: string; conditions: string[]; conditionMeta: ConditionMetaMap }, targetId: string): boolean {
-  if (!dominatorOf(enemy.conditions, enemy.conditionMeta)) {
-    return false;
-  }
+  const dominator = dominatorOf(enemy.conditions, enemy.conditionMeta);
   const charmed = enemy.conditions.find((entry) => entry.trim().toLowerCase() === "charmed");
-  if (!charmed) {
+  if (!dominator || !charmed) {
     return false;
   }
   // The order rides the charm's meta (combat-sides-logic.ts dominationOrderOf
   // reads it), so it ends when the charm does.
-  const meta: ConditionMetaMap = { ...enemy.conditionMeta, [charmed]: { ...enemy.conditionMeta[charmed], order: targetId } };
+  const instances = instancesOf(enemy.conditionMeta[charmed]).map((instance) =>
+    instance.source === dominator && isDominationSpell(instance.spell) ? { ...instance, order: targetId } : instance,
+  );
+  const meta: ConditionMetaMap = { ...enemy.conditionMeta, [charmed]: packInstances(instances)! };
   patchEnemyConditions(enemy.id, enemy.conditions, meta);
   return true;
 }

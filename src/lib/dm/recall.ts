@@ -5,7 +5,7 @@ import { searchScenes } from "@/lib/dm/memory-index";
 import { fitChaptersToBudget } from "@/lib/dm/chapter-lod";
 import { computeBudgets } from "@/lib/dm/context-budget";
 import { storyContextTokens } from "@/lib/model-client";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 // recall_story: the DM's long-term memory tool. A chapter number returns
 // that chapter's full summary. A query runs two-phase semantic recall
@@ -27,8 +27,8 @@ export async function handleRecallStory(
   let args: { chapter?: unknown; query?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: recall_story takes a chapter or a query.", error, rawArguments);
   }
   const closed = listChapters(campaign.id).filter((chapter) => chapter.status === "closed");
   if (!closed.length) {

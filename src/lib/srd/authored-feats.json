@@ -235,7 +235,7 @@
     {
       "name": "Chef",
       "prerequisite": "",
-      "desc": "Increase your Constitution or Wisdom by 1, to a maximum of 20, and gain proficiency with cook's utensils. Cooking during a short rest lets allies regain an extra 1d8 hit points, and an hour's work makes treats that grant temporary hit points."
+      "desc": "Increase your Constitution or Wisdom by 1, to a maximum of 20, and gain proficiency with cook's utensils. Cooking during a short rest lets allies regain an extra 1d8 hit points, and with an hour's work as you finish a long rest you make a number of treats equal to your proficiency bonus that keep for 8 hours: a creature eats one as a bonus action and gains temporary hit points equal to your proficiency bonus."
     },
     {
       "name": "Crusher",

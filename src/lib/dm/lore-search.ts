@@ -12,7 +12,7 @@ import { placementOf } from "@/lib/dm/prep-logic";
 import { parseRef, typeFor } from "@/lib/worldforge/model";
 import { canonAdmits, canonMeaning, eventLine, secretStanding } from "@/lib/worldforge/canon";
 import { fieldLines } from "@/lib/worldforge/time";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { accountOf } from "@/lib/worldforge/account";
 
 // search_lore: the DM's world-knowledge search. One query runs against
@@ -111,8 +111,8 @@ export async function handleSearchLore(
   let args: { query?: unknown; category?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: search_lore needs a query.", error, rawArguments);
   }
   const query = String(args.query ?? "").trim();
   if (!query) {

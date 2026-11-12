@@ -1,5 +1,7 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
-import { openSaves, type LastSave } from "@/lib/dm/last-save";
+import { type LastSave } from "@/lib/dm/last-save";
+import { triggerRecords } from "@/lib/dm/reaction-triggers";
+import type { TriggerRecordView } from "@/lib/srd/trigger-table";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -139,6 +141,10 @@ export type PublicEncounter = {
   acting?: { id: string; name: string } | null;
   // While the enemies hold the turn: the player whose turn follows theirs.
   upNext?: { id: string; name: string };
+  // Every view: the character whose End Turn is in while the move waits on a
+  // watcher's stop (src/lib/dm/turn-hold.ts), and the watcher it waits on.
+  // The End Turn controls show it; absent on an older server.
+  turnHeld?: { characterId: string; watcher: string };
   // While the enemies hold the turn: the ones it is held for, by id, as this
   // viewer may know them (a hidden one is left out of a player's), so the
   // trackers light their rows.
@@ -160,13 +166,16 @@ export type PublicEncounter = {
   // hit still open on each character, oldest first, while the engine would
   // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
-  // The Intelligence, Wisdom and Charisma saves characters made this turn
-  // against a creature, for Vigilant Rebuke (src/lib/dm/last-save.ts). A
-  // forcer hidden from this viewer is left out.
+  // The triggers open now that no hit record holds (src/lib/dm/last-save.ts,
+  // reaction-triggers.ts triggerRecords): saves made or failed and who forced
+  // them, deaths, a turn's end and the next one's start, casts, a pet's damage,
+  // the running turn's weapon hits and Action Surge. Named for the first of
+  // them it carried (a save, for Vigilant Rebuke); an entry with no kind is a
+  // save made. A creature hidden from this viewer is left out.
   lastSaves?: PublicSave[];
 };
 
-export type PublicSave = { id: string; characterId: string; ability: string; forcerId: string; forcer: string };
+export type PublicSave = TriggerRecordView;
 
 export type PublicTurn = {
   ownerId: string;
@@ -216,7 +225,7 @@ export type PublicLastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  source: "attack" | "fall" | "missile";
+  source: "attack" | "fall" | "missile" | "effect";
   // Whether any swing hit, and how many did.
   hit: boolean;
   hits: number;
@@ -290,6 +299,7 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
     ...(enemiesFirst ? { enemyTurns: true } : {}),
     ...(enemiesFirst && pointer ? { upNext: pointer } : {}),
     ...(enemiesFirst ? { enemiesUp: owner.enemies.filter((id) => showNumbers || !hidden.has(id)) } : {}),
+    ...(encounter.legendary.heldMove ? { turnHeld: { characterId: encounter.legendary.heldMove.characterId, watcher: encounter.legendary.heldMove.watcher } } : {}),
     surprised: {
       acting: pcIds.filter((id) => isSurprised(encounter, id)),
       reacting: pcIds.filter((id) => isSurprised(encounter, id, true)),
@@ -318,7 +328,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     // the arrow it named.
     ranged: answered?.ranged ?? record.ranged,
     source: record.source,
-    hit: record.source === "fall" || record.swings.some((swing) => swing.hit),
+    hit: record.source === "fall" || record.source === "effect" || record.swings.some((swing) => swing.hit),
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     ...(critical ? { crit: { attack: critical.attack ?? record.attack, damage: critical.raw } } : {}),
@@ -471,7 +481,30 @@ export function publicEncounter(
 function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbers: boolean): { lastSaves?: PublicSave[] } {
   const shown = (saves ?? []).filter((save) => showNumbers || !hidden.has(save.forcer.id));
   return shown.length
-    ? { lastSaves: shown.map((save) => ({ id: save.id, characterId: save.characterId, ability: save.ability, forcerId: save.forcer.id, forcer: save.forcer.name })) }
+    ? {
+        lastSaves: shown.map((save) => ({
+          id: save.id,
+          characterId: save.characterId,
+          ability: save.ability,
+          forcerId: save.forcer.id,
+          forcer: save.forcer.name,
+          ...(save.kind ? { kind: save.kind } : {}),
+          ...(save.success !== undefined ? { success: save.success } : {}),
+          ...(save.dc !== undefined ? { dc: save.dc } : {}),
+          ...(save.against ? { against: save.against } : {}),
+          ...(save.damage ? { damage: save.damage } : {}),
+          ...(save.petName ? { petName: save.petName } : {}),
+          ...(save.creatureType !== undefined ? { creatureType: save.creatureType } : {}),
+          ...(save.killerId !== undefined ? { killerId: save.killerId } : {}),
+          ...(save.spell ? { spell: save.spell } : {}),
+          ...(save.enemy !== undefined ? { enemy: save.enemy } : {}),
+          ...(save.level !== undefined ? { level: save.level } : {}),
+          ...(save.how ? { how: save.how } : {}),
+          ...(save.feet !== undefined ? { feet: save.feet } : {}),
+          ...(save.fromFeet !== undefined ? { fromFeet: save.fromFeet } : {}),
+          ...(save.answered?.length ? { answered: save.answered } : {}),
+        })),
+      }
     : {};
 }
 
@@ -566,7 +599,7 @@ export function activePublicEncounter(
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
-    lastSaves: openSaves(campaignId),
+    lastSaves: triggerRecords(campaignId),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

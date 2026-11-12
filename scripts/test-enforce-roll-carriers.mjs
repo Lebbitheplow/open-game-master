@@ -23,10 +23,24 @@ const hold = (id, condition = INSPIRED) => world.patch(id, { conditions: [condit
 const holds = (id, condition = INSPIRED) => world.sheet(id).conditions.includes(condition);
 const d8Rolled = () => world.diceLog().some((die) => die.sides === 8);
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
-// A held die is the holder's to add once the d20 is rolled (SRD 5.1), so the
-// engine adds it only to a roll it carries past its DC (forced-save.ts
-// settleHeldDie): a natural 20 keeps it, and a d20 one short of the DC takes
-// the d8's 8 and spends it.
+// A held die is the holder's to add once the d20 is rolled (SRD 5.1, Bardic
+// Inspiration: "can wait until after it rolls the d20 before deciding to use
+// the Bardic Inspiration die"), so a roll it could carry waits on its player's
+// card (src/lib/dm/character-roll.ts), and the player adds it: a natural 20
+// keeps it, and a d20 one short of the DC takes the d8's 8 and spends it. It
+// was added for them, unasked, before every check tool held its call for the
+// card (the 2026-11-09 gap sweep, findings dice-afterroll-*).
+const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { call } = await import("./lib/enforce-campaign.mjs");
+const afterRoll = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+async function addHeldDie(id) {
+  const sheet = world.sheet(id);
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.userId === sheet.userId && pending.thrown?.options.some((option) => option.id === "bardic"));
+  assert.ok(card, "the roll the die could carry waits on its player");
+  world.signIn({ id: sheet.userId });
+  const added = await call(afterRoll, "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: card.id });
+  assert.equal(added.status, 200, JSON.stringify(added.json));
+}
 async function settles(id, run) {
   hold(id);
   world.dice(20);
@@ -43,8 +57,9 @@ async function settles(id, run) {
   world.diceLog();
   world.dice(face, 8);
   const carried = await run();
-  world.clearDice();
   assert.equal(carried.ok, true, carried.error);
+  await addHeldDie(id);
+  world.clearDice();
   assert.ok(d8Rolled(), "the inspiration die did not ride the check");
   assert.equal(holds(id), false, "the die is still held after the check it carried");
 }
@@ -90,6 +105,9 @@ await test("A Bardic Inspiration die held by a traveller is spent by the first f
   world.diceLog();
   world.dice(15, 8, 15, 15, 15);
   await world.invoke("travel", { hours: 12, pace: "normal", characterIds: [walker.id] });
+  if (listOpenPendingRolls(world.campaignId).some((pending) => pending.thrown)) {
+    await addHeldDie(walker.id);
+  }
   world.clearDice();
   assert.ok(d8Rolled());
   assert.equal(holds(walker.id), false);

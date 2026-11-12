@@ -210,6 +210,7 @@ const CLASSIFIED = {
   // The DM turn and everything that replays its conversation: the system
   // prompt is buildDmSystem's, which carries the directive.
   "src/lib/dm/turn.ts": { prose: 4, machine: 0 },
+  "src/lib/dm/player-word-read.ts": { prose: 0, machine: 1 },
   "src/lib/dm/continue-scene.ts": { prose: 1, machine: 0 },
   "src/lib/dm/renarrate.ts": { prose: 1, machine: 0 },
   "src/lib/dm/narration-guard.ts": { prose: 1, machine: 0 },
@@ -259,6 +260,11 @@ const CLASSIFIED = {
   // checks what came back, a tool called and narration streamed; nobody
   // reads the reply.
   "src/lib/backend-trial.ts": { prose: 0, machine: 1 },
+  // An adventure PDF import (src/lib/pdf-import/job.ts): each piece of the
+  // book read into JSON records in the book's own words, and each creature's
+  // SRD 5.1 equivalent picked from a list. Both are read by the importer,
+  // and what lands keeps the book's language, not the table's.
+  "src/lib/pdf-import/job.ts": { prose: 0, machine: 2 },
   // The routers themselves.
   "src/lib/dm/model.ts": { prose: 0, machine: 0, router: true },
 };

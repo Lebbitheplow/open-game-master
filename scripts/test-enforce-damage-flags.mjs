@@ -118,6 +118,43 @@ await test("Elemental Adept's fire ignores a tiefling turncoat's fire resistance
   assert.equal(world.sheet(foe.id).currentHp, 30 - 10, JSON.stringify(out.result));
 });
 
+// Elemental Adept of a spell's second type, against a character on the foes'
+// side: only that type's resistance is set aside (pc-damage.ts), as on an
+// enemy. A tiefling resists fire; Rime's fire is its second type.
+const { createHomebrew } = await import("../src/lib/db/homebrew.ts");
+const RIME_DICE = { damageType: "cold", secondType: "fire", dice: { base: "3d6+2d8", baseLevel: 3 } };
+for (const [name, mech, desc] of [
+  ["Rime Bolt", { resolution: "attack", attack: "ranged", ...RIME_DICE }, "Make a ranged spell attack against the target. On a hit, the target takes 3d6 cold damage plus 2d8 fire damage."],
+  ["Rime Lash", { resolution: "save", save: "dex", halfOnSave: true, ...RIME_DICE }, "The target must make a Dexterity saving throw, taking 3d6 cold damage and 2d8 fire damage on a failed save, or half as much on a successful one."],
+]) {
+  // The table's workshop (cast_at_enemy) and the caster's own (pc_attack).
+  for (const author of new Set([world.owner.id, world.sheet(mage.id).userId])) {
+    createHomebrew(author, { kind: "spell", name, data: { desc, level: 3, classes: ["wizard"], school: "evocation", castingTime: "1 action", range: "60 feet", mech } });
+  }
+}
+
+await test("A fire adept's spell whose fire is its second type passes a tiefling turncoat's fire resistance, by attack and by save.", async () => {
+  const known = { ...world.sheet(mage.id).spellcasting, prepared: ["Rime Bolt", "Rime Lash"] };
+  const foe = await turncoat({ race: "tiefling", maxHp: 80, currentHp: 80 });
+  world.patch(mage.id, { spellcasting: known });
+  kit.place(mage.id, 9, 2);
+  kit.giveTurn(mage.id);
+  // The attack, 18 cold and 16 fire.
+  world.dice(18, 6, 6, 6, 8, 8);
+  const shot = await world.invoke("pc_attack", { characterId: mage.id, targetEnemyId: foe.id, spell: "Rime Bolt", level: 3 });
+  world.clearDice();
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(world.sheet(foe.id).currentHp, 80 - 34, JSON.stringify(shot.result));
+  world.patch(foe.id, { currentHp: 80 });
+  kit.giveTurn(mage.id);
+  // The turncoat's failed save, 18 cold and 16 fire.
+  world.dice(1, 6, 6, 6, 8, 8);
+  const lash = await world.invoke("cast_at_enemy", { characterId: mage.id, targetEnemyId: foe.id, spell: "Rime Lash", level: 3, saveAbility: "dex" });
+  world.clearDice();
+  assert.equal(lash.ok, true, lash.error);
+  assert.equal(world.sheet(foe.id).currentHp, 80 - 34, JSON.stringify(lash.result));
+});
+
 await test("Tipsy Sway turns a magic-weaponed attacker's miss onto a creature that resists nonmagical blows, and the blow stays magical.", async () => {
   await kit.endFight();
   const monk = world.addHero({ name: "Lio", class: "monk", subclass: "Way of the Drunken Master", level: 6, abilities: { dex: 16, wis: 14 }, proficiencies: TRAINED, maxHp: 40, portrait: { url: "/uploads/test.png" } });
@@ -182,6 +219,41 @@ await test("An iron golem's Fire Absorption heals it by a smite's fire riding a 
   table.clearDice();
   assert.equal(out.ok, true, out.error);
   assert.equal(enemyOf(table, golem.id).currentHp, 50 - 9 + 4, JSON.stringify(out.result));
+});
+
+// Troll, Regeneration (SRD 5.1): "If the troll takes acid or fire damage, this
+// trait doesn't function at the start of the troll's next turn." Oil: "If the
+// target takes any fire damage before the oil dries ... an additional 5 fire
+// damage". A sword's blow carrying a smite's fire takes fire damage, though it
+// lands as one untyped wound.
+const REGENERATING = "Regeneration: The troll regains 10 hit points at the start of its turn. If the troll takes acid or fire damage, this trait doesn't function at the start of the troll's next turn.";
+
+await test("A smite's fire riding a sword stops a troll's regeneration, as fire alone does.", async () => {
+  const { world: table, sheets: [fighter], enemies: [troll] } = await board([FIGHTER], { 0: { x: 11, y: 4 }, e0: { x: 12, y: 4 } });
+  dress(table, troll.id, { traits: [REGENERATING] });
+  table.patch(fighter.id, { conditions: ["searing smite"], conditionMeta: {} });
+  holdTurn(table, fighter.id);
+  // To hit, the longsword's d8, the smite's 1d6, and a spare die for the
+  // smite's ignition save.
+  table.dice(18, 6, 4, 20);
+  const out = await table.invoke("pc_attack", { characterId: fighter.id, targetEnemyId: troll.id, weapon: "Longsword" });
+  table.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(out.result.damageByType, ["9 slashing", "4 fire"]);
+  assert.ok(enemyOf(table, troll.id).conditions.some((entry) => /regeneration/i.test(entry)), JSON.stringify(out.result));
+});
+
+await test("The same blow catches the oil on a creature, 5 more fire.", async () => {
+  const { world: table, sheets: [fighter], enemies: [goblin] } = await board([FIGHTER], { 0: { x: 11, y: 4 }, e0: { x: 12, y: 4 } });
+  dress(table, goblin.id, {});
+  encounters.patchEnemyConditions(goblin.id, ["covered in oil"], {});
+  table.patch(fighter.id, { conditions: ["searing smite"], conditionMeta: {} });
+  holdTurn(table, fighter.id);
+  table.dice(18, 6, 4, 20);
+  const out = await table.invoke("pc_attack", { characterId: fighter.id, targetEnemyId: goblin.id, weapon: "Longsword" });
+  table.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(enemyOf(table, goblin.id).currentHp, 90 - (9 + 4 + 5), JSON.stringify(out.result));
 });
 
 // Undead Fortitude: "unless the damage is radiant or from a critical hit".

@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { CampaignCover as CampaignCoverRef } from "@/lib/campaign-types";
+import { variantUrl, type VariantWidth } from "@/lib/image-variant-url";
 import { campaignPlaceholder } from "@/lib/placeholders";
 
 // The campaign's cover art, or the themed placeholder when there is none.
@@ -21,6 +22,7 @@ export function CampaignCover({
   genre,
   seed,
   status = null,
+  width,
   className,
 }: {
   cover: CampaignCoverRef | null;
@@ -31,10 +33,14 @@ export function CampaignCover({
   genre?: string | null;
   seed?: string | null;
   status?: CoverStatus;
+  // The smaller copy to ask the server for, where the cover is drawn small
+  // (a home-screen tile): a cover is a three megabyte painting, and a tile
+  // shows a thumbnail of it. Left out, the painting itself.
+  width?: VariantWidth;
   className?: string;
 }) {
   const pending = status === "queued" || status === "generating";
-  const url = cover?.url ?? campaignPlaceholder(genre, seed ?? "");
+  const url = cover?.url ? (width ? variantUrl(cover.url, width) : cover.url) : campaignPlaceholder(genre, seed ?? "");
   return (
     <div
       className={cn(

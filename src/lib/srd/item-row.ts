@@ -15,8 +15,11 @@
 // tables, the sheet and the scripts that load the item math without the
 // path alias read it without a cycle.
 import { textKey } from "../language/text-logic.ts";
+import type { InfusionMark } from "./infusions.ts";
 
-export type RowItem = { name: string; slug?: string | null; srdName?: string };
+// `infusion`: an artificer's infusion laid in the row (src/lib/srd/infusions.ts),
+// which the magic item finders read before the row's name.
+export type RowItem = { name: string; slug?: string | null; srdName?: string; infusion?: InfusionMark | null };
 
 // A name without its trailing size or note: "Rope, hempen (50 feet)" is
 // "Rope, hempen", "Rations (1 day)" "Rations". A tool sends a row's name

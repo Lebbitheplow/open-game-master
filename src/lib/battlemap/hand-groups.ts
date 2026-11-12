@@ -95,11 +95,11 @@ export function groupKeyOf(card: HandCard): HandGroupKey | null {
     : null;
 }
 
-// A spell in a Ring of Spell Storing is a spell and an item's ability, and a player
-// may look for it under either (src/lib/battlemap/hand-ring.ts): one card, listed
-// in both groups where both have folded. Every other card has one home.
+// A spell cast from a magic item is a spell and an item's ability, and a player may
+// look for it under either (src/lib/battlemap/hand-ring.ts, hand-items.ts): one card,
+// listed in both groups where both have folded. Every other card has one home.
 export function groupKeysOf(card: HandCard): HandGroupKey[] {
-  if (card.id.startsWith("spell:ring:")) return ["spells", "items"];
+  if (card.fromItem) return ["spells", "items"];
   const key = groupKeyOf(card);
   return key ? [key] : [];
 }
@@ -163,6 +163,23 @@ function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcast
   }));
 }
 
+// Items by the item, each with what it has left, as Spells goes by level with its
+// slots: a Staff of the Magi deals 19 cards, and its charges are the choice. With
+// nothing cast from an item, the group is the one list it always was.
+function itemSections(cards: HandCard[], name: string): HandGroupSection[] {
+  if (!cards.some((card) => card.fromItem)) {
+    return [{ id: "all", label: name, note: "", cards }];
+  }
+  const sections = new Map<string, HandGroupSection>();
+  for (const card of cards) {
+    const { key, label, note } = card.fromItem ?? { key: "", label: "Gear", note: "" };
+    const section = sections.get(key);
+    if (section) section.cards.push(card);
+    else sections.set(key, { id: `item:${key}`, label, note, cards: [card] });
+  }
+  return [...sections.values()];
+}
+
 function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting" | "resources"> | null): HandGroup {
   let name: string;
   let noun: [string, string];
@@ -191,7 +208,7 @@ function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSh
       name = "Actions";
       noun = ["action", "actions"];
     }
-    sections = [{ id: "all", label: name, note: left, cards }];
+    sections = key === "items" ? itemSections(cards, name) : [{ id: "all", label: name, note: left, cards }];
   }
   const playable = cards.filter((card) => !card.disabled);
   const reasons = [...new Set(cards.map((card) => card.disabled).filter((reason): reason is string => Boolean(reason)))];
@@ -271,7 +288,7 @@ export function filterCards(cards: HandCard[], filter: HandFilter): HandCard[] {
     if (filter.costs.length && !filter.costs.includes(card.cost)) return false;
     if (filter.concentration && !card.concentration) return false;
     if (!wanted.length) return true;
-    const held = textKey([card.name, card.dice, card.damageType, card.condition].join(" ")).split(" ");
+    const held = textKey([card.name, card.dice, card.damageType, card.secondType, card.condition].join(" ")).split(" ");
     return wanted.every((word) => held.some((part) => part.startsWith(word)));
   });
 }

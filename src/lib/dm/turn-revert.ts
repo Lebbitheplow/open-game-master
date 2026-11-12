@@ -3,7 +3,7 @@ import { effectsUpdate } from "@/lib/db/active-effects";
 import { getBattleMap, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getDatabase } from "@/lib/db/core";
 import { diceGiveBackWarnings, giveBackDice } from "@/lib/db/dice-scripts";
-import { listEnemies } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { setTemplateCued } from "@/lib/db/encounter-templates";
 import { getSheetById } from "@/lib/db/sheets";
 import { markTurnChangesReverted, type TurnChange } from "@/lib/db/turn-changes";
@@ -17,9 +17,10 @@ import { removeSummon } from "@/lib/dm/summon-store";
 import { isFightTable, planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 
-// The part of "Revert this turn" that is not a sheet or the clock (issue
-// 685; src/lib/db/turn-changes.ts lists what a turn keeps): the fight and the
-// board as the turn found them, the creatures it called up, the prepared
+// The part of "Revert this turn" that is not a sheet's audit or the clock
+// (issue 685; src/lib/db/turn-changes.ts lists what a turn keeps): the fight
+// and the board as the turn found them, every other row the turn wrote
+// (src/lib/db/turn-journal.ts), the creatures it called up, the prepared
 // fight's events it fired, the test dice it spent, the cards the GM resolved
 // in it. The route (audit/revert-turn) asks for the warnings first and then
 // takes them back, after the sheets.
@@ -83,13 +84,21 @@ function rowsPlan(turnId: string, hidden?: ReadonlySet<string>): { plan: RowPlan
     return { ...row, now, encounterId: fightOf(row, now, boards) };
   });
   const fights = new Map<string, FightState>();
+  const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
   for (const id of new Set(rows.flatMap((row) => (row.encounterId ? [row.encounterId] : [])))) {
     const own = rows.find((row) => row.table === "encounters" && row.rowId === id);
     const now = readRow("encounters", id);
+    // Another fight on now, which a fight this turn ended cannot be opened
+    // again beside.
+    const other = turn ? getActiveEncounter(turn.campaign_id) : null;
+    // Another fight on now, unless it is one this turn began (it goes).
+    const otherBegunHere = rows.some((row) => row.table === "encounters" && row.rowId === other?.id && !row.before);
     fights.set(id, {
       active: now?.status === "active",
       begunInTurn: Boolean(own && !own.before),
       endedInTurn: own?.before?.status === "active" && (own.after ?? now)?.status === "ended",
+      blocked: Boolean(other && other.id !== id && !otherBegunHere),
+      scene: typeof (own?.before ?? now)?.kind === "string" && (own?.before ?? now)?.kind !== "fight",
     });
   }
   return { plan: planRowsRevert(rows, fights, hidden), rows };
@@ -131,9 +140,21 @@ function restand(mapId: string) {
   }
 }
 
+// A row of another table the turn made, taken away: alone, so a row a later
+// turn made beside it that still points at it (the database refuses that
+// delete) keeps it, rather than the whole revert failing.
+function deleteOther(table: string, rowId: string) {
+  try {
+    getDatabase().transaction(() => deleteRow(table, rowId))();
+  } catch (error) {
+    console.warn(`[turn-revert] kept ${table} ${rowId}: a later row still needs it`, error);
+  }
+}
+
 function applyRows(campaign: Campaign, plan: RowPlan) {
   const db = getDatabase();
   const effects = (entry: { table: string }) => entry.table === "active_effects";
+  const fightRow = (entry: { table: string }) => isFightTable(entry.table) && !effects(entry);
   // Effects as rows alone: what an effect did to a hero's maximum and hit
   // points in the turn is the sheet audit's to put back (active-effects.ts
   // audits it there), and a creature's is its own row's below. Moved again
@@ -145,11 +166,26 @@ function applyRows(campaign: Campaign, plan: RowPlan) {
   })();
   db.transaction(() => {
     plan.dropFights.forEach((id) => deleteRow("encounters", id));
-    plan.deletes.filter((entry) => !effects(entry)).forEach((entry) => deleteRow(entry.table, entry.rowId));
-    plan.inserts.filter((entry) => !effects(entry)).forEach((entry) => insertRow(entry.table, entry.row));
-    plan.updates.filter((entry) => !effects(entry)).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
+    plan.deletes.filter(fightRow).forEach((entry) => deleteRow(entry.table, entry.rowId));
+    plan.inserts.filter(fightRow).forEach((entry) => insertRow(entry.table, entry.row));
+    plan.updates.filter(fightRow).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
     plan.grounds.forEach(restand);
   })();
+  // The rest of what the turn wrote (turn-journal.ts): the columns it
+  // changed back as it found them, the rows it made gone, newest first so a
+  // row goes before the one it points at. What it took away came back first
+  // (bringBackTakenRows), before the sheets.
+  const other = (entry: { table: string }) => !isFightTable(entry.table);
+  db.transaction(() => {
+    plan.updates.filter(other).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
+  })();
+  [...plan.deletes.filter(other)].reverse().forEach((entry) => deleteOther(entry.table, entry.rowId));
+  for (const entry of plan.updates.filter((update) => update.table === "character_sheets")) {
+    const sheet = getSheetById(entry.rowId);
+    if (sheet) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet });
+    }
+  }
   publishEncounter(campaign.id);
   publishEphemeral(campaign.id, "battle_map_updated", {});
   if ([...plan.deletes, ...plan.inserts, ...plan.updates].some(effects)) {
@@ -167,13 +203,37 @@ export function bringBackTakenRows(campaign: Campaign, turnId: string) {
   if (!taken.length) {
     return;
   }
-  getDatabase().transaction(() => taken.forEach((entry) => insertRow(entry.table, entry.row)))();
+  // Each row alone, a row that points at one not back yet (a sheet kept on
+  // its first write, before the bot user its cascade took) tried again once
+  // the rest are in.
+  const db = getDatabase();
+  let pending = taken;
+  while (pending.length) {
+    const failed: Array<{ entry: (typeof taken)[number]; error: unknown }> = [];
+    for (const entry of pending) {
+      try {
+        db.transaction(() => insertRow(entry.table, entry.row))();
+      } catch (error) {
+        failed.push({ entry, error });
+      }
+    }
+    if (failed.length === pending.length) {
+      throw failed[0].error;
+    }
+    pending = failed.map((miss) => miss.entry);
+  }
   for (const entry of taken) {
     const sheet = entry.table === "character_sheets" ? getSheetById(text(entry.row.id) ?? "") : null;
     if (sheet) {
       publishPersisted(campaign.id, "sheet_updated", { sheet });
     }
   }
+}
+
+// Why the turn cannot be reverted, or null (src/lib/dm/turn-rows-logic.ts
+// planRowsRevert: a fight it ended, with another on since).
+export function turnRevertRefusal(turnId: string): string | null {
+  return rowsPlan(turnId)?.plan.refusal ?? null;
 }
 
 // `seesSecrets`: whether the person asking sees what the GM keeps off the
@@ -224,5 +284,5 @@ export function takeBackTurnChanges(campaign: Campaign, turnId: string, changes:
     supersedeLaterRows(campaign.id, turnId, writtenRows(rows));
   }
   markTurnChangesReverted(changes.map((change) => change.id));
-  return changes.length;
+  return changes.length || (rows ? 1 : 0);
 }

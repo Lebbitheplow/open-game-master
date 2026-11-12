@@ -19,7 +19,7 @@ import {
   type SceneTracker,
 } from "@/lib/dm/scene-tracker-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 // Running a structured non-combat scene: the DB and dice rim around
@@ -145,8 +145,8 @@ export function handleStartScene(
   let args: z.infer<typeof startSchema>;
   try {
     args = startSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: start_scene needs a kind and a title.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: start_scene needs a kind and a title.", error, rawArguments);
   }
   const running = getSceneTracker(campaign.id);
   if (running && running.status === "running") {
@@ -194,8 +194,8 @@ export function handleSceneCheck(
   let args: z.infer<typeof checkSchema>;
   try {
     args = checkSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: scene_check needs a characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: scene_check needs a characterId.", error, rawArguments);
   }
   const tracker = getSceneTracker(campaign.id);
   if (!tracker || tracker.status !== "running") {

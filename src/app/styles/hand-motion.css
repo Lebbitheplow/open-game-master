@@ -96,6 +96,10 @@ html[data-theme="light"] .hand-react-chip:not([aria-disabled="true"]) .font-mono
   animation: hand-chip-pop var(--dur-quick) var(--ease-settle) backwards, hand-chip-on 280ms var(--ease-spring);
   animation-delay: calc(var(--i, 0) * 40ms), 0s;
 }
+/* The chosen chip's amber is written for the night: by day it washed out to
+   the same parchment as the others, and the pill that wears its fill showed
+   nothing, so Tides of Chaos or Drunkard's Luck gave no sign of the pick. */
+html[data-theme="light"] .hand-option[aria-checked="true"] { background-color: rgba(138, 106, 28, 0.2); border-color: #8a6a1c; color: #3d2a08; }
 
 /* What the card will do files in row by row, and a number that changes with
    the target (the odds, the expected damage) ticks over instead of cutting. */

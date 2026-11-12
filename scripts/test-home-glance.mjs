@@ -213,6 +213,20 @@ test("the glance carries the last narration that said something, the newest pain
   assert.ok(glance.faces.every((face) => face.url.length > 0), "every face has a picture");
 });
 
+test("the newest painting is read from the messages that carry one, not by walking back through the transcript", () => {
+  const plan = getDatabase()
+    .prepare(
+      `EXPLAIN QUERY PLAN SELECT generated_image_json FROM campaign_messages
+       WHERE campaign_id = ? AND generated_image_json IS NOT NULL
+       ORDER BY seq DESC LIMIT 1`,
+    )
+    .all("a-campaign")
+    .map((row) => row.detail)
+    .join(" | ");
+  assert.match(plan, /idx_campaign_messages_picture/, plan);
+  assert.doesNotMatch(plan, /TEMP B-TREE/, `the read sorts: ${plan}`);
+});
+
 removeTempDir(dir);
 if (failures) {
   console.log(`${failures} failed`);

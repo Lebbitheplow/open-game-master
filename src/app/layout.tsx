@@ -9,15 +9,24 @@ import "./globals.css";
 // The faces ship in the repo (Google Fonts' latin subsets) so a build
 // never fetches from fonts.gstatic.com: a failed download there broke CI
 // builds and made offline builds impossible.
-const geistSans = localFont({
-  src: "./fonts/geist.woff2",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+// The interface face: Ysabeau Office, a humanist sans drawn on a Garamond
+// skeleton, so labels and numbers sit beside Cinzel and Source Serif like
+// the tables of a rulebook. Its figures are lining and tabular by default,
+// which is what dice math and stat columns need (the Tailwind font-mono
+// utility resolves to this face too: globals.css).
+const uiSans = localFont({
+  src: [
+    { path: "./fonts/ysabeau-office.woff2", weight: "100 900", style: "normal" },
+    { path: "./fonts/ysabeau-office-italic.woff2", weight: "100 900", style: "italic" },
+  ],
+  variable: "--font-ui",
 });
 
-const geistMono = localFont({
+// A fixed-width face for what is typed or copied exactly: a room code, a
+// path, a command, a log (the font-code utility).
+const codeMono = localFont({
   src: "./fonts/geist-mono.woff2",
-  variable: "--font-geist-mono",
+  variable: "--font-code-face",
   weight: "100 900",
 });
 
@@ -30,7 +39,7 @@ const sourceSerif = localFont({
 });
 
 // Engraved-capitals display face for wordmarks, screen titles, and
-// campaign names; body text stays on Geist/Source Serif.
+// campaign names; body text stays on the interface face and Source Serif.
 const cinzel = localFont({
   src: "./fonts/cinzel.woff2",
   variable: "--font-display",
@@ -64,7 +73,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} ${cinzel.variable} h-full antialiased`}
+      className={`${uiSans.variable} ${codeMono.variable} ${sourceSerif.variable} ${cinzel.variable} h-full antialiased`}
       // browser extensions inject attributes into <html> before React loads
       suppressHydrationWarning
     >

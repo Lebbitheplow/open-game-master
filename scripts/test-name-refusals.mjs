@@ -190,7 +190,11 @@ await test("use_resource: a resource the sheet has not is refused with the ones 
   for (const resource of ["Canalizzare divinità", "Conduit divin", "Canalizar divinidad", "Göttliche Macht", "Channel"]) {
     refused(await world.invoke("use_resource", { characterId: cleric.id, resource }), "channel_divinity");
   }
-  accepted(await world.invoke("use_resource", { characterId: cleric.id, resource: "channel-divinity" }));
+  // The written name resolves to the pool: a bare spend of it is refused
+  // only for naming no option (gap study WAVE2 D1: "A bare Channel Divinity
+  // spend (no option named) does nothing, in a fight or out: refuse it with
+  // a pointer to the options"), never as an unknown resource.
+  refused(await world.invoke("use_resource", { characterId: cleric.id, resource: "channel-divinity" }), "name it in variant");
   // A ki variant names a technique whole; any other is refused, never the
   // technique whose name holds a word of it, nor a plain spend.
   const monk = world.addHero({ name: "Hu", class: "monk", level: 5, proficiencies: TRAINED });

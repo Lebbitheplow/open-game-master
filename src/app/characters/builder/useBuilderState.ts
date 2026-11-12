@@ -18,7 +18,9 @@ import { innateCantripsFor } from "@/lib/srd/racial-grants";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { classListFor } from "@/lib/srd/multiclass";
 import { halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
-import { withoutFeatPicks, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
+import { pickedExpertiseSkills, withoutFeatPicks, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
+import { subclassGrants } from "@/lib/srd/subclass-training";
+import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { holdsFeature, reachesPrimalChampion, withoutPrimalChampion } from "@/lib/srd/trait-rules";
@@ -434,7 +436,9 @@ export function useBuilderState({
   // render's own reading of it is not the one to trust (a stored character).
   function reconciled(
     next: Partial<Selection>,
-    current: BuilderPicks,
+    // The feat and subclass picks as they will stand, where a caller changes
+    // them in the same step (a quick-build fill); this render's otherwise.
+    current: BuilderPicks & { featChoices?: FeatChoices },
     leadBefore?: string | null,
     // A change that moves levels (the total, or between classes) trims every
     // casting class's lists to its counts at its new level. Opening a stored
@@ -455,7 +459,28 @@ export function useBuilderState({
       after,
     );
     current = { ...current, ...keyed.lead };
-    const result = reconcilePicks(current, {
+    // The skills the subclass's training and the feats picked count for the
+    // expertise, as at the save (submit.ts): left out, a Lore bard's
+    // expertise in its college's Arcana, History and Nature was dropped
+    // whenever the species, background or level changed, the quick build's
+    // "Fill what's left" among them. A subclass feature this change takes
+    // away (another college, or a level below it) takes its picks out of
+    // that count, as the sheet's training no longer holds them; kept, an
+    // expertise in them stayed with no notice and doubled nothing.
+    const trainingOf = (entries: CasterEntry[], options: string[]) =>
+      new Set(
+        subclassGrants(
+          entries.flatMap((entry) => (entry.row ? [{ id: entry.row.id, level: entry.level, subclass: entry.subclass }] : [])),
+          undefined,
+          subclassPickFeatures(options, pickIds),
+        ).map((grant) => textKey(grant.name)),
+      );
+    const trainedAfter = trainingOf(afterEntries, current.optionPicks);
+    const lostTraining = [...trainingOf(casterEntriesOf(classId, subclass, fixedLevel ?? level, extraClasses), optionPicks)].filter(
+      (name) => !trainedAfter.has(name),
+    );
+    const choices = current.featChoices ?? featChoices;
+    const result = reconcilePicks({ ...current, featChoices: Object.fromEntries(Object.entries(choices).filter(([name]) => !lostTraining.includes(name))) }, {
       race: findRace(races, ids.raceId),
       klass: classes.find((entry) => entry.id === ids.classId),
       background,
@@ -596,7 +621,7 @@ export function useBuilderState({
       setDropped(null);
     }
   }
-  function applyChange(because: string, next: Partial<Selection>, current: BuilderPicks) {
+  function applyChange(because: string, next: Partial<Selection>, current: BuilderPicks & { featChoices?: FeatChoices }) {
     applyReconciled(because, reconciled(next, current));
   }
 
@@ -696,7 +721,14 @@ export function useBuilderState({
       // Skilled's skills) is theirs, held by FeatChoicesFields: read as a
       // bonus language or a class skill it overflowed the slots and was
       // reported as no longer on offer.
-      const held = withoutFeatPicks(initial.proficiencies, initial.featChoices);
+      // A class's expertise on a picked skill (a Lore bard's college skill)
+      // stays a pick; the skills a grant doubles itself (Knowledge Domain's)
+      // come off with it.
+      const doubled = pickedExpertiseSkills(
+        subclassGrants(classListFor({ class: initial.class, subclass: initial.subclass, level: storedLevel, classes: initial.classes })),
+        initial.featChoices,
+      );
+      const held = withoutFeatPicks(initial.proficiencies, initial.featChoices, doubled);
       // The skills picked for each class: the first class's own, then the
       // one a class taken second let the player pick.
       const stored = splitStoredSkills(
@@ -976,7 +1008,7 @@ export function useBuilderState({
       const current = Object.fromEntries(
         Object.entries(picks).map(([key, value]) => [key, key in patch ? patch[key as keyof BuilderDraftFields] : value]),
       ) as BuilderPicks;
-      applyChange("quick build", ids, current);
+      applyChange("quick build", ids, { ...current, featChoices: patch.featChoices ?? featChoices });
     }
   }
   const draftFields: BuilderDraftFields = {

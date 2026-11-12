@@ -16,10 +16,10 @@ import { SRD_GEAR, SRD_GOODS } from "@/lib/srd/adventuring-gear";
 import { SRD_ARMOR } from "@/lib/srd/armor";
 import { bundledPriceCopper } from "@/lib/srd/starting-wealth";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
-import { rollExpression } from "@/lib/dice";
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import { resolveRollExpression, resolveSheetRef, type RollArgs, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { sheetsAgainstParty } from "@/lib/dm/combat-sides";
 import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
@@ -56,7 +56,7 @@ import { MINUTES_PER_DAY } from "@/lib/dm/calendar";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { addCopper, formatCopper, formatPrice } from "@/lib/srd/currency";
-import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { alreadyInPack, notCarried } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { containsPhrase, textKey } from "@/lib/language/text-logic";
@@ -270,7 +270,7 @@ const openSchema = z.object({
 export function handleOpenShop(campaign: Campaign, rawArguments: string, random: () => number = Math.random): ToolResult {
   const args = parse(openSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: open_shop needs a name and a kind.", retry: true };
+    return argumentsRefusal("Invalid arguments: open_shop needs a name and a kind.", openSchema, rawArguments);
   }
   const location = getCurrentLocation(campaign.id);
   const size = normalizeShopSize(args.size);
@@ -425,7 +425,7 @@ function counterRefusal(campaign: Campaign, sheet: CharacterSheet, shop: Shop, v
 export function handleBuyItem(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(buySchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: a purchase at a shop needs characterId, shop and item.", retry: true };
+    return argumentsRefusal("Invalid arguments: a purchase at a shop needs characterId, shop and item.", buySchema, rawArguments);
   }
   const sheet = resolveSheet(campaign, args.characterId);
   if (!sheet) {
@@ -480,7 +480,7 @@ const sellSchema = buySchema.extend({ priceCp: z.coerce.number().int().min(1).ma
 export function handleSellItem(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(sellSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: a sale at a shop needs characterId, shop and item, and a price of at most 100,000 gp each when one is given.", retry: true };
+    return argumentsRefusal("Invalid arguments: a sale at a shop needs characterId, shop and item, and a price of at most 100,000 gp each when one is given.", sellSchema, rawArguments);
   }
   const sheet = resolveSheet(campaign, args.characterId);
   if (!sheet) {
@@ -552,7 +552,7 @@ const SKILL_LABEL = { persuasion: "Persuasion", intimidation: "Intimidation", de
 export function handleHaggle(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(haggleSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: haggle needs characterId and shop, a skill of persuasion, intimidation or deception, and presentCharacterIds as a list of characters.", retry: true };
+    return argumentsRefusal("Invalid arguments: haggle needs characterId and shop, a skill of persuasion, intimidation or deception, and presentCharacterIds as a list of characters.", haggleSchema, rawArguments);
   }
   const skill = args.skill ? normalizeHaggleSkill(args.skill) : "persuasion";
   if (!skill) {
@@ -613,9 +613,11 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail: `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`, dc, result: rolled });
+  // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+  // they roll it, and the price moves once it lands.
+  const detail = `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`;
+  const rolled = rollCharacterD20(campaign, sheet, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: waits });
+  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: rolled });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   const steps = haggleSteps(skill, rolled.total, dc);
   // A companion who already haggled here keeps the price they got.

@@ -14,14 +14,29 @@ export type ActingParty = { kind: "sheet" | "enemy"; ref: string };
 
 let acting: ActingParty | null = null;
 
+// How many engine calls are running one inside another: a tool's handler is
+// the first, and a call it makes of another tool (an attack applying its
+// damage through apply_damage) the second.
+let depth = 0;
+
 export function withActor<T>(party: ActingParty | null, run: () => T): T {
   const before = acting;
   acting = party ?? before;
+  depth += 1;
   try {
     return run();
   } finally {
     acting = before;
+    depth -= 1;
   }
+}
+
+// Whether the handler running now was called on its own (by the GM, the
+// console or a card), not by another tool's handler. apply_damage keeps a
+// record of its damage for a reaction to answer only then (last-hit.ts
+// openEffect): inside an attack, the attack's own record holds it.
+export function calledOnItsOwn(): boolean {
+  return depth <= 1;
 }
 
 export function currentActor(): ActingParty | null {

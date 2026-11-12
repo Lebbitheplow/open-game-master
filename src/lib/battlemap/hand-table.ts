@@ -16,7 +16,7 @@ export function turnFromEncounter(
   encounter: Pick<
     PublicEncounter,
     "round" | "orderReady" | "turn" | "acting" | "surprised" | "reactionsUsed"
-  > | null,
+  > & Partial<Pick<PublicEncounter, "lastSaves">> | null,
   sheet: Pick<CharacterSheet, "id">,
   floor: FloorView,
 ): HandTurn {
@@ -52,6 +52,10 @@ export function turnFromEncounter(
     ...(own && own.lightMeleeAttack !== undefined ? { lightMeleeAttack: own.lightMeleeAttack } : {}),
     ...(own && own.oneHandMeleeAttack !== undefined ? { oneHandMeleeAttack: own.oneHandMeleeAttack } : {}),
     ...(own?.interactionUsed ? { interactionUsed: true } : {}),
+    // A failed save of theirs open on the record, for the reroll cards
+    // (hand-core.ts failedSaveGate). Out of a fight nothing is recorded, and
+    // the card is shut: the reroll is said in words as the save fails.
+    failedSave: (encounter?.lastSaves ?? []).some((save) => (save.kind ?? "save") === "save" && save.success === false && save.characterId === sheet.id),
     table,
   };
 }

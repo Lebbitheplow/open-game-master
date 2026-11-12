@@ -249,13 +249,13 @@ export function HandArrange({
         {notice}
       </p>
       <div className="-mx-1 min-h-0 overflow-y-auto px-1 pb-1">
-        <h3 className="mb-1.5 font-display text-[11px] uppercase tracking-[0.2em] text-amber-200/90">In your hand</h3>
+        <h3 className="mb-1.5 font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90">In your hand</h3>
         {inHand.length ? (
           <ul className="flex flex-col gap-1.5">{inHand.map((card, index) => row(card, index, "hand"))}</ul>
         ) : (
           <p className="text-xs text-stone-500">No cards chosen: only End turn sits in the hand. Add some below.</p>
         )}
-        <h3 className="mb-1.5 mt-4 font-display text-[11px] uppercase tracking-[0.2em] text-stone-400">In More</h3>
+        <h3 className="mb-1.5 mt-4 font-display text-[11px] uppercase tracking-[0.14em] text-stone-400">In More</h3>
         {inMore.length ? (
           <ul className="flex flex-col gap-1.5">{inMore.map((card, index) => row(card, index + inHand.length, "more"))}</ul>
         ) : (

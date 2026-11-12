@@ -7,8 +7,10 @@
 // The rows are read at use, never copied onto a stored zone, so a corrected
 // row corrects the areas already on a board. Pure data: no DB.
 
+import { MT_FB_ZONE_ROWS } from "@/lib/battlemap/zones-mt-fb";
 import { textKey } from "@/lib/language/text-logic";
 import { GEAR_ZONE_ROWS } from "@/lib/battlemap/zones-gear";
+import { FEATURE_ZONE_ROWS } from "@/lib/battlemap/zones-features";
 
 export type ZoneShape =
   // A burst around a point: every square within `feet` of it (a cylinder
@@ -61,6 +63,12 @@ export type ZoneTrigger = {
   immuneSucceeds?: string;
   // Strikes each creature once only (burning webs).
   once?: boolean;
+  // The dice grow with the caster's level in this class, the last row
+  // reached winning (Spreading Spores: the Halo of Spores die).
+  byLevel?: { class: string; dice: Array<[number, string]> };
+  // Strikes a creature at most once a turn, whichever moment comes first
+  // (burning oil: "only once per turn").
+  oncePerTurn?: boolean;
   // Caltrops: a failed save stops the creature's move on the square it
   // entered (src/lib/battlemap/zones-gear.ts).
   stopsOnFail?: boolean;
@@ -96,6 +104,9 @@ export type ZoneRow = {
   darkness?: boolean;
   // Bright light over the area (Daylight).
   light?: boolean;
+  // Bright light in the area is dim; dim light and darkness stay as they
+  // are (Dread Lord's gloom, src/lib/battlemap/zones-features.ts).
+  dims?: boolean;
   // Dim light shed past the bright area, in feet (Daylight: "sheds dim light
   // for an additional 60 feet"); the board's vision reads it as a light
   // standing at the area's centre (src/lib/dm/zone-rules.ts
@@ -179,9 +190,10 @@ export type ZoneRow = {
   mundane?: boolean;
   // SRD 5.1: the creatures standing in the area when it appears are caught
   // then (Entangle's and Grease's saves, a Wall of Fire's burn, a wall that
-  // shoves them aside). Laid with nobody named they never would be, so a
-  // card that lays one stays with the GM to name them (intent-logic.ts
-  // directCardCall, issue 685).
+  // shoves them aside). Laid on the board with nobody named, the engine
+  // catches whoever stands on its squares (area-casting.ts boardCatch); a
+  // card that lays one off the board, or one with nothing to roll, stays
+  // with the GM to name them (direct-context.ts, issue 685).
   catchesWhenLaid?: boolean;
   // What it does, one line for GAME STATE and the board's label.
   summary: string;
@@ -440,6 +452,26 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
     whileCondition: ["tentacle of the deep", "tentacle of the deeps"], besideFoe: true, rangeFeet: 60, tone: "frost",
     summary: "the spectral tentacle: each bonus-action strike first moves it up to 30 feet, then hits a creature within 10 feet of it",
   },
+  // The Shepherd druid's spirit (src/lib/dm/spirit-totem.ts): its 30-foot
+  // aura at the point it was called to, held while the druid carries the
+  // "spirit totem" condition; a sphere, not an aura, so it stays where it was
+  // called and moves only by the druid's bonus action.
+  "spirit totem": {
+    shape: "sphere", feet: 30, level: 0, concentration: false, rounds: 10,
+    whileCondition: "spirit totem", tone: "nature",
+    summary: "the druid's spirit and its 30-foot aura: the bear's, hawk's or unicorn's gifts for the druid and their allies inside it",
+  },
+  // The Spores druid's cube (src/lib/dm/spreading-spores.ts): it lasts while
+  // the druid carries "spreading spores" (a minute, until they hurl it again
+  // or the entity ends), and a creature moving into it or starting its turn
+  // there saves on Constitution or takes the Halo of Spores die, at most
+  // once a turn.
+  "spreading spores": {
+    shape: "cube", feet: 10, level: 0, concentration: false, rounds: 10,
+    whileCondition: "spreading spores", tone: "poison",
+    trigger: { on: ["enter", "start"], save: "con", dice: "1d8", byLevel: { class: "druid", dice: [[2, "1d4"], [6, "1d6"], [10, "1d8"], [14, "1d10"]] }, type: "necrotic", oncePerTurn: true },
+    summary: "a cube of spores: a creature moving into it or starting its turn there makes a CON save or takes the Halo of Spores necrotic die, once a turn",
+  },
   "eldritch cannon": {
     shape: "cube", feet: 5, level: 0, concentration: false, rounds: 600,
     whileCondition: "eldritch cannon", rangeFeet: 5, tone: "force",
@@ -505,7 +537,8 @@ export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
   },
 };
 
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS };
+// A class feature's own area (Dread Lord's gloom) reads its row here too.
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

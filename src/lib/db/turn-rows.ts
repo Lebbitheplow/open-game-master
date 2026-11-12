@@ -3,7 +3,7 @@ import { forgetTurnClockMoves } from "@/lib/db/clock-moves";
 import { unfileTurnAudit } from "@/lib/db/sheet-audit";
 import { listLiveTurnChangeViews, liveTurnChangeOf, markTurnChangesReverted, recordTurnChange, updateTurnChange, viewOf, type TurnChangeView } from "@/lib/db/turn-changes";
 import { currentTurnId, onTurnWorkDone } from "@/lib/dm/job-control";
-import { fightLine } from "@/lib/dm/turn-rows-logic";
+import { fightLine, isFightTable, storyLine, turnColumns, unchangedByTurn } from "@/lib/dm/turn-rows-logic";
 import { publishPersisted } from "@/lib/events";
 
 // The fight and the board as a GM turn found them, row by row, so "Revert
@@ -26,6 +26,11 @@ import { publishPersisted } from "@/lib/events";
 // A delete that takes other rows with it (a summoned creature sent away: its
 // bot user, and its sheet with it) keeps every row the database removes
 // (keepWithCascade), whole, so the revert brings the creature back as it was.
+//
+// Every other table a turn writes is kept here too, by the database's own
+// triggers (src/lib/db/turn-journal.ts), whatever code wrote it: the calls
+// below stay for the fight's writers, which also mark the turn as one with a
+// fight change the moment they write.
 
 // Any table a kept row is from: the fight's own (turn-rows-logic.ts
 // FIGHT_TABLES), or one a cascade reached.
@@ -243,9 +248,22 @@ function seal(turnId: string) {
     return;
   }
   const write = db.prepare(`UPDATE turn_rows SET after_json = ?, sealed = 1 WHERE turn_id = ? AND tbl = ? AND row_id = ?`);
+  const before = db.prepare(`SELECT before_json FROM turn_rows WHERE turn_id = ? AND tbl = ? AND row_id = ?`);
+  const letGo = db.prepare(`DELETE FROM turn_rows WHERE turn_id = ? AND tbl = ? AND row_id = ?`);
   db.transaction(() => {
     for (const row of rows) {
       const now = readRow(row.tbl, row.row_id);
+      // A row of another table the turn left as it found it (a scene line
+      // written with the same words, a sheet whose change was taken back
+      // within the turn) has nothing to revert: the journal lets it go, so
+      // the turn offers no revert for it.
+      if (!isFightTable(row.tbl)) {
+        const was = before.get(turnId, row.tbl, row.row_id) as { before_json: string | null } | undefined;
+        if (unchangedByTurn(row.tbl, was?.before_json ? parseJson<Row | null>(was.before_json, null) : null, now)) {
+          letGo.run(turnId, row.tbl, row.row_id);
+          continue;
+        }
+      }
       write.run(now ? JSON.stringify(now) : null, turnId, row.tbl, row.row_id);
     }
   })();
@@ -312,6 +330,7 @@ function turnDone(turnId: string) {
   const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
   if (turn) {
     tellFightLine(turn.campaign_id, turnId);
+    tellStoryLine(turn.campaign_id, turnId);
     if (!pruneHeld().has(turnId)) {
       pruneOutOfReach(turn.campaign_id);
     }
@@ -329,7 +348,8 @@ function turnCounts(turnId: string, seen = false): Partial<Record<KeptTable, num
   const rows = getDatabase()
     .prepare(`SELECT tbl, COUNT(*) AS n FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL${seen ? ` AND ${VISIBLE}` : ""} GROUP BY tbl`)
     .all(turnId) as Array<{ tbl: KeptTable; n: number }>;
-  return Object.fromEntries(rows.map((row) => [row.tbl, row.n]));
+  // The fight's tables: the rest are the story line's.
+  return Object.fromEntries(rows.filter((row) => isFightTable(row.tbl)).map((row) => [row.tbl, row.n]));
 }
 
 // The event log hears a turn's fight change when its first row is kept, as
@@ -339,6 +359,11 @@ function turnCounts(turnId: string, seen = false): Partial<Record<KeptTable, num
 function tellFightLine(campaignId: string, turnId: string) {
   const change = liveTurnChangeOf(campaignId, turnId, "fight");
   if (!change) {
+    // Rows of the fight the journal kept from a writer that never called
+    // keepRow: the turn still offers their revert.
+    if (Object.keys(turnCounts(turnId)).length) {
+      recordTurnChange(campaignId, turnId, "fight", { line: fightLine(turnCounts(turnId, true)) });
+    }
     return;
   }
   const line = fightLine(turnCounts(turnId, true));
@@ -347,6 +372,59 @@ function tellFightLine(campaignId: string, turnId: string) {
   }
   updateTurnChange(change.id, { ...change.payload, line });
   publishPersisted(campaignId, "turn_changed", { change: { ...viewOf(change), line } });
+}
+
+// What a turn changed outside the fight, by table, for the event log's line:
+// a sheet only when no audit row of the turn names its character (the audit
+// lists its own lines), and the campaign row only for more than the clock
+// (the clock's moves list theirs).
+function storyCounts(turnId: string): Partial<Record<KeptTable, number>> {
+  const audited = new Set(
+    (getDatabase().prepare(`SELECT DISTINCT character_id FROM sheet_audit WHERE turn_id = ?`).all(turnId) as Array<{ character_id: string }>).map(
+      (row) => row.character_id,
+    ),
+  );
+  const counts: Partial<Record<KeptTable, number>> = {};
+  for (const row of listKeptRows(turnId)) {
+    if (isFightTable(row.table)) {
+      continue;
+    }
+    if (row.table === "character_sheets" && audited.has(row.rowId)) {
+      continue;
+    }
+    if (row.before && row.after && !turnColumns(row.table, row.before, row.after).length) {
+      continue;
+    }
+    counts[row.table] = (counts[row.table] ?? 0) + 1;
+  }
+  return counts;
+}
+
+// The turn's "story" change: written once its work is done, kept in step
+// with what it still holds, gone when it holds nothing.
+function tellStoryLine(campaignId: string, turnId: string) {
+  const line = storyLine(storyCounts(turnId));
+  const change = liveTurnChangeOf(campaignId, turnId, "story");
+  if (!line) {
+    if (change) {
+      markTurnChangesReverted([change.id]);
+      publishPersisted(campaignId, "turn_changed", { removed: change.id });
+    }
+    return;
+  }
+  if (!change) {
+    recordTurnChange(campaignId, turnId, "story", { line });
+    return;
+  }
+  if (line !== change.payload.line) {
+    updateTurnChange(change.id, { ...change.payload, line });
+    publishPersisted(campaignId, "turn_changed", { change: { ...viewOf(change), line } });
+  }
+}
+
+// Whether the turn still holds rows a revert would write.
+export function turnHasKeptRows(turnId: string): boolean {
+  return Boolean(getDatabase().prepare(`SELECT 1 FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL LIMIT 1`).get(turnId));
 }
 
 // The rows a revert has just put back, that a later turn kept too ("Undo
@@ -373,6 +451,7 @@ export function supersedeLaterRows(campaignId: string, turnId: string, written: 
     }
   })();
   for (const other of turns) {
+    tellStoryLine(campaignId, other);
     const change = liveTurnChangeOf(campaignId, other, "fight");
     if (!change) {
       continue;
@@ -432,7 +511,7 @@ export function keptCounts(campaignId: string): Map<string, Partial<Record<KeptT
     .prepare(`SELECT turn_id, tbl, COUNT(*) AS n FROM turn_rows WHERE campaign_id = ? AND reverted_at IS NULL AND ${VISIBLE} GROUP BY turn_id, tbl`)
     .all(campaignId) as Array<{ turn_id: string; tbl: KeptTable; n: number }>;
   const counts = new Map<string, Partial<Record<KeptTable, number>>>();
-  for (const row of rows) {
+  for (const row of rows.filter((entry) => isFightTable(entry.tbl))) {
     counts.set(row.turn_id, { ...(counts.get(row.turn_id) ?? {}), [row.tbl]: row.n });
   }
   return counts;

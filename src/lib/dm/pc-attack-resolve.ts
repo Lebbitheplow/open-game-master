@@ -5,6 +5,8 @@
 // stages on a player's real dice. Split from pc-attack.ts, which has already
 // refused or paid for everything this rolls; nothing here refuses the attack.
 
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
+import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { insertRoll } from "@/lib/db/rolls";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
@@ -54,21 +56,46 @@ export function strikeToHit(plan: AttackPlan) {
     .replace(/^2d20kh1/, elvenAccuracy ? "3d20kh1" : "2d20kh1")
     .replace(/^(\d+)d20(?:k[hl]\d+)?/, (whole, count) => (plan.extras.luck ? `${Number(count) + 1}d20kh1` : whole))
     .replace(/^(\d+d20(?:k[hl]\d+)?)/, lucky ? "$1r1" : "$1");
-  const toHitExpression = `${toHitD20}${toHitRiderSuffix}`;
+  // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
+  const toHitExpression = tranceFloored(sheet, `${toHitD20}${toHitRiderSuffix}`);
   const detail = rollAgainst(profile.weapon, enemy.displayName);
   return { toHitExpression, detail };
 }
 
+// The server's throw of the to-hit roll, tagged as the hero's attack.
+export function throwToHit(plan: AttackPlan, strike: Strike): RollResult {
+  return rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: plan.sheet.name } });
+}
+
+// The to-hit throw, answered by a Chronal Shift a watching wizard set on it
+// at the stop before the call (src/lib/dm/chronal-shift.ts): a miss is
+// thrown again when the wizard asked for that, and the new roll stands.
+export function shiftedThrow(plan: AttackPlan, strike: Strike, ac: number, critRange: number): RollResult {
+  const thrown = throwToHit(plan, strike);
+  const natural = thrown.natural ?? 0;
+  const hits = natural !== 1 && (natural >= critRange || thrown.total >= ac);
+  const by = takeShift(plan.campaign.id, { roller: "hero", kind: "attack", who: plan.sheet.name }, hits);
+  if (!by) {
+    return thrown;
+  }
+  const again = throwToHit(plan, strike);
+  noteShift(plan.campaign.id, `${by} used Chronal Shift: ${plan.sheet.name} rolled the attack again (${thrown.total} became ${again.total}), and the new roll stands.`);
+  return again;
+}
+
 // Digital path: the server throws the d20 and the damage, and the attack runs
 // the same stages a player's real dice do (attack-swing.ts, attack-blow.ts).
-export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null): Record<string, unknown> {
+// `thrown`: a to-hit roll already thrown for a player whose rolls can wait
+// (pc-attack-parked.ts throwForChoice) and that offered nothing to choose. A
+// held Bardic die is theirs to spend then, never the server's: it stays held.
+export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null, thrownForPlayer: RollResult | null = null): Record<string, unknown> {
   const { campaign, turn, sheet, enemy, budget, context } = plan;
   const record = attackRecord(plan, strike, mote);
   const scene: SwingScene = { campaign, turn, sheet, enemy, sheets: plan.sheets, sheetsById: plan.sheetsById };
   // Notes written from here on; the plan's own ride the answer before them.
   const notes = context.notes;
-  const thrown = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
-  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
+  const thrown = thrownForPlayer ?? shiftedThrow(plan, strike, recordTargetAc(campaign.id, record), record.critRange ?? 20);
+  const hitOutcome = thrownForPlayer ? thrownForPlayer : settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
   if (hitOutcome !== thrown) {
     notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
   }
@@ -146,7 +173,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
 }
 
 // The server's damage dice for a hit or a graze: thrown, shown, and landed.
-function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
+export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
   const { campaign, turn, sheet } = scene;
   const outcome = throwDamage(ask, sheet.name, notes);
   const damageRoll = insertRoll({

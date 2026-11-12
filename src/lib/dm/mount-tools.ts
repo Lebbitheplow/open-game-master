@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { landsOnFeet } from "@/lib/dm/fall-landing";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertCampaignMessage } from "@/lib/db/messages";
@@ -25,11 +26,15 @@ import { claimOncePerTurn } from "@/lib/dm/action-budget";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
+import { drakeMount } from "@/lib/dm/pet-command";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -138,14 +143,22 @@ export function handleMountUp(
   let args: z.infer<typeof mountSchema>;
   try {
     args = mountSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: mount_up needs a characterId and a mount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: mount_up needs a characterId and a mount.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
-  const checked = args.customName
+  // Bond of Fang and Scale: the bonded drake carries its ranger, by its
+  // name (pet-command.ts drakeMount); the listed mounts refused it.
+  const drake = args.customName ? null : drakeMount(sheet, args.mount ?? "");
+  if (drake && "error" in drake) {
+    return drake;
+  }
+  const checked = drake
+    ? { ok: true as const, state: drake }
+    : args.customName
     ? checkMount({
         ref: args.customName,
         riderSize: riderSize(sheet),
@@ -175,20 +188,43 @@ export function handleMountUp(
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
-    movementSpent: mountCost(sheet.speed),
-    note: `${sheet.name} now moves at ${checked.state.speed} ft. Mounting cost half their movement (${mountCost(sheet.speed)} ft)${spent.charged ? ", taken from this turn's movement on the board" : ""}.`,
+    // Only what was taken is reported as spent: the console's mount off the
+    // rider's turn, or one with no board, charged nothing (ruling R9), and
+    // the result said it had.
+    ...(spent.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+    note: `${sheet.name} now moves at ${checked.state.speed} ft. ${spent.charged ? `Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}, taken from this turn's movement on the board.` : "No movement was charged: no turn of theirs is running on the board."}`,
   };
 }
 
 // Mounting or dismounting costs half the rider's speed, once during their
 // move (SRD 5.1, Mounted Combat). In a fight on a board it comes out of the
 // movement of the rider's own turn, and without that much left it cannot be
-// done this turn. Off their turn there is no movement of theirs to spend (it
-// would refill as their turn starts); a person at the console keeps a free
-// hand.
+// done this turn.
+//
+// It is the rider's move, so what stops a move stops it, at either door
+// (can-act.ts canAct "move"): the dead, the dying, the stunned, the
+// paralyzed, the petrified, the surprised in round 1, and a rider whose turn
+// is held while the enemies before them act (held-turn.ts) mounted and
+// dismounted as if nothing held them.
+//
+// Off their turn a person at the console keeps a free hand, and no movement
+// is charged: there is none of theirs running to spend (WAVE1 ruling R9: "the
+// console may mount or dismount off turn (a person GM adjudicates), but never
+// charges movement to a turn that is not running"). It was added to the
+// movement of a turn that was not theirs.
 // The turn's once-a-move mark for mounting or dismounting (action-budget.ts
 // oncePerTurn).
 const MOUNTING_KEY = "mount_or_dismount";
+
+// What getting on or off a mount costs of the rider's movement: half their
+// speed (SRD 5.1, Mounting and Dismounting), or 5 feet for a Cavalier (Born to
+// the Saddle: "mounting costs only 5 feet of movement"; the published feature
+// reads "mounting or dismounting"). The board's charge and the tool's own
+// words both read this.
+const SADDLE = "born to the saddle";
+function mountingFeet(sheet: CharacterSheet): number {
+  return holdsFeature(sheet, SADDLE) ? 5 : Math.floor(speedToTiles(sheet.speed) / 2) * 5;
+}
 
 function spendMountingMovement(
   campaign: Campaign,
@@ -196,16 +232,31 @@ function spendMountingMovement(
   turn?: Pick<DmTurn, "actor">,
 ): { charged: boolean } | ToolError {
   const encounter = getActiveEncounter(campaign.id);
+  const able = canAct({ sheet, encounter, kind: "move" });
+  if (!able.ok && able.reason !== "not_your_turn" && able.reason !== "no_initiative") {
+    return toolError(able);
+  }
+  // The console off the rider's own turn, a turn held for the enemies before
+  // it included, keeps its free hand and charges nothing (ruling R9). The
+  // held-turn check ran first and refused the console with the model's "play
+  // their turns first" line while the pointer rested on the rider.
+  if (turn?.actor === "human_dm" && !ownTurnOf(encounter, sheet.id)) {
+    return { charged: false };
+  }
+  const held = heldTurnRefusal(encounter, sheet);
+  if (held) {
+    return held;
+  }
   const map = encounter?.orderReady ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
   if (!encounter || !token) {
     return { charged: false };
   }
-  const current = encounter.order[encounter.turnIndex];
-  if (turn?.actor !== "human_dm" && (current?.kind !== "pc" || current.characterId !== sheet.id)) {
+  if (!ownTurnOf(encounter, sheet.id)) {
+    const current = encounter.order[encounter.turnIndex];
     return { error: `${sheet.name} mounts or dismounts during their own move only; it is ${current?.name ?? "another combatant"}'s turn. What they declared waits for their turn.`, refused: "rules" };
   }
-  const half = Math.floor(speedToTiles(sheet.speed) / 2);
+  const half = Math.floor(mountingFeet(sheet) / 5);
   const mounted = getMounts(campaign.id)[sheet.id];
   // "Once during your move, you can mount a creature that is within 5 feet
   // of you or dismount" (SRD 5.1, Mounting and Dismounting): one or the
@@ -221,7 +272,7 @@ function spendMountingMovement(
   const full = speedToTiles(mounted ? mounted.speed : sheet.speed);
   if (full - token.movedThisRound < half) {
     return {
-      error: `${sheet.name} has too little movement left this turn to ${mounted ? "dismount" : "mount"}: it costs half their speed (${half * 5} ft).`,
+      error: `${sheet.name} has too little movement left this turn to ${mounted ? "dismount" : "mount"}: it costs ${holdsFeature(sheet, SADDLE) ? "them" : "half their speed,"} ${half * 5} ft.`,
       refused: "rules",
     };
   }
@@ -244,8 +295,8 @@ export function handleDismount(
   let args: z.infer<typeof dismountSchema>;
   try {
     args = dismountSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismount needs a characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismount needs a characterId.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
@@ -256,11 +307,9 @@ export function handleDismount(
     return { error: `${sheet.name} is not mounted.`, refused: "rules" };
   }
   const cause = args.cause ?? "voluntary";
-  if (cause === "voluntary") {
-    const spent = spendMountingMovement(campaign, sheet, turn);
-    if ("error" in spent) {
-      return spent;
-    }
+  const spent = cause === "voluntary" ? spendMountingMovement(campaign, sheet, turn) : null;
+  if (spent && "error" in spent) {
+    return spent;
   }
   setMount(campaign.id, sheet.id, null);
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
@@ -273,8 +322,12 @@ export function handleDismount(
     return {
       ok: true,
       dismounted: current.name,
-      movementSpent: mountCost(sheet.speed),
-      note: "A deliberate dismount costs half their movement and needs no roll.",
+      ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+      note: spent?.charged
+        ? holdsFeature(sheet, SADDLE)
+          ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
+          : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
+        : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
     };
   }
   // Thrown: the server rolls the DC 10 Dexterity save from the rider's sheet
@@ -283,7 +336,9 @@ export function handleDismount(
   const save = turn
     ? rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to land on their feet`)
     : null;
-  const failed = !save || !save.success;
+  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
+  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  const failed = !standing && (!save || !save.success);
   if (failed && turn) {
     applyDmMutation(
       campaign,
@@ -300,6 +355,7 @@ export function handleDismount(
     save: save?.total ?? "failed automatically",
     dc: DISMOUNT_SAVE_DC,
     ...(failed ? { landed: "prone, within 5 feet of the mount" } : { landed: "on their feet" }),
+    ...(standing ? { note: `${standing}: they land on their feet.` } : {}),
   };
 }
 
@@ -317,6 +373,12 @@ function mountFalls(
   turn?: DmTurn,
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
+  // Born to the Saddle lands them standing with no reaction (fall-landing.ts).
+  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  if (standing) {
+    tableNote(campaign, `${mountName} goes down; ${sheet.name} lands on their feet.`);
+    return { ok: true, dismounted: mountName, landed: "on their feet", note: `${standing}: no reaction needed.` };
+  }
   const reacts = !encounter || (!encounter.reactionsUsed.includes(sheet.id) && reactionRefusal(campaign.id, sheet, encounter, "Landing on their feet") === null);
   if (reacts) {
     if (encounter) {
@@ -347,4 +409,12 @@ function mountFalls(
     landed: "prone, within 5 feet of the mount",
     note: `${sheet.name} has no reaction left to jump clear, so they fall prone.`,
   };
+}
+
+// Whether the rider's mount stands aloft on the board (a flying mount's fall
+// is from a height the board does not keep).
+function mountAloft(campaignId: string, riderId: string): boolean {
+  const encounter = getActiveEncounter(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  return Boolean(map && getTokenByRef(map.id, riderId)?.movement === "fly");
 }

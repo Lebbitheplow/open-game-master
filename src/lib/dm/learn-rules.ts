@@ -65,6 +65,14 @@ export function learnProblem(sheet: Learner, spell: string, facts: SpellFacts | 
 }
 
 // What copying a spell into the spellbook costs: gold and hours.
-export function copyCost(facts: SpellFacts): { gold: number; hours: number } {
-  return { gold: 50 * facts.level, hours: 2 * facts.level };
+//
+// SRD 5.1, School of Evocation, Evocation Savant: "the gold and time you must
+// spend to copy an evocation spell into your spellbook is halved." A savant
+// of any school copies that school's spells so: the feature's name says
+// which ("Evocation Savant").
+export function copyCost(facts: SpellFacts, copier?: { features?: ReadonlyArray<{ name: string }>; school: string | null }): { gold: number; hours: number } {
+  const school = textKey(copier?.school ?? "");
+  const savant = Boolean(school) && (copier?.features ?? []).some((feature) => textKey(feature.name) === `${school} savant`);
+  const full = { gold: 50 * facts.level, hours: 2 * facts.level };
+  return savant ? { gold: full.gold / 2, hours: full.hours / 2 } : full;
 }

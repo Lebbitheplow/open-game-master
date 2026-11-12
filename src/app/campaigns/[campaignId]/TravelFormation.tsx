@@ -281,7 +281,7 @@ export function TravelFormation({
           ) : null}
           {change?.status === "proposed" ? (
             <div className="formation-proposal rounded-xl border border-dashed border-amber-400/50 bg-amber-400/5 p-2.5">
-              <p className="mb-1.5 text-[11px] uppercase tracking-[0.18em] text-amber-200/90">
+              <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-amber-200/90">
                 Proposed by {change.byName || "the party lead"}, not in force yet
               </p>
               {list(change.order, "proposed")}

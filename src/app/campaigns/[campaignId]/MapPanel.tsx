@@ -8,7 +8,7 @@ import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { nameWithin, placeTree } from "@/lib/overworld/places";
 import { encodeImageForUpload } from "@/lib/image-encode";
-import { variantUrl } from "@/lib/image-format";
+import { variantUrl } from "@/lib/image-variant-url";
 import { ContextMenu, type ContextMenuItem } from "@/components/ui/ContextMenu";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";

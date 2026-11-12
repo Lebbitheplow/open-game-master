@@ -17,12 +17,12 @@ import {
   getBattleMapForEncounter,
   insertToken,
   listTokens,
-  removeTokenByRef,
 } from "@/lib/db/battle-maps";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { spliceIntoOrder } from "@/lib/dm/encounter-logic";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { takeOffBoard } from "@/lib/dm/leave-board";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { publishCast } from "@/lib/dm/cast";
@@ -36,7 +36,7 @@ import {
   takesDraconicAncestry,
 } from "@/lib/srd/racial-grants";
 import { abilityMod, findClass, findRace, SRD_SKILLS, suggestedStartingHp, type SrdClass } from "@/lib/srd";
-import { classGrantsFor, offeredBackgrounds } from "@/lib/characters/catalog";
+import { classGrantsFor, offeredBackgrounds, workshopClassIdNamed } from "@/lib/characters/catalog";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { abilityPriority, companionBackground, companionSkillPicks, skillIdOf } from "@/lib/srd/companion-build";
 import { startingKitFor } from "@/lib/srd/starting-kit";
@@ -63,7 +63,7 @@ import {
   type CharacterSheet,
   type CreateSheetInput,
 } from "@/lib/schemas/sheet";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { ALIGNMENT_CODES, VALUES_PARAMETER, valuesArgSchema } from "@/lib/dm/companion-values-logic";
@@ -71,6 +71,7 @@ import { setCompanionValues } from "@/lib/db/companion-conscience";
 import { seedAgenda } from "@/lib/dm/companion-agenda";
 import { classWords } from "@/lib/sheet-words";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { fittedText, fittedLine } from "@/lib/dm/fitted-text";
 
 // AI companion party members: sheets the DM recruits, plays, and dismisses.
 // A companion is a full character sheet owned by an unloginable bot user,
@@ -259,7 +260,7 @@ const addArgsSchema = z.object({
   gender: z.enum(TOLD_GENDERS),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
   level: z.number().int().min(1).max(20).optional(),
-  personality: z.string().trim().min(1).max(500),
+  personality: fittedLine(500),
   kind: z.enum(["party", "guest"]).default("guest"),
   spells: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
   // The GM's console only (src/lib/dm/catalog-party.ts): the model's tool set
@@ -269,12 +270,12 @@ const addArgsSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
   alignment: z.enum(ALIGNMENT_CODES).optional(),
   values: valuesArgSchema.optional(),
-  agenda: z.object({ employer: z.string().trim().max(80).optional(), aim: z.string().trim().max(200).optional() }).optional(),
+  agenda: z.object({ employer: z.string().trim().max(80).optional(), aim: fittedText(200).optional() }).optional(),
 });
 
 const dismissArgsSchema = z.object({
   characterId: z.string().trim().min(1),
-  reason: z.string().trim().max(300).optional(),
+  reason: fittedText(300).optional(),
 });
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -308,12 +309,8 @@ export function handleAddCompanion(
   let args: z.infer<typeof addArgsSchema>;
   try {
     args = addArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error:
-        "Invalid arguments: add_companion needs name, class, gender (Female, Male, Nonbinary or Unknown), personality, and kind ('party' or 'guest').",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: add_companion needs name, class, gender (Female, Male, Nonbinary or Unknown), personality, and kind ('party' or 'guest').", error, rawArguments);
   }
   if (args.values?.some((held) => held.value === "faction_loyalty" && !held.faction)) {
     return { error: "A faction_loyalty value names its faction: send faction with it, or leave that value out. Nothing was added.", retry: true };
@@ -362,7 +359,9 @@ export function handleAddCompanion(
   }
 
   const preset = presetFor(campaign.gameSettings);
-  const klass = resolveClass(args.class);
+  // By id, or by the name of one of the table's own workshop classes.
+  const namedClass = findClass(slugify(args.class)) ? null : workshopClassIdNamed(args.class, tableAuthors(campaign.id));
+  const klass = resolveClass(namedClass ?? args.class);
   if (!klass) {
     return {
       error: `Unknown class "${args.class}". Use a class id from this world's catalog (e.g. fighter, cleric, rogue, wizard).`,
@@ -685,8 +684,8 @@ export function handleDismissCompanion(
   let args: z.infer<typeof dismissArgsSchema>;
   try {
     args = dismissArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismiss_companion needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismiss_companion needs characterId.", error, rawArguments);
   }
   const needle = textKey(args.characterId);
   const sheet =
@@ -723,27 +722,7 @@ export function departCompanion(campaign: Campaign, sheet: CharacterSheet, reaso
 // conscience's words, or a plain parting), so the Party panel shows it.
 function removeCompanion(campaign: Campaign, sheet: CharacterSheet, reason?: string, how?: string) {
   // Mid-combat: pull them out of the order and off the map cleanly.
-  const encounter = getActiveEncounter(campaign.id);
-  if (encounter) {
-    const index = encounter.order.findIndex(
-      (entry) => entry.kind === "pc" && entry.characterId === sheet.id,
-    );
-    if (index !== -1) {
-      encounter.order.splice(index, 1);
-      if (index < encounter.turnIndex) {
-        encounter.turnIndex -= 1;
-      } else if (index === encounter.turnIndex) {
-        encounter.turnIndex = Math.max(0, encounter.turnIndex - 1);
-      }
-      saveEncounter(encounter);
-      publishEncounterState(campaign.id);
-    }
-    const map = getBattleMapForEncounter(encounter.id);
-    if (map) {
-      removeTokenByRef(map.id, sheet.id);
-      publishBattleMapUpdate(campaign.id);
-    }
-  }
+  takeOffBoard(campaign.id, sheet.id);
 
   insertCharacterEvent({
     libraryCharacterId: null,

@@ -130,11 +130,13 @@ test("Spells opens on levels, each with the slots it has left", () => {
   assert.equal(sectionLine(spells), "Cantrips 5 · L1 4 · L2 3 · L3 4 · L4 2 · L5 2");
   // Inside a level the hand's own order stands: the spell that hurts first.
   assert.equal(spells.sections[0].cards[0].id, "spell:fire bolt");
-  // Costs it is paid in, each open while a card of it can be played.
+  // Costs it is paid in, each open while a card of it can be played. A
+  // reaction spell's card waits for what it answers (the reaction strip deals
+  // it then), so with nothing to answer the reaction is not open here.
   assert.deepEqual(spells.costs, [
     { cost: "action", open: true },
     { cost: "bonus", open: true },
-    { cost: "reaction", open: true },
+    { cost: "reaction", open: false },
   ]);
 });
 
@@ -155,8 +157,9 @@ test("after the action, the groups say which costs are still open", () => {
   const spells = groupOf(groups, "group:spells");
   assert.deepEqual(
     spells.costs.map((entry) => `${entry.cost}:${entry.open}`),
-    ["action:false", "bonus:true", "reaction:true"],
-    "Misty Step and the reactions are still open",
+    // The reaction spells wait for their trigger (the reaction strip deals them).
+    ["action:false", "bonus:true", "reaction:false"],
+    "Misty Step is still open",
   );
   assert.equal(spells.disabled, null, "a group with a card to play is not refused");
   const actions = groupOf(groups, "group:actions");

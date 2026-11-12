@@ -1,4 +1,6 @@
+import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
 import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
+import { afterCounterSpend } from "@/lib/dm/mt-fb-counter-riders";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { shadowExperience } from "@/lib/db/companion-departures";
 import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
@@ -44,25 +46,32 @@ import { healDeathHook } from "@/lib/dm/death";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { featureVariantSpend } from "@/lib/dm/feature-spends";
 import { authoredFeatureSpend } from "@/lib/dm/authored-spends";
+import { afterHealingSpell } from "@/lib/dm/heal-after-dra";
 import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
+import { speciesTraitSpend } from "@/lib/dm/mt-species-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
+import { turnPayer } from "@/lib/dm/ar-wbf-feat-treats";
+import { wbfAfterSpend, wbfDoorSpend } from "@/lib/dm/ar-wbf-doors";
+import { plungeAfterSpend } from "@/lib/dm/fathomless-plunge";
+import { projectionAfterSpend } from "@/lib/dm/spirit-projection";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
-import { chargedItemUse } from "@/lib/dm/item-use";
+import { chargedItemUse, paidItemCast } from "@/lib/dm/item-use";
 import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
 import { applyConsumable, consumableRefusal, scrollSpellFor } from "@/lib/dm/consumables";
 import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
-import type { OneCasting } from "@/lib/dm/action-parts-logic";
+import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
+import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
@@ -87,12 +96,13 @@ import {
   computeUseItem,
   computeUseResource,
   fontOfMagicDirection,
+  holdConcentration,
   payForUse,
   rollHealing,
 } from "@/lib/dm/resource-tools";
 import { resourceTools } from "@/lib/dm/resource-tool-defs";
 import { applyDamageTool, clearConditionTool, setConditionTool } from "@/lib/dm/merged-tool-defs";
-import { searchSpells, spellFactsFor, spellNameMatches } from "@/lib/content";
+import { searchSpells, spellFactsFor, spellNameMatches, spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { suggestedSpellCount } from "@/lib/content/mechanics";
 import { abilityMod } from "@/lib/srd";
@@ -103,20 +113,21 @@ import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/sr
 import { casterViewsOf, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
-import { invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { worthProblem } from "@/lib/dm/trade-value";
 import { findCarriedItem, notCarried, sentItemTags, srdNameFor } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
-import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
-import { actorOfCall, withActor } from "@/lib/dm/acting-party";
+import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
+import { openEffect } from "@/lib/dm/last-hit";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -225,8 +236,22 @@ export const mutationTools: ToolDef[] = [
     // Instead of characterId, so neither is required. Kept small: the
     // compact first call of a 16K window holds it beside an opened group
     // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
-    // arguments, checked as that call.
-    targets: { type: "array", description: "Instead of characterId: {characterId, amount} for each creature one spell heals." },
+    // arguments, checked as that call. The items are not optional: the
+    // gpt-oss chat template llama.cpp ships reads an array's items and, with
+    // none, fails every call that offers the tools, so the DM ran with none.
+    // And each entry's fields are declared, as every other list of objects
+    // in the catalogue declares them: a reader that wants an object's
+    // properties (Gemini: "should be non-empty for OBJECT type") refused the
+    // whole tool list over a bare object (gap sweep 2026-11-09).
+    targets: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { characterId: { type: "string" }, amount: { type: "integer", minimum: 1, maximum: 200 } },
+        required: ["characterId"],
+      },
+      description: "Instead of characterId: {characterId, amount} for each creature one spell heals.",
+    },
   }, [], false),
   tool(
     "stabilize",
@@ -448,10 +473,21 @@ const argsSchema = z.object({
   // writes nothing (src/lib/dm/cast-guard.ts). Not in the tool schema.
   via: z.enum(["slot", "enemy", "buff", "aoe", "attack", "heal", "reaction"]).optional(),
   dryRun: z.boolean().optional(),
+  // use_spell_slot, internal: false when the cast tool found the casting
+  // outside a free grant's limits (Shapechanger's "only yourself, challenge
+  // rating 1 or lower"), so a slot pays instead (src/lib/dm/cast-guard.ts).
+  freeFits: z.boolean().optional(),
   // use_spell_slot, internal: how many of the casting's shares this call
   // resolves (Magic Missile's darts at one target).
   uses: z.coerce.number().int().min(1).max(700).optional(),
   units: z.coerce.number().int().min(1).max(100).optional(),
+  // use_spell_slot, internal: the damage type the cast tool was asked for
+  // (Awakened Spellbook's swap, src/lib/dm/ar-ws-awakened.ts).
+  swapType: z.string().max(30).optional(),
+  // use_spell_slot, internal: the dead character this casting returns to
+  // life (heal-spell.ts revive), so Warrior of the Gods' "needs no material
+  // component" is asked of them (cast-guard.ts). Not in the tool schema.
+  revives: z.string().max(80).optional(),
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
@@ -486,6 +522,12 @@ const argsSchema = z.object({
   // use_resource: the creatures of the user's choice an area feature takes
   // (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect).
   targetEnemyIds: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  // use_resource: the square a feature moves its holder to (Misty Wanderer,
+  // Gathered Swarm's move; src/lib/dm/feature-move.ts). Sent by the console
+  // and the Hand; the model's tool description leaves it out (the compact
+  // budget), and a move it leaves out is credited to move_token as before.
+  x: z.coerce.number().int().min(0).max(500).optional(),
+  y: z.coerce.number().int().min(0).max(500).optional(),
   // purchase: gold each, for a thing no list prices (half a gold piece is 0.5).
   price: z.coerce.number().min(0).max(100000).optional(),
   resource: z.string().optional(),
@@ -597,6 +639,32 @@ export function applyDmMutation(
   return withActor(actorOfCall(toolName, rawArguments), () => dmMutation(campaign, turnId, toolName, rawArguments, sheets, sheetsById, turn, casting));
 }
 
+// Every creature one casting of a healing spell reaches, inside the one call
+// the list is: each entry the heal it always was, under a casting made here
+// and gone when the call returns. A roll one creature's healing waits on
+// holds the whole call (held-call.ts), which is rolled back and run again
+// from the first entry with the dice already in, so the slot is spent once
+// however many rolls the caster's player makes. The casting used to be made
+// by the caller and shared by a call for each entry: an entry held for a
+// roll ran again without it and paid a second time.
+function healList(
+  campaign: Campaign,
+  turnId: string,
+  each: Record<string, unknown>[],
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+): MutationOutcome {
+  const refused = listRefusal("heal", each);
+  if (refused) {
+    return { result: refused };
+  }
+  const shared = oneCasting("heal", each);
+  const casting = shared ? { ...shared, oneCall: true } : undefined;
+  const outcomes = each.map((one) => applyDmMutation(campaign, turnId, "heal", JSON.stringify(one), sheets, sheetsById, turn, casting).result as Record<string, unknown>);
+  return { result: partsResult(outcomes, PART_LISTS.heal.key) };
+}
+
 function dmMutation(
   campaign: Campaign,
   turnId: string,
@@ -614,12 +682,18 @@ function dmMutation(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { result: { error: "Invalid arguments.", retry: true } };
+  } catch (error) {
+    return { result: badArguments("Invalid arguments.", error, rawArguments) };
+  }
+  // A heal list that reaches here whole is one casting over its creatures
+  // (turn.ts oneCastingCall): resolved here, entry by entry.
+  const listed = toolName === "heal" && !casting ? listedCalls(toolName, rawArguments) : null;
+  if (listed) {
+    return healList(campaign, turnId, listed, sheets, sheetsById, turn);
   }
   const parsed = argsSchema.safeParse(raw);
   if (!parsed.success) {
-    return { result: invalidArguments("Invalid arguments.", parsed.error) };
+    return { result: invalidArguments("Invalid arguments.", parsed.error, raw) };
   }
   const args = parsed.data;
   const reason = (args.reason ?? "").slice(0, 200);
@@ -835,17 +909,23 @@ function dmMutation(
       }
       // The 200 is the rail on what a caller may SEND. The engine's own
       // dice (a fall, a creature out of air) go to applyPcDamage directly.
-      return {
-        result: applyPcDamage(campaign, turnId, sheet, {
-          amount: Math.min(amount, 200),
-          type: args.type,
-          crit: args.crit === true,
-          magical: args.magical === true,
-          // A named spell's damage: Spell Resistance and Aura of Warding resist it.
-          spell: Boolean(args.spell),
-          reason,
-        }),
-      };
+      // Called on its own (a hazard, harm the GM names), the damage is kept
+      // for a reaction to damage taken to answer (last-hit.ts openEffect).
+      const effect = calledOnItsOwn() ? openEffect(campaign.id, sheet.id) : null;
+      const landed = applyPcDamage(campaign, turnId, sheet, {
+        amount: Math.min(amount, 200),
+        type: args.type,
+        crit: args.crit === true,
+        magical: args.magical === true,
+        // A named spell's damage: Spell Resistance and Aura of Warding resist it.
+        spell: Boolean(args.spell),
+        // A creature's blow is enemy_attack or cast_at_player; this tool's
+        // harm names no creature, which Emissary of Redemption does not resist.
+        noCreature: true,
+        reason,
+      });
+      effect?.close({ raw: Math.min(amount, 200), type: args.type ?? "", name: args.spell?.trim() || reason || "the harm" });
+      return { result: landed };
     }
     case "heal": {
       const unasked = characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "casterId");
@@ -1000,12 +1080,16 @@ function dmMutation(
       }
       // Any healing ends the dying state.
       const deathInfo = healDeathHook(campaign, turnId, target);
+      // A druid's healing spell reaches past its target: Starry Form's
+      // Chalice and the Unicorn spirit's aura (src/lib/dm/heal-after-dra.ts).
+      const alsoHealed = healSpell && healNote ? afterHealingSpell(campaign, turnId, (args.casterId ? resolve(args.casterId) : null) ?? sheet, target, healSpell, args.level) : [];
       return {
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
           healed: amount,
           ...(healNote ? { spell: healNote } : {}),
+          ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,
         },
       };
@@ -1218,6 +1302,11 @@ function dmMutation(
       if (released) {
         return { result: released };
       }
+      // A cast this item has already paid for spends nothing more (item-use.ts).
+      const paid = paidItemCast(sheet, itemName, args.spell, turnId);
+      if (paid) {
+        return { result: paid };
+      }
       // A charged item (a wand, a staff) spends charges and stays in the
       // pack (src/lib/dm/item-use.ts); null for anything else.
       const charged = chargedItemUse(campaign, turnId, sheet, itemName, args.charges, args.spell);
@@ -1362,9 +1451,27 @@ function dmMutation(
       }
       // Peerless Skill, Quivering Palm, Draconic Presence, Hide in Plain
       // Sight, Primeval Awareness (src/lib/dm/srd-feature-spends.ts).
+      // Shell Defense, a changeling's Shapechanger, Feline Agility, Celestial
+      // Revelation (src/lib/dm/mt-species-spends.ts).
+      const speciesSpend = speciesTraitSpend(campaign, turnId, sheet, resourceName, args);
+      if (speciesSpend) {
+        return { result: speciesSpend };
+      }
       const srdSpend = srdFeatureSpend(campaign, turnId, sheet, resourceName, args);
       if (srdSpend) {
         return { result: srdSpend };
+      }
+      // A creature warded by Bastion of Law spends the ward's dice off a blow
+      // on record, for no reaction (src/lib/dm/ar-ws-bastion.ts).
+      const wardSpend = spendWardDice(campaign, turnId, sheet, resourceName, args, sheets, sheetsById);
+      if (wardSpend) {
+        return { result: wardSpend };
+      }
+      // The feats with a door of their own (War Caster's spell, Telekinetic's
+      // shove...), Spirit Session and Limited Wish's spell (src/lib/dm/ar-wbf-doors.ts).
+      const featSpend = wbfDoorSpend(campaign, turnId, sheet, resourceName, args);
+      if (featSpend) {
+        return { result: featSpend };
       }
       // Authored subclass features the engine resolves (src/lib/dm/authored-spends.ts).
       const authoredSpend = authoredFeatureSpend(campaign, turnId, sheet, resourceName, args, reason);
@@ -1382,7 +1489,7 @@ function dmMutation(
       // checked before anything is spent, its effect applied after.
       const counter = matchResource(resourceName);
       const reacting = counter
-        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, sheets, sheetsById })
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, variant: args.variant, sheets, sheetsById })
         : null;
       if (reacting && "error" in reacting) {
         return { result: reacting };
@@ -1410,7 +1517,18 @@ function dmMutation(
         return { result: option.refused };
       }
       const pool = counter ? sheet.resources[counter.id] : undefined;
-      if (!option && counter?.id === "channel_divinity" && fighting && pool) {
+      // An option the sheet holds that the cost table does not list (a
+      // workshop subclass's own) is still an option named, at the cost its
+      // feature keeps.
+      const heldChannel = counter?.id === "channel_divinity" && !option
+        ? channelOptions(sheet).find((entry) => [args.variant ?? "", nameChoice(resourceName) ?? ""].some((name) => name && isNamed(name, entry.name)))
+        : undefined;
+      // A bare Channel Divinity spend does nothing in a fight or out of one,
+      // so it is refused with the options, spending nothing (gap study WAVE2
+      // D1: "A bare Channel Divinity spend (no option named) does nothing, in
+      // a fight or out: refuse it with a pointer to the options, spending
+      // nothing (R10 extended)").
+      if (!option && !heldChannel && counter?.id === "channel_divinity" && pool) {
         // The uses and the turn before the option: which one is moot when
         // none can be paid for. The turn is held to the cheapest option.
         const payment = payForUse(sheet, counter, pool, 1);
@@ -1424,14 +1542,16 @@ function dmMutation(
           return { result: turnGate };
         }
         const held = channelOptionsHeld(sheet);
+        const unknown = args.variant?.trim() ? `"${args.variant.trim()}" is not a Channel Divinity option ${sheet.name} holds. ` : "";
         return {
           result: {
-            error: `Channel Divinity in a fight is one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
+            error: `${unknown}Channel Divinity is always one of its options, each with its own cost: name it in variant${held.length ? ` (${sheet.name} has ${held.join(", ")})` : ""}. Ask the player which, unless they named one. Nothing was spent.`,
             retry: true,
           },
         };
       }
-      const optionCharge = option?.cost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
+      const heldCost = heldChannel && heldChannel.cost !== "ritual" ? heldChannel.cost : undefined;
+      const optionCharge = option?.cost ?? heldCost ?? (counter?.id === "sorcery_points" && fontOfMagicDirection(args.variant) ? "bonus" : undefined);
       // Embodiment of the Law and the genre surges move the next spell to
       // the bonus action (src/lib/dm/resource-turn.ts castMarkCharge).
       const castMark = castMarkCharge(campaign, sheet, counter?.id);
@@ -1440,7 +1560,8 @@ function dmMutation(
       }
       // What the feature costs of the turn is checked before anything is
       // spent or rolled, and charged once the spend has gone through.
-      const charge = prepareResourceCharge(campaign, sheet, resourceName, optionCharge);
+      // A Chef's treat is the eater's bonus action (ar-wbf-feat-treats.ts).
+      const charge = prepareResourceCharge(campaign, turnPayer(counter?.id, sheet, target), resourceName, optionCharge);
       if ("error" in charge) {
         return { result: charge };
       }
@@ -1460,11 +1581,16 @@ function dmMutation(
         },
         args.variant,
         { beforeDrop: charge.beforeDrop },
+        { turnId, targetEnemyId: args.targetEnemyId, targetEnemyIds: args.targetEnemyIds },
+        { ...(args.x !== undefined && args.y !== undefined ? { square: { x: args.x, y: args.y } } : {}), ...(args.level !== undefined ? { slotLevel: args.level } : {}) },
       );
       if ("error" in outcome) {
         return { result: outcome };
       }
       patchSheet(sheet.id, outcome.patch);
+      // A Metamagic option paid rides the next spell cast (mt-srd-metamagic.ts).
+      markPaidOption(campaign, sheet.id, args.variant, { points: typeof outcome.result.spent === "number" ? outcome.result.spent : undefined, pool: counter?.id });
+      Object.assign(outcome.result, holdConcentration(campaign, turnId, sheet.id, outcome));
       Object.assign(outcome.result, charge.commit());
       if (castMark) {
         Object.assign(outcome.result, castMark.apply());
@@ -1485,6 +1611,18 @@ function dmMutation(
         outcome.patch,
       );
       publishSheet(campaign, sheet.id);
+      // What rides this counter's spend for the holder of another feature
+      // (Arcane Charge, Rallying Cry, a storm herald's aura: mt-fb-counter-riders.ts).
+      if (counter) {
+        Object.assign(outcome.result, afterCounterSpend({ campaign, turnId, sheet, defId: counter.id, args, reason }));
+      }
+      // What the use bought beside its counter (Limited Wish's spell, ar-wbf-doors.ts).
+      Object.assign(outcome.result, wbfAfterSpend(campaign, sheet, counter?.id, args));
+      // The Fathomless Plunge takes the warlock and the party near them off
+      // the board (fathomless-plunge.ts).
+      Object.assign(outcome.result, plungeAfterSpend(campaign, getDmTurn(turnId), sheet, counter?.id, sheets, sheetsById));
+      // A Spirit Projection leaves the body on the board (spirit-projection.ts).
+      Object.assign(outcome.result, projectionAfterSpend(campaign, sheet, counter?.id));
       // A feature that lands on someone else (Bardic Inspiration) patches
       // the second sheet the same audited way.
       if (outcome.patchTarget) {
@@ -1731,8 +1869,11 @@ function dmMutation(
             ...(args.concentration !== undefined ? { concentration: args.concentration } : {}),
             ...(args.via ? { via: args.via } : {}),
             ...(args.dryRun ? { dryRun: true } : {}),
+            ...(args.freeFits === false ? { freeFits: false } : {}),
             ...(args.uses ? { uses: args.uses } : {}),
             ...(args.units ? { units: args.units } : {}),
+            ...(args.swapType ? { swapType: args.swapType } : {}),
+            ...(args.revives ? { revives: args.revives } : {}),
             ...zonePlacement(args),
           },
           {
@@ -1833,7 +1974,7 @@ function dmMutation(
         if (bookView) {
           // Copying costs 50 gp and two hours a spell level, paid now; the
           // hours are not something a fight has room for.
-          const cost = facts ? copyCost(facts) : { gold: 0, hours: 0 };
+          const cost = facts ? copyCost(facts, { features: sheet.features, school: spellSchoolFor(facts.name, spellAuthorsFor(campaign)) }) : { gold: 0, hours: 0 };
           const live = getActiveEncounter(campaign.id);
           if (cost.hours && live && live.status === "active" && (live.kind ?? "fight") === "fight") {
             return {
@@ -2016,8 +2157,8 @@ function dmMutation(
       let rawArgs: Record<string, unknown>;
       try {
         rawArgs = JSON.parse(rawArguments || "{}") as Record<string, unknown>;
-      } catch {
-        return { result: { error: "Invalid arguments.", retry: true } };
+      } catch (error) {
+        return { result: badArguments("Invalid arguments.", error, rawArguments) };
       }
       delete rawArgs.characterId;
       delete rawArgs.reason;

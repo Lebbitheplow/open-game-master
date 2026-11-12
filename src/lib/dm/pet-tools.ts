@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { petReachProblem } from "@/lib/dm/pet-place";
+import { recordTrigger } from "@/lib/dm/last-save";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -20,7 +22,7 @@ import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
-import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
 import { conditionIncomingAttackState } from "@/lib/srd/condition-effects";
@@ -28,6 +30,8 @@ import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { resolveMonster } from "@/lib/bestiary";
+import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -53,7 +57,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "summon_pet",
       description:
-        "Summon or bond a creature a feature grants: kind familiar (Find Familiar), beast_companion (Beast Master), drake (Drakewarden, its essence) or other (a story pet: a stat block's name, or hp and ac). A story pet with no stat block cannot attack. A familiar takes a Find Familiar form (an owl, a cat, a raven; an imp, quasit, pseudodragon or sprite with Pact of the Chain); a Beast Master companion is a Medium or smaller beast of CR 1/4 or lower. A story pet named for an SRD or workshop creature (mastiff, wolf) takes that stat block, and fights with it when its CR is within what a druid of the owner's level could become. The server checks the feature and attaches the pet to their sheet. Call it BEFORE narrating the summon.",
+        "Summon or bond a creature a feature grants: kind familiar (Find Familiar), beast_companion (Beast Master), drake (Drakewarden, its essence) or other (a story pet: a stat block's name, or hp and ac). A pet has no token: it stands with its owner, so its reach is measured from the owner's square. A story pet with no stat block cannot attack. A familiar takes a Find Familiar form (an owl, a cat, a raven; an imp, quasit, pseudodragon or sprite with Pact of the Chain); a Beast Master companion is a Medium or smaller beast of CR 1/4 or lower. A story pet named for an SRD or workshop creature (mastiff, wolf) takes that stat block, and fights with it when its CR is within what a druid of the owner's level could become. The server checks the feature and attaches the pet to their sheet. Call it BEFORE narrating the summon.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -129,6 +133,8 @@ const summonSchema = z.object({
   essence: z.string().trim().max(20).optional(),
   hp: z.coerce.number().int().min(1).max(300).optional(),
   ac: z.coerce.number().int().min(1).max(30).optional(),
+  // kind=drake: the spell slot that pays once the free summoning is spent.
+  level: z.coerce.number().int().min(1).max(9).optional(),
   reason: z.string().optional(),
 });
 
@@ -174,7 +180,8 @@ function noPet(sheet: CharacterSheet, petName?: string): ToolError {
 
 // The creature a call names, by its whole name or form; with no name, the
 // only one there is. Never the nearest name, nor the first of several.
-function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
+// A watch stop names the pet the same way (foresight-saves.ts).
+export function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
   const wanted = textKey(petName ?? "");
   if (!wanted) {
     return sheet.pets.length === 1 ? sheet.pets[0] : null;
@@ -201,8 +208,8 @@ export function handleSummonPet(
   let args: z.infer<typeof summonSchema>;
   try {
     args = summonSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: summon_pet needs characterId, kind, and form.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: summon_pet needs characterId, kind, and form.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -216,16 +223,31 @@ export function handleSummonPet(
   // ritual re-shapes the same spirit), companions and drakes are unique. A
   // story pet may be a monster this table's DMs built in the workshop.
   const authors = spellAuthorsFor(campaign);
-  const built = buildPet(sheet, args, { tableMonster: (name) => findTableMonster(authors, name) });
+  const built = buildPet(sheet, args, {
+    tableMonster: (name) => findTableMonster(authors, name),
+    // A companion's skills come from its published block (pet-build.ts).
+    blockSkills: (name) => resolveMonster(name, campaign.gameSettings)?.stats.skills ?? null,
+  });
   if ("error" in built) {
     return built;
   }
-  const remaining = sheet.pets.filter((pet) => pet.kind !== built.kind || built.kind === "other");
+  // Drake Companion's action and its once-a-long-rest or spell slot
+  // (pet-command.ts drakeSummonCost), asked before anything is written.
+  const cost = built.kind === "drake" ? drakeSummonCost(sheet, args.level, getActiveEncounter(campaign.id)) : null;
+  if (cost && "error" in cost) {
+    return cost;
+  }
+  const paid = cost ? cost.commit() : [];
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const remaining = fresh.pets.filter((pet) => pet.kind !== built.kind || built.kind === "other");
   const pets = [...remaining, built];
-  patchSheet(sheet.id, { pets });
+  // Bond of Fang and Scale: the ranger resists the essence summoned with.
+  const features = built.kind === "drake" && built.immune ? essenceChoice(fresh, built.immune) : null;
+  patchSheet(sheet.id, { pets, ...(features ? { features } : {}) });
   publishSheet(campaign, sheet.id);
   return {
     ok: true,
+    ...(paid.length ? { cost: paid.join(" ") } : {}),
     pet: `${built.name} (${built.form}${built.creatureType ? `, a ${built.creatureType}` : ""}): ${built.hp} HP, AC ${built.ac}, speed ${built.speed} ft`,
     ...(built.attacks.length
       ? {
@@ -247,8 +269,8 @@ export function handlePetAttack(
   let args: z.infer<typeof petAttackSchema>;
   try {
     args = petAttackSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: pet_attack needs characterId and targetEnemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: pet_attack needs characterId and targetEnemyId.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -301,6 +323,12 @@ export function handlePetAttack(
       ? noneNamed(`${pet.name} has no attack called`, args.attack, names)
       : { error: `${pet.name} has several attacks; name one: ${names.join(", ")}.`, retry: true };
   }
+  // The pet stands with its owner (pet-place.ts, ruling D2): its reach is
+  // measured from the owner's square.
+  const tooFar = petReachProblem(encounter.id, sheet, pet.name, attack, { id: enemy.id, name: enemy.displayName });
+  if (tooFar) {
+    return tooFar;
+  }
   if (attack.proneTargetsOnly && !enemy.conditions.includes("prone")) {
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
   }
@@ -312,7 +340,9 @@ export function handlePetAttack(
   // petCreatureType).
   const incoming = conditionIncomingAttackState(enemy.conditions, petCreatureType(pet));
   const advantage = mergeAdvantage(incoming.sources);
-  const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage));
+  // Tagged as an ally's attack, so a foretold number a watch stop armed for
+  // the pet lands on its d20 (foresight-saves.ts).
+  const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -329,6 +359,8 @@ export function handlePetAttack(
   turn.rollIds.push(hitRoll.id);
 
   const economy = charge.commit();
+  // Commanded, the creature is not dodging this turn (pet-command.ts).
+  commandPet(campaign, sheet.id, pet.name);
 
   // The enemy's real AC today: a spell or an effect on it counts.
   const vsAc = enemyAcWithEffects(campaign.id, enemy);
@@ -421,8 +453,8 @@ export function handleDamagePet(
   let args: z.infer<typeof damagePetSchema>;
   try {
     args = damagePetSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_damage on a pet needs the owner's characterId and an amount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_damage on a pet needs the owner's characterId and an amount.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -442,6 +474,13 @@ export function handleDamagePet(
   const typed = args.type?.trim() ? { type: args.type.trim() } : {};
   const defended = adjusted.note ? { defenses: `${pet.name} is ${adjusted.note}.` } : {};
   const hp = Math.max(0, pet.hp - dealt);
+  // Drake Companion: it lasts "until it drops to 0 hit points": then it is
+  // gone, until the ranger summons it again.
+  if (hp <= 0 && pet.kind === "drake") {
+    patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
+    publishSheet(campaign, sheet.id);
+    return { ok: true, pet: pet.name, damage: dealt, ...typed, ...defended, vanished: `${pet.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+  }
   if (hp <= 0 && pet.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.
     const pets = sheet.pets.filter((entry) => entry !== pet);
@@ -459,6 +498,11 @@ export function handleDamagePet(
   const pets = sheet.pets.map((entry) => (entry === pet ? { ...entry, hp } : entry));
   patchSheet(sheet.id, { pets });
   publishSheet(campaign, sheet.id);
+  // Damage to a pet is the trigger its owner's reaction answers (a drake's
+  // resistance, src/lib/dm/last-save.ts).
+  if (dealt > 0) {
+    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: pet.name, damage: { amount: dealt, type: args.type?.trim() ?? "" } });
+  }
   return {
     ok: true,
     pet: pet.name,
@@ -479,8 +523,8 @@ export function handleDismissPet(
   let args: z.infer<typeof dismissSchema>;
   try {
     args = dismissSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismiss_pet needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismiss_pet needs characterId.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;

@@ -260,7 +260,7 @@ export function approachTarget(
     // attack, however it came to move, unless it Disengaged this turn: a
     // Nimble Escape goblin's Disengage held for move_token and was forgotten
     // by this walk-up (issue #621).
-    provoked = move.disengaged ? [] : resolvePcOpportunityAttacks(campaign, enemy.id, origin, landing, walked.length ? walked : undefined);
+    provoked = resolvePcOpportunityAttacks(campaign, enemy.id, origin, landing, walked.length ? walked : undefined, move.disengaged);
     // The spell areas it walked into (src/lib/dm/zone-triggers.ts).
     provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: enemy.id }, origin, walked.length ? walked : [landing]));
   }

@@ -13,6 +13,7 @@ import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { afterEnemySave } from "@/lib/dm/spell-riders";
@@ -20,6 +21,7 @@ import type { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { defenseRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { areaOnMount } from "@/lib/dm/mount-area";
 
 export function aoeOnCharacters(input: {
   campaign: Campaign;
@@ -54,7 +56,11 @@ export function aoeOnCharacters(input: {
     // The save a requested roll would be: conditions, a paladin's aura,
     // lasting effects, exhaustion and an inspiration die all count
     // (src/lib/dm/forced-save.ts).
-    const save = rollCharacterSave(
+    // Careful Spell: "A chosen creature automatically succeeds on its saving
+    // throw against the spell" (mt-srd-metamagic.ts). No die is thrown, and
+    // a spell that deals half on a success still deals it.
+    const careful = plan?.careful.includes(sheet.id) ?? false;
+    const save = careful ? { success: true, autoFailed: false, total: null, notes: [] as string[] } : rollCharacterSave(
       campaign,
       turn,
       sheet,
@@ -106,7 +112,7 @@ export function aoeOnCharacters(input: {
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: sheet.name,
-      ...(save.autoFailed ? { autoFailed: save.notes.join("; ") } : { save: save.total }),
+      ...(careful ? { careful: `${plan?.caster.name}'s Careful Spell: they succeed on the save.` } : save.autoFailed ? { autoFailed: save.notes.join("; ") } : { save: save.total }),
       success,
       damage: damageTaken,
       ...(evasion ? { evasion: success ? "no damage" : "half damage" } : {}),
@@ -114,25 +120,50 @@ export function aoeOnCharacters(input: {
       ...(refused.length ? { conditionRefused: refused.join(" ") } : {}),
     };
     const hpBefore = getSheetById(sheet.id)?.currentHp ?? sheet.currentHp;
-    for (const part of taken.filter((entry) => entry.amount > 0)) {
-      const applied = applyDmMutation(
-        campaign,
-        turn.id,
-        "apply_damage",
-        JSON.stringify({
-          characterId: sheet.id,
-          amount: part.amount,
-          type: part.type,
-          // A spell's damage is magical: "from nonmagical attacks" on a
-          // beast form's block does not cover Ice Storm's hail.
-          ...(input.spell ? { spell: input.spell, magical: true } : {}),
-          reason: (input.reason ?? "area effect").slice(0, 200),
-        }),
-        sheets,
-        sheetsById,
-      ).result;
+    const landing = taken.filter((entry) => entry.amount > 0);
+    const reason = (input.reason ?? "area effect").slice(0, 200);
+    // Two types are one wound, each meeting its own defences. Landed one type
+    // at a time, the second was a hit at 0 hit points: a death-save failure no
+    // blow earned, no massive damage where the whole would kill, and a second
+    // concentration save for the one spell.
+    const blows: Array<Record<string, unknown>> =
+      landing.length > 1
+        ? [
+            applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, {
+              amount: damageTaken,
+              parts: landing.map((part) => ({ amount: part.amount, type: part.type ?? "" })),
+              ...(input.spell ? { spell: true, magical: true } : {}),
+              reason,
+            }),
+          ]
+        : landing.map((part) =>
+            applyDmMutation(
+              campaign,
+              turn.id,
+              "apply_damage",
+              JSON.stringify({
+                characterId: sheet.id,
+                amount: part.amount,
+                type: part.type,
+                // A spell's damage is magical: "from nonmagical attacks" on a
+                // beast form's block does not cover Ice Storm's hail.
+                ...(input.spell ? { spell: input.spell, magical: true } : {}),
+                reason,
+              }),
+              sheets,
+              sheetsById,
+            ).result,
+          );
+    for (const applied of blows) {
       if (typeof applied.hp === "string") {
         row.hp = applied.hp;
+      }
+      // What landed, beside what the save left (aoe-damage.ts says why).
+      if (typeof applied.damageApplied === "number" && applied.damageApplied !== damageTaken) {
+        row.damageApplied = applied.damageApplied;
+      }
+      if (applied.damageByType) {
+        row.damageByType = applied.damageByType;
       }
       if (applied.dying) {
         row.dying = applied.dying;
@@ -167,6 +198,11 @@ export function aoeOnCharacters(input: {
       if (effects.length) {
         row.effects = effects;
       }
+    }
+    // The mount under them stands in the same square (mount-area.ts).
+    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), reason, sheets, sheetsById });
+    if (ridden) {
+      row.mount = ridden;
     }
     results.push(row);
   }

@@ -30,7 +30,7 @@ export function HandTutorial({ onDismiss }: { onDismiss: (how: TourEnd) => void 
   return (
     <div className="mb-2 animate-fade-up rounded-xl border border-stone-700/60 bg-stone-950/80 p-2.5" role="note" aria-label="How the hand works">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-display text-xs uppercase tracking-[0.18em] text-amber-200/90">Your turn, two ways</span>
+        <span className="font-display text-xs uppercase tracking-[0.14em] text-amber-200/90">Your turn, two ways</span>
         <button type="button" onClick={() => onDismiss("ended")} aria-label="Close the hand tutorial" className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200">
           <X className="size-4" />
         </button>

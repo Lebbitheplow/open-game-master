@@ -22,6 +22,9 @@ type AdminUser = {
   createdAt: string;
   // Set while the user has a self-service deletion pending.
   deletionDueAt: string | null;
+  // The host of a world one of the apps runs: only they may demote, reset
+  // or delete their own account (the server refuses anyone else).
+  isHost?: boolean;
 };
 
 // User management: promote/demote admins, reset passwords (temp password
@@ -111,15 +114,28 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
   // right-click or long press alike. Reset password is also the row's button.
   function actionsFor(user: AdminUser): ContextMenuItem[] {
     const busy = busyId === user.id;
+    // The host's account, seen by another admin: the world belongs to the
+    // device that hosts it, so its admin, password and account stay theirs.
+    const hostsWorld = Boolean(user.isHost) && user.id !== meId;
     return [
       {
         id: "admin",
         label: user.isAdmin ? "Remove admin" : "Make admin",
         glyph: "tab-dm",
-        disabled: busy,
+        disabled: busy || (hostsWorld && user.isAdmin),
         onSelect: () => void toggleAdmin(user),
       },
-      { id: "reset", label: "Reset password", glyph: "ui-key", disabled: busy, onSelect: () => void resetPassword(user) },
+      {
+        id: "reset",
+        label: "Reset password",
+        glyph: "ui-key",
+        // A reset signs its account out everywhere, so an admin who reset
+        // their own would lose the page before reading the new password
+        // (#909). Their own password is changed in Settings, or in a world
+        // one of the apps hosts, kept by the app.
+        disabled: busy || user.id === meId || hostsWorld,
+        onSelect: () => void resetPassword(user),
+      },
       ...(user.deletionDueAt
         ? [{ id: "keep", label: "Call off the scheduled deletion", glyph: "ui-restore", disabled: busy, onSelect: () => void keepAccount(user) }]
         : []),
@@ -129,8 +145,9 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
         glyph: "ui-delete",
         tone: "danger" as const,
         separated: true,
-        // An admin cannot delete the account they are signed in with.
-        disabled: busy || user.id === meId,
+        // An admin cannot delete the account they are signed in with, nor
+        // the host's.
+        disabled: busy || user.id === meId || hostsWorld,
         onSelect: () => void deleteUser(user),
       },
     ];
@@ -150,7 +167,7 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
             It is shown only once; they must change it at next login.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-1.5 font-mono text-sm text-amber-100">
+            <code className="rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-1.5 font-code text-sm text-amber-100">
               {tempPassword.password}
             </code>
             <button
@@ -191,6 +208,11 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
                   <p className="flex flex-wrap items-center gap-1.5 text-sm text-stone-100">
                     {user.username}
                     {user.id === meId ? <span className="text-xs text-stone-500">(you)</span> : null}
+                    {user.isHost ? (
+                      <span className="plate-chip" title="This world belongs to the device that hosts it: only the host can change this account.">
+                        Host
+                      </span>
+                    ) : null}
                     {user.isAdmin ? (
                       <span className="plate-chip">
                         <GameIcon icon={{ kind: "glyph", key: "tab-admin" }} size="size-4" /> Admin
@@ -214,15 +236,17 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    title="Reset password"
-                    disabled={busyId === user.id}
-                    onClick={() => resetPassword(user)}
-                    className={ui.btnSmall}
-                  >
-                    {busyId === user.id ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} Reset
-                  </button>
+                  {user.id === meId || user.isHost ? null : (
+                    <button
+                      type="button"
+                      title="Reset password"
+                      disabled={busyId === user.id}
+                      onClick={() => resetPassword(user)}
+                      className={ui.btnSmall}
+                    >
+                      {busyId === user.id ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} Reset
+                    </button>
+                  )}
                   <KebabMenu items={menu} label={`More actions for ${user.username}`} heading={user.username} />
                 </div>
               </ContextMenu>

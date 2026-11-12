@@ -115,10 +115,13 @@ await test("A hit on the holder deals one card, not one more as their own ally."
   assert.equal(offered(cavalier, "Warding Maneuver").length, 1);
 });
 
-await test("Misty Escape comes up on a hit and keeps its card, for damage no hit records.", async () => {
+// "A reaction on taking damage": the damage on record, a hit's or a save's
+// (src/lib/dm/last-save.ts keeps what a creature dealt through a save), so the
+// card waits for it and never sits open on the warlock's own turn.
+await test("Misty Escape comes up on a hit and has no card with nothing to answer.", async () => {
   const fey = hero({ class: "warlock", subclass: "The Archfey" });
   const enemy = await stage(fey);
-  assert.equal(onOwnTurn(fey, "Misty Escape"), true);
+  assert.equal(onOwnTurn(fey, "Misty Escape"), false);
   await strike(enemy, fey);
   const [card] = offered(fey, "Misty Escape");
   assert.ok(card);

@@ -104,23 +104,96 @@ export function factionsNamedBy(text: string, factions: Faction[]): Faction[] {
   return factions.filter((faction) => Boolean(textKey(faction.name)) && containsPhrase(text, faction.name));
 }
 
+// A line of play read for faction names: what it says and when.
+export type NamedLine = { content: string; createdAt: string };
+// An NPC who belongs to a faction: naming them deals with the faction.
+export type FactionMember = { name: string; factionId: string };
+
+function namesFaction(text: string, faction: Faction, members: readonly FactionMember[]): boolean {
+  return (
+    (Boolean(textKey(faction.name)) && containsPhrase(text, faction.name)) ||
+    members.some((member) => member.factionId === faction.id && Boolean(textKey(member.name)) && containsPhrase(text, member.name))
+  );
+}
+
+// How many of the lines name each faction, by its name or a member's,
+// since its standing last moved (issue 870: 56 GM turns named one faction
+// and its standing never moved, because nothing showed the GM it was being
+// dealt with). Factions named in none are left out.
+export function factionsNamedSince(
+  factions: readonly Faction[],
+  lines: readonly NamedLine[],
+  members: readonly FactionMember[],
+  movedAt: Readonly<Record<string, string>>,
+): Map<string, number> {
+  const named = new Map<string, number>();
+  for (const faction of factions) {
+    const since = movedAt[faction.id] ?? "";
+    const count = lines.filter((line) => line.createdAt > since && namesFaction(line.content, faction, members)).length;
+    if (count > 0) {
+      named.set(faction.id, count);
+    }
+  }
+  return named;
+}
+
+// The factions a chapter dealt with whose standing did not move during it:
+// named in its play, unmoved since it began. The next GM turn is asked to
+// settle each once (src/lib/dm/faction-attention.ts).
+export function factionsToSettle(
+  factions: readonly Faction[],
+  transcript: string,
+  members: readonly FactionMember[],
+  movedAt: Readonly<Record<string, string>>,
+  chapterStartedAt: string,
+): string[] {
+  return factions
+    .filter((faction) => (movedAt[faction.id] ?? "") < chapterStartedAt && namesFaction(transcript, faction, members))
+    .map((faction) => faction.id)
+    .slice(0, 6);
+}
+
+// A faction named this often since its standing last moved is marked in the
+// GM's block: once is a passing mention, twice is the party dealing with them.
+export const NAMED_MARK_AT = 2;
+
+// When standing moves, in the GM's block: the tool's description alone said
+// how, never when, and a 589-turn campaign called it 0 times (issue 870).
+export const FACTION_RULE =
+  "Standing (-5 to +5) moves only through adjust_reputation, and a member's social checks lean on it. Move it when the party does something a faction's people see or hear of: helps or harms a member, keeps or breaks a bargain, finishes or fails a job for them, works for or against their goal. +1 or -1 for a deed, +2 or -2 for one they will remember. Call it when it happens, before narrating their reaction; ordinary talk moves nothing.";
+
 // The factions block for the prompt: the DM's version carries power and
 // goal, the player's carries only how each faction stands.
 export function renderFactionsForPrompt(
   factions: Faction[],
   reputation: Record<string, number>,
   dmView: boolean,
+  // The GM's view only: how often each faction was named since its standing
+  // last moved, and the ones a chapter that just closed dealt with.
+  attention: { named: ReadonlyMap<string, number>; settle: readonly string[] } = { named: new Map(), settle: [] },
 ): string {
   if (!factions.length) {
     return "";
   }
-  const lines = factions.slice(0, 12).map((faction) => {
+  // The factions in play first, so the twelve listed are the ones that matter.
+  const inPlay = (faction: Faction) => (attention.settle.includes(faction.id) ? 1000 : 0) + (attention.named.get(faction.id) ?? 0);
+  const ordered = dmView ? [...factions].sort((a, b) => inPlay(b) - inPlay(a)) : factions;
+  const lines = ordered.slice(0, 12).map((faction) => {
     const standing = reputation[faction.id] ?? 0;
     const base = `- ${faction.name} (${faction.attitude} to the party; the party is ${reputationLabel(standing)} to them, ${standing >= 0 ? "+" : ""}${standing})`;
     if (!dmView) {
       return `${base}${faction.blurb ? `: ${faction.blurb}` : ""}`;
     }
-    return `${base}: ${faction.blurb}${faction.goal ? ` | GOAL (GM-only): ${faction.goal}` : ""} | power ${faction.power}/5`;
+    const named = attention.named.get(faction.id) ?? 0;
+    const mark = named >= NAMED_MARK_AT ? ` | named in ${named} recent lines since its standing last moved` : "";
+    return `${base}: ${faction.blurb}${faction.goal ? ` | GOAL (GM-only): ${faction.goal}` : ""} | power ${faction.power}/5${mark}`;
   });
-  return `FACTIONS (standing shifts through adjust_reputation; a member's social checks lean on it):\n${lines.join("\n")}`;
+  if (!dmView) {
+    return `FACTIONS (standing shifts through adjust_reputation; a member's social checks lean on it):\n${lines.join("\n")}`;
+  }
+  const settle = attention.settle.map((id) => factions.find((faction) => faction.id === id)?.name).filter((name): name is string => Boolean(name));
+  const settleLine = settle.length
+    ? `\nThe chapter that just closed dealt with ${settle.join(", ")}, and the party's standing with ${settle.length === 1 ? "it" : "them"} did not move. Settle each once now with adjust_reputation if what the party did there earned regard or a grievance; leave it if nothing did.`
+    : "";
+  return `FACTIONS. ${FACTION_RULE}\n${lines.join("\n")}${settleLine}`;
 }

@@ -13,8 +13,10 @@ import {
 import { canAct, type ActKind, type ActingEncounter } from "@/lib/dm/can-act";
 import type { OrderEntry } from "@/lib/db/encounters";
 import type { IconRef } from "@/lib/icons";
+import type { SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
+import { combatRiders } from "@/lib/srd/feature-effects";
 import type { HandGearAction, HandIntentExtras } from "@/lib/battlemap/hand-intent";
 import type { HandArea } from "@/lib/battlemap/hand-area";
 // A type alone: the catalogue's stat blocks stay on the server.
@@ -114,11 +116,27 @@ export type HandCard = {
   // The condition applied, or "Concentration".
   condition: string;
   icon: IconRef;
+  // A spell card's glyph and the words beside it (issue 845,
+  // spell-glyph-logic.ts): what the spell mainly does, and the area or the
+  // creatures it takes. The card face draws these in place of the icon.
+  glyph?: SpellGlyph;
+  targetWords?: string;
   target: HandTarget;
   toHit: number | null;
+  // Dice the attack roll adds beside its bonus ("+1d4" while blessed), and
+  // the advantage a held condition gives it (True Strike), as the roll is
+  // made (hand-attack-lines.ts attackRollLine). Absent when none.
+  toHitDice?: string;
+  rollAdvantage?: Array<"advantage" | "disadvantage">;
+  // A ranged or thrown attack's reach in feet: its melee reach (0 for a
+  // ranged weapon), its normal and its long range. The preview reads the
+  // board's distance against them (hand-attack-lines.ts attackReach).
+  shot?: { reachFt: number; normalFt: number; longFt: number; thrown: boolean };
   // A dice expression the preview can average; null when nothing is rolled.
   damage: string | null;
   damageType: string;
+  // The second type of a spell that deals two at once (Ice Storm's cold).
+  secondType?: string;
   heals: boolean;
   save: { ability: string; dc: number } | null;
   melee: boolean;
@@ -136,6 +154,19 @@ export type HandCard = {
   // An ally card the holder cannot aim at themselves (Blessing of the
   // Trickster's "other than yourself"): the aim bar leaves out their chip.
   othersOnly?: boolean;
+  // An ally card whose engine takes the dead, never the living (Revivify,
+  // Hand of Ultimate Mercy: src/lib/srd/dead-targets.ts): the aim bar offers
+  // the dead allies' chips and no others.
+  takesTheDead?: boolean;
+  // A card that takes "a creature you can see" (its spend's sight flag, the
+  // one use_resource gates on): the aim bar leaves out the chip of a creature
+  // the board says the holder cannot see, or, for "seesHolder", one that
+  // cannot see the holder (hand-play.ts aimUnseen).
+  sight?: true | "seesHolder";
+  // A card that reaches only a creature holding this condition (Alter
+  // Memories' "charmed"): the aim bar leaves out the chips of the others
+  // (hand-play.ts aimLacks).
+  aimHolds?: string;
   // The class options this attack may carry, each already judged by the
   // engine's checkAttackOptions (Reckless Attack, Stunning Strike, knock out).
   options?: HandAttackOption[];
@@ -159,6 +190,13 @@ export type HandCard = {
   // An attack that is the whole action, not a swing of the Attack action
   // (Flame Blade, hand-granted.ts): afterCommit spends the action for it.
   wholeAction?: boolean;
+  // A cantrip that is one attack of the Attack action (the Bladesinger's
+  // Extra Attack, src/lib/dm/ar-ws-cantrip-attack.ts): afterCommit counts it
+  // as the engine does.
+  attackCantrip?: boolean;
+  // The magic item a spell card casts from: Items shows a section per item with
+  // what it has left (hand-groups.ts), as Spells shows one per level with its slots.
+  fromItem?: { key: string; label: string; note: string };
   // A spell that leaves an area on the battle map: the square it is laid on
   // is picked on the board (src/lib/battlemap/hand-area.ts) and sent as the
   // tool's atX/atY/towardX/towardY.
@@ -190,7 +228,11 @@ export type HandCard = {
   pickWithin?: number;
 };
 
-export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };
+// `min`: how many the card must name before it can go (Infectious Fury's
+// cursed creature and the one it attacks); absent, the aim alone will do.
+// `attacks`: the second creature is the one the aimed creature is made to
+// attack, not one more taken by the same effect, and the aim bar asks it so.
+export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean; min?: number; attacks?: boolean };
 
 // "Each creature of your choice" within an area feature's reach: the player
 // aims at one and adds the others (Order's Demand, Champion Challenge,
@@ -245,6 +287,9 @@ export type HandAttackOption = {
   disabled: string | null;
   // Options of one group exclude each other (Open Hand's three riders).
   group?: "openHand";
+  // Open only on a swing with advantage (Rapid Strike): shut as dealt, and
+  // judged again against the creature aimed at (hand-odds.ts aimedCard).
+  needsAdvantage?: true;
 };
 
 // The turn so far, read from the engine's TurnBudget
@@ -277,6 +322,10 @@ export type HandTurn = {
   interactionUsed?: boolean;
   // The engine's reading of the fight, so the gates ask canAct itself.
   table?: HandTable | null;
+  // Whether a save this character failed is open on the record
+  // (PublicEncounter.lastSaves): never out of a fight, where nothing is
+  // recorded. Undefined from a caller that does not read the record.
+  failedSave?: boolean;
 };
 
 // What canAct needs to know about the fight, off the public encounter.
@@ -334,7 +383,24 @@ export type HandOptions = {
   // false for a host too old to catch the creatures in it, whose blasts are
   // aimed at one enemy as before. Absent means it is.
   blasts?: boolean;
+  // Whether the spells items cast are dealt as cards (hand-items.ts): false
+  // for a host too old to resolve them (src/lib/capabilities.ts
+  // handItemCasts). Absent means they are.
+  items?: boolean;
+  // What the board says of the character's own square (PlayerMapView.self).
+  board?: HandBoardFacts;
 };
+
+// The engine's own verdicts on the square a character stands on, sent by
+// the board view for the viewer's own token (src/lib/battlemap/view.ts):
+// take_action's refusal of a Hide there (hide-traits.ts hideRefusal), and
+// the Silence it stands in, by who cast it ("" for nobody named;
+// zone-rules.ts silenceAround). Absent off the map and from an older host,
+// whose cards are dealt as before.
+// `bright`: the square is in bright light, said as the refusal's opening
+// (one-with-shadows.ts brightSquare), where a feature of dim light or darkness
+// is refused (Steps of Night, One with Shadows, Shadow Step, Cloak of Shadows).
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,
@@ -372,6 +438,15 @@ export function primaryClass(sheet: CharacterSheet): string {
 // ---- what stops a card ----
 
 export type Gate = { reason: string; spent: boolean } | null;
+
+// A reroll of a save the holder failed (Indomitable, Diamond Soul, Fanatical
+// Focus): shut while no failed save of theirs is on record, as the engine
+// refuses it then ("has no failed saving throw to reroll"). Out of a fight
+// nothing is recorded, so the card is shut there too. SRD 5.1
+// fighter, Indomitable: "you can reroll a saving throw that you fail."
+export function failedSaveGate(name: string, turn: Pick<HandTurn, "failedSave">): Gate {
+  return turn.failedSave === false ? { reason: `${name} rerolls a saving throw you have just failed, and there is none on record.`, spent: false } : null;
+}
 
 // The fight as canAct reads it, built from the public projection. The order
 // is reduced to the one entry canAct looks at (the pointer's), and the
@@ -528,3 +603,20 @@ export function slotLine(slot: SlotPick): string {
 
 
 export const SAVE_LABEL: Record<string, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+
+// The once-a-turn mark pc_attack leaves when a granted strike rode its
+// activation (pc-attack-spend.ts). Here rather than in hand-granted.ts so the
+// board's aim (hand-play.ts) reads it without the granted cards, which reach
+// the spell cards (hand-spells.ts), in the table display page's first load.
+export function grantedRideMark(name: string): string {
+  return `granted:${name.toLowerCase()}`;
+}
+
+// Swings the Attack action grants this character (1 + Extra Attack), which
+// is what afterCommit needs to know when the action closes. Here rather than
+// in hand.ts so the board's token menu (hand-hud.ts) asks it without pulling
+// every card builder into the board's first load: the table display page
+// loads the board and never deals a hand.
+export function attacksAllowed(sheet: CharacterSheet): number {
+  return 1 + combatRiders(sheet).extraAttacks;
+}

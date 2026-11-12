@@ -1,7 +1,9 @@
+import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
+import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
 import backgroundsJson from "@/lib/srd/backgrounds.json";
 import classesJson from "@/lib/srd/classes.json";
 import racesJson from "@/lib/srd/races.json";
@@ -12,13 +14,17 @@ import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
-import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
+import { naturalArmorOf } from "@/lib/srd/mt-species-traits";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
+import { kiCastAbility } from "@/lib/srd/mt-mr-casts";
 import { featSpellAbility, type FeatSpellSheet } from "@/lib/srd/feat-spells";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
 import type {
@@ -31,6 +37,7 @@ import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 
 import type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 import { textKey } from "@/lib/language/text-logic";
+import { infusionWorn } from "@/lib/srd/infusions";
 
 export type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 
@@ -209,6 +216,24 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
       resolved = alt;
     }
   }
+  // A lineage's natural armor (src/lib/srd/mt-species-traits.ts): the base
+  // the body gives, in place of the armor worn or the unarmored formula when
+  // it is the better of the two; a shield adds to it either way.
+  const natural = naturalArmorOf(source);
+  if (natural) {
+    const worn = resolved.armorName;
+    const altInput = {
+      ...input,
+      equipment: worn ? input.equipment.filter((item) => item.name !== worn) : input.equipment,
+      dexMod: natural.dex ? input.dexMod : 0,
+      unarmored: { source: "Natural Armor", base: natural.base, ability: null, allowsShield: true },
+    };
+    const alt = computeArmorClass(altInput);
+    if (alt.armorName === null && alt.ac > resolved.ac) {
+      chosenInput = altInput;
+      resolved = alt;
+    }
+  }
   const armored = resolved.armorName !== null;
   const featureBonus = riders.acBonus && (!riders.acBonusRequiresArmor || armored)
     ? riders.acBonus
@@ -218,8 +243,10 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
     !armored && !resolved.shieldName ? magic.acUnarmoredBonus : 0;
   // The authored subclass features' own (Soul of the Forge, Durable Magic).
   const authored = authoredAcBonus(source);
+  // Dual Wielder's +1 with a melee weapon in each hand (feat-ac.ts).
+  const featAc = dualWielderAcBonus(source);
   const bonus =
-    featureBonus + magic.acBonus + unarmoredBonus + conditionAc.bonus + authored.bonus + (source.bonus ?? 0);
+    featureBonus + magic.acBonus + unarmoredBonus + conditionAc.bonus + authored.bonus + featAc + (source.bonus ?? 0);
   let final = bonus ? computeArmorClass({ ...chosenInput, bonus }) : resolved;
   // Barkskin: the AC never sits below the floor while the condition holds.
   if (conditionAc.floor && final.ac < conditionAc.floor) {
@@ -325,7 +352,10 @@ export function speedFor(
   // A feat whose name a class feature shares is read from sheet.feats alone
   // (feature-effects.ts FEAT_ONLY_SPEED: Level Up's Skirmisher).
   const featOnly = (source.feats ?? []).reduce((sum, feat) => sum + (FEAT_ONLY_SPEED[textKey(feat)] ?? 0), 0);
-  const bonus = [...bySource.values()].reduce((sum, amount) => sum + amount, 0) + featOnly;
+  // An artificer's Arcane Propulsion Armor, worn and attuned: 5 feet more
+  // (src/lib/srd/infusions.ts).
+  const propelled = infusionWorn(equipment as Parameters<typeof infusionWorn>[0], "Arcane Propulsion Armor") ? 5 : 0;
+  const bonus = [...bySource.values()].reduce((sum, amount) => sum + amount, 0) + featOnly + propelled;
   const carried = source.abilities
     ? encumbranceFor({
         strength: source.abilities.str,
@@ -333,6 +363,8 @@ export function speedFor(
         coins: purseCoins({ gold: source.gold ?? 0, copper: source.copper ?? 0 }),
         size: source.race ? sizeForRace(source.race) : undefined,
         wearer: source,
+        // Peerless Athlete's doubled capacity, the one load-rules.ts refuses by.
+        carryFactor: authoredCarryFactor(source),
       })
     : null;
   const load = options.encumbrance ? (carried?.speedPenalty ?? 0) : 0;
@@ -396,9 +428,12 @@ function sumParts(parts: DerivedPart[]): number {
 // the best of each, as a spread for the derived numbers; nothing when there
 // are none.
 function otherSpeeds(
-  sheet: Parameters<typeof authoredSpeeds>[0] & Wearer & { speed?: number; equipment?: WornMagicItem[] },
+  sheet: Parameters<typeof authoredSpeeds>[0] & Wearer & Pick<AcSource, "abilities" | "proficiencies"> & { speed?: number; equipment?: WornMagicItem[]; wildShape?: CharacterSheet["wildShape"] },
 ): { speeds?: { fly?: number; swim?: number; climb?: number } } {
-  const walking = sheet.speed ?? 30;
+  // "Equal to your walking speed" is the speed the character really walks at
+  // (speedFor: Fast Movement, Unarmored Movement, Mobile, armor), not the
+  // species' number on the sheet: a barbarian with Fast Movement climbs at 40.
+  const walking = speedFor({ ...sheet, class: sheet.class ?? "", equipment: sheet.equipment ?? [], features: sheet.features ?? [], speed: sheet.speed ?? 30 });
   const speeds: { fly?: number; swim?: number; climb?: number } = { ...authoredSpeeds(sheet, walking) };
   for (const [mode, feet] of Object.entries(sheet.equipment ? itemSpeeds(sheet.equipment, sheet, walking) : {}) as Array<["fly" | "swim" | "climb", number]>) {
     speeds[mode] = Math.max(speeds[mode] ?? 0, feet);
@@ -448,7 +483,8 @@ export function computeSheetDerived(
     ? { ...withItems, ...sheet.wildShape.abilities }
     : withItems;
   const magic = sheet.equipment ? magicItemRiders(sheet.equipment, sheet) : null;
-  const magicSaveBonus = magic?.saveBonus ?? 0;
+  // An artificer's Soul of Artifice: +1 for each attuned item (mt-srd-artificer.ts).
+  const magicSaveBonus = (magic?.saveBonus ?? 0) + soulOfArtificeBonus(sheet);
   const abilityMods = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [ability, abilityMod(abilities[ability])]),
   ) as Record<Ability, number>;
@@ -470,6 +506,8 @@ export function computeSheetDerived(
   const featureSaves = featureSaveProficiencies({
     features: riderFeatures,
   });
+  const formSaves: string[] = shape?.kind === "wildshape" ? (shape.saves ?? []) : [];
+  const formSkills: Record<string, number> = shape?.kind === "wildshape" ? (shape.skills ?? {}) : {};
   const saveParts = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [
       ability,
@@ -477,8 +515,10 @@ export function computeSheetDerived(
         { label: `${ability.toUpperCase()} modifier`, value: abilityMods[ability] },
         {
           label: "proficiency",
+          // Wild Shape: "You also retain all of your skill and saving throw
+          // proficiencies, in addition to gaining those of the creature."
           value:
-            sheet.proficiencies.saves.includes(ability) || featureSaves.includes(ability) ? pb : 0,
+            sheet.proficiencies.saves.includes(ability) || featureSaves.includes(ability) || formSaves.includes(ability) ? pb : 0,
         },
         // Aura of Protection, the one feature save bonus: an unconscious
         // paladin grants it to nobody, themselves included.
@@ -503,23 +543,28 @@ export function computeSheetDerived(
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
   const expertise = sheet.proficiencies.expertise ?? [];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
-  const featureSkills = featureSkillProficiencies({ features: riderFeatures });
+  // and a skill lent for a while (Knowledge of the Ages, borrowed-proficiency.ts).
+  const featureSkills = [...featureSkillProficiencies({ features: riderFeatures }), ...borrowedProficiencies(sheet.conditions).skills];
   const skillParts = Object.fromEntries(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)
         ? { label: "expertise", value: pb * 2 }
-        : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id)
+        : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id) || formSkills[skill.id] !== undefined
           ? { label: "proficiency", value: pb }
           : halfProficiencyCovers(halfScope, skill.ability)
             ? { label: "half proficiency", value: halfPb }
             : { label: "untrained", value: 0 };
-      return [
-        skill.id,
-        keepMeaningful([
-          { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
-          trained,
-        ]),
-      ];
+      const own = keepMeaningful([
+        { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
+        // Arms of the Astral Self: Wisdom for Strength checks (authored-effects.ts).
+        { label: "subclass features", value: authoredCheckSwap(sheet, skill.ability as Ability, abilityMods) },
+        trained,
+      ]);
+      // "If the creature has the same proficiency as you and the bonus in its
+      // stat block is higher than yours, use the creature's bonus instead of
+      // yours."
+      const printed = formSkills[skill.id];
+      return [skill.id, printed !== undefined && printed > sumParts(own) ? [{ label: `${shape?.form ?? "form"} stat block`, value: printed }] : own];
     }),
   ) as Record<string, DerivedPart[]>;
   const skills = Object.fromEntries(
@@ -634,7 +679,12 @@ function classListsHold(casting: DerivedSheet["spellcasting"], spell: string): b
 // it (issue #833): the feat's that taught it, else the race's (a tiefling's
 // Charisma, a workshop option's own), or null for the class's.
 function grantedSpellAbility(sheet: DerivedSheet, spell: string): Ability | null {
-  return featSpellAbility(sheet as FeatSpellSheet, spell) ?? racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell));
+  return (
+    featSpellAbility(sheet as FeatSpellSheet, spell) ??
+    racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell)) ??
+    // A monk's ki cast, whose DC is the ki save DC (mt-mr-casts.ts), unless a class of theirs holds the spell.
+    (classListsHold(sheet.spellcasting, spell) ? null : kiCastAbility((sheet as { features?: Array<{ name: string }> }).features, spell))
+  );
 }
 
 export type CastingSheet<T extends DerivedSheet = DerivedSheet> = T & { spellcasting: NonNullable<T["spellcasting"]> };

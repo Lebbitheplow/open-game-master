@@ -52,8 +52,19 @@ await test("A group check: the die is spent only on the member it carries.", asy
   assert.ok(holds(), "a member who passes keeps the die");
   world.dice(8, 5);
   const carried = await world.invoke("group_check", { ability: "str", dc: 12, characterIds: [hero.id] });
-  world.clearDice();
   assert.equal(carried.ok, true, carried.error);
+  // Inside a GM's call the roll waits on its player, who adds the die
+  // (src/lib/dm/character-roll.ts; the 2026-11-09 gap sweep's findings
+  // dice-afterroll-*): it was added for them before. Outside one (the saves
+  // above, the ambush below) it is still settled for them.
+  const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.thrown?.options.some((option) => option.id === "bardic"));
+  assert.ok(card, "the 8 waits on the die its player holds");
+  world.signIn({ id: hero.userId });
+  const added = await call(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: card.id });
+  world.clearDice();
+  assert.equal(added.status, 200, JSON.stringify(added.json));
   assert.ok(!holds(), "8 and 5 make 13: spent");
 });
 
@@ -73,7 +84,18 @@ await test("The party's Stealth for an ambush: kept when it already beats every 
   assert.ok(!holds(), "3 and 8 make 11, past a goblin's watch: spent");
 });
 
-await test("An attack roll: kept on a hit and on a miss it cannot save, spent on the miss it turns into a hit; never on a natural 1.", async () => {
+// The engine settles an attack's die only for a seat an agent plays, which has
+// no card to press; a player's own seat decides after the roll
+// (scripts/test-enforce-after-roll-attacks.mjs).
+const { createConnectionGrant, revokeConnectionGrant } = await import("../src/lib/agents/grants.ts");
+const asAgentSeat = () => {
+  const userId = world.sheet(hero.id).userId;
+  const { grant } = createConnectionGrant({ userId, name: "seat", scopes: ["play"], campaignId: world.campaignId });
+  return () => revokeConnectionGrant(userId, grant.id);
+};
+
+await test("An agent's attack roll: kept on a hit and on a miss it cannot save, spent on the miss it turns into a hit; never on a natural 1.", async () => {
+  const revoke = asAgentSeat();
   await kit.endFight();
   await kit.fight(1, { heroFaces: { [hero.id]: 19 } });
   const [enemy] = world.enemies();
@@ -96,9 +118,11 @@ await test("An attack roll: kept on a hit and on a miss it cannot save, spent on
   await swing([9, 6, 4]);
   assert.ok(!holds(), "9 + 3 = 12 misses, and the d8's 6 makes 18: spent on the miss it saves");
   await kit.endFight();
+  revoke();
 });
 
-await test("A parked to-hit roll (a player who holds their rolls) takes the die the same way when it lands.", async () => {
+await test("An agent's parked to-hit roll (a seat that holds its rolls) takes the die the same way when it lands.", async () => {
+  const revoke = asAgentSeat();
   const { call } = await import("./lib/enforce-campaign.mjs");
   const { listOpenPendingRolls, getPendingRoll } = await import("../src/lib/db/dm-turns.ts");
   const { getRoll } = await import("../src/lib/db/rolls.ts");
@@ -141,6 +165,7 @@ await test("A parked to-hit roll (a player who holds their rolls) takes the die 
   assert.ok(!saved.detail.includes("physical"));
   await call(prefs, "PATCH", { holdRolls: false }, { campaignId: world.campaignId });
   await kit.endFight();
+  revoke();
 });
 
 // Every site in src/lib/dm that rolls a d20 with what a roll carries
@@ -159,7 +184,9 @@ await test("Every site that rolls with a held die settles it after the d20, or n
   for (const file of fs.readdirSync(dir).filter((name) => name.endsWith(".ts"))) {
     const text = fs.readFileSync(path.join(dir, file), "utf8");
     const sites = (text.match(/spendRollCarriers\([^)]*resolved\.spendInspiration\)/g) ?? []).length;
-    const settled = (text.match(/settleHeldDie\(/g) ?? []).length;
+    // Settled by the site, or by the one door a character's d20 is thrown
+    // through (character-roll.ts), told to with settleHeldDie or settle.
+    const settled = (text.match(/settleHeldDie[(:]|\bsettle: /g) ?? []).length;
     if (sites > settled && !NO_TARGET.has(file)) {
       missing.push(`${file}: ${sites} rolls with carriers, ${settled} settled`);
     }

@@ -1,5 +1,5 @@
 import type { Ability } from "@/lib/schemas/sheet";
-import { classFeaturesFor, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { classFeaturesFor, expertiseAllowed, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { subclassChoicePickKept, subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
@@ -10,6 +10,7 @@ import { spellLevelOf } from "@/lib/srd/spell-lists";
 import { builderCasting } from "./casting";
 import { castingIndexOf } from "./multiclassBuild";
 import { multiclassGrantsFor } from "@/lib/srd/multiclass";
+import { subclassGrants } from "@/lib/srd/subclass-training";
 import { bonusLanguageCount, type BlockerTarget } from "./submit";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import { textKey } from "@/lib/language/text-logic";
@@ -149,7 +150,9 @@ export function grantingTrait(raceId: string, skillName: string): string | null 
 }
 
 export function reconcilePicks(
-  input: Partial<BuilderPicks>,
+  // featChoices is read, never written: the skills a feat or the subclass's
+  // training picked, which the class's expertise may double.
+  input: Partial<BuilderPicks> & { featChoices?: Readonly<Record<string, { skills?: string[] } | undefined>> },
   context: ReconcileContext,
 ): { picks: BuilderPicks; dropped: string[]; drops: DroppedPick[]; extraSkills: string[][] } {
   const { klass, background, level } = context;
@@ -329,8 +332,23 @@ export function reconcilePicks(
     ...extras.flatMap((entry) => (entry.klass ? [{ klass: entry.klass, subclass: entry.subclass, level: entry.level }] : [])),
   ];
   const expertiseSlots = classes.reduce((sum, entry) => sum + expertiseSlotsFor(entry.klass.id, entry.level), 0);
+  // Any skill proficiency takes the class's expertise (SRD 5.1, Bard and
+  // Rogue: "choose two of your skill proficiencies"): a Lore bard's college
+  // skills and a feat's picks too, and a subclass's own. Read from the class
+  // and background alone, a Lore bard's pick on its college skill was
+  // dropped as the wizard moved on.
+  const expertiseOn = new Set([
+    ...proficient,
+    ...Object.values(input.featChoices ?? {}).flatMap((choice) => choice?.skills ?? []).map(textKey),
+    ...subclassGrants(classes.map((entry) => ({ id: entry.klass.id, level: entry.level, subclass: entry.subclass }))).flatMap((grant) => grant.spec.fixedSkills).map(textKey),
+  ]);
+  // And a rogue's thieves' tools (SRD 5.1, Rogue, Expertise: "or one of
+  // your skill proficiencies and your proficiency with thieves' tools"),
+  // which the class step offers: dropped here, a rogue who took it lost it
+  // on any change and could not be saved ("pick 1 more").
+  const classIds = classes.map((entry) => entry.klass.id);
   const expertisePicks = klass
-    ? unique(picks.expertisePicks.filter((skill) => proficient.has(textKey(skill)))).slice(0, expertiseSlots)
+    ? unique(picks.expertisePicks.filter((skill) => expertiseOn.has(textKey(skill)) || expertiseAllowed(skill, [], classIds))).slice(0, expertiseSlots)
     : [];
   note("expertise", "expertise", picks.expertisePicks, expertisePicks);
 

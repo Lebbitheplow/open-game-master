@@ -1,7 +1,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { listPrepCards } from "@/lib/db/prep-cards";
 import { placementOf, renderPrepCard, resolvePrepRef } from "@/lib/dm/prep-logic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 // read_card: the full authored text behind a line of the arc (issues #301
 // and #302). The prompt carries a beat as one line and a planned event as a
@@ -33,8 +33,8 @@ export function handleReadCard(campaign: Campaign, rawArguments: string): ToolRe
   let args: { ref?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: read_card needs a card.", error, rawArguments);
   }
   const ref = String(args.ref ?? "").trim();
   if (!ref) {

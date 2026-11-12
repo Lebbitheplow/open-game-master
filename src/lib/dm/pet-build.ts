@@ -125,7 +125,35 @@ export type PetBuildOptions = {
   // The table's own monsters by name (src/lib/bestiary/homebrew-monsters.ts
   // findTableMonster), for a story pet the workshop made.
   tableMonster?: (name: string) => HomebrewMonster | null;
+  // A creature's skill bonuses from its published block (the content pack:
+  // src/lib/bestiary/index.ts resolveMonster), which the SRD creature table
+  // does not carry. Absent: the companion has none on record.
+  blockSkills?: (name: string) => Record<string, number> | null;
 };
+
+const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"] as const;
+// A challenge rating 1/4 creature's own proficiency bonus (SRD 5.1).
+const BEAST_PB = 2;
+
+// Ranger's Companion: "Add your proficiency bonus to ... the saves and skills
+// it is proficient in". Every save the beast makes, with its block's
+// proficient ones raised by its own +2 and the ranger's bonus; every skill
+// its block lists, raised by the ranger's bonus.
+function companionRolls(beast: BeastForm, pb: number, skills: Record<string, number> | null): Pick<SheetPet, "saves" | "skills"> {
+  const saves = Object.fromEntries(
+    ABILITIES.map((ability) => [ability, Math.floor(((beast.abilities[ability] ?? 10) - 10) / 2) + (beast.saves?.includes(ability) ? BEAST_PB + pb : 0)]),
+  );
+  const raised = skills ? Object.fromEntries(Object.entries(skills).map(([skill, bonus]) => [textKey(skill), bonus + pb])) : {};
+  return { saves, ...(Object.keys(raised).length ? { skills: raised } : {}) };
+}
+
+// Without a command a companion or a drake takes the Dodge action (Ranger's
+// Companion, Drake Companion): it starts so (src/lib/dm/pet-command.ts).
+export const PET_DODGING = "dodging";
+
+// A drake's size by the ranger's level: Small, Medium from Bond of Fang and
+// Scale (7th), Large from Perfected Bond (15th).
+const drakeSize = (ranger: number) => (ranger >= 15 ? "Large" : ranger >= 7 ? "Medium" : "Small");
 
 // Builds the pet a summon produces, or an error string.
 export function buildPet(
@@ -219,6 +247,9 @@ export function buildPet(
       // fit, then the command rule.
       notes: `${traitLine(beast.traitLines, 200)} Commanding an attack costs the ranger's action; it otherwise defends itself.`.trim(),
       ...creatureDefenses(beast),
+      size: beast.size,
+      ...companionRolls(beast, pb, options.blockSkills?.(beast.name) ?? null),
+      conditions: [PET_DODGING],
     };
   }
   if (args.kind === "drake") {
@@ -237,6 +268,8 @@ export function buildPet(
     }
     const ranger = rangerLevel(sheet);
     const grown = ranger >= 7;
+    // Perfected Bond (15th): "its Bite's extra damage becomes 2d6".
+    const extra = ranger >= 15 ? "2d6" : "1d6";
     return {
       name: args.name?.trim() || "Drake",
       kind: "drake",
@@ -245,9 +278,14 @@ export function buildPet(
       maxHp: 5 + ranger * 5,
       ac: 14,
       speed: 40,
-      attacks: [{ name: "Bite", toHit: 2 + pb, damage: `1d6+${pb}`, type: "piercing", ...(grown ? { riders: [{ dice: "1d6", type: essence }] } : {}) }],
-      notes: `Draconic Essence: ${essence}, which it is immune to; commanded as a bonus action. ${grown ? `Medium, with a flying speed of 40 ft.; it can carry ${sheet.name} as a mount.` : "It grows wings at 7th level."}`,
+      attacks: [{ name: "Bite", toHit: 2 + pb, damage: `1d6+${pb}`, type: "piercing", ...(grown ? { riders: [{ dice: extra, type: essence }] } : {}) }],
+      notes: `Draconic Essence: ${essence}, which it is immune to; commanded as a bonus action. ${grown ? `${drakeSize(ranger)}, with a flying speed of 40 ft.; it can carry ${sheet.name} as a mount.` : "It grows wings at 7th level."} Its reaction: use_reaction "Infused Strikes".`,
       immune: essence,
+      // Bond of Fang and Scale: "grows to Medium, grows wings (a flying speed
+      // equal to its walking speed)".
+      size: drakeSize(ranger),
+      ...(grown ? { fly: 40 } : {}),
+      conditions: [PET_DODGING],
     };
   }
   // Story pet: the creature its stat block says, by name. One with no block

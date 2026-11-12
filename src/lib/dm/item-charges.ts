@@ -32,7 +32,7 @@ const DUSK_HOUR = 18;
 
 // The pure reads (the rule, the most, the count now) live in
 // src/lib/srd/item-charge-rules.ts so the sheet can show them too.
-import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
+import { chargeMax, chargeRuleOf, chargesLeft, chargesShort } from "@/lib/srd/item-charge-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 export { chargeMax, chargeRuleOf, chargesLeft };
 
@@ -93,16 +93,9 @@ export function spendChargesMath(
       ...(torn ? { failed: true } : {}),
     };
   }
-  if (count > left) {
-    const regains = rule.regain
-      ? rule.regain === "all"
-        ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-        : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-      : "It does not regain charges.";
-    return {
-      error: `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`,
-      refused: "rules",
-    };
+  const short = chargesShort(item, rule, count, initial?.total);
+  if (short) {
+    return { error: short, refused: "rules" };
   }
   let after = left - count;
   const notes: string[] = [];
@@ -189,6 +182,12 @@ export function dusksBetween(from: number, to: number): number {
   return dawnsBetween(from - (DUSK_HOUR - DAWN_HOUR) * MINUTES_PER_HOUR, to - (DUSK_HOUR - DAWN_HOUR) * MINUTES_PER_HOUR);
 }
 
+function withoutBeadsSpent(item: EquipmentItem): EquipmentItem {
+  const { beadsSpent: _spent, ...rest } = item;
+  void _spent;
+  return rest;
+}
+
 // Every dawn the clock crosses, each charged item that regains at dawn rolls
 // what it regains (never past its most); an item whose text brings its uses
 // back at dusk, at each dusk. Called by advanceClock, so a rest, travel and
@@ -203,7 +202,12 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
   const recharged: string[] = [];
   for (const sheet of listSheets(campaignId)) {
     let changed = false;
-    const equipment = sheet.equipment.map((item) => {
+    const equipment = sheet.equipment.map((row) => {
+      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts).
+      const item = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      if (item !== row) {
+        changed = true;
+      }
       const rule = chargeRuleOf(item);
       if (!rule?.regain || typeof item.charges !== "number") {
         return item;

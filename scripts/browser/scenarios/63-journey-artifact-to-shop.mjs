@@ -164,7 +164,11 @@ export default {
           return data.itemKind === "magic_item" && data.cost === PRICE && data.wornOn === "cloak" && effects.some((effect) => effect.kind === "ac_bonus" && effect.amount === BONUS) ? entry : null;
         },
         { timeoutMs: 15_000, label: "the item saved as a cloak of AC +2 at 25 gp" },
-      );
+      ).catch(async (error) => {
+        // What was stored, so a failure says which field went astray.
+        const entry = (await items()).find((row) => row.id === itemId);
+        throw new Error(`${error.message}: stored ${JSON.stringify(entry?.data ?? null)}`);
+      });
       check(saved.data.rarity === "uncommon", `and uncommon (${saved.data.rarity})`);
 
       // ---- the item on a shop's shelf, at the workshop's place ----

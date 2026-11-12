@@ -8,7 +8,7 @@
 import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { computeSheetDerived } from "@/lib/srd";
-import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { rollEnemySave } from "@/lib/dm/forced-save";
@@ -42,14 +42,20 @@ type FearOption = {
   // ends when the creature takes damage, and fiends and undead save at a
   // disadvantage.
   abjures?: boolean;
+  // Who must see whom, past the line between them: "them", creatures the
+  // user can see, not an invisible or hidden one nor any while the user is
+  // blinded (Conquering Presence and Abjure Enemy: "that you can see");
+  // "user", creatures that can see the user (Dreadful Aspect: "if it can see
+  // you"), so not a blinded one, nor any while the user is invisible to it.
+  sees: "them" | "user";
 };
 
 export const CHANNEL_FEAR: FearOption[] = [
-  // "Each creature of your choice that you can see within 30 feet", as
-  // Dreadful Aspect: a list naming some of them is the player's choice.
-  { name: "Conquering Presence", rangeFt: 30, repeats: true, chosen: true },
-  { name: "Dreadful Aspect", rangeFt: 30, chosen: true, farSaveFt: 30 },
-  { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true },
+  // "Each creature of your choice that you can see within 30 feet". With
+  // Dreadful Aspect, a list naming some of them is the player's choice.
+  { name: "Conquering Presence", rangeFt: 30, repeats: true, chosen: true, sees: "them" },
+  { name: "Dreadful Aspect", rangeFt: 30, chosen: true, farSaveFt: 30, sees: "user" },
+  { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true, sees: "them" },
 ];
 
 // A sheet standing in as a foe answers for its own immunities (Aura of Courage),
@@ -83,12 +89,18 @@ export function channelFear(
     if (!withinFeet(encounter.id, sheet.id, named.id, option.rangeFt)) {
       return { error: `${named.displayName} is beyond ${option.rangeFt} feet of ${sheet.name}; ${option.name} reaches ${option.rangeFt} feet. Channel Divinity was not spent.`, refused: "rules" };
     }
+    const unseen = option.sees === "them" ? unseenBecause(encounter.id, sheet, named) : null;
+    if (unseen) {
+      return { error: `${sheet.name} cannot see ${named.displayName} (${unseen}), and ${option.name} takes a creature they can see. Channel Divinity was not spent.`, refused: "rules" };
+    }
     targets = [named];
   } else {
     targets = foesOfSheet(campaign.id, encounter, sheet.id).filter((enemy) => enemy.status === "alive" && enemy.currentHp > 0 && withinFeet(encounter.id, sheet.id, enemy.id, option.rangeFt));
   }
   // Nothing behind a wall of the board or across a swallower's (swallow.ts) sees them.
-  targets = targets.filter((enemy) => seesOnBoard(encounter.id, sheet.id, enemy.id) && !swallowCoverBetween(sheet.id, enemy.id));
+  targets = targets.filter(
+    (enemy) => !(option.sees === "them" ? unseenBecause(encounter.id, sheet, enemy) : unseenBecause(encounter.id, enemy, sheet)) && !swallowCoverBetween(sheet.id, enemy.id),
+  );
   if (!targets.length) {
     return { error: `Nothing ${option.name} affects is within ${option.rangeFt} feet of ${sheet.name}; Channel Divinity was not spent.`, refused: "rules" };
   }
@@ -110,6 +122,8 @@ export function channelFear(
     const type = String(enemy.stats.type ?? "");
     const save = rollEnemySave(campaign.id, enemy, "wis", dc, {
       magical: true,
+      // A Channel Divinity's save (Elder Champion reads it).
+      channel: true,
       resist: true,
       against: "frightened",
       disadvantage: Boolean(option.abjures && (containsPhrase(type, "fiend") || containsPhrase(type, "undead"))),

@@ -1,4 +1,5 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
+import { copyPrivateSource } from "@/lib/db/private-sources";
 import { copyPrepCards } from "@/lib/db/prep-cards";
 import { copyQuests } from "@/lib/db/quests";
 import { createCampaign, listCampaignsForUser, type Campaign } from "@/lib/db/campaigns";
@@ -148,6 +149,9 @@ export function cloneCampaign(
       ? copyBeats(source.id, created.id, result.idMap, inCommon) +
         (copyPackDraft(source.id, created.id) ? 1 : 0)
       : 0);
+
+  // A copy of a workshop imported from a book stays as private as it.
+  copyPrivateSource(source.id, created.id);
 
   return { campaign: created, copied };
 }

@@ -348,6 +348,148 @@ await test("Undo from a reopened read-back leaves a pick changed since", async (
   assert.deepEqual({ ...after, ...quick.undoFill(before, after, after) }, before);
 });
 
+// A subclass's training that picks a skill from a short list (Order
+// Domain's Intimidation or Persuasion, Arcane Archer Lore's Arcana or
+// Nature, Cavalier's skill or language) is filled from that list. The fill
+// took any skill, so a Cleric 3 of the Order took History and the save
+// refused it. Every other subclass is held to the same end: "Fill what's
+// left" ends in a character the builder and the server both take, at the
+// subclass's first level, at 10th and at 17th. The fill left a kensei's and
+// a bladesinger's weapons owed, an artificer's later infusions and a Rune
+// Knight's later runes unpicked, an Eldritch Knight's spells and an Arcane
+// Trickster's cantrip short at 10th, and a Lore bard's expertise on skills
+// the builder does not count; and the server refused every Alchemist,
+// Armorer, Artillerist, Battle Smith, Rune Knight, Drunken Master and Mercy
+// monk, whose subclass tool it read as an extra pick of the class's.
+await test("every subclass's fill saves, and fills its training from the grant's own lists", async () => {
+  const { subclassLevelFor, subclassNamesFor } = await import("../src/lib/srd/features.ts");
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  let restricted = 0;
+  let built = 0;
+  for (const klass of builder.classes) {
+    const pickLevel = subclassLevelFor(klass.id);
+    if (pickLevel === null) continue;
+    for (const subclass of subclassNamesFor(klass.id)) {
+      for (const level of [...new Set([Math.max(pickLevel, 3), 10, 17])]) {
+        const label = `${klass.id} ${subclass} at ${level}`;
+        const { fields } = await runFill(fresh({ level, classId: klass.id, subclass }));
+        const made = await saves(fields, label);
+        built += 1;
+        for (const grant of made.derived.subclassTraining ?? []) {
+          const picks = featChoice(fields.featChoices, grant.name) ?? {};
+          for (const [kind, from] of [["skills", grant.spec.skillsFrom], ["tools", grant.spec.toolsFrom], ["weapons", grant.spec.weaponsFrom]]) {
+            if (!from.length) continue;
+            restricted += 1;
+            const picked = picks[kind] ?? [];
+            assert.deepEqual(picked.filter((pick) => !from.some((entry) => entry.toLowerCase() === pick.toLowerCase())), [], `${label}: ${grant.name} took ${kind} off its list`);
+          }
+        }
+      }
+    }
+  }
+  // Knowledge, Nature, Order, Peace, Arcane Archer, Cavalier, Samurai, Fey
+  // Wanderer, Battle Master, Mastermind, Kensei and Bladesinging, each at
+  // three levels: the test reached the grants it is for.
+  assert.ok(built > 300, `only ${built} subclasses filled`);
+  assert.ok(restricted >= 30, `only ${restricted} grants with a list were met`);
+});
+
+// A tool a subclass or a feat names is its own grant, not a pick of the
+// class's or background's open tool grant, whichever tool the player took
+// there; and it still answers that grant when it is the only pick.
+await test("a subclass's or a feat's own tool is no extra pick of the class's", async () => {
+  const alchemist = (await runFill(fresh({ level: 3, classId: "artificer", subclass: "Alchemist" }))).fields;
+  for (const pick of ["smith's tools", "alchemist's supplies"]) {
+    await saves({ ...alchemist, toolPicks: [pick] }, `Alchemist with ${pick} as the artificer's artisan's tools`);
+  }
+  const mercy = (await runFill(fresh({ level: 3, classId: "monk", subclass: "Way of Mercy" }))).fields;
+  await saves({ ...mercy, toolPicks: ["lute"] }, "Way of Mercy with a lute as the monk's tool");
+  // A Chef artificer's cook's utensils are artisan's tools too; a Poisoner
+  // bard's kit is no instrument.
+  for (const [classId, feat, ability] of [["artificer", "Chef", "con"], ["bard", "Poisoner", undefined]]) {
+    const asiChoices = [{ mode: "feat", feat, ...(ability ? { ability } : {}) }];
+    const { fields } = await runFill(fresh({ level: 4, classId, asiChoices }));
+    assert.equal(fields.asiChoices[0]?.feat, feat);
+    await saves(fields, `${classId} with ${feat}`);
+  }
+});
+
+// SRD 5.1, Bard, Expertise: "choose two of your skill proficiencies". The
+// builder and the library route counted only the class's, background's and
+// race's skills, so a Lore bard made at 10th level could not double a skill
+// its college gave (the level-up always could), and the sheet dropped such a
+// pick without a word.
+await test("a Lore bard made at 10th level doubles a skill its college gave", async () => {
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  const { fields } = await runFill(fresh({ level: 10, classId: "bard", subclass: "College of Lore" }));
+  const lore = featChoice(fields.featChoices, "Bonus Proficiencies (Lore)")?.skills ?? [];
+  assert.equal(lore.length, 3, "the college's three skills");
+  const expertisePicks = [lore[0], ...fields.expertisePicks.filter((skill) => skill !== lore[0])].slice(0, 4);
+  const built = await saves({ ...fields, expertisePicks }, "Lore bard with expertise in a college skill");
+  assert.ok(built.sheet.proficiencies.expertise.includes(lore[0]), `the sheet dropped expertise in ${lore[0]}`);
+  const made = await call(libraryRoute, "POST", { level: built.level, sheet: { ...built.sheet, portrait: PORTRAIT } });
+  assert.ok(made.json.character.sheet?.proficiencies?.expertise?.includes(lore[0]) ?? made.json.character.proficiencies?.expertise?.includes(lore[0]), "the server dropped it");
+});
+
+// The play-test's Lore bard at 10th: class skills, the college's Arcana,
+// History and Nature, and expertise in Performance and the three college
+// skills, all by hand, then "Fill what's left". The fill read only the
+// class's, background's and race's skills as held, so its species pick took
+// Arcana, which the college already gave, and "Pick for me" on the
+// expertise card dropped the three college picks for three of its own.
+// (The builder's own reconcile dropped them too when the fill picked the
+// species; scripts/browser/scenarios/126-fill-keeps-expertise.mjs holds
+// that.)
+await test("Fill what's left keeps a Lore bard's expertise in its college skills and picks no skill twice", async () => {
+  const { featChoice, withFeatChoice } = await import("../src/lib/schemas/sheet.ts");
+  const college = ["arcana", "history", "nature"];
+  const expertisePicks = ["performance", ...college];
+  const featChoices = withFeatChoice({}, "Bonus Proficiencies (Lore)", { skills: college });
+  const bard = (fields) => fresh({ level: 10, classId: "bard", subclass: "College of Lore", chosenSkills: ["performance", "persuasion", "deception"], featChoices, expertisePicks, ...fields });
+  // A folk hero already has Animal Handling, so a half-elf's two free
+  // skills reach Arcana in the bard's order.
+  for (const start of [bard({}), bard({ raceId: "half_elf", backgroundId: "folk_hero" }), bard({ backgroundId: "folk_hero" })]) {
+    const { fields } = await runFill(start);
+    const label = `${fields.raceId} ${fields.backgroundId}`;
+    assert.deepEqual(fields.expertisePicks, expertisePicks, `${label}: the hand-picked expertise changed`);
+    assert.deepEqual(featChoice(fields.featChoices, "Bonus Proficiencies (Lore)")?.skills, college, `${label}: the college's skills changed`);
+    for (const slot of ["racialSkills", "backgroundSkills", "repeatSkills"]) {
+      const twice = (fields[slot] ?? []).filter((skill) => college.includes(skill));
+      assert.deepEqual(twice, [], `${label}: ${slot} took ${twice.join(", ")}, which the college already gave`);
+    }
+    const built = await saves(fields, `Lore bard 10 filled (${label})`);
+    for (const skill of expertisePicks) {
+      assert.ok(built.sheet.proficiencies.expertise.includes(skill), `${label}: the sheet dropped expertise in ${skill}`);
+    }
+  }
+  // "Pick for me" on the expertise card alone: one slot open, the three
+  // college picks kept.
+  const { fields } = await runFill(bard({ raceId: "human", backgroundId: "sage", expertisePicks: college }), { only: ["expertise"] });
+  assert.deepEqual(fields.expertisePicks.slice(0, 3), college, `Pick for me on the expertise changed the college picks: ${fields.expertisePicks.join(", ")}`);
+  assert.equal(fields.expertisePicks.length, 4, "and filled the one open slot");
+});
+
+// The class step offers a rogue thieves' tools for its expertise (SRD 5.1,
+// Rogue); the save's own check dropped it and then asked for "1 more", so
+// a rogue who took it could not be made. Filled around it, it stays too.
+await test("a rogue with expertise in thieves' tools is filled, saved and stored with it", async () => {
+  const picked = ["stealth", "thieves' tools"];
+  const { fields } = await runFill(fresh({ classId: "rogue", chosenSkills: ["stealth", "acrobatics", "perception", "insight"], expertisePicks: picked }));
+  assert.deepEqual(fields.expertisePicks, picked, `the fill changed the expertise: ${fields.expertisePicks.join(", ")}`);
+  const built = await saves(fields, "rogue with thieves' tools expertise");
+  assert.deepEqual(built.sheet.proficiencies.expertise, picked);
+});
+
+await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {
+  const { fields } = await runFill(fresh({ level: 3, classId: "cleric", subclass: "Order Domain" }));
+  const built = await saves(fields, "Order cleric at 3");
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  assert.ok((built.derived.subclassTraining ?? []).some((entry) => entry.name === "Bonus Proficiencies (Order)"), "the Order Domain's training is offered");
+  const picked = featChoice(fields.featChoices, "Bonus Proficiencies (Order)")?.skills ?? [];
+  assert.equal(picked.length, 1);
+  assert.ok(["intimidation", "persuasion"].includes(picked[0]), `the Order's pick is ${picked[0]}`);
+});
+
 await test("Pick for me on the subclass card fills only the subclass", async () => {
   const start = fresh({ level: 3, classId: "fighter", raceId: "human", backgroundId: "soldier" });
   const { fields, filled } = await runFill(start, { only: ["subclass"] });

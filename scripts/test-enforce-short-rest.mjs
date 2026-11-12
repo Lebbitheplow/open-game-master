@@ -385,6 +385,31 @@ await test("a timed condition runs down by the clock across the rest", async () 
   assert.deepEqual(sheet.conditionMeta, { frightened: { rounds: 600 } });
 });
 
+await test("an hour's rest ends prone for whoever is awake and able to move", async () => {
+  // Standing costs half a move (SRD 5.1, Being Prone), and outside a fight
+  // nothing else stood a hero who woke on the ground after a drop to 0.
+  // A stable creature whose hours have not run is still unconscious, and an
+  // unconscious or restrained creature has speed 0: they stay down.
+  const table = await openTable();
+  const woke = hero(table, "fighter", 3, "d10", { maxHp: 30 });
+  const stable = hero(table, "fighter", 3, "d10", { maxHp: 30 });
+  const held = hero(table, "fighter", 3, "d10", { maxHp: 30 });
+  table.patch(woke.id, { currentHp: 30, conditions: ["prone"] });
+  table.patch(stable.id, {
+    currentHp: 0,
+    deathSaves: { successes: 0, failures: 0, stable: true, dead: false },
+    conditions: ["unconscious", "prone"],
+    conditionMeta: { unconscious: { rounds: 3 * 60 * 10, source: "stable" } },
+  });
+  table.patch(held.id, { currentHp: 30, conditions: ["restrained", "prone"] });
+  const out = await shortRest(table);
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(table.sheet(woke.id).conditions, [], "the hero is still prone after an hour's rest");
+  assert.equal(table.sheet(stable.id).currentHp, 0);
+  assert.deepEqual(table.sheet(stable.id).conditions, ["unconscious", "prone"]);
+  assert.deepEqual(table.sheet(held.id).conditions, ["restrained", "prone"]);
+});
+
 // ---- findings ----
 
 await test("Under gritty realism a short rest is 8 hours and a long rest is 7 days (DMG; and ODM's own prompt line in src/lib/dm/rules-logic.ts REST_VARIANT_LINES says \\\"a short rest takes 8 hours (overnight)\\\").", async () => {

@@ -7,12 +7,17 @@
 // database.
 import { gearDefOfRow, type ChargeRule } from "@/lib/srd/magic-gear";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
+import { beadCount, beadsOf } from "@/lib/srd/prayer-beads";
 
 // The charge rule of a carried row, or null for an item with no charges.
 // A workshop item's own rule rides on its line (gearDefOfRow); a row with no
 // block of its own is the table's by name.
 export function chargeRuleOf(item: Pick<EquipmentItem, "name" | "slug" | "gear">): ChargeRule | null {
-  return gearDefOfRow(item)?.charges ?? null;
+  const rule = gearDefOfRow(item)?.charges ?? null;
+  // A Necklace of Prayer Beads whose beads the GM has named holds that many,
+  // not the 1d4 + 2 its text rolls for (src/lib/srd/prayer-beads.ts).
+  const beads = rule ? beadsOf(item.name) : null;
+  return rule && beads ? { ...rule, max: beadCount(beads) } : rule;
 }
 
 // The most an item can hold: its number, or the most its dice can roll (a
@@ -25,6 +30,26 @@ export function chargeMax(rule: ChargeRule): number {
   return match ? Math.max(0, Number(match[1]) * Number(match[2]) + Number(match[3] ?? 0)) : 0;
 }
 
+// A row whose most is dice (a Luck Blade's 1d4 - 1, a Necklace of Fireballs'
+// 1d6 + 3) with its starting charges rolled, as it is granted: every door
+// that adds an equipment row writes through the sheet store's one pack
+// settle (src/lib/db/sheets.ts capAttunement: handle_item, a purchase, the
+// party stash, the sheet route, the builder's starting gear, the workshop),
+// which calls this. Rolled at first use instead, neither the sheet nor the
+// Hand knew the count, and a card was dealt for a use the roll then refused.
+// `roll` is passed in so this module stays pure. A row that already has a
+// count, or a fixed most, comes back as it was.
+export function withStartingCharges<T extends Pick<EquipmentItem, "name" | "slug" | "gear" | "charges">>(item: T, roll: (expression: string) => number): T {
+  if (typeof item.charges === "number") {
+    return item;
+  }
+  const rule = chargeRuleOf(item);
+  if (!rule || typeof rule.max !== "string") {
+    return item;
+  }
+  return { ...item, charges: Math.max(0, Math.min(chargeMax(rule), roll(rule.max))) };
+}
+
 // How many charges a row holds now. A row that never recorded a count is
 // full; one whose most is dice (rolled once, when the item is first used)
 // reads its count from `rolled`.
@@ -33,4 +58,23 @@ export function chargesLeft(item: Pick<EquipmentItem, "charges">, rule: ChargeRu
     return item.charges;
   }
   return typeof rule.max === "number" ? rule.max : Math.max(0, rolled ?? 0);
+}
+
+// Why this use cannot be paid, or null: the words use_item refuses with and the
+// card greys with. A count still to be rolled (a Necklace of Fireballs' first use)
+// and a Wind Fan, which may be used past its last charge at a risk, are not short.
+export function chargesShort(item: Pick<EquipmentItem, "name" | "charges">, rule: ChargeRule, count: number, rolled?: number): string | null {
+  if (typeof item.charges !== "number" && typeof rule.max === "string" && rolled === undefined) {
+    return null;
+  }
+  const left = chargesLeft(item, rule, rolled);
+  if (count <= left || (rule.overuseRisk && left === 0)) {
+    return null;
+  }
+  const regains = rule.regain
+    ? rule.regain === "all"
+      ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
+      : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
+    : "It does not regain charges.";
+  return `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`;
 }

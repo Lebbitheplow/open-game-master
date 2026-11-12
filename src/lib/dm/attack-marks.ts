@@ -15,6 +15,7 @@
 // Invisibility does not. A character's "invisible" ends that way unless its
 // meta names Greater Invisibility.
 
+import { endCamouflage } from "@/lib/dm/mt-srd-camouflage";
 import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -127,6 +128,8 @@ export function withoutActionInvisibility(
 // cast guard and the attack spends call this once the act has gone through).
 // Returns a line for the result.
 export function endInvisibilityOnCast(campaignId: string, sheetId: string): string | null {
+  // A ranger's camouflage is lost at the same doors (mt-srd-camouflage.ts).
+  endCamouflage(campaignId, sheetId);
   const sheet = getSheetById(sheetId);
   if (!sheet) {
     return null;

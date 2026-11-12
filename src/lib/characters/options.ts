@@ -238,7 +238,11 @@ export function packClassOptions(rows: ContentRow[]): ClassOption[] {
     };
   });
   const packIds = new Set(packOptions.map((option) => option.id));
-  return [...packOptions, ...customClassOptions().filter((option) => !packIds.has(option.id)), ...workshop];
+  // Every bundled class the pack has no row for, the settings' own with them:
+  // the Artificer is bundled (its list in the pack, its subclasses authored)
+  // and the server stores one either way, but with the pack it left the
+  // picker, so a server with the pack offered one class fewer than without.
+  return [...packOptions, ...srdClassOptions().filter((option) => !packIds.has(option.id)), ...workshop];
 }
 
 function customBackgroundOptions(): BackgroundOption[] {

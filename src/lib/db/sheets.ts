@@ -1,7 +1,12 @@
 import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layout";
+import { withStartingCharges } from "@/lib/srd/item-charge-rules";
+import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
-import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -26,6 +31,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
+import { noteIncapacity } from "@/lib/db/incapacity-watch";
 import { repairedPets } from "@/lib/srd/familiar-forms";
 import { rowName } from "@/lib/srd/item-row";
 
@@ -74,6 +80,8 @@ type SheetRow = {
   pets_json: string | null;
   summon_json?: string | null;
   foretold_json?: string | null;
+  omen?: string | null;
+  watching_encounter_id?: string | null;
   exhaustion: number | null;
   death_saves_json: string | null;
   concentrating_on: string | null;
@@ -175,6 +183,8 @@ function mapSheet(row: SheetRow): CharacterSheet {
     pets: repairedPets(parseJson<CharacterSheet["pets"]>(row.pets_json, [])),
     summon: parseJson<CharacterSheet["summon"]>(row.summon_json ?? null, null),
     foretold: parseJson<number[]>(row.foretold_json ?? null, []),
+    omen: row.omen === "weal" || row.omen === "woe" ? row.omen : null,
+    watchingEncounterId: row.watching_encounter_id ?? null,
     exhaustion: row.exhaustion ?? 0,
     deathSaves: parseJson<CharacterSheet["deathSaves"]>(row.death_saves_json, null),
     concentratingOn: row.concentrating_on ?? null,
@@ -231,7 +241,7 @@ const SHEET_COLUMNS = `
   abilities_json, max_hp, current_hp, temp_hp, ac, ac_override, speed, hit_dice_json,
   classes_json, hit_dice_pools_json,
   proficiencies_json, equipment_json, gold, copper, feats_json, features_json,
-  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
+  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, omen, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
   portrait_json, notes, backstory, hopes, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
   attraction_json, open_to_advances, open_to_pacts, former_sheet_ids_json, created_at, updated_at
 `;
@@ -319,6 +329,13 @@ export function adoptSheetAsCompanion(
 
 // Marks a sheet as a creature a spell or feature made (src/lib/dm/summon-store.ts),
 // or clears the mark. Kept out of patchSheet like the companion flag above.
+// The fight a wizard watches for Portent (src/lib/dm/foresight.ts): a choice of
+// the moment, so it is no audited change to the character.
+export function setSheetWatching(sheetId: string, encounterId: string | null): CharacterSheet | null {
+  getDatabase().prepare(`UPDATE character_sheets SET watching_encounter_id = ? WHERE id = ?`).run(encounterId, sheetId);
+  return getSheetById(sheetId);
+}
+
 export function setSheetSummon(sheetId: string, summon: CharacterSheet["summon"]): CharacterSheet | null {
   getDatabase()
     .prepare(`UPDATE character_sheets SET summon_json = ? WHERE id = ?`)
@@ -373,12 +390,14 @@ function withItemWeights(equipment: CharacterSheet["equipment"]): CharacterSheet
 
 // Attunement the rules deny (a fourth item, a second copy, an item that
 // needs none, one whose text keeps this character out) is taken off here,
-// whatever path wrote the pack.
+// whatever path wrote the pack. An item whose charges are dice gets its
+// starting count rolled here too (item-charge-rules.ts withStartingCharges),
+// so every door that adds a row writes it with its charges.
 function capAttunement(
   equipment: CharacterSheet["equipment"],
   wearer: Wearer,
 ): CharacterSheet["equipment"] {
-  return settleAttunement(equipment, wearer);
+  return settleAttunement(equipment.map((item) => withStartingCharges(item, (expression) => rollExpression(expression).total)), wearer);
 }
 
 export function createSheet(
@@ -797,6 +816,7 @@ export function patchSheet(
     conditions: patch.conditions ?? existing.conditions,
     conditionMeta: patch.conditionMeta ?? existing.conditionMeta,
     foretold: patch.foretold ?? existing.foretold,
+    omen: patch.omen !== undefined ? patch.omen : existing.omen,
     // Resources track features and level: any patch touching them re-sizes
     // the counters (spent uses preserved, clamped). An explicit resources
     // patch (rests, use_resource) wins.
@@ -912,6 +932,8 @@ export function patchSheet(
   // raises the current hit points with it (SRD 5.1, Aid).
   if (patch.conditions !== undefined || patch.conditionMeta !== undefined) {
     const before = maxHpRiders(existing.conditions, existing.conditionMeta as ConditionMetaMap);
+    // Inured to Undeath: no drain lands on a holder (src/lib/dm/ar-ws-inured.ts).
+    Object.assign(next, keptFromDrain(existing, next));
     const after = maxHpRiders(next.conditions, next.conditionMeta as ConditionMetaMap);
     const bonusDelta = after.bonus - before.bonus;
     const drainDelta = after.drain - before.drain;
@@ -927,9 +949,32 @@ export function patchSheet(
     // A Dominate starting or ending moves the character's side (side-watch.ts).
     noteDominationShift(existing.campaignId, existing, next);
   }
+  // A fall unconscious ends a rage and a sacred weapon, whichever route laid
+  // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
+  if (asleep.length) {
+    const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
+    next.conditions = awake.conditions;
+    next.conditionMeta = awake.meta;
+  }
+  // A druid knocked out in a beast's shape is back in their own.
+  if (next.wildShape?.kind === "wildshape" && fellUnconscious(existing.conditions, next.conditions)) {
+    next.wildShape = null;
+  }
+  // A Berserker's rage sets charm and fear aside, and its end gives them back.
+  const suspended = rageSuspension(next);
+  if (suspended) {
+    next.conditions = suspended.conditions;
+    next.conditionMeta = suspended.conditionMeta as typeof next.conditionMeta;
+  }
+  // A warlock's pact weapon out of their hands, and what a death takes with
+  // it (mt-srd-pact.ts).
+  const pactStrays = settlePact(sheetId, existing, next);
   // A flyer knocked prone, or held or exhausted to a speed of 0, falls
   // (flight-watch.ts).
   noteGrounding(existing.campaignId, existing, next);
+  // Falling incapacitated is answered by Faithful Summons (incapacity-watch.ts).
+  noteIncapacity(existing.campaignId, sheetId, existing, next);
 
   // Temporary hit points a spell granted for its duration go when it ends
   // (False Life, Heroism): the instance that granted them carries the claim.
@@ -978,7 +1023,7 @@ export function patchSheet(
           speed = ?, abilities_json = ?, proficiencies_json = ?,
           current_hp = ?, temp_hp = ?, max_hp = ?, ac = ?, ac_override = ?, xp = ?, level = ?,
           gold = ?, copper = ?, conditions_json = ?, condition_meta_json = ?, resources_json = ?, equipment_json = ?, hit_dice_json = ?,
-          spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
+          spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, omen = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
           feats_json = ?, features_json = ?, subclass = ?,
           classes_json = ?, hit_dice_pools_json = ?,
           portrait_json = ?, notes = ?, backstory = ?, hopes = ?, feat_choices_json = ?, updated_at = ?
@@ -1014,6 +1059,7 @@ export function patchSheet(
       next.wildShape ? JSON.stringify(next.wildShape) : null,
       next.pets.length ? JSON.stringify(next.pets) : null,
       next.foretold?.length ? JSON.stringify(next.foretold) : null,
+      next.omen ?? null,
       next.exhaustion,
       next.deathSaves ? JSON.stringify(next.deathSaves) : null,
       next.concentratingOn,
@@ -1032,6 +1078,11 @@ export function patchSheet(
       sheetId,
     );
   touchCampaign(existing.campaignId);
+  // The minute apart ran out, or the warlock died: the pact weapon is gone
+  // from wherever it lies (mt-srd-pact.ts).
+  if (pactStrays) {
+    vanishStrays(existing.campaignId, sheetId);
+  }
 
   return getSheetById(sheetId);
 }

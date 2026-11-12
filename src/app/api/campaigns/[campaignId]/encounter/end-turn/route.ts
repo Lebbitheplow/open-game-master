@@ -24,8 +24,14 @@ export async function POST(
   if (paused) {
     return paused;
   }
-  if (!endOwnTurn(campaignId, context.user.id)) {
+  const ended = endOwnTurn(campaignId, context.user.id);
+  if (!ended) {
     return Response.json({ error: endTurnRefusal(campaignId, context.user.id) }, { status: 409 });
+  }
+  // Held for a watcher's stop (src/lib/dm/turn-hold.ts): the GM's turn
+  // follows the move once the stop closes.
+  if (ended === "held") {
+    return Response.json({ ok: true, held: true });
   }
   requestDmTurn(campaignId);
   return Response.json({ ok: true });

@@ -1,0 +1,3161 @@
+{
+ "detective::Keen Deduction": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 1,
+  "sha": "1f3da06758b0",
+  "clauses": [
+   {
+    "c": "1/short rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Keen Deduction#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_keen_deduction",
+     "n": 1,
+     "rest": "short"
+    }
+   },
+   {
+    "c": "after examining a scene, person, or object, ask the GM one pointed question",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the answer is a true, useful clue",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Case Notes": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 1,
+  "sha": "899bd8b2be17",
+  "clauses": [
+   {
+    "c": "You recall any clue, name, date, or conversation from the current case verbatim",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Expertise": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 2,
+  "sha": "3806df9ba8ae",
+  "clauses": [
+   {
+    "c": "Double proficiency bonus in two skills you are proficient with",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Expertise#0:expertise",
+    "k": "expertise",
+    "p": {
+     "slots": 2
+    },
+    "observed": "a level 2 detective is owed 0 expertise pick(s), and the text gives 2 by now"
+   }
+  ]
+ },
+ "detective::Method": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 3,
+  "sha": "c031cf501895",
+  "clauses": [
+   {
+    "c": "Chooses an investigative method (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Method#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "detective::Reading People": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 5,
+  "sha": "c788eefa6d49",
+  "clauses": [
+   {
+    "c": "After 1 minute of conversation, learn whether a creature has lied to you during it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Connect the Threads": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 6,
+  "sha": "9a65fef77a01",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Connect the Threads#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_connect_the_threads",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "the GM tells you how two clues you hold relate, or that they do not",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Practiced Composure": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 7,
+  "sha": "347e6a8659bb",
+  "clauses": [
+   {
+    "c": "Advantage on saves against fear and charm",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Practiced Composure#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "frightened",
+      "charmed"
+     ]
+    },
+    "observed": "a save against frightened threw 1 d20 with Practiced Composure (1 without it)"
+   },
+   {
+    "c": "con artists find you a hard mark",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Anticipate Violence": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 9,
+  "sha": "3183d4547483",
+  "clauses": [
+   {
+    "c": "You cannot be surprised while conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Anticipate Violence#0:no_surprise",
+    "k": "no_surprise",
+    "observed": "the holder of Anticipate Violence was surprised with the party"
+   },
+   {
+    "c": "+2 initiative",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Anticipate Violence#1:init",
+    "k": "init",
+    "p": {
+     "bonus": 2
+    },
+    "observed": "initiative rolls 1d20+3 with Anticipate Violence (1d20+3 without it)"
+   }
+  ]
+ },
+ "detective::Expertise (2 more skills)": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 10,
+  "sha": "b5d64276023d",
+  "clauses": [
+   {
+    "c": "Double proficiency bonus in two more proficient skills",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Expertise (2 more skills)#0:expertise",
+    "k": "expertise",
+    "p": {
+     "slots": 4
+    },
+    "observed": "a level 10 detective is owed 0 expertise pick(s), and the text gives 4 by now"
+   }
+  ]
+ },
+ "detective::Perfect Recall": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 11,
+  "sha": "230c19c51449",
+  "clauses": [
+   {
+    "c": "Case Notes extends to every case and everything you have ever read",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Pressure Point": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 13,
+  "sha": "3f83a4d40ca6",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Pressure Point#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_pressure_point",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "an interrogation question must be answered truthfully or the subject visibly refuses (WIS save to refuse quietly)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_pressure_point#GUIDANCE_ONLY"
+   },
+   {
+    "c": "(WIS save to refuse quietly)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_pressure_point#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "detective::Web of Informants": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 14,
+  "sha": "d37f3066d79b",
+  "clauses": [
+   {
+    "c": "In any settlement, an hour and a few coins buy you the local word on a person, place, or event",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Deductive Counter": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 15,
+  "sha": "7906fcde3f88",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Deductive Counter#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "mystery_deductive_counter",
+     "cost": "reaction"
+    }
+   },
+   {
+    "c": "when attacked",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_deductive_counter#TRIGGER_UNCHECKED"
+   },
+   {
+    "c": "your read of the attacker imposes disadvantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_deductive_counter#GUIDANCE_ONLY"
+   },
+   {
+    "c": "INT-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Deductive Counter#3:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_deductive_counter",
+     "ability": "int",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "detective::The Scene Speaks": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 17,
+  "sha": "aa4bc6c0360b",
+  "clauses": [
+   {
+    "c": "Keen Deduction has 3 uses per short rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::The Scene Speaks#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_keen_deduction",
+     "n": 3,
+     "rest": "short"
+    },
+    "observed": "mystery_keen_deduction holds 1 use(s) at level 17, and the text gives 3",
+    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_the_scene_speaks (3 a short rest), whose spend does nothing, and the feature it upgrades keeps its count"
+   }
+  ]
+ },
+ "detective::Mind Palace": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 18,
+  "sha": "c7b80f59609d",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Mind Palace#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_mind_palace",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "reconstruct a past scene you visited in perfect detail",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM answers three questions about it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Elementary": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "detective",
+  "level": 20,
+  "sha": "a3ff5fab4037",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Elementary#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_elementary",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "name the culprit mechanism or motive",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM confirms which parts of your theory are right",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Cold Read": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Consulting Detective",
+  "level": 3,
+  "sha": "84f5ec6bf2cb",
+  "clauses": [
+   {
+    "c": "On meeting a creature, learn its profession, recent whereabouts, or emotional state (pick one)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Irregulars": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Consulting Detective",
+  "level": 3,
+  "sha": "16228d0953b1",
+  "clauses": [
+   {
+    "c": "Street contacts in any city fetch, watch, or tail for you (GM adjudicates scope)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "detective::Sharpened Logic": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Consulting Detective",
+  "level": 7,
+  "sha": "4145d4dc1e93",
+  "clauses": [
+   {
+    "c": "Add half your proficiency bonus to INT and WIS checks you are not proficient in",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Sharpened Logic#0:skill",
+    "k": "skill",
+    "p": {
+     "skill": "insight",
+     "half": true,
+     "proficient": false
+    },
+    "observed": "a insight check adds 3 with Sharpened Logic (3 without it), and the text makes it 4"
+   }
+  ]
+ },
+ "detective::The Game Afoot": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Consulting Detective",
+  "level": 11,
+  "sha": "877e1cbaca48",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::The Game Afoot#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_game_afoot",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "grant yourself and allies within 30 ft advantage on the next check made in pursuit of a suspect",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_the_game_afoot#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_the_game_afoot#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "detective::Nemesis Study": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Consulting Detective",
+  "level": 15,
+  "sha": "a5e2ebb65952",
+  "clauses": [
+   {
+    "c": "Choose a named foe",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "advantage on all checks and saves opposing them until the case ends",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Nemesis Study#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Nemesis Study: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alienist::Read the Mind's Wound": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 1,
+  "sha": "e924f15672f1",
+  "clauses": [
+   {
+    "c": "Double proficiency bonus on Insight",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Read the Mind's Wound#0:skill",
+    "k": "skill",
+    "p": {
+     "skill": "insight"
+    },
+    "observed": "a insight check adds 5 with Read the Mind's Wound (5 without it), and the text makes it 7"
+   },
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Read the Mind's Wound#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_read_the_mind_s_wound",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "learn whether a creature is lying, afraid, or concealing something",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alienist::Talking Cure": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 1,
+  "sha": "0edd5992a952",
+  "clauses": [
+   {
+    "c": "During a short rest, one creature you counsel regains an extra hit die of HP and ends one fear or charm effect",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Talking Cure#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Talking Cure: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alienist::Clinical Practice": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 2,
+  "sha": "a97f26aa3d11",
+  "clauses": [
+   {
+    "c": "Casts wizard-list spells as psychological treatments using INT",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Clinical Practice#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "wizard",
+     "ability": "int"
+    }
+   }
+  ]
+ },
+ "alienist::School of Thought": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 2,
+  "sha": "8899017f8bdf",
+  "clauses": [
+   {
+    "c": "Chooses a school of thought (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::School of Thought#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "alienist::Trauma Map": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 3,
+  "sha": "05c2aed9c173",
+  "clauses": [
+   {
+    "c": "After 10 minutes with a patient, learn their deepest current fear or fixation (the GM answers truthfully)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alienist::Steadying Presence": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 5,
+  "sha": "49e0ab360f86",
+  "clauses": [
+   {
+    "c": "Allies within 10 ft add +1d4 to saves against fear and madness",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Steadying Presence: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+   },
+   {
+    "c": "+1d4",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+   }
+  ]
+ },
+ "alienist::Hypnotic Induction": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 6,
+  "sha": "9805334045c8",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Hypnotic Induction#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_hypnotic_induction",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a willing or restrained creature answers three questions truthfully under trance (WIS save resists if unwilling)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Hypnotic Induction#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_hypnotic_induction",
+     "absent": [
+      "condition"
+     ]
+    },
+    "observed": "the spend hands back condition \"restrained\", which the text does not lay on anyone",
+    "note": "the generator read the text's precondition (\"a willing or restrained creature\") as the condition a failed save lays: the spend hands aoe_damage condition \"restrained\"",
+    "kind": "rule-wrong"
+   },
+   {
+    "c": "(WIS save resists if unwilling)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Hypnotic Induction#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_hypnotic_induction",
+     "save": "wis"
+    }
+   }
+  ]
+ },
+ "alienist::Professional Detachment": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 7,
+  "sha": "d2f0b9285f02",
+  "clauses": [
+   {
+    "c": "Advantage on saves against fear, charm, and madness",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Professional Detachment#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "frightened",
+      "charmed"
+     ]
+    },
+    "observed": "a save against frightened threw 1 d20 with Professional Detachment (1 without it)"
+   }
+  ]
+ },
+ "alienist::Break the Delusion": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 9,
+  "sha": "d9c178f70f28",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Break the Delusion#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_break_the_delusion",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "end one charm, fear, or illusion effect on a creature within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_break_the_delusion"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Break the Delusion\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, end one charm, fear, or illusion effect on a creature within 30 ft.\"}"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves"
+   }
+  ]
+ },
+ "alienist::Case Study": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 10,
+  "sha": "9e61bcae8274",
+  "clauses": [
+   {
+    "c": "Pick a creature you have treated or studied",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "advantage on Insight and Persuasion against it permanently",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Case Study#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Case Study: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alienist::Depth Analysis": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 11,
+  "sha": "eee6b8407060",
+  "clauses": [
+   {
+    "c": "Your Talking Cure works on two creatures per rest and also removes one level of exhaustion",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Depth Analysis#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Depth Analysis: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "alienist::The Unconscious Speaks": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 13,
+  "sha": "9da7d6356a17",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::The Unconscious Speaks#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_unconscious_speaks",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "read a sleeping or unconscious creature's dreams for three true impressions",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Unconscious Speaks#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_the_unconscious_speaks"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Unconscious Speaks\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, read a sleeping or unconscious creature's dreams for three t"
+   }
+  ]
+ },
+ "alienist::Iron Composure": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 14,
+  "sha": "674a3a52ec95",
+  "clauses": [
+   {
+    "c": "Immune to being frightened",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Iron Composure#0:immune_cond",
+    "k": "immune_cond",
+    "p": {
+     "condition": "frightened"
+    },
+    "observed": "set_condition laid frightened on the holder of Iron Composure"
+   },
+   {
+    "c": "your mind cannot be read unless you allow it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alienist::Group Therapy": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 15,
+  "sha": "0e35369c6943",
+  "clauses": [
+   {
+    "c": "Your Steadying Presence radius is 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Group Therapy: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "allies in it are immune to madness effects",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked"
+   }
+  ]
+ },
+ "alienist::Radical Breakthrough": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 17,
+  "sha": "8d3e874a9bfe",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Radical Breakthrough#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_radical_breakthrough",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "cure a creature of a long-term madness, phobia, or compulsion, including magical ones",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Radical Breakthrough#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_radical_breakthrough"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Radical Breakthrough\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cure a creature of a long-term madness, phobia, or compulsion,"
+   }
+  ]
+ },
+ "alienist::Master of the Couch": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 18,
+  "sha": "a96632d3c7ba",
+  "clauses": [
+   {
+    "c": "Hypnotic Induction needs only 1 minute and can be used on hostile creatures in conversation",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alienist::The Examined Mind": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "alienist",
+  "level": 20,
+  "sha": "5000fc870b7c",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::The Examined Mind#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_examined_mind",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "cast one treatment of 5th level or lower without a slot",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_the_examined_mind"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Examined Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast one treatment of 5th level or lower without a slot; it canno"
+   },
+   {
+    "c": "it cannot be resisted by creatures you have a Trauma Map of",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves"
+   }
+  ]
+ },
+ "alienist::Dream Logic": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "School of the Unconscious",
+  "level": 2,
+  "sha": "553a97abadc4",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Dream Logic#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_dream_logic",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "impose disadvantage on a creature's attack or check by voicing its doubt aloud (WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_dream_logic#GUIDANCE_ONLY"
+   },
+   {
+    "c": "(WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_dream_logic#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "alienist::Symbol Reading": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "School of the Unconscious",
+  "level": 2,
+  "sha": "6d5f6bf55a9d",
+  "clauses": [
+   {
+    "c": "Advantage on checks to interpret dreams, art, ciphers, and ritual symbolism",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Symbol Reading#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Symbol Reading: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "alienist::Projection": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "School of the Unconscious",
+  "level": 6,
+  "sha": "19231b9fdee5",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_projection",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "an illusory double of a creature's guilt confronts it: it is frightened of you for 1 minute (WIS save negates)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_projection",
+     "condition": "frightened",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Projection#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_projection",
+     "resolve": "rounds",
+     "rounds": 10
+    },
+    "observed": "the condition's record is {\"source\":\"4011440a-982e-442b-b2aa-89061f49cd36\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":14}}, and the text says 10 round(s)"
+   },
+   {
+    "c": "(WIS save negates)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_projection",
+     "save": "wis"
+    }
+   }
+  ]
+ },
+ "alienist::Shared Subconscious": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "School of the Unconscious",
+  "level": 10,
+  "sha": "ff73568ac95f",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Shared Subconscious#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_shared_subconscious",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "link the party's minds for 10 minutes: silent communication and shared Insight results",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "alienist::Archetype Made Flesh": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "School of the Unconscious",
+  "level": 14,
+  "sha": "04f131e251f2",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Archetype Made Flesh#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_archetype_made_flesh",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "your treatments treat one target's saving throw as if it rolled a 1",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_archetype_made_flesh#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "grifter::Silver Tongue": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 1,
+  "sha": "361f07c1dd68",
+  "name": {
+   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
+  },
+  "clauses": [
+   {
+    "c": "1/short rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Silver Tongue#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_silver_tongue",
+     "n": 1,
+     "rest": "short"
+    }
+   },
+   {
+    "c": "reroll a failed Deception or Persuasion check",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_silver_tongue#SPENT_FOR_NOTHING"
+   },
+   {
+    "c": "Deception or Persuasion check",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Silver Tongue#2:no_floor",
+    "k": "no_floor",
+    "p": {
+     "skill": "deception"
+    },
+    "observed": "a 2 on the die for deception totalled 13: [{\"sides\":20,\"value\":10,\"kept\":true,\"rerolledFrom\":2}]",
+    "note": "the bard's College of Eloquence feature of the same name (src/lib/srd/authored-effects-data*.ts \"bard::Silver Tongue\", check_floor 10) runs for the grifter through heldAuthored's borrowedRow: every Deception and Persuasion d20 below 10 counts as 10, always, from 1st level, while the text gives one reroll a short rest",
+    "kind": "rule-wrong"
+   }
+  ]
+ },
+ "grifter::A New Face": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 1,
+  "sha": "fb9e6e9ef33b",
+  "clauses": [
+   {
+    "c": "10 minutes and small props give you a convincing new identity",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "Deception checks to hold it have advantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::A New Face#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to A New Face: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "grifter::Expertise": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 2,
+  "sha": "3806df9ba8ae",
+  "clauses": [
+   {
+    "c": "Double proficiency bonus in two skills you are proficient with",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Expertise#0:expertise",
+    "k": "expertise",
+    "p": {
+     "slots": 2
+    },
+    "observed": "a level 2 grifter is owed 0 expertise pick(s), and the text gives 2 by now"
+   }
+  ]
+ },
+ "grifter::The Angle": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 3,
+  "sha": "5685a4476bfe",
+  "clauses": [
+   {
+    "c": "Chooses a con specialty (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::The Angle#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "grifter::Uncanny Dodge": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 5,
+  "sha": "9e1202723dc6",
+  "name": {
+   "reaction": true
+  },
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/dm/reaction-tools.ts uncannyDodge (holdsFeature \"uncanny dodge\")",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Uncanny Dodge#0:halve_hit",
+    "k": "halve_hit"
+   },
+   {
+    "c": "halve the damage of one attack that hits you",
+    "is": "held",
+    "by": "src/lib/dm/reaction-tools.ts uncannyDodge (holdsFeature \"uncanny dodge\")",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Uncanny Dodge#1:halve_hit",
+    "k": "halve_hit"
+   }
+  ]
+ },
+ "grifter::Cold Read the Mark": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 6,
+  "sha": "480185b0329d",
+  "clauses": [
+   {
+    "c": "After 1 minute of talk, learn what a creature most desires or most fears (pick one)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::Slippery": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 7,
+  "sha": "22b0af6ee77a",
+  "clauses": [
+   {
+    "c": "Disengage or Hide as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (bonus_route), src/lib/dm/bonus-routes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Slippery#0:bonus_route",
+    "k": "bonus_route",
+    "p": {
+     "actions": [
+      "disengage",
+      "hide"
+     ]
+    }
+   },
+   {
+    "c": "escape grapples with advantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Slippery#1:escape_adv",
+    "k": "escape_adv",
+    "observed": "the escape threw 2 d20 with Slippery and 2 without it"
+   }
+  ]
+ },
+ "grifter::The Long Game": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 9,
+  "sha": "e104c39f813a",
+  "clauses": [
+   {
+    "c": "Maintain up to three full false identities with papers and reputations the GM treats as established",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::Expertise (2 more skills)": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 10,
+  "sha": "b5d64276023d",
+  "clauses": [
+   {
+    "c": "Double proficiency bonus in two more proficient skills",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Expertise (2 more skills)#0:expertise",
+    "k": "expertise",
+    "p": {
+     "slots": 4
+    },
+    "observed": "a level 10 grifter is owed 0 expertise pick(s), and the text gives 4 by now"
+   }
+  ]
+ },
+ "grifter::Twist the Knife": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 11,
+  "sha": "d34a98156ae2",
+  "clauses": [
+   {
+    "c": "1/turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Twist the Knife: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "+2d6 damage against a creature that is charmed, deceived by you, or unaware you are a threat",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#0:unhooked"
+   },
+   {
+    "c": "+2d6",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#2:rider",
+    "k": "rider",
+    "p": {
+     "dice": "2d6",
+     "foeCondition": "charmed"
+    },
+    "observed": "a hit rolls 1d8+3 with Twist the Knife (1d8+3 without it), and the text makes it 2d6"
+   }
+  ]
+ },
+ "grifter::Contingency Exit": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 13,
+  "sha": "77713638f0d3",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Contingency Exit#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_contingency_exit",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "when things go wrong, narrate a prepared escape (a bribed guard, a loose window)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM makes it viable",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::Mirror Talk": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 14,
+  "sha": "a293a16982b4",
+  "clauses": [
+   {
+    "c": "Advantage on saves against charm and against magic that would read your thoughts or force truth",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Mirror Talk#0:save_adv",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "charmed"
+     ]
+    },
+    "observed": "a save against charmed threw 1 d20 with Mirror Talk (1 without it)"
+   }
+  ]
+ },
+ "grifter::Silver Tongue (3 uses)": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 15,
+  "sha": "63a647c25710",
+  "name": {
+   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
+  },
+  "clauses": [
+   {
+    "c": "Silver Tongue recharges to 3 uses per short rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Silver Tongue (3 uses)#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_silver_tongue",
+     "n": 3,
+     "rest": "short"
+    }
+   }
+  ]
+ },
+ "grifter::Everybody's Friend": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 17,
+  "sha": "6390fae0de0c",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Everybody's Friend#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_everybody_s_friend",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a creature that can hear you treats you as a trusted friend for 10 minutes (WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+   },
+   {
+    "c": "(WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "grifter::Vanish": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 18,
+  "sha": "ac4a4d91a5a9",
+  "clauses": [
+   {
+    "c": "Hide as a bonus action even in plain sight",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Vanish#0:bonus_route",
+    "k": "bonus_route",
+    "p": {
+     "actions": [
+      "hide"
+     ],
+     "plainSight": true
+    },
+    "observed": "hide as a bonus action: Holder cannot hide: Goblin 1 sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.",
+    "where": "src/lib/dm/action-tools.ts take_action hide (a hider in plain sight is refused whatever feature they hold)"
+   },
+   {
+    "c": "3/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Vanish#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_vanish",
+     "n": 3,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "Hide as a bonus action",
+    "is": "held",
+    "by": "src/lib/dm/bonus-routes.ts VANISH_COUNTER",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Vanish#2:route_counter",
+    "k": "route_counter",
+    "p": {
+     "id": "mystery_vanish",
+     "action": "hide"
+    }
+   }
+  ]
+ },
+ "grifter::The Perfect Con": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "grifter",
+  "level": 20,
+  "sha": "b3629a15b51d",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::The Perfect Con#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_perfect_con",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "declare a con you have been running this session",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM retroactively honors the setup within reason",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::Seed the Story": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Long Con",
+  "level": 3,
+  "sha": "47aa3e086997",
+  "clauses": [
+   {
+    "c": "Plant a rumor in a settlement",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "within a day, most locals have heard and half believe it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::Patient Hands": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Long Con",
+  "level": 3,
+  "sha": "3d409dd46fd3",
+  "clauses": [
+   {
+    "c": "Advantage on Sleight of Hand",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Patient Hands#0:skill",
+    "k": "skill",
+    "p": {
+     "skill": "sleight_of_hand",
+     "advantage": true
+    },
+    "observed": "a sleight_of_hand check threw 1 d20 with Patient Hands (1 without it)"
+   },
+   {
+    "c": "observers have disadvantage to catch you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Patient Hands#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Patient Hands: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "grifter::Sunk Cost": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Long Con",
+  "level": 7,
+  "sha": "9d4338e26bc4",
+  "clauses": [
+   {
+    "c": "A creature that has believed one of your lies has disadvantage on Insight against you thereafter",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Sunk Cost#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Sunk Cost: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "grifter::The Shill Network": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Long Con",
+  "level": 11,
+  "sha": "7071592ad099",
+  "clauses": [
+   {
+    "c": "Hire and coordinate accomplices in any city",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "one favor per job is free",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "grifter::House of Cards": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Long Con",
+  "level": 15,
+  "sha": "c4a9035d3e64",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_house_of_cards",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "reveal a con at the perfect moment: every enemy who believed it is stunned until their next turn (WIS save negates)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_house_of_cards",
+     "condition": "stunned",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "until their next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::House of Cards#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_house_of_cards",
+     "resolve": "rounds",
+     "rounds": 1
+    },
+    "observed": "the condition's record is {\"source\":\"037e4a3e-4ce7-4641-9fc7-4347e0bc829c\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":16}}, and the text says 1 round(s)"
+   },
+   {
+    "c": "(WIS save negates)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_house_of_cards",
+     "save": "wis"
+    }
+   }
+  ]
+ },
+ "enforcer::Intimidating Presence": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 1,
+  "sha": "82ebab75bd4c",
+  "name": {
+   "stray": "use_resource \"Intimidating Presence\" runs the Berserker barbarian's 10th-level action for a 1st-level enforcer (src/lib/dm/combat-features.ts intimidatingPresence: holdsFeature by name)"
+  },
+  "clauses": [
+   {
+    "c": "Double proficiency bonus on Intimidation",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Intimidating Presence#0:skill",
+    "k": "skill",
+    "p": {
+     "skill": "intimidation"
+    },
+    "observed": "a intimidation check adds 5 with Intimidating Presence (5 without it), and the text makes it 7"
+   },
+   {
+    "c": "creatures of your level or lower avoid provoking you",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "enforcer::Bodyguard": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 1,
+  "sha": "e344a403cd27",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Bodyguard#0:take_hit",
+    "k": "take_hit"
+   },
+   {
+    "c": "when an adjacent ally is hit",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Bodyguard#1:take_hit",
+    "k": "take_hit",
+    "p": {
+     "allyAt": [
+      5,
+      5
+     ],
+     "foeAt": [
+      6,
+      5
+     ],
+     "refused": true
+    }
+   },
+   {
+    "c": "take the hit instead",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (take_for_ally), src/lib/dm/authored-reactions.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Bodyguard#2:take_hit",
+    "k": "take_hit"
+   }
+  ]
+ },
+ "enforcer::Heavy Hands": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 2,
+  "sha": "fb0c5b798c1c",
+  "clauses": [
+   {
+    "c": "Your unarmed strikes deal 1d6 + STR bludgeoning",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Heavy Hands#0:rider",
+    "k": "rider",
+    "p": {
+     "dice": "1d6+3",
+     "args": {
+      "weapon": "Unarmed strike"
+     }
+    },
+    "observed": "a hit rolls 1+3 with Heavy Hands (1+3 without it), and the text makes it 1d6+3"
+   },
+   {
+    "c": "you can grapple as a bonus action",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (bonus_route), src/lib/dm/bonus-routes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Heavy Hands#1:bonus_route",
+    "k": "bonus_route",
+    "p": {
+     "actions": [
+      "grapple"
+     ]
+    }
+   }
+  ]
+ },
+ "enforcer::The Outfit": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 3,
+  "sha": "681464faec0d",
+  "clauses": [
+   {
+    "c": "Chooses an enforcer background (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::The Outfit#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "enforcer::Extra Attack": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 5,
+  "sha": "e6a4535a8c1c",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack twice when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Extra Attack#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 2
+    }
+   }
+  ]
+ },
+ "enforcer::Meat Shield": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 6,
+  "sha": "35bc3293f105",
+  "clauses": [
+   {
+    "c": "Bodyguard works for allies within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#0:take_hit",
+    "k": "take_hit",
+    "p": {
+     "name": "Bodyguard",
+     "allyAt": [
+      5,
+      4
+     ],
+     "foeAt": [
+      6,
+      4
+     ]
+    },
+    "observed": "use_reaction Bodyguard: Ally is beyond 5 feet of Holder. Nothing was spent.",
+    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED Bodyguard (rangeFt 5 at every level)"
+   },
+   {
+    "c": "you move up to 10 ft to intercept",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Meat Shield: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "enforcer::Hard to Kill": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 7,
+  "sha": "907aeef0a3fa",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Hard to Kill#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_hard_to_kill",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "when you drop to 0 HP, drop to 1 instead",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_hard_to_kill#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "enforcer::Menace": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 9,
+  "sha": "1e870d64318d",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_menace",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "force every hostile creature within 30 ft to save (WIS) or be frightened of you for 1 minute",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#1:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_menace",
+     "condition": "frightened",
+     "resolve": "lands"
+    }
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Menace#2:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_menace",
+     "resolve": "far",
+     "feet": 30
+    },
+    "observed": "a creature 30 ft and more away was caught: [\"frightened\"]"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Menace#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_menace",
+     "resolve": "rounds",
+     "rounds": 10
+    },
+    "observed": "the condition's record is {\"source\":\"a827e4c9-a563-4426-b896-458ada85f786\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":15}}, and the text says 10 round(s)"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_menace",
+     "save": "wis"
+    }
+   }
+  ]
+ },
+ "enforcer::Iron Jaw": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 10,
+  "sha": "3a9e3b17a028",
+  "clauses": [
+   {
+    "c": "Resistance to bludgeoning damage from nonmagical attacks",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Iron Jaw#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "bludgeoning"
+     ],
+     "nonmagical": true
+    },
+    "observed": "20 bludgeoning damage took 20 hit points with Iron Jaw (20 without it), and the text makes it 10"
+   }
+  ]
+ },
+ "enforcer::Extra Attack (2)": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 11,
+  "sha": "dcc718f1a4eb",
+  "name": {
+   "effects": [
+    "extra_attack"
+   ]
+  },
+  "clauses": [
+   {
+    "c": "Attack three times when taking the Attack action",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS \"extra attack\" (extra_attack), counted by the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Extra Attack (2)#0:extra_attack",
+    "k": "extra_attack",
+    "p": {
+     "attacks": 3
+    }
+   }
+  ]
+ },
+ "enforcer::Immovable": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 13,
+  "sha": "9493974ec92d",
+  "clauses": [
+   {
+    "c": "Advantage against being moved, knocked prone, or grappled",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Immovable: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "your grapples escape at disadvantage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked"
+   }
+  ]
+ },
+ "enforcer::Message Sent": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 14,
+  "sha": "96ad0453adf2",
+  "clauses": [
+   {
+    "c": "After you drop a creature, its allies save (WIS) or are frightened of you until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Message Sent: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked"
+   }
+  ]
+ },
+ "enforcer::Guardian's Instinct": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 15,
+  "sha": "3e437a97410c",
+  "clauses": [
+   {
+    "c": "Allies within 10 ft gain +1 AC while you are conscious",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Guardian's Instinct: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked"
+   }
+  ]
+ },
+ "enforcer::Unbreakable": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 17,
+  "sha": "ad6ab21b7aaf",
+  "clauses": [
+   {
+    "c": "Hard to Kill recharges on a short rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Unbreakable#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_hard_to_kill",
+     "n": 1,
+     "rest": "short"
+    },
+    "observed": "mystery_hard_to_kill did not come back on a short rest (left used 1)"
+   }
+  ]
+ },
+ "enforcer::Wall of Muscle": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 18,
+  "sha": "da404213cdc4",
+  "clauses": [
+   {
+    "c": "Enemies treat all squares within 10 ft of you as difficult terrain",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Wall of Muscle: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 10 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked"
+   }
+  ]
+ },
+ "enforcer::Last Man Standing": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "enforcer",
+  "level": 20,
+  "sha": "be9e3eb60173",
+  "clauses": [
+   {
+    "c": "While below half HP, resistance to all damage and your attacks deal +10 damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Last Man Standing: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "resistance to all damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#1:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "fire"
+     ],
+     "belowHalf": true
+    },
+    "observed": "20 fire damage took 20 hit points with Last Man Standing (20 without it), and the text makes it 10"
+   },
+   {
+    "c": "your attacks deal +10 damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#2:rider",
+    "k": "rider",
+    "p": {
+     "dice": "+13",
+     "belowHalf": true
+    },
+    "observed": "a hit rolls 1d8+3 with Last Man Standing (1d8+3 without it), and the text makes it +13"
+   }
+  ]
+ },
+ "enforcer::Rally the Line": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Union Muscle",
+  "level": 3,
+  "sha": "a6dc239b8aad",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Rally the Line#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_rally_the_line",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "allies within 30 ft gain temp HP equal to your level + CON mod",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_rally_the_line#GUIDANCE_ONLY"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_rally_the_line#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "enforcer::Working Class Hero": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Union Muscle",
+  "level": 3,
+  "sha": "44637fd54b15",
+  "clauses": [
+   {
+    "c": "Advantage on Persuasion with laborers, dockhands, and the working poor",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Working Class Hero#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Working Class Hero: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "they will hide or help you",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "enforcer::Picket Stance": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Union Muscle",
+  "level": 7,
+  "sha": "41841a33cebc",
+  "clauses": [
+   {
+    "c": "Enemies leaving your reach provoke opportunity attacks even if they Disengage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Picket Stance#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Picket Stance: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "enforcer::Solidarity": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Union Muscle",
+  "level": 11,
+  "sha": "5e71752259e0",
+  "clauses": [
+   {
+    "c": "When you use Bodyguard, the attacker takes your STR mod + proficiency in damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Solidarity#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Solidarity: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "enforcer::General Strike": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Union Muscle",
+  "level": 15,
+  "sha": "2d37eef4f7db",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::General Strike#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_general_strike",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "you and all allies within 30 ft each gain a reaction attack when any one of you is hit, for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_general_strike"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"General Strike\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, you and all allies within 30 ft each gain a reaction attack when any"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+   }
+  ]
+ },
+ "muckraker::Press Credentials": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 1,
+  "sha": "3e051ccedf59",
+  "clauses": [
+   {
+    "c": "Plausible papers and patter get you into crime scenes, offices, and functions ordinary citizens cannot enter (GM adjudicates)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Headline Instinct": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 1,
+  "sha": "69ee03c29d21",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Headline Instinct#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_headline_instinct",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "ask the GM who in the current scene knows something about your story",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "you get a true pointer",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Shorthand": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 2,
+  "sha": "bd86eca4d662",
+  "clauses": [
+   {
+    "c": "You record conversations verbatim while appearing to doodle",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "double proficiency bonus on Investigation",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Shorthand#1:skill",
+    "k": "skill",
+    "p": {
+     "skill": "investigation"
+    },
+    "observed": "a investigation check adds 5 with Shorthand (5 without it), and the text makes it 7"
+   }
+  ]
+ },
+ "muckraker::The Beat": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 3,
+  "sha": "9049b2d34de7",
+  "clauses": [
+   {
+    "c": "Chooses a journalistic beat (subclass)",
+    "is": "held",
+    "by": "src/lib/classes/feature-names.json through src/lib/srd/features.ts populateFeatures",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Beat#0:subclass",
+    "k": "subclass"
+   }
+  ]
+ },
+ "muckraker::Doorstep Ambush": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 5,
+  "sha": "d5e23f7e6a87",
+  "clauses": [
+   {
+    "c": "A creature you surprise with a question answers before thinking: one truthful sentence (WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Doorstep Ambush: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "(WIS save negates)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked"
+   }
+  ]
+ },
+ "muckraker::Morgue File": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 6,
+  "sha": "f46b18ddfa44",
+  "clauses": [
+   {
+    "c": "Archives and old contacts yield the paper trail on any person or company within a day",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Duck the Consequences": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 7,
+  "sha": "60603206e8e5",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Duck the Consequences#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "mystery_duck_the_consequences",
+     "cost": "reaction"
+    }
+   },
+   {
+    "c": "impose disadvantage on one attack against you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_duck_the_consequences#GUIDANCE_ONLY"
+   },
+   {
+    "c": "CHA-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Duck the Consequences#2:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_duck_the_consequences",
+     "ability": "cha",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "muckraker::Byline Armor": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 9,
+  "sha": "7b462b8e17dd",
+  "clauses": [
+   {
+    "c": "Public figures hesitate: creatures who know you are press have disadvantage on Intimidation against you and think twice before violence",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Byline Armor#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Byline Armor: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "muckraker::Follow the Money": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 10,
+  "sha": "f8f37af8e09b",
+  "clauses": [
+   {
+    "c": "Given a name or ledger, the GM tells you where the money actually went",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Front Page Pressure": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 11,
+  "sha": "f9de555bcaed",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Front Page Pressure#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_front_page_pressure",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "publish or threaten to: a named organization must respond publicly within a day, opening a door for the party",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Source Protection": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 13,
+  "sha": "6f99f2a2973f",
+  "clauses": [
+   {
+    "c": "Magic and interrogation cannot pull your sources or notes from you unless you allow it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Two Steps Ahead": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 14,
+  "sha": "71bb25045c5d",
+  "clauses": [
+   {
+    "c": "Advantage on initiative",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Two Steps Ahead#0:init",
+    "k": "init",
+    "p": {
+     "advantage": true
+    },
+    "observed": "initiative rolls 1d20+3 with Two Steps Ahead (1d20+3 without it)"
+   },
+   {
+    "c": "you cannot be surprised by creatures you have investigated",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Two Steps Ahead#1:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Two Steps Ahead: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "low"
+   }
+  ]
+ },
+ "muckraker::The Rolodex": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 15,
+  "sha": "64111d26f564",
+  "clauses": [
+   {
+    "c": "Headline Instinct has 3 uses per rest and works on any topic, not just the current story",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "Headline Instinct has 3 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Rolodex#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_headline_instinct",
+     "n": 3,
+     "rest": "any"
+    },
+    "observed": "mystery_headline_instinct holds 1 use(s) at level 15, and the text gives 3"
+   }
+  ]
+ },
+ "muckraker::Scandal Sense": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 17,
+  "sha": "f931725569c4",
+  "clauses": [
+   {
+    "c": "On meeting a creature, learn whether it hides something that would ruin it (yes or no)",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Voice of the People": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 18,
+  "sha": "3dd13018802a",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Voice of the People#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_voice_of_the_people",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "a crowd within earshot acts on your words: blocks a street, boos a villain, shelters a fugitive",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::The Story of the Century": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "muckraker",
+  "level": 20,
+  "sha": "fa902aa9c307",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Story of the Century#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_story_of_the_century",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "publish the truth: a named creature's public standing collapses, and its allies must save (WIS) or abandon it",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_the_story_of_the_century"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Story of the Century\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, publish the truth: a named creature's public standing coll"
+   },
+   {
+    "c": "save (WIS)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves"
+   }
+  ]
+ },
+ "muckraker::Stringers Everywhere": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Byline Network",
+  "level": 3,
+  "sha": "e88d6873bab5",
+  "clauses": [
+   {
+    "c": "In any settlement, tip-collectors report to you: learn the week's notable arrivals, deaths, and deals",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Print Deadline": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Byline Network",
+  "level": 3,
+  "sha": "cf20c7bcbcbd",
+  "clauses": [
+   {
+    "c": "Advantage on checks made under time pressure",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Print Deadline#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Print Deadline: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "muckraker::Wire Service": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Byline Network",
+  "level": 7,
+  "sha": "210e14bf8292",
+  "clauses": [
+   {
+    "c": "Send and receive coded messages between cities in hours, not days",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "muckraker::Syndicated": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Byline Network",
+  "level": 11,
+  "sha": "2055e9aaf123",
+  "clauses": [
+   {
+    "c": "Your Front Page Pressure reaches every city on the wire",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "2 uses per long rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Syndicated#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_front_page_pressure",
+     "n": 2,
+     "rest": "long"
+    },
+    "observed": "mystery_front_page_pressure holds 1 use(s) at level 11, and the text gives 2",
+    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_syndicated (2 a long rest), whose spend does nothing, and the feature it upgrades keeps its count"
+   }
+  ]
+ },
+ "muckraker::The Editor's Desk": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "The Byline Network",
+  "level": 15,
+  "sha": "af2a60397c64",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Editor's Desk#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_the_editor_s_desk",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "call in the full network: three true answers about any ongoing scheme, no matter how hidden",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Speak with the Departed": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 1,
+  "sha": "e54d285bdcfe",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Speak with the Departed#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_speak_with_the_departed",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "commune with a spirit tied to a place, object, or body",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "it answers three brief questions truthfully as it understood things",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Spirit Ward": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 1,
+  "sha": "0ca8bd042a4f",
+  "clauses": [
+   {
+    "c": "Bonus action",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Spirit Ward#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "mystery_spirit_ward",
+     "cost": "bonus"
+    }
+   },
+   {
+    "c": "a shielding spirit grants you or an ally +2 AC until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_spirit_ward#GUIDANCE_ONLY"
+   },
+   {
+    "c": "until your next turn",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_spirit_ward#GUIDANCE_ONLY"
+   },
+   {
+    "c": "WIS-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Spirit Ward#3:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_spirit_ward",
+     "ability": "wis",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "spirit_medium::Open Channel": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 2,
+  "sha": "35d818e646f9",
+  "clauses": [
+   {
+    "c": "Casts cleric-list spells as seance workings using WIS",
+    "is": "held",
+    "by": "the class row in src/lib/classes/*.json (spellListFrom, spellAbility, casterType)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Open Channel#0:casting",
+    "k": "casting",
+    "p": {
+     "list": "cleric",
+     "ability": "wis"
+    }
+   },
+   {
+    "c": "the spirits are the conduit",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Grave Whispers": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 3,
+  "sha": "fb46002fca42",
+  "clauses": [
+   {
+    "c": "You sense any death that occurred in a room you enter, and roughly when and how violent",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Borrowed Voice": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 5,
+  "sha": "2e7388851a94",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Borrowed Voice#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_borrowed_voice",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "let a spirit speak through you: it converses with the party for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Cold Spots": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 6,
+  "sha": "7dfb472c7536",
+  "clauses": [
+   {
+    "c": "You automatically detect spirits, possession, and haunted objects within 30 ft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "within 30 ft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Between Worlds": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 7,
+  "sha": "a52fe04b3a6d",
+  "clauses": [
+   {
+    "c": "Resistance to necrotic damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Between Worlds#0:resist",
+    "k": "resist",
+    "p": {
+     "types": [
+      "necrotic"
+     ]
+    },
+    "observed": "20 necrotic damage took 20 hit points with Between Worlds (20 without it), and the text makes it 10"
+   },
+   {
+    "c": "spirits cannot possess you unless you allow it",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Séance Circle": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 9,
+  "sha": "8b43818619f0",
+  "clauses": [
+   {
+    "c": "Your Speak with the Departed can include the whole party as witnesses, and the spirit can manifest visibly",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Unquiet Testimony": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 10,
+  "sha": "a8c45d202f9a",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Unquiet Testimony#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_unquiet_testimony",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "compel a spirit witness to relive its last hour aloud",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "the GM narrates what it saw",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Guardian Shade": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 11,
+  "sha": "d37328812374",
+  "clauses": [
+   {
+    "c": "A bound protective spirit follows you: 1/rest, it negates one attack that would hit you",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Guardian Shade#0:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_guardian_shade"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Guardian Shade\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"A bound protective spirit follows you: 1/rest, it negates one attack that would hit "
+   },
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Guardian Shade#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_guardian_shade",
+     "n": 1,
+     "rest": "any"
+    }
+   }
+  ]
+ },
+ "spirit_medium::Ferrywoman's Due": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 13,
+  "sha": "cf6923a6306a",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Ferrywoman's Due#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_ferrywoman_s_due",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "lay a spirit to rest or release a possession without a contest",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "hostile entities get a CHA save",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+   },
+   {
+    "c": "CHA save",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+   }
+  ]
+ },
+ "spirit_medium::The Veil Thins": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 14,
+  "sha": "1e8bc4330ddc",
+  "clauses": [
+   {
+    "c": "See into the Ethereal Plane within 60 ft at will",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "within 60 ft",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Chorus of the Dead": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 15,
+  "sha": "7b8294c67fdf",
+  "clauses": [
+   {
+    "c": "Spirit Ward can protect two creatures at once and also grants advantage on their next save",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Chorus of the Dead#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Chorus of the Dead: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   }
+  ]
+ },
+ "spirit_medium::Deathless Counsel": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 17,
+  "sha": "17f09807cd27",
+  "clauses": [
+   {
+    "c": "Speak with the Departed works on spirits of any age and has 3 uses per rest",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "has 3 uses per rest",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Deathless Counsel#1:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_speak_with_the_departed",
+     "n": 3,
+     "rest": "any"
+    },
+    "observed": "mystery_speak_with_the_departed holds 1 use(s) at level 17, and the text gives 3"
+   }
+  ]
+ },
+ "spirit_medium::Anchor of the Living": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 18,
+  "sha": "c238a9a0149a",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Anchor of the Living#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_anchor_of_the_living",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "when a creature within 30 ft dies, hold its spirit: it can be revived within 24 hours as if freshly dead",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves",
+    "k": "spend_moves",
+    "p": {
+     "id": "mystery_anchor_of_the_living"
+    },
+    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Anchor of the Living\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, when a creature within 30 ft dies, hold its spirit: it can be "
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves"
+   }
+  ]
+ },
+ "spirit_medium::Queen of the Quiet Court": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "spirit_medium",
+  "level": 20,
+  "sha": "4c03459c9d2d",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_queen_of_the_quiet_court",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "call a procession of spirits: for 1 minute they obscure, terrify (WIS save), and strike (2d8 necrotic) as you direct",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+   },
+   {
+    "c": "for 1 minute",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+   },
+   {
+    "c": "(WIS save)",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#3:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_queen_of_the_quiet_court",
+     "save": "wis",
+     "made": {
+      "dice": "2d8",
+      "takes": "none"
+     }
+    }
+   },
+   {
+    "c": "2d8 necrotic",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#4:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_queen_of_the_quiet_court",
+     "dice": "2d8",
+     "type": "necrotic"
+    },
+    "observed": "the spend hands back no necrotic damage type ({\"ok\":true,\"resource\":\"Queen of the Quiet Court\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, call a procession of spirits: for 1 minute they obscure, terrify (WIS save), and strike (2d8 necro)"
+   },
+   {
+    "c": "terrify (WIS save)",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#5:fx",
+    "k": "fx",
+    "p": {
+     "id": "mystery_queen_of_the_quiet_court",
+     "condition": "frightened"
+    },
+    "observed": "the spend hands back condition undefined, and the text's is frightened ({\"ok\":true,\"resource\":\"Queen of the Quiet Court\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, call a procession of spirits: for 1 minute they obscure, terrify (WIS save), a)",
+    "note": "the generator joined the text's two effects: the spend hands aoe_damage a WIS save against 2d8 damage, where the text's save is against the terror and the 2d8 strike has none",
+    "kind": "rule-wrong"
+   }
+  ]
+ },
+ "spirit_medium::Second Sight": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Circle of the Veil",
+  "level": 1,
+  "sha": "649c9bb778fc",
+  "clauses": [
+   {
+    "c": "1/rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Second Sight#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_second_sight",
+     "n": 1,
+     "rest": "any"
+    }
+   },
+   {
+    "c": "glimpse a place, person, or event connected to a held object: one true image",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Ectoplasmic Shield": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Circle of the Veil",
+  "level": 6,
+  "sha": "06cd426e424d",
+  "clauses": [
+   {
+    "c": "Reaction",
+    "is": "held",
+    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Ectoplasmic Shield#0:action_cost",
+    "k": "action_cost",
+    "p": {
+     "id": "mystery_ectoplasmic_shield",
+     "cost": "reaction"
+    }
+   },
+   {
+    "c": "when hit",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ectoplasmic_shield#TRIGGER_UNCHECKED"
+   },
+   {
+    "c": "gain resistance to that instance of damage",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ectoplasmic_shield#GUIDANCE_ONLY"
+   },
+   {
+    "c": "WIS-mod uses per long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Ectoplasmic Shield#3:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_ectoplasmic_shield",
+     "ability": "wis",
+     "rest": "long"
+    }
+   }
+  ]
+ },
+ "spirit_medium::Trance of the Crossing": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Circle of the Veil",
+  "level": 10,
+  "sha": "8e546d00c007",
+  "clauses": [
+   {
+    "c": "1/long rest",
+    "is": "held",
+    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Trance of the Crossing#0:uses",
+    "k": "uses",
+    "p": {
+     "id": "mystery_trance_of_the_crossing",
+     "n": 1,
+     "rest": "long"
+    }
+   },
+   {
+    "c": "project your spirit up to 1 mile for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "for 10 minutes",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   },
+   {
+    "c": "your body is helpless but warded",
+    "is": "left",
+    "why": "Information or roleplay the GM gives or rules on, nothing the board or a sheet holds: the catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\"; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
+   }
+  ]
+ },
+ "spirit_medium::Mistress of the Threshold": {
+  "source": "src/lib/classes/mystery-features.json",
+  "group": "Circle of the Veil",
+  "level": 14,
+  "sha": "4f1ce1fae4b7",
+  "clauses": [
+   {
+    "c": "Creatures you can see cannot become undead, and undead within 30 ft have disadvantage on saves against your workings",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked",
+    "k": "unhooked",
+    "observed": "nothing in the engine answers to Mistress of the Threshold: no typed effect, no authored row, no typed counter (its counter: none)",
+    "sev": "medium"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked"
+   }
+  ]
+ }
+}

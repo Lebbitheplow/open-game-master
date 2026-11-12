@@ -17,17 +17,15 @@
 import type { CharacterSheet, Proficiencies, SheetFeature } from "@/lib/schemas/sheet";
 import { featChoice, keyedFeatChoices, withFeatChoice } from "@/lib/schemas/sheet";
 import type { FeatChoices } from "@/lib/srd/feat-grants";
-import { featPicksOwed } from "@/lib/srd/feat-grants";
+import { applyFeatGrants, featPicksOwed } from "@/lib/srd/feat-grants";
 import {
   chosenFightingStyles,
-  fightingStyleChoices,
   fightingStyleFeatureName,
-  fightingStyleSlots,
-  newStyleFits,
   FIGHTING_STYLES,
 } from "@/lib/srd/feature-effects";
-import { classFeaturesFor, populateFeaturesForClasses } from "@/lib/srd/features";
+import { expertiseAllowed, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
 import { classListFor } from "@/lib/srd/multiclass";
+import { openStyleSlots } from "@/lib/srd/style-slots";
 import {
   findOptionByFeatureName,
   openOptionSlots,
@@ -134,16 +132,8 @@ export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): Owe
     .filter((slot) => slot.remaining > 0 && slot.options.some((option) => slotTakes(slot, option)));
   // Each class's Fighting Style is a slot of its own (a paladin 2 / ranger 2
   // has two), though the sheet lists the feature once by name.
-  const slotFeatures = classes.flatMap((entry) =>
-    classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.extras).map((feature) => ({ ...feature, classId: entry.id })),
-  );
-  const styleSlots = fightingStyleSlots(slotFeatures);
-  const heldStyles = chosenFightingStyles(sheet.features);
-  const chosenStyles = heldStyles.map(textKey);
-  const styleChoices = fightingStyleChoices(slotFeatures).filter(
-    (style) => !chosenStyles.includes(textKey(style.name)) && newStyleFits(heldStyles, style.name, slotFeatures),
-  );
-  const styleCount = styleChoices.length ? Math.max(0, styleSlots - chosenStyles.length) : 0;
+  // (src/lib/srd/style-slots.ts, the count the level-up offers by too).
+  const { count: styleCount, choices: styleChoices } = openStyleSlots(classes, sheet.features, context.extras);
   const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );
@@ -324,4 +314,49 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
     made.push(...grants.map((grant) => grant.name));
   }
   return { ok: true, features, made, ...(proficiencies ? { proficiencies } : {}), ...(featChoices ? { featChoices } : {}) };
+}
+
+// What this level's expertise may double: every skill held once the level
+// is taken (SRD 5.1, Bard and Rogue: "choose two of your skill
+// proficiencies"), as src/lib/srd/level-up.ts and the seat's picks
+// (src/lib/characters/seat-picks.ts) apply the training before they judge
+// the picks. A Lore bard at 3rd gains its college's three skills and
+// its expertise at once; a rogue taken now, its one skill and thieves'
+// tools. Read from the sheet alone, neither could be doubled at the level
+// that gave it.
+export function expertiseOptionsAfter(input: {
+  sheet: Pick<CharacterSheet, "proficiencies">;
+  classesAfter: Array<{ id: string; level: number }>;
+  // The skill and tools a class taken with this level brings.
+  newClass?: { skill?: string; tools: string[] };
+  // The feats taken with this level, the subclass training arriving with
+  // it, and the picks made for both (keyed by name, as the request sends them).
+  feats: Array<{ name: string; desc: string }>;
+  training: SubclassGrant[];
+  choices: FeatChoices;
+}): string[] {
+  const held = input.sheet.proficiencies;
+  const skill = (input.newClass?.skill ?? "").trim();
+  const heldSkills = new Set(held.skills.map(textKey));
+  const heldTools = new Set(held.tools.map(textKey));
+  let proficiencies = {
+    ...held,
+    skills: skill && !heldSkills.has(textKey(skill)) ? [...held.skills, skill] : held.skills,
+    tools: [...held.tools, ...(input.newClass?.tools ?? []).filter((tool) => !heldTools.has(textKey(tool)))],
+  };
+  proficiencies = applyFeatGrants({ proficiencies, feats: input.feats, choices: input.choices, strict: false }).proficiencies;
+  proficiencies = applySubclassTraining({ proficiencies, grants: input.training, choices: input.choices, strict: false }).proficiencies;
+  const expert = new Set((proficiencies.expertise ?? []).map(textKey));
+  const tool =
+    expertiseAllowed(THIEVES_TOOLS, [], input.classesAfter.map((entry) => entry.id)) && proficiencies.tools.some(isThievesTools) && !(held.expertise ?? []).some(isThievesTools)
+      ? [THIEVES_TOOLS]
+      : [];
+  const seen = new Set<string>();
+  const skills = proficiencies.skills.filter((entry) => {
+    const key = textKey(entry);
+    const fresh = !expert.has(key) && !seen.has(key);
+    seen.add(key);
+    return fresh;
+  });
+  return [...skills, ...tool];
 }

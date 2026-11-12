@@ -15,7 +15,7 @@ import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
 import { getAppSetting } from "@/lib/db/app-settings";
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { countUsers, createUser, type User } from "@/lib/db/users";
+import { countUsers, createUser, firstAccountId, type User } from "@/lib/db/users";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 
 const SETUP_CODE_KEY = "setup_code";
@@ -68,6 +68,12 @@ export function currentSetupCode(): string {
   return getAppSetting<string>(SETUP_CODE_KEY, "");
 }
 
+// How many characters the code that claims (or, on a device world,
+// recovers) this server has once read the way a typed one is.
+export function setupCodeLength(): number {
+  return normalize(currentSetupCode()).length;
+}
+
 export function setupCodeMatches(input: string | undefined): boolean {
   const given = normalize(input ?? "");
   const expected = normalize(currentSetupCode());
@@ -93,6 +99,18 @@ export function claimFirstAdmin(username: string, passwordHash: string, code: st
     return createUser(username, passwordHash, { isAdmin: true });
   })();
 }
+
+// The host of a world one of the apps runs: the world's first account, the
+// one its shell claimed with the code. The world belongs to that device, so
+// no other admin the host made may demote, reset or delete it (each left the
+// app signed out of its own world, with nobody it could recover). Null on a
+// server somebody runs, where the first account is an account like any other.
+export function deviceWorldHostId(): string | null {
+  return isDeviceWorld() ? firstAccountId() : null;
+}
+
+export const HOST_ACCOUNT_REFUSAL =
+  "That is the host's own account. This world belongs to the device that hosts it, so only the host can change it.";
 
 // The startup banner. Called once per boot; says nothing once anyone has
 // an account, or on a device world (its shell holds the code).

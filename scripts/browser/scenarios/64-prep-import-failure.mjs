@@ -46,6 +46,7 @@ export default {
       const checkAgain = page.getByRole("button", { name: "Check again" }).locator("visible=true").first();
       await eventually(() => checkAgain.count(), { timeoutMs: 15_000, label: "the failed preview said, with Check again" });
       check(await bring.isDisabled(), "Bring it in waits for a preview");
+      await untilStill(page);
       const size = await checkAgain.boundingBox();
       check(size && size.height >= 40, `Check again is a 40px target (${size?.height}px)`);
       await page.unroute(new RegExp(`/api/campaigns/${tableId}/import\\?`));
@@ -97,9 +98,11 @@ export default {
       check(/The import broke\./.test((await followUp.textContent()) ?? ""), "the failure is in the server's words");
       check(/Try again/.test((await dialog.locator("button.wizard-continue").textContent()) ?? ""), "the button now says Try again");
       const open = followUp.getByRole("button", { name: /Open the campaign as it is/ });
+      // Measured once the alert's shake has settled: a box read mid-animation
+      // carries the transform and came out at 39.9999px on a loaded runner.
+      await untilStill(page);
       const openSize = await open.boundingBox();
       check(openSize && openSize.height >= 40, `Open the campaign as it is is a 40px target (${openSize?.height}px)`);
-      await untilStill(page);
       await t.shot("creator-follow-up");
 
       // Try again sends only the import, which now goes through.

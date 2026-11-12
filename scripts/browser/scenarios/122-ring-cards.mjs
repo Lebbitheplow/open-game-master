@@ -171,18 +171,33 @@ const scenario = {
 
     // ---- a reaction spell comes up when the attack lands ----
     await invoke("end_turn", { characterId: table.hero });
-    // The goblin Hold Person did not take: a held one swings at nobody.
-    const enemyId = async () => ((await (await api.get(campaign)).json()).encounter?.enemies ?? []).find((enemy) => !(enemy.conditions ?? []).includes("paralyzed"))?.id;
-    check(await enemyId(), "a goblin is free to swing");
+    // A goblin Hold Person did not take, and that has not swung this round: a
+    // held one swings at nobody, and one that swung has spent its action.
+    const swung = new Set();
+    const freeGoblin = async () =>
+      ((await (await api.get(campaign)).json()).encounter?.enemies ?? []).find(
+        (enemy) => enemy.status !== "dead" && !(enemy.conditions ?? []).includes("paralyzed") && !swung.has(enemy.id),
+      )?.id;
+    check(await freeGoblin(), "a goblin is free to swing");
     const chip = page.locator(`${root}[role="group"][aria-label="Reactions"] button`).filter({ hasText: "Ring: Shield" }).locator("visible=true").first();
-    // AC 1 hits on all but a natural 1; a swing that misses comes round again.
+    // AC 1 hits on all but a natural 1. A goblin that rolls the 1 has spent its
+    // action for the round, and asked again it refuses, so the swing that
+    // follows is a fresh goblin's (CI, ring-cards-phone: the one free goblin
+    // fumbled and every retry was refused until the 30 seconds ran out).
     const { ac: acBefore } = await heroNow();
     const lowered = await api.patch(`${campaign}/sheets/${table.hero}`, { data: { ac: 1, acOverride: true, reason: "Caught flat-footed" } });
     check(lowered.ok(), `AC lowered (${lowered.status()}) from ${acBefore}`);
     await eventually(
       async () => {
         if (await chip.count()) return true;
-        await api.post(`${campaign}/dm/invoke`, { data: { name: "enemy_attack", args: { enemyId: await enemyId(), targetCharacterId: table.hero } } });
+        let goblin = await freeGoblin();
+        if (!goblin) {
+          await invoke("add_enemies", { enemies: [{ monster: "goblin", count: 1 }] });
+          goblin = await freeGoblin();
+        }
+        if (!goblin) return false;
+        swung.add(goblin);
+        await invoke("enemy_attack", { enemyId: goblin, targetCharacterId: table.hero });
         return (await chip.count()) > 0;
       },
       { timeoutMs: 30_000, every: 2_000, label: "the ring's Shield offered by the hit" },

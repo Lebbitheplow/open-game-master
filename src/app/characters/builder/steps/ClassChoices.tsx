@@ -45,9 +45,11 @@ export function ClassChoices({
   const classIds = derived.classList?.length ? derived.classList.map((entry) => entry.id) : klass ? [klass.id] : [];
   // Only picks in a skill the character still has count: dropping a class
   // skill takes its expertise with it, here and in the step's gate.
-  const expertiseChosen = state.expertisePicks.filter((skillId) => expertiseAllowed(skillId, proficientSkills, classIds));
+  // Any skill the character holds, its subclass's and feats' too.
+  const expertiseSkills = derived.expertiseSkills ?? proficientSkills;
+  const expertiseChosen = state.expertisePicks.filter((skillId) => expertiseAllowed(skillId, expertiseSkills, classIds));
   // A rogue may take thieves' tools in place of a skill.
-  const expertiseOptions = classIds.includes("rogue") ? [...proficientSkills, THIEVES_TOOLS] : proficientSkills;
+  const expertiseOptions = classIds.includes("rogue") ? [...expertiseSkills, THIEVES_TOOLS] : expertiseSkills;
   return (
     <>
       {/* Drawn from the skills alone, never from the sheet preview: that waits

@@ -21,6 +21,7 @@ import {
 import { attunementSlotsFor } from "@/lib/srd/armor";
 import { formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
 import { resourceDef, resourceName } from "@/lib/srd/class-resources";
@@ -143,6 +144,8 @@ export function CharacterSheetDialog({
     coins: purseCoins(sheet),
     size: sizeForRace(sheet.race),
     wearer: sheet,
+    // A feature's doubled capacity (Peerless Athlete), as speedFor reads it.
+    carryFactor: authoredCarryFactor(sheet),
   });
   const speedNote = speedState.notes.length ? speedState.notes.join(" ") : "Their walking speed.";
   const [busy, setBusy] = useState(false);

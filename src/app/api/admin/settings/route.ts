@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { speedStatus } from "@/lib/speed-status";
+import { toolCallHealth } from "@/lib/tool-call-health";
 import { getGlobalConfig, saveGlobalConfig } from "@/lib/db/app-settings";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 import { isComfyPreset } from "@/lib/image-models/catalog";
@@ -138,6 +139,8 @@ export async function GET() {
     deviceWorld: deviceWorld(),
     // What the last Fast calls actually ran at (issue 255).
     speedStatus: speedStatus(),
+    // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
+    toolCallHealth: toolCallHealth(),
   });
 }
 

@@ -29,13 +29,24 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
-import { findCarriedItem, itemUseProblem } from "@/lib/dm/item-logic";
+import { findCarriedItem, itemUseProblem, thrownFlaskProblem } from "@/lib/dm/item-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { READIED, READIED_WORDS, RELEASE_TOOLS, type Readiable } from "@/lib/dm/readied-kinds";
 import { dropReadied, readiedReleaseFor } from "@/lib/dm/readied-release";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { spellDrawnMark } from "@/lib/srd/item-cast-credit";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { gearWeaponFor } from "@/lib/srd/gear-weapons";
+import { withAmmoCount } from "@/lib/srd/ammunition";
+import { saveEquipment } from "@/lib/dm/gear-store";
+import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
+import { matchGear } from "@/lib/srd/adventuring-gear";
+import { scrollSpell } from "@/lib/srd/scrolls";
+
+// The tinderbox, by its catalog row: "using it to light a torch, or anything
+// else with abundant, exposed fuel, takes an action".
+const TINDERBOX = matchGear("Tinderbox");
 
 // Haste's extra action names this use by these words (action-budget.ts).
 const USE_AN_OBJECT = "use an object";
@@ -61,6 +72,12 @@ export function prepareUseItem(
     return { ...problem, error: `${sheet.name} does not use up ${carried?.name ?? itemName}: ${problem.error}` };
   }
   const encounter = getActiveEncounter(campaign.id);
+  // A flask thrown in a fight is pc_attack's, asked before the action is
+  // priced so nothing is spent (item-logic.ts).
+  const thrown = thrownFlaskProblem(sheet.name, carried?.name ?? itemName, Boolean(encounter));
+  if (thrown) {
+    return thrown;
+  }
   // Off their turn, the use of an item they readied is their reaction, and
   // nothing of the acting combatant's turn (readied-release.ts).
   const readied = readiedReleaseFor(sheet, encounter, "item");
@@ -101,6 +118,18 @@ export function prepareUseItem(
   // Rapid Drinker drinks a potion as a bonus action; Poisoner coats a
   // weapon as one (src/lib/srd/feat-combat.ts).
   const name = carried?.name ?? itemName;
+  // A scroll's spell paid its action this turn, and the scroll came back when the
+  // cast did not happen (item-use.ts takeBackItemCast): this reading is on it.
+  const scroll = carried ? scrollSpell(carried) : null;
+  const mark = scroll ? spellDrawnMark(scroll) : "";
+  if (mark && budget.oncePerTurn.includes(mark)) {
+    return {
+      commit: () => {
+        storeBudget(encounter, { ...budget, oncePerTurn: budget.oncePerTurn.filter((entry) => entry !== mark) });
+        return {};
+      },
+    };
+  }
   const drinking = drinksAsBonusAction(sheet) && Boolean(carried && hasItemTag(carried, "potion"));
   const asBonus = drinking || (coatsAsBonusAction(sheet) && isBasicPoison(carried ?? { name }, sheet.campaignId));
   const price = asBonus
@@ -128,6 +157,8 @@ type Priced = { spend: () => void };
 // rope to throw. A consumable goes through use_item, which charges the same
 // action, so the model is pointed there rather than paying twice.
 export function objectAction(
+  campaign: Campaign,
+  turn: DmTurn,
   sheet: CharacterSheet,
   item: string | undefined,
   reason: string | undefined,
@@ -137,6 +168,35 @@ export function objectAction(
   cost = "their action",
 ): ToolResult {
   const carried = item ? findCarriedItem(sheet.equipment, item) : null;
+  // A flask put to anything but a creature: acid on a lock, alchemist's fire
+  // on a web, oil poured on the floor. use_item sends a flask in a fight
+  // here or to pc_attack (item-logic.ts thrownFlaskProblem), and pc_attack
+  // takes only creatures, so this is where it is spent; it shatters whatever
+  // it strikes.
+  if (carried && gearWeaponFor(carried.name)?.thrown) {
+    const index = sheet.equipment.indexOf(carried);
+    priced.spend();
+    saveEquipment(campaign, turn, sheet, withAmmoCount(sheet.equipment, index, (carried.qty ?? 1) - 1), "use_item", { item: carried.name }, (reason ?? `Used ${carried.name}`).slice(0, 200));
+    // Oil poured out lies as a pool on the board until fire lights it
+    // (gear-zones.ts); the other flasks leave nothing on the ground.
+    const pool = spreadGear(campaign, sheet, carried.name);
+    return {
+      ok: true,
+      action: "Use an Object",
+      used: carried.name,
+      remaining: Math.max(0, (carried.qty ?? 1) - 1),
+      ...(pool ? { spread: pool } : {}),
+      applied: `${sheet.name} spends ${cost} on ${carried.name}${reason ? ` (${reason.slice(0, 80)})` : ""}, and the flask is spent. Narrate what it does to the object or the ground; an object's AC and hit points (SRD 5.1 Objects) are yours to rule.`,
+    };
+  }
+  // A torch or a tinderbox put to poured oil within 5 feet lights it
+  // ("If lit, the oil burns for 2 rounds"). Neither is used up by it.
+  const kindles = carried && (gearWeaponFor(carried.name)?.type === "fire" || matchGear(carried.name) === TINDERBOX);
+  const lit = kindles ? lightOil(campaign, sheet.id, 1) : null;
+  if (carried && lit) {
+    priced.spend();
+    return { ok: true, action: "Use an Object", applied: `${sheet.name} spends ${cost} putting ${carried.name} to the oil. ${lit}` };
+  }
   if (carried && !itemUseProblem(carried)) {
     return {
       error: `${carried.name} is used up when it is used: call use_item for it, which spends ${sheet.name}'s action (Use an Object) itself.`,

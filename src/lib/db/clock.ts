@@ -2,12 +2,15 @@ import { tickEffectMinutes } from "@/lib/db/active-effects";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
+import { fadeBeads } from "@/lib/dm/ar-ws-bead-store";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
 import { poisonClockTick } from "@/lib/dm/affliction-poisons";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
+import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
+import { settleInfusions } from "@/lib/dm/infuse-item";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -15,7 +18,7 @@ import { conscienceClockTick } from "@/lib/dm/conscience";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { clockTurnOf, liveClockMoves, markClockMovesReverted, recordClockMove } from "@/lib/db/clock-moves";
-import { rewindClock, type ClockRewind } from "@/lib/dm/clock-rewind-logic";
+import { rewindClock, type ClockImage, type ClockRewind } from "@/lib/dm/clock-rewind-logic";
 import {
   advance,
   clampInstant,
@@ -63,7 +66,7 @@ export function advanceClock(
   // character id, with the copper a day their work covers (supplies.ts
   // upkeepAtDawns); only they are fed by it.
   options: { meal?: boolean; lifestyle?: Record<string, number> } = {},
-): { clock: CampaignClock; minutes: number; deathSaves: string[] } | ToolError {
+): { clock: CampaignClock; minutes: number; deathSaves: string[]; hourSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
   if ("error" in moved) {
@@ -122,9 +125,19 @@ export function advanceClock(
       deathSaves = tickClockConditions(campaign, moved.minutes, current.instant);
     }
   }
+  // Command Undead: a commanded undead of Intelligence 12 repeats its save
+  // as each hour ends, in a fight or out (src/lib/dm/ar-ws-command-hours.ts).
+  const hourSaves = commandedHourlySaves(campaignId, current.instant, moved.instant);
+  // An artificer's infusions outlast their death by days (infuse-item.ts).
+  const infusedIn = getCampaignById(campaignId);
+  if (infusedIn) {
+    settleInfusions(infusedIn, current.instant, moved.instant);
+  }
   // The same clock burns torches down and brings the calendar's days round
   // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
   gutterBurntLights(campaignId, moved.instant);
+  // And ends the hour of an Arcane Abeyance bead (ar-ws-bead-store.ts).
+  fadeBeads(campaignId, moved.instant);
   // Every dawn crossed refills the wands and staffs that regain at dawn,
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
@@ -151,20 +164,38 @@ export function advanceClock(
   if (turnId) {
     publishPersisted(campaignId, "clock_changed", { clock: after, move: clockTurnOf(campaignId, turnId) });
   }
-  return { clock: after, minutes: moved.minutes, deathSaves };
+  return { clock: after, minutes: moved.minutes, deathSaves, hourSaves };
+}
+
+// The whole clock as the turn found it and left it, from the campaign row
+// the turn kept (src/lib/db/turn-journal.ts), or null when the turn kept
+// none. A turn whose work is not sealed yet left it as it stands now.
+function turnClockImage(campaignId: string, turnId: string, current: CampaignClock): ClockImage | null {
+  const row = getDatabase()
+    .prepare(`SELECT before_json, after_json, sealed FROM turn_rows WHERE turn_id = ? AND tbl = 'campaigns' AND row_id = ? AND reverted_at IS NULL`)
+    .get(turnId, campaignId) as { before_json: string | null; after_json: string | null; sealed: number } | undefined;
+  const clockOf = (json: string | null) => parseJson<{ clock_json?: string } | null>(json, null)?.clock_json;
+  const before = clockOf(row?.before_json ?? null);
+  if (!row || before === undefined) {
+    return null;
+  }
+  const after = row.sealed ? clockOf(row.after_json) : undefined;
+  return { before: normalizeClock(parseJson(before ?? "", null)), after: after === undefined ? current : normalizeClock(parseJson(after ?? "", null)) };
 }
 
 // What reverting this turn would do to the clock (src/lib/dm/
-// clock-rewind-logic.ts), without doing it: null when the turn moved no
-// time, `kept` when the clock has moved on since.
+// clock-rewind-logic.ts), without doing it: null when the turn changed
+// nothing on it, `kept` when the clock has moved on since.
 export function previewTurnClockRewind(campaignId: string, turnId: string): ClockRewind | null {
-  return rewindClock(getClock(campaignId), liveClockMoves(campaignId, turnId));
+  const current = getClock(campaignId);
+  return rewindClock(current, liveClockMoves(campaignId, turnId), turnClockImage(campaignId, turnId, current));
 }
 
-// "Revert this turn" puts back the time the turn moved on, read after the
-// sheets are restored so what their undo wrote to the clock (a long rest
-// forgotten) stands. Returns what it did, or null for a turn that moved no
-// time (issue #622).
+// "Revert this turn" puts back what the turn changed on the clock, read
+// after the sheets are restored so what their undo wrote to the clock (a
+// long rest forgotten) stands, and before the turn's rows are marked taken
+// back. Returns what it did, or null for a turn that left the clock alone
+// (issue #622).
 export function rewindTurnClock(campaignId: string, turnId: string): ClockRewind | null {
   const plan = previewTurnClockRewind(campaignId, turnId);
   if (!plan) {
@@ -264,7 +295,7 @@ export function openShortRestWindow(campaignId: string, characterIds: string[]) 
   const current = getClock(campaignId);
   const { shortRest: _old, ...rest } = current;
   void _old;
-  setClock(campaignId, characterIds.length ? { ...rest, shortRest: { ids: characterIds, sung: [] } } : rest);
+  setClock(campaignId, characterIds.length ? { ...rest, shortRest: { ids: characterIds, sung: [], fed: [] } } : rest);
 }
 
 // Whether this character may still spend hit dice from the rest just taken.
@@ -272,16 +303,28 @@ export function inShortRestWindow(campaignId: string, characterId: string): bool
   return getClock(campaignId).shortRest?.ids.includes(characterId) ?? false;
 }
 
-// Marks this character's Song of Rest die as spent in the open window, and
-// says whether it had been before.
-export function claimRestSong(campaignId: string, characterId: string): boolean {
+// The one die a rest adds for a creature that spends hit dice, once a rest
+// each: the Song of Rest's ("sung") and a Chef's meal's ("fed").
+export type RestDie = "sung" | "fed";
+
+// Whether this character's die of that kind is still unspent in the open
+// window. Reads only: the sheet shows a player what their next hit die rolls
+// before they roll it, and showing it must not spend it.
+export function restDieLeft(campaignId: string, characterId: string, which: RestDie): boolean {
+  const rest = getClock(campaignId).shortRest;
+  return Boolean(rest) && !(rest?.[which] ?? []).includes(characterId);
+}
+
+// Marks this character's die of that kind as spent in the open window, and
+// says whether it had been unspent.
+export function claimRestDie(campaignId: string, characterId: string, which: RestDie): boolean {
   const current = getClock(campaignId);
-  if (!current.shortRest || current.shortRest.sung.includes(characterId)) {
+  if (!current.shortRest || (current.shortRest[which] ?? []).includes(characterId)) {
     return false;
   }
   setClock(campaignId, {
     ...current,
-    shortRest: { ...current.shortRest, sung: [...current.shortRest.sung, characterId] },
+    shortRest: { ...current.shortRest, [which]: [...(current.shortRest[which] ?? []), characterId] },
   });
   return true;
 }

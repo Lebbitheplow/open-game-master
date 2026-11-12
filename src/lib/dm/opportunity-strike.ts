@@ -13,22 +13,25 @@
 // keep their rolls and audit rows on one, so a short human-DM turn is
 // opened for the swing and closed with it.
 
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { hasSentinel } from "@/lib/srd/feat-combat";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
+import { d20Expression, type Advantage } from "@/lib/dice";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
-import { attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
 import {
@@ -68,15 +71,20 @@ function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
 }
 
 // The light between a reactor and the creature leaving: null off the board.
+// The attack is made "right before the creature leaves your reach" (SRD 5.1,
+// Opportunity Attacks), so the mover is seen at `moverAt`, the tile it left
+// the reach from (opportunity-reach-logic.ts leavesReachAt), not at the
+// square its token has already landed on. Every opportunity door passes it.
 export function opportunitySight(input: {
   campaignId: string;
   encounterId: string;
   enemy: EncounterEnemy;
   sheet: CharacterSheet;
   enemyReacts: boolean;
+  moverAt: XY | null;
 }) {
-  const enemySide = { refId: input.enemy.id, senses: enemySenses(input.enemy) };
-  const sheetSide = { refId: input.sheet.id, senses: characterSenses(input.sheet) };
+  const enemySide = { refId: input.enemy.id, senses: enemySenses(input.enemy), at: input.enemyReacts ? null : input.moverAt };
+  const sheetSide = { refId: input.sheet.id, senses: characterSenses(input.sheet), at: input.enemyReacts ? input.moverAt : null };
   return attackSight({
     campaignId: input.campaignId,
     encounterId: input.encounterId,
@@ -99,6 +107,8 @@ export function pcOpportunitySwing(input: {
   // The target's conditions as the swing meets them (a Dodge lost with its
   // speed already left out, opportunity.ts withLiveDodge).
   targetConditions: string[];
+  // The tile the walker left the reach from (opportunitySight).
+  moverAt: XY | null;
 }): { note: string; dropped: boolean } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
   const derived = computeSheetDerived(sheet);
@@ -134,8 +144,9 @@ export function pcOpportunitySwing(input: {
 
   // Fear only with its source in sight, a Dodge only against an attacker
   // the dodger sees (attack-light.ts), as on pc_attack.
-  const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
+  const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false, moverAt: input.moverAt });
   const context = attackContext({
+    ...attackSenses(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id, senses: enemySenses(enemy), at: input.moverAt }),
     attackerConditions: fearAsRolled(encounter.id, sheet.id, sheet.conditions, sheet.conditionMeta),
     targetConditions: input.targetConditions,
     melee: true,
@@ -167,8 +178,15 @@ export function pcOpportunitySwing(input: {
   const targetAc = enemyAcWithEffects(campaign.id, enemy);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
-  const hitOutcome = rollExpression(`${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`, undefined, {
-    purpose: { roller: "hero", kind: "attack", who: sheet.name },
+  // The character's own attack roll (src/lib/dm/character-roll.ts): on
+  // physical dice their player rolls it, and a miss waits on what they hold,
+  // as a pc_attack's does.
+  const hitOutcome = rollCharacterD20(campaign, sheet, {
+    kind: "attack",
+    expression: `${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`,
+    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    advantage,
+    attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
   });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
@@ -200,6 +218,15 @@ export function pcOpportunitySwing(input: {
         notes.push("Sentinel: its speed is 0 for the rest of the turn");
       }
     }
+    // Hold the Line (Cavalier 10): "a creature you hit with an opportunity
+    // attack has its speed reduced to 0 until the end of the current turn".
+    if (holdsFeature(sheet, "Hold the Line")) {
+      const fresh = getFoe(enemy.id);
+      if (fresh && !fresh.conditions.includes("held in place")) {
+        patchEnemyConditions(fresh.id, [...fresh.conditions, "held in place"], { ...fresh.conditionMeta, "held in place": { source: sheet.id, rounds: 1 } });
+        notes.push("Hold the Line: its speed is 0 for the rest of the turn");
+      }
+    }
   }
   if (!adjudicated.hit) {
     hitLog?.swing(hitOutcome, targetAc, { hit: false, crit: false, raw: 0, advantage, ranged: false });
@@ -218,16 +245,17 @@ export function pcOpportunitySwing(input: {
   }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
-  const damageOutcome = rollExpression(
-    crit
+  const damageOutcome = rollCharacterD20(campaign, sheet, {
+    kind: "damage",
+    tag: { roller: "hero", kind: "damage", who: sheet.name },
+    expression: crit
       ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
           powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : profile.damageExpression,
-    undefined,
-    { purpose: { roller: "hero", kind: "damage", who: sheet.name } },
-  );
+    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+  });
   const dealt = Math.max(0, damageOutcome.total);
   return withOpportunityTurn(campaign.id, (turn) => {
     const damageRoll = insertRoll({

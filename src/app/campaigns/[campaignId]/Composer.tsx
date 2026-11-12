@@ -1,8 +1,9 @@
 "use client";
 
 import { Eye, EyeOff, Hand, Loader2, Send } from "lucide-react";
-import { memo, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from "react";
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -24,6 +25,10 @@ import {
   DirectorPresets,
 } from "@/app/campaigns/[campaignId]/DirectorPanel";
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
+import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { balanceLeft, holdsBeforeRoll, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
 import { DmStatusLine } from "@/app/campaigns/[campaignId]/DmStatusLine";
 import { PushToTalk } from "@/app/campaigns/[campaignId]/PushToTalk";
@@ -67,6 +72,7 @@ function ComposerInner({
   steersStory,
   isDm,
   aiRunsFoes = false,
+  aiTurns = false,
 
   kind,
   onKindChange,
@@ -104,7 +110,10 @@ function ComposerInner({
   unseen,
   drops,
   mounts,
+  board,
+  sight,
   genre,
+  handSlot,
   highlight = false,
   directorArm,
   storyCadence,
@@ -128,6 +137,9 @@ function ComposerInner({
   // the allies nobody commands are the AI's, so the seat gets no monsters'
   // Hand and no ally's, and Direct asks the AI for a move as the lead's does.
   aiRunsFoes?: boolean;
+  // The AI GM plays the turns (src/lib/dm/viewer.ts narratorIsAi): the only
+  // turns a watch for Portent stops (src/lib/dm/foresight.ts).
+  aiTurns?: boolean;
   kind: InputKind;
   onKindChange: (kind: InputKind) => void;
   input: string;
@@ -180,7 +192,14 @@ function ComposerInner({
   // What lies on the board and who rides what, for the Hand's gear cards.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
+  // The engine's verdicts on this character's own square (PlayerMapView.self).
+  board?: PlayerMapView["self"];
+  sight?: PlayerMapView["sight"];
   genre?: string | null;
+  // Where the Hand is drawn instead of its row in the desk: the slot on the
+  // staged board's lower edge (SessionView.tsx), so in a fight the cards lie
+  // on the map and the desk is the message box alone.
+  handSlot?: HTMLElement | null;
   // A gold pulse on the frame: the board says it is this player's turn.
   highlight?: boolean;
   directorArm: CampaignState["directorArm"];
@@ -231,6 +250,24 @@ function ComposerInner({
   // may take (a test fight a person runs): a hit hero answers under the
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
+  // The watch button, for the character who holds a Portent number, or
+  // Cosmic Omen or Restore Balance on a host that stops for them
+  // (beforeRollWatch), or a Chronal Shift on a host that stops for it
+  // (chronalWatch), or Flash of Genius or Favored by the Gods on one that
+  // stops for a save (saveWatch).
+  const beforeWatch = hostOffers(capabilities, "beforeRollWatch");
+  const watchingSheet = sheets.find(
+    (sheet) =>
+      sheet.userId === meUserId &&
+      !sheet.isCompanion &&
+      (foretoldLeft(sheet).length > 0 ||
+        ((omenLeft(sheet) !== null || balanceLeft(sheet)) && beforeWatch) ||
+        (holdsFeature(sheet, "chronal shift") && hostOffers(capabilities, "chronalWatch")) ||
+        ((holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods")) && hostOffers(capabilities, "saveWatch"))),
+  );
+  // Out of a fight, only a before-the-roll feature is watched for: an ally's
+  // check or save is held at the stop (foresight-before.ts).
+  const tableWatchSheet = !encounter && beforeWatch ? sheets.find((sheet) => sheet.userId === meUserId && !sheet.isCompanion && holdsBeforeRoll(sheet)) : undefined;
   // And the companions nobody commands, whose reactions the seat plays at a
   // table a person runs as it plays their turns (issue 685).
   const answersForCompanions = gmCompanions && hostOffers(capabilities, "companionReactions") && companionReactors(sheets, meUserId, undefined, true).length > 0;
@@ -257,6 +294,26 @@ function ComposerInner({
   // the box is the story's voice, and a seat holding the whole cast is
   // offered everyone, the not yet introduced marked (name-menu-logic.ts).
   const wellRef = useRef<HTMLDivElement>(null);
+  // The Hand is drawn into one element of its own for as long as the table
+  // is open, and that element is moved between the desk's row and the slot
+  // on the staged board. Drawn straight into whichever was current, a change
+  // of layout (the board staged or not, an addon's session, a short window)
+  // would unmount the Hand and take its aim, its open group and its focus
+  // with it (table-layout holds it to the same node).
+  const handRowRef = useRef<HTMLDivElement>(null);
+  // Made with the component, not in an effect: a portal draws nothing where
+  // it stands, so the server's markup and the first client render agree.
+  const [handHost] = useState<HTMLDivElement | null>(() => {
+    if (typeof document === "undefined") return null;
+    const host = document.createElement("div");
+    host.className = "session-hand-host";
+    return host;
+  });
+  useEffect(() => () => handHost?.remove(), [handHost]);
+  useLayoutEffect(() => {
+    const home = handSlot ?? handRowRef.current;
+    if (handHost && home && handHost.parentElement !== home) home.appendChild(handHost);
+  }, [handHost, handSlot]);
   const storyVoice = kind === "narrate" || kind === "lead";
   const choices = useMemo(() => nameChoices({ sheets, cast, places, storyVoice }), [sheets, cast, places, storyVoice]);
   const names = useNameMenu({ text: input, setText: setInput, field: composerRef, choices });
@@ -264,7 +321,22 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {pendingRolls.map((pending) => pending.thrown && hostOffers(capabilities, "afterRollChoice") ? (
+        {encounter && watchingSheet && aiTurns && hostOffers(capabilities, "portentWatch") ? (
+          <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} />
+        ) : !encounter && tableWatchSheet && aiTurns ? (
+          // Out of a fight the same toggle, for a before-the-roll feature on an ally's check or save (issue #908).
+          <WatchToggle campaignId={campaignId} sheet={tableWatchSheet} encounterId={TABLE_WATCH} />
+        ) : null}
+        {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
+          <WatchCard
+            key={pending.id}
+            campaignId={campaignId}
+            pending={pending}
+            sheets={sheets}
+            meUserId={meUserId}
+            steersStory={steersStory}
+          />
+        ) : pending.thrown && hostOffers(capabilities, "afterRollChoice") ? (
           <AfterRollCard
             key={pending.id}
             campaignId={campaignId}
@@ -284,6 +356,8 @@ function ComposerInner({
             members={members}
             meUserId={meUserId}
             steersStory={steersStory}
+            beforeRoll={hostOffers(capabilities, "beforeRollWatch")}
+            reactionsUsed={encounter?.reactionsUsed ?? []}
           />
         ))}
         <FloorBanners
@@ -322,7 +396,8 @@ function ComposerInner({
           />
         ) : null}
         </div>
-        <div className="session-compose-hand">
+        <div className="session-compose-hand" ref={handRowRef}>
+        {((hands: ReactNode) => (handHost ? createPortal(hands, handHost) : null))(<>
         {/* The Hand (docs/visual-overhaul-plan.md 5.2): a player's combat options
             as cards, only while a fight is on. It adds to everything below and
             takes nothing away: the pills, the box, the mic and the send button
@@ -369,9 +444,12 @@ function ComposerInner({
             unseen={unseen}
             drops={drops}
             mounts={mounts}
+            board={board}
+            sight={sight}
             genre={genre}
           />
         ) : null}
+        </>)}
         </div>
         <div className="session-compose-entry">
         <div data-pill-group="" className="mb-2 flex flex-wrap items-center gap-1.5" data-tour="composer-modes">

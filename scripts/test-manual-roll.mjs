@@ -2,7 +2,11 @@
 // rollExpressionWithDice (keep rules, modifiers, crit detection, bounds).
 import assert from "node:assert/strict";
 import {
+  entryDice,
+  entryRerollNotes,
+  entryRerolls,
   expressionDice,
+  rollEnteredDice,
   rollExpressionWithDice,
 } from "../src/lib/dice.ts";
 import { trayExpressionProblem } from "../src/lib/dice/tray-rules.ts";
@@ -82,6 +86,46 @@ test("the tray's tapped dice read as one expression it will roll", () => {
   for (const bonus of [-30, -1, 0, 7, 30]) {
     assert.equal(trayExpressionProblem(trayPoolExpression({ ...pool, bonus })), null, `bonus ${bonus}`);
   }
+});
+
+// Real dice enter one face per die: a reroll the expression carries (Halfling
+// Lucky's "r1") is made with the die in hand, and the face kept is entered.
+// A face left to the server (null) takes the expression's rerolls and Great
+// Weapon Fighting's, as the server's own throw does.
+test("entered dice: one face per die, typed faces final, server faces rerolled", () => {
+  assert.deepEqual(entryDice("1d20r1+5"), [20]);
+  assert.deepEqual(entryDice("2d20kh1r1+3+1d4"), [20, 20, 4]);
+  assert.deepEqual(entryDice("2d6+3"), [6, 6]);
+  assert.equal(rollEnteredDice("1d20r1+5", [12]).total, 17);
+  // A 1 the player kept after Lucky's reroll is a 1, not rolled again.
+  const kept = rollEnteredDice("1d20r1+5", [1]);
+  assert.equal(kept.total, 6);
+  assert.equal(kept.crit, "nat1");
+  assert.throws(() => rollEnteredDice("1d20r1+5", [7, 3]), /Too many/);
+  assert.throws(() => rollEnteredDice("2d6", [4]), /Not enough/);
+  assert.throws(() => rollEnteredDice("1d20", [21]), /Die 1 must be/);
+  const faces = [1, 5, 2, 6];
+  const before = globalThis.__odmScriptedDie;
+  globalThis.__odmScriptedDie = () => faces.shift() ?? 3;
+  try {
+    // Server faces: Lucky rerolls its 1 to a 5.
+    assert.equal(rollEnteredDice("1d20r1", [null]).total, 5);
+    // Great Weapon Fighting rerolls the server's 2 to a 6; the typed 1 stays.
+    assert.equal(rollEnteredDice("2d6+3", [null, 1], { rerollBelow: 2 }).total, 6 + 1 + 3);
+  } finally {
+    globalThis.__odmScriptedDie = before;
+  }
+});
+
+test("entered dice: the card says the reroll a die owes, and which faces may take it", () => {
+  assert.deepEqual(entryRerollNotes("1d20r1+5"), ["A d20 that shows a 1: roll it again, once, and enter the new number."]);
+  assert.deepEqual(entryRerollNotes("2d20kl1r1-1"), ["A d20 that shows a 1: roll one of them again, once, and enter the new number."]);
+  assert.deepEqual(entryRerollNotes("1d20+5"), []);
+  assert.deepEqual(entryRerolls("2d20kh1r1+1d4"), [
+    { at: 1, term: 0, once: true },
+    { at: 1, term: 0, once: true },
+    { at: 0, term: 1, once: false },
+  ]);
 });
 
 console.log(`${passed} manual-roll tests passed`);

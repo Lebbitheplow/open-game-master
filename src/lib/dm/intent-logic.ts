@@ -16,7 +16,9 @@
 import { z } from "zod";
 import { HAND_GEAR_ACTIONS, HAND_INTENT_ACTIONS, describeHandExtras, handExtraArgs, handIntentExtras } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
+import { BEAD_SLOT, isBeadSlot } from "@/lib/srd/ar-ws-conjured";
 import { PART_LISTS } from "@/lib/dm/action-parts-logic";
+import type { ToolError } from "@/lib/dm/tool-errors";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { lastingAreaCall, riderArgs, selfBuffCall, summonCall, utilityCall } from "@/lib/dm/direct-card-logic";
 
@@ -59,9 +61,9 @@ const SPELL_TOOLS = [
   "use_reaction",
 ];
 
-// A card that casts a spell held in an item (a Ring of Spell Storing,
-// src/lib/battlemap/hand-ring.ts): use_item draws it, and the spell's own tool
-// casts it with no slot.
+// A card that casts a spell from an item (a Ring of Spell Storing, a wand, a scroll,
+// src/lib/battlemap/hand-ring.ts, hand-items.ts): use_item draws it, and the spell's
+// own tool casts it with no slot.
 export function isStoredCast(intent: MessageIntent): boolean {
   return (intent.card === "spell" || intent.card === "reaction") && Boolean(intent.spell && intent.item);
 }
@@ -75,7 +77,8 @@ export function intentTools(intent: MessageIntent): string[] {
     case "spell":
       return SPELL_TOOLS;
     case "feature":
-      return ["use_resource"];
+      // Arcane Abeyance's bead is filled by a casting (directCardCall).
+      return intent.resourceId && isBeadSlot(intent.resourceId) ? ["use_spell_slot"] : ["use_resource"];
     case "basic":
       return intent.action === "end-turn"
         ? ["end_turn"]
@@ -168,6 +171,13 @@ function blastLaid(intent: MessageIntent, blast: DirectContext["blast"]): boolea
   }
 }
 
+// The square a reaction's move goes to (Mantle of Inspiration's stride,
+// picked on the board as a point: hand-area.ts HandArea.move), under
+// use_reaction's own x and y.
+function moveSquare(intent: MessageIntent): Record<string, number> {
+  return intent.atX !== undefined && intent.atY !== undefined ? { x: intent.atX, y: intent.atY } : {};
+}
+
 // The target arguments most tools read: an enemy under targetEnemyId, a
 // character under targetCharacterId.
 function targetArgs(intent: MessageIntent): Record<string, unknown> {
@@ -203,7 +213,7 @@ function targetArgs(intent: MessageIntent): Record<string, unknown> {
 // a rider card alone, a target the card did not fix, a blast with no board
 // or no square picked (aimed at one creature: the model names who stands in
 // it), a lasting area that catches whoever stands in it as it appears
-// (Entangle), a spell the content has no resolution for, a summon whose
+// off the board or with nothing to roll (a Wall of Stone), a spell the content has no resolution for, a summon whose
 // creatures the GM picks, Ready with no trigger, and anything aimed at an
 // enemy when no fight is on, since the fight has to start first. A card the
 // engine then refuses comes back as the tool's own refusal, which the model
@@ -285,6 +295,12 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     case "feature":
       // A feature spent by amount (Lay on Hands) is finished in the composer
       // and posts no card, so a card here carries every choice.
+      // Arcane Abeyance's card names the spell for the bead: the casting that
+      // fills it is use_spell_slot's, so the cast guard prices it as any
+      // casting (src/lib/dm/ar-ws-abeyance.ts).
+      if (intent.resourceId && isBeadSlot(intent.resourceId)) {
+        return intent.variant ? { name: "use_spell_slot", args: { characterId, spell: intent.variant, storeIn: BEAD_SLOT } } : null;
+      }
       return intent.resourceId ? { name: "use_resource", args: { characterId, resource: intent.resourceId, ...variant, ...targetArgs(intent) } } : null;
     case "basic": {
       const bonus = intent.bonus ? { bonus: true } : {};
@@ -292,8 +308,13 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
         case "dodge":
         case "dash":
         case "disengage":
-        case "hide":
           return { name: "take_action", args: { characterId, action: intent.action, ...bonus } };
+        case "hide":
+          // Out of a fight take_action answers Hide with instructions for the
+          // GM (a Stealth check and whoever is watching), which a person
+          // playing the card cannot follow: the GM takes it, as grapple and
+          // escape are taken there.
+          return inFight ? { name: "take_action", args: { characterId, action: "hide", ...bonus } } : null;
         case "search":
           return { name: "take_action", args: { characterId, action: "search", ...(intent.skill ? { skill: intent.skill } : {}), ...bonus } };
         case "help":
@@ -304,7 +325,11 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
         case "escape":
           return inFight ? { name: "take_action", args: { characterId, action: "escape" } } : null;
         case "ready":
-          if (!intent.trigger || (!intent.readyAction && !intent.readySpell)) {
+          // The card's first pick, "An attack", names nothing: take_action
+          // readies an attack when nothing is named, so the trigger alone is
+          // the call (SRD 5.1, Ready). It used to wait for the GM. Ready is a
+          // fight's action: out of one the GM takes it.
+          if (!intent.trigger || !inFight) {
             return null;
           }
           return {
@@ -332,7 +357,7 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     }
     case "reaction":
       return intent.feature
-        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...variant, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}) } }
+        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...variant, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}), ...moveSquare(intent) } }
         : null;
     case "gear": {
       if (!intent.item) {
@@ -400,7 +425,7 @@ function what(intent: MessageIntent): string {
     case "rider":
       return `${intent.rider ?? "a rider"} on their next hit`;
     case "spell":
-      return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}, at level ${intent.slotLevel ?? "its stored level"} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
+      return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}${intent.slotLevel ? `, at level ${intent.slotLevel}` : ""} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
     case "feature":
       return intent.targetKind === "enemy" && intent.shares?.length
         ? `the feature ${intent.resourceId ?? ""} on the creatures they choose, and no others: ${intent.shares!.map((share) => `${share.name ?? share.id} (enemyId=${share.id})`).join(", ")}`
@@ -551,6 +576,19 @@ export const DIRECT_CALL_ID_PREFIX = "card_";
 // (src/lib/dm/card-score-logic.ts) can tell the calls made after it.
 export const INTENT_CORRECTION_MARK = "and nothing resolved it";
 
+// What the spell's own tool answers when use_item did not pay for the cast: run
+// anyway it would find no credit, and spend a slot of a wizard's own for a spell a
+// scroll has just failed to cast. Null while the cast may follow.
+export function drawStopsCast(call: string, result: Record<string, unknown>): ToolError | null {
+  if (call !== "use_item") {
+    return null;
+  }
+  if (typeof result.error === "string") {
+    return result.retry === true ? { error: result.error, retry: true } : { error: result.error, refused: "rules" };
+  }
+  return result.spellCast === false ? { error: "The item's use failed, so no spell was cast and no spell's tool ran.", refused: "rules" } : null;
+}
+
 // The tools take a creature by its id or by the name the table sees
 // (resolveEnemyRef, resolveSheetRef), so a ref matches either.
 function refMatches(ref: string, id: string | null | undefined, name: string | null | undefined): boolean {
@@ -608,9 +646,10 @@ export function callMismatch(card: PlayedCard, call: TurnCall): CallMismatch | n
   if (call.result?.retry === true) {
     return "retry";
   }
-  // Drawing a spell from the ring casts nothing: it answers the card only when
-  // the ring refused, or when the casting takes turns and has begun.
-  if (draw && typeof call.result?.casting !== "string" && typeof call.result?.error !== "string") {
+  // Drawing a spell from an item casts nothing: it answers the card only when the
+  // item refused, when the use failed (a scroll misread, its magic lost), or when
+  // the casting takes turns and has begun.
+  if (draw && typeof call.result?.casting !== "string" && typeof call.result?.error !== "string" && call.result?.spellCast !== false) {
     return "tool";
   }
   const actor = actorRef(call);

@@ -10,6 +10,8 @@ import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression } from "@/lib/dice";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
+import { secondTypeShare } from "@/lib/dm/damage-parts";
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -20,6 +22,8 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
+import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
+import { openEffect } from "@/lib/dm/last-hit";
 import { rollCard } from "@/lib/dm/action-common";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -31,10 +35,11 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { swallowCover } from "@/lib/dm/swallow";
@@ -42,6 +47,8 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
 // ability or by a hazard (SRD 5.1, Saving Throws). The mirror of
@@ -244,7 +251,7 @@ function autoSpellAtPlayer(
   sheet: CharacterSheet,
   use: EnemyUse | null,
   spell: string,
-  cast: { damage?: string; damageType?: string; source?: string; ward: string | null },
+  cast: { damage?: string; damageType?: string; secondType?: string; source?: string; ward: string | null },
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ToolResult {
@@ -252,6 +259,9 @@ function autoSpellAtPlayer(
     return { error: `${spell} hits without a save: send its damage dice, or cast it from a creature whose block lists it. Nothing was spent.`, retry: true };
   }
   use?.commit();
+  // A creature's spell at a character is a trigger (Counterspell and the
+  // features that answer a casting: src/lib/dm/last-save.ts).
+  if (use?.spell) recordTrigger(campaign.id, { kind: "cast", characterId: sheet.id, forcer: { id: use.enemy.id, name: use.enemy.displayName }, spell: use.spell });
   const source = (cast.source ?? (use ? `${use.enemy.displayName}'s ${spell}` : spell)).trim() || spell;
   if (cast.ward) {
     return { ok: true, target: sheet.name, source, ...castToNoEffect(cast.ward) };
@@ -261,8 +271,17 @@ function autoSpellAtPlayer(
   const outcome = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spell, sheet.name), cast.damage, caster);
   const shielded = isNamed(spell, "magic missile") && (getSheetById(sheet.id) ?? sheet).conditions.some((entry) => isConditionNamed(entry, "shielded"));
   const dealt = shielded ? 0 : Math.max(0, outcome.total);
+  // A spell of two types: each part meets the character's defences on its
+  // own, as one wound (a save spell's parts below). It landed as the first.
+  const [, secondDice] = cast.damage && cast.damageType ? (splitDamageExpression(cast.damage, cast.secondType) ?? []) : [];
+  const secondRolled = secondDice && cast.damageType && cast.secondType ? secondTypeShare(outcome, cast.damageType, { dice: secondDice, type: cast.secondType }) : null;
+  const parts = secondRolled !== null && cast.damageType && cast.secondType
+    ? [{ amount: Math.max(0, outcome.total - secondRolled), type: cast.damageType }, { amount: secondRolled, type: cast.secondType }]
+    : null;
   const applied =
-    dealt > 0
+    dealt > 0 && parts
+      ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, parts, magical: true, spell: true, reason: source })
+      : dealt > 0
       ? applyDmMutation(
           campaign,
           turn.id,
@@ -272,7 +291,7 @@ function autoSpellAtPlayer(
           sheetsById,
         ).result
       : {};
-  hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
+  hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ...(parts && dealt > 0 ? { parts } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
   hitLog.close({
     attacker: use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : { kind: "hazard", id: null, name: source },
     attack: spell,
@@ -301,11 +320,8 @@ export function handleCastAtPlayer(
   let args: z.infer<typeof castAtPlayerSchema>;
   try {
     args = castAtPlayerSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error: "Invalid arguments: cast_at_player needs characterId, and saveAbility and dc unless an enemy's ability or spell sets them.",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: cast_at_player needs characterId, and saveAbility and dc unless an enemy's ability or spell sets them.", error, rawArguments);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
@@ -361,6 +377,14 @@ export function handleCastAtPlayer(
     // A Globe of Invulnerability or an Antimagic Field around the target: the
     // spell is cast, its use spent, and does nothing to them (zone-rules.ts).
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: sheet.id, targetName: sheet.name, facts: args.spell ? spellFactsFor(args.spell, spellAuthorsFor(campaign)) : null });
+    // Among the Dead: an undead's harmful spell at this warlock alone asks
+    // the save its attack does, and a failure loses the spell. "This doesn't
+    // protect you from area effects": a spell with an area asks none, even
+    // resolved on one character (ar-wbf-warlock-ward.ts).
+    const aimed = prepared.spell ?? args.spell;
+    if (!ward && aimed && !spellAreaShape(aimed, spellAuthorsFor(campaign))) {
+      ward = authoredWardSave(campaign, turn, prepared.enemy, sheet, "spell").lost;
+    }
     use = prepared;
   }
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
@@ -379,7 +403,7 @@ export function handleCastAtPlayer(
   const castName = use?.name || args.spell;
   const unsaved = castName && !use?.save && !args.saveAbility ? spellMechanicsFor({ spell: castName, userIds: spellAuthorsFor(campaign) }) : null;
   if (castName && unsaved?.mech.resolution === "auto") {
-    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, source: args.source, ward }, sheets, sheetsById);
+    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, secondType: use?.secondType ?? unsaved.mech.secondType, source: args.source, ward }, sheets, sheetsById);
   }
   const byBlock = Boolean(use?.fromBlock);
   const ability = (use?.save ?? args.saveAbility) as SaveAbility | undefined;
@@ -410,6 +434,9 @@ export function handleCastAtPlayer(
     return { error: `Invalid damage expression "${damage}".`, retry: true };
   }
   use?.commit();
+  // A creature's spell at a character is a trigger (Counterspell and the
+  // features that answer a casting: src/lib/dm/last-save.ts).
+  if (use && (use.spell ?? args.spell)) recordTrigger(campaign.id, { kind: "cast", characterId: sheet.id, forcer: { id: use.enemy.id, name: use.enemy.displayName }, spell: use.spell ?? args.spell });
   if (ward) {
     return { ok: true, target: sheet.name, source: use ? `${use.enemy.displayName}'s ${use.name}` : args.spell, ...castToNoEffect(ward) };
   }
@@ -489,7 +516,22 @@ export function handleCastAtPlayer(
     // The one save-for-half rule every path shares, Evasion included
     // (src/lib/srd/trait-rules.ts).
     const taken = saveDamageTaken({ total: outcome.total, saved, halfOnSave, ability, sheet });
-    let dealt = taken.damage;
+    // A creature's spell of two types: each share is halved on its own and
+    // meets the character's defences on its own, as one wound. The whole sum
+    // used to land as the first type.
+    const secondType = byBlock ? use?.secondType : undefined;
+    const [, secondDice] = splitDamageExpression(damage, secondType) ?? [];
+    const secondRolled = secondDice && damageType && secondType
+      ? secondTypeShare(outcome, damageType, { dice: secondDice, type: secondType })
+      : null;
+    const shareOf = (total: number) => saveDamageTaken({ total, saved, halfOnSave, ability, sheet }).damage;
+    let typedParts = secondRolled !== null && damageType && secondType
+      ? [
+          { amount: shareOf(outcome.total - secondRolled), type: damageType },
+          { amount: shareOf(secondRolled), type: secondType },
+        ]
+      : null;
+    let dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : taken.damage;
     // Shield Master: a successful Dexterity save against an effect aimed at
     // them alone costs the reaction to take no damage at all.
     if (saved && dealt > 0 && ability === "dex" && shieldMasterSaveBonus(sheet) > 0) {
@@ -502,7 +544,8 @@ export function handleCastAtPlayer(
     }
     // Dungeon Delver: resistance to the damage dealt by traps.
     if (trapWard && dealt > 0) {
-      dealt = Math.floor(dealt / 2);
+      typedParts = typedParts?.map((part) => ({ ...part, amount: Math.floor(part.amount / 2) })) ?? null;
+      dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : Math.floor(dealt / 2);
       base.dungeonDelver = "Dungeon Delver: resistance to trap damage, halved.";
     }
     if (taken.evasion) {
@@ -511,9 +554,27 @@ export function handleCastAtPlayer(
     // Disintegrate: a character it drops to 0 is dust, not dying.
     const disintegrates = Boolean((use?.spell ?? args.spell) && spellMechanicsFor({ spell: use?.spell ?? args.spell ?? "", userIds: spellAuthorsFor(campaign) })?.mech.riders?.disintegrates);
     if (dealt > 0) {
+      // Damage the caster dealt through the save, for what answers being damaged
+      // by a creature (Hellish Rebuke: src/lib/dm/last-save.ts).
+      // With what a success would have spared, for a save turned after it
+      // landed (save-turned.ts): the same half-or-none rule, read as made.
+      const onSuccess = saveDamageTaken({ total: outcome.total, saved: true, halfOnSave, ability, sheet }).damage;
+      const spared = saved ? 0 : Math.max(0, dealt - (trapWard ? Math.floor(onSuccess / 2) : onSuccess));
+      if (use?.enemy) noteSaveDamage(campaign.id, sheet.id, use.enemy.id, dealt, damageType ?? "", Boolean(use.spell ?? args.spell), spared);
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
+      // Kept for a reaction to damage taken (last-hit.ts openEffect): a save's
+      // damage is no attack's, so until now Deflect Energy had nothing to answer.
+      const effect = openEffect(campaign.id, sheet.id);
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
+        : typedParts
+          ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, {
+              amount: dealt,
+              parts: typedParts,
+              magical: use?.magical === true,
+              spell: Boolean(use?.spell ?? args.spell),
+              reason,
+            })
         : applyDmMutation(
             campaign,
             turn.id,
@@ -529,7 +590,10 @@ export function handleCastAtPlayer(
             sheets,
             sheetsById,
           ).result;
-      Object.assign(base, { damage: dealt, ...applied });
+      effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
+      // Thought Shield: the psychic damage a warlock took goes back to the caster.
+      const back = thoughtShieldBack(campaign, turn, sheet, use?.enemy.id, { amount: dealt, type: typedParts ? undefined : damageType, parts: typedParts ?? undefined, flags: { magical: use?.magical === true, spell: Boolean(use?.spell ?? args.spell) } }, sheets, sheetsById);
+      Object.assign(base, { damage: dealt, ...applied, ...back });
     } else {
       base.damage = 0;
     }

@@ -54,7 +54,7 @@ import { stripReasoningArtifacts } from "@/lib/story-prompt";
 import { setDmStatus } from "@/lib/dm/status";
 import { renderWorldArcsForPrompt } from "@/lib/dm/world-arc-logic";
 import { ensureWorldArcs } from "@/lib/dm/world-arc";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { partyStoryOf, partyStoryPlannerBlock } from "@/lib/dm/party-story";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
@@ -356,8 +356,8 @@ export function handleCompleteBeat(
   let args: { beat?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { result: { error: "Invalid arguments.", retry: true }, completed: false, gated: false };
+  } catch (error) {
+    return { result: badArguments("Invalid arguments: complete_beat needs a beat.", error, rawArguments), completed: false, gated: false };
   }
   const arc = campaign.storyArc;
   const active = activeBeatNumber(arc);

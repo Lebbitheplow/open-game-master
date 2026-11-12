@@ -1,9 +1,9 @@
-import os from "node:os";
 import { z } from "zod";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { capabilitiesSnapshot } from "@/lib/capabilities";
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { hostAvailability } from "@/lib/harness/discover";
+import { safeNetworkInterfaces } from "@/lib/network-interfaces";
 import { lanOrigins, livePublicUrl } from "@/lib/server-address";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 import { keyForListing, keyProvider, normalizeBaseUrl } from "@/lib/setup/discovery-logic";
@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   const state = getSetupState();
   const deviceWorld = isDeviceWorld();
   const story = (await capabilitiesSnapshot().catch(() => null))?.story;
+  const interfaces = safeNetworkInterfaces();
   return Response.json({
     state,
     deviceWorld,
@@ -42,8 +43,8 @@ export async function GET(request: Request) {
       state,
       storyWorking: Boolean(story?.configured && story.reachable),
     }),
-    lanUrls: lanOrigins(os.networkInterfaces(), protocol, url.port),
-    publicUrl: livePublicUrl(config.publicUrl, os.networkInterfaces()),
+    lanUrls: lanOrigins(interfaces, protocol, url.port),
+    publicUrl: livePublicUrl(config.publicUrl, interfaces),
   });
 }
 

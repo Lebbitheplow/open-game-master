@@ -102,7 +102,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
       <div className="flex flex-wrap items-center gap-2">
         {listening ? (
           <kbd
-            className="motion-pop min-w-24 rounded border border-amber-400/70 bg-amber-950/40 px-2 py-1 text-center font-mono text-xs text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.25)]"
+            className="motion-pop min-w-24 rounded border border-amber-400/70 bg-amber-950/40 px-2 py-1 text-center font-code text-xs text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.25)]"
             aria-live="polite"
           >
             {held ? `${held}+...` : "Press the keys..."}
@@ -110,7 +110,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
         ) : name ? (
           <kbd
             key={name}
-            className="reveal-pop rounded border border-stone-700 bg-stone-900 px-2 py-1 font-mono text-xs text-amber-100"
+            className="reveal-pop rounded border border-stone-700 bg-stone-900 px-2 py-1 font-code text-xs text-amber-100"
             data-dictation-key={name}
           >
             {name}

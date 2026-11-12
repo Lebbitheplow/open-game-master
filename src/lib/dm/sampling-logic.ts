@@ -129,13 +129,58 @@ export { toolRouteFromError };
 // never that; and any body naming reasoning_effort or /v1/responses is the
 // GPT-6 refusal (issue #129), which a retry without tools would turn into a
 // narrator running with no request_roll and no engines, in silence. Such a
-// turn fails loudly instead.
-export function toolsUnsupportedByServer(kind: EndpointKind, body: string): boolean {
+// turn fails loudly instead. So does a chat template that threw while
+// rendering the tools (llama.cpp's "While executing ...", vLLM's jinja2
+// errors): the server has tools, and one of ours broke its template. heal's
+// targets shipped with no items in 0.32.0, the gpt-oss template answered
+// "Function is not a bool value", and this read it as no tools at all.
+//
+// So the reader names the texts that mean "no function calling" and nothing
+// else. It used to match any "tool" or "function" in any error at any
+// status, and nine refusals with other causes were read as no tools: Groq's
+// tool_use_failed (one bad call), a description over OpenAI's 1,024
+// characters, Gemini refusing a schema key or the order of the history's
+// turns, an unanswered call in the history (OpenAI, Anthropic), Mistral's
+// call-id rule, llama-server failing to parse an earlier call. Each was
+// played as a turn with no tools that the table took for a normal one (gap
+// sweep 2026-11-09). A server that answers some other way for no tools
+// fails loudly, which is the safe direction. `status`, when known, keeps
+// the read to the statuses a refusal of the request is sent with.
+const NO_FUNCTION_CALLING = [
+  // Ollama: "registry.ollama.ai/library/gemma3:12b does not support tools".
+  /does not support (?:tools|tool use|tool calling|function calling|function tools)\b/i,
+  // A model card's own wording: "tools are not supported", "function calling
+  // is not enabled for this model".
+  /\b(?:tools|tool use|tool calling|function calling)\s+(?:is|are)\s+not\s+(?:supported|enabled|available)\b/i,
+  // OpenRouter, no provider of the model takes tools.
+  /No endpoints found that support tool use/i,
+  // vLLM started without a tool-call parser.
+  /requires --enable-auto-tool-choice/i,
+];
+const TOOL_REFUSAL_STATUSES = new Set([400, 404, 422, 501]);
+
+export function toolsUnsupportedByServer(kind: EndpointKind, body: string, status?: number): boolean {
   const text = (body || "").slice(0, 4000);
   if (kind === "openai") return false;
+  if (status !== undefined && !TOOL_REFUSAL_STATUSES.has(status)) return false;
   if (toolRouteFromError(text) || /reasoning_effort/i.test(text)) return false;
-  return /tool|function|not support/i.test(text);
+  return NO_FUNCTION_CALLING.some((pattern) => pattern.test(text));
 }
+
+// llama-server started without --jinja answers a call with tools "tools
+// param requires --jinja flag". The server can call tools; it was started
+// without the switch that turns them on (docs/text-backends.md: '--jinja
+// enables tool calling'). Retried without tools it would narrate with no
+// request_roll and no engines, so the turn fails loudly with a line that
+// names the flag for whoever runs the server (maintainer decision R13,
+// /tmp/odm-gapstudy/WAVE1.md: "modelio-no-jinja-not-retried: fail loudly,
+// with a message that names the --jinja flag").
+export function toolsNeedJinjaFlag(body: string): boolean {
+  return /requires --jinja\b/i.test((body || "").slice(0, 4000));
+}
+
+export const NO_JINJA_MESSAGE =
+  "The llama.cpp server was started without --jinja, so it cannot call the GM's tools. Restart llama-server with --jinja added to its command line.";
 
 // Body fields the unsupported-parameter retry may drop. Deliberately excludes
 // tools and tool_choice: a backend that cannot do function calling is already
@@ -182,9 +227,25 @@ export function unsupportedParamFromError(body: string): string | null {
 
   const candidates: string[] = [];
   try {
-    const parsed = JSON.parse(text) as { error?: { param?: unknown }; issues?: unknown };
+    const parsed = JSON.parse(text) as { error?: { param?: unknown }; issues?: unknown; detail?: unknown; message?: unknown };
     if (typeof parsed?.error?.param === "string") {
       candidates.push(parsed.error.param);
+    }
+    // pydantic with extra fields forbidden (FastAPI servers, Mistral's API)
+    // names each refused field in a detail entry of type extra_forbidden,
+    // loc ["body", "<field>"]; Mistral wraps the list in message. Only a
+    // body field of the request's own top level: a longer loc is a key
+    // inside a message.
+    const detail = Array.isArray(parsed?.detail)
+      ? parsed.detail
+      : parsed?.message && typeof parsed.message === "object" && Array.isArray((parsed.message as { detail?: unknown }).detail)
+        ? ((parsed.message as { detail: unknown[] }).detail)
+        : [];
+    for (const entry of detail as Array<{ type?: unknown; loc?: unknown }>) {
+      if (entry?.type !== "extra_forbidden" || !Array.isArray(entry.loc)) continue;
+      if (entry.loc.length === 2 && entry.loc[0] === "body" && typeof entry.loc[1] === "string") {
+        candidates.push(entry.loc[1]);
+      }
     }
     if (Array.isArray(parsed?.issues)) {
       for (const issue of parsed.issues as Array<{ code?: unknown; keys?: unknown; path?: unknown }>) {
@@ -206,6 +267,10 @@ export function unsupportedParamFromError(body: string): string | null {
     /unknown field\s*[`'"]?([A-Za-z_][\w.]*)/i,
     /unexpected keyword argument\s*'([^']+)'/i,
     /Unrecognized key\(s\) in object:\s*'([^']+)'/i,
+    // Gemini's OpenAI-compatible endpoint: 'Unknown name "presence_penalty":
+    // Cannot find field.' A name followed by " at '...'" is a key inside a
+    // tool's schema, no body field, and is left alone.
+    /Unknown name \\?"([A-Za-z_][\w]*)\\?":\s*Cannot find field/i,
   ];
   for (const pattern of patterns) {
     const hit = text.match(pattern);

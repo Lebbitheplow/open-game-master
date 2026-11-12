@@ -170,7 +170,10 @@ await test("A drake is summoned with its essence and is immune to it; from 7th l
   assert.equal(burn.result.damage, 0);
   assert.equal(pet(world, ranger).hp, 20);
   // A ranger whose features name the essence is not asked again.
-  world.patch(ranger.id, { level: 7, features: [...world.sheet(ranger.id).features, { name: "Bond of Fang and Scale (Cold)", source: "class" }] });
+  // Drake Companion: "once per long rest, or by expending a spell slot":
+  // the first summoning spent the use, so a long rest gives it back here.
+  const spent = world.sheet(ranger.id).resources;
+  world.patch(ranger.id, { level: 7, features: [...world.sheet(ranger.id).features, { name: "Bond of Fang and Scale (Cold)", source: "class" }], resources: { ...spent, ...(spent.sub_drake_companion ? { sub_drake_companion: { ...spent.sub_drake_companion, used: 0 } } : {}) } });
   const grown = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake" });
   assert.equal(grown.ok, true, grown.error);
   const drake = pet(world, ranger);

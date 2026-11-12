@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   CLOUD_SAFE_PARAMS,
   LOCAL_ONLY_PARAMS,
+  NO_JINJA_MESSAGE,
   PROFILES,
   STORY_TEMP_DEFAULT,
   STORY_TEMP_THINKING,
@@ -15,6 +16,7 @@ import {
   profileById,
   resolveSampling,
   toolRouteFromError,
+  toolsNeedJinjaFlag,
   toolsUnsupportedByServer,
   unsupportedParamFromError,
 } from "../src/lib/dm/sampling-logic.ts";
@@ -343,6 +345,54 @@ check("the GPT-6 refusal never turns into a retry without tools", () => {
   assert.equal(toolsUnsupportedByServer("local", "This model does not support function calling"), true);
   assert.equal(toolsUnsupportedByServer("openrouter", "No endpoints found that support tool use"), true);
   assert.equal(toolsUnsupportedByServer("local", "rate limit exceeded"), false);
+  // A template that threw on one of our tool schemas has tools: the turn fails loudly
+  // rather than narrating with none (the gpt-oss template on heal's bare array, 0.32.0).
+  const templateError = JSON.stringify({ error: { code: 500, message: "\n------------\nWhile executing If at line 12, column 13 in source:\n...am_spec.type == \"array\" -%}\n        {%- if param_spec['items'] -%}\n\nError: Function is not a bool value", type: "server_error" } });
+  assert.equal(toolsUnsupportedByServer("local", templateError), false, "llama.cpp's template error");
+  assert.equal(toolsUnsupportedByServer("local", "jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'function'"), false, "vLLM's");
+});
+
+check("only the texts that mean no function calling retry without tools, on a refusal's status", () => {
+  // Refusals with other causes that hold "tool" or "function" (gap sweep
+  // 2026-11-09): each was played as a turn with no tools.
+  for (const other of [
+    "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.",
+    "Invalid 'tools[26].function.description': string too long. Expected a string with maximum length 1024",
+    "An assistant message with 'tool_calls' must be followed by tool messages responding to each 'tool_call_id'.",
+    "Tool call id was call_request_roll_17 but must be a-z, A-Z, 0-9, with a length of 9.",
+    "The requested model is not supported.",
+  ]) {
+    assert.equal(toolsUnsupportedByServer("local", other), false, other);
+  }
+  assert.equal(toolsUnsupportedByServer("local", "registry.ollama.ai/library/gemma3:12b does not support tools", 400), true);
+  assert.equal(toolsUnsupportedByServer("local", '"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set', 400), true);
+  // A 500 or a 429 is no refusal of the request's tools.
+  assert.equal(toolsUnsupportedByServer("local", "tools are not supported", 500), false);
+  assert.equal(toolsUnsupportedByServer("local", "tools are not supported", 429), false);
+});
+
+check("llama-server without --jinja fails loudly with a line naming the flag, never retried without tools", () => {
+  // Maintainer decision R13 (/tmp/odm-gapstudy/WAVE1.md): "fail loudly, with
+  // a message that names the --jinja flag for whoever runs the server".
+  const body = JSON.stringify({ error: { code: 500, message: "tools param requires --jinja flag", type: "server_error" } });
+  assert.equal(toolsUnsupportedByServer("local", body), false);
+  assert.equal(toolsNeedJinjaFlag(body), true);
+  assert.equal(toolsNeedJinjaFlag("jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'function'"), false);
+  assert.match(NO_JINJA_MESSAGE, /--jinja/);
+});
+
+check("pydantic's extra_forbidden and Gemini's unknown body field name the field to drop", () => {
+  const bare = JSON.stringify({ detail: [{ type: "extra_forbidden", loc: ["body", "top_k"], msg: "Extra inputs are not permitted", input: 40 }] });
+  assert.equal(unsupportedParamFromError(bare), "top_k");
+  const mistral = JSON.stringify({ object: "error", message: { detail: [{ type: "extra_forbidden", loc: ["body", "chat_template_kwargs"], msg: "Extra inputs are not permitted" }] } });
+  assert.equal(unsupportedParamFromError(mistral), "chat_template_kwargs");
+  // A key inside a message is no body field.
+  const nested = JSON.stringify({ detail: [{ type: "extra_forbidden", loc: ["body", "messages", 0, "top_k"], msg: "Extra inputs are not permitted" }] });
+  assert.equal(unsupportedParamFromError(nested), null);
+  const gemini = JSON.stringify({ error: { code: 400, message: 'Invalid JSON payload received. Unknown name "presence_penalty": Cannot find field.' } });
+  assert.equal(unsupportedParamFromError(gemini), "presence_penalty");
+  const schemaKey = JSON.stringify({ error: { code: 400, message: "Invalid JSON payload received. Unknown name \"additionalProperties\" at 'tools[0].function_declarations[17]': Cannot find field." } });
+  assert.equal(unsupportedParamFromError(schemaKey), null);
 });
 
 check("reasoning_effort and max_output_tokens are droppable when a model refuses them", () => {

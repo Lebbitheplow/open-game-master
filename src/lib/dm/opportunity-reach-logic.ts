@@ -49,3 +49,24 @@ export function leavesReachAt(
   }
   return null;
 }
+
+// The square a walker steps to while still inside this reach, or null when no
+// step of the walk begins and ends within it: Hold the Line's opportunity
+// attack on a creature that moves 5 feet or more while within the reach.
+export function movesWithinReachAt(
+  steps: XY[],
+  reactor: XY,
+  reach: number,
+  reactorFootprint: Footprint = 1,
+  moverFootprint: Footprint = 1,
+): XY | null {
+  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, moverFootprint);
+  for (let index = 0; index + 1 < steps.length; index += 1) {
+    const here = steps[index];
+    const next = steps[index + 1];
+    if ((here.x !== next.x || here.y !== next.y) && apart(here) <= reach && apart(next) <= reach) {
+      return next;
+    }
+  }
+  return null;
+}

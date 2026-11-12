@@ -29,6 +29,7 @@ export type OptionKind =
   | "pact_boon"
   | "infusion"
   | "rune"
+  | "arcane_shot"
   | "discipline"
   | "hunters_prey"
   | "defensive_tactics"
@@ -268,6 +269,21 @@ const GRANTS: Grant[] = [
       [3, 2],
     ],
   },
+  // An Arcane Archer's Arcane Shot options (XGtE): two at 3rd level, another
+  // at 7th, 10th, 15th and 18th (src/lib/dm/mt-fb-arcane-shot.ts runs them).
+  {
+    kind: "arcane_shot",
+    classId: "fighter",
+    subclass: "Arcane Archer",
+    opens: ["Arcane Shot"],
+    steps: [
+      [18, 6],
+      [15, 5],
+      [10, 4],
+      [7, 3],
+      [3, 2],
+    ],
+  },
   // The Hunter ranger's one Hunter's Prey pick at 3rd level; Colossus Slayer
   // rides pc_attack (src/lib/dm/pc-attack-damage.ts).
   { kind: "hunters_prey", classId: "ranger", subclass: "Hunter", opens: ["Hunter's Prey"], steps: [[3, 1]] },
@@ -364,6 +380,23 @@ export function optionSlotsFor(
   }
   const step = grant.steps.find(([atLevel]) => level >= atLevel);
   return step ? step[1] : 0;
+}
+
+// "fighter::Rune: Stone Rune" for every option a class's grant hands out: the
+// authored table keys a pick's own row by its held name (authored-coverage.ts
+// counts them as features).
+export function optionFeatureKeys(): string[] {
+  return GRANTS.flatMap((grant) => optionsOfKind(grant.kind).map((option) => `${grant.classId}::${optionFeatureName(grant.kind, option.n)}`));
+}
+
+// Every option a grant hands out, held as a feature, with the class (and
+// subclass) and the first level the grant opens at: the sweeps build holders
+// of the picks that carry their own authored row from it.
+export function optionGrantFeatures(): Array<{ classId: string; subclass?: string; level: number; name: string }> {
+  return GRANTS.flatMap((grant) => {
+    const level = Math.min(...grant.steps.map(([atLevel]) => atLevel));
+    return optionsOfKind(grant.kind).map((option) => ({ classId: grant.classId, ...(grant.subclass ? { subclass: grant.subclass } : {}), level, name: optionFeatureName(grant.kind, option.n) }));
+  });
 }
 
 // The pick-lists a subclass feature of this name opens in a class, by their

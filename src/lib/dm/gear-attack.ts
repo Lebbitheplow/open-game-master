@@ -41,7 +41,7 @@ export function magicWeaponOfRow(
 ): { srd: SrdWeapon | null; gear: WeaponGear | null } {
   const own = item.gear?.weapon as SrdWeapon | undefined;
   const hasOwn = Boolean(own && typeof own.damage === "string");
-  if (hasOwn && !item.gear?.def) {
+  if (hasOwn && !item.gear?.def && !item.infusion) {
     return { srd: own!, gear: null };
   }
   const named = hasOwn ? own! : matchWeapon(item);
@@ -65,14 +65,14 @@ export function isMagicWeaponName(name: string): boolean {
 // radiant damage and finesse, a Dwarven Thrower's throwing range. The name
 // stays the base weapon's, which is what weapon training reads.
 function withGear(base: SrdWeapon, riders: WeaponRiders): SrdWeapon {
-  if (!riders.damageType && !riders.properties?.length && !riders.rangeFt) {
+  if (!riders.damageType && !riders.properties?.length && !riders.rangeFt && !riders.dropProperties?.length) {
     return base;
   }
   const dice = base.damage.trim().split(/\s+/)[0];
   return {
     ...base,
     damage: riders.damageType ? `${dice} ${riders.damageType}` : base.damage,
-    properties: [...new Set([...(base.properties ?? []), ...(riders.properties ?? [])])],
+    properties: [...new Set([...(base.properties ?? []), ...(riders.properties ?? [])])].filter((property) => !(riders.dropProperties ?? []).includes(property)),
     ...(riders.rangeFt ? { rangeFt: riders.rangeFt } : {}),
     ...(riders.longRangeFt ? { longRangeFt: riders.longRangeFt } : {}),
   };

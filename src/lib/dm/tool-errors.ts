@@ -21,7 +21,7 @@
 // a feature its uses and its part of the turn (resource-turn.ts).
 // scripts/test-check-order.mjs holds every family to it.
 
-import type { ZodError } from "zod";
+import type { ZodError, ZodType } from "zod";
 import { textKey } from "../language/text-logic.ts";
 
 export type ToolError = { error: string; retry: true } | { error: string; refused: "rules" | "limit" };
@@ -42,9 +42,65 @@ export function toolError(refusal: ToolError): ToolError {
 // ('Invalid option: expected one of "none"|"advantage"|"disadvantage"'), so the
 // model resends the call with a listed value instead of the server guessing
 // one from its words.
-export function invalidArguments(needs: string, error: ZodError): ToolError {
-  const fields = error.issues.map((issue) => `${issue.path.join(".") || "arguments"}: ${issue.message}`);
+// A text or list over its limit says how long it was and what the limit is,
+// so the model shortens it: send_whisper's 1,000-character cap answered a
+// 1,251-character note with "needs characterIds and a message", and the
+// model resent the same note three times (0.34.0 report). `input` is the
+// parsed arguments, to measure the field by.
+export function invalidArguments(needs: string, error: ZodError, input?: unknown): ToolError {
+  const fields = error.issues.map((issue) => `${issue.path.join(".") || "arguments"}: ${fieldReason(issue, input)}`);
   return { error: `${needs} (${fields.join("; ")})`, retry: true };
+}
+
+function valueAt(input: unknown, path: readonly PropertyKey[]): unknown {
+  let at: unknown = input;
+  for (const key of path) {
+    if (at === null || typeof at !== "object") {
+      return undefined;
+    }
+    at = (at as Record<PropertyKey, unknown>)[key];
+  }
+  return at;
+}
+
+function fieldReason(issue: ZodError["issues"][number], input: unknown): string {
+  const value = valueAt(input, issue.path);
+  if (issue.code === "too_big" && "maximum" in issue) {
+    const max = Number(issue.maximum);
+    if (typeof value === "string") {
+      return `${value.trim().length} characters, over the limit of ${max}; shorten it and send it again`;
+    }
+    if (Array.isArray(value)) {
+      return `${value.length} entries, over the limit of ${max}; send at most ${max}`;
+    }
+  }
+  if (issue.code === "too_small" && "minimum" in issue && typeof value === "string" && !value.trim()) {
+    return "empty; it needs words";
+  }
+  if (issue.code === "invalid_type" && value === undefined) {
+    return "missing";
+  }
+  return issue.message;
+}
+
+// Any failure reading a call's arguments: JSON that does not parse, or a
+// schema that refused them. Every handler that parses in a try answers
+// through this, so the reason reaches the model instead of a fixed "needs"
+// line that named fields the call already had.
+export function badArguments(needs: string, error: unknown, rawArguments?: string): ToolError {
+  if (error instanceof SyntaxError) {
+    return { error: `${needs} (the arguments are not valid JSON: send one JSON object)`, retry: true };
+  }
+  if (error && typeof error === "object" && Array.isArray((error as ZodError).issues)) {
+    let input: unknown;
+    try {
+      input = JSON.parse(rawArguments || "{}");
+    } catch {
+      input = undefined;
+    }
+    return invalidArguments(needs, error as ZodError, input);
+  }
+  return { error: needs, retry: true };
 }
 
 // A name that is no record's whole name, refused with the records there are
@@ -85,4 +141,18 @@ export function namedOption(owner: string, variant: string | undefined, options:
   return wanted
     ? noneNamed(`${owner} has no option called`, (variant ?? "").trim(), options)
     : { error: `${owner} needs a variant: ${options.join(" or ")}. Ask the player which, unless they named one. Nothing was spent.`, retry: true };
+}
+
+// The reason a schema refused a call, for a handler whose own parse step
+// kept only "it failed" (shop-tools.ts and explore-tools.ts parse): read
+// again, so the refusal names the field and why.
+export function argumentsRefusal(needs: string, schema: ZodType, rawArguments: string): ToolError {
+  let input: unknown;
+  try {
+    input = JSON.parse(rawArguments || "{}");
+  } catch (error) {
+    return badArguments(needs, error, rawArguments);
+  }
+  const parsed = schema.safeParse(input);
+  return parsed.success ? { error: needs, retry: true } : invalidArguments(needs, parsed.error, input);
 }

@@ -438,7 +438,7 @@ html[data-theme="light"] .step-wipe-ring {
 }
 .creator-chip[data-size="md"] { padding: 2px 9px; font-size: 0.875rem; }
 .creator-cta {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -474,7 +474,7 @@ html[data-theme="light"] .step-wipe-ring {
   border: 1px solid rgba(212, 171, 58, 0.4);
   border-radius: 9999px;
   background: rgba(8, 6, 18, 0.82);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   color: #ecd287;
   transition: border-color var(--dur-quick) var(--ease-snap);
@@ -628,7 +628,7 @@ html[data-theme="light"] .step-wipe-ring {
   border: 1px solid color-mix(in srgb, var(--color-amber-500) 28%, transparent);
   background: color-mix(in srgb, var(--color-stone-950) 80%, transparent);
   box-shadow: var(--shadow-glow-gold);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.04em;
   color: var(--color-amber-300);
@@ -676,7 +676,7 @@ html[data-theme="light"] .step-wipe-ring {
   border-radius: 9999px;
   background: rgba(8, 6, 18, 0.94);
   border: 1px solid rgba(220, 38, 38, 0.6);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   /* One glyph in a 16 px badge on the die; the total and the note say
      which die was dropped in words. */
   font-size: 0.6875rem;
@@ -762,7 +762,7 @@ html[data-theme="light"] .roll-tier-5 { color: #6d28d9; text-shadow: none; }
   border: 1px solid color-mix(in srgb, var(--color-stone-600) 50%, transparent);
   border-radius: 7px;
   background: color-mix(in srgb, var(--color-stone-950) 60%, transparent);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 1rem;
   color: var(--color-stone-400);
   cursor: pointer;
@@ -898,7 +898,7 @@ html[data-theme="light"] .roll-tier-5 { color: #6d28d9; text-shadow: none; }
   display: flex;
   height: 24px;
   align-items: center;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -908,7 +908,7 @@ html[data-theme="light"] .roll-tier-5 { color: #6d28d9; text-shadow: none; }
 /* The tier in words under the total, in the total's colour. */
 .pool-tier {
   margin-top: -3px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -923,7 +923,7 @@ html[data-theme="light"] .roll-tier-5 { color: #6d28d9; text-shadow: none; }
   text-shadow: 0 0 12px color-mix(in srgb, var(--color-amber-400) 55%, transparent);
 }
 .pool-tag {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -986,7 +986,7 @@ html[data-theme="light"] .roll-tier-5 { color: #6d28d9; text-shadow: none; }
   animation: pool-socket-land 380ms var(--ease-spring) both;
 }
 .pool-socket-hint {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;

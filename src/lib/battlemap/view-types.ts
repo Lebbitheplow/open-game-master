@@ -10,7 +10,8 @@ import type { TokenIntent } from "@/lib/battlemap/intent";
 import type { DoorStates, LightZone, MapDrawing, MapLabel } from "@/lib/battlemap/scene";
 import type { MapSkin } from "@/lib/battlemap/skins";
 import type { AmbientLight, TokenKind } from "@/lib/battlemap/types";
-import type { TargetEdge } from "@/lib/battlemap/view-tactics";
+import type { TargetEdge, TargetSight } from "@/lib/battlemap/view-tactics";
+import type { HandBoardFacts } from "@/lib/battlemap/hand-core";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import type { MapAddonView } from "@/lib/addons/map-view";
 import type { Sex } from "@/lib/actor-sex-logic";
@@ -140,13 +141,23 @@ export type PlayerMapView = {
   // see, in feet, keyed by the creature's id: the Hand offers a reaction with
   // a reach (Glorious Defense's 10 feet, Rebuke the Violent's 30) only when
   // the creature is inside it. Absent for the DM, a viewer with no token, and
-  // older hosts, which offer every reaction as before.
+  // older hosts, which offer every reaction as before. Beside them, under
+  // zoneFeetKey (zone-feet.ts), the feet from an area the character keeps on
+  // the board to each creature and to themselves (Guardian Coil's tentacle).
   feet?: Record<string, number>;
   // The creatures among those this viewer's own character has no line of
   // sight to on the board, by id: a reaction whose text needs its creature
   // seen (Runic Shield, Cutting Words) is not dealt for them. Absent off the
   // map and from older hosts, and every card is dealt as before.
   unseen?: string[];
+  // The engine's verdicts on the viewer's own square: a Hide refused there,
+  // the Silence it stands in (hand-core.ts HandBoardFacts). The Hand shuts
+  // those cards in the engine's words. Absent with no token of their own.
+  self?: HandBoardFacts;
+  // Sight as the viewer's attack roll reads it against each enemy with a
+  // token the GM does not hide, in sight or not (view-tactics.ts TargetSight): the Hand's hit preview
+  // carries the advantage the roll gets. Absent from an older host.
+  sight?: Record<string, TargetSight>;
   tokenHealth: Record<string, HealthWord>;
   tokenAuras: Record<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>;
   tokenFootprint: Record<string, Footprint>;

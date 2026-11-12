@@ -1,0 +1,181 @@
+{
+  "_about": "Every raw read of the turn pointer (order[turnIndex], actingCombatantId, currentPcId) outside held-turn.ts and can-act.ts, by file: its count and why it reads the bare pointer. Whether it is someone's own turn is asked of ownTurnOf (src/lib/dm/held-turn.ts). Held by scripts/test-turn-pointer-readers.mjs.",
+  "readers": {
+    "app/api/campaigns/[campaignId]/actions/route.ts": {
+      "count": 1,
+      "why": "currentPcId tags a played line with the initiative slot the floor is on; held turns are refused by the act's own door"
+    },
+    "app/api/campaigns/[campaignId]/battle-map/move/route.ts": {
+      "count": 1,
+      "why": "asks enemiesAhead (the held turn) itself just above; this read names whose turn it is"
+    },
+    "app/api/campaigns/[campaignId]/companions/[characterId]/route.ts": {
+      "count": 1,
+      "why": "the initiative floor follows the pointer itself (the seat whose turn it is), and the held turn's own rule is the floor's"
+    },
+    "app/api/campaigns/[campaignId]/floor/route.ts": {
+      "count": 1,
+      "why": "names the seat the lead's skip is about to pass over, read just before skipCurrentTurn moves the pointer, so the cards that seat left open go with its turn; it asks nothing of whose turn it is"
+    },
+    "app/campaigns/[campaignId]/BattleMapPanel.tsx": {
+      "count": 1,
+      "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "app/campaigns/[campaignId]/CinematicParts.tsx": {
+      "count": 1,
+      "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "app/campaigns/[campaignId]/Composer.tsx": {
+      "count": 1,
+      "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "app/campaigns/[campaignId]/DmInitiativePanel.tsx": {
+      "count": 1,
+      "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "app/campaigns/[campaignId]/MonsterHand.tsx": {
+      "count": 1,
+      "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "lib/agents/webhooks.ts": {
+      "count": 1,
+      "why": "an agent program's status reports the pointer's entry as it stands"
+    },
+    "lib/battlemap/initiative-rows.ts": {
+      "count": 1,
+      "why": "the initiative strip's highlighted row: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "lib/battlemap/view.ts": {
+      "count": 1,
+      "why": "the board view's pointer for the public projection; the held turn is sent beside it"
+    },
+    "lib/character-seat.ts": {
+      "count": 3,
+      "why": "currentPcId itself (defined here) and the seat the floor's slot names"
+    },
+    "lib/db/encounter-view.ts": {
+      "count": 1,
+      "why": "the public encounter's current entry: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
+    },
+    "lib/db/encounters.ts": {
+      "count": 1,
+      "why": "turnKey: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/attack-record.ts": {
+      "count": 1,
+      "why": "attackTurnOver: a parked roll's turn by the pointer and the round it was rolled in, not a new act"
+    },
+    "lib/dm/authored-saves.ts": {
+      "count": 1,
+      "why": "actingSheetId reads the entry and asks ownTurnOf of it"
+    },
+    "lib/dm/claims.ts": {
+      "count": 2,
+      "why": "the acting combatant's budget key and the turn finalize hands on: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/companion-command.ts": {
+      "count": 2,
+      "why": "whose companion turn the GM plays: the floor's slot"
+    },
+    "lib/dm/departure-turn.ts": {
+      "count": 1,
+      "why": "reads the entry and asks ownTurnOf of it for the pact's own turn"
+    },
+    "lib/dm/encounter-tools.ts": {
+      "count": 28,
+      "why": "the pointer machinery itself (advancePointer, end_turn and the move it holds for a watcher's stop, the order, death saves at a turn's start); end_turn handles the held turn itself"
+    },
+    "lib/dm/enemy-actions-view.ts": {
+      "count": 1,
+      "why": "a legendary creature's onPointer reading: the pointer never rests on an enemy"
+    },
+    "lib/dm/enemy-turn-order.ts": {
+      "count": 1,
+      "why": "names whose turn it is in an enemy's refusal"
+    },
+    "lib/dm/foresight-more.ts": {
+      "count": 1,
+      "why": "the pointer move's own saves (moveSavesAbout): who is leaving as End Turn moves the pointer, and the dying it reaches next"
+    },
+    "lib/dm/initiative-ask.ts": {
+      "count": 1,
+      "why": "the console's words name the first in the order"
+    },
+    "lib/dm/initiative-edit.ts": {
+      "count": 4,
+      "why": "editing the order: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/initiative-floor.ts": {
+      "count": 2,
+      "why": "the initiative floor follows the pointer itself (the seat whose turn it is), and the held turn's own rule is the floor's"
+    },
+    "lib/dm/initiative.ts": {
+      "count": 4,
+      "why": "locking and walking the order: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/last-hit.ts": {
+      "count": 1,
+      "why": "lateFor asks turnStart and the pass itself"
+    },
+    "lib/dm/last-save.ts": {
+      "count": 1,
+      "why": "actedThisTurn reads the acting entry's budget (moved here from last-hit.ts): whether the creature whose turn it is has done anything yet, not whose turn it is"
+    },
+    "lib/dm/legendary-tools.ts": {
+      "count": 1,
+      "why": "a legendary creature's onPointer reading: the pointer never rests on an enemy"
+    },
+    "lib/dm/mount-tools.ts": {
+      "count": 1,
+      "why": "names whose turn it is in the refusal; the turn itself is asked of ownTurnOf"
+    },
+    "lib/dm/pc-attack-gate.ts": {
+      "count": 2,
+      "why": "asks heldTurnRefusal and releasesReadiedOffTurn beside it; the other read only asks whether a fight's order is running"
+    },
+    "lib/dm/player-word.ts": {
+      "count": 3,
+      "why": "the character whose player's word the AI's call waits on: the floor's slot (the GM is shown the enemies due beside it)"
+    },
+    "lib/dm/reaction-counters.ts": {
+      "count": 1,
+      "why": "splices an extra turn after the pointer: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/reaction-triggers.ts": {
+      "count": 1,
+      "why": "triggerRecords names the creature whose turn has just begun, for a turn-start trigger: who the pointer is on, not whether it is their own turn"
+    },
+    "lib/dm/readied-release.ts": {
+      "count": 1,
+      "why": "asks releasesReadiedOffTurn beside it"
+    },
+    "lib/dm/readied-spell.ts": {
+      "count": 1,
+      "why": "asks releasesReadiedOffTurn beside it"
+    },
+    "lib/dm/stand-up.ts": {
+      "count": 1,
+      "why": "names whose turn it is in the refusal; the turn itself is asked of ownTurnOf"
+    },
+    "lib/dm/summon-store.ts": {
+      "count": 1,
+      "why": "keeps the pointer on its entry when a summon leaves the order: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/swallow.ts": {
+      "count": 1,
+      "why": "turnRunning asks turnStart and the pass itself"
+    },
+    "lib/dm/turn-budget.ts": {
+      "count": 1,
+      "why": "currentCombatantId: the budget's owner, the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/turn-owner.ts": {
+      "count": 1,
+      "why": "returns the pointer's entry with the enemies due beside it"
+    },
+    "lib/dm/turn.ts": {
+      "count": 3,
+      "why": "the AI turn's prompt and its pointer step: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    }
+  }
+}

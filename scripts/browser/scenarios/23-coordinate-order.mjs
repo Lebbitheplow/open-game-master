@@ -6,7 +6,7 @@
 // holds Resolve now until they confirm; a reload keeps the order; and the
 // resolution posts the lines step by step with a note naming the order.
 import { request } from "playwright-core";
-import { check, eventually, untilStill, upTo } from "../lib.mjs";
+import { check, eventually, sleep, untilStill } from "../lib.mjs";
 
 export default {
   name: "coordinate-order",
@@ -61,19 +61,66 @@ export default {
             [`[data-coordinate-order] [data-sequence-item="${ids.corin}"]`, '[data-coordinate-order] [data-sequence-step="1"]'],
           );
         } else {
-          // A native drag on a busy runner sometimes ends before the drop
-          // target has seen it; a person drags again, and so does this.
-          for (let attempt = 0; attempt < 3; attempt += 1) {
-            await item(ids.corin).dragTo(editor.locator('[data-sequence-step="1"]'));
-            await upTo(async () => (await stepOf(editor, ids.corin).catch(() => "")) === "1", 400);
-            if ((await stepOf(editor, ids.corin).catch(() => "")) === "1") break;
-          }
+          // One native drag, as a person makes it: pick Corin up, let the
+          // steps settle (the gaps open as a drag starts, and a step may still
+          // be revealing itself), then aim at step 1 where it now is. dragTo
+          // aims at where step 1 was before the drag began, and on a busy
+          // runner that point had moved into a gap.
+          await untilStill(page);
+          const from = await item(ids.corin).boundingBox();
+          await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+          await page.mouse.down();
+          await page.mouse.move(from.x + from.width / 2 + 6, from.y + from.height / 2 + 6, { steps: 3 });
+          const stepOne = editor.locator('[data-sequence-step="1"]');
+          let target = await stepOne.boundingBox();
+          await eventually(async () => {
+            const again = await stepOne.boundingBox();
+            const settled = Math.abs(again.x - target.x) < 1 && Math.abs(again.y - target.y) < 1 && Math.abs(again.height - target.height) < 1;
+            target = again;
+            return settled;
+          }, { label: "step 1 settled under the drag", every: 150 });
+          await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 8 });
+          await page.mouse.up();
         }
-        await eventually(async () => (await stepOf(editor, ids.corin)) === "1", { label: "Corin dropped into step 1" });
+        try {
+          await eventually(async () => (await stepOf(editor, ids.corin)) === "1", { label: "Corin dropped into step 1" });
+        } catch (error) {
+          // Where everything lay when the drop did not hold, so a failure on a
+          // runner says why: the steps' places and the step Corin is in.
+          const layout = await editor.evaluate((node) =>
+            [...node.querySelectorAll("[data-sequence-step]")].map((step) => {
+              const box = step.getBoundingClientRect();
+              return `step ${step.getAttribute("data-sequence-step")} at ${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)} holds ${[...step.querySelectorAll("[data-sequence-item]")].map((item) => item.getAttribute("data-sequence-item")).join("+")}`;
+            }).join("; "),
+          );
+          throw new Error(`${error.message} (${layout})`);
+        }
         await untilStill(page);
         await t.shot("together");
         await t.tap(item(ids.corin).locator("[data-sequence-split]"));
         await eventually(async () => (await stepOf(editor, ids.corin)) === "2", { label: "Corin on a step of his own" });
+        if (!t.syntheticDrag) {
+          // The same drop made certain: the pointer rests on step 1 while the
+          // gaps open and step 1 slides down beneath it, then lets go, so the
+          // drop lands on another part of step 1 than the drag entered.
+          const box = await editor.locator('[data-sequence-step="1"]').boundingBox();
+          const at = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+          const cdp = await page.context().newCDPSession(page);
+          await page.evaluate((id) => {
+            const source = document.querySelector(`[data-coordinate-order] [data-sequence-item="${id}"]`);
+            source?.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: new DataTransfer() }));
+          }, ids.corin);
+          const data = { items: [{ mimeType: "application/x-odm-plan-step", data: ids.corin }], dragOperationsMask: 16 };
+          await cdp.send("Input.dispatchDragEvent", { type: "dragEnter", ...at, data });
+          await cdp.send("Input.dispatchDragEvent", { type: "dragOver", ...at, data });
+          await sleep(250);
+          await cdp.send("Input.dispatchDragEvent", { type: "drop", ...at, data });
+          await page.evaluate((id) => document.querySelector(`[data-coordinate-order] [data-sequence-item="${id}"]`)?.dispatchEvent(new DragEvent("dragend", { bubbles: true })), ids.corin);
+          await cdp.detach();
+          await eventually(async () => (await stepOf(editor, ids.corin)) === "1", { timeoutMs: 5_000, label: "a drop on step 1 after it moved under the pointer" });
+          await t.tap(item(ids.corin).locator("[data-sequence-split]"));
+          await eventually(async () => (await stepOf(editor, ids.corin)) === "2", { label: "Corin on a step of his own again" });
+        }
       }
       await t.tap(item(ids.corin).locator("[data-sequence-earlier]"));
       await eventually(async () => (await stepOf(editor, ids.corin)) === "1" && (await stepOf(editor, ids.ama)) === "2", { label: "Corin moved first" });

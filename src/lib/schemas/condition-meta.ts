@@ -59,6 +59,9 @@ const conditionInstanceSchema = z.object({
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),
+    // Ends once the creature can neither see nor hear its source (Hypnotic
+    // Gaze: src/lib/dm/ar-ws-senses-logic.ts).
+    endsUnsensed: z.boolean().optional(),
     saveOnDamage: z
       .object({
         ability: z.enum(ABILITIES),
@@ -72,6 +75,10 @@ const conditionInstanceSchema = z.object({
     // A Creation bard's Bardic Inspiration die carries a mote
     // (src/lib/dm/authored-mote.ts).
     mote: z.boolean().optional(),
+    // A Valor bard's die may ride a damage roll, an Eloquence bard's is kept
+    // by a roll it could not save (src/lib/dm/ar-wbf-bard-dice-logic.ts).
+    combat: z.boolean().optional(),
+    unfailing: z.boolean().optional(),
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),
@@ -81,10 +88,32 @@ const conditionInstanceSchema = z.object({
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // Ends when the rest it was raised for ends, short or long (Hearth of
+    // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
+    untilRestEnds: z.boolean().optional(),
+    // The weapon the effect rides (Sacred Weapon): src/lib/dm/mt-srd-unconscious.ts.
+    weapon: z.string().trim().min(1).max(80).optional(),
+    // Ends when its holder ends a turn farther than this from the source, or
+    // out of its sight (Intimidating Presence): src/lib/dm/mt-srd-barbarian.ts.
+    turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
+    // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
+    whileRagingOf: z.string().trim().min(1).max(80).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
+    // The clock instant (in-world minutes) a commanding charm's running hour
+    // began at (Command Undead's hourly save, src/lib/dm/ar-ws-command-hours.ts).
+    hourFrom: z.number().int().min(0).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
+    // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),
+    // so the next roll of that turn goes without it (Emboldening Bond's d4,
+    // src/lib/dm/emboldening-bond-logic.ts).
+    usedTurn: z.string().trim().min(1).max(160).optional(),
+    // The attuned item a readied Soul of Artifice would end (soul-of-artifice.ts).
+    item: z.string().trim().min(1).max(80).optional(),
+    // How many of the effect stand on the table (Invoke Duplicity's
+    // illusions: one, four with Improved Duplicity).
+    count: z.number().int().min(1).max(20).optional(),
     // A Dominate spell's standing order: the combatant its creature was told
     // to attack (src/lib/dm/combat-sides-logic.ts dominationOrderOf).
     order: z.string().trim().min(1).max(80).optional(),
@@ -100,6 +129,20 @@ const conditionInstanceSchema = z.object({
         turns: z.record(z.string().trim().min(1).max(80), z.number().int().min(0).max(100_000)).optional(),
         escapeFeet: z.number().int().min(0).max(120).optional(),
       })
+      .optional(),
+    // A Cloud Rune knight's answers at the stops before hits' damage
+    // (src/lib/dm/cloud-rune.ts): which swing of whose attack on whom, and
+    // the creature it turns onto, or null for one let land.
+    cloudTurns: z
+      .array(
+        z.object({
+          attackerId: z.string().trim().min(1).max(80),
+          struckId: z.string().trim().min(1).max(80),
+          swing: z.number().int().min(0).max(20),
+          onto: z.string().trim().min(1).max(80).nullable(),
+        }),
+      )
+      .max(8)
       .optional(),
 });
 

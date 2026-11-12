@@ -9,7 +9,7 @@
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { optionCards } from "@/lib/battlemap/hand-options";
 import { maneuverDieFor, maneuverUse, type ManeuverUse } from "@/lib/dm/maneuver-rules";
-import { ragingMeleeBonus, weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
+import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { dualWields, handsRuling, offHandProblem } from "@/lib/dm/attack-rules";
 import { shillelaghSwing } from "@/lib/dm/attack-features";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
@@ -21,14 +21,14 @@ import { beastAttackIcon } from "@/lib/battlemap/attack-art";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { AMMO_LABELS, ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
-import { conditionOnHitDice } from "@/lib/srd/condition-effects";
+import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
+import { grappleHandsProblem } from "@/lib/dm/cast-rules";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { matchWeapon, type SrdWeapon } from "@/lib/srd/weapons";
 
 import {
   FRESH_TURN,
   attackGate,
-  addFlat,
   costGate,
   gated,
   lowestSlot,
@@ -45,9 +45,12 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { featureCards, spellCards, spellNames } from "@/lib/battlemap/hand-spells";
+import { itemSpellCards, itemSpellNames } from "@/lib/battlemap/hand-items";
 import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
+import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-doors";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
+import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
@@ -78,12 +81,6 @@ export function carriedWeapons(sheet: Pick<CharacterSheet, "equipment">): Carrie
   return out;
 }
 
-function weaponRange(srd: SrdWeapon | null, reachTiles: number, thrown: boolean, ranged: boolean): string {
-  if (ranged && srd?.rangeFt) return `${srd.rangeFt} ft`;
-  const reach = `${reachTiles * 5} ft`;
-  return thrown && srd?.rangeFt ? `${reach} / ${srd.rangeFt} ft` : reach;
-}
-
 function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
@@ -96,7 +93,6 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   // src/lib/dm/attack-rules.ts). The off-hand swing of two-weapon fighting
   // has a weapon in each hand, so it is one-handed as well.
   const shieldName = acBreakdownFor(sheet).shieldName;
-  const onHit = conditionOnHitDice(sheet.conditions);
   const cards: HandCard[] = [];
   const base = {
     type: "attack" as const,
@@ -159,15 +155,16 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       // Bracers of Archery's longbow training and +2 damage, as pc_attack swings.
       { riders, offHand, martialArts, worn: magicItemRiders(sheet.equipment, sheet).weaponRiders },
     );
-    const rage = ragingMeleeBonus(sheet, profile);
-    const damage = `${addFlat(profile.damageExpression, rage)}${onHit.suffix}`;
+    // The damage and the roll as pc_attack makes them (hand-attack-lines.ts).
+    const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
+    const rolled = attackRollLine(sheet, profile.toHit);
+    const damage = line.damage;
     const notes: string[] = [];
     if (!offHand && allowed > 1) notes.push(`Extra Attack: ${allowed} swings on this action.`);
     if (riders.sneakAttackDice > 0 && profile.sneakEligible) {
       notes.push(`Sneak Attack +${riders.sneakAttackDice}d6 once a turn when it applies.`);
     }
-    if (rage) notes.push(`Rage +${rage}.`);
-    notes.push(...onHit.notes.map((note) => `${note}.`));
+    notes.push(...line.notes, ...rolled.notes);
     if (shillelagh) notes.push(`${shillelagh.note}.`);
     notes.push(...profile.riderNotes.map((note) => `${note}.`));
     if (!profile.proficient) notes.push("Not proficient.");
@@ -184,16 +181,18 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       id: `${offHand ? "offhand" : "attack"}:${textKey(name)}`,
       name: offHand ? `Off-hand ${name}` : name,
       cost: offHand ? "bonus" : "action",
-      range: weaponRange(srd, profile.reachTiles, profile.thrown, profile.ranged),
+      ...attackReach(profile),
       dice: `${damage} ${profile.damageType}`.trim(),
-      roll: `${signed(profile.toHit)} to hit`,
+      roll: toHitWords(rolled),
       rules: notes.slice(0, 2).join(" "),
       description: notes.join(" "),
       resource: ammoKind ? (ammo ? `${AMMO_LABELS[ammoKind]} ${ammo.count}` : `No ${AMMO_LABELS[ammoKind]}`) : "",
       icon: natural
         ? beastAttackIcon("", name)
         : srd ? { kind: "item", key: srd.name, family: "item-weapon" } : { kind: "action", key: "unarmed-strike" },
-      toHit: profile.toHit,
+      toHit: rolled.toHit,
+      ...(rolled.toHitDice ? { toHitDice: rolled.toHitDice } : {}),
+      ...(rolled.rollAdvantage ? { rollAdvantage: rolled.rollAdvantage } : {}),
       damage,
       damageType: profile.damageType,
       melee: !profile.ranged,
@@ -364,7 +363,7 @@ const BASICS: Array<{ id: BasicActionId; name: string; rules: string; target: Ha
   { id: "dodge", name: "Dodge", rules: "Attacks against you roll at disadvantage until your next turn.", target: "none" },
   { id: "dash", name: "Dash", rules: "Double your movement this turn.", target: "none" },
   { id: "disengage", name: "Disengage", rules: "Your movement provokes no opportunity attacks this turn.", target: "none" },
-  { id: "help", name: "Help", rules: "An ally gets advantage on their next attack against the creature you name, or on a check.", target: "ally" },
+  { id: "help", name: "Help", rules: "An ally gets advantage on their next attack against a creature you name within 5 ft of you, or on a check.", target: "ally" },
   { id: "hide", name: "Hide", rules: "A Stealth check to slip out of sight.", target: "none" },
   { id: "search", name: "Search", rules: "Perception or Investigation to find what is hidden.", target: "none" },
   { id: "escape", name: "Escape", rules: "Athletics or Acrobatics against the grappler's Athletics.", target: "none" },
@@ -380,9 +379,20 @@ const BASICS: Array<{ id: BasicActionId; name: string; rules: string; target: Ha
 // engine's own reading of the sheet (bonus-routes.ts, which take_action asks).
 const BONUS_MOVES: MoveAction[] = ["dash", "disengage", "hide", "dodge"];
 
-function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders): HandCard[] {
+function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, board: HandOptions["board"]): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const allowed = 1 + riders.extraAttacks;
+  // The engine's own refusals of a basic action on the rules (take_action's
+  // words): a grapple with both hands full (cast-rules.ts
+  // grappleHandsProblem), a Hide a watcher sees clearly (the board view's
+  // verdict, hide-traits.ts hideRefusal). Both cards were open and refused.
+  const grappleHands = grappleHandsProblem(sheet);
+  const ruled = (id: BasicActionId): Gate =>
+    id === "grapple" && grappleHands
+      ? { reason: grappleHands.error, spent: false }
+      : id === "hide" && board?.hide
+        ? { reason: board.hide, spent: false }
+        : null;
   const grappled = sheet.conditions.some((entry) => entry.trim().toLowerCase() === "grappled");
   const prone = sheet.conditions.some((entry) => entry.trim().toLowerCase() === "prone");
   // A spell's hold (Web, Maze, Irresistible Dance): take_action escape breaks
@@ -400,7 +410,9 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
       type: "basic",
       name: route ? `${route.feature}: ${basic.name}` : basic.name,
       cost,
-      range: contest || basic.id === "help" ? "5 ft" : "Self",
+      // Help aims at the ally, who may stand anywhere (SRD 5.1 gives helping
+      // with a task no range); its 5 feet are the foe's, named in its words.
+      range: contest ? "5 ft" : basic.id === "help" ? "" : "Self",
       dice: contest || escape
         ? `Athletics ${signed(athletics)}`
         : basic.id === "hide"
@@ -434,6 +446,14 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
     };
   };
   for (const basic of BASICS) {
+    // Revelation in Flesh's slip out of a grapple or a nonmagical restraint,
+    // as take_action escape answers it (src/lib/dm/ar-ws-squeeze.ts): 5 feet
+    // of movement, so the card costs no action and rolls nothing.
+    if (basic.id === "escape" && squeezeSlips(sheet)) {
+      const slip: HandCard = { ...make(basic, null), cost: "free", dice: "", roll: "no roll", condition: "", rules: "Revelation in Flesh: you slip free for 5 feet of movement. No action, no roll." };
+      cards.push(gated(slip, standingGate(sheet, turn, "move")));
+      continue;
+    }
     // Escape is only there to take while something holds you.
     if (basic.id === "escape" && !grappled && !hold) continue;
     // Standing up is only there to take while lying prone.
@@ -469,6 +489,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
         standingGate(sheet, turn, contest ? "attack" : "action"),
         contest ? attackGate(turn, allowed, sheet, { hasteOk: false }) : costGate("action", turn, sheet, basic.name),
         still,
+        ruled(basic.id),
       ),
     );
     // The same move as the bonus action, where a feature allows it: Cunning
@@ -485,11 +506,21 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
           ? { reason: `${sheet.name} has no use of ${route.feature} left. It comes back after a rest.`, spent: true }
           : null;
       cards.push(
-        gated(make(basic, route), standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`), kiGate, usesGate, still),
+        gated(make(basic, route), standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`), kiGate, usesGate, still, ruled(basic.id)),
       );
     }
   }
   return cards;
+}
+
+// The counters that work only in dim light or darkness (Steps of Night, One
+// with Shadows), shut while the board says the square is bright, as
+// use_resource refuses them there (one-with-shadows.ts shadowLightProblem).
+const DARK_BOUND = new Set(["sub_steps_of_night", "one_with_shadows"]);
+function darkBound(card: HandCard, board: HandOptions["board"]): HandCard {
+  return board?.bright && card.pool && DARK_BOUND.has(card.pool) && !card.disabled
+    ? { ...card, disabled: `${board.bright}; ${card.name} works only in dim light or darkness.`, spent: false }
+    : card;
 }
 
 // ---- the hand ----
@@ -499,7 +530,9 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
 export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}): HandCard[] {
   const riders = combatRiders(sheet);
   const spells = spellCards(sheet, turn, riders, options);
-  const features = featureCards(sheet, turn);
+  // Arcane Abeyance's and Master Scrivener's counters are the door cards'
+  // (hand-feature-doors.ts), which name the spell their engines need.
+  const features = featureCards(sheet, turn).filter((card) => !card.pool || !DOOR_COUNTERS.includes(card.pool)).map((card) => darkBound(card, options.board));
   // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
   const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
@@ -507,12 +540,14 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...riderCards(sheet, turn, riders),
     ...spells,
     ...ringSpellCards(sheet, turn, riders, options),
+    ...(options.items === false ? [] : itemSpellCards(sheet, turn, riders, options)),
     ...features,
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
-    ...subclassSpendCards(sheet, turn, taken),
+    ...subclassSpendCards(sheet, turn, taken, options.board),
+    ...featureDoorCards(sheet, turn, spells),
     ...kiCards(sheet, turn),
-    ...basicCards(sheet, turn, riders).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
+    ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
     ...gearCards(sheet, turn, options.gear),
     ...fastHandsCards(sheet, turn),
   ];
@@ -556,18 +591,14 @@ export function spellsToLookUp(sheet: CharacterSheet): string[] {
   return spellNames(sheet);
 }
 
-// The same, and what a ring holds, for the cards alone: the summoning door lists
+// The same, and what its items cast, for the cards alone: the summoning door lists
 // what the sheet casts from its own slots.
 export function handSpellsToLookUp(sheet: CharacterSheet): string[] {
-  return [...spellNames(sheet), ...ringSpellNames(sheet)];
+  return [...spellNames(sheet), ...ringSpellNames(sheet), ...itemSpellNames(sheet)];
 }
 
 // Nine in the fan, the rest behind the "more" spine; a player's own
 // arrangement of the fan is hand-layout.ts (issue 231).
 export { splitHand } from "@/lib/battlemap/hand-layout";
 
-// Swings the Attack action grants this character (1 + Extra Attack), which
-// is what afterCommit needs to know when the action closes.
-export function attacksAllowed(sheet: CharacterSheet): number {
-  return 1 + combatRiders(sheet).extraAttacks;
-}
+export { attacksAllowed } from "@/lib/battlemap/hand-core";

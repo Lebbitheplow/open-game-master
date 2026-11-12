@@ -5,7 +5,9 @@
 // stabilize.ts, rest-tools.ts) all decide from one place.
 import {
   effectiveMaxHp,
+  effectiveSpeed,
   removeConditionInstances,
+  removeConditions,
   ROUNDS_PER_MINUTE,
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
@@ -19,6 +21,10 @@ export const PRONE = "prone";
 // their feet for the extra turn the reaction gives; the fall comes when that
 // turn ends (src/lib/dm/reaction-counters.ts, turn-end.ts).
 export const HOLDING_ON = "strength before death";
+// Rage Beyond Death (Path of the Zealot 14): at 0 hit points and on their feet
+// while the rage lasts (src/lib/dm/mt-fb-rage-death-logic.ts lays it as they
+// drop; it ends with the rage, src/lib/dm/rage-bound.ts).
+export const RAGING_ON = "rage beyond death";
 // Written by the suffocation hazard on a creature that ran out of air, and
 // cleared (clear_condition) when it can breathe again. While it stands,
 // nothing heals or stabilizes the creature (SRD 5.1, Suffocating).
@@ -60,9 +66,10 @@ export function conditionsOf(sheet: {
   return downConditions({ conditions: sheet.conditions }).conditions;
 }
 
-// Up at 0 hit points for Strength before Death's extra turn.
+// Up at 0 hit points: for Strength before Death's extra turn, or raging on
+// under Rage Beyond Death.
 export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: boolean } | null }): boolean {
-  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => entry.trim().toLowerCase() === HOLDING_ON);
+  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON].includes(entry.trim().toLowerCase()));
 }
 
 // Hit points are back: the creature wakes and is still on the ground.
@@ -71,6 +78,31 @@ export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: bool
 export function wakeConditions(held: Held): { conditions: string[]; conditionMeta: ConditionMetaMap } {
   const cleared = removeConditionInstances(held.conditions, held.conditionMeta, UNCONSCIOUS, (entry) => !entry.spell);
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
+// Time passing out of a fight is time enough to get up. Standing costs half
+// a move (SRD 5.1, Being Prone), and outside a fight there is no turn to pay
+// it from, so nothing ever stood a character who woke on the ground: the
+// prone of a drop to 0 hit points lay through a rest, a road or an hour of
+// waiting and met them in the next fight. Whoever the stretch leaves awake
+// and able to move is on their feet (condition-tick.ts tickClockConditions,
+// which a rest, travel and pass_time all run). Still asleep (stable and not
+// yet woken, a Sleep spell) or held at speed 0 (grappled, restrained), they
+// stay down. Null when nothing changes.
+export function standAsTimePasses(sheet: Held & {
+  currentHp: number;
+  speed: number;
+  deathSaves?: { dead: boolean } | null;
+}): { conditions: string[]; conditionMeta: ConditionMetaMap } | null {
+  if (sheet.deathSaves?.dead || sheet.currentHp <= 0 || !sheet.conditions.some((entry) => isConditionNamed(entry, PRONE))) {
+    return null;
+  }
+  if (effectiveSpeed(sheet.conditions, sheet.speed) <= 0) {
+    return null;
+  }
+  // Only prone's own note goes with it; the others' notes stay as written.
+  const { meta } = removeConditions(sheet.conditions, sheet.conditionMeta, [PRONE]);
+  return { conditions: sheet.conditions.filter((entry) => !isConditionNamed(entry, PRONE)), conditionMeta: meta };
 }
 
 // A mummy lord's Channel Negative Energy (SRD 5.1, a legendary action):

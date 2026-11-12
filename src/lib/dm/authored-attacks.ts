@@ -10,11 +10,12 @@
 // Called from pc-attack-plan.ts (the budget, before anything is spent) and
 // from authored-hooks.ts authoredOnHit (the bite, after the hit).
 
+import { fightMarked, markFight } from "@/lib/dm/turn-marks";
+import { regainHitPoints } from "@/lib/dm/regain";
 import type { Campaign } from "@/lib/db/campaigns";
 import { turnKey, type Encounter } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import type { Advantage } from "@/lib/dice";
-import { publishPersisted } from "@/lib/events";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { computeSheetDerived } from "@/lib/srd";
@@ -24,8 +25,9 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 
 const CLAWS_EXTRA = "form of the beast:claws";
 const RAPID_STRIKE = "rapid strike";
-// The turn a bite last healed in, per barbarian (turnKey).
-const BITE_HEALED = new Map<string, string>();
+// The turn a bite last healed in, per barbarian (turnKey): a mark the
+// fight's row keeps (turn-marks.ts), which a restart remembers.
+const biteKey = (holderId: string) => `form of the beast bite:${holderId}`;
 
 // The Attack action's budget after a claw attack: one more attack, the first
 // time a turn.
@@ -51,6 +53,7 @@ export function rapidStrike(input: {
   advantage: Advantage;
   weaponAttack: boolean;
   bonus: boolean;
+  targetId: string;
 }): { refused: ToolError } | { budget: TurnBudget; note: string } {
   const { sheet, budget } = input;
   const feature = hasRapidStrike(sheet);
@@ -67,8 +70,37 @@ export function rapidStrike(input: {
     return { refused: { error: "Rapid Strike forgoes advantage on the attack, and this attack has none to forgo; attack without rapidStrike.", retry: true } };
   }
   return {
-    budget: { ...budget, attacksAllowed: budget.attacksAllowed + 1, oncePerTurn: [...budget.oncePerTurn, RAPID_STRIKE] },
+    budget: { ...budget, attacksAllowed: budget.attacksAllowed + 1, oncePerTurn: [...budget.oncePerTurn, RAPID_STRIKE, `${RAPID_STRIKE_OWED}${input.targetId}`] },
     note: `${feature}: the advantage is forgone for one more attack against this target`,
+  };
+}
+
+// The creature a Rapid Strike's extra attack is owed to, until it is made.
+const RAPID_STRIKE_OWED = "rapid strike owed:";
+
+// "One more attack against the same target": the attack Rapid Strike bought
+// goes to the creature it was traded on. An attack at that creature pays it;
+// any other attack of the action may go where the fighter likes while more
+// than the owed one is left, and the last one left is refused at anybody else.
+// Before this every attack left after the trade could go to another creature.
+export function rapidStrikeOwed(budget: TurnBudget, targetId: string): { refused: ToolError } | { budget: TurnBudget } {
+  const key = budget.oncePerTurn.find((entry) => entry.startsWith(RAPID_STRIKE_OWED));
+  if (!key) {
+    return { budget };
+  }
+  if (key.slice(RAPID_STRIKE_OWED.length) === targetId) {
+    return { budget: { ...budget, oncePerTurn: budget.oncePerTurn.filter((entry) => entry !== key) } };
+  }
+  // The budget already counts the attack being made (pc-attack-plan.ts spends
+  // it before the options are read): one more must be left after it.
+  if (budget.attacksAllowed - budget.attacksMade >= 1) {
+    return { budget };
+  }
+  return {
+    refused: {
+      error: "Rapid Strike's extra attack is made against the same creature the advantage was given up on, and it is the one attack left of this action: it goes to that creature, or is not made.",
+      refused: "rules",
+    },
   };
 }
 
@@ -104,15 +136,14 @@ export function naturalWeaponOnHit(
   }
   const max = effectiveMaxHp(sheet);
   const stamp = `${encounter.id}:${turnKey(encounter)}`;
-  if (sheet.currentHp <= 0 || sheet.currentHp >= max / 2 || BITE_HEALED.get(sheet.id) === stamp) {
+  if (sheet.currentHp <= 0 || sheet.currentHp >= max / 2 || fightMarked(encounter.id, biteKey(sheet.id), stamp)) {
     return [];
   }
-  const heal = computeSheetDerived(sheet).proficiencyBonus;
-  const currentHp = Math.min(max, sheet.currentHp + heal);
-  const updated = patchSheet(sheet.id, { currentHp });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  // Under the heal tool's rules (regain.ts), and audited, so an undo takes it back.
+  const gained = regainHitPoints(campaign, null, sheet, computeSheetDerived(sheet).proficiencyBonus, `${natural.feature}: the bite's healing`);
+  if (gained <= 0) {
+    return [];
   }
-  BITE_HEALED.set(sheet.id, stamp);
-  return [`${natural.feature}: the bite heals ${sheet.name} ${currentHp - sheet.currentHp} hit points.`];
+  markFight(encounter.id, biteKey(sheet.id), stamp);
+  return [`${natural.feature}: the bite heals ${sheet.name} ${gained} hit points.`];
 }

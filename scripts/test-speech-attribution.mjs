@@ -269,4 +269,31 @@ test("stored lines draw the same segments, survive a rewrite of other lines, and
   assert.equal(speech.storedSpeaker({ kind: "npc", id: "n1", name: "Marla", aliases: ["M"], gender: "Female" }).gender, undefined, "a stored line keeps who, not how they were found");
 });
 
+test("a line split by a short tag is one card with the tag inside it (issue #917)", () => {
+  // As the transcript draws a message: the stored lines, then the cards.
+  const people = [{ ...cast[0], gender: "Female" }, cast[1]];
+  const cardsFor = (text) =>
+    speech.cardsOf(speech.segmentsOf(text, speech.linesOf(attributeSpeech(text, people)))).map((card) =>
+      card.kind === "speech" ? `${card.speaker.name}: ${card.parts.map((part) => (part.kind === "tag" ? `[${part.text}]` : part.text)).join(" ")}` : `prose: ${card.text.trim()}`,
+    );
+  // Model-written text: the claims reader stores both halves as Marla's
+  // (src/lib/dm/claims.ts), where attributeSpeech leaves a line after a
+  // full stop open.
+  const stored = '"Marla," she says. "Which one."';
+  const both = [{ line: "Marla,", speaker: cast[0] }, { line: "Which one.", speaker: cast[0] }];
+  assert.deepEqual(speech.cardsOf(speech.segmentsOf(stored, both)), [
+    { kind: "speech", speaker: cast[0], parts: [{ kind: "words", text: "Marla," }, { kind: "tag", text: "she says." }, { kind: "words", text: "Which one." }] },
+  ]);
+  assert.deepEqual(cardsFor('"We ride at dawn," said Marla, "and not a moment later."'), ["Marla: We ride at dawn, [said Marla,] and not a moment later."]);
+  // Another speaker between is two cards, as before.
+  assert.deepEqual(cardsFor('"Hold the gate," says Marla. "Aye," says Old Pike.'), ["Marla: Hold the gate,", "prose: says Marla.", "Old Pike: Aye,", "prose: says Old Pike."]);
+  // So is a long passage, a new paragraph, or a quote nobody is tied to.
+  const marla = { kind: "npc", id: "n1", name: "Marla" };
+  const split = (between) => speech.cardsOf([{ kind: "speech", text: "Go,", speaker: marla }, { kind: "prose", text: between }, { kind: "speech", text: "now.", speaker: marla }]).length;
+  assert.equal(split(" she says, and the wind takes the rest of it away from her. "), 3);
+  assert.equal(split(" she says.\n\n"), 3);
+  assert.equal(split(' she says. "Why?" '), 3);
+  assert.equal(split(" she says. "), 1);
+});
+
 console.log(`test-speech-attribution: ${passed} passed`);

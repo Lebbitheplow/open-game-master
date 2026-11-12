@@ -231,6 +231,14 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     summary: "Stopped: speed 0 for the rest of the turn (Sentinel's opportunity attack hit).",
     speedSet: 0,
   },
+  // The Stone Rune's charm (authored-effects-w2-mt-fb.ts): laid with charmed
+  // and incapacitated, and ended with them by the one save.
+  {
+    id: "dreamy-stupor",
+    match: ["dreamy stupor"],
+    summary: "Dreamy stupor (Stone Rune): speed 0 while the rune's charm holds.",
+    speedSet: 0,
+  },
   {
     id: "hamstrung",
     match: ["hamstrung"],
@@ -675,14 +683,14 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       { kind: "save", ability: "str" },
       { kind: "check", ability: "str" },
     ],
-    onHitDice: { dice: "1d6", type: "" },
-    weaponOnly: true,
+    // The die is a once-per-turn rider, as the text says (one damage roll a
+    // turn): src/lib/dm/attack-damage-riders.ts heldConditionRiders.
   },
   {
     id: "bladesong",
     match: ["bladesong"],
     summary:
-      "Bladesong: AC increased by their Intelligence modifier, +10 feet of speed, advantage on Acrobatics, and a bonus on concentration saves. Ends if they wear medium/heavy armor or a shield, or use two hands on a weapon.",
+      "Bladesong: AC increased by their Intelligence modifier, +10 feet of speed, advantage on Acrobatics, and their Intelligence modifier (at least +1) on Constitution saves to keep concentration. Ends if they wear medium/heavy armor or a shield, or use two hands on a weapon.",
     acBonusAbility: "int",
     speedBonus: 10,
   },
@@ -705,7 +713,15 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       // Conjured at a point within 60 feet, it strikes a creature within 10
       // feet of itself and moves 30 feet with each later strike (issue 659).
       from: { zone: "tentacle of the deeps", reachFeet: 10, moveFeet: 30, rangeFeet: 60 },
+      // "and the target's speed drops by 10 feet until the start of your next turn".
+      leaves: "slowed by the tentacle",
     },
+  },
+  {
+    id: "tentacle_slowed",
+    match: ["slowed by the tentacle"],
+    summary: "Slowed by the tentacle: speed reduced by 10 feet until the start of the warlock's next turn (Tentacle of the Deeps).",
+    speedBonus: -10,
   },
   {
     id: "form_of_dread",
@@ -724,7 +740,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "spirit_totem_hawk",
     match: ["spirit totem: hawk", "spirit totem (hawk)"],
     summary:
-      "Spirit Totem (Hawk): the druid's reaction grants advantage on an attack against a creature in the aura; allies inside have advantage on Perception checks.",
+      "Spirit Totem (Hawk): the druid's reaction grants advantage on an attack against a creature in the aura (use_reaction \"Spirit Totem\" before the roll, the attacker as targetCharacterId and the creature attacked as targetEnemyId); allies inside have advantage on Perception checks.",
   },
   {
     id: "spirit_totem_unicorn",
@@ -1027,11 +1043,14 @@ export function conditionOnHitDice(
   notes: string[];
   typed: Array<{ dice: string; type: string }>;
   hitSpent: string[];
+  // The type the hit's weapon damage turns to (Planar Warrior's force).
+  damageAs?: string;
 } {
   let suffix = "";
   const notes: string[] = [];
   const typed: Array<{ dice: string; type: string }> = [];
   const hitSpent: string[] = [];
+  let damageAs: string | undefined;
   for (const { row, condition } of activeConditionEffects(conditions)) {
     // The type is optional: a die that adds to the weapon's own damage
     // carries none ("superiority strike (1d8)").
@@ -1060,11 +1079,14 @@ export function conditionOnHitDice(
         typed.push({ dice, type });
       }
     }
+    if (row.weaponDamageAs && context.weapon !== false) {
+      damageAs = row.weaponDamageAs;
+    }
     if (row.consumedBy === "hit") {
       hitSpent.push(condition);
     }
   }
-  return { suffix, notes, typed, hitSpent };
+  return { suffix, notes, typed, hitSpent, ...(damageAs ? { damageAs } : {}) };
 }
 
 // Attack-roll state granted by the TARGET's conditions (blur, faerie fire,
@@ -1152,6 +1174,18 @@ export function conditionSpeed(conditions: string[], baseSpeed: number): number 
 // actionHeld: the turn's action is spent before it begins (a spell of a
 // minute or more being cast, src/lib/dm/long-casting-logic.ts).
 export type TurnShape = { extraActions: number; slowed: boolean; actionHeld?: boolean };
+
+// Attacks the holder's conditions add to the Attack action, read by the turn
+// budget (src/lib/dm/turn-budget.ts attacksAllowedFor) and so by the Hand.
+export function conditionExtraAttacks(conditions: string[]): number {
+  return activeConditionEffects(conditions).reduce((sum, { row }) => sum + (row.extraAttacks ?? 0), 0);
+}
+
+// The lowest natural roll the holder's melee weapon attacks score a critical
+// hit on while a condition holds (src/lib/dm/attack-record.ts), 20 with none.
+export function conditionMeleeCritRange(conditions: string[]): number {
+  return Math.min(20, ...activeConditionEffects(conditions).map(({ row }) => row.meleeCritRange ?? 20));
+}
 export function conditionTurnShape(conditions: string[]): TurnShape {
   const rows = activeConditionEffects(conditions);
   return {

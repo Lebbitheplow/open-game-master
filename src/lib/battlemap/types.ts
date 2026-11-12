@@ -144,6 +144,9 @@ export type MoveTraits =
   | {
       swims?: boolean;
       landStride?: boolean;
+      // Difficult terrain of any kind, the board's and a spell's, costs no
+      // extra: Mobile on a turn its holder Dashed (src/lib/srd/feat-moves.ts).
+      anyGround?: boolean;
       climbs?: boolean;
       passable?: Set<number>;
       squeeze?: boolean;
@@ -174,17 +177,24 @@ export function moveCost(ch: string, traits: MoveTraits = false): number {
   if (ch === TERRAIN.climb) {
     return typeof traits === "object" && traits.climbs ? 1 : 2;
   }
-  const stride = typeof traits === "object" && Boolean(traits.landStride);
+  const stride = typeof traits === "object" && Boolean(traits.landStride || traits.anyGround);
   return ch === TERRAIN.difficult && !stride ? 2 : 1;
 }
 
 // A character's walking traits from their features: a swimming speed, Land's
 // Stride.
+//
+// Unarmored Movement at monk 9 (SRD 5.1): "you gain the ability to move along
+// vertical surfaces and across liquids on your turn without falling during
+// the move". The board's water and its climbs cost such a monk what open
+// ground does; a wall with no climb drawn on it has no height here and stays
+// the GM's.
 export function moveTraitsFrom(features: Array<{ name: string }> = []): MoveTraits {
+  const surfaces = features.some((feature) => /^unarmored movement improvement\b/i.test(feature.name.trim()));
   return {
-    swims: swimsFrom(undefined, features),
+    swims: surfaces || swimsFrom(undefined, features),
     landStride: features.some((feature) => /^land's stride\b/i.test(feature.name.trim())),
-    climbs: climbsFrom(undefined, features),
+    climbs: surfaces || climbsFrom(undefined, features),
   };
 }
 
@@ -239,10 +249,25 @@ export function flyingSpeedOf(input: {
   return input.worn ? Math.max(own ?? 0, input.worn) : own;
 }
 
+const FEATURE_FLIGHT = new Map<string, number>([["flying (writhing tide)", 10]]);
+
 function ownFlyingSpeed(input: Parameters<typeof flyingSpeedOf>[0]): number | null {
   const printed = /\bfly\s+(\d+)/i.exec(input.speedText ?? "");
   if (printed) {
     return Number(printed[1]);
+  }
+  // A flight that names its feet (an Experimental Elixir's "flying (10 ft)")
+  // flies that far, not the Fly spell's 60.
+  const stated = (input.conditions ?? []).map((entry) => /^flying \((\d+) ?(?:ft|feet)\.?\)$/i.exec(entry.trim())).find(Boolean);
+  if (stated) {
+    return Number(stated[1]);
+  }
+  // A flying speed a feature gives at its own number, laid as "flying
+  // (<feature>)": Writhing Tide's swarm carries its ranger 10 feet, not the
+  // Fly spell's 60.
+  const fromFeature = (input.conditions ?? []).map((entry) => FEATURE_FLIGHT.get(entry.trim().toLowerCase())).find((feet) => feet !== undefined);
+  if (fromFeature !== undefined) {
+    return fromFeature;
   }
   if ((input.conditions ?? []).some((entry) => /^flying\b|^fly \(spell\)$/i.test(entry.trim()))) {
     return 60;
@@ -268,7 +293,9 @@ function ownFlyingSpeed(input: Parameters<typeof flyingSpeedOf>[0]): number | nu
     return Number(named[1]);
   }
   const winged = (input.features ?? []).some(
-    (feature) => /\bwings?\b|flying speed/i.test(feature.name) && !MANIFESTED_WINGS.has(feature.name.trim().toLowerCase()),
+    // An aasimar's Celestial Revelation names its Heavenly Wings in its
+    // line; they fly only while that form is held (MANIFESTED_WINGS).
+    (feature) => /\bwings?\b|flying speed/i.test(feature.name) && !MANIFESTED_WINGS.has(feature.name.trim().toLowerCase()) && !/^celestial revelation\b/i.test(feature.name.trim()),
   );
   if (winged || input.wildShaped) {
     return input.walkingFeet ?? 30;
@@ -282,4 +309,9 @@ const MANIFESTED_WINGS = new Map<string, number | null>([
   ["dragon wings", null],
   ["otherworldly wings", 30],
   ["wings unfurled", null],
+  ["celestial revelation: heavenly wings", null],
+  // A Phantom's Ghost Walk: "spectral for 10 minutes with a 10-foot fly
+  // speed" (no wings, the same reading: a flying speed while the condition
+  // is held).
+  ["ghost walk", 10],
 ]);

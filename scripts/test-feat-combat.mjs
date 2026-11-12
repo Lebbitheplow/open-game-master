@@ -4,6 +4,7 @@
 // Expert's and Gunner's shot in melee, Elemental Adept's type and dice
 // floor, Dungeon Delver's notice, Defensive Duelist's bonus, the prompt tag.
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
@@ -13,7 +14,7 @@ const {
   featBonusAttack, isPolearm, ONE_HANDED_ATTACKED, powerAttackFeat, shootsFreelyInMelee, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, spellRangeFactor,
 } = await import("../src/lib/srd/feat-combat.ts");
 const { featGrantSpec, featPicksOwed, applyFeatGrants } = await import("../src/lib/srd/feat-grants.ts");
-const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
+const { authoredFeatDesc, engineFeatNamed } = await import("../src/lib/srd/feat-effects.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -95,6 +96,89 @@ test("the prompt tags the feats the server applies", () => {
   // Actor's advantage is the check engine's now (issue #147); Keen Mind stays the DM's.
   assert.equal(featEngineTag("Actor"), "[server]");
   assert.equal(featEngineTag("Keen Mind"), null);
+});
+
+// The builder tells the player what the table applies of a feat from this
+// tag, and said "Nothing of this feat is applied by the table" of Savage
+// Attacker while attack-swing.ts rolled its second damage (play-test
+// 2026-11-07); the GM's prompt reads the same tag ("the server applies what
+// its tag names"). So the tag follows the engines both ways: every feat any
+// engine under src/lib asks for by name carries one (Martial Adept's
+// maneuvers, Elven Accuracy's third d20, Inspiring Leader's and Metamagic
+// Adept's counters, Telepathic's free cast and the content pack's check
+// riders were missed too), and every name the tag lists is one an engine
+// reads, never a promise the table does not keep.
+test("the tag follows the engines: every feat they run carries one, and every tagged feat is run", async () => {
+  for (const feat of ["Savage Attacker", "Poisoner", "Athlete", "Chef", "Healer", "Elven Accuracy", "Eldritch Adept"]) {
+    assert.equal(featEngineTag(feat), "[server]", feat);
+  }
+  assert.equal(featEngineTag("Martial Adept"), "[pc_attack maneuver]");
+  assert.equal(featEngineTag("Inspiring Leader"), "[use_resource]");
+  assert.equal(featEngineTag("Metamagic Adept"), "[use_resource]");
+  assert.equal(featEngineTag("Telepathic"), "[cast tools]");
+  assert.equal(featEngineTag("Telekinetic"), "[cast tools]");
+  assert.equal(featEngineTag("Stalwart"), "[server]");
+  assert.equal(featEngineTag("Floriographer"), "[server]");
+
+  const root = new URL("../src/lib/", import.meta.url);
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const url = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, dir);
+      if (entry.isDirectory()) walk(url);
+      else if (/\.ts$/.test(entry.name)) files.push(url);
+    }
+  };
+  walk(root);
+  const read = (url) => readFileSync(url, "utf8").replace(/\r\n/g, "\n");
+  const combat = read(new URL("srd/feat-combat.ts", root));
+  const tagBody = combat.slice(combat.indexOf("export function featEngineTag"), combat.indexOf("\n}\n", combat.indexOf("export function featEngineTag")));
+  // Every name an engine asks for: holdsFeat and hasFeat calls, the check
+  // riders, the option slots a feat opens, the counters keyed to a feat.
+  const named = new Set();
+  for (const url of files) {
+    const text = read(url);
+    for (const match of text.matchAll(/(?:holdsFeat|hasFeat)\(\s*[\w.?]+\s*,\s*"([^"]+)"/g)) named.add(match[1].toLowerCase());
+  }
+  for (const match of combat.matchAll(/\bfeat: "([^"]+)"/g)) named.add(match[1].toLowerCase());
+  for (const match of combat.matchAll(/held\("([^"]+)"\)/g)) named.add(match[1].toLowerCase());
+  const resources = read(new URL("srd/class-resources.ts", root));
+  for (const match of resources.matchAll(/displayName: "[^"]*\((Martial Adept|Metamagic Adept)\)"|match: \["(inspiring leader)"/g)) named.add((match[1] ?? match[2]).toLowerCase());
+  for (const match of read(new URL("srd/feature-effects.ts", root)).matchAll(/isNamed\(name, "(Elven Accuracy)"\)/g)) named.add(match[1].toLowerCase());
+  // Not feats: an Eldritch Invocation the ritual book also reads.
+  named.delete("book of ancient secrets");
+  assert.ok(named.size > 50, `read ${named.size} feat names from the engines`);
+  const untagged = [...named].filter((feat) => !featEngineTag(feat)).sort();
+  assert.deepEqual(untagged, [], `run by the engines but untagged: ${untagged.join(", ")}`);
+
+  // And the other way: each name the tag lists is read somewhere outside it
+  // (FEAT_TWINS' names are a lookup, not a reading), or its own text is
+  // what the feat spell engine reads (Fey Touched's misty step).
+  const { featSpellSpec, featSpellsAnything } = await import("../src/lib/srd/feat-spells.ts");
+  const effects = read(new URL("srd/feat-effects.ts", root));
+  const twins = effects.slice(effects.indexOf("export const FEAT_TWINS"), effects.indexOf("// ---- a table's workshop feats ----"));
+  const elsewhere = files
+    .map((url) => {
+      if (url.pathname.endsWith("srd/feat-combat.ts")) return combat.replace(tagBody, "");
+      if (url.pathname.endsWith("srd/feat-effects.ts")) return effects.replace(twins, "");
+      return read(url);
+    })
+    .join("\n")
+    .toLowerCase();
+  const listed = [...new Set([...tagBody.matchAll(/"([a-z][a-z' -]+)"/g)].map((match) => match[1]))];
+  assert.ok(listed.length > 40, `read ${listed.length} names from the tag`);
+  const bySpellText = (name) => featSpellsAnything(featSpellSpec(authoredFeatDesc(name) ?? ""));
+  const unread = listed.filter((name) => !elsewhere.includes(`"${name}"`) && !named.has(name) && !bySpellText(name)).sort();
+  assert.deepEqual(unread, [], `tagged but no engine reads it: ${unread.join(", ")}`);
+});
+
+// A feat the engines run one rule of keeps its text's reading on the
+// Reference page: the tag would otherwise have hidden Floriographer's
+// training behind "hand-written" (feat-reading-logic.ts).
+test("a content pack's check-rider feat is tagged and still read from its text", async () => {
+  const { readFeat } = await import("../src/lib/content/feat-reading-logic.ts");
+  const reading = readFeat({ name: "Floriographer", slug: "floriographer", documentSlug: "a5e", data: { desc: "You gain proficiency in the Nature skill. You have advantage on Investigation checks to notice a hidden message of a visual kind." } });
+  assert.notEqual(reading.source, "hand-written");
 });
 
 // A weapon is the SRD row it swings as (AttackProfile's base), never the name

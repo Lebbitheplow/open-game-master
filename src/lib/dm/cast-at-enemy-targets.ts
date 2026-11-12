@@ -17,7 +17,7 @@ import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { handleCastAtEnemy } from "@/lib/dm/cast-at-enemy";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { invalidArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -46,8 +46,8 @@ export function handleCastAtEnemyTargets(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: NEEDS, retry: true };
+  } catch (error) {
+    return badArguments(NEEDS, error, rawArguments);
   }
   // The flat shape, one creature (and Improved Reaper's second): read as it
   // always was.
@@ -56,7 +56,7 @@ export function handleCastAtEnemyTargets(
   }
   const parsed = targetsSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments(NEEDS, parsed.error);
+    return invalidArguments(NEEDS, parsed.error, raw);
   }
   const rest = Object.fromEntries(Object.entries(raw).filter(([key]) => key !== "targets"));
   const { characterId, targets, spell, level } = parsed.data;

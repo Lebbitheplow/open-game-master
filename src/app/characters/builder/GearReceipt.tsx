@@ -5,11 +5,16 @@ import { useState } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { contentSlug } from "@/lib/help";
 import { formatPrice } from "@/lib/srd/currency";
-import { formatCoin, MAX_QTY, stepDown, type Receipt, type ReceiptRow } from "./receiptMath";
+import { MAX_QTY, stepDown, type Receipt, type ReceiptRow } from "./receiptMath";
 
 export type ReceiptView = Receipt & { setQty: (name: string, qty: number) => void };
 
 const signed = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
+
+// A price as formatPrice writes it, each coin held to its number: a narrow
+// cell broke "1 gp 5 sp" into "1 gp 5" and "sp". Where a cell is narrower
+// still, the line breaks between coins.
+const coins = (copper: number) => formatPrice(copper, "\u00a0");
 
 // Free, bought, or both, in words a player reads at a glance.
 function sourceLabel(row: ReceiptRow): string {
@@ -76,8 +81,8 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
           <tr>
             <th scope="col" className="px-2 py-1.5 font-normal">Item</th>
             <th scope="col" className="w-[8.5rem] px-1 py-1.5 font-normal">Quantity</th>
-            <th scope="col" className="hidden w-28 px-2 py-1.5 font-normal sm:table-cell">Free or paid</th>
-            <th scope="col" className="w-20 px-2 py-1.5 text-right font-normal">Price</th>
+            <th scope="col" className="hidden w-28 px-2 py-1.5 font-normal sm:table-cell lg:w-36">Free or paid</th>
+            <th scope="col" className="w-24 px-2 py-1.5 text-right font-normal sm:w-28">Price</th>
           </tr>
         </thead>
         <tbody>
@@ -135,10 +140,10 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
                 <td className="hidden px-2 py-1.5 text-stone-400 sm:table-cell">
                   <span className={row.refused ? "text-amber-300" : undefined}>{sourceLabel(row)}</span>
                 </td>
-                <td className="px-2 py-1.5 text-right font-mono text-stone-300">
+                <td className="px-1 py-1.5 text-right font-mono text-stone-300 sm:px-2">
                   <div className="flex items-start justify-end gap-1">
                     <span>
-                      {row.bought && row.unitCopper !== null && !row.refused ? formatPrice(row.costCopper) : row.bought ? "—" : "free"}
+                      {row.bought && row.unitCopper !== null && !row.refused ? coins(row.costCopper) : row.bought ? "—" : "free"}
                     </span>
                     <button
                       type="button"
@@ -150,35 +155,40 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
                     </button>
                   </div>
                   {row.bought > 1 && row.unitCopper !== null && !row.refused ? (
-                    <p className="text-[0.875rem] text-stone-500">{formatPrice(row.unitCopper)} each</p>
+                    <p className="text-[0.875rem] text-stone-500">{coins(row.unitCopper)} each</p>
                   ) : null}
                 </td>
               </tr>
             );
           })}
         </tbody>
+        {/* Coin is written as prices are, in gold, silver and copper, the
+            same as the purse line without a receipt. A gold-and-copper
+            formatter of its own wrote 3 gp 9 sp as "3 gp 90 cp". Each
+            figure spans the empty quantity column beside its price, so a
+            purse of three coins stays on one line on a phone. */}
         <tfoot className="border-t border-stone-800 font-mono text-stone-300">
           <tr>
-            <th scope="row" colSpan={2} className="px-2 pt-1.5 text-left font-sans font-normal text-stone-500">
+            <th scope="row" className="px-2 pt-1.5 text-left font-sans font-normal text-stone-500">
               Starting coin
             </th>
             <td className="hidden sm:table-cell" />
-            <td className="px-2 pt-1.5 text-right">{formatCoin(receipt.coinCopper)}</td>
+            <td colSpan={2} className="whitespace-nowrap px-2 pt-1.5 text-right">{coins(receipt.coinCopper)}</td>
           </tr>
           <tr>
-            <th scope="row" colSpan={2} className="px-2 text-left font-sans font-normal text-stone-500">
+            <th scope="row" className="px-2 text-left font-sans font-normal text-stone-500">
               Spent
             </th>
             <td className="hidden sm:table-cell" />
-            <td className="px-2 text-right">{formatPrice(receipt.spentCopper)}</td>
+            <td colSpan={2} className="whitespace-nowrap px-2 text-right">{coins(receipt.spentCopper)}</td>
           </tr>
           <tr>
-            <th scope="row" colSpan={2} className="px-2 pb-1.5 text-left font-sans font-normal text-stone-400">
+            <th scope="row" className="px-2 pb-1.5 text-left font-sans font-normal text-stone-400">
               Coin left
             </th>
             <td className="hidden sm:table-cell" />
-            <td key={receipt.leftCopper} className="reveal px-2 pb-1.5 text-right text-sm text-amber-200">
-              {formatCoin(receipt.leftCopper)}
+            <td key={receipt.leftCopper} colSpan={2} className="reveal whitespace-nowrap px-2 pb-1.5 text-right text-sm text-amber-200">
+              {coins(receipt.leftCopper)}
             </td>
           </tr>
         </tfoot>

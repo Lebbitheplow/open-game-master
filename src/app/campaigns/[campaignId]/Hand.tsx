@@ -19,10 +19,12 @@ import { HAND_TUTORIAL_ID, HandTutorial } from "@/app/campaigns/[campaignId]/Han
 import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandReactPrompt } from "@/app/campaigns/[campaignId]/HandReactPrompt";
 import { HandPips } from "@/app/campaigns/[campaignId]/HandPips";
-import { handTargets } from "@/app/campaigns/[campaignId]/handTargets";
+import { deadAllyTargets, handTargets } from "@/app/campaigns/[campaignId]/handTargets";
 import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaigns/[campaignId]/useHandChoices";
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
+import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
 import { groupHand, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
@@ -33,6 +35,7 @@ import {
   HAND_BOARD_CONTROL_EVENT,
   HAND_BOARD_SURFACE_EVENT,
   handReady,
+  seenChips,
   type HandBoardActionDetail,
   type HandBoardControlDetail,
   composeSentence,
@@ -48,6 +51,7 @@ import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/a
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
 import { holdSentReactions, reactionAim, reactionCards, reactionPicks, reactionStrips, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
 import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
+import { aimedCard } from "@/lib/battlemap/hand-odds";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
 
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
@@ -56,6 +60,7 @@ import { finishTour, useTourFinished } from "@/lib/tours/tour-store";
 import type { InputKind } from "@/lib/campaign-types";
 import type { Floor } from "@/lib/db/campaigns";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
+import { turnHeldLine, useTurnHeld } from "@/app/campaigns/[campaignId]/TurnHoldNote";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The Hand: on your turn in a fight, your options as cards above the message
@@ -143,6 +148,8 @@ function HandInner({
   unseen,
   drops,
   mounts,
+  board,
+  sight,
   genre,
   multiCharacter,
   runsTable = false,
@@ -181,6 +188,11 @@ function HandInner({
   // Pick up and Dismount.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
+  // The engine's verdicts on this character's own square (PlayerMapView.self):
+  // a Hide refused there, the Silence it stands in.
+  board?: PlayerMapView["self"];
+  // Sight as this character's attack roll reads it (PlayerMapView.sight).
+  sight?: PlayerMapView["sight"];
   genre?: string | null;
   // The table's fielding rule: with all of a player's characters fielded,
   // any of them may answer a hit with a reaction, not only the one acting.
@@ -247,7 +259,11 @@ function HandInner({
   );
   // The board measures from the viewer's own acting character, so its distances
   // say nothing of a companion or dominated hero the GM seat plays.
-  const ownFeet = sheet?.userId === meUserId ? feet : undefined;
+  // The feet from an area the character keeps are read only from a host that
+  // says it sends them (src/lib/capabilities.ts ownZoneFeet).
+  const zoneFeet = hostOffers(capabilities, "ownZoneFeet");
+  const hostFeet = useMemo(() => feetForHost(feet, zoneFeet), [feet, zoneFeet]);
+  const ownFeet = sheet?.userId === meUserId ? hostFeet : undefined;
   // Everyone a redirect may turn a blow onto, friend or foe (Misdirection).
   const creatures = useMemo(
     () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides),
@@ -255,8 +271,8 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures, unseen],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", hostFeet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, hostFeet, encounter.lastSaves, ownFeet, creatures, unseen],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
@@ -306,11 +322,26 @@ function HandInner({
   // The creature a summoning spell calls (issue 685): a host without the
   // picker leaves its summon cards to the GM, as before.
   const summons = useHandSummons(sheet, hostOffers(capabilities, "summonPicker"));
+  // A wand's, a staff's or a scroll's spell as a card: a host that cannot
+  // resolve one leaves them typed.
+  const items = hostOffers(capabilities, "handItemCasts");
+  const turnHeld = useTurnHeld(encounter);
+  const squareLight = hostOffers(capabilities, "handSquareLight");
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
-    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, waiting]);
+    // The board reads the viewer's own token, so it says nothing of a
+    // companion or a dominated hero the GM seat plays.
+    // The light on the square is read only from a host that says it sends it
+    // (src/lib/capabilities.ts handSquareLight).
+    const ownBoard = sheet.userId === meUserId ? boardFactsForHost(board, squareLight) : undefined;
+    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
+    // Their End Turn is in and the move waits on a watcher's stop
+    // (turn-hold.ts): the turn takes nothing more but a reaction, and every
+    // other card says why, End turn's own included.
+    const ending = turnHeld?.characterId === sheet.id ? turnHeldLine(turnHeld, true) : null;
+    return ending ? dealt.map((card) => (card.cost === "reaction" ? card : { ...card, disabled: ending })) : dealt;
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, turnHeld, squareLight]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
@@ -366,11 +397,14 @@ function HandInner({
   );
 
   const targets = useMemo<HandTargetChip[]>(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }),
-    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order],
+    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }, sheet?.userId === meUserId ? sight : undefined),
+    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order, sight, sheet?.userId, meUserId],
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
+  // A card that takes the dead (Revivify, Hand of Ultimate Mercy) is aimed at
+  // them alone (src/lib/srd/dead-targets.ts).
+  const deadTargets = useMemo(() => deadAllyTargets(sheets, sheet?.id, encounter.sides), [sheets, sheet?.id, encounter.sides]);
   // A redirect's creature may be friend or foe, the acting hero too when the
   // card is another hero's (reactionPicks leaves out the holder and the attacker).
   const redirects = picked?.pickWithin !== undefined;
@@ -387,10 +421,12 @@ function HandInner({
   const offered = useMemo(() => fixedChip
     ? [fixedChip]
     : picked?.target === "enemy"
-      ? reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet)
+      // A card that takes a creature its holder can see leaves out the ones
+      // the board says they cannot (hand-play.ts aimUnseen, the engine's gate).
+      ? seenChips(picked, reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet))
       : picked?.target === "ally"
-        ? picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
-        : [], [fixedChip, picked, pickable, partyTargets, ownFeet]);
+        ? picked.takesTheDead ? deadTargets : picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
+        : [], [fixedChip, picked, pickable, partyTargets, deadTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =
     picked?.target === "self"
@@ -402,11 +438,17 @@ function HandInner({
   // What the hover previews are worked against until something is aimed at.
   const defaultAim = aim?.kind === "enemy" ? aim : enemyTargets[0] ?? null;
   const conditions = sheet?.conditions ?? EMPTY;
+  // The card as aimed: an option that hangs on the aim (Rapid Strike needs
+  // advantage to trade) is judged against it (hand-odds.ts aimedCard).
+  const raised = useMemo(
+    () => (picked ? aimedCard(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions) : null),
+    [picked, aim, defaultAim, conditions],
+  );
 
   const attachedRiders = picked?.intent.card === "attack" && !picked.intent.offHand ? riders : EMPTY_CARDS;
   // The options, trigger, choice and area the card carries; the board hears
   // of the raised card from here too (useHandChoices.ts).
-  const { choices, resetChoices, barProps } = useHandChoices(picked, aim);
+  const { choices, resetChoices, barProps } = useHandChoices(raised, aim);
   const sentence = picked ? composeSentence(picked, aim, attachedRiders, choices) : "";
   const rows = useMemo(
     () => (picked ? previewRows(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions, choices) : []),
@@ -448,6 +490,22 @@ function HandInner({
       card?.focus({ preventScroll: true });
     });
   }, [pickedId, clearAim]);
+
+  // Escape lets an aimed card go even when the keyboard is in no element: the
+  // pressed card can be redrawn under the pointer (a search's fan) after the
+  // effect above has run, leaving the focus on the page, where the hand's own
+  // Escape never hears it. Only then: a dialog or a field keeps its Escape.
+  useEffect(() => {
+    if (!pickedId) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && active !== document.documentElement) return;
+      releaseAim();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pickedId, releaseAim]);
 
   useEffect(() => {
     const onTarget = (event: Event) => {
@@ -518,6 +576,7 @@ function HandInner({
 
   const commit = useCallback(async () => {
     if (!picked || !sheet || sending || commitBusy.current) return;
+    if (picked.intent.card === "basic" && picked.intent.action === "end-turn" && turnHeld?.characterId === sheet.id) { say(turnHeldLine(turnHeld, true)); return; }
     if (inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction") { say(blockedReason); return; }
     if (!handReady(picked, aim, choices)) { say(picked.asks === "trigger" && !choices.trigger?.trim() ? "Name the trigger first." : picked.summon && !choices.choice ? "Choose the creature first." : "Pick a target or an area first."); return; }
     if (picked.compose) {
@@ -541,7 +600,7 @@ function HandInner({
                 content: sentence,
                 kind: "do",
                 characterId: picked.actor?.id ?? sheet?.id,
-                intent: intentBody(picked, aim, attachedRiders, choices),
+                intent: intentBody(raised ?? picked, aim, attachedRiders, choices),
                 ...(concentrationAck ? { concentrationAck } : {}),
               }),
             });
@@ -575,9 +634,14 @@ function HandInner({
       // A share of the card the engine refused for one creature while the
       // rest landed (the actions route at a table the GM runs): said, as a
       // refusal is, and the card is spent, since the others are done.
-      const answered = (await response.json().catch(() => ({}))) as { refused?: string };
+      const answered = (await response.json().catch(() => ({}))) as { refused?: string; held?: boolean };
       if (typeof answered.refused === "string" && answered.refused) {
         say(answered.refused);
+      }
+      // The End Turn is in and the move waits on a watcher's stop
+      // (turn-hold.ts): said here as the banner and the board say it.
+      if (ending && answered.held) {
+        say(turnHeldLine(turnHeld ?? { characterId: sheet.id, watcher: "" }, true));
       }
       // A reaction waits by its hero until the GM resolves it, whoever's it is.
       if (picked.cost === "reaction") onReactionSent?.(picked.actor?.id ?? sheet.id);
@@ -612,7 +676,7 @@ function HandInner({
       commitBusy.current = false;
       setSending(false);
     }
-  }, [picked, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative]);
+  }, [picked, raised, sheet, sending, sentence, campaignId, aim, attachedRiders, choices, signature, setPending, onReactionSent, boardName, setInput, clearAim, say, toComposer, inputBlocked, blockedReason, boardNative, turnHeld]);
 
   const nativePanel = useMemo<BoardPanel | null>(() => {
     if (!boardNative) return null;
@@ -634,7 +698,7 @@ function HandInner({
       ...(splits && picked.shares && aim && offered.some(target => target.id !== aim.id) ? [shareControl(picked, aim, offered, barProps.shares)] : []),
       ...(barProps.trigger !== null ? [{ id: "hand-trigger" as const, label: "Trigger", disabled: null, input: { value: barProps.trigger } }] : []),
       ...(picked.area && hasPick(picked.area, barProps.areaPick) ? [{ id: "hand-area-clear" as const, label: "Clear area", disabled: null }] : []),
-      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
+      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix, shares: barProps.shares }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
       { id: "hand-edit", label: "Edit in chat", disabled: null }, { id: "hand-back", label: "Back", disabled: null }, close,
     ] };
   }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
@@ -816,11 +880,11 @@ function HandInner({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
           key={myTurn ? "mine" : (currentName ?? "other")}
-          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.22em] text-amber-200/90"
+          className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90"
         >
           {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
-        <span className="hidden text-[11px] text-stone-500 sm:inline">
+        <span className="hand-hint hidden text-[11px] text-stone-500 sm:inline">
           {reactionsOnly ? `${sheet.isCompanion ? "A companion you play" : "A hero of yours"} was hit: answer it now or let it pass.` : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
         </span>
         <span className="ml-auto flex items-center gap-1">
@@ -873,8 +937,12 @@ function HandInner({
               }}
               aria-expanded={!collapsed}
               aria-label={collapsed ? "Show your hand" : "Hide your hand"}
-              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
+              // hand-fold: lying on the board the Hand covers part of the map,
+              // so there this is a lettered tab and not one glyph among three
+              // (world.css); in the desk it is the chevron it was.
+              className="hand-fold flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
             >
+              <span className="hand-fold-word" aria-hidden="true">{collapsed ? "Show hand" : "Hide"}</span>
               <ChevronDown className={cn("chevron-turn size-4", collapsed && "rotate-180")} />
             </button>
           </Tooltip>

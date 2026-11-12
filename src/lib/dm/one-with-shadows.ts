@@ -12,6 +12,7 @@
 // any invisibility but Greater Invisibility's already, attack-marks.ts) or
 // takes a reaction (markReactionUsed).
 import { getClock } from "@/lib/db/clock";
+import { endCamouflage } from "@/lib/dm/mt-srd-camouflage";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -31,21 +32,34 @@ import { isNamed } from "@/lib/srd/feature-names";
 export const ONE_WITH_SHADOWS = "One with Shadows";
 
 // Why the warlock's square is too bright to vanish in, or null when it is dim
-// or dark (or there is no board to read the light from).
-export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">): ToolError | null {
+// or dark (or there is no board to read the light from). `feature`: another
+// that asks the same light (Steps of Night), named in the refusal.
+export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, feature = ONE_WITH_SHADOWS): ToolError | null {
+  const bright = brightSquare(campaignId, sheet);
+  return bright ? { error: `${bright}; ${feature} works only in dim light or darkness. Nothing was spent.`, refused: "rules" } : null;
+}
+
+// Where the character stands in bright light on the board, said for a
+// refusal ("X stands in bright light at (x,y)"), or null when the square is
+// dim or dark, or there is no board. The Hand's board facts carry it
+// (view-tactics.ts ownSquareFacts), so a card that asks the dark closes too.
+// `at`: another square than the one they stand on (where Shadow Step lands,
+// mt-mr-spends.ts featureLandingRefusal, which words its own refusal).
+export function brightSquare(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, at?: { x: number; y: number }): string | null {
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
   if (!map || !token) {
     return null;
   }
+  const spot = at ?? token;
   const clock = getClock(campaignId);
   const ambient = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
   const zones = lightsWithZones(map);
-  if (zones.length && magicalDarknessAt(zones, token.x, token.y)) {
+  if (zones.length && magicalDarknessAt(zones, spot.x, spot.y)) {
     return null;
   }
-  const local = zones.length ? ambientAt(zones, token.x, token.y, ambient) : ambient;
+  const local = zones.length ? ambientAt(zones, spot.x, spot.y, ambient) : ambient;
   // A lamp or a carried light on the square brightens it; the lit set does
   // not tell its bright radius from its dim one, so a lit square counts as
   // bright.
@@ -63,14 +77,8 @@ export function shadowLightProblem(campaignId: string, sheet: Pick<CharacterShee
       },
       listTokens(map.id),
       map.lights,
-    ).has(tileIndex(map.width, token.x, token.y));
-  if (local === "bright" || lit) {
-    return {
-      error: `${sheet.name} stands in bright light at (${token.x},${token.y}); One with Shadows works only in dim light or darkness. Nothing was spent.`,
-      refused: "rules",
-    };
-  }
-  return null;
+    ).has(tileIndex(map.width, spot.x, spot.y));
+  return local === "bright" || lit ? `${sheet.name} stands in bright light at (${spot.x},${spot.y})` : null;
 }
 
 // The invisibility One with Shadows gives, as the condition list and meta to
@@ -89,6 +97,8 @@ export function shadowInvisibility(sheet: Pick<CharacterSheet, "conditions" | "c
 // an action or a reaction. Returns a line for the result, or null when they
 // held none.
 export function endShadowInvisibility(campaignId: string, sheetId: string, why: string): string | null {
+  // A ranger's camouflage is lost at the same doors (mt-srd-camouflage.ts).
+  endCamouflage(campaignId, sheetId);
   const sheet = getSheetById(sheetId);
   if (!sheet || !sheet.conditions.some((name) => isNamed(name, "invisible"))) {
     return null;

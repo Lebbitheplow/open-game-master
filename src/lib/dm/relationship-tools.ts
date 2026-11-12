@@ -42,7 +42,9 @@ import {
   recordRelationshipEvent,
   resolveActor,
   resolveSubject,
+  type Subject,
 } from "@/lib/dm/relationship-subject";
+import { refusedLeavesNothing } from "@/lib/dm/refusal-rollback";
 import { handleNpcAdvance } from "@/lib/dm/npc-advance";
 import { conscienceNotes, landBeat, landBystanders, landOnVictim, settleUnrecordedDeeds, type DeedOptions, type Landing } from "@/lib/dm/beat-landing";
 import { DEED_KINDS, DEED_SEVERITIES, deedSeverity, doneToDelta, isDeedKind, valueLabel, type DeedKind } from "@/lib/dm/companion-values-logic";
@@ -52,10 +54,10 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { actNote, outwardApproval } from "@/lib/dm/scheme-logic";
 import { revealAct, runningAct, schemesPossible, schemeTool } from "@/lib/dm/scheme-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { resolveRollExpression, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -71,6 +73,7 @@ import { exclusiveRefusal } from "@/lib/dm/romance-exclusive-logic";
 import { amendsNote } from "@/lib/dm/amends-logic";
 import { recordRomanceStep, romanceStepTooSoon } from "@/lib/dm/romance-scenes";
 import { settleMoveNotes } from "@/lib/dm/story-moves";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 export { publishRelationshipsUpdated };
 
@@ -260,7 +263,7 @@ const beatSchema = z.object({
   objected: z.array(z.string().trim().min(1).max(80)).max(8).optional(),
   severity: z.enum(DEED_SEVERITIES).optional(),
   faction: z.string().trim().max(80).optional(),
-  demand: z.string().trim().max(160).optional(),
+  demand: fittedText(160).optional(),
   deadlineHours: z.number().int().min(1).max(MAX_DEADLINE_HOURS).optional(),
 });
 
@@ -350,8 +353,15 @@ export function handleRelationshipBeat(
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
     dc = target;
-    const thrown = rollExpression(resolved.expression);
-    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, target) : thrown;
+    // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+    // they roll it, and a roll that falls short waits on what they hold.
+    const rolled = rollCharacterD20(campaign, sheet, {
+      kind: "skill_check",
+      expression: resolved.expression,
+      detail: `${sheet.name}: ${spec.skill} toward ${subject.name}`,
+      dc: target,
+      settleHeldDie: waits,
+    });
     rollTotal = rolled.total;
     const roll = insertRoll({
       campaignId: campaign.id,
@@ -721,6 +731,27 @@ export function handleRomanceAdvance(
   if ("error" in subject) {
     return subject;
   }
+  // The step opens the bond its rules read, so a refusal rolls that back
+  // (refusal-rollback.ts); a held step the refused one answered stays
+  // answered.
+  let answered: string | null = null;
+  const out = refusedLeavesNothing(() => romanceStep(campaign, turn, args, to, sheet, subject, sheets, (id) => (answered = id)));
+  if ("error" in out && answered) {
+    settleHeldStep(campaign.id, answered, to);
+  }
+  return out;
+}
+
+function romanceStep(
+  campaign: Campaign,
+  turn: DmTurn,
+  args: z.infer<typeof advanceSchema>,
+  to: NonNullable<z.infer<typeof advanceSchema>["to"]>,
+  sheet: CharacterSheet,
+  subject: Subject,
+  sheets: CharacterSheet[],
+  onAnswered: (relationshipId: string) => void,
+): ToolResult {
   const relationship = openLedger(campaign, sheet, subject);
   if (relationship.status === "parted") {
     return {
@@ -749,6 +780,7 @@ export function handleRomanceAdvance(
   }
   // A step held in a fight is answered now, whatever the answer.
   settleHeldStep(campaign.id, relationship.id, to);
+  onAnswered(relationship.id);
   // An act is played to the letter: the step reads the warmth shown.
   const shown = outwardApproval(relationship);
   const act = runningAct(relationship);

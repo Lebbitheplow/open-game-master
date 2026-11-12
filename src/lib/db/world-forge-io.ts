@@ -1,3 +1,4 @@
+import { markPrivateSource, privateSourceOf } from "@/lib/db/private-sources";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getDatabase } from "@/lib/db/core";
@@ -369,6 +370,9 @@ export function applyWorldImport(campaignId: string, account: UploadAccount, par
       const bridge = importBridge(campaignId, before, doc, { rootId: root?.id ?? "", fresh, aspects });
       saveWorldDoc(campaignId, doc);
       bridge.finish();
+      // A world saved from a workshop of a published book is as private
+      // here as it was there.
+      if (parsed.privateSource) markPrivateSource(campaignId, parsed.privateSource);
 
       return {
         created,
@@ -442,6 +446,9 @@ export function exportWorldForge(campaignId: string): Record<string, unknown> {
     // The workshop's id names the world for good: renaming it later does
     // not make a second import of the file a different world.
     worldId: `odm-${campaignId}`,
+    // A workshop from a published book says so in its file, and a world
+    // read back from it is marked the same (applyWorldImport).
+    privateSource: privateSourceOf(campaignId),
     omitted,
     premise: campaign?.description ?? "",
     records,

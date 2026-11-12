@@ -1,4 +1,6 @@
+import { formSenses } from "@/lib/srd/mt-srd-form-senses";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
 import { tokenSides } from "@/lib/dm/combatant";
 import { getCampaignById, getFloor } from "@/lib/db/campaigns";
 import { actingSheetFor } from "@/lib/character-seat";
@@ -12,12 +14,17 @@ import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { ownZoneFeet } from "@/lib/dm/zone-reach";
+import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
+import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
 import { budgetApplies, dashCount } from "@/lib/dm/action-budget";
+import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
+import { crossesAnyGround } from "@/lib/dm/ar-wbf-feat-turn";
 import { listSheets } from "@/lib/db/sheets";
 import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
@@ -39,6 +46,7 @@ import {
 } from "@/lib/battlemap/los";
 import { cachedLitTiles } from "@/lib/battlemap/lit-cache";
 import { sensesFromText, type Senses } from "@/lib/srd/senses";
+import { mrSensesOver } from "@/lib/srd/mt-mr-senses";
 import { reachableTiles, speedToTiles } from "@/lib/battlemap/movement";
 import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { crawlingTraits, flyingSpeedOf, tileIndex, type BattleToken, type TokenMovement } from "@/lib/battlemap/types";
@@ -50,18 +58,19 @@ import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound } from "@/lib/dm/can-act";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/battlemap/view-stage";
-import { targetEdges } from "@/lib/battlemap/view-tactics";
+import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
-import { standUpTiles } from "@/lib/srd/authored-effects-more";
+import { attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
+import { windStepOn } from "@/lib/dm/jump-reach";
 import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
-import { enemiesAhead } from "@/lib/dm/held-turn";
+import { enemiesAhead, ownTurnOf } from "@/lib/dm/held-turn";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -94,14 +103,27 @@ function elevationOf(movement: TokenMovement): "flying" | "burrowing" | null {
 }
 
 export function sheetDarkvisionTiles(sheet: CharacterSheet): number {
-  return darkvisionTilesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
+  // A worn form sees by its own senses alone (srd/mt-srd-form-senses.ts).
+  const worn = formSenses(sheet);
+  if (worn) {
+    return worn.darkvision;
+  }
+  // A subclass's darkvision (Umbral Sight, Eyes of the Dark, Eyes of Night)
+  // is asked here, so the board's sight, a lit square's light and an
+  // attack's light (attack-light.ts) all read the same feet.
+  const named = darkvisionTilesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
+  return Math.floor(authoredDarkvisionFeet(sheet, named * 5) / 5);
 }
 
 // Every sense a character has, from race and feature names (Blind Fighting,
 // Devil's Sight, Ghostly Gaze, a homebrew "blindsight 30 ft" feature).
 export function sheetSenses(sheet: CharacterSheet): Senses {
+  const worn = formSenses(sheet);
+  if (worn) {
+    return worn;
+  }
   const senses = sensesFromText([...sheet.features.map((feature) => feature.name), sheet.race]);
-  return { ...senses, darkvision: Math.max(senses.darkvision, sheetDarkvisionTiles(sheet)) };
+  return mrSensesOver(sheet, { ...senses, darkvision: Math.max(senses.darkvision, sheetDarkvisionTiles(sheet)) });
 }
 
 // Whether this player's PC may move right now: open floor, or their own
@@ -144,9 +166,16 @@ export function pcMoveBudget(
     : flying ?? speedFor(sheet, {
         encumbrance: campaign?.gameSettings.variantRules.encumbrance ?? false,
       });
+  // A turn the character took the Attack action on walks farther (Blade
+  // Flourish's 10 feet): their own walk, not a mount's or a flight.
+  const ownTurn = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? encounter.turnBudget : null;
+  const attackTurn = !mount && flying === null && ownTurn && ownTurn.attacksMade > 0 ? attackTurnSpeed(sheet) : 0;
   // An active effect on their speed (set_effect) moves the base first.
-  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")));
-  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved));
+  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")) + attackTurn);
+  // Dread Ambusher: "on your first turn 10 extra feet of speed", on the
+  // ranger's own turn of the fight's first round (turn-extra-attacks-logic.ts).
+  const ambush = encounter.kind !== "scene" && ownTurnOf(encounter, sheet.id) && ambushRound(sheet, encounter.round) ? 10 : 0;
+  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush));
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
   if (encounter.kind === "scene") {
@@ -163,7 +192,8 @@ export function pcMoveBudget(
   // the mount spent its action on a Disengage or a Dodge (take_action mount).
   const mountActed = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? mountActionTaken(encounter.turnBudget.oncePerTurn) : null;
   const mountDash = mount?.controlled && (mountActed === null || mountActed === "dash") ? 1 : 0;
-  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) - token.movedThisRound);
+  // Drunken Technique's 10 feet ride the turn's marks (dm/mt-mr-turn.ts).
+  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
   // Prone: the character stands for half their speed and walks on what is
   // left, or crawls at double cost, whichever reaches farther. `tiles` is
   // what the board lights; `fullTiles` is the movement actually in hand,
@@ -269,7 +299,8 @@ export function buildPlayerMapView(
   // Spell areas stop sight (a fog cloud, magical darkness) and light it
   // (Daylight): src/lib/dm/zone-rules.ts.
   const vision = {
-    terrain: sheet ? sightTerrainFor(map, sheetSenses(sheet)) : map.terrain,
+    // `self`: a darkness its own caster sees through is no wall to them.
+    terrain: sheet ? sightTerrainFor(map, { ...sheetSenses(sheet), self: sheet.id }) : map.terrain,
     width: map.width,
     height: map.height,
     ambient,
@@ -300,7 +331,8 @@ export function buildPlayerMapView(
       truesightTiles: senses.truesight,
       devilsSightTiles: senses.devilsSight,
     };
-    visible = visibleTiles(vision, viewer, tokens, sources, lit);
+    // A darkness this character sees through is not there for them (zones.ts zoneLights).
+    visible = visibleTiles({ ...vision, zones: lightsWithZones(map, sheet.id) }, viewer, tokens, sources, lit);
     explored = mergeExplored(map.id, sheet.id, visible, tileCount);
   } else if (sheet) {
     explored = getExplored(map.id, sheet.id, tileCount);
@@ -412,7 +444,7 @@ export function buildPlayerMapView(
     if (budgetLeft > 0) {
       const occupied = occupiedTiles(map, tokens, myToken, footprintLookup(enemiesById));
       // The same passage the move route allows (src/lib/battlemap/passage.ts).
-      const traits = withZoneSteps(pcMoveTraits({ width: map.width, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter) }), map, "pc");
+      const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, drawnTerrain: map.drawnTerrain, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter), anyGround: crossesAnyGround(encounter, sheet) }), map, "pc");
       const reach = (limit: number, moveTraits: typeof traits) =>
         [...reachableTiles(map.terrain, map.width, map.height, occupied, myToken, limit, 1, myToken.movement === "fly", moveTraits).entries()];
       const costs = reach(budgetLeft, traits);
@@ -430,6 +462,7 @@ export function buildPlayerMapView(
         scene,
         budget,
         enemies: [...enemiesById.values()],
+        windStep: windStepOn(encounter, sheet.id),
       }));
     }
   }
@@ -613,6 +646,7 @@ export function buildPlayerMapView(
     edges:
       sheet && myToken && encounter.kind === "fight"
         ? targetEdges({
+            campaignId,
             encounterId: encounter.id,
             characterId: sheet.id,
             characterConditions: sheet.conditions,
@@ -620,19 +654,31 @@ export function buildPlayerMapView(
             flankingRule: getCampaignById(campaignId)?.gameSettings.variantRules.flanking === true,
           })
         : {},
+    ...(sheet && myToken ? { self: ownSquareFacts(campaignId, encounter, sheet) } : {}),
+    ...(sheet && myToken && encounter.kind === "fight"
+      ? { sight: targetSight({ campaignId, encounterId: encounter.id, characterId: sheet.id, enemyIds: tokens.filter((token) => token.kind === "enemy" && (!token.hidden || fullVision)).map((token) => token.refId) }) }
+      : {}),
     ...(sheet && myToken && encounter.kind === "fight"
       ? (() => {
           // Measured on the stored tokens, footprints and all, as withinFeet
           // measures them; only those this viewer is shown.
           const shown = new Set(shownTokens.map((token) => token.id));
           const others = tokens.filter((token) => token.id !== myToken.id && shown.has(token.id));
-          // Line of sight as the engine reads it (authored-saves.ts seesOnBoard).
+          // Sight as the engine reads it for a reaction (authored-saves.ts
+          // reactionUnseen): the line of sight, and the conditions (a blinded
+          // character, an invisible creature), which hiding does not join.
           const sight = sightTerrainFor(map);
+          const blocked = (token: (typeof others)[number]) => {
+            const other = enemiesById.get(token.refId) ?? sheetsById.get(token.refId);
+            return Boolean(other && unseenByConditions(encounter.id, sheet, other, { hidden: false }));
+          };
           return {
-            feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
+            // With them, the feet from an area the character keeps on the
+            // board to each creature and to themselves (zone-reach.ts).
+            feet: { ...Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])), ...ownZoneFeet(encounter, sheet, [sheet.id, ...others.map((token) => token.refId)]) },
             unseen: others
               .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
-              .filter((token) => !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))
+              .filter((token) => blocked(token) || !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))
               .map((token) => token.refId),
           };
         })()

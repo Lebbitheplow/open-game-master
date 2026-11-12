@@ -120,6 +120,7 @@ function SaveSlot({
               title={campaign.title}
               genre={campaign.genre}
               seed={campaign.id}
+              width={1024}
               className="h-full rounded-none border-0 shadow-none aspect-auto"
             />
             <span

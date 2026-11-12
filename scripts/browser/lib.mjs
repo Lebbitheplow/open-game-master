@@ -537,6 +537,10 @@ export async function openSettingsGroup(t, id, { timeoutMs = 30_000 } = {}) {
     await t.tap(group.locator(".cc-group-toggle").first());
   }
   await eventually(async () => (await group.getAttribute("data-open")) !== null, { label: `the ${id} group open` });
+  // The group's body opens from scale 0.97 (cc-row-reveal), and a bounding
+  // box counts that scale: measured mid-reveal, the Fights row's 40px picker
+  // read 39.1px on a phone. Every caller reads the group as it settles.
+  await untilStill(page);
   return group;
 }
 

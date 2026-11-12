@@ -112,6 +112,63 @@ test("an action that went through and was never narrated says so, never 'try aga
   assert.equal(emptyTurnLine([call("a", "set_npc"), result("a", { ok: true })]), EMPTY_TURN_LINE);
 });
 
+const callWith = (id, name, args) => ({
+  role: "assistant",
+  content: "",
+  tool_calls: [{ id, type: "function", function: { name, arguments: JSON.stringify(args) } }],
+});
+
+test("a character's area spell that went through and was never narrated says so, never 'try again'", () => {
+  // A live model did this with Ice Storm: the damage landed, the slot was
+  // spent, and the table was told to try again.
+  const blast = [callWith("a", "aoe_damage", { casterCharacterId: "s1", spell: "Fire Bolt" }), result("a", { ok: true, results: [] })];
+  assert.equal(emptyTurnLine(blast, mage("I cast Fire Bolt at them")), RESOLVED_TURN_LINE);
+  // Refused by the rules, it gives its reason as any cast does.
+  const refused = [callWith("a", "aoe_damage", { casterCharacterId: "s1", spell: "Shield" }), result("a", { error: "No level 1 slot left.", refused: "rules" })];
+  assert.match(emptyTurnLine(refused, mage("I cast Shield")), /^The GM could not resolve that: No level 1 slot left\./);
+});
+
+test("a healing spell that went through says so too, whoever cast it", () => {
+  const cure = [callWith("a", "heal", { characterId: "s1", spell: "Shield" }), result("a", { ok: true })];
+  assert.equal(emptyTurnLine(cure, mage("I cast Shield on myself")), RESOLVED_TURN_LINE);
+  const byAnother = [callWith("a", "heal", { characterId: "s2", casterId: "s1" }), result("a", { ok: true })];
+  assert.equal(emptyTurnLine(byAnother, mage("I heal Bram")), RESOLVED_TURN_LINE);
+});
+
+test("a creature's area spell, a trap's and the GM's own healing are not the player's action", () => {
+  const notYours = (name, args) => emptyTurnLine([callWith("a", name, args), result("a", { ok: true })]);
+  assert.equal(notYours("aoe_damage", { casterEnemyId: "e1", spell: "Ice Storm" }), EMPTY_TURN_LINE);
+  assert.equal(notYours("aoe_damage", { damage: "2d6", saveAbility: "dex", dc: 12 }), EMPTY_TURN_LINE);
+  assert.equal(notYours("heal", { characterId: "s1", amount: 5 }), EMPTY_TURN_LINE);
+  // And its refusal stays hidden: it can name what the table should not see.
+  const hidden = emptyTurnLine([callWith("a", "aoe_damage", { casterEnemyId: "e1", spell: "Ice Storm" }), result("a", { error: "The mage has no slot.", refused: "rules" })]);
+  assert.equal(hidden, EMPTY_TURN_LINE);
+  // Arguments that do not parse are no action of the player's.
+  const garbled = emptyTurnLine([{ role: "assistant", content: "", tool_calls: [{ id: "a", type: "function", function: { name: "aoe_damage", arguments: "{oops" } }] }, result("a", { ok: true })]);
+  assert.equal(garbled, EMPTY_TURN_LINE);
+});
+
+test("a basic card's action that went through says so, never 'try again'; an enemy's is not the player's", () => {
+  // The calls the Hand's basic cards resolve to (intent-logic.ts directCardCalls).
+  const played = [
+    ["take_action", { characterId: "s1", action: "dash" }],
+    ["end_turn", { characterId: "s1" }],
+    ["dismount", { characterId: "s1" }],
+    ["handle_item", { characterId: "s1", action: "equip", item: "Shield" }],
+    ["stabilize", { characterId: "s2", healerId: "s1" }],
+    ["clear_condition", { characterId: "s1", condition: "Prone" }],
+  ];
+  for (const [name, args] of played) {
+    assert.equal(emptyTurnLine([callWith("a", name, args), result("a", { ok: true })], mage("I dash to the door")), RESOLVED_TURN_LINE, name);
+  }
+  const refused = [callWith("a", "take_action", { characterId: "s1", action: "dash" }), result("a", { error: "Ada has no action left this turn.", refused: "rules" })];
+  assert.match(emptyTurnLine(refused, mage("I dash")), /^The GM could not resolve that: Ada has no action left this turn\./);
+  // An enemy's action, and the DM ending a character's other condition.
+  const notYours = (name, args) => emptyTurnLine([callWith("a", name, args), result("a", { ok: true })]);
+  assert.equal(notYours("take_action", { action: "dodge", enemyId: "e1" }), EMPTY_TURN_LINE);
+  assert.equal(notYours("clear_condition", { characterId: "s1", condition: "poisoned" }), EMPTY_TURN_LINE);
+});
+
 test("anything else gets a plain hint, and no player keeps the old line", () => {
   assert.equal(emptyTurnLine([call("a", "reveal_item"), result("a", { error: "The ring is a mimic." })]), EMPTY_TURN_LINE);
   assert.equal(emptyTurnLine([]), EMPTY_TURN_LINE);

@@ -300,7 +300,7 @@ export function BoardOrderStrip({ encounter, faceOf }: { encounter: PublicEncoun
   // Whose turn it is (initiative-rows.ts litOrderRows), not only the pointer.
   const lit = litOrderRows(encounter.order, encounter.turnIndex, encounter.acting, encounter.enemiesUp);
   return (
-    <ol className="flex flex-wrap gap-1 text-[11px] text-stone-400">
+    <ol className="board-order-strip flex flex-wrap gap-1 text-[11px] text-stone-400">
       {encounter.order.map((entry, index) => (
         <li
           key={`${entry.id}-${index}`}

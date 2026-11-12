@@ -8,7 +8,9 @@
 // Split out of cast-tools.ts, which re-exports it. Imports mutations (for
 // the slot spend) and must never be imported by it.
 
-import { rollCard } from "@/lib/dm/roll-card";
+import { recordCast } from "@/lib/dm/last-save";
+import { shareSpell } from "@/lib/dm/pet-command";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -28,6 +30,7 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { extendedRounds, factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagic";
 import { lifetimeAtSlot } from "@/lib/dm/spell-effects";
 import { withTempHpClaim, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healDeathHook } from "@/lib/dm/death";
@@ -43,12 +46,13 @@ import { castFindFamiliar, isFindFamiliar } from "@/lib/dm/familiar-cast";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { allyRowRefusal, allyRowsOf, layBuffOnRows } from "@/lib/dm/cast-buff-allies";
 import { unwillingResist } from "@/lib/dm/hostile-buffs";
-import { holdingHint, invalidArguments, noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, holdingHint, invalidArguments, noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
 import { zoneArgsSchema } from "@/lib/dm/zone-args";
 import { textKey } from "@/lib/language/text-logic";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
+import type { FreeLimit } from "@/lib/srd/counter-casts";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
 import { itemCastOpen } from "@/lib/dm/item-casts";
 import type { CastingSheet } from "@/lib/srd";
@@ -115,12 +119,12 @@ export function handleCastBuff(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: cast_buff needs characterId and spell.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: cast_buff needs characterId and spell.", error, rawArguments);
   }
   const parsed = castBuffSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: cast_buff needs characterId and spell.", parsed.error);
+    return invalidArguments("Invalid arguments: cast_buff needs characterId and spell.", parsed.error, raw);
   }
   let args: z.infer<typeof castBuffSchema> = parsed.data;
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
@@ -304,7 +308,8 @@ export function handleCastBuff(
   }
   // SRD 5.1, Armor of Shadows: "You can cast mage armor on yourself at
   // will": an invocation's self-only spell lands on the warlock alone.
-  const selfOnly = grantedCastOf(sheet, args.spell, spellFactsFor(args.spell, authors))?.selfOnly;
+  const granted = grantedCastOf(sheet, args.spell, spellFactsFor(args.spell, authors));
+  const selfOnly = granted?.selfOnly;
   if (selfOnly && (targetRows.length || targetSheets.some((target) => target.id !== sheet.id))) {
     return {
       error: `${sheet.name} casts ${resolvedMech.name} through an invocation on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
@@ -321,7 +326,12 @@ export function handleCastBuff(
         casterLevel: sheet.level,
       })
     : null;
-  const most = buff.target === "self" ? 1 : (shares ?? (buff.target === "ally" ? 1 : 6));
+  // The range, and the creatures, as this caster casts it: Distant Spell,
+  // and Twinned Spell's second creature for a spell that takes one
+  // (mt-srd-metamagic.ts).
+  const facts = factsAsCast(sheet, spellFactsFor(args.spell, authors));
+  const own = buff.target === "self" ? 1 : (shares ?? (buff.target === "ally" ? 1 : 6));
+  const most = own + (buff.target === "self" ? 0 : twinExtra(sheet, { facts, shares: own, slotLevel: plannedSlot ?? null }));
   if (targetSheets.length + targetRows.length > most) {
     return {
       error: `${resolvedMech.name} from a level ${plannedSlot ?? resolvedMech.spellLevel} slot affects at most ${most} creature${most === 1 ? "" : "s"}; ${targetSheets.length + targetRows.length} were named. Name ${most} or fewer, or cast it from a higher slot. Ask the player which. Nothing was spent.`,
@@ -351,7 +361,6 @@ export function handleCastBuff(
   }
   // On a mapped fight each recipient must be within the spell's range with
   // a clear path: a touch spell reaches only the creature beside the caster.
-  const facts = spellFactsFor(args.spell, authors);
   // A recipient inside a ward (src/lib/dm/cast-reach.ts spellWardOn) is
   // targeted all the same, and the spell does nothing to them.
   const warded = new Map<string, string>();
@@ -382,6 +391,7 @@ export function handleCastBuff(
       spell: args.spell,
       ...(args.level ? { level: args.level } : {}),
       via: "buff",
+      ...(granted?.freeLimit && !withinFreeLimit(granted.freeLimit, sheet.id, targetSheets, targetRows.length, polymorphForm) ? { freeFits: false } : {}),
       reason: (args.reason ?? "").slice(0, 200),
       ...placementArgs(args),
     }),
@@ -391,6 +401,9 @@ export function handleCastBuff(
   if ("error" in cast) {
     return cast;
   }
+  // The casting at each creature it targets, on record (last-save.ts): what
+  // answers a spell aimed at an ally (Voice of Authority) reads it.
+  recordCast(campaign.id, { id: sheet.id, name: sheet.name }, resolvedMech.name, typeof cast.slotLevel === "number" ? cast.slotLevel : resolvedMech.spellLevel, targetSheets.map((target) => target.id));
   // A target fighting against the caster saves as an unwilling creature.
   for (const [id, line] of unwillingResist(campaign, turn, sheet as CastingSheet<CharacterSheet>, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : null;
@@ -413,7 +426,8 @@ export function handleCastBuff(
   // 3rd-level slot: eight hours; until dispelled has no count). Rounds tick
   // in a fight and on the clock outside one (src/lib/dm/condition-tick.ts),
   // so Mage Armor's eight hours are eight hours.
-  const lasts = lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors);
+  // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
+  const lasts = extendedRounds(sheet, lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors));
   const rounds = lasts === null ? null : Math.max(1, lasts);
   const duration =
     rounds === null
@@ -436,7 +450,9 @@ export function handleCastBuff(
     }
     const fresh = getSheetById(target.id) ?? target;
     // Heroes' Feast rolls each diner's 2d10; it rides in the name as Aid's does.
-    const feast = resolvedMech.mech.maxHpDice ? rollCard(campaign, turn, target.id, "custom", `${args.spell}: ${target.name}'s hit point maximum`, resolvedMech.mech.maxHpDice, null).total : 0;
+    // The caster's own dice, as the temporary hit points below are
+    // (character-roll.ts rollOwnDice): whoever they are for.
+    const feast = resolvedMech.mech.maxHpDice ? rollOwnDice(campaign, sheet, `${args.spell}: ${target.name}'s hit point maximum`, resolvedMech.mech.maxHpDice, { turn }).total : 0;
     const outcome = handleSetCondition(
       campaign,
       turn.id,
@@ -472,9 +488,9 @@ export function handleCastBuff(
     const tempHp = buff.tempHp
       ? buff.tempHp.base +
         (buff.tempHp.perSlotLevel ?? 0) * above +
-        (buff.tempHp.dice ? rollCard(campaign, turn, target.id, "custom", `${args.spell}: temporary hit points`, buff.tempHp.dice, null).total : 0)
+        (buff.tempHp.dice ? rollOwnDice(campaign, sheet, diceFor(`${args.spell}: temporary hit points`, sheet, target), buff.tempHp.dice, { turn }).total : 0)
       : tempDice
-        ? rollCard(campaign, turn, target.id, "custom", `${condition}: temporary hit points`, tempDice, null).total
+        ? rollOwnDice(campaign, sheet, diceFor(`${condition}: temporary hit points`, sheet, target), tempDice, { turn }).total
         : 0;
     if (tempHp > 0) {
       const now = getSheetById(target.id);
@@ -513,12 +529,16 @@ export function handleCastBuff(
     return { error: `${resolvedMech.name} landed on no valid target.`, retry: true };
   }
 
+  // Share Spells: a spell the Beast Master cast on themselves lands on their
+  // companion too (src/lib/dm/pet-command.ts shareSpell).
+  const shared = targetSheets.some((target) => target.id === sheet.id) && !warded.has(sheet.id) ? shareSpell(campaign, sheet, condition) : null;
   const summary = conditionEffectsFor(condition)?.summary;
   return {
     ok: true,
     spell: resolvedMech.name,
     applied: condition,
     targets: applied,
+    ...(shared ? { companion: shared } : {}),
     ...(noEffect ? { noEffect } : {}),
     ...(quarry ? { quarry: quarry.displayName } : {}),
     ...(maxHpGain ? { hitPoints: `+${maxHpGain} to the maximum and current hit points of each` } : {}),
@@ -542,9 +562,20 @@ export function handleCastBuff(
     ...(cast.cost ? { cost: cast.cost } : {}),
     ...(cast.slot ? { slot: cast.slot } : {}),
     ...(cast.droppedConcentration ? { droppedConcentration: cast.droppedConcentration } : {}),
+    ...(cast.metamagic ? { metamagic: cast.metamagic } : {}),
     ...(summary ? { effect: summary } : {}),
     ...(resolvedMech.mech.note ? { spellNote: resolvedMech.mech.note } : {}),
     ...(resolvedMech.concentration ? { concentration: `${sheet.name} is concentrating on ${resolvedMech.name}.` } : {}),
     note: "The server applied the effect; narrate exactly this.",
   };
+}
+
+// Whether a casting stays inside a free grant's limits (Shapechanger: only
+// the wizard, into a beast of challenge rating 1 or lower); outside them the
+// cast guard has a slot pay (src/lib/dm/cast-guard.ts freeFits).
+function withinFreeLimit(limit: FreeLimit, casterId: string, targets: ReadonlyArray<{ id: string }>, rows: number, form: { cr: number } | null): boolean {
+  if (limit.selfOnly && (rows > 0 || targets.some((target) => target.id !== casterId))) {
+    return false;
+  }
+  return limit.maxCr === undefined || !form || form.cr <= limit.maxCr;
 }

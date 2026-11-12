@@ -1,4 +1,5 @@
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import {
@@ -34,9 +35,9 @@ import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
-import { STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
+import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
-import { tickEffectRound } from "@/lib/db/active-effects";
+import { listEffects, tickEffectRound } from "@/lib/db/active-effects";
 import { rollEffectSaves } from "@/lib/dm/effect-saves";
 import { spellTurnStart } from "@/lib/dm/spell-aura";
 import { zoneTurnStart } from "@/lib/dm/zone-triggers";
@@ -47,6 +48,7 @@ import { finishCasting } from "@/lib/dm/long-casting";
 import { CASTING, castingOf } from "@/lib/dm/long-casting-logic";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { listedAgainst } from "@/lib/dm/roll-about";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -107,6 +109,8 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   }
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   lines.push(...settleFrenzies(campaign));
+  // And what lasted until a rage now over (rage-bound.ts).
+  lines.push(...endRageBound(campaign.id).lines);
 
   if (lines.length || expired.length) {
     publishPersisted(campaign.id, "encounter_updated", {
@@ -140,6 +144,9 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
     .filter((sheet) => isDying(sheet))
     .flatMap((sheet) => settleDying(campaign, sheet.id, deathSavesInMinutes(minutes), null, startedAt));
   const lines: string[] = [];
+  // How long each creature lies senseless into the stretch, read before the
+  // stretch runs: one that wakes on its last round has had no time to get up.
+  const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
   rollEffectSaves(campaign, null, () => true, lines);
   // A concentration spell lasts no longer than its duration on the road
@@ -159,6 +166,20 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
       }
     }
   }
+  // Read after the stretch woke whom it woke: whoever it leaves awake and
+  // able to move, with a round of it left to stand in, is no longer prone
+  // (vitals-logic.ts standAsTimePasses).
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const stood = (downFor.get(sheet.id) ?? 0) < rounds ? standAsTimePasses(sheet) : null;
+    if (stood) {
+      patchSheetAudited(campaign.id, sheet.id, stood, {
+        kind: "condition_clock",
+        reason: "no longer prone as time passed",
+        delta: { ended: [PRONE], added: [] },
+      });
+    }
+  }
   if (lines.length) {
     endSpentConcentration(campaign, lines);
   }
@@ -169,10 +190,30 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   if (faded.length) {
     endConcentrationOnFadedSummons(campaign, lines);
   }
+  // A rage the clock ended: its frenzy costs the level of exhaustion, and
+  // what lasted until the rage ended ends (frenzy.ts, rage-bound.ts), as at a
+  // round's wrap.
+  lines.push(...settleFrenzies(campaign));
+  lines.push(...endRageBound(campaign.id).lines);
   if (lines.length) {
     noteAtTable(campaign.id, lines);
   }
   return deathSaves;
+}
+
+// The rounds a creature stays senseless from now: none awake, its
+// unconscious's own count (a stable creature's 1d4 hours, a Sleep spell's
+// minute), the longest 1d4 hours for a stable creature with no count kept,
+// and no end for any other.
+function roundsSenseless(sheet: { conditions: string[]; conditionMeta: unknown; deathSaves?: { stable?: boolean } | null }): number {
+  if (!sheet.conditions.some((entry) => isConditionNamed(entry, UNCONSCIOUS))) {
+    return 0;
+  }
+  const counted = (sheet.conditionMeta as ConditionMetaMap | undefined)?.[UNCONSCIOUS]?.rounds;
+  if (typeof counted === "number") {
+    return counted;
+  }
+  return sheet.deathSaves?.stable ? STABLE_WAKE_HOURS_MAX * 60 * ROUNDS_PER_MINUTE : Number.POSITIVE_INFINITY;
 }
 
 // Whether this sheet's unconscious is the wait of a stabilized creature.
@@ -373,7 +414,63 @@ type HolderTick = {
   saves?: (holderId: string) => boolean;
   // Only these holders are looked at.
   only?: Set<string>;
+  // Of the saves due, the ones rolled now, by holdKey (endTurnSaves).
+  due?: (holderId: string, key: string) => boolean;
 };
+
+// One hold a creature can save against at the end of its turn: a save-ends
+// instance of a condition (its source's identity and DC, as the save that
+// ends it matches them), or an active effect's save by the effect's id.
+function holdKey(holderId: string, name: string, key: string, dc: number): string {
+  return `${holderId}|${name}|${key}|${dc}`;
+}
+
+function effectHoldKey(holderId: string, effectId: string): string {
+  return `${holderId}|effect|${effectId}`;
+}
+
+// What holds these enemies as their turns begin, by holdKey. The pointer
+// walks past an enemy and its turn is played in the DM turn after; the save
+// it makes as that turn ends comes at the next move, by which time the
+// character who went next may have laid a new hold on it (Hold Person). That
+// hold had no turn of the creature's under it, so it is not saved against
+// until the end of the creature's next turn (SRD 5.1, Hold Person: "at the
+// end of each of its turns"). advancePointer keeps this list as it walks
+// past them, held-turn.ts reads it again once their turns are known to be
+// over (what was laid during one counts), and endTurnSaves takes it at the
+// next move.
+export function turnHoldKeys(campaign: Campaign, encounterId: string, enemyIds: string[]): string[] {
+  const holders = new Set(enemyIds);
+  const keys: string[] = [];
+  for (const enemy of listEnemies(encounterId)) {
+    if (!holders.has(enemy.id)) {
+      continue;
+    }
+    for (const name of enemy.conditions) {
+      for (const instance of instancesOf((enemy.conditionMeta as ConditionMetaMap)[name])) {
+        if (instance.saveEnds) {
+          keys.push(holdKey(enemy.id, name, instanceIdentity(instance), instance.saveEnds.dc));
+        }
+      }
+    }
+  }
+  for (const effect of listEffects(campaign.id)) {
+    if (effect.targetKind === "enemy" && holders.has(effect.targetId) && effect.saveAbility && effect.saveDc) {
+      keys.push(effectHoldKey(effect.targetId, effect.id));
+    }
+  }
+  return keys;
+}
+
+// The enemies the last move walked past that will save against a hold as
+// the pointer next moves (endTurnSaves): those holding one their turn ended
+// under (walkedHolds), any one on a row written before that list. For a watch
+// stop before the move (src/lib/dm/turn-hold.ts).
+export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): string[] {
+  const walked = encounter.legendary.walked ?? [];
+  const recorded = encounter.legendary.walkedHolds ? new Set(encounter.legendary.walkedHolds) : null;
+  return walked.filter((id) => turnHoldKeys(campaign, encounter.id, [id]).some((hold) => !recorded || recorded.has(hold)));
+}
 
 // A hold saved against only far from its source (Dreadful Aspect: a creature
 // that ends its turn more than 30 feet away). Measured on the board as reach
@@ -406,8 +503,23 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       ({ conditions, meta } = withLethargy(conditions, meta, lethargyMeta(enemy.id)));
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
     }
+    // One effect, one save, as a character's below: conditions one source laid
+    // together with the same save (the Stone Rune's charm, incapacitation and
+    // stupor) end together on one roll. A hold with no source is its own.
+    const effectSaves = new Map<string, boolean>();
     for (const listed of tick.savesDue) {
-      if (!conditions.includes(listed.name)) {
+      if (!conditions.includes(listed.name) || (options.due && !options.due(enemy.id, holdKey(enemy.id, listed.name, listed.key, listed.dc)))) {
+        continue;
+      }
+      const effect = listed.key === "|" ? null : `${listed.key}|${listed.ability}|${listed.dc}`;
+      const settled = effect ? effectSaves.get(effect) : undefined;
+      if (settled !== undefined) {
+        if (settled) {
+          const removed = removeConditionInstances(conditions, meta, listed.name, (instance) => instanceIdentity(instance) === listed.key && instance.saveEnds?.dc === listed.dc);
+          conditions = removed.conditions;
+          meta = removed.meta;
+          lines.push(`${enemy.displayName} is no longer ${listed.name}: the same save ended it.`);
+        }
         continue;
       }
       // A hold that lets the creature pick its save (Nature's Wrath) takes the
@@ -440,6 +552,9 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
         },
       );
       const shown = outcome.total === null ? "an automatic failure" : String(outcome.total);
+      if (effect) {
+        effectSaves.set(effect, outcome.success);
+      }
       if (outcome.success) {
         const removed = removeConditionInstances(conditions, meta, due.name, holds);
         conditions = removed.conditions;
@@ -524,7 +639,7 @@ function tickSheetConditions(
     const effectSaves = new Map<string, boolean>();
     const effectOf = (due: (typeof tick.savesDue)[number]) => (due.key === "|" ? null : `${due.key}|${due.ability}|${due.dc}`);
     for (const listed of tick.savesDue) {
-      if (!conditions.includes(listed.name)) {
+      if (!conditions.includes(listed.name) || (options?.due && !options.due(sheet.id, holdKey(sheet.id, listed.name, listed.key, listed.dc)))) {
         continue;
       }
       // A hold that lets the character pick its save (Nature's Wrath).
@@ -635,16 +750,26 @@ function tickSheetConditions(
 // one per source holding it. advancePointer calls this as the pointer moves:
 // for the character whose turn it was, the ones it walked past, and the
 // enemies whose turns the DM turn since the last move has taken.
-export function endTurnSaves(campaign: Campaign, encounter: Encounter, holderIds: string[]) {
+// `heldAtStart`: for those enemies, what held them as their turns began
+// (turnHoldKeys); a hold laid on one of them since saves at a later turn's end.
+export function endTurnSaves(
+  campaign: Campaign,
+  encounter: Encounter,
+  holderIds: string[],
+  heldAtStart?: { holders: string[]; keys: string[] },
+) {
   if (!holderIds.length) {
     return;
   }
   const ending = new Set(holderIds);
   const lines: string[] = [];
-  const ownSave: HolderTick = { counts: () => false, saves: (holderId) => ending.has(holderId), only: ending };
+  const startedUnder = heldAtStart ? new Set(heldAtStart.keys) : null;
+  const checked = new Set(heldAtStart?.holders ?? []);
+  const due = (holderId: string, key: string) => !startedUnder || !checked.has(holderId) || startedUnder.has(key);
+  const ownSave: HolderTick = { counts: () => false, saves: (holderId) => ending.has(holderId), only: ending, due };
   tickEnemyConditions(campaign, encounter, 0, lines, ownSave);
   tickSheetConditions(campaign, 0, lines, { encounter, ...ownSave });
-  rollEffectSaves(campaign, encounter, (holderId) => ending.has(holderId), lines);
+  rollEffectSaves(campaign, encounter, (holderId, effectId) => ending.has(holderId) && due(holderId, effectHoldKey(holderId, effectId)), lines);
   if (lines.length) {
     endSpentConcentration(campaign, lines);
     publishPersisted(campaign.id, "encounter_updated", {

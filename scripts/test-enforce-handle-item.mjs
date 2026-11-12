@@ -140,6 +140,136 @@ await test("A dropped weapon costs nothing, lies on the board for the party to s
   assert.equal(listDroppedItems(world.campaignId).length, 0);
 });
 
+// Play-test 2026-11-07: a net thrown from the hand that held it stayed on
+// the sheet, equipped, so the hands read as full afterwards and a weapon
+// picked up went into the pack.
+await test("A thrown net leaves the hand and the pack and lies at the creature it was thrown at, hit or miss", async () => {
+  await freshFight();
+  world.patch(fighter.id, { equipment: [...GEAR(), { name: "Net", qty: 2, equipped: true }] });
+  const [enemy] = world.enemies();
+  kit.place(enemy.id, 3, 2);
+  const hit = await kit.swing(fighter.id, enemy.id, [18, 18], { weapon: "Net" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(hit.result.hit, true, JSON.stringify(hit.result));
+  assert.equal(row(fighter, "Net").qty, 1, "the net thrown is still in the pack");
+  assert.equal(row(fighter, "Net").equipped, false, "the net thrown is still in hand");
+  const [lying] = listDroppedItems(world.campaignId);
+  assert.equal(lying?.item.name, "Net");
+  assert.equal(lying.item.qty, 1);
+  assert.deepEqual([lying.x, lying.y], [3, 2], "the net lies at the creature it was thrown at");
+  assert.equal(lying.droppedBy, "Kara");
+  // Sword in one hand and the other free: the handaxe can be drawn.
+  const axe = await handle({ action: "equip", item: "Handaxe" });
+  assert.equal(axe.ok, true, axe.error);
+  // A miss on the next turn: the second net leaves the sheet as well.
+  kit.giveTurn(fighter.id);
+  assert.equal((await handle({ action: "drop", item: "Handaxe" })).ok, true);
+  const miss = await kit.swing(fighter.id, enemy.id, [2, 2], { weapon: "Net" });
+  assert.equal(miss.ok, true, miss.error);
+  assert.equal(miss.result.hit, false, JSON.stringify(miss.result));
+  assert.equal(row(fighter, "Net"), undefined, "a missed net is still on the sheet");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 2);
+  // From within 5 ft it is taken up again, as anything on the ground is.
+  kit.giveTurn(fighter.id);
+  const took = await handle({ action: "pick_up", item: "Net" });
+  assert.equal(took.ok, true, took.error);
+  assert.equal(row(fighter, "Net").qty, 1);
+});
+
+// SRD 5.1, Net: "A creature can use its action to make a DC 10 Strength
+// check, freeing itself ... Dealing 5 slashing damage to the net (AC 10) also
+// frees the creature without harming it, ending the effect and destroying the
+// net." Neither was wired: an enemy's take_action escape found "nothing to
+// escape", and a blow at the net was a wooden object's.
+await test("A net's hold ends by its own rule: a DC 10 Strength check frees the creature and leaves the net; 5 slashing to the net (AC 10) frees it unharmed and destroys the net", async () => {
+  await freshFight();
+  world.patch(fighter.id, { equipment: [...GEAR(), { name: "Net", qty: 2, equipped: true }] });
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 40, stats: { abilities: { str: 10 } } });
+  kit.place(enemy.id, 3, 2);
+  const restrained = () => kit.enemy(enemy.id).conditions.includes("restrained");
+  const throwNet = async () => {
+    kit.giveTurn(fighter.id);
+    const hit = await kit.swing(fighter.id, enemy.id, [18, 18], { weapon: "Net" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.ok(restrained(), "the net did not restrain it");
+  };
+  await throwNet();
+  // Its action and a Strength check: a 9 stays, a 10 breaks free.
+  kit.freshRound();
+  kit.dice(9);
+  const stuck = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(stuck.ok, true, stuck.error);
+  assert.equal(stuck.result.success, false);
+  assert.ok(restrained());
+  kit.freshRound();
+  kit.dice(10);
+  const free = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(free.ok, true, free.error);
+  assert.equal(free.result.success, true, JSON.stringify(free.result));
+  assert.ok(!restrained(), "a 10 against DC 10 left it restrained");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 1, "the net broken free of no longer lies where it fell");
+  // The second net, cut: 4 bludgeoning does nothing, 5 slashing cuts it.
+  await throwNet();
+  const hp = kit.enemy(enemy.id).currentHp;
+  const blunt = await world.invoke("damage_object", { name: "Net", damage: "6", damageType: "bludgeoning" });
+  assert.equal(blunt.ok, true, blunt.error);
+  assert.equal(blunt.result.ac, 10);
+  assert.ok(restrained(), "bludgeoning cut the net");
+  const cut = await world.invoke("damage_object", { name: "Net", damage: "5", damageType: "slashing" });
+  assert.equal(cut.ok, true, cut.error);
+  assert.equal(cut.result.broken, true, JSON.stringify(cut.result));
+  assert.ok(!restrained(), "the net cut through still restrains it");
+  assert.equal(kit.enemy(enemy.id).currentHp, hp, "cutting the net harmed the creature");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 1, "the net cut through still lies on the ground");
+  // With no creature held, "Net" is refused, not a wooden door.
+  const none = await world.invoke("damage_object", { name: "Net", damage: "5", damageType: "slashing" });
+  assert.equal(none.ok, false);
+});
+
+// The same fault as the net, for every weapon thrown: a javelin held in hand
+// and thrown 20 feet stayed in the hand and on the sheet, so it could be
+// thrown at every attack, and a dagger drawn and thrown stayed in the pack.
+// A dagger used within reach is a stab, not a throw, and a Dwarven Thrower
+// "flies back to your hand" (SRD 5.1).
+await test("A weapon thrown at range leaves the hand and the pack and lies at its target, hit or miss; a stab within reach keeps it", async () => {
+  await freshFight();
+  world.patch(fighter.id, {
+    equipment: [
+      { name: "Chain Mail", qty: 1, equipped: true },
+      { name: "Javelin", qty: 1, equipped: false },
+      { name: "Javelin", qty: 1, equipped: true },
+      { name: "Dagger", qty: 1, equipped: true },
+    ],
+  });
+  const [enemy] = world.enemies();
+  kit.place(enemy.id, 6, 2);
+  const hit = await kit.swing(fighter.id, enemy.id, [18, 3], { weapon: "Javelin" });
+  assert.equal(hit.ok, true, hit.error);
+  // The held line went: the one left is the stowed one.
+  const javelins = world.sheet(fighter.id).equipment.filter((item) => item.name === "Javelin");
+  assert.deepEqual(javelins.map((item) => item.equipped), [false], "the javelin thrown is still in hand or in the pack");
+  const lying = listDroppedItems(world.campaignId).find((entry) => entry.item.name === "Javelin");
+  assert.deepEqual([lying?.x, lying?.y], [6, 2], "the javelin lies at the creature it was thrown at");
+  // A stab within reach keeps the dagger in hand.
+  kit.giveTurn(fighter.id);
+  kit.place(enemy.id, 3, 2);
+  const stab = await kit.swing(fighter.id, enemy.id, [18, 3], { weapon: "Dagger" });
+  assert.equal(stab.ok, true, stab.error);
+  assert.equal(row(fighter, "Dagger")?.equipped, true, "a stab let go of the dagger");
+  // Thrown, a miss: it leaves the sheet all the same.
+  kit.giveTurn(fighter.id);
+  kit.place(enemy.id, 6, 2);
+  const miss = await kit.swing(fighter.id, enemy.id, [2, 3], { weapon: "Dagger" });
+  assert.equal(miss.ok, true, miss.error);
+  assert.equal(miss.result.hit, false, JSON.stringify(miss.result));
+  assert.equal(row(fighter, "Dagger"), undefined, "a dagger thrown and missed is still on the sheet");
+  assert.ok(listDroppedItems(world.campaignId).some((entry) => entry.item.name === "Dagger" && entry.x === 6));
+  const { returnsToHand } = await import("../src/lib/dm/gear-ground.ts");
+  assert.equal(returnsToHand("Dwarven Thrower"), true);
+  assert.equal(returnsToHand("Javelin"), false);
+});
+
 await test("A strapped-on shield is not dropped for free: taking it off is the action", async () => {
   await freshFight();
   world.patch(fighter.id, { equipment: GEAR().map((item) => (item.name === "Shield" ? { ...item, equipped: true } : item)) });

@@ -531,7 +531,23 @@
         "Common",
         "Elvish",
         "Giant"
-      ]
+      ],
+      "innateSpells": {
+        "trait": "Firbolg Magic",
+        "ability": "wis",
+        "spells": [
+          {
+            "name": "Detect Magic",
+            "level": 1,
+            "rest": "short"
+          },
+          {
+            "name": "Disguise Self",
+            "level": 1,
+            "rest": "short"
+          }
+        ]
+      }
     },
     {
       "id": "tabaxi",
@@ -620,7 +636,22 @@
       "languages": [
         "Common",
         "Primordial"
-      ]
+      ],
+      "innateSpells": {
+        "trait": "Reach to the Blaze",
+        "ability": "con",
+        "spells": [
+          {
+            "name": "Produce Flame",
+            "level": 1
+          },
+          {
+            "name": "Burning Hands",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
     },
     {
       "id": "water_genasi",
@@ -640,7 +671,22 @@
       "languages": [
         "Common",
         "Primordial"
-      ]
+      ],
+      "innateSpells": {
+        "trait": "Call to the Wave",
+        "ability": "con",
+        "spells": [
+          {
+            "name": "Shape Water",
+            "level": 1
+          },
+          {
+            "name": "Create or Destroy Water",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
     },
     {
       "id": "air_genasi",
@@ -659,7 +705,18 @@
       "languages": [
         "Common",
         "Primordial"
-      ]
+      ],
+      "innateSpells": {
+        "trait": "Mingle with the Wind",
+        "ability": "con",
+        "spells": [
+          {
+            "name": "Levitate",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
     },
     {
       "id": "earth_genasi",
@@ -678,7 +735,18 @@
       "languages": [
         "Common",
         "Primordial"
-      ]
+      ],
+      "innateSpells": {
+        "trait": "Merge with Stone",
+        "ability": "con",
+        "spells": [
+          {
+            "name": "Pass without Trace",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
     },
     {
       "id": "changeling",

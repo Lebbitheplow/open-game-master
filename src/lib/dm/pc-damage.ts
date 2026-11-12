@@ -12,10 +12,16 @@
 // death engine, and damage forces the concentration save.
 //
 // This module must not import mutations.ts (which imports it).
+// Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
+import { ragesBeyondDeath } from "@/lib/dm/mt-fb-rage-death-logic";
+import "@/lib/dm/faithful-summons";
 import { immersedResistance } from "@/lib/dm/underwater";
 import { deathWardPatch } from "@/lib/dm/spell-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { soulHold } from "@/lib/dm/soul-of-artifice";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
@@ -24,6 +30,7 @@ import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
+import { masteryOfDeathHold } from "@/lib/dm/mastery-of-death";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
 import {
   damageAdjust,
@@ -36,13 +43,17 @@ import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
+import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
+import { lightOil } from "@/lib/dm/gear-zones";
 import { summonImmunities, summonResistances, summonVulnerabilities } from "@/lib/dm/summon-rules";
 import { summonAfterDamage } from "@/lib/dm/summon-store";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
+import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 
@@ -58,6 +69,9 @@ export type PcDamageInput = {
   // From a spell, a magic weapon or strikes that count as magical, so
   // resistance to nonmagical attacks does not apply.
   magical?: boolean;
+  // From an attack (a weapon's or a creature's own), not a trap or a fall:
+  // Heavy Armor Master's "damage from nonmagical attacks is reduced by 3".
+  attack?: boolean;
   // From a spell: Spell Resistance and Aura of Warding resist it, and so
   // does a form or a summoned creature whose block resists "damage from
   // spells".
@@ -69,7 +83,8 @@ export type PcDamageInput = {
   adamantine?: boolean;
   goodWielder?: boolean;
   // The type whose resistance this blow sets aside (Elemental Adept, the
-  // Death cleric's Inescapable Destruction), on a character as on an enemy.
+  // Death cleric's Inescapable Destruction), on a character as on an enemy;
+  // several, comma-separated, for a spell of two types an adept covers both.
   ignoreResistanceTo?: string;
   // The creature lands prone if any of this damage gets through (a fall).
   knocksProne?: boolean;
@@ -84,6 +99,10 @@ export type PcDamageInput = {
   // Features whose resistance does not hold against this blow (Emissary of
   // Redemption against a creature the paladin attacked).
   exceptFeatures?: string[];
+  // No creature dealt it: a fall, a trap, a hazard, or the GM's apply_damage
+  // with no attacker. A resistance to damage "dealt by other creatures"
+  // (Emissary of Redemption) does not meet it.
+  noCreature?: boolean;
   reason?: string;
 };
 
@@ -92,14 +111,19 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature">;
 
 export type BlowDefenses = {
   resisted: string;
   immune: string;
   vulnerable: string;
   flags: { magical: boolean; spell: boolean; silvered?: boolean; adamantine?: boolean; goodWielder?: boolean };
+  // Taken off the bludgeoning, piercing or slashing of the blow before
+  // resistance (Heavy Armor Master, src/lib/srd/feat-effects.ts).
+  reduceWeapon: number;
 };
+
+const WEAPON_TYPES = new Set(["bludgeoning", "piercing", "slashing"]);
 
 // The defenses a character meets a blow with: their own resistances, an
 // ally's aura (Aura of Warding, Shielding Storm), a summoned creature's block,
@@ -119,19 +143,24 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   // elemental is immune to fire: beast-forms.ts wildShapeRecord), each its
   // own clause so a "from nonmagical attacks" binds only its own types.
   const shape = sheet.wildShape;
-  const ignored = (input.ignoreResistanceTo ?? "").trim();
+  const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
-  const resisted = ignored ? resistedLine.replace(new RegExp(`\\b${ignored}\\b`, "gi"), "") : resistedLine;
+  const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);
   // Inside Silence, thunder does nothing (zone-rules.ts).
   const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaignId, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
   const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");
+  // SRD 5.1, Heavy Armor Master: "While you are wearing heavy armor,
+  // bludgeoning, piercing, and slashing damage that you take from nonmagical
+  // weapons is reduced by 3." A creature's own form keeps no armor.
+  const reduceWeapon = input.attack && !shape ? heavyArmorMasterReduction(sheet, { wearingHeavyArmor: wearsHeavyArmor(sheet.equipment), damageType: "bludgeoning", magical: input.magical === true }) : 0;
   return {
     resisted,
     immune,
     vulnerable,
+    reduceWeapon,
     flags: { magical: input.magical === true, spell: input.spell === true, silvered: input.silvered, adamantine: input.adamantine, goodWielder: input.goodWielder },
   };
 }
@@ -148,10 +177,18 @@ export function meetDefenses(
   absorbed: number,
 ): { amount: number; note: string | null; met: Array<{ amount: number; type: string; note: string | null }> | null } {
   const { resisted, immune, vulnerable, flags } = defenses;
+  // The reduction comes off the first weapon-typed part, once a blow.
+  let cut = defenses.reduceWeapon ?? 0;
+  const reduced = (part: { amount: number; type: string }) => {
+    if (!cut || !WEAPON_TYPES.has(textKey(part.type))) return part;
+    const off = Math.min(cut, part.amount);
+    cut -= off;
+    return { ...part, amount: part.amount - off };
+  };
   const met = parts?.length
-    ? partsPast(parts, absorbed).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
+    ? partsPast(parts, absorbed).map(reduced).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
     : null;
-  const overflow = amount - absorbed;
+  const overflow = met ? 0 : reduced({ amount: amount - absorbed, type: type ?? "" }).amount;
   const adjusted = met
     ? { amount: met.reduce((sum, part) => sum + part.amount, 0), note: met.map((part) => part.note).filter(Boolean).join("; ") || null }
     : overflow > 0
@@ -251,6 +288,8 @@ export function applyPcDamage(
   // Fire burns away the web around them (zone-cast.ts).
   if (fireBlow) {
     burnWebUnder(campaign, sheet.id);
+    // And lights the oil it stands in (gear-zones.ts).
+    lightOil(campaign, sheet.id, 0);
   }
   // Wild Shape: the beast's hit points take the blow first. While the form
   // holds, the druid's own sheet is untouched and no death hook fires; when
@@ -418,10 +457,51 @@ export function applyPcDamage(
   if (relentless) {
     return tookIt(relentless);
   }
+  // A Wildfire druid's spirit gives itself up for them, then a Shadow
+  // sorcerer's save. Each answers the drop itself, so it runs here, before
+  // the death engine sees it: played as a card afterwards it was refused,
+  // the hero being at 0, and played before it spent the use for nothing.
+  const revival = blazingRevival(campaign, turnId, sheet, math, input, reason);
+  if (revival) {
+    return tookIt(revival);
+  }
+  const grave = strengthOfTheGrave(campaign, turnId, sheet, math, input, adjusted.amount, reason);
+  if (grave) {
+    return tookIt(grave);
+  }
+  // Mastery of Death: a ki point keeps the monk at 1 hit point
+  // (src/lib/dm/mastery-of-death.ts).
+  const now = getSheetById(sheet.id) ?? sheet;
+  const mastery = masteryOfDeathHold(now, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(now)));
+  if (mastery) {
+    patchSheet(sheet.id, mastery);
+    audit(campaign, turnId, now, "apply_damage", { masteryOfDeath: true, ki: 1 }, reason, mastery);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(now)}`, masteryOfDeath: `${sheet.name} should have fallen, but Mastery of Death spends 1 ki to keep them at 1 hit point.` });
+  }
+  // Soul of Artifice: the artificer's reaction ends a readied attunement and
+  // keeps them at 1 hit point (src/lib/dm/soul-of-artifice.ts).
+  const soulSheet = getSheetById(sheet.id) ?? sheet;
+  const encounterNow = getActiveEncounter(campaign.id);
+  const soul = soulHold(soulSheet, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(soulSheet)), !encounterNow?.reactionsUsed.includes(sheet.id));
+  let soulInfo: Record<string, unknown> = {};
+  if (soul && "patch" in soul) {
+    patchSheet(sheet.id, soul.patch);
+    if (encounterNow) {
+      markReactionUsed(encounterNow, sheet.id);
+    }
+    audit(campaign, turnId, soulSheet, "apply_damage", { soulOfArtifice: soul.item }, reason, soul.patch);
+    publishSheet(campaign, sheet.id);
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(soulSheet)}`, soulOfArtifice: `${sheet.name} should have fallen, but Soul of Artifice ends the attunement to ${soul.item} with their reaction and keeps them at 1 hit point.` });
+  } else if (soul) {
+    soulInfo = { soulOfArtifice: soul.why };
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
-  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING)) {
+  // Nor does a zealot raging beyond death (mt-fb-rage-death-logic.ts): 0 hit
+  // points does not knock them unconscious, so the rage goes on.
+  if (math.dropped && sheet.conditions.some((entry) => entry.toLowerCase() === RAGING) && !ragesBeyondDeath(sheet)) {
     const now = getSheetById(sheet.id) ?? sheet;
     const cleared = removeConditions(now.conditions, now.conditionMeta, [RAGING]);
     const patch: FullPatchSheetInput = {
@@ -440,6 +520,12 @@ export function applyPcDamage(
   const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true, input.nonlethal === true && !input.disintegrate);
   // Unconscious at 0 is incapacitated: a grapple they held ends.
   const letGo = math.dropped ? releaseGrapplesHeldBy(campaign, sheet.id) : [];
+  // And a mark held only while its holder can act ends, as it does when a
+  // condition incapacitates them: a dead warlock's Hexblade's Curse stood
+  // for its minute (ar-wbf-warlock-marks.ts).
+  if (math.dropped && endIncapacitationHeld(sheet.id).length) {
+    publishSheet(campaign, sheet.id);
+  }
   // Concentration: damage forces the CON save server-side. A form that broke
   // took the blow too, so the save is against all of it.
   const concentrationInfo = concentrationDamageHook(
@@ -451,6 +537,7 @@ export function applyPcDamage(
   return {
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
+    ...soulInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,
@@ -503,6 +590,90 @@ function relentlessRage(
     ok: true,
     hp: `1/${effectiveMaxHp(sheet)}`,
     relentlessRage: `CON save ${save.total} against DC ${dc}: ${sheet.name} stays on their feet at 1 hit point, still raging. The next save is DC ${dc + 5} until they rest.`,
+  };
+}
+
+// A use of a once-a-rest feature, spent; null when none is left.
+function spendUse(resources: CharacterSheet["resources"], id: string): CharacterSheet["resources"] | null {
+  const state = resources?.[id];
+  return state && state.used < state.max ? { ...resources, [id]: { max: state.max, used: state.used + 1 } } : null;
+}
+
+export const WILDFIRE_SPIRIT = "wildfire spirit";
+
+// Blazing Revival (Circle of Wildfire 14): dropped to 0 but not killed
+// outright while the wildfire spirit is out, the spirit drops to 0 and the
+// druid regains half their hit point maximum and stands. The spirit is a
+// condition on the druid here, with no token to measure its 120 feet from,
+// so its being out is all that is checked. Taken whenever it can be: being
+// up again at half is always worth the spirit, as Undying Sentinel's hold is
+// taken whenever it can be.
+function blazingRevival(
+  campaign: Campaign,
+  turnId: string,
+  sheet: CharacterSheet,
+  math: { dropped: boolean; overkill: number },
+  input: PcDamageInput,
+  reason: string,
+): Record<string, unknown> | null {
+  const now = getSheetById(sheet.id) ?? sheet;
+  if (!math.dropped || input.disintegrate || isMassiveDamage(math.overkill, effectiveMaxHp(now)) || !now.conditions.some((entry) => entry.toLowerCase() === WILDFIRE_SPIRIT)) {
+    return null;
+  }
+  const resources = spendUse(now.resources, "sub_blazing_revival");
+  if (!resources) {
+    return null;
+  }
+  const hp = Math.max(1, Math.floor(effectiveMaxHp(now) / 2));
+  const cleared = removeConditions(now.conditions, now.conditionMeta, [WILDFIRE_SPIRIT]);
+  const patch: FullPatchSheetInput = { currentHp: hp, resources, conditions: cleared.conditions, conditionMeta: cleared.meta };
+  patchSheet(sheet.id, patch);
+  audit(campaign, turnId, now, "apply_damage", { blazingRevival: true }, reason, patch);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    hp: `${hp}/${effectiveMaxHp(now)}`,
+    blazingRevival: `${sheet.name} should have fallen, but their wildfire spirit drops to 0 hit points in their place: Blazing Revival brings them back at ${hp} hit points, on their feet. The spirit is gone, and the feature is spent until a long rest.`,
+  };
+}
+
+// Strength of the Grave (Shadow Magic 1): damage that drops the sorcerer to 0
+// is answered by a Charisma save against 5 + the damage taken, which leaves
+// them at 1 instead. Not against radiant damage or a critical hit, and only a
+// success spends the use. Rolled whenever it can be, as Relentless Rage's
+// save is: a failed one costs nothing.
+function strengthOfTheGrave(
+  campaign: Campaign,
+  turnId: string,
+  sheet: CharacterSheet,
+  math: { dropped: boolean; overkill: number },
+  input: PcDamageInput,
+  taken: number,
+  reason: string,
+): Record<string, unknown> | null {
+  const now = getSheetById(sheet.id) ?? sheet;
+  const radiant = /\bradiant\b/i.test([input.type ?? "", ...(input.parts ?? []).map((part) => part.type)].join(" "));
+  if (!math.dropped || input.disintegrate || input.crit === true || radiant || isMassiveDamage(math.overkill, effectiveMaxHp(now))) {
+    return null;
+  }
+  const resources = spendUse(now.resources, "sub_strength_of_the_grave");
+  if (!resources) {
+    return null;
+  }
+  const dc = 5 + Math.max(0, taken);
+  const save = rollFeatureSave(campaign, now, "cha", dc, "Strength of the Grave");
+  if (!save.success) {
+    return null;
+  }
+  const after = getSheetById(sheet.id) ?? now;
+  const patch: FullPatchSheetInput = { currentHp: 1, resources: { ...after.resources, sub_strength_of_the_grave: resources.sub_strength_of_the_grave } };
+  patchSheet(sheet.id, patch);
+  audit(campaign, turnId, after, "apply_damage", { strengthOfTheGrave: true, dc }, reason, patch);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    hp: `1/${effectiveMaxHp(now)}`,
+    strengthOfTheGrave: `CHA save ${save.total} against DC ${dc}: ${sheet.name} drops to 1 hit point instead of 0. Strength of the Grave is spent until a long rest.`,
   };
 }
 

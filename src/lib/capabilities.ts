@@ -58,6 +58,16 @@ export type Capabilities = {
 // dropping it to its own pages over one button. Constant per release: a flag
 // only ever says this server's code has the thing.
 export const SERVER_FEATURES = {
+  // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
+  // an older host drops unread (Storm Aura's environment, an invocation).
+  levelUpChanges: true,
+  // A sorcerer origin's own spell replaced at a level-up: levelUpForget
+  // naming it, which an older host refuses as a spell the character does
+  // not know (src/lib/dm/ar-ws-origin-swap.ts).
+  originSpellSwap: true,
+  // "Import an adventure PDF" in the workshop and in WorldForge: the
+  // /api/pdf-imports routes, which an older host answers with a 404.
+  pdfImport: true,
   // "Paint a portrait" on a companion's card (issue 569):
   // POST /api/campaigns/[id]/companions/[characterId]/portrait.
   companionPortrait: true,
@@ -106,6 +116,11 @@ export const SERVER_FEATURES = {
   // message's `shares`, which an older host drops and resolves as the aimed
   // creature alone, so the split stays shut there.
   handShares: true,
+  // A card for each spell a wand, a staff, a scroll or another item casts
+  // (hand-items.ts): an older host's actions route reads an item's spell
+  // only out of a Ring of Spell Storing and refuses the rest, so they stay
+  // typed there.
+  handItemCasts: true,
   // What each connected agent's receiver or poll link wakes, and a link
   // that stopped and why, on Settings > Connected agents (issue 654): the
   // `links` and `stoppedLinks` fields of GET /api/profile/agents.
@@ -157,6 +172,11 @@ export const SERVER_FEATURES = {
   // questions. An older host drops start_encounter's building unread and opens
   // the fight on open ground, so they stay hidden there.
   fightInBuilding: true,
+  // How a prepared fight opens, asked as the GM deploys it (the Deploy
+  // dialog, DeployOpeningDialog.tsx): the deploy route's body. An older host
+  // reads no body and deploys the fight as prepared, so the dialog stays
+  // hidden there and Deploy deploys at once.
+  deployOpening: true,
   // A declaration's parts in one call (PR 749): the console's "Made with"
   // on an attack, a journey's Days and a blow's Blows. An older host strips
   // all three unread (a flurry strike swung as the Attack action's, one day
@@ -217,6 +237,35 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
+  // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
+  // answers on pending-rolls/[id]/watch. An older host answers 404, so the
+  // button is not drawn there and the numbers wait on the wizard's own rolls.
+  portentWatch: true,
+  // Cosmic Omen and Restore Balance before the roll (issue #908,
+  // src/lib/dm/before-roll-logic.ts): POST
+  // /api/campaigns/[id]/pending-rolls/[id]/before-roll on the holder's own
+  // check or save, `shift` at a watch stop for another's, and the Watch
+  // toggle out of a fight (foresight route, TABLE_WATCH). An older host has
+  // none of these, so neither the buttons nor the toggle are drawn there.
+  beforeRollWatch: true,
+  // Watching a fight for Chronal Shift, and the "whose roll" pick at a stop
+  // (src/lib/dm/foresight.ts, chronal-shift.ts): POST
+  // /api/campaigns/[id]/foresight takes a Chronurgy wizard with no Portent
+  // number, and pending-rolls/[id]/watch takes `shift` and `choice`. An older
+  // host refuses the first, so the button is drawn only here.
+  chronalWatch: true,
+  // Watching a fight for Flash of Genius or Favored by the Gods on a save the
+  // server throws inside a call (src/lib/dm/foresight.ts, chronal-shift.ts
+  // takeSaveHelp): POST /api/campaigns/[id]/foresight takes an artificer or a
+  // divine soul, and a stop's `power` may name either. An older host refuses
+  // the first, so the button is drawn only here.
+  saveWatch: true,
+  // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the
+  // public encounter's `turnHeld`, which the End Turn controls show while the
+  // move waits on a watcher. An older host never holds a move, so nothing is
+  // drawn there.
+  turnHold: true,
   // The owed picks on a character sheet (issue #833): POST
   // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
   // earned and no level-up offered (a dragon ancestor, a favored enemy, a
@@ -239,6 +288,18 @@ export const SERVER_FEATURES = {
   // class. An older host drops the fields unread (the class falls back to
   // the wizard's list), so the editor offers none of them there.
   customSpellLists: true,
+  // The light on the viewer's own square in the board view
+  // (`PlayerMapView.self.bright`, src/lib/battlemap/view-tactics.ts): the Hand
+  // shuts a card that works only in dim light or darkness (Shadow Step, Cloak
+  // of Shadows, Steps of Night, One with Shadows) while the square is bright. An older host sends no such
+  // field, so the Hand deals those cards there as it always did.
+  handSquareLight: true,
+  // The player's map view carries, in `feet`, how far each creature stands
+  // from an area the viewer's character keeps on the board
+  // (src/lib/battlemap/zone-feet.ts): the Hand withholds Guardian Coil's
+  // card beyond the tentacle's 10 feet. An older host sends none and the
+  // card is dealt as before, the engine judging the reach.
+  ownZoneFeet: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

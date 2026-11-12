@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm-turns";
+import { foretoldPromised, getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { optionsForPending } from "@/lib/dm/after-roll";
+import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { spendForetold } from "@/lib/dm/foretold";
-import { foretoldLeft, singleD20Expression, withForetoldD20 } from "@/lib/dm/foretold-logic";
-import { landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { foretoldLeft, foretoldWithout, singleD20Expression, withForetoldD20 } from "@/lib/dm/foretold-logic";
+import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
 
@@ -60,7 +61,12 @@ export async function POST(
     return Response.json({ error: "Only the character's own player uses their Portent." }, { status: 403 });
   }
   const { value } = parsed.data;
-  if (!foretoldLeft(sheet).includes(value)) {
+  // A stop in this turn may have promised the number already.
+  let free = foretoldLeft(sheet);
+  for (const promised of foretoldPromised(pending.turnId, sheet.id)) {
+    free = foretoldWithout(free, promised);
+  }
+  if (!free.includes(value)) {
     return Response.json({ error: `${sheet.name} holds no foretold ${value}.` }, { status: 409 });
   }
 
@@ -79,13 +85,14 @@ export async function POST(
   const landing = { status: "fallback", physical: false, source: "digital" } as const;
   const options = optionsForPending(pending, outcome);
   if (options.length) {
-    const waiting = setPendingThrown(pending.id, { outcome, options, choosing: false, landing });
+    const waiting = setPendingThrown(pending.id, { outcome, options, choosing: false, landing, deadline: afterRollDeadline(campaignId, pending.userId) });
     if (!waiting) {
       return Response.json({ error: "That roll was already resolved." }, { status: 409 });
     }
+    armAfterRollKeep(waiting.id, waiting.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
     return Response.json({ pendingRoll: publicPendingRoll(waiting) });
   }
   const roll = landPendingRoll(context.campaign, pending, outcome, landing);
-  return roll ? Response.json({ roll }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+  return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
 }

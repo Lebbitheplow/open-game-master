@@ -3,6 +3,9 @@
 // trained in, the Inspiration the DM awarded, and a score after its items.
 // Kept apart so rolls.ts stays about composing the expression.
 
+import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { optionFeatureName } from "@/lib/srd/options";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
@@ -51,7 +54,7 @@ function toolKey(name: string): string {
 // the tool among its proficiencies, twice that when it also lists expertise in
 // it (a rogue's thieves' tools). Null when they are not trained in it.
 export function toolProficiencyBonus(
-  sheet: Pick<CharacterSheet, "proficiencies"> & Partial<Pick<CharacterSheet, "class" | "level" | "classes">>,
+  sheet: Pick<CharacterSheet, "proficiencies"> & Partial<Pick<CharacterSheet, "class" | "level" | "classes" | "conditions" | "features">>,
   tool: string,
   proficiencyBonus: number,
 ): { bonus: number; note: string } | null {
@@ -63,7 +66,8 @@ export function toolProficiencyBonus(
     const held = toolKey(entry);
     return held === wanted || held === `${wanted}s` || `${held}s` === wanted;
   };
-  if (!(sheet.proficiencies.tools ?? []).some(matches)) {
+  // A tool lent for a while (Knowledge of the Ages) counts as the sheet's own.
+  if (![...(sheet.proficiencies.tools ?? []), ...borrowedProficiencies(sheet.conditions).tools].some(matches)) {
     return null;
   }
   // Tool Expertise (Artificer 6th): every tool the artificer is proficient
@@ -73,7 +77,8 @@ export function toolProficiencyBonus(
     : (sheet.class ?? "").toLowerCase() === "artificer"
       ? (sheet.level ?? 0)
       : 0;
-  const expert = (sheet.proficiencies.expertise ?? []).some(matches) || artificer >= 6;
+  // A Rune Knight's Fire Rune doubles it on every tool check too.
+  const expert = (sheet.proficiencies.expertise ?? []).some(matches) || artificer >= 6 || holdsFeature(sheet, optionFeatureName("rune", "Fire Rune"));
   const bonus = expert ? proficiencyBonus * 2 : proficiencyBonus;
   return {
     bonus,

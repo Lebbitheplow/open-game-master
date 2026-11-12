@@ -515,6 +515,11 @@ await test("F:L12: Perfect Self gives 4 ki back on initiative when none is left"
 
 await test("F:L21: Stillness of Mind ends a charm with the action; Eldritch Master brings the pact slots back once; Purity of Spirit keeps a fiend's fear off", async () => {
   const monk7 = world.addHero({ class: "monk", level: 7, features: klass("monk", "Stillness of Mind") });
+  // SRD 5.1, Stillness of Mind: "you can use your action to end one effect on
+  // yourself". It is the monk's action, so in a fight it waits for their own
+  // turn; this used to run in the fight an earlier test left, off the monk's
+  // turn, when the feature charged nothing. Out of a fight there is no turn.
+  await kit.endFight();
   fresh(monk7.id, { conditions: ["charmed"], conditionMeta: { charmed: { rounds: 10 } } });
   const still = await world.invoke("use_resource", { characterId: monk7.id, resource: "Stillness of Mind" });
   assert.equal(still.ok, true, still.error);

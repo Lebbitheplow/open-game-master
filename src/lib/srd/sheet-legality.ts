@@ -29,8 +29,9 @@ import { earnedAsiCountFor } from "@/lib/srd/asi";
 import { legacyAsiTaken, readAsiLedger, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { backgroundFeatureFor } from "@/lib/backgrounds";
 import { attunementSlotsFor, matchArmor } from "@/lib/srd/armor";
-import { classFeaturesFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots, newStyleFits } from "@/lib/srd/feature-effects";
+import { styleSlotFeatures } from "@/lib/srd/style-slots";
 import {
   derivedMaxHp,
   hpBonusPerLevelFor,
@@ -59,7 +60,7 @@ import {
 } from "@/lib/srd/racial-grants";
 import { featSpellGrants, freeCastFeatures, freeCastOf } from "@/lib/srd/feat-spells";
 import { featSaveProficiency } from "@/lib/srd/feat-effects";
-import { applyFeatGrants, featGrantSpec, withoutFeatPicks } from "@/lib/srd/feat-grants";
+import { applyFeatGrants, featGrantSpec, pickedExpertiseSkills, withoutFeatPicks, type FeatChoices } from "@/lib/srd/feat-grants";
 import { elementalAdeptFeatureName, elementalAdeptFeatureOf } from "@/lib/srd/feat-combat";
 import { expandBackgroundGear } from "@/lib/srd/gear-choices";
 import { kitNames, startingKitFor } from "@/lib/srd/starting-kit";
@@ -545,11 +546,18 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     : null;
 
   // ---- training, skills, languages ----
+  // The picked skills a grant doubles itself (Knowledge Domain's): their
+  // expertise comes off with the picks; a class's on any other stays.
+  const doubledBy = (choices: FeatChoices | undefined) =>
+    pickedExpertiseSkills(
+      [...subclassTraining, ...feats.feats.map((name) => ({ name, spec: featGrantSpec(context.featOf(name)?.desc ?? "") }))],
+      choices,
+    );
   const trained = judgeProficiencies({
     // The builder's preview already holds its feats' picks (Skilled's
     // thieves' tools); they come off here, since the class and background
     // never offered them, and go back on with the grants below (issue #147).
-    sent: withoutFeatPicks(input.proficiencies, input.featChoices),
+    sent: withoutFeatPicks(input.proficiencies, input.featChoices, doubledBy(input.featChoices)),
     classes,
     classOf: context.classOf,
     race,
@@ -565,14 +573,26 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     held:
       held && held.class === input.class && held.race === input.race && held.background === input.background
         ? policy.trustsHeld
-          ? withoutFeatPicks(held.proficiencies, held.featChoices)
+          ? withoutFeatPicks(held.proficiencies, held.featChoices, doubledBy(held.featChoices))
           : // A workshop subclass choice's option gave what featChoices
             // records of it, which comes off here with the feats' picks
             // (subclass-training.ts withSubclassChoiceRecords, issue #833).
-            withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices), baseRace, held.racialChoices, speciesChoice.option)
+            withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices, doubledBy(held.featChoices)), baseRace, held.racialChoices, speciesChoice.option)
         : null,
     // The builder's doors name the tools an open grant leaves to the player.
     requireToolPicks: context.door === "table" || context.door === "library",
+    // The tools the subclasses and feats name outright come back on with
+    // their grants below; they are not the open grants' picks.
+    grantedTools: [
+      ...subclassTraining.flatMap((grant) => grant.spec.fixedTools),
+      ...feats.feats.flatMap((name) => featGrantSpec(context.featOf(name)?.desc ?? "").fixedTools),
+    ],
+    // And the skills they give, which the class's expertise may double.
+    grantedSkills: [
+      ...subclassTraining.flatMap((grant) => grant.spec.fixedSkills),
+      ...feats.feats.flatMap((name) => featGrantSpec(context.featOf(name)?.desc ?? "").fixedSkills),
+      ...Object.values(input.featChoices ?? {}).flatMap((picks) => picks?.skills ?? []),
+    ],
   });
   if (policy.judgesPicks) {
     problems.push(...trained.problems);
@@ -726,9 +746,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   if (!policy.trustsHeld) {
     const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
     const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
-    const classFeatures = classes.flatMap((entry) =>
-      classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
-    );
+    const classFeatures = styleSlotFeatures(classes, context.subclassExtras);
     const classStyles = fightingStyleChoices(classFeatures);
     const styleSlots = fightingStyleSlots(classFeatures);
     const placedStyles = chosenFightingStyles((held?.features ?? []).filter((feature) => feature.source === "choice"));

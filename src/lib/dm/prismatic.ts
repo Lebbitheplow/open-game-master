@@ -25,6 +25,7 @@ import { rollExpression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { spellMechanicsFor } from "@/lib/content";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
+import { spellKill } from "@/lib/dm/ar-ws-harvest";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
@@ -74,6 +75,8 @@ export type PrismaticCast = {
   turn: DmTurn;
   caster: CharacterSheet;
   dc: number;
+  // The slot the casting spent (a kill reads it, ar-ws-harvest.ts).
+  slotLevel?: number | null;
   enemies: EncounterEnemy[];
   characters: CharacterSheet[];
   sheets: CharacterSheet[];
@@ -122,6 +125,11 @@ export function castPrismaticSpray(input: PrismaticCast): Array<Record<string, u
         row.health = applied.health;
         if (applied.dead) {
           row.dead = true;
+          // Grim Harvest and the features that answer a kill (ar-ws-harvest.ts).
+          const onKill = spellKill(campaign, encounter, now, caster.id, { spell: "Prismatic Spray", slotLevel: input.slotLevel });
+          if (onKill.length) {
+            row.subclassFeatures = onKill;
+          }
         }
       } else if (!save.success && color === "indigo") {
         const mark = turnEndMark(indigo, { spell: INDIGO, casterId: caster.id }, now.id);

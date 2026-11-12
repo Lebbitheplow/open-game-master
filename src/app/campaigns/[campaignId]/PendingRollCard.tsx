@@ -1,23 +1,11 @@
 "use client";
 
 import { Dices, Loader2, Smartphone, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CampaignMember } from "@/lib/campaign-types";
 import { cn } from "@/lib/cn";
-import { OptionalStepper } from "@/app/workshop/kit";
-import { expressionDice } from "@/lib/dice";
+import { FaceInputs, useFaceEntry } from "@/components/dice/FaceEntry";
 import { buzz, onShake, supportsShake, useShakeToRoll } from "@/lib/dice/shake-to-roll";
-import {
-  resolveFaceSource,
-  useDiceSources,
-  type FaceSource,
-} from "@/lib/dice/dice-sources";
-import {
-  getConnectedPixels,
-  getConnectedPixelsServer,
-  onPixelRoll,
-  onPixelsChanged,
-} from "@/lib/dice/pixels-dice";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campaignId]/SkillCheckCard";
@@ -26,6 +14,7 @@ import { heldInspiration } from "@/lib/dm/roll-riders";
 import { INSPIRED_KINDS } from "@/lib/dm/pending-inspiration";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -56,7 +45,8 @@ const SUBMIT_BUTTON = cn(
 // docs/visual-overhaul-plan.md 5.4): the halo breathes while the roll is
 // parked, the die tumbles once it has been sent, and the landing itself
 // plays where the roll arrives, in the chronicle (RollCard.tsx). Every
-// source and control is as it was.
+// source and control is as it was. The dice themselves (a field for each,
+// a Pixels die filling its own) are FaceEntry.tsx's, shared with the sheet.
 export function PendingRollCard({
   campaignId,
   pending,
@@ -64,6 +54,8 @@ export function PendingRollCard({
   members,
   meUserId,
   steersStory,
+  beforeRoll = false,
+  reactionsUsed = [],
 }: {
   campaignId: string;
   pending: PendingRoll;
@@ -71,21 +63,16 @@ export function PendingRollCard({
   members: CampaignMember[];
   meUserId: string;
   steersStory: boolean;
+  // The host answers the before-roll route (capabilities beforeRollWatch).
+  beforeRoll?: boolean;
+  // Who has spent their reaction this round, in a fight.
+  reactionsUsed?: readonly string[];
 }) {
-  const [values, setValues] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Sampled once on mount; the fallback affordance appearing on the next
   // re-render after the threshold is fine for a courtesy button.
   const [mountedAt] = useState(() => Date.now());
-
-  const faces = useMemo(() => {
-    try {
-      return expressionDice(pending.expression);
-    } catch {
-      return [];
-    }
-  }, [pending.expression]);
 
   const mine = pending.userId === meUserId;
   // Held without real dice: no faces to type, the whole roll is digital
@@ -98,77 +85,18 @@ export function PendingRollCard({
   const [canShake] = useState(() => supportsShake());
   const shakeActive = mine && shakeOn && canShake;
 
-  const [diceSources] = useDiceSources();
-  const pixels = useSyncExternalStore(
-    onPixelsChanged,
-    getConnectedPixels,
-    getConnectedPixelsServer,
-  );
-
-  // Resolve every face to its source: the chosen preference, degraded to
-  // typing when the assigned Pixels die isn't currently connected.
-  const faceSources = useMemo<FaceSource[]>(
-    () => faces.map((sides) => resolveFaceSource(diceSources[sides], sides, pixels)),
-    [faces, diceSources, pixels],
-  );
-
-  // What a face has so far: the typed or Pixels-landed entry, else empty. A
-  // digital face never has a client value; the server rolls it on submit, so
-  // the browser has nothing a player could read ahead of time.
-  const faceValue = (index: number): string => values[index]?.trim() ?? "";
-
-  // The wire payload: numbers for typed and Pixels faces, the literal
-  // "digital" for server-rolled ones.
-  const submissionDice = (): Array<number | "digital"> =>
-    faces.map((_, index) =>
-      faceSources[index]?.kind === "digital" ? "digital" : Number(faceValue(index)),
-    );
-
-  // A physical Pixels die landing fills the next empty face assigned to it.
-  useEffect(() => {
-    if (!mine) {
-      return;
-    }
-    return onPixelRoll(({ systemId, faceCount, value }) => {
-      setValues((current) => {
-        const index = faceSources.findIndex(
-          (source, position) =>
-            source.kind === "pixel" &&
-            source.systemId === systemId &&
-            faces[position] === faceCount &&
-            !current[position]?.trim(),
-        );
-        if (index < 0) {
-          return current;
-        }
-        return { ...current, [index]: String(value) };
-      });
-    });
-  }, [mine, faceSources, faces]);
+  // The dice as the roller enters them; a Pixels die fills its own face on
+  // the roller's screen only.
+  const entry = useFaceEntry(pending.expression, mine);
+  const { faces, rerollNotes, values, complete, fullyAutomatic, diceSummary, submissionDice } = entry;
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
   const detailText = pending.detail.replaceAll("_", " ");
   const label = `${character?.name ?? "Someone"}: ${pending.kind.replaceAll("_", " ")}${
     detailText ? ` (${detailText})` : ""
   }`;
-  // Plain-words instruction: "Roll 2× d20 and 1× d8" from the faces list.
-  const diceSummary = (() => {
-    if (!faces.length) {
-      return "";
-    }
-    const counts = new Map<number, number>();
-    for (const sides of faces) {
-      counts.set(sides, (counts.get(sides) ?? 0) + 1);
-    }
-    const parts = [...counts.entries()].map(
-      ([sides, count]) => `${count} × d${sides}`,
-    );
-    return parts.length > 1
-      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-      : parts[0];
-  })();
   // Enter raw die faces only; any flat bonus applies server-side.
-  const flatModifier = /([+-]\d+)$/.exec(pending.expression.replaceAll(" ", ""))?.[1];
+  const flatModifier = entry.flatModifier;
   const modifierNote = flatModifier
     ? `Enter the bare die numbers; the ${flatModifier} is added for you.`
     : "";
@@ -179,18 +107,6 @@ export function PendingRollCard({
         ? "disadvantage: roll both, lowest counts"
         : "";
   const stale = mountedAt - new Date(pending.createdAt).getTime() > OWNER_FALLBACK_AFTER_MS;
-  // A digital face is always ready (the server fills it); everything else
-  // needs its number in hand before the roll can go.
-  const complete =
-    faces.length > 0 &&
-    faces.every(
-      (_, index) => faceSources[index]?.kind === "digital" || faceValue(index),
-    );
-  // Every face comes from a die that fills itself (digital or a Pixels die):
-  // no typing is needed, so the card submits on its own once all have landed.
-  const fullyAutomatic =
-    faceSources.length > 0 && faceSources.every((source) => source.kind !== "manual");
-
   async function submit(body: unknown) {
     setBusy(true);
     setError("");
@@ -267,6 +183,32 @@ export function PendingRollCard({
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         setError(data.error || "Could not use your Portent.");
+      }
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Cosmic Omen's Weal and Restore Balance on the character's own roll, before
+  // it is thrown (before-roll-logic.ts, issue #908).
+  const beforeChoices =
+    beforeRoll && character && !pending.thrown
+      ? ownBeforeRollChoices(character, { kind: pending.kind, expression: pending.expression, reactionFree: !reactionsUsed.includes(character.id), used: pending.carry?.before })
+      : [];
+  async function spendBefore(use: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/before-roll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "Could not use that.");
       }
     } catch {
       setError("Could not reach the server.");
@@ -366,6 +308,23 @@ export function PendingRollCard({
               <Sparkles className="size-3.5" /> Spend Inspiration
             </button>
           ) : null}
+          {beforeChoices.length ? (
+            <div role="group" aria-label="Before you roll" className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs">Before you roll:</span>
+              {beforeChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void spendBefore(choice.id)}
+                  title={choice.note}
+                  className="motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 disabled:opacity-50"
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {foretold.length ? (
             <div role="group" aria-label="Use a number Portent foretold" className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="text-xs">Portent, instead of rolling:</span>
@@ -433,6 +392,13 @@ export function PendingRollCard({
       {!heldOnly && advantageNote ? (
         <p className="check-dim mt-0.5 text-xs">{advantageNote}</p>
       ) : null}
+      {!heldOnly
+        ? rerollNotes.map((note) => (
+            <p key={note} className="check-dim mt-0.5 text-xs">
+              {note}
+            </p>
+          ))
+        : null}
       {!heldOnly && shakeActive ? (
         <p className="check-dim mt-0.5 flex items-center gap-1.5 text-xs">
           <Smartphone className="size-3.5" /> Or shake to roll it digitally.
@@ -441,59 +407,7 @@ export function PendingRollCard({
 
       {heldOnly ? null : (
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        {faces.map((sides, index) => {
-          const source = faceSources[index] ?? { kind: "manual" };
-          const filled = faceValue(index);
-          // Digital faces are rolled by the server on submit: marked, not
-          // typed, and showing no number the player could act on early.
-          if (source.kind === "digital") {
-            return (
-              <div key={index} className="block">
-                <span className="mb-0.5 block text-center text-[10px] text-sky-300/80">
-                  d{sides} · auto
-                </span>
-                <div
-                  aria-label={`d${sides} rolled for you`}
-                  className="flex h-[34px] w-14 items-center justify-center rounded-md border border-sky-800/70 bg-sky-950/30 text-sm text-sky-100"
-                >
-                  <Dices className="size-4 text-sky-300/80" />
-                </div>
-              </div>
-            );
-          }
-          // Pixels faces auto-fill when the die lands, but stay editable so a
-          // stubborn die never blocks the roll.
-          const isPixel = source.kind === "pixel";
-          return (
-            <div key={index} className="block">
-              <span
-                title={isPixel ? source.name : undefined}
-                className={cn(
-                  "mb-0.5 block max-w-24 truncate text-center text-[10px]",
-                  isPixel ? "text-sky-300/90" : "check-dim",
-                )}
-              >
-                {isPixel ? source.name : `d${sides}`}
-              </span>
-              <div className="relative">
-                {/* Blank means "not rolled yet", so the stepper is the optional
-                    one: the cross clears a mistyped die back to blank. */}
-                <OptionalStepper
-                  min={1}
-                  max={sides}
-                  fallback={1}
-                  value={filled === "" || !Number.isFinite(Number(filled)) ? undefined : Number(filled)}
-                  onChange={(next) => setValues((current) => ({ ...current, [index]: next === "" ? "" : String(next) }))}
-                  label={isPixel ? `${source.name}, d${sides}` : `d${sides}`}
-                  size="sm"
-                />
-                {isPixel && !filled ? (
-                  <Dices className="pointer-events-none absolute -right-1 -top-1 size-3 animate-pulse text-sky-400/70" />
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+        <FaceInputs entry={entry} dimClass="check-dim" />
         <button
           type="button"
           disabled={busy || !complete}

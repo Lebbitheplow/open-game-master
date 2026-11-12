@@ -13,10 +13,10 @@ import {
   Share2,
   TriangleAlert,
 } from "lucide-react";
-import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
+import { drawQrCode } from "@/lib/qr-code";
 import { buildShareLinks } from "@/lib/share-link";
 import { roomCodeRefused, shareSheet } from "@/lib/shell-host";
 import { ui } from "@/lib/ui";
@@ -45,7 +45,7 @@ export function InviteQr({
       return;
     }
     let cancelled = false;
-    QRCode.toDataURL(url, { width: 480, margin: 2, color: { dark: "#1b1208ff", light: "#00000000" } })
+    drawQrCode(url, { width: 480, margin: 2, color: { dark: "#1b1208ff", light: "#00000000" } })
       .then((data) => {
         if (!cancelled) setMade({ url, data });
       })
@@ -285,7 +285,7 @@ export function InviteShareDialog({
               While you are sharing, a friend can type this code into the app and land here.
             </p>
           )}
-          <p className="mt-1 break-all font-mono text-xs text-stone-500">{joinUrl}</p>
+          <p className="mt-1 break-all font-code text-xs text-stone-500">{joinUrl}</p>
         </div>
         <span className="h-px w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent motion-rule" aria-hidden="true" />
         <div className="flex w-full flex-wrap justify-center gap-2">
@@ -370,7 +370,7 @@ function ShareOnlineRow({
             Stop sharing
           </button>
         </div>
-        <p className="break-all font-mono text-xs text-stone-300">{status.url}</p>
+        <p className="break-all font-code text-xs text-stone-300">{status.url}</p>
         <p className="text-xs text-stone-500">
           Friends anywhere can join with the link below while the app runs.
         </p>

@@ -62,32 +62,37 @@ export default {
     check(branBand.opacity === "1" && branBand.stroke === FOE_RIM, `the dominated ${bran.name} wears the foes' red band (${JSON.stringify(branBand)})`);
     check((await frame.getByRole("img", { name: new RegExp(`^${bran.name}.*against the party`) }).count()) === 1, `${bran.name}'s name says he fights against the party`);
     check((await band(sela.name)).opacity === "0" && (await rimSide(sela.name)) === null, `${sela.name} fights on her kind's side, unmarked`);
-    const zoomIn = board.getByRole("button", { name: "Zoom in", exact: true }).first();
-    for (let step = 0; step < 4 && (await zoomIn.count()); step += 1) {
-      await t.tap(zoomIn);
-    }
-    await untilStill(page);
-    await t.shot("board");
-    await frame.screenshot({ path: t.shotPath("board-close") }).catch(() => {});
-    // The ogre up close, where a band is a few pixels: the board zooms at
-    // the pointer.
-    const at = await figureOf(ogre.name).boundingBox();
-    if (at) {
-      await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
-      for (let step = 0; step < 3; step += 1) {
+    // The ogre up close, where a band is a few pixels. The board zooms at
+    // the pointer, so the ogre stays where it rests: the zoom buttons zoom
+    // at the middle of the map above the Hand, and on the staged board that
+    // carried a figure resting just above the cards down under them, where
+    // no pointer reaches it (the Hand lies over the map's lower edge).
+    const rest = await figureOf(ogre.name).boundingBox();
+    if (rest) {
+      await page.mouse.move(rest.x + rest.width / 2, rest.y + rest.height / 2);
+      for (let step = 0; step < 6; step += 1) {
         await page.mouse.wheel(0, -400);
       }
       await untilStill(page);
-      const box = await figureOf(ogre.name).boundingBox();
-      if (box) await page.screenshot({ path: t.shotPath("ogre-close"), clip: { x: Math.max(0, box.x - 40), y: Math.max(0, box.y - 40), width: box.width + 80, height: box.height + 80 } }).catch(() => {});
     }
+    await t.shot("board");
+    await frame.screenshot({ path: t.shotPath("board-close") }).catch(() => {});
+    const box = await figureOf(ogre.name).boundingBox();
+    if (box) await page.screenshot({ path: t.shotPath("ogre-close"), clip: { x: Math.max(0, box.x - 40), y: Math.max(0, box.y - 40), width: box.width + 80, height: box.height + 80 } }).catch(() => {});
 
     // The ogre's hover plate lists its charm with the painting large and
     // what charmed does (condition-rules.ts), above who laid it. It is
     // pinned to the page, outside the game's root, so a short board's frame
     // does not cut it off.
     const ogreAt = await figureOf(ogre.name).boundingBox();
-    if (ogreAt) await page.mouse.move(ogreAt.x + ogreAt.width / 2, ogreAt.y + ogreAt.height / 2);
+    check(ogreAt, `the ${ogre.name} is on the board to point at`);
+    const pointAt = { x: ogreAt.x + ogreAt.width / 2, y: ogreAt.y + ogreAt.height / 2 };
+    const underPointer = await page.evaluate(({ x, y }) => {
+      const node = document.elementFromPoint(x, y);
+      return { onFigure: Boolean(node?.closest('[role="img"]')), what: node ? `${node.tagName.toLowerCase()}.${node.getAttribute("class") ?? ""}` : "nothing" };
+    }, pointAt);
+    check(underPointer.onFigure, `the pointer reaches the ${ogre.name}, not what lies over it (${underPointer.what} at ${JSON.stringify(pointAt)})`);
+    await page.mouse.move(pointAt.x, pointAt.y);
     const plate = page.locator('[role="tooltip"]').locator("visible=true").filter({ hasText: "charmed" }).first();
     await eventually(() => plate.isVisible(), { timeoutMs: 10_000, label: `the ${ogre.name}'s hover plate` });
     const plateText = (await plate.textContent()) ?? "";

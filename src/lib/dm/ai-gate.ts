@@ -66,6 +66,16 @@ export function awayCall(name: string, args: Record<string, unknown>, ctx: Pick<
   return error ? { error, retry: true } : null;
 }
 
+// Whether a heal list's dice are all the server's to roll from the spell
+// itself: a spell the content pack knows, and no entry sending dice of its
+// own. Such a list passes the gate below whole, as each of its entries
+// passed it; any other is split, so each entry's number is still held to the
+// gate (turn.ts oneCastingCall).
+export function healListRolledByServer(each: readonly Record<string, unknown>[]): boolean {
+  const spell = typeof each[0]?.spell === "string" ? each[0].spell.trim() : "";
+  return Boolean(spell) && Boolean(spellFactsFor(spell)) && each.every((entry) => entry.dice === undefined);
+}
+
 export function gateAiCall(name: string, rawArguments: string, ctx: GateContext): GateOutcome {
   let args: Record<string, unknown>;
   try {

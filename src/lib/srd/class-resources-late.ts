@@ -140,7 +140,10 @@ export const LATE_RESOURCE_DEFS: ResourceDef[] = [
     maxFor: () => 1,
     recharge: "long",
     effect: { kind: "narrative" },
+    // Spent by the hit it rides (pc_attack hurlThroughHell, attack-choice-rules.ts),
+    // never bare (WAVE1 R10).
+    passive: true,
     guidance:
-      "After a hit, the creature vanishes through the lower planes until the end of the warlock's next turn and, unless it is a fiend, takes 10d10 psychic damage when it returns. Resolve the damage with apply_damage on the creature (type psychic); no save is allowed.",
+      "After a hit, the creature vanishes through the lower planes until the end of the warlock's next turn and, unless it is a fiend, takes 10d10 psychic damage when it returns: pc_attack with hurlThroughHell true, and the server spends the use on the hit.",
   },
 ];

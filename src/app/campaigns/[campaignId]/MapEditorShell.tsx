@@ -266,7 +266,7 @@ export function MapEditorShell({
               >
                 <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-2">
                   <span aria-hidden="true" className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-stone-600/70" />
-                  <span className="pt-2 font-display text-[11px] uppercase tracking-[0.18em] text-amber-300">
+                  <span className="pt-2 font-display text-[11px] uppercase tracking-[0.14em] text-amber-300">
                     {sheet === "tool" ? "Options" : "The map"}
                   </span>
                   <button type="button" aria-label="Close" onClick={() => setSheet(null)} className="flex size-10 items-center justify-center rounded-md text-stone-400 hover:text-stone-200">

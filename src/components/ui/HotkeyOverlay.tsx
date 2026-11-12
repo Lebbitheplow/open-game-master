@@ -33,7 +33,7 @@ export function HotkeyOverlay({
                     {row.keys.map((key) => (
                       <kbd
                         key={key}
-                        className="rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 font-mono text-[11px] text-amber-100"
+                        className="rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 font-code text-[11px] text-amber-100"
                       >
                         {key}
                       </kbd>

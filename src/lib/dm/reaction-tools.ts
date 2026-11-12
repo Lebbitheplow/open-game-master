@@ -14,7 +14,11 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { heldAuthored } from "@/lib/srd/authored-effects";
+import { catchProblem } from "@/lib/dm/mt-srd-monk";
+import { cuttingWordsImmunity } from "@/lib/dm/mt-srd-reach";
+import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
+import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -37,6 +41,9 @@ import { addSheetCondition, rollCard } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { devotedGuard } from "@/lib/dm/devoted-guard";
+import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
+import { hawkReaction } from "@/lib/dm/spirit-totem-hawk";
+import { openFailedSave, standingBeforeSave } from "@/lib/dm/save-turned";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -44,6 +51,7 @@ import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHi
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
+import { mantleMove } from "@/lib/dm/ar-wbf-bard-mantle";
 import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
 import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
@@ -53,23 +61,34 @@ import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { handleTeleportToken, teleportSquareRefusal } from "@/lib/dm/map-tools";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { matchResource } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { standingForDeflection } from "@/lib/dm/ar-ws-deflection";
 import { PRONE } from "@/lib/dm/vitals-logic";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
 import { choiceIn, holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { channelOptions } from "@/lib/dm/option-costs";
+import { grantCastsFree, grantedCastOf, spellHeldProblem, spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { subclassNamed } from "@/lib/srd/subclass-name";
+import { infusionReaction } from "@/lib/dm/infusion-reactions";
 
 const useReactionSchema = z.object({
   characterId: z.string(),
   feature: z.string().max(80),
   targetCharacterId: z.string().optional(),
   targetEnemyId: z.string().optional(),
+  // The creatures a reaction strikes when it strikes several (Deflecting
+  // Shroud's up to three: src/lib/dm/ar-ws-deflection.ts). Read from the
+  // console and a card; the tool's description does not name it, so it costs
+  // the model's window nothing, and with none named the engine picks.
+  targetEnemyIds: z.array(z.string()).max(8).optional(),
   // Counterspell: the spell being countered.
   spell: z.string().max(80).optional(),
   // The way a counted reaction goes, when it has two (Cauterizing Flames: heal
@@ -85,6 +104,10 @@ const useReactionSchema = z.object({
   // hit's id from GAME STATE or the Hand's card, or the enemyId of the
   // creature that made it.
   hit: z.string().trim().max(120).optional(),
+  // The pet whose damage a bond reaction answers (Reflexive Resistance for the
+  // drake). Read from the console and the Hand's card; the tool's description
+  // does not name it, so it costs the model's window nothing.
+  petName: z.string().trim().max(60).optional(),
   reason: z.string().optional(),
 });
 
@@ -212,6 +235,10 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
     return { error: "The missile can be thrown back at a living enemy from GAME STATE; it was caught and kept." };
   }
   // Not across a swallower's wall (swallow.ts).
+  const uncaught = catchProblem(getSheetById(sheet.id) ?? sheet, record.attack ?? "missile");
+  if (uncaught) {
+    return { error: `${uncaught} No ki was spent.` };
+  }
   const walled = swallowCoverBetween(sheet.id, enemy.id);
   if (walled) {
     return { error: `${walled} The missile was caught and kept.` };
@@ -228,7 +255,7 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   const derived = computeSheetDerived(sheet);
   const bonus = derived.abilityMods.dex + derived.proficiencyBonus;
   const thrower: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
-  const hitRoll = rollCard(campaign, ctx.turn, sheet.id, "attack", rollAgainst("Caught missile", enemy.displayName), d20Expression(bonus, apart !== null && apart > 4 ? "disadvantage" : "none"), thrower);
+  const hitRoll = rollCard(campaign, ctx.turn, sheet.id, "attack", rollAgainst("Caught missile", enemy.displayName), tranceFloored(sheet, d20Expression(bonus, apart !== null && apart > 4 ? "disadvantage" : "none")), thrower);
   const ac = enemyAcWithEffects(campaign.id, enemy);
   const hit = hitRoll.crit !== "nat1" && (hitRoll.crit === "nat20" || hitRoll.total >= ac);
   if (!hit) {
@@ -280,6 +307,12 @@ function cuttingWords(ctx: Ctx): ToolResult {
   // "A creature that you can see" makes the roll.
   const unseen = unseenRefusal(encounter?.id, sheet, record.attacker, "Cutting Words");
   if (unseen) return unseen;
+  // "The creature is immune if it can't hear you or if it's immune to being
+  // charmed" (mt-srd-reach.ts).
+  const immune = cuttingWordsImmunity(record.attacker.id ? getFoe(record.attacker.id) : null);
+  if (immune) {
+    return { error: `${record.attacker.name} ${immune}, so Cutting Words does nothing to it. Nothing was spent.`, refused: "rules" };
+  }
   // The words reach no creature across a swallower's wall (swallow.ts).
   const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
   if (walled) {
@@ -496,6 +529,31 @@ function answersOwnHitOnly(campaign: Campaign, feature: string): boolean {
   return spell?.castingTime === "reaction" && isNamed(spellEngineName(spell.name, authors), "shield", "absorb elements", "hellish rebuke");
 }
 
+// The bars that refuse a reaction spell whatever hit it answers: the caster
+// does not hold it, or has no slot or free use left to cast it with. A spell an
+// item has just paid for needs neither.
+function barsBeforeTheHit(campaign: Campaign, sheet: CharacterSheet, feature: string, level: number | undefined): ToolError | null {
+  const authors = spellAuthorsFor(campaign);
+  const facts = spellFactsFor(feature, authors);
+  if (facts?.castingTime !== "reaction" || takeItemCast(sheet.id, facts.name, { dryRun: true })) {
+    return null;
+  }
+  const unheld = spellHeldProblem(sheet, feature, facts);
+  if (unheld) {
+    return { ...unheld, error: `${unheld.error} Nothing was spent.` };
+  }
+  const grant = grantedCastOf(sheet, feature, facts);
+  if (facts.level === 0 || (grant && grantCastsFree(sheet, grant, facts, undefined))) {
+    return null;
+  }
+  const lowest = Math.max(facts.level, level ?? facts.level);
+  const free = Object.entries(sheet.spellcasting?.slots ?? {}).some(([key, slot]) => Number(key) >= lowest && slot.used < slot.max);
+  const pact = sheet.spellcasting?.pact;
+  return free || (pact && pact.level >= lowest && pact.used < pact.max)
+    ? null
+    : spentSlotRefusal(sheet.name, sheet.spellcasting, { level: lowest, lowest, what: facts.name, withPact: true });
+}
+
 // How far a hit id the model sent may stray from an open hit's and still be
 // taken for a slip of it: the misses seen dropped one character of nine.
 // Two random ids this close are about one in a billion.
@@ -511,8 +569,8 @@ export function handleUseReaction(
   let args: Args;
   try {
     args = useReactionSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: use_reaction needs characterId and feature.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: use_reaction needs characterId and feature.", error, rawArguments);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
@@ -536,6 +594,13 @@ export function handleUseReaction(
       // random), so it is told no rather than offered another hit to spend
       // the reaction on. So is a person, and a reactor already spent.
       const encounter = getActiveEncounter(campaign.id);
+      // What refuses the reaction whatever hit it names comes before the slip
+      // (tool-errors.ts: the game's refusal before a retry, issue 797): the
+      // model was handed the list, resent, and only then told there was no slot.
+      const barred = barsBeforeTheHit(campaign, sheet, args.feature, args.level);
+      if (barred) {
+        return barred;
+      }
       const offers = turn.actor === "ai"
         && !(encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id)));
       const sent = args.hit.trim();
@@ -573,6 +638,32 @@ export function handleUseReaction(
   return result;
 }
 
+// A counter reaction that teleports its holder, with the square named
+// (Misty Escape: "turn invisible and teleport up to 60 feet to an unoccupied
+// space you can see"). The square is checked before the use is spent; the
+// spend writes the teleport credit and the board's teleport takes it, so the
+// move is the one door's and goes no farther than the feature allows.
+function counterTeleport(ctx: Ctx, feature: string, at: { x: number; y: number }, feet: number): ToolResult {
+  const { campaign, turn, sheet, args, sheets, sheetsById, encounter } = ctx;
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, sheet.id) : null;
+  if (!map || !token) {
+    return { error: `${feature} moves ${sheet.name} on the battle map, and they have no token on one: spend it without x and y. Nothing was spent.`, retry: true };
+  }
+  const square = teleportSquareRefusal(map, token, at.x, at.y, feet);
+  if (square) {
+    return { ...square, error: `${square.error} Nothing was spent.` };
+  }
+  const spent = applyDmMutation(campaign, turn.id, "use_resource", JSON.stringify({ characterId: sheet.id, resource: feature, ...(args.variant ? { variant: args.variant } : {}), reason: args.reason ?? feature }), sheets, sheetsById).result;
+  if (typeof spent.error === "string") {
+    return spent;
+  }
+  const moved = handleTeleportToken(campaign, JSON.stringify({ token: sheet.id, x: at.x, y: at.y, spell: feature, casterCharacterId: sheet.id, reason: feature }), sheets, sheetsById, turn);
+  const { teleport: _credit, ...rest } = spent;
+  void _credit;
+  return { ...rest, moved: typeof moved.error === "string" ? `The teleport did not land: ${moved.error}` : `${sheet.name} teleports to (${at.x},${at.y}).` };
+}
+
 function useReaction(
   campaign: Campaign,
   turn: DmTurn,
@@ -589,7 +680,20 @@ function useReaction(
   if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
-  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
+  // A pet's own reaction (the drake's Infused Strikes) is judged by the pet,
+  // and leaves its owner's reaction theirs (summon-reactions.ts).
+  const pets = petReaction({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
+  if (pets) {
+    return pets;
+  }
+  // Arcane Deflection's answer to a failed save is judged before that failure (ar-ws-deflection.ts).
+  // So is a reaction made "immediately before" the save it answers (Slayer's
+  // Counter): its holder is judged as they stood before that save failed
+  // (save-turned.ts), so a failure that paralyzed them does not bar it.
+  const answered = heldReaction(sheet, feature)?.reaction.does;
+  const failedSave = answered?.kind === "attack" && answered.turnsSave ? openFailedSave(campaign.id, sheet.id, args.targetEnemyId?.trim() || null) : null;
+  const standing = failedSave ? standingBeforeSave(sheet, failedSave) : sheet;
+  const refused = reactionRefusal(campaign.id, standingForDeflection(campaign.id, standing, encounter, feature, args.variant), encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }
@@ -623,8 +727,24 @@ function useReaction(
     return guarded;
   }
 
+  // The Hawk spirit's reaction, taken before an attack roll (spirit-totem-hawk.ts).
+  const hawk = hawkReaction(ctx);
+  if (hawk) {
+    return hawk;
+  }
+  // A summoned creature's own reaction (the steel defender's Deflect Attack).
+  const summoned = summonReaction(ctx);
+  if (summoned) {
+    return summoned;
+  }
   if (isNamed(feature, "opportunity attack", "attack of opportunity")) {
     return opportunity(ctx);
+  }
+  // Mantle of Inspiration's move, taken by a creature the mantle chose
+  // (src/lib/dm/ar-wbf-bard-mantle.ts).
+  const stride = mantleMove(ctx);
+  if (stride) {
+    return stride;
   }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.
@@ -636,6 +756,12 @@ function useReaction(
   const srd = srdFeatureReaction(ctx);
   if (srd) {
     return srd;
+  }
+  // An artificer's infused Radiant Weapon, Repulsion Shield and Armor of
+  // Magical Strength (src/lib/dm/infusion-reactions.ts).
+  const infused = infusionReaction(ctx);
+  if (infused) {
+    return infused;
   }
   // A reaction that is a spell is a cast: the caster must hold it and pay
   // its slot through the one guard (src/lib/dm/cast-guard.ts), which
@@ -650,6 +776,12 @@ function useReaction(
   // branch let use_reaction spend the reaction and leave the counter full.
   const counter = matchResource(feature);
   if (counter?.action === "reaction" && sheet.resources?.[counter.id]) {
+    // A reaction that teleports its holder (Misty Escape) moves them now when
+    // the square is named, through move_token's teleport, which takes the
+    // credit the spend wrote and holds the move to its range.
+    if (counter.effect.kind === "buff" && counter.effect.teleportFeet && args.x !== undefined && args.y !== undefined) {
+      return counterTeleport({ campaign, turn, sheet, args, sheets, sheetsById, encounter }, counter.displayName, { x: args.x, y: args.y }, counter.effect.teleportFeet);
+    }
     return applyDmMutation(
       campaign,
       turn.id,
@@ -660,6 +792,8 @@ function useReaction(
         ...(args.variant ? { variant: args.variant } : {}),
         ...(args.targetCharacterId ? { targetCharacterId: args.targetCharacterId } : {}),
         ...(args.targetEnemyId ? { targetEnemyId: args.targetEnemyId } : {}),
+        // The square a reaction moves its holder to (Swarming Dispersal's teleport).
+        ...(args.x !== undefined && args.y !== undefined ? { x: args.x, y: args.y } : {}),
         reason: args.reason ?? feature,
       }),
       sheets,
@@ -722,6 +856,13 @@ function useReaction(
   // A Channel Divinity option taken as a reaction (War God's Blessing) spends a
   // use like any other option: this path spent only the reaction, so a cleric
   // could bless every round. Rebuke the Violent pays through its own row.
+  // A feature the engine applies by itself when its moment comes (its authored
+  // row says where: Hold the Line's opportunity attack as a creature moves) is
+  // no reaction to take on the call's word.
+  const applied = heldAuthored(sheet).find((entry) => isNamed(held.name, entry.feature) && entry.entry.heldBy && !entry.entry.reactions?.length);
+  if (applied) {
+    return { error: `${held.name} is not a reaction taken by name: the server applies it when its moment comes. Nothing was spent.`, refused: "rules" };
+  }
   const option = choiceIn(held.name, "Channel Divinity");
   const isChannel = option !== null;
   // An option that is no reaction (Vow of Enmity, Turn Undead) does nothing here:

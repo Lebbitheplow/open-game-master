@@ -7,6 +7,7 @@ import { magicItemNamed, matchMagicItem } from "@/lib/srd/magic-items";
 import { lineNamed, linesNamed, magicItemBonus } from "@/lib/srd/item-row";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
+import { gearWeaponFor } from "@/lib/srd/gear-weapons";
 
 // Pure consumable knowledge for the use_item tool: healing potion tiers,
 // generic consumable detection, and ammunition lookup. Database-free so
@@ -83,6 +84,27 @@ export function itemUseProblem(item: TaggedItem & { attuned?: boolean }): ToolEr
     return { error: "it is kept, not consumed: a wand or staff spends charges on a cast, and worn items work while worn. Narrate its use without use_item.", retry: true };
   }
   return null;
+}
+
+// A flask thrown or splashed at a creature in a fight is an attack (SRD 5.1
+// Adventuring Gear: "Make a ranged attack against a creature or object"),
+// which pc_attack rolls, spending the flask whatever the roll and landing
+// what the hit leaves (src/lib/srd/gear-weapons.ts). Sent to use_item, the
+// flask and the action were spent and no attack was made, and the attack
+// could not then be made: the action was gone (play-test 2026-11-07,
+// alchemist's fire). use_item cannot tell a creature from anything else, so
+// in a fight every flask goes to the tool that knows its target: pc_attack
+// for a creature, take_action use_object for an object or oil poured on the
+// ground (object-actions.ts objectAction spends it). Out of a fight there is
+// no attack to roll, and use_item spends it as before.
+export function thrownFlaskProblem(user: string, item: string, inFight: boolean): ToolError | null {
+  if (!inFight || !gearWeaponFor(item)?.thrown) {
+    return null;
+  }
+  return {
+    error: `${item} thrown at a creature is an attack: call pc_attack with weapon "${item}" for ${user}, which rolls it and spends the flask. At an object, or oil poured on the ground: take_action use_object with item "${item}". use_item spent nothing.`,
+    retry: true,
+  };
 }
 
 // What a tool that puts an item in a pack tells the model, as a hit says it

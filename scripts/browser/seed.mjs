@@ -2211,7 +2211,7 @@ const spellbook = {};
           cantrips: ["Fire Bolt", "Ray of Frost", "Mage Hand", "Light", "Minor Illusion"],
           prepared: [
             "Magic Missile", "Shield", "Sleep", "Detect Magic", "Misty Step", "Hold Person", "Scorching Ray", "Fireball",
-            "Counterspell", "Lightning Bolt", "Fly", "Greater Invisibility", "Dimension Door", "Cone of Cold", "Wall of Force",
+            "Counterspell", "Lightning Bolt", "Fly", "Greater Invisibility", "Dimension Door", "Ice Storm", "Cone of Cold", "Wall of Force",
           ],
         },
       }),
@@ -2316,6 +2316,51 @@ const witchBolt = {};
     const [goblin] = encounterRows.listEnemies(encounter.id);
     encounterRows.patchEnemyConditions(goblin.id, ["witch bolt"], { "witch bolt": { spell: "Witch Bolt", source: wizard.id } });
     witchBolt[viewport] = { id: table.id, wizard: wizard.id, goblin: goblin.id };
+  }
+}
+// Tides of Chaos (scenario tides-of-chaos-card): per viewport, a Wild Magic
+// sorcerer's turn in a fight with the feature's one use still there.
+const tidesOfChaos = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `Chaos Table (${viewport})`,
+      description: "A wild sorcerer and a goblin.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the chaos table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const sorcerer = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      heroInput({ name: "Ivo Quill", class: "sorcerer", subclass: "Wild Magic", level: 3, maxHp: 20, abilities: { dex: 14, con: 14, cha: 17 } }),
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the chaos table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === sorcerer.id);
+    if (place < 0) {
+      throw new Error("the chaos table's sorcerer has no place in the order");
+    }
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    tidesOfChaos[viewport] = { id: table.id, sorcerer: sorcerer.id };
   }
 }
 
@@ -2437,6 +2482,23 @@ const noticeTables = {};
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
 const AFTER_ROLL_TITLE = "Lucky Table";
+// Lets every initiative still waiting on its roller's after-the-roll card
+// stand, as the player pressing Keep does, so a seeded fight has its order.
+async function keepOpeningRolls(campaignId) {
+  const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
+  const { landPendingRoll } = await import("../../src/lib/dm/pending-roll-land.ts");
+  for (let pass = 0; pass < 8; pass += 1) {
+    const waiting = listOpenPendingRolls(campaignId).filter((roll) => roll.kind === "initiative" && roll.parkedFor === "after_roll" && roll.thrown);
+    if (!waiting.length) {
+      return;
+    }
+    for (const roll of waiting) {
+      landPendingRoll(campaigns.getCampaignById(campaignId), roll, roll.thrown.outcome, roll.thrown.landing);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 const afterRollTables = {};
 for (const viewport of ["desktop", "phone"]) {
   const table = campaigns.createCampaign(player.id, {
@@ -2455,6 +2517,139 @@ for (const viewport of ["desktop", "phone"]) {
   campaigns.setCampaignStatus(table.id, "active");
   const hero = sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, feats: ["Lucky"] }));
   afterRollTables[viewport] = { id: table.id, hero: hero.id };
+}
+
+// PR 848: the after-the-roll card on an attack. A fight the player runs, with
+// the lead's fighter beside a goblin, holding the Lucky feat and a Bardic
+// Inspiration die. The lead rolls real dice, so the scenario enters a 10: with
+// the seeded hero's +0, a miss against the goblin's AC 15 that both could
+// save, every run. (A test table's dice script could force the server's
+// throw, but the app's list of tables leaves test tables out.)
+const AFTER_ATTACK_TITLE = "Lucky Swing";
+const afterAttackTables = {};
+const WRATH_TITLE = "Storm Swing";
+const wrathTables = {};
+// The same lane for the features chosen on that card: Guided Strike, Master
+// Duelist and Favored by the Gods (scenario after-roll-riders).
+const AFTER_RIDER_TITLE = "Favored Swing";
+const afterRiderTables = {};
+// A second player's swing, with the lead's cleric beside them holding War God's
+// Blessing (scenario ally-reaction-on-roll).
+const ALLY_TITLE = "Blessed Swing";
+const allyTables = {};
+// The same, with an artificer beside them (scenario flash-of-genius-on-roll).
+const FLASH_TITLE = "Flash of Insight";
+const flashTables = {};
+const TOUCH_TITLE = "Deathly Swing";
+const touchTables = {};
+// A fighter whose real d20 is never entered: the lead skips the turn and the
+// card leaves the screen with it (scenario after-roll-attack).
+const SKIPPED_TITLE = "Skipped Swing";
+const skippedTables = {};
+// A player's hit with the lead's Graviturgy wizard beside them (Violent
+// Attraction): scenario after-roll-helpers. Restore Balance is used before
+// the roll (issue #908), so it has no lane on the after-the-roll card.
+const ATTRACTION_TITLE = "Heavy Swing";
+const attractionTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const [title, tables, feats, patch] of [
+    [AFTER_ATTACK_TITLE, afterAttackTables, ["Lucky"], { conditions: ["bardic inspiration (d8)"] }],
+    [WRATH_TITLE, wrathTables, [], {
+      class: "cleric",
+      features: [{ name: "Channel Divinity: Destructive Wrath", source: "choice" }],
+      resources: { channel_divinity: { max: 1, used: 0 } },
+      spellcasting: { ability: "wis", known: [], prepared: [], cantrips: ["Shocking Grasp"], slots: {} },
+    }],
+    [AFTER_RIDER_TITLE, afterRiderTables, [], {
+      features: [{ name: "Channel Divinity: Guided Strike", source: "choice" }, { name: "Master Duelist", source: "choice" }, { name: "Favored by the Gods", source: "choice" }],
+      resources: { channel_divinity: { max: 2, used: 0 }, sub_master_duelist: { max: 1, used: 0 }, sub_favored_by_the_gods: { max: 1, used: 0 } },
+    }],
+    [ALLY_TITLE, allyTables, [], {
+      class: "cleric",
+      otherRolls: true,
+      features: [{ name: "Channel Divinity: War God's Blessing", source: "choice" }],
+      resources: { channel_divinity: { max: 2, used: 0 } },
+    }],
+    [FLASH_TITLE, flashTables, [], {
+      class: "artificer",
+      otherRolls: true,
+      abilities: { str: 10, dex: 10, con: 10, int: 16, wis: 10, cha: 10 },
+      features: [{ name: "Flash of Genius", source: "choice" }],
+      resources: { art_flash_of_genius: { max: 3, used: 0 } },
+    }],
+    [SKIPPED_TITLE, skippedTables, [], {}],
+    [TOUCH_TITLE, touchTables, [], {
+      class: "cleric",
+      features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
+      resources: { channel_divinity: { max: 1, used: 0 } },
+    }],
+    [ATTRACTION_TITLE, attractionTables, [], {
+      class: "wizard",
+      otherRolls: true,
+      features: [{ name: "Violent Attraction", source: "choice" }],
+      resources: { sub_violent_attraction: { max: 3, used: 0 } },
+    }],
+  ]) for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${title} (${viewport})`,
+      description: "One goblin in a lane.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the lucky swing table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      heroInput({ name: "Tamsin Reed", class: patch.class ?? "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
+    );
+    const { class: _heroClass, otherRolls, rollerPatch, ...heroPatch } = patch;
+    sheets.patchSheet(hero.id, heroPatch);
+    const roller = otherRolls
+      ? sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Bren Ash", class: "fighter", level: 3, feats: [], equipment: [{ name: "Longsword", qty: 1, equipped: true }] }))
+      : hero;
+    if (rollerPatch) {
+      sheets.patchSheet(roller.id, rollerPatch);
+    }
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the lucky swing table's fight did not start: ${started.error}`);
+    }
+    // A hero who holds Lucky has an after-the-roll card on their initiative,
+    // and the fight's order waits on it: their player lets it stand here.
+    await keepOpeningRolls(table.id);
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    for (const [token, x] of maps.listTokens(board.id).map((entry) => [entry, entry.refId === goblin.id ? 3 : 2])) {
+      maps.moveToken(token.id, x, otherRolls && token.refId === hero.id ? 3 : 6, 0);
+    }
+    const place = encounter.order.findIndex((entry) => entry.characterId === roller.id);
+    if (place < 0) {
+      throw new Error("the lucky swing table's fighter has no place in the order");
+    }
+    encounterRows.saveEncounter({ ...encounterRows.getActiveEncounter(table.id), orderReady: true, round: Math.max(1, encounter.round), turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    // Set once the order is: real dice would have parked the initiative too.
+    campaigns.setMemberRealDice(table.id, otherRolls ? player.id : world.owner.id, true);
+    tables[viewport] = { id: table.id, hero: hero.id, roller: roller.id, goblin: goblin.id };
+  }
 }
 
 // Portent's numbers on a real parked roll: a table the player runs, with the
@@ -2479,6 +2674,317 @@ for (const viewport of ["desktop", "phone"]) {
   const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
   sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
   portentTables[viewport] = { id: table.id, hero: hero.id };
+}
+
+// Watching a fight for Portent (src/lib/dm/foresight.ts): a table the AI GM
+// runs with the player steering, in a fight with one goblin, where the lead's
+// Divination wizard holds two numbers. The stops come in the AI's turns, so
+// the button stands only at a table like this one.
+const WATCH_TITLE = "Seer's Watch";
+const watchTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${WATCH_TITLE} (${viewport})`,
+      description: "A goblin, and a wizard who has seen this before.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the seer's watch: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
+    sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the seer's watch fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    watchTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
+// Out of a fight, the lead's Circle of Stars druid holds Weal (the ruling on
+// issue #908): the Watch toggle stands for her at a table the AI GM plays,
+// and her own check waits before the throw for the omen's d6 (scenario
+// before-roll).
+const STAR_TITLE = "Star Watch";
+const starTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${STAR_TITLE} (${viewport})`,
+    description: "A druid who reads the stars.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 6,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "steered" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the star watch: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 6, heroInput({ name: "Vela Stars", class: "druid", subclass: "Circle of Stars", level: 6 }));
+  sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_cosmic_omen: { max: 3, used: 0 } }, omen: "weal" });
+  starTables[viewport] = { id: table.id, hero: hero.id };
+}
+
+// A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the lead's
+// fighter is up and frightened by a hold she saves against as her turn ends,
+// and the player's Divination wizard watches the fight. The lead's End Turn
+// waits on the wizard's stop; the scenario answers it as the player.
+const HELD_TURN_TITLE = "Held Breath";
+const heldTurnTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${HELD_TURN_TITLE} (${viewport})`,
+      description: "A goblin, a frightened fighter, and a wizard who has seen this before.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the held turn: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Wren Hale", class: "fighter", level: 5 }));
+    const seer = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
+    sheets.patchSheet(seer.id, { resources: { ...seer.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the held turn's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const entry = (id) => encounter.order.find((each) => (each.kind === "pc" ? each.characterId : each.enemyId) === id);
+    const goblin = encounter.order.find((each) => each.kind === "enemy");
+    encounterRows.saveEncounter({ ...encounter, order: [entry(hero.id), entry(seer.id), goblin], turnIndex: 0, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    sheets.patchSheet(hero.id, { conditions: ["frightened"], conditionMeta: { frightened: { spell: "Fear", source: "a shadow", saveEnds: { ability: "wis", dc: 30 } } } });
+    sheets.setSheetWatching(seer.id, encounter.id);
+    heldTurnTables[viewport] = { id: table.id, hero: hero.id, seer: seer.id };
+  }
+}
+
+// Chronal Shift on another creature's roll (src/lib/dm/chronal-shift.ts). The
+// lead's Chronurgy wizard beside the player's own fighter at a table the
+// player runs: a check of the fighter's that fails waits on the wizard's
+// screen too. And a fight the AI GM runs with the player steering, where the
+// same wizard has the watch button for Chronal Shift.
+const SHIFT_TITLE = "Turning Hour";
+const CHRONAL_WATCH_TITLE = "Clockwork Watch";
+const shiftTables = {};
+const chronalWatchTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${SHIFT_TITLE} (${viewport})`,
+      description: "A gate, a fighter, and a wizard who can turn the moment back.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the turning hour: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const wizard = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+    const ally = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Bran Ostler", class: "fighter", level: 5 }));
+    shiftTables[viewport] = { id: table.id, wizard: wizard.id, ally: ally.id };
+
+    const fight = campaigns.createCampaign(player.id, {
+      title: `${CHRONAL_WATCH_TITLE} (${viewport})`,
+      description: "A goblin, and a wizard who can turn the moment back.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const joined = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(fight.id).inviteCode);
+    if ("error" in joined) {
+      throw new Error(`could not seat the lead at the clockwork watch: ${joined.error}`);
+    }
+    campaigns.setCampaignStatus(fight.id, "active");
+    const watcher = sheets.createSheet(fight.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+    const started = await invokeEngine(campaigns.getCampaignById(fight.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the clockwork watch fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(fight.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    chronalWatchTables[viewport] = { id: fight.id, hero: watcher.id };
+  }
+}
+
+// One account holding both the roller and the wizard who may answer the roll
+// (play-test 2026-11-09, W-08): the lead plays a fighter and a Chronurgy
+// wizard at a table the player runs, so a check of the fighter's that fails
+// waits on the lead's own screen twice over, as the roller and as the helper.
+const TWO_HANDS_TITLE = "Two Hands";
+const twoHandsTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${TWO_HANDS_TITLE} (${viewport})`,
+    description: "A gate, and one player at two seats.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 5,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at two hands: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const roller = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Wren Ashby", class: "fighter", level: 5 }));
+  const wizard = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+  twoHandsTables[viewport] = { id: table.id, roller: roller.id, wizard: wizard.id };
+}
+
+// The damage roll card on real dice (play-test 2026-11-07, B5): a table the
+// player runs, at real_allowed, in a fight with one goblin beside the lead's
+// fighter, whose Piercer and Savage Attacker change the damage dice. It is
+// her turn; she turns real dice on once the order is rolled. She is a
+// halfling, so her attack card asks for one d20 and says Lucky's reroll.
+const DAMAGE_STEPS_TITLE = "Quarry Table";
+const damageStepTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${DAMAGE_STEPS_TITLE} (${viewport})`,
+      description: "Raiders at the old quarry.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the quarry table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+      name: "Kestra Holm", race: "halfling", class: "fighter", level: 5, maxHp: 44, abilities: { str: 12, dex: 16 },
+      feats: ["Piercer", "Savage Attacker"], equipment: [{ name: "Rapier", qty: 1, equipped: true }],
+      features: [{ name: "Lucky (reroll nat 1 on d20)", source: "race" }],
+    }));
+    // The goblin's die, then the hero's: the hero acts first.
+    clearDice();
+    dice(1, 20);
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    clearDice();
+    if (!started.ok) {
+      throw new Error(`the quarry table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    for (const token of maps.listTokens(board.id)) {
+      maps.moveToken(token.id, token.refId === hero.id ? 5 : 6, 5, 0);
+    }
+    const index = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: Math.max(0, index), turnBudget: null, surprisedIds: [], reactionsUsed: [] });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    campaigns.setMemberRealDice(table.id, world.owner.id, true);
+    damageStepTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id };
+  }
+}
+
+// Healing dice on real dice (issue 902): a table the player runs, at
+// real_allowed, where the lead's fighter is hurt and rolls physical dice. The
+// GM's seat plays her Second Wind, and the d10 is hers to roll.
+const HEALING_DICE_TITLE = "Infirmary Table";
+const healingDiceTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${HEALING_DICE_TITLE} (${viewport})`,
+    description: "A long road and a short breath.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the infirmary table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Maren Vost", class: "fighter", level: 3, maxHp: 28, abilities: { str: 16, con: 14 } }));
+  sheets.patchSheet(hero.id, { currentHp: 6 });
+  campaigns.setMemberRealDice(table.id, world.owner.id, true);
+  healingDiceTables[viewport] = { id: table.id, hero: hero.id };
+}
+
+// Hit dice on real dice (issue 902): the same kind of table just after a
+// short rest, with the lead's hurt fighter still choosing her hit dice and a
+// bard in the party, so the first die she spends carries the song's d6.
+const HIT_DICE_TITLE = "Rest Stop Table";
+const hitDiceTables = {};
+{
+  const { openShortRestWindow } = await import("../../src/lib/db/clock.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${HIT_DICE_TITLE} (${viewport})`,
+      description: "An hour by the road, and a song.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the rest stop table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Maren Vost", class: "fighter", level: 3, maxHp: 28, abilities: { str: 16, con: 14 } }));
+    sheets.patchSheet(hero.id, { currentHp: 6 });
+    sheets.createSheet(table.id, player.id, 2, heroInput({ name: "Lira Quill", class: "bard", level: 2, maxHp: 15, abilities: { cha: 16 } }));
+    campaigns.setMemberRealDice(table.id, world.owner.id, true);
+    openShortRestWindow(table.id, [hero.id]);
+    hitDiceTables[viewport] = { id: table.id, hero: hero.id };
+  }
 }
 
 // Issue 530: a running campaign the lead steers, one per viewport, to step
@@ -2549,6 +3055,44 @@ for (const viewport of ["desktop", "phone"]) {
     content: "Previously: You reached the mill at dusk, found the miller's daughter gone, and followed her lantern's tracks to the edge of the fen.",
   });
   recapTables[viewport] = table.id;
+}
+
+// Issue 917: a line a short tag splits ("...," she says. "...") was drawn
+// as two cards for one speaker with the tag stranded between. A passage
+// with both kinds of split and a reply from someone else, its lines stored
+// as the claims reader stores them, one table per viewport.
+const SPLIT_LINE_TITLE = "Split Line Table";
+const splitLineTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `${SPLIT_LINE_TITLE} (${viewport})`,
+    description: "A table at the crossroads.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false },
+  });
+  campaigns.setCampaignStatus(table.id, "active");
+  sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Corra Venn", class: "fighter", level: 3 }));
+  const marla = { kind: "npc", id: "npc-split-marla", name: "Marla" };
+  const pike = { kind: "npc", id: "npc-split-pike", name: "Old Pike" };
+  messages.insertCampaignMessage({
+    campaignId: table.id,
+    seq: campaigns.allocateSeq(table.id),
+    authorType: "dm",
+    speech: [
+      { line: "We ride at dawn,", speaker: marla },
+      { line: "and not a moment later.", speaker: marla },
+      { line: "Aye,", speaker: pike },
+      { line: "Two roads,", speaker: marla },
+      { line: "Pick one.", speaker: marla },
+    ],
+    content:
+      'Marla rolls the map flat on the crate. "We ride at dawn," said Marla, "and not a moment later." "Aye," says Old Pike, and spits into the fire.' +
+      '\n\nShe taps the fork in the road. "Two roads," she says. "Pick one."',
+  });
+  splitLineTables[viewport] = table.id;
 }
 
 // Issue 539: a table outside a fight, narration on, with two passages to
@@ -2806,6 +3350,9 @@ const resolveTables = {};
 // the lead runs and plays at, so a card resolves as it is played, in a fight on
 // the fighter's turn with two goblins beside them. One per viewport: the spells go.
 const ringTables = {};
+// Spells magic items cast, in the Hand (scenario 123-item-cards): a fighter with a
+// wand and a scroll they cannot read, and a wizard with a staff, a wand and a scroll.
+const itemTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2918,6 +3465,68 @@ const ringTables = {};
     );
     await ringFight(study.id, wizardHero.id);
     ringTables[viewport] = { id: table.id, hero: hero.id, study: study.id };
+
+    const itemTable = campaigns.createCampaign(world.owner.id, {
+      title: `Item Table (${viewport})`,
+      description: "Goblins in a lane, a borrowed wand and a scroll in a script nobody here reads.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(itemTable.id, "active");
+    const scrollRow = (spell) => ({ name: `Spell Scroll (${spell})`, qty: 1, tags: ["consumable", "scroll", "carried"], spell });
+    const itemHero = sheets.createSheet(
+      itemTable.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Dov Harrow",
+        class: "fighter",
+        level: 5,
+        maxHp: 44,
+        equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Wand of Magic Missiles", qty: 1, charges: 5 }, scrollRow("Magic Missile")],
+      }),
+    );
+    await ringFight(itemTable.id, itemHero.id);
+    const itemStudy = campaigns.createCampaign(world.owner.id, {
+      title: `Item Study (${viewport})`,
+      description: "A wizard with a staff, a wand and one scroll left.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(itemStudy.id, "active");
+    const itemMage = sheets.createSheet(
+      itemStudy.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Sera Vane",
+        class: "wizard",
+        level: 5,
+        abilities: { int: 16 },
+        equipment: [
+          { name: "Dagger", qty: 1, equipped: true },
+          { name: "Staff of Fire", qty: 1, equipped: true, attuned: true, charges: 7 },
+          { name: "Wand of Magic Missiles", qty: 1, charges: 3 },
+          scrollRow("Magic Missile"),
+        ],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } },
+          known: [],
+          prepared: ["Shield", "Sleep", "Thunderwave", "Mage Armor"],
+          cantrips: [],
+          spellbook: ["Shield", "Sleep", "Thunderwave", "Mage Armor"],
+        },
+      }),
+    );
+    await ringFight(itemStudy.id, itemMage.id);
+    itemTables[viewport] = { id: itemTable.id, hero: itemHero.id, study: itemStudy.id, mage: itemMage.id };
   }
 }
 
@@ -2961,6 +3570,7 @@ const bench2Titles = {};
     if (!started.ok) {
       throw new Error(`${campaigns.getCampaignById(table.id).title}'s fight did not start: ${started.error}`);
     }
+    await keepOpeningRolls(table.id);
     const encounter = encounterRows.getActiveEncounter(table.id);
     const board = maps.getBattleMapForEncounter(encounter.id);
     maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
@@ -3199,6 +3809,9 @@ const bench2Titles = {};
       const knight = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
         name: "Vesna Greymark", class: "fighter", subclass: "Echo Knight", level: 15, maxHp: 120, abilities: { str: 16, con: 14 },
       }));
+      // Her echo is out, as Manifest Echo leaves it: Shadow Martyr sends the
+      // echo into a hit only while one is (authored-effects-data-b.ts ECHO_OUT).
+      sheets.patchSheet(knight.id, { conditions: ["echo manifested"] });
       const bot = createCompanionUser("Odo Fenn");
       const ally = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Odo Fenn", class: "fighter", level: 5, maxHp: 44 }));
       sheets.markSheetAsCompanion(ally.id, "party", "Steady, and slow to speak.");
@@ -3272,6 +3885,29 @@ const bench2Titles = {};
       turnOf(table, runa.id);
       at.runicGm = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name } };
     }
+    // ---- 14b: Chronal Shift for a hit by a goblin within 30 feet of the
+    // wizard: Bran stands beside Ilse, Tam 35 feet off with his goblin 40 feet
+    // off, and a goblin's hit is open on each of the three ----
+    {
+      const table = tableFor(`Chronal Shift Table (${viewport})`, player, world.owner);
+      const ilse = sheets.createSheet(table.id, world.owner.id, 2, heroInput({
+        name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 2, maxHp: 30,
+      }));
+      const ally = (name) => {
+        const bot = createCompanionUser(name);
+        const sheet = sheets.createSheet(table.id, bot.id, 5, heroInput({ name, class: "fighter", level: 5, maxHp: 44 }));
+        sheets.markSheetAsCompanion(sheet.id, "party", "Steady, and slow to speak.");
+        return sheet;
+      };
+      const [near, far] = [ally("Bran Holt"), ally("Tam Reed")];
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 3 }]);
+      const [g1, g2, g3] = [named(rows, "goblin", 0), named(rows, "goblin", 1), named(rows, "goblin", 2)];
+      [[ilse.id, 0, 0], [near.id, 1, 0], [g1.id, 2, 0], [g3.id, 0, 1], [far.id, -7, 0], [g2.id, -8, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id, g3.id] } });
+      await pass(table, [[g1.id, near.id, [15, 3]], [g2.id, far.id, [15, 3]], [g3.id, ilse.id, [15, 3]]]);
+      turnOf(table, ilse.id);
+      at.chronal = { id: table.id, ilse: { id: ilse.id, name: ilse.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
+    }
     // ---- 15: Misdirection from the GM's own seat, which the engine resolves as
     // it is played: a goblin's arrow from 15 feet hits Vex, another goblin stands
     // beside them in its line (the cover Misdirection needs), and a third 25 feet
@@ -3316,6 +3952,7 @@ const ids = {
   clockTables,
   resolveTables,
   ringTables,
+  itemTables,
   bench2,
   weekly,
   multiclassTableId: multiclassTable.id,
@@ -3323,11 +3960,30 @@ const ids = {
   qualityTurnIds,
   spellbook,
   witchBolt,
+  tidesOfChaos,
   speciesSpells,
   noticeTables,
   afterRollTables,
+  afterAttackTables,
+  wrathTables,
+  afterRiderTables,
+  allyTables,
+  flashTables,
+  touchTables,
+  skippedTables,
+  attractionTables,
   portentTables,
+  watchTables,
+  starTables,
+  heldTurnTables,
+  shiftTables,
+  chronalWatchTables,
+  twoHandsTables,
+  damageStepTables,
+  healingDiceTables,
+  hitDiceTables,
   recapTables,
+  splitLineTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
   chipTables,
@@ -3433,14 +4089,33 @@ const ids = {
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
+    ...Object.fromEntries(Object.entries(itemTables).flatMap(([viewport, table]) => [[table.id, `Item Table (${viewport})`], [table.study, `Item Study (${viewport})`]])),
     ...bench2Titles,
     ...Object.fromEntries(Object.entries(pactTables).flatMap(([kind, tables]) => Object.entries(tables).map(([viewport, table]) => [table.id, `Pact ${kind.charAt(0).toUpperCase()}${kind.slice(1)} (${viewport})`]))),
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(afterRiderTables).map(([viewport, table]) => [table.id, `${AFTER_RIDER_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(skippedTables).map(([viewport, table]) => [table.id, `${SKIPPED_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(attractionTables).map(([viewport, table]) => [table.id, `${ATTRACTION_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(starTables).map(([viewport, table]) => [table.id, `${STAR_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(splitLineTables).map(([viewport, id]) => [id, `${SPLIT_LINE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,
     [lobby.id]: LOBBY_TITLE,

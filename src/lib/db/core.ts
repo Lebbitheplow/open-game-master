@@ -2,6 +2,7 @@ import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
+import { repairFeatSpellMisreadings } from "./feat-spell-repair.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -20,6 +21,7 @@ import { tableHazardsFrom } from "@/lib/db/table-hazards";
 import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
 import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
+import { installTurnJournal } from "@/lib/db/turn-journal";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -196,6 +198,13 @@ function ensureSchema(db: SqliteDatabase) {
       UNIQUE (campaign_id, seq)
     );
 
+    -- The newest message that carries a picture (the home screen's glance,
+    -- src/lib/db/home-glance.ts), which otherwise walks back through every
+    -- message since the last picture, and through all of them at a table
+    -- that paints none. Only the rows with a picture are in it.
+    CREATE INDEX IF NOT EXISTS idx_campaign_messages_picture
+      ON campaign_messages(campaign_id, seq) WHERE generated_image_json IS NOT NULL;
+
     CREATE TABLE IF NOT EXISTS rolls (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -224,6 +233,15 @@ function ensureSchema(db: SqliteDatabase) {
       created_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, seq)
     );
+
+    -- The newest event of one type (latestEventOfType in src/lib/events.ts:
+    -- the handout on the table, the title card, a break, a session's end).
+    -- By the primary key alone that read walks the campaign's whole log
+    -- backwards whenever the type is rare or was never logged, which is the
+    -- usual case: 60 ms a lookup at 60,000 events, twice in every table
+    -- snapshot.
+    CREATE INDEX IF NOT EXISTS idx_campaign_events_type
+      ON campaign_events(campaign_id, type, seq);
 
     CREATE TABLE IF NOT EXISTS homebrew_entries (
       id TEXT PRIMARY KEY,
@@ -1653,6 +1671,10 @@ function ensureSchema(db: SqliteDatabase) {
     ["summon_json", `TEXT`],
     // The numbers Portent foretold at the last long rest (src/lib/dm/foretold-logic.ts).
     ["foretold_json", `TEXT`],
+    // Cosmic Omen's Weal or Woe from the last long rest (src/lib/dm/before-roll-logic.ts).
+    ["omen", `TEXT`],
+    // The fight this wizard is watching for Portent (src/lib/dm/foresight.ts).
+    ["watching_encounter_id", `TEXT`],
     // AI companion party member: owned by an unloginable bot user row so
     // UNIQUE(campaign_id, user_id) and the users FK stay satisfied. The DM
     // drives these sheets (src/lib/dm/companion-tools.ts).
@@ -1917,6 +1939,65 @@ function ensureSchema(db: SqliteDatabase) {
   // than rerolling from the pack. '' is a shop stocked from the pack.
   addColumns("shops", [["prepared_stock_json", `TEXT NOT NULL DEFAULT ''`]]);
 
+  // Adventure PDF imports (src/lib/db/pdf-imports.ts): the book as the
+  // page read it, a batch of pages at a time, the pictures it kept (files in
+  // data/pdf-imports/<id>), and the draft the job builds and the GM
+  // reviews. campaign_id is the workshop an import started in WorldForge
+  // lays itself into; NULL makes a new workshop. Gzipped JSON in the blobs.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pdf_imports (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      campaign_id TEXT REFERENCES campaigns(id) ON DELETE CASCADE,
+      file_name TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      page_count INTEGER NOT NULL,
+      state TEXT NOT NULL,
+      step TEXT NOT NULL DEFAULT '',
+      done INTEGER NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL DEFAULT 0,
+      use_model INTEGER NOT NULL DEFAULT 0,
+      reason TEXT NOT NULL DEFAULT '',
+      outline_json TEXT NOT NULL DEFAULT '[]',
+      fonts_json TEXT NOT NULL DEFAULT '[]',
+      pictures_json TEXT NOT NULL DEFAULT '[]',
+      draft_blob BLOB,
+      model_blob BLOB,
+      workshop_id TEXT,
+      boot TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pdf_imports_user ON pdf_imports (user_id, updated_at);
+    -- A workshop built from someone's own copy of a published book: what it
+    -- was imported from. Such a workshop is never compiled into a world pack
+    -- or installed for the server (src/lib/db/private-sources.ts).
+    CREATE TABLE IF NOT EXISTS private_sources (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      source TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS private_homebrew (
+      entry_id TEXT PRIMARY KEY REFERENCES homebrew_entries(id) ON DELETE CASCADE,
+      source TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pdf_import_pages (
+      import_id TEXT NOT NULL REFERENCES pdf_imports(id) ON DELETE CASCADE,
+      n INTEGER NOT NULL,
+      page_blob BLOB NOT NULL,
+      runs INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (import_id, n)
+    );
+  `);
+
+  // Each page's count of text runs, which a book is held to in total
+  // (MAX_IMPORT_RUNS, src/lib/pdf-import/reading.ts).
+  const importPageColumns = db.prepare(`PRAGMA table_info(pdf_import_pages)`).all() as Array<{ name: string }>;
+  if (!importPageColumns.some((column) => column.name === "runs")) {
+    db.exec(`ALTER TABLE pdf_import_pages ADD COLUMN runs INTEGER NOT NULL DEFAULT 0`);
+  }
+
   // Transcript lines (docs/vtt-parity-implementation-plan.md 13.3): what
   // was said at a transcribed table, by whom, on both clocks. Never fed to
   // the DM prompt.
@@ -2006,6 +2087,12 @@ function ensureSchema(db: SqliteDatabase) {
     // never by saveEncounter, so a handler holding a stale Encounter cannot
     // send back someone who has arrived.
     ["away_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
+    // Once-a-turn and once-a-round marks of features off the turn budget
+    // (Grim Harvest, Keeper of Souls, Form of the Beast's bite), as
+    // {key: stamp} (src/lib/dm/turn-marks.ts). In the database, so a restart
+    // remembers them; on the fight's own row, so they revert with it. Written
+    // only there, never by saveEncounter.
+    ["turn_marks_json", `TEXT NOT NULL DEFAULT '{}'`],
     // The action economy of whichever combatant is currently acting: action,
     // bonus action, reaction, attacks made, and movement spent. Rebuilt from
     // scratch whenever the initiative pointer moves, so it never needs a
@@ -2857,6 +2944,18 @@ function ensureSchema(db: SqliteDatabase) {
       PRIMARY KEY (campaign_id, character_id)
     );
 
+    -- The spells items have paid for and their tools have not yet cast, per
+    -- character (src/lib/db/item-cast-credits.ts), so a restart between the
+    -- two keeps the cast's free slot and what it owes back. No foreign keys:
+    -- deleteCampaign clears a table's rows by hand. Older servers ignore it.
+    CREATE TABLE IF NOT EXISTS item_cast_credits (
+      character_id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_item_cast_credits_campaign ON item_cast_credits(campaign_id);
+
     -- The Intelligence, Wisdom and Charisma saves made this turn and who forced
     -- them, for Vigilant Rebuke (src/lib/dm/last-save.ts). One row per
     -- campaign; deleteCampaign clears it by hand.
@@ -3051,6 +3150,16 @@ function ensureSchema(db: SqliteDatabase) {
     db.transaction(() => {
       repairSkewedPersonalities(db);
       db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("npc_personality_repair_done", "true", new Date().toISOString());
+    })();
+  }
+  // Sheets written while ODM's Magic Initiate and Telepathic were misread
+  // (src/lib/db/feat-spell-repair.ts): the phantom cantrip "It" comes off
+  // and Telepathic's free cast goes on. One pass, guarded by a marker.
+  const featSpellMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'feat_spell_repair_done'`).get();
+  if (!featSpellMarker) {
+    db.transaction(() => {
+      repairFeatSpellMisreadings(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("feat_spell_repair_done", "true", new Date().toISOString());
     })();
   }
 }
@@ -3862,6 +3971,7 @@ export function getDatabase() {
       ensureSchema(globalThis.__localRoleplayDb);
       schemaEnsured = true;
     }
+    installTurnJournal(globalThis.__localRoleplayDb);
     return globalThis.__localRoleplayDb;
   }
 
@@ -3915,6 +4025,8 @@ export function getDatabase() {
   db.pragma("foreign_keys = ON");
   ensureSchema(db);
   schemaEnsured = true;
+  // Every write a GM turn makes is kept with the turn (turn-journal.ts).
+  installTurnJournal(db);
   if (revision < SCHEMA_REVISION) {
     db.pragma(`user_version = ${SCHEMA_REVISION}`);
   }

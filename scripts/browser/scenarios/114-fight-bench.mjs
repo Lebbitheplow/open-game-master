@@ -231,6 +231,15 @@ export default {
       await t.tap(startButton);
       await eventually(async () => (await t.url()).pathname.startsWith("/campaigns/"), { timeoutMs: 60_000, label: "the test table" });
       let tableId = (await t.url()).pathname.split("/")[2];
+      // The fight's order settles first, as at the AI-run test below: on a
+      // phone the table turns to the board when it lands, and a banner read
+      // before that went from under the read of its buttons (CI on #856: 30
+      // seconds on a Back link the board had hidden).
+      await eventually(async () => {
+        const data = await (await api.get(`${base}/api/campaigns/${tableId}`)).json();
+        return data.encounter?.orderReady;
+      }, { timeoutMs: 60_000, label: "the person-run fight's order" });
+      await untilStill(page).catch(() => undefined);
       const banner = page.locator(`${root}.test-fight-banner`).locator("visible=true").first();
       const tableView = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true }).locator("visible=true").first();
       // On a phone the banner is the Table view's, and the table turns to the
@@ -247,6 +256,9 @@ export default {
         );
       await showBanner();
       await untilStill(page).catch(() => undefined);
+      // A tap on the phone's table view that landed late (a loaded runner)
+      // can flip it away again while the page settles: asked once more.
+      await showBanner();
       const controls = [
         banner.getByRole("link", { name: "Back to the workshop" }),
         banner.getByRole("button", { name: "Save as set-up" }),

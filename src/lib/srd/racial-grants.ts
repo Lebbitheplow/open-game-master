@@ -129,7 +129,9 @@ export function breathWeaponFor(
 
 // ---- spells a race casts by nature ----
 
-type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long" };
+// `rest` and `uses`: a spell that comes back on a short rest (Firbolg Magic),
+// as a workshop species' row says it.
+type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number };
 type RaceRow = {
   id: string;
   ancestryChoice?: string;

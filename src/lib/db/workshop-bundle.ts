@@ -1,9 +1,11 @@
 import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
+import { markPrivateSource, markShelfArrivals } from "@/lib/db/private-sources";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getDatabase, nowIso } from "@/lib/db/core";
 import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
+import { repairFeatSpellMisreadings } from "@/lib/db/feat-spell-repair";
 import { createCampaign } from "@/lib/db/campaigns";
 import { WORKSHOP_GAME_SETTINGS, getWorkshopForUser } from "@/lib/db/workshops";
 import { setHouseRules } from "@/lib/db/rules";
@@ -590,6 +592,12 @@ function writeBundleRows(
   // A module exported before issue 732 carries the personalities its NPCs
   // were saved with from the skewed name hash.
   repairSkewedPersonalities(getDatabase(), workshop.id);
+  repairFeatSpellMisreadings(getDatabase(), workshop.id);
 
+  // A workshop imported from a published book stays private in its copy.
+  if (bundle.privateSource) {
+    markPrivateSource(workshop.id, bundle.privateSource);
+    markShelfArrivals(bundle, shelf.entryFor, bundle.privateSource);
+  }
   return { workshopId: workshop.id, copied, linkedShared, droppedLinks, shelf: { reused: shelf.reused, renamed: shelf.renamed, refused: shelf.refused } };
 }

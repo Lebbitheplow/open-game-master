@@ -1,3 +1,4 @@
+import { recordSteadied } from "@/lib/dm/last-save";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -14,6 +15,7 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import {
   downConditions,
   stableTimer,
@@ -30,6 +32,7 @@ import {
   onDamageAtZero,
 } from "@/lib/dm/death-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { heldDeath, ragesBeyondDeath, ragingOnConditions } from "@/lib/dm/mt-fb-rage-death-logic";
 
 // The dying engine: a PC dropping to 0 HP gets a server-tracked death-save
 // state, saves roll automatically at the top of their skipped combat turns
@@ -159,7 +162,10 @@ export function applyDamageDeathHook(
       tableNote(campaign, `${fresh.name} is killed outright by massive damage.`, "cue-death");
       return { dead: true, note: `${fresh.name} is killed INSTANTLY (massive damage while at 0 HP). This death is real; narrate it.` };
     }
-    const next = onDamageAtZero(fresh.deathSaves, crit);
+    const struck = onDamageAtZero(fresh.deathSaves, crit);
+    // Rage Beyond Death: the third failure does not kill while the rage lasts.
+    const heldOff = heldDeath(fresh, struck);
+    const next = heldOff ?? struck;
     writeDeathState(
       campaign,
       turnId,
@@ -176,7 +182,7 @@ export function applyDamageDeathHook(
     }
     return {
       dying: describeTrack(next),
-      note: `${fresh.name} takes an automatic death-save failure${crit ? " (two, critical hit)" : ""}: now ${describeTrack(next)}.`,
+      note: `${fresh.name} takes an automatic death-save failure${crit ? " (two, critical hit)" : ""}: now ${describeTrack(next)}.${heldOff ? ` Three failures would kill them, and Rage Beyond Death holds the death off: they die when the rage ends, if they are still at 0 hit points then.` : ""}`,
     };
   }
 
@@ -203,6 +209,8 @@ export function applyDamageDeathHook(
       tableNote(campaign, `${fresh.name} is killed outright by massive damage.`, "cue-death");
       return { dead: true, note: `${fresh.name} is killed INSTANTLY (massive damage). This death is real; narrate it.` };
     }
+    // A raging zealot stays on their feet (Rage Beyond Death), dying all the same.
+    const ragingOn = ragesBeyondDeath(fresh);
     writeDeathState(
       campaign,
       turnId,
@@ -210,8 +218,14 @@ export function applyDamageDeathHook(
       freshDeathTrack(),
       "death_state",
       "dropped to 0 HP",
-      downConditions(fresh),
+      ragingOn ? ragingOnConditions(fresh) : downConditions(fresh),
     );
+    if (ragingOn) {
+      return {
+        dying: true,
+        note: `${fresh.name} is at 0 HP and DYING, and Rage Beyond Death keeps them on their feet while they rage: they act on their turns, the server rolls their death saves, and each blow at 0 is a failure. Three failures kill them only when the rage ends with them still at 0 hit points; healing any amount ends the dying.`,
+      };
+    }
     return {
       dying: true,
       note: `${fresh.name} is unconscious and DYING at 0 HP. The server rolls their death saves automatically: on their turns in combat, and one every 6 seconds of game time outside it. Healing any amount revives them; the stabilize tool stops the dying after a successful DC 10 Medicine check or a healer's kit.`,
@@ -293,6 +307,20 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   return `${sheet.name} comes round with 1 hit point.`;
 }
 
+// A feature that answers a death save in its place (Searing Vengeance,
+// src/lib/dm/searing-vengeance.ts), registered by its module: this one must
+// not import what that one needs (an enemy's damage imports this file).
+// Kept on globalThis, as the dice script's hook is (src/lib/dice.ts): the
+// registering module can load while this one is still evaluating (an import
+// cycle through an enemy's damage), before a module-level binding exists.
+type DeathSaveStandIn = (campaign: Campaign, sheet: CharacterSheet) => string | null;
+declare global {
+  var __odmDeathSaveStandIn: DeathSaveStandIn | undefined;
+}
+export function registerDeathSaveStandIn(hook: DeathSaveStandIn) {
+  globalThis.__odmDeathSaveStandIn = hook;
+}
+
 // One automatic death save, rolled server-side when the initiative pointer
 // passes a dying PC. Publishes the dice card and a table note so both the
 // players and the model (via history) see the result.
@@ -303,6 +331,15 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   const track = sheet?.deathSaves;
   if (!sheet || !track || track.stable || track.dead || sheet.currentHp > 0) {
     return null;
+  }
+  // Three failures held off by Rage Beyond Death: nothing more to roll.
+  if (track.failures >= 3 && ragesBeyondDeath(sheet)) {
+    return null;
+  }
+  const instead = globalThis.__odmDeathSaveStandIn?.(campaign, sheet) ?? null;
+  if (instead) {
+    tableNote(campaign, instead, "cue-heal");
+    return instead;
   }
   // A death save is a saving throw tied to no ability: it takes what every
   // save takes (exhaustion, Bless and Bane, a paladin's aura, a Ring of
@@ -327,9 +364,18 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     return null;
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
-  // A held die is added only to a death save it turns into a success.
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown;
+  // The player's own death save (src/lib/dm/character-roll.ts): on physical
+  // dice they roll it, and one thrown for them waits on what they hold
+  // (Lucky, Bardic Inspiration: WAVE1 R4) before it counts.
+  const outcome = rollCharacterD20(campaign, sheet, {
+    kind: "saving_throw",
+    tag: { roller: "hero", kind: "death_save", who: sheet.name },
+    expression: resolved.expression,
+    detail: "death save",
+    dc: 10,
+    // A held die is added only to a death save it turns into a success.
+    settle: (thrown) => (waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown),
+  });
   // What the save spent (an inspiration die, a luck point) is gone from the
   // stored sheet. The writes below start from it: from the copy read before
   // the spend, a natural 20 or a third success wrote the spent carrier back
@@ -352,6 +398,10 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     source: "digital",
   });
   const applied = applyDeathSaveRoll(track, outcome.natural ?? outcome.total, outcome.total);
+  // A death save that succeeds steadies them (last-save.ts): Defy Death answers it.
+  if (applied.outcome === "revive" || applied.outcome === "stable" || applied.outcome === "success") {
+    recordSteadied(campaign.id, sheet.id, { id: sheet.id, name: sheet.name }, "death save");
+  }
   // Every line names the roll, the deciding one too: outside a fight the
   // save has no GM message to carry its dice, so the line is all the table sees.
   const rolled = (result: string) => `${sheet.name} death save: rolled ${outcome.total}, ${result}.`;
@@ -362,6 +412,16 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     });
     const line = `${rolled("natural 20")} ${sheet.name} rolls a natural 20 on their death save and regains 1 HP!`;
     tableNote(campaign, line, "cue-heal");
+    return line;
+  }
+  // Rage Beyond Death: stable or dead on the track, a raging zealot stays up
+  // until the rage ends (mt-fb-rage-death.ts fallAsRageEnds lands either).
+  if ((applied.outcome === "stable" || applied.outcome === "dead") && ragesBeyondDeath(current)) {
+    writeDeathState(campaign, turnId, current, heldDeath(current, applied.track) ?? applied.track, "death_state", "automatic death save");
+    const line = applied.outcome === "stable"
+      ? `${rolled("success")} ${sheet.name} succeeds their third death save and is stable at 0 HP, still raging on their feet.`
+      : `${rolled("failure")} ${sheet.name} fails their third death save. Rage Beyond Death holds the death off: they die when the rage ends, if they are still at 0 hit points then.`;
+    tableNote(campaign, line, applied.outcome === "stable" ? "cue-heal" : "cue-death");
     return line;
   }
   if (applied.outcome === "stable") {

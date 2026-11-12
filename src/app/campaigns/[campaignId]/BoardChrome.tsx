@@ -14,6 +14,7 @@ import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { offSide, SidePlateBand, sidesLine, SideSr } from "@/app/campaigns/[campaignId]/SideBadge";
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
+import { variantUrl, type VariantWidth } from "@/lib/image-variant-url";
 
 // The chrome on the board as a stage (docs/visual-overhaul-plan.md 5.1): the
 // initiative rail, the turn HUD, the turn banner, the hover plate and the
@@ -29,11 +30,16 @@ export function TokenFace({
   name,
   className,
   enemy = false,
+  width = 256,
 }: {
   candidates: Array<string | null | undefined>;
   name: string;
   className?: string;
   enemy?: boolean;
+  // Which of the server's smaller copies of a portrait to ask for
+  // (src/lib/image-variant-url.ts): the 256 pixel one for a face on a plate,
+  // a rail or a ribbon, the 1024 where the painting is shown large.
+  width?: VariantWidth;
 }) {
   const list = candidates.filter((src): src is string => Boolean(src));
   const key = list.join("|");
@@ -56,7 +62,10 @@ export function TokenFace({
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          // A face on a plate, a rail or a ribbon is a thumbnail: a smaller
+          // copy the server keeps of a portrait, as the board's own tokens
+          // ask for, not the full painting.
+          src={variantUrl(src, width)}
           alt=""
           loading="lazy"
           decoding="async"
@@ -253,7 +262,7 @@ export function TurnHud({
       {mine && budget ? (
         // On a narrow board the pips and the stats sit under the rail's
         // plates instead of beside them, where there is no room.
-        <div className="mt-[42px] flex flex-wrap justify-end gap-1 @md:mt-0 @md:gap-1.5">
+        <div className="turn-hud-pips mt-[42px] flex flex-wrap justify-end gap-1 @md:mt-0 @md:gap-1.5">
           {PIPS.map((pip) => {
             const left = budget[pip.key];
             return (
@@ -547,6 +556,7 @@ export function TokenPlate({
           candidates={face}
           name={token.name}
           enemy={token.kind === "enemy"}
+          width={1024}
           className={cn(
             "rounded-md border border-[rgba(227,193,92,0.35)] text-3xl sm:size-[160px]",
             crowded ? "size-[72px] shrink-0" : "size-[124px]",

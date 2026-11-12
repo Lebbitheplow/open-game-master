@@ -191,10 +191,3 @@ export function weaponLineFor(
     ability: ATTACK_ABILITY[profile.ability],
   };
 }
-
-// Coin as the purse line writes it: gold and the copper under a gold piece.
-export function formatCoin(copper: number): string {
-  const gold = Math.floor(copper / 100);
-  const rest = copper % 100;
-  return [gold ? `${gold} gp` : "", rest ? `${rest} cp` : ""].filter(Boolean).join(" ") || "0 gp";
-}

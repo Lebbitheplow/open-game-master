@@ -62,6 +62,8 @@ import {
   handleLocationCall,
   handleRecordEvent,
   handleRequestPlayerInput,
+  modelCallArguments,
+  oneCastingCall,
 } from "@/lib/dm/turn";
 import { imagesAvailable } from "@/lib/capabilities";
 import { imageProducerReady } from "@/lib/image-generate";
@@ -72,13 +74,18 @@ import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { conductGate } from "@/lib/dm/party-conduct";
-import { characterCallUnasked } from "@/lib/dm/player-word";
+import { characterCallUnasked, prepareWordFor } from "@/lib/dm/player-word";
 import { EXPLORE_TOOL_NAMES, handleExploreCall } from "@/lib/dm/explore-tools";
 import { watchRungs } from "@/lib/dm/romance-stage-lines";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { registerHeldRunner, runHeld } from "@/lib/dm/held-call";
+import { deedRefusal } from "@/lib/dm/deed-guard";
+import { heldRollUserIds } from "@/lib/dice/held-rolls";
+import { listMembers } from "@/lib/db/campaigns";
+import { listSheets } from "@/lib/db/sheets";
 
 const MUTATIONS = new Set<string>(MUTATION_TOOL_NAMES);
 const ENCOUNTERS = new Set<string>(ENCOUNTER_TOOL_NAMES);
@@ -94,6 +101,9 @@ export type DispatchContext = {
   // condition in it is the model's, so the AI's gate (ai-gate.ts), there to
   // keep the model's own numbers out, has nothing to hold back.
   serverBuilt?: boolean;
+  // The model's tool call this answers, for a roll that holds it: the
+  // resumed turn answers that call (turn.ts).
+  toolCallId?: string | null;
 };
 
 export async function dispatchAdjudication(
@@ -114,16 +124,32 @@ async function dispatchCall(
   casting?: OneCasting,
 ): Promise<ToolResult> {
   const { campaign, turn, sheets, sheetsById } = context;
+  // The arguments as every gate and handler reads them, as the model's turn
+  // loop reads them (turn.ts modelCallArguments).
+  const door = modelCallArguments(campaign, name, sentArguments, sheets);
+  if ("refusal" in door) {
+    return door.refusal;
+  }
+  sentArguments = door.rawArguments;
   // A chest's items, a shopping list, the creatures a healing spell
   // reaches: each entry the one-entry call it always was
   // (src/lib/dm/action-parts-logic.ts listedCalls), for a connected agent
   // program and the console as for the model's turn loop (turn.ts).
   const each = listedCalls(name, sentArguments);
-  if (each) {
-    const refused = listRefusal(name, each) ?? awayCall(name, JSON.parse(sentArguments), context);
-    if (refused) {
-      return refused;
-    }
+  const refused = each ? (listRefusal(name, each) ?? awayCall(name, JSON.parse(sentArguments), context)) : null;
+  if (refused) {
+    return refused;
+  }
+  // One casting over several creatures goes on below as the one call it is
+  // (turn.ts oneCastingCall).
+  const whole = each ? oneCastingCall(campaign, name, sentArguments, each, sheets) : null;
+  if (whole && "refusal" in whole) {
+    return whole.refusal;
+  }
+  if (whole) {
+    sentArguments = whole.rawArguments;
+  }
+  if (each && !whole) {
     const shared = oneCasting(name, each);
     const outcomes: Record<string, unknown>[] = [];
     for (const one of each) {
@@ -133,6 +159,10 @@ async function dispatchCall(
   }
   // "false" sent as a string is false (src/lib/dm/arg-coerce.ts).
   const coerced = strictBooleanArgs(sentArguments);
+  // A connected agent program is held to its player's words as the AI is
+  // (src/lib/dm/player-word.ts); at a table in another language they are
+  // read once first.
+  await prepareWordFor(campaign, turn ?? null, coerced);
   // The model's damage, healing and binding conditions are the server's to
   // roll (src/lib/dm/ai-gate.ts); the console keeps its free hand.
   const gated = context.serverBuilt ? { args: coerced } : gateAiCall(name, coerced, { campaign, turn, sheetsById });
@@ -140,7 +170,24 @@ async function dispatchCall(
     return gated.result;
   }
   const rawArguments = gated.args;
+  // A deed out of a fight by a character who cannot act (deed-guard.ts).
+  const unable = deedRefusal(campaign.id, name, rawArguments, context.sheets, sheetsById);
+  if (unable) {
+    return unable;
+  }
+  // Held so a roll inside it may wait on its player (src/lib/dm/held-call.ts).
+  return runHeld(campaign, turn, { name, rawArguments, toolCallId: context.toolCallId ?? null }, () => engineCall(name, rawArguments, context, casting));
+}
 
+// The handler a call names, past the gates: the part of the call a held roll
+// runs again (held-call.ts registerHeldRunner, below).
+function engineCall(
+  name: string,
+  rawArguments: string,
+  context: DispatchContext,
+  casting?: OneCasting,
+): ToolResult | Promise<ToolResult> {
+  const { campaign, turn, sheets, sheetsById } = context;
   if (MUTATIONS.has(name)) {
     // inventoryApprovals holds for whoever runs the table: an item or gold
     // change to a player character is an offer they answer, from the console
@@ -160,7 +207,7 @@ async function dispatchCall(
   if (ENCOUNTERS.has(name)) {
     return applyEncounterCall(campaign, turn, name, rawArguments, sheets, sheetsById, {
       realDiceUserIds: context.realDiceUserIds,
-      toolCallId: null,
+      toolCallId: context.toolCallId ?? null,
     }).result;
   }
 
@@ -278,19 +325,20 @@ async function dispatchCall(
     case "dismiss_companion":
       return dismissCompanion(campaign, rawArguments, sheets, turn.actor === "ai" ? "ai" : "person");
     case "move_party":
-    case "update_location": {
-      const pictures =
-        campaign.gameSettings.mapsEnabled &&
-        imageProducerReady(campaign.settings) &&
-        (await imagesAvailable(campaign.settings));
-      const result = handleLocationCall(campaign, name, rawArguments, pictures);
-      // Bookkeeping the model's turn uses to link its narration to a map;
-      // a person's narration is a separate message, so it goes no further.
-      delete result.movedToNewLocation;
-      delete result._locationId;
-      delete result._mapAvailable;
-      return result;
-    }
+    case "update_location":
+      return (async () => {
+        const pictures =
+          campaign.gameSettings.mapsEnabled &&
+          imageProducerReady(campaign.settings) &&
+          (await imagesAvailable(campaign.settings));
+        const result = handleLocationCall(campaign, name, rawArguments, pictures);
+        // Bookkeeping the model's turn uses to link its narration to a map;
+        // a person's narration is a separate message, so it goes no further.
+        delete result.movedToNewLocation;
+        delete result._locationId;
+        delete result._mapAvailable;
+        return result;
+      })();
     case "request_player_input":
       return handleRequestPlayerInput(campaign, rawArguments, sheets, sheetsById);
     case "generate_image":
@@ -329,3 +377,18 @@ async function dispatchCall(
       return { error: `The engine has no action called "${name}".`, retry: true };
   }
 }
+
+// A held roll landed: its call runs again by the same handler, past the gates
+// it already passed (src/lib/dm/held-call.ts). A call whose handler waits on
+// something else (a picture's backend) holds no roll, so it never comes back.
+registerHeldRunner((campaign, turn, call) => {
+  const sheets = listSheets(campaign.id);
+  const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const realDiceUserIds = heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaign.id));
+  const result = engineCall(call.name, call.rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: call.toolCallId, serverBuilt: true });
+  if (result instanceof Promise) {
+    void result.catch(() => {});
+    return { error: `${call.name} cannot be run again once a roll lands.`, retry: true };
+  }
+  return result;
+});

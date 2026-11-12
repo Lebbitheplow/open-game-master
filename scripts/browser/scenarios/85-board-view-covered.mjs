@@ -135,16 +135,28 @@ export default {
     await eventually(() => ring.count(), { label: "the action ring on the player's figure" });
     await view.evaluate((tokenId) => parent.postMessage({ odm: 1, type: "anchors", tokens: { [tokenId]: [0.25, 0.5, 0.6] } }, "*"), mine);
     await eventually(async () => (await ring.getAttribute("style"))?.includes("left: 25%"), { label: "the ring moving to the reported anchor" });
+    // Which of the page's frames the reports arrived in: a loaded runner hands
+    // thirty messages over across one, two or three frames' edges, and each of
+    // those frames renders once, which is right. Read alone they would be
+    // about thirty renders, whatever the runner.
+    await page.evaluate(() => {
+      let frame = 0;
+      let ticking = true;
+      const tick = () => { frame += 1; if (ticking) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      const frames = new Set();
+      const onReport = (event) => { if (event.data?.type === "anchors") frames.add(frame); };
+      addEventListener("message", onReport);
+      window.__reportFrames = () => { ticking = false; removeEventListener("message", onReport); return frames.size; };
+    });
     const burst = await commitsWhile(page, () => view.evaluate((tokenId) => {
       for (let step = 1; step <= 30; step += 1) parent.postMessage({ odm: 1, type: "anchors", tokens: { [tokenId]: [0.25 + step / 60, 0.5, 0.6] } }, "*");
     }, mine));
     await eventually(async () => (await ring.getAttribute("style"))?.includes("left: 75%"), { label: "the ring at the newest of thirty reports" });
-    // One render a frame, never one a report: thirty reports read alone
-    // would be about thirty commits. A loaded runner can hand the thirty
-    // messages over across one frame's edge, which is two frames' renders
-    // and still right (it failed so 1 run in 318 with every PR of
-    // 2026-11-01 merged, and passed alone).
-    check(burst.busy - burst.idle <= 2, `thirty reports sent at once render once a frame, not once a report (${burst.busy} commits, ${burst.idle} idle)`);
+    const reportFrames = await page.evaluate(() => window.__reportFrames());
+    // One render a frame, never one a report. A fixed allowance of two failed
+    // on a runner that spread the thirty over three frames (3 commits, 0 idle).
+    check(burst.busy - burst.idle <= reportFrames, `thirty reports sent at once render once a frame, not once a report (${burst.busy} commits, ${burst.idle} idle, reports across ${reportFrames} frames)`);
     // The same report again moves nothing, so nothing renders.
     const still = await commitsWhile(page, () => view.evaluate((tokenId) => parent.postMessage({ odm: 1, type: "anchors", tokens: { [tokenId]: [0.75, 0.5, 0.6] } }, "*"), mine));
     check(still.busy <= still.idle, `an anchor that did not move re-renders nothing (${still.busy} commits, ${still.idle} idle)`);

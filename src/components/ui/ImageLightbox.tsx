@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Download, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { variantUrl } from "@/lib/image-format";
+import { variantUrl } from "@/lib/image-variant-url";
 import { slugOf } from "@/lib/language/text-logic";
 
 // Build a friendly download filename: slugified caption/alt plus the file

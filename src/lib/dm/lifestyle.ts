@@ -140,7 +140,9 @@ const proficientWith = (sheet: CharacterSheet, tool: string) =>
 // Why this entry cannot be done, checked before any time passes.
 export function downtimeProblem(campaign: Campaign, sheet: CharacterSheet, entry: DowntimeEntry): ToolError | null {
   if (sheet.deathSaves?.dead) {
-    return { error: `${sheet.name} is dead and spends no downtime.`, retry: true };
+    // The game saying no, as every other door refuses the dead (finding
+    // doors-16; src/lib/dm/tool-errors.ts), not a mistake in the call.
+    return { error: `${sheet.name} is dead and spends no downtime.`, refused: "rules" };
   }
   if (entry.activity === "crafting") {
     if (!entry.item?.trim() || !entry.tool?.trim()) {

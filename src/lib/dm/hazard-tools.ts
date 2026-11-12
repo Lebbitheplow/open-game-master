@@ -33,8 +33,9 @@ import { springTrapOn } from "@/lib/dm/trap-run";
 import { rollExpression } from "@/lib/dice";
 import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { breathOf, coldAdapted } from "@/lib/srd/mt-species-traits";
 
 // Traps and environmental hazards used to be pure narration routed through the
 // generic damage_enemy call, so a "dart trap" or a "40-foot fall" dealt
@@ -216,8 +217,8 @@ export function handleApplyHazard(
   let args: z.infer<typeof hazardSchema>;
   try {
     args = hazardSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_hazard needs a type and characterIds (or rank).", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_hazard needs a type and characterIds (or rank).", error, rawArguments);
   }
   // Who walks first or last, from the formation in force (issue 230).
   let named = args.characterIds ?? [];
@@ -289,6 +290,8 @@ function resolveHazard(
         amount: rolled.total,
         type: damageType,
         knocksProne: true,
+        // A fall or a hazard: no creature dealt it (Emissary of Redemption).
+        noCreature: true,
         reason: source,
       });
       fall.close(rolled.total);
@@ -327,10 +330,23 @@ function resolveHazard(
     const perTarget = targets.map((sheet) => {
       const conMod = computeSheetDerived(sheet).abilityMods.con;
       const survival = suffocationRounds(conMod);
+      // A lineage's own breath (src/lib/srd/mt-species-traits.ts): one that
+      // breathes water never drowns, one whose breath never ends never runs
+      // out of air while it can hold it (awake), and Hold Breath's hour or
+      // quarter hour stands in for the 1 + Constitution modifier minutes.
+      const breath = breathOf(sheet);
+      const spared = args.type === "drowning" && breath.water
+        ? `${breath.water}: breathes water and does not drown`
+        : breath.unending && !sheet.conditions.includes("unconscious") && sheet.currentHp > 0
+          ? `${breath.unending}: holds their breath indefinitely`
+          : null;
+      if (spared) {
+        return { name: sheet.name, immune: spared, dropped: false };
+      }
       if (out <= survival) {
         return {
           name: sheet.name,
-          holdBreathMinutes: breathHoldMinutes(conMod),
+          holdBreathMinutes: breath.holdMinutes ?? breathHoldMinutes(conMod),
           survivalRounds: survival,
           roundsWithoutAir: out,
           roundsLeft: survival - out,
@@ -346,6 +362,7 @@ function resolveHazard(
         pool > 0
           ? applyPcDamage(campaign, turn.id, sheet, {
               amount: pool,
+              noCreature: true,
               reason: `${source} (out of air)`,
             })
           : { ok: true };
@@ -492,13 +509,20 @@ function resolveHazard(
 
 // What keeps a character from the weather's toll: resistance to cold or
 // fire, or cold weather gear against the cold (the SRD's weather rules).
-function exposureShrug(sheet: CharacterSheet, cold: boolean): string | null {
+// A watch stop reads it too: such a character rolls no save (foresight-saves.ts).
+export function exposureShrug(sheet: CharacterSheet, cold: boolean): string | null {
   const wanted = cold ? "cold" : "fire";
   if (pcResistances(sheet).includes(wanted)) {
     return `${wanted} resistance: unaffected by the ${cold ? "cold" : "heat"}`;
   }
   if (cold && sheet.equipment.some((item) => hasItemTag(item, "cold_weather_gear"))) {
     return "dressed for the cold: unaffected";
+  }
+  // SRD 5.1, Extreme Cold: "creatures naturally adapted to cold climates"
+  // succeed without a roll (a goliath's Mountain Born).
+  const adapted = cold ? coldAdapted(sheet) : null;
+  if (adapted) {
+    return `${adapted}: at home in the cold, unaffected`;
   }
   return null;
 }

@@ -9,6 +9,7 @@
 // Pure: the sheet, the spell's facts and the turn budget come in as values,
 // so scripts/test-cast-rules.mjs walks every branch without a database.
 
+import { resourceName } from "@/lib/srd/class-resources";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { castsWithHandsFull } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
@@ -19,11 +20,18 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { casterViewsOf, notReadyReason, spellbookOf } from "@/lib/srd/spell-prep";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { matchWeapon } from "@/lib/srd/weapons";
-import { spendAction, spendCastAttack, type TurnBudget } from "@/lib/dm/action-budget";
+import { spendAction, type TurnBudget } from "@/lib/dm/action-budget";
+import { spendActionCast } from "@/lib/dm/ar-ws-cantrip-attack";
 import { masteredSpell, pactLevelFor } from "@/lib/dm/cast-slot-choice";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { beastShapeMaterialProblem } from "@/lib/dm/mt-srd-druid";
+import { subtleSpellPaid } from "@/lib/dm/mt-srd-metamagic-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { focusProblem as focusRefusal } from "@/lib/dm/cast-materials";
+import { wieldedWeaponFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
+import { projectedComponents } from "@/lib/dm/ar-wbf-warlock-projection-logic";
+import { telekineticComponents } from "@/lib/dm/ar-wbf-feat-doors-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
 import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
@@ -96,7 +104,12 @@ export function spellHeldProblem(
   if (!casting) {
     // A tiefling fighter's Infernal Legacy is cast with no Spellcasting
     // feature at all (granted-casts.ts).
-    const grant = options.ritual ? null : grantedCastFor(grantSheet(sheet), names);
+    const granted = grantedCastFor(grantSheet(sheet), names);
+    // A feature's ritual (Spirit Seeker) is cast as one and no other way.
+    if (granted?.ritualOnly && !options.ritual) {
+      return { error: `${sheet.name} casts ${facts?.name ?? spell} through ${granted.source} as a ritual only: ten minutes longer, no slot. Send ritual true.`, retry: true };
+    }
+    const grant = options.ritual && !granted?.ritualOnly ? null : granted;
     return grant
       ? grantUseProblem(sheet, grant, facts?.name ?? spell)
       : { error: `${sheet.name} has no Spellcasting feature and cannot cast spells.`, refused: "rules" };
@@ -184,6 +197,14 @@ export function grantedCastOf(sheet: Caster, spell: string, facts: SpellFacts | 
 // option's misty step, issue #833) is not refused: a slot pays.
 function grantUseProblem(sheet: Caster, grant: GrantedCast, spell: string): ToolError | null {
   const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0 && !grant.slotsToo && grant.cost && grant.counter) {
+    // A cast priced in a shared pool (a monk's ki, mt-mr-casts.ts).
+    const pool = sheet.resources?.[grant.counter];
+    return {
+      error: `${sheet.name} casts ${spell} through ${grant.source} for ${grant.cost} ${resourceName(grant.counter)}, and has ${pool ? pool.max - pool.used : 0} left. It comes back after a ${grant.rest ?? "long"} rest.`,
+      refused: "rules",
+    };
+  }
   if (uses && uses.left <= 0 && !grant.slotsToo) {
     const times = uses.max === 1 ? "once" : `${uses.max} times`;
     return {
@@ -222,7 +243,14 @@ export function componentsAsCast(sheet: Caster, facts: SpellFacts | null, grant:
   if (!grant && holdsFeature(sheet, "Archdruid") && druidHolds(sheet, namesOf(facts.name, facts), extras)) {
     cast = { ...cast, verbal: false, somatic: false, material: cast.material && (Boolean(cast.materialCostGp) || cast.materialConsumed) };
   }
-  return cast;
+  // Subtle Spell paid for this cast (mt-srd-metamagic.ts).
+  if (subtleSpellPaid(sheet)) {
+    cast = { ...cast, verbal: false, somatic: false };
+  }
+  // Spirit Projection: conjuration and necromancy cast with no components
+  // but a costly material (ar-wbf-warlock-projection-logic.ts).
+  // Telekinetic: Mage Hand with no components (ar-wbf-feat-doors-logic.ts).
+  return telekineticComponents(sheet, projectedComponents(sheet, cast));
 }
 
 // The druid's own lists hold the spell (a druid spell of theirs).
@@ -316,6 +344,15 @@ export function handsBusy(sheet: Pick<Caster, "equipment" | "proficiencies" | "c
   return Math.min(2, shield + weapons);
 }
 
+// SRD 5.1, Grappling: "Using at least one free hand". take_action's grapple
+// and the Hand's Grapple card both ask this, so the card is shut in the
+// words the engine refuses with.
+export function grappleHandsProblem(sheet: Parameters<typeof handsBusy>[0] & { name: string }): ToolError | null {
+  return handsBusy(sheet) >= 2
+    ? { error: `${sheet.name} has no free hand: a weapon and a shield (or two weapons) fill both. A grapple takes at least one free hand; unequip one on the sheet first. Nothing was spent.`, refused: "rules" }
+    : null;
+}
+
 // Classes that may bear their spellcasting focus on a shield (a holy symbol
 // as an emblem), which makes the shield hand the hand for a material.
 const EMBLEM_BEARERS = new Set(["cleric", "paladin"]);
@@ -350,10 +387,29 @@ export function componentProblem(sheet: Caster, facts: SpellFacts | null): ToolE
   const focusInHand = sheet.equipment.some(
     (item) => item.equipped === true && (hasItemTag(item, "staff") || hasItemTag(item, "rod") || hasItemTag(item, "wand")),
   );
-  if (emblem || focusInHand) {
+  // A Swords bard's weapon is their focus, in the hand that holds it.
+  if (emblem || focusInHand || wieldedWeaponFocus(sheet)) {
     return null;
   }
   return { error: `${facts.name} needs a free hand for its material component${facts.somatic ? " (the same hand makes the gestures)" : ""}, and both of ${sheet.name}'s hands are full${castsWithHandsFull(sheet) ? "; War Caster frees the gestures, not the material" : ""}. They must put a weapon away or lower the shield first (unequip it on the sheet).`, refused: "rules" };
+}
+
+// The components as this caster makes them, and the first refusal of them
+// (the voice, the hands, the focus). The cast guard and the Hand's spell
+// cards both ask this, so a card is never shut on a component the cast does
+// not need: the Hand read the printed components, and shut every spell of a
+// level 20 druid with both hands full though Archdruid casts them.
+export function castComponents(sheet: Caster, facts: SpellFacts | null, grant: GrantedCast | null, extras?: SubclassExtras): { facts: SpellFacts | null; problem: ToolError | null } {
+  const cast = componentsAsCast(sheet, facts, grant, extras);
+  // A beast's body provides no material (mt-srd-druid.ts, Beast Spells).
+  return { facts: cast, problem: beastShapeMaterialProblem(sheet, cast) ?? componentProblem(sheet, cast) ?? focusRefusal(sheet, cast) };
+}
+
+// Silence around a caster (SRD 5.1: "Casting a spell that includes a verbal
+// component is impossible there"), in the words zone-rules.ts silenceProblem
+// refuses with and the Hand shuts a card with. `by` is who cast the Silence.
+export function silenceRefusal(casterName: string, by: string | null, spell: string): ToolError {
+  return { error: `${casterName} stands inside ${by ? `${by}'s ` : ""}Silence, where no sound is made: ${spell} has a verbal component and cannot be cast there. Step out of the silence first, or cast a spell with no verbal component. Nothing was spent.`, refused: "rules" };
 }
 
 // ---- a material that costs ----
@@ -501,7 +557,7 @@ export function ritualProblem(
   if (!facts.ritual) {
     return { error: `${facts.name} has no ritual tag; it cannot be cast as a ritual and needs a slot.`, refused: "rules" };
   }
-  if (!canCastRituals(sheet) && !pactRitualOf(sheet, facts.name)) {
+  if (!canCastRituals(sheet) && !pactRitualOf(sheet, facts.name) && !grantedCastFor(grantSheet(sheet), namesOf(spell, facts))?.ritualOnly) {
     return { error: `${sheet.name}'s class does not cast rituals (bards, clerics, druids and wizards do); ${facts.name} needs a slot.`, refused: "rules" };
   }
   return null;
@@ -577,12 +633,14 @@ const SHARES = "cast-shares";
 // roll (cast-at-enemy.ts), so every call is the same placement and the same
 // dice. One an item paid for names the item (a Ring of Spell Storing's Scorching
 // Ray): its later rays are no casting of the holder's own (cast-guard.ts).
-export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number; item?: string };
+// `rollSecond` is how much of that roll a two-type spell's second type is, so
+// a later creature's resistance meets the same split.
+export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number; item?: string; rollSecond?: number };
 
 export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast | null {
   const wanted = textKey(spell);
   for (const entry of budget?.oncePerTurn ?? []) {
-    const [tag, name, slot, left, caught, roll, item] = entry.split("|");
+    const [tag, name, slot, left, caught, roll, item, rollSecond] = entry.split("|");
     if (tag === SHARES && name === wanted && Number(left) > 0) {
       return {
         spell: wanted,
@@ -591,6 +649,7 @@ export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast |
         ...(caught ? { caught: caught.split(",") } : {}),
         ...(roll && roll !== "-" ? { roll: Number(roll) } : {}),
         ...(item ? { item } : {}),
+        ...(rollSecond ? { rollSecond: Number(rollSecond) } : {}),
       };
     }
   }
@@ -607,7 +666,7 @@ export function withOpenCast(budget: TurnBudget, open: OpenCast): TurnBudget {
     ...budget,
     oncePerTurn:
       open.left > 0
-        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-", ...(open.item ? [open.item.replace(/\|/g, "")] : [])].join("|")]
+        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-", ...(open.item || open.rollSecond !== undefined ? [(open.item ?? "").replace(/\|/g, "")] : []), ...(open.rollSecond !== undefined ? [open.rollSecond] : [])].join("|")]
         : kept,
   };
 }
@@ -629,6 +688,9 @@ export function turnCharge(input: {
   budget: TurnBudget | null;
   reactionSpent: boolean;
   bonusCast?: BonusCast | null;
+  // One attack of the caster's Attack action may be a cantrip (the
+  // Bladesinger's Extra Attack: src/lib/dm/ar-ws-cantrip-attack.ts).
+  attackCantrip?: boolean;
 }): TurnCharge | CastRefusal {
   const { who, facts, budget, inFight } = input;
   const name = facts?.name ?? input.spell;
@@ -689,7 +751,7 @@ export function turnCharge(input: {
   const spent =
     time === "bonus"
       ? spendAction(budget, "bonus", `casting ${name}`, who)
-      : spendCastAttack(budget, name, who);
+      : spendActionCast(budget, name, who, { holder: Boolean(input.attackCantrip), cantrip: !levelled && time === "action" });
   if (!spent.ok) {
     return toolError(spent);
   }

@@ -123,11 +123,17 @@ function parseFx(desc) {
       return { kind: "aoe", dice, save: ability };
     }
     if (dice || condition) {
+      // "(CON save halves)": the spend rolls the save itself
+      // (src/lib/dm/counter-saves.ts), and a creature that makes it takes
+      // nothing unless the text halves the damage, so the halving is read
+      // here. Before the spend rolled, aoe_damage halved every save by default.
+      const half = Boolean(dice) && /save halves|half (?:as much|on a (?:success|save|successful save))/i.test(text);
       return {
         kind: "enemy_save",
         save: ability,
         ...(condition ? { condition } : {}),
         ...(dice ? { dice } : {}),
+        ...(half ? { half: true } : {}),
       };
     }
   }

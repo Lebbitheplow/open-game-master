@@ -287,6 +287,14 @@ await test("a fight can always be ended, whatever the arguments say", async () =
     assert.equal(result.ok, true, JSON.stringify(result));
     assert.equal(table.encounter(), null);
   }
+  // And a readable outcome is kept when another field is not: { outcome:
+  // "victory", reason: null } was recorded as a truce at half the XP.
+  for (const reason of [null, ["they ran"]]) {
+    await fight(table);
+    const result = await raw("end_encounter", JSON.stringify({ outcome: "victory", reason }), table);
+    assert.equal(result.ok, true, JSON.stringify(result));
+    assert.doesNotMatch(JSON.stringify(result), /was not recognized|truce/, `reason ${JSON.stringify(reason)} threw the victory away: ${JSON.stringify(result).slice(0, 200)}`);
+  }
 });
 
 // ---- the bounds a tool declares ----

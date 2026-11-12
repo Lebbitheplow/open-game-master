@@ -1170,11 +1170,11 @@ await test("Every route that runs the engine directly settles the turn after it"
   })(api);
   assert.deepEqual(unsettled, []);
   const lib = path.join(import.meta.dirname, "..", "src", "lib", "dm");
-  // turn.ts each model call, invoke.ts the console and the DM's controls,
+  // turn.ts each model call and each call a Portent stop held, invoke.ts the console and the DM's controls,
   // initiative.ts each edit, encounter-tools.ts the backstop (the party's
   // fall checked once for the DM turn).
   for (const [file, settle, places] of [
-    ["turn.ts", "settleTurn", 1],
+    ["turn.ts", "settleTurn", 2],
     ["invoke.ts", "settleTurn", 2],
     ["initiative.ts", "settleTurn", 2],
     ["encounter-tools.ts", "passOnFrom", 3],

@@ -1,3 +1,5 @@
+import { turnLedger, writeTurnLedger } from "@/lib/dm/turn-marks";
+import { authoredPaceFactor } from "@/lib/srd/authored-effects";
 import { z } from "zod";
 import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
@@ -22,6 +24,8 @@ import { forcedMarchSaveDc, forcedMarchSpan, NORMAL_TRAVEL_HOURS, paceEffect, tr
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
+import { NATURAL_TERRAINS } from "@/lib/dm/roll-about";
+import { naturalExplorerGuide } from "@/lib/dm/mt-srd-ranger";
 import { advanceClock, getClock, recordMarch, setTravelPace, setWaterRation } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { refreshSky } from "@/lib/dm/sky";
@@ -33,8 +37,9 @@ import { ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The remaining DM-utility engines: CR-scaled treasure the server actually
 // moves into purses, object durability read from the DMG table, and forced-
@@ -136,7 +141,7 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "damage_object",
       description:
-        "Resolve blows at an inanimate object (a door, a chest, a rope, a window) against the DMG object table: give its name, material and size, or an explicit ac and hp. Out of a fight, blows strikes again and again until it breaks. Objects are immune to poison and psychic damage. A Wall of Ice is struck a section at a time: name it 'Wall of Ice' and give the section, 10 feet each. The server uses a section's AC 12 and 30 HP, doubles fire, and when it breaks opens its squares and lays the frigid air.",
+        "Resolve blows at an inanimate object (a door, a chest, a rope, a window) against the DMG object table: give its name, material and size, or an explicit ac and hp. Out of a fight, blows strikes again and again until it breaks. Objects are immune to poison and psychic damage. A Wall of Ice is struck a section at a time: name it 'Wall of Ice' and give the section, 10 feet each. The server uses a section's AC 12 and 30 HP, doubles fire, and when it breaks opens its squares and lays the frigid air. A net holding a creature is 'Net' (its ground id if two): 5 slashing frees it.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -192,6 +197,7 @@ export const worldTools: ToolDef[] = [
             enum: ["normal", "difficult"],
             description: "Difficult terrain (dense forest, deep swamp, steep mountains, ice) halves the distance covered. Default: 'normal'.",
           },
+          land: { type: "string", enum: [...NATURAL_TERRAINS], description: "The kind of land crossed, for Natural Explorer." },
           pace: {
             type: "string",
             enum: ["fast", "normal", "slow"],
@@ -298,8 +304,8 @@ export function handleSetWeather(campaign: Campaign, rawArguments: string): Tool
   let args: z.infer<typeof weatherSchema>;
   try {
     args = weatherSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_weather needs a sky.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_weather needs a sky.", error, rawArguments);
   }
   const current = getClock(campaign.id).weather;
   const precipitation =
@@ -324,7 +330,7 @@ export function handleSetWeather(campaign: Campaign, rawArguments: string): Tool
 
 const titleSchema = z.object({
   title: z.string().trim().min(1).max(60),
-  subtitle: z.string().trim().max(120).optional(),
+  subtitle: fittedText(120).optional(),
   tone: z.enum(["gold", "ember", "dawn", "plain"]).optional(),
 });
 
@@ -332,8 +338,8 @@ export function handleShowTitle(campaign: Campaign, rawArguments: string): ToolR
   let args: z.infer<typeof titleSchema>;
   try {
     args = titleSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: show_title needs a title.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: show_title needs a title.", error, rawArguments);
   }
   publishTitleCard(campaign.id, {
     title: args.title,
@@ -372,17 +378,13 @@ const treasureSchema = z.object({
   reason: z.string().optional(),
 });
 
-// The hoards each running turn has paid, by what its call named: the CR,
-// whether it is one foe's pocket money, who shares it, and the reason. No
-// record the engine keeps says which hoard a roll was for, so a later turn's
-// call is a new hoard; but the same call twice in one turn is the model
-// sending it again (a retry, a batch that repeated a line), and it used to
-// roll and pay the coin a second time. It is answered with the first payout.
-// Held for the last few turns only, keyed by turn id since each call reads
-// its turn afresh.
-const PAID_HOARDS = new Map<string, Map<string, Record<string, unknown>>>();
-const PAID_HOARD_TURNS = 20;
-
+// The hoards a turn has paid, by what its call named: the CR, whether it is
+// one foe's pocket money, who shares it, and the reason. No record the
+// engine keeps says which hoard a roll was for, so a later turn's call is a
+// new hoard; but the same call twice in one turn is the model sending it
+// again (a retry, a batch that repeated a line), and it used to roll and pay
+// the coin a second time. It is answered with the first payout, from the
+// turn's own ledger (turn-marks.ts), which a restart remembers.
 function hoardKey(args: z.infer<typeof treasureSchema>, recipients: CharacterSheet[]): string {
   const ids = recipients.map((sheet) => sheet.id).sort().join(",");
   return [args.cr, args.individual ? "pocket" : "hoard", ids, textKey(args.reason ?? "")].join("|");
@@ -398,16 +400,15 @@ export function handleRollTreasure(
   let args: z.infer<typeof treasureSchema>;
   try {
     args = treasureSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: roll_treasure needs a cr.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: roll_treasure needs a cr.", error, rawArguments);
   }
   const recipients = resolveTargets(args.characterIds, sheets, sheetsById);
   if (!recipients.length) {
     return { error: "No characters to receive treasure; use characterIds from GAME STATE.", retry: true };
   }
   const key = hoardKey(args, recipients);
-  const paidThisTurn = PAID_HOARDS.get(turn.id);
-  const already = paidThisTurn?.get(key);
+  const already = turnLedger(campaign.id, turn.id, `roll_treasure:${key}`);
   if (already) {
     return {
       ...already,
@@ -451,13 +452,7 @@ export function handleRollTreasure(
         ? ` A hoard this size tends to hold about ${items} magic item${items === 1 ? "" : "s"}; hand any out with grant_item.`
         : ""),
   };
-  const ledger = paidThisTurn ?? new Map<string, Record<string, unknown>>();
-  ledger.set(key, result);
-  PAID_HOARDS.delete(turn.id);
-  PAID_HOARDS.set(turn.id, ledger);
-  while (PAID_HOARDS.size > PAID_HOARD_TURNS) {
-    PAID_HOARDS.delete(PAID_HOARDS.keys().next().value as string);
-  }
+  writeTurnLedger(campaign.id, turn.id, `roll_treasure:${key}`, result);
   return result;
 }
 
@@ -530,6 +525,7 @@ const travelSchema = z.object({
   hours: z.coerce.number().int().min(0).max(48).optional(),
   miles: z.coerce.number().min(0.1).max(200).optional(),
   terrain: z.enum(["normal", "difficult"]).optional(),
+  land: z.enum(NATURAL_TERRAINS).optional(),
   pace: z.enum(["fast", "normal", "slow"]).optional(),
   characterIds: z.array(z.string()).optional(),
   water: z.enum(["plenty", "half", "none"]).optional(),
@@ -556,7 +552,7 @@ const passTimeSchema = z.object({
   unit: z.enum(ADVANCE_UNITS).default("hours"),
   water: z.enum(["plenty", "half", "none"]).optional(),
   meal: mealArg.optional(),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 // Moving the in-world clock without travelling anywhere: waiting out a
@@ -581,8 +577,9 @@ export function handlePassTime(
   let args: z.infer<typeof passTimeSchema>;
   try {
     args = passTimeSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: `Invalid arguments: pass_time needs an amount and a unit.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
+  } catch (error) {
+    const refused = badArguments(`Invalid arguments: pass_time needs an amount and a unit.`, error, rawArguments);
+    return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
@@ -623,6 +620,8 @@ export function handlePassTime(
     ...(living.length ? { lifestyle: living } : {}),
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
+    // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.
+    ...(moved.hourSaves.length ? { hourlySaves: moved.hourSaves } : {}),
   };
 }
 
@@ -645,8 +644,9 @@ export function handleTravel(
   let args: z.infer<typeof travelSchema>;
   try {
     args = travelSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: `Invalid arguments: travel needs hours or miles.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
+  } catch (error) {
+    const refused = badArguments(`Invalid arguments: travel needs hours or miles.`, error, rawArguments);
+    return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
   // Who travels, settled before anything moves. A forced march with no
   // traveller used to find out only after the clock, the world, the sky and
@@ -730,11 +730,21 @@ function travelStretch(
 ): ToolResult {
   const pace: TravelPace = args.pace ?? "normal";
   const effect = paceEffect(pace);
-  const terrain = args.terrain ?? "normal";
+  let terrain = args.terrain ?? "normal";
   // Miles or hours: whichever is given sets the other (SRD 5.1, Travel
   // Pace), at the weather the party sets out in.
   const before = getClock(campaign.id);
-  const leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor: before.weather ? weatherTravelFactor(before.weather) : 1 });
+  const weatherFactor = before.weather ? weatherTravelFactor(before.weather) : 1;
+  // The Elk's aspect doubles the party's pace (authored "travel").
+  const paceFactor = authoredPaceFactor(travellers);
+  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
+  // A ranger's favored terrain: its difficult ground does not slow the group
+  // on a leg of an hour or more (mt-srd-ranger.ts, Natural Explorer).
+  const guide = "error" in leg ? null : naturalExplorerGuide(travellers, args.land, terrain, leg.hours);
+  if (guide) {
+    terrain = "normal";
+    leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
+  }
   if ("error" in leg) {
     return leg;
   }
@@ -778,6 +788,9 @@ function travelStretch(
   weatherOutcome.miles = leg.miles;
   if (terrain === "difficult") {
     weatherNotes.push("Difficult terrain halves the distance.");
+  }
+  if (guide) {
+    weatherNotes.push(guide);
   }
   if (sky?.weather) {
     const factor = weatherTravelFactor(sky.weather);

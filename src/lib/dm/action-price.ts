@@ -5,6 +5,7 @@
 // nothing. Nothing here writes; action-tools.ts stores the budget it returns.
 
 import { acBreakdownFor } from "@/lib/srd";
+import { AGGRESSIVE_DASH } from "@/lib/dm/mt-species-board";
 import { spendAction, spendAttack, WIND_STEP, type SpendResult, type TurnBudget } from "@/lib/dm/action-budget";
 import { bonusRouteFor, counterSpend, kiSpend, noBonusRoute, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-actions";
 import { authoredBonusRoute } from "@/lib/srd/authored-economy";
@@ -70,15 +71,18 @@ export function priceAction(
   budget: TurnBudget | null,
   action: (typeof ACTIONS)[number],
   bonus: boolean,
-  context: { allyDown?: boolean } = {},
+  context: { allyDown?: boolean; skill?: string } = {},
 ): Price | ToolError {
   const move = MOVES.has(action) ? (action as MoveAction) : null;
-  // Fast Hands (Thief 3): Use an Object with Cunning Action's bonus action.
-  if (bonus && action === "use_object" && hasFastHands(sheet)) {
+  // Fast Hands (Thief 3): Use an Object with Cunning Action's bonus action,
+  // and "a Dexterity (Sleight of Hand) check" with it (SRD 5.1): the check an
+  // improvised action makes with that skill.
+  const sleight = action === "improvise" && context.skill === "sleight_of_hand";
+  if (bonus && (action === "use_object" || sleight) && hasFastHands(sheet)) {
     if (!budget) {
       return { budget: null, feature: "Fast Hands" };
     }
-    const spent = spendAction(budget, "bonus", "Fast Hands (use an object)", sheet.name);
+    const spent = spendAction(budget, "bonus", sleight ? "Fast Hands (Sleight of Hand)" : "Fast Hands (use an object)", sheet.name);
     return spent.ok
       ? { budget: spent.budget, note: "Fast Hands: their bonus action", feature: "Fast Hands" }
       : toolError(spent);
@@ -130,7 +134,9 @@ export function priceAction(
       return toolError(spent);
     }
     // Step of the Wind doubles the jump for the turn (jump-move.ts).
-    const marked = route.feature === "Step of the Wind" ? { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, WIND_STEP] } : spent.budget;
+    // Aggressive's Dash carries only toward a foe in sight (mt-species-board.ts).
+    const stepMark = route.feature === "Step of the Wind" ? WIND_STEP : route.feature === "Aggressive" ? AGGRESSIVE_DASH : null;
+    const marked = stepMark ? { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, stepMark] } : spent.budget;
     return { budget: marked, note: `${route.feature}: their bonus action`, ki: route.ki, feature: route.feature, ...counter };
   }
   if (!budget) {

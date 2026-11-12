@@ -15,9 +15,10 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 const { test, finish } = suite("test-enforce-real-dice-parity");
 const world = await openWorld({ campaign: { maxPlayers: 16 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
-const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { setMemberHoldRolls, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+const { entryDice } = await import("../src/lib/dice.ts");
 
 const fighter = (feats, equipment, abilities = { str: 16, dex: 16 }) =>
   world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities, proficiencies: TRAINED, equipment, feats });
@@ -46,7 +47,8 @@ const fiend = world.addHero({
   equipment: [{ name: "Dagger", qty: 1, equipped: true }],
 });
 world.patch(fiend.id, { features: [...world.sheet(fiend.id).features, { name: "Dark One's Blessing", source: "class", classId: "warlock" }] });
-const heroes = [piercer, brutal, savage, slasher, crusher, sniper, netter, master, mage, fiend];
+const keen = fighter(["Piercer", "Savage Attacker"], [{ name: "Rapier", qty: 1 }]);
+const heroes = [piercer, brutal, savage, slasher, crusher, sniper, netter, master, mage, fiend, keen];
 // Who shoots from where a shot is not at disadvantage.
 const standsBack = new Set([sniper.id, mage.id]);
 
@@ -67,7 +69,15 @@ async function stage(hero, setEnemy = () => ({})) {
 }
 
 const d8s = (expression) => [...expression.matchAll(/(\d+)d8/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-const marks = () => [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].sort();
+// Each path stages its own creature, so the weapon-hit mark a hit leaves on the
+// creature it struck (weapon-hit:<id>, read by the reactions that answer a
+// weapon hit) names a different id on each path: it reads as "the target" here,
+// and any mark naming some other creature keeps its id and fails the compare.
+const marks = (enemy) => [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])]
+  .map((mark) => (mark === `weapon-hit:${enemy.id}` ? "weapon-hit:target" : mark))
+  // The run a melee attack ended (charged:<creature>:<feet>, src/lib/srd/mt-fb-run.ts).
+  .map((mark) => (mark.startsWith(`charged:${enemy.id}:`) ? mark.replace(enemy.id, "target") : mark))
+  .sort();
 
 async function answer(hero, kind, faces) {
   const pending = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === kind && entry.userId === hero.userId).at(-1);
@@ -89,7 +99,7 @@ async function both(hero, { toHit, damage = [], after = [], args = {}, serverDam
       const swing = await kit.swing(hero.id, enemy.id, [toHit, ...serverDamage, ...after].flat(), args);
       assert.equal(swing.ok, true, swing.error);
       const said = JSON.stringify(swing.result);
-      out.server = { enemy: kit.enemy(enemy.id), marks: marks(), said, result: swing.result, tempHp: world.sheet(hero.id).tempHp };
+      out.server = { enemy: kit.enemy(enemy.id), marks: marks(enemy), said, result: swing.result, tempHp: world.sheet(hero.id).tempHp };
       continue;
     }
     setMemberRealDice(world.campaignId, hero.userId, true);
@@ -102,7 +112,7 @@ async function both(hero, { toHit, damage = [], after = [], args = {}, serverDam
       world.dice(...after);
       const blow = asked ? await answer(hero, "damage", damage) : { note: "", expression: null };
       world.clearDice();
-      out.table = { enemy: kit.enemy(enemy.id), marks: marks(), said: `${hit.note} ${blow.note}`, hitNote: hit.note, damageExpression: blow.expression, tempHp: world.sheet(hero.id).tempHp };
+      out.table = { enemy: kit.enemy(enemy.id), marks: marks(enemy), said: `${hit.note} ${blow.note}`, hitNote: hit.note, damageExpression: blow.expression, tempHp: world.sheet(hero.id).tempHp };
     } finally {
       setMemberRealDice(world.campaignId, hero.userId, false);
     }
@@ -137,6 +147,53 @@ await test("Savage Attacker is spent by a hit, not by an attack that misses, on 
   const out = await both(savage, { toHit: 2, args: { weapon: "Longsword" } });
   same(out, (side) => side.marks.includes("savage attacker:used"), "Savage Attacker after a miss");
   assert.equal(out.table.marks.includes("savage attacker:used"), false);
+});
+
+// The damage roll's reason is the line the player's roll card shows under its
+// title (PendingRollCard.tsx). Only the model's note said how the feats change
+// the dice, so a player whose GM did not pass it on entered dice the spent
+// feats never touched.
+async function parkedDamageReason(hero, weapon, { hold = false } = {}) {
+  const enemy = await stage(hero);
+  if (hold) {
+    setMemberHoldRolls(world.campaignId, hero.userId, true);
+  } else {
+    setMemberRealDice(world.campaignId, hero.userId, true);
+  }
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id, weapon });
+    assert.equal(parked.ok, true, parked.error);
+    const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack" && entry.userId === hero.userId).at(-1);
+    assert.ok(toHit, "no attack roll is parked");
+    world.signIn({ id: hero.userId });
+    // A held roll is released whole and thrown by the server: a 15 hits.
+    world.clearDice();
+    world.dice(15);
+    const out = await call(submitRoute, "POST", hold ? { fallback: "digital" } : { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    world.clearDice();
+    assert.equal(out.status, 200, JSON.stringify(out.json));
+    const damage = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "damage" && entry.userId === hero.userId).at(-1);
+    assert.ok(damage, `no damage roll is parked: ${getPendingRoll(toHit.id).combatNote}`);
+    // Landed, so the next test finds no damage roll left waiting.
+    const landed = await call(submitRoute, "POST", { fallback: "digital" }, { campaignId: world.campaignId, pendingRollId: damage.id });
+    assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    return damage.reason;
+  } finally {
+    setMemberRealDice(world.campaignId, hero.userId, false);
+    setMemberHoldRolls(world.campaignId, hero.userId, false);
+  }
+}
+
+await test("The damage roll card tells a real-dice player to roll twice for Savage Attacker and reroll a die for Piercer", async () => {
+  const reason = await parkedDamageReason(keen, "Rapier");
+  assert.match(reason, /^Rapier damage against .+\. Before you enter your dice: /, reason);
+  assert.match(reason, /roll the weapon's dice a second time and keep the better total \(Savage Attacker\), then reroll the lowest damage die once and keep the new roll \(Piercer\)\.$/, reason);
+  // Without a feat that changes the dice the card says only what the roll is for.
+  const plain = await parkedDamageReason(master, "Longsword");
+  assert.doesNotMatch(plain, /Before you enter/, plain);
+  // A held roll is thrown by the server, so there are no dice to reroll.
+  const held = await parkedDamageReason(keen, "Rapier", { hold: true });
+  assert.doesNotMatch(held, /Before you enter/, held);
 });
 
 await test("Stunning Sniper: a critical shot on real dice asks for undoubled damage and stuns the creature", async () => {
@@ -238,6 +295,78 @@ await test("Mote of Potential: a saving throw entered on real dice gives the bar
       world.clearDice();
     }
     assert.equal(world.sheet(savage.id).tempHp, 4 + abilityMod(16), `${real ? "real" : "server"} dice`);
+  }
+});
+
+// Dice the server throws for a parked damage roll (the lead's "Roll
+// digitally", every face set to the server, a held roll released) take the
+// feats the hit already spent, as its own throw of the damage does
+// (attack-blow.ts throwDamage). They were thrown plain, so Piercer, Brutal
+// Attack, Savage Attacker and Great Weapon Fighting were spent for nothing.
+async function serverThrownDamage(hero, weapon, body, faces, { hold = false } = {}) {
+  const enemy = await stage(hero);
+  (hold ? setMemberHoldRolls : setMemberRealDice)(world.campaignId, hero.userId, true);
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id, weapon });
+    assert.equal(parked.ok, true, parked.error);
+    const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack" && entry.userId === hero.userId).at(-1);
+    world.signIn({ id: hero.userId });
+    world.clearDice();
+    world.dice(15);
+    const hit = await call(submitRoute, "POST", hold ? { fallback: "digital" } : { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(hit.status, 200, JSON.stringify(hit.json));
+    const damage = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "damage" && entry.userId === hero.userId).at(-1);
+    assert.ok(damage, `no damage roll is parked: ${getPendingRoll(toHit.id).combatNote}`);
+    world.clearDice();
+    world.dice(...faces);
+    const landed = await call(submitRoute, "POST", body, { campaignId: world.campaignId, pendingRollId: damage.id });
+    world.clearDice();
+    assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    return 400 - kit.enemy(enemy.id).currentHp;
+  } finally {
+    setMemberRealDice(world.campaignId, hero.userId, false);
+    setMemberHoldRolls(world.campaignId, hero.userId, false);
+  }
+}
+
+await test("A parked damage roll the server throws still takes the Piercer and Brutal Attack the hit spent", async () => {
+  // Rapier 1d8+3: a 1, and Piercer's reroll of it to a 6.
+  assert.equal(await serverThrownDamage(piercer, "Rapier", { fallback: "digital" }, [1, 6]), 6 + abilityMod(16), "Roll digitally");
+  assert.equal(await serverThrownDamage(piercer, "Rapier", { dice: ["digital"] }, [1, 6]), 6 + abilityMod(16), "every face set to the server");
+  // Greatsword 2d6+3 released by a player who holds their rolls: 1 and 1,
+  // then Brutal Attack's second roll of 6 and 6.
+  assert.equal(await serverThrownDamage(brutal, "Greatsword", { fallback: "digital" }, [1, 1, 6, 6], { hold: true }), 12 + abilityMod(16), "a held roll released");
+});
+
+// SRD 5.1, Halfling Lucky: a natural 1 on an attack roll, ability check or
+// saving throw is rolled again, and the new roll must be used. Its "r1" made
+// the card ask for a d20 per possible reroll, and the route then refused the
+// faces: a halfling on real dice could not answer a roll that came up 1, nor
+// (on the card) one that did not.
+await test("A halfling on real dice enters one d20 for an attack and a save, and a 1 kept after Lucky's reroll stays a 1", async () => {
+  const before = world.sheet(piercer.id).features;
+  world.patch(piercer.id, { features: [...before, { name: "Lucky (reroll nat 1 on d20)", source: "race" }] });
+  try {
+    const enemy = await stage(piercer);
+    setMemberRealDice(world.campaignId, piercer.userId, true);
+    try {
+      const parked = await world.invoke("pc_attack", { characterId: piercer.id, targetEnemyId: enemy.id, weapon: "Rapier" });
+      assert.equal(parked.ok, true, parked.error);
+      const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack").at(-1);
+      assert.match(toHit.expression, /^1d20r1/, toHit.expression);
+      assert.deepEqual(entryDice(toHit.expression), [20], "the card asks for one d20");
+      const missed = await answer(piercer, "attack", [1]);
+      assert.match(missed.note, /MISS \(natural 1\)/, missed.note);
+      await kit.endFight();
+      await world.invoke("request_roll", { characterId: piercer.id, kind: "saving_throw", ability: "dex", dc: 10, reason: "a falling beam" });
+      const save = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "saving_throw").at(-1);
+      assert.deepEqual(entryDice(save.expression), [20], save.expression);
+      await answer(piercer, "saving_throw", [14]);
+    } finally {
+      setMemberRealDice(world.campaignId, piercer.userId, false);
+    }
+  } finally {
+    world.patch(piercer.id, { features: before });
   }
 });
 
