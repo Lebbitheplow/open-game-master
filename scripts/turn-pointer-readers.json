@@ -13,6 +13,10 @@
       "count": 1,
       "why": "the initiative floor follows the pointer itself (the seat whose turn it is), and the held turn's own rule is the floor's"
     },
+    "app/api/campaigns/[campaignId]/floor/route.ts": {
+      "count": 1,
+      "why": "names the seat the lead's skip is about to pass over, read just before skipCurrentTurn moves the pointer, so the cards that seat left open go with its turn; it asks nothing of whose turn it is"
+    },
     "app/campaigns/[campaignId]/BattleMapPanel.tsx": {
       "count": 1,
       "why": "client screen: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
