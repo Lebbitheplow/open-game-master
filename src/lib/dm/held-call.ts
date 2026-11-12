@@ -86,6 +86,11 @@ type Trial = {
   reopen?: (held: HeldCallSpecShape) => string | null;
   decided: DecidedRoll[];
   used: Set<number>;
+  // The decided rolls taken and not yet on record, and the roll each one's
+  // record became: the card a decided roll answers is linked to that roll
+  // (runHeldAgain), not to whichever roll of the character came first.
+  taken: Array<{ at: number; characterId: string; kind: RollKind }>;
+  recorded: Map<number, string>;
   feed: DiceTapeCursor;
   drawn: Array<[number, number]>;
   park: (HeldPark & { tapeAt: number }) | null;
@@ -93,6 +98,7 @@ type Trial = {
 
 declare global {
   var __odmHeldTrial: Trial | null | undefined;
+  var __odmRollRecorded: ((roll: { id: string; characterId: string | null; kind: RollKind }) => void) | undefined;
   // foresight.ts watchStopForRoll, registered there: the stop for the d20 a
   // call is about to throw, or null.
   var __odmWatchStop: ((campaign: Campaign, turn: DmTurn, call: HeldCallSpecShape, tag: RollTag, open?: boolean) => string | null) | undefined;
@@ -145,8 +151,29 @@ export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | 
     return null;
   }
   trial.used.add(at);
+  trial.taken.push({ at, characterId, kind });
   return trial.decided[at];
 }
+
+// A roll went on record (db/rolls.ts insertRoll calls this through
+// globalThis.__odmRollRecorded, as the db layer cannot import this module):
+// the first decided roll taken for that character and kind and not yet on
+// record is the one it records. A roll the server throws before the decided
+// one is taken (an elixir's effect die ahead of the drinker's temporary hit
+// points) is never mistaken for it.
+function noteRollRecorded(roll: { id: string; characterId: string | null; kind: RollKind }) {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial || !roll.characterId) {
+    return;
+  }
+  const index = trial.taken.findIndex((entry) => entry.characterId === roll.characterId && entry.kind === roll.kind);
+  if (index < 0) {
+    return;
+  }
+  const [entry] = trial.taken.splice(index, 1);
+  trial.recorded.set(entry.at, roll.id);
+}
+globalThis.__odmRollRecorded = noteRollRecorded;
 
 // How many faces the run has drawn by chance so far: a park after its own
 // throw keeps only the faces before it, since the next run is handed that
@@ -198,7 +225,9 @@ export function stopAfterThrow(campaign: Campaign, turn: DmTurn, stop: OpenedSto
 export type HeldCallSpec = { name: string; rawArguments: string; toolCallId: string | null };
 
 // What a held call already has when it runs again.
-type Previous = Pick<HeldRollCall, "decided" | "tape">;
+// `recorded` is filled by the run: the roll each decided roll became, by its
+// place in `decided`.
+type Previous = Pick<HeldRollCall, "decided" | "tape"> & { recorded?: Map<number, string> };
 
 type Armed = { used: boolean; note?: string | null } & Record<string, unknown>;
 
@@ -242,6 +271,8 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
     watchStop: null,
     decided: [...(previous?.decided ?? [])],
     used: new Set(),
+    taken: [],
+    recorded: previous?.recorded ?? new Map(),
     feed: new DiceTapeCursor(previous?.tape ?? answeredTape ?? []),
     drawn: [],
     park: null,
@@ -450,8 +481,9 @@ export function runHeldAgain(
   };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;
+  const previous: Previous = { decided: [...call.decided, decided], tape: call.tape, recorded: new Map() };
   try {
-    answer = runHeld(campaign, turn, spec, () => runner(campaign, turn, spec), { decided: [...call.decided, decided], tape: call.tape }) as ToolResult;
+    answer = runHeld(campaign, turn, spec, () => runner(campaign, turn, spec), previous) as ToolResult;
   } catch (error) {
     console.error(`[held-call] ${call.name} threw when its roll landed:`, error);
     answer = { error: `${call.name} failed on the server once the roll landed, so nothing came of it.`, retry: true };
@@ -462,9 +494,15 @@ export function runHeldAgain(
   // for them: this card's is the one after those the call's earlier cards
   // were for.
   const earlier = call.decided.filter((entry) => entry.characterId === pending.characterId && entry.kind === pending.kind).length;
+  // The roll this card's own dice became, when the run put them on record
+  // through insertRoll; else, by order, the run's rolls of this character and
+  // kind after those the call's earlier cards were for.
+  const own = waits ? undefined : previous.recorded?.get(call.decided.length);
   const found = waits
     ? undefined
-    : (getDatabase()
+    : own
+      ? { id: own }
+      : (getDatabase()
         .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1 OFFSET ?`)
         .get(campaign.id, pending.characterId, pending.kind, since, earlier) as { id: string } | undefined);
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;

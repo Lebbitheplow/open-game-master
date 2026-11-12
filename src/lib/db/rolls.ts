@@ -172,6 +172,8 @@ export function insertRoll(input: RollInsert): StoredRoll {
       input.attacker ? JSON.stringify(input.attacker) : null,
       nowIso(),
     );
+  // A held call keeps which roll its decided dice became (held-call.ts).
+  globalThis.__odmRollRecorded?.({ id, characterId: input.characterId ?? null, kind: input.kind });
 
   const roll = getRoll(id);
   if (!roll) {
