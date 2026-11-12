@@ -517,12 +517,15 @@ function handleStartEncounter(
   });
 
   // Initiative is starting: the room's music changes, and the harder the
-  // fight reads the bigger the music. The bed is left alone, because the
-  // cave they are fighting in is still a cave.
+  // fight reads the bigger the music. A fight on its own ground (the road
+  // outside town) sounds like that ground; otherwise, or with the party
+  // inside a building, the place's bed stays, because the cave they are
+  // fighting in is still a cave.
   followCombatAmbience(
     campaign,
     true,
     evaluation.verdict === "deadly" || evaluation.verdict === "beyond_deadly",
+    args.building ? undefined : args.scene,
   );
 
   // The AI's fight rolls its initiative now, for every character whose dice

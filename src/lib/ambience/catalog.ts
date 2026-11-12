@@ -37,6 +37,13 @@ export type AmbienceCue = {
   // archives have nothing. Beds and music only: a sting is one beat, and
   // the models that make them make ten seconds at the least.
   prompt?: string;
+  // Music only: how loud the bed sits under this cue, 0..1. A fight's music
+  // leads and the room stays behind it; unset is the bed at its own level.
+  bedUnder?: number;
+  // Beds only: the recording carries a tune of its own (the tavern's lute
+  // and singing). Under a fight's music it falls silent, because two tunes
+  // at once is what #929 heard: the tavern still playing under the battle.
+  tune?: boolean;
 };
 
 // ---- beds: where the party is ----
@@ -290,6 +297,7 @@ const BEDS: AmbienceCue[] = [
     keywords: ["tavern", "inn", "alehouse", "pub", "bar", "common room", "taproom", "hearth"],
     search: ["medieval tavern ambience", "inn ambience fire crowd"],
     gain: 0.45,
+    tune: true,
     prompt: "medieval tavern ambience, crackling fireplace, clinking mugs, low chatter and laughter, a distant lute, no song, field recording texture, seamless loop",
   },
   {
@@ -455,6 +463,7 @@ const MUSIC: AmbienceCue[] = [
     keywords: ["battle", "fight", "combat", "ambush", "attack", "skirmish", "melee"],
     search: ["battle music public domain orchestral", "epic march public domain"],
     gain: 0.35,
+    bedUnder: 0.35,
     prompt: "epic fantasy battle music, driving orchestral percussion, brass, fast strings, heroic, instrumental, loopable",
   },
   {
@@ -465,6 +474,7 @@ const MUSIC: AmbienceCue[] = [
     keywords: ["boss", "dragon", "archdemon", "final", "champion", "warlord", "lich", "titan"],
     search: ["dramatic orchestral finale public domain", "epic orchestral music public domain"],
     gain: 0.35,
+    bedUnder: 0.35,
     prompt: "dramatic orchestral boss battle, full choir, pounding drums, massive brass, relentless, instrumental, loopable",
   },
   {
@@ -840,6 +850,16 @@ export function cueOptions(layer: AmbienceLayer): Array<{ value: string; label: 
 // (followWeatherAmbience), and a place stored as one would replay it after
 // the sky cleared.
 const NOT_PLACES = new Set(["wind", "rain", "storm", "night"]);
+
+// How loud a bed plays under the music on top of it, 0..1. Music that sets
+// bedUnder (a fight's) leads: an ordinary bed drops to that, and a bed with
+// a tune of its own goes silent. Any other music leaves the bed where the
+// table set it: a GM who put calm music over the tavern chose both.
+export function bedUnderMusic(bedId: string | null, musicId: string | null): number {
+  const under = musicId ? cueById(musicId)?.bedUnder : undefined;
+  if (!bedId || under === undefined) return 1;
+  return cueById(bedId)?.tune ? 0 : under;
+}
 
 export function sceneIds(): string[] {
   return cueIds("bed").filter((id) => !NOT_PLACES.has(id));

@@ -3,11 +3,13 @@ import { toneBedBias } from "@/lib/dm/safety-logic";
 import { cueById, cueIds } from "@/lib/ambience/catalog";
 import {
   applyAuto,
+  combatGuess,
   describeAmbience,
   setCue,
   type AmbienceState,
 } from "@/lib/ambience/logic";
 import { getAmbience, setAmbience } from "@/lib/db/ambience";
+import { getCurrentLocation } from "@/lib/db/locations";
 import type { Campaign } from "@/lib/db/campaigns";
 import { weatherBedCue } from "@/lib/srd/weather";
 import type { Weather } from "@/lib/scene/state";
@@ -202,15 +204,25 @@ export function handlePlaySting(
 // scene-following off or is holding the layer. Called from
 // handleLocationCall, so it fires for the AI DM, for a human DM's console
 // form and for anything else that moves the party.
-export function followSceneAmbience(campaign: Campaign, placeBed: string | null) {
+// `leftBed` is the bed of the place the party just walked out of, if it
+// had one.
+export function followSceneAmbience(campaign: Campaign, placeBed: string | null, leftBed: string | null = null) {
   if (!enabled(campaign) || !campaign.gameSettings.ambienceAuto) {
     return;
   }
   // The table's tone stands in when the place has no kind and no bed is
   // playing yet (docs/vtt-parity-implementation-plan.md 9.2); a place with
-  // no kind otherwise keeps what is playing.
-  const bed = placeBed ?? (getAmbience(campaign.id).bed ? null : toneBedBias(campaign.gameSettings.gm?.tone ?? []));
-  if (!bed) {
+  // no kind otherwise keeps what is playing, unless what is playing is the
+  // sound of the place they left: the tavern does not follow the party into
+  // the woods (#929).
+  const playing = getAmbience(campaign.id).bed;
+  const leftBehind = Boolean(playing && leftBed && playing === leftBed);
+  let bed: string | null | undefined = placeBed ?? undefined;
+  if (bed === undefined && (!playing || leftBehind)) {
+    // Silence (null) only for the bed left behind; nothing playing stays so.
+    bed = toneBedBias(campaign.gameSettings.gm?.tone ?? []) ?? (leftBehind ? null : undefined);
+  }
+  if (bed === undefined) {
     return;
   }
   const { state, changed } = applyAuto(getAmbience(campaign.id), { bed });
@@ -243,13 +255,22 @@ export function followWeatherAmbience(campaign: Campaign, weather: Weather) {
 }
 
 // Initiative started or the fight ended. Combat music goes on at the start
-// and comes off at the end; the bed is left alone, because the cave they are
-// fighting in is still a cave.
-export function followCombatAmbience(campaign: Campaign, fighting: boolean, deadly = false) {
+// and comes off at the end. The bed stays, because the cave they are
+// fighting in is still a cave, unless the fight names its own ground
+// (start_encounter's scene, the road outside town): then that is where they
+// are, and what the room hears (#929). At the end only the fight's own music
+// comes off, back to the place's; music the GM chose stays.
+export function followCombatAmbience(campaign: Campaign, fighting: boolean, deadly = false, ground?: string | null) {
   if (!enabled(campaign) || !campaign.gameSettings.ambienceAuto) {
     return;
   }
-  const music = fighting ? (deadly ? "boss" : "battle") : null;
-  const { state, changed } = applyAuto(getAmbience(campaign.id), { music });
+  const current = getAmbience(campaign.id);
+  const guess = combatGuess(current, {
+    fighting,
+    deadly,
+    ground,
+    placeMusic: fighting ? null : getCurrentLocation(campaign.id)?.ambience?.music || null,
+  });
+  const { state, changed } = applyAuto(current, guess);
   commit(campaign.id, state, changed);
 }
