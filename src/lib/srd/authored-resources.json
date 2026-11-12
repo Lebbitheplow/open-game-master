@@ -452,7 +452,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction used when a creature the druid can see within 30 feet is about to make an attack roll, a check or a save: a d6 added to that roll (Weal) or taken off it (Woe). The omen is read from a die rolled at each long rest (even Weal, odd Woe) and holds until the next one. A roll that can wait is answered before it is thrown, at the druid's own hold or the watch stop, so do not spend it for one there. Use it here only for a roll that never waits on anyone, and add or take the d6 as you narrate it."
+   "guidance": "A reaction used when a creature the druid can see within 30 feet is about to make an attack roll, a check or a save: a d6 added to that roll (Weal) or taken off it (Woe). The omen is read from a die rolled at each long rest (even Weal, odd Woe) and holds until the next one. The druid's player chooses it before the roll, at the hold before their own check or save or at the watch stop before another's (in a fight the stop comes for it; out of one, with the Watch toggle on). Never spend it with use_resource: a roll already made gets none, and the spend is refused."
   },
   {
    "id": "sub_blazing_revival",
@@ -1079,7 +1079,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction used when a creature within 60 feet is about to roll a d20 with advantage or disadvantage: the roll is made with one d20. A roll that can wait is answered before it is thrown, at the sorcerer's own hold or the watch stop, so do not spend it for one there. Use it here only for a roll that never waits on anyone (an agent's seat, a fight nobody watches), and narrate the result."
+   "guidance": "A reaction used when a creature within 60 feet is about to roll a d20 with advantage or disadvantage: the roll is made with one d20. The sorcerer's player chooses it before the roll, at the hold before their own check or save or at the watch stop before another's (in a fight the stop comes for it; out of one, with the Watch toggle on). Never spend it with use_resource: a roll already made gets none, and the spend is refused."
   },
   {
    "id": "sub_trance_of_order",

@@ -22,6 +22,7 @@
 // settleLastHit like every reaction that changes one (reaction-refund.ts).
 // Called from use_resource in src/lib/dm/mutations.ts; must not import it.
 
+import { BEFORE_ROLL_COUNTERS } from "@/lib/dm/before-roll-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, saveEncounter } from "@/lib/db/encounters";
@@ -111,6 +112,18 @@ function droppedByFreshHit(campaignId: string, sheet: CharacterSheet): boolean {
 
 export function planCounterReaction(input: Input): Plan | ToolError | null {
   const { campaign, sheet } = input;
+  // Cosmic Omen and Restore Balance are chosen before the d20 is thrown (the
+  // maintainer's ruling on issue #908): a spend once the roll is on record
+  // would choose after seeing the dice, which neither allows. Their players
+  // use them at the hold before their own roll and at the watch stop before
+  // another's (before-roll-logic.ts), so a roll that never waited gets none.
+  if (BEFORE_ROLL_COUNTERS.includes(input.defId)) {
+    const name = resourceDef(input.defId)?.displayName ?? input.defId;
+    return {
+      error: `${name} is used before the roll, never after it: ${sheet.name}'s player chooses it at the hold before their own check or save, or at the watch stop before another creature's roll (in a fight the stop comes for it; out of one, with the Watch toggle on). A roll already made gets none. Nothing was spent.`,
+      refused: "rules",
+    };
+  }
   // A counter an authored reaction draws on is spent by that reaction, which
   // checks its trigger and applies its effect: a plain use_resource took the
   // use and did nothing (a wizard's reroll, a drake's resistance, a guardian's pull).
@@ -135,7 +148,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
     // Spell Thief's effect is the save it forces and the spell undone
     // (src/lib/dm/spell-thief.ts).
     if (input.defId === "sub_spell_thief") return planSpellThief(campaign, input.turnId, sheet);
-    // Restore Balance, Violent Attraction and Accursed Specter act on the
+    // Violent Attraction and Accursed Specter act on the
     // record they answer (arcane-triggered.ts); the other triggered
     // counters' effect is their own fx.
     return planArcaneTrigger(input, ask);
