@@ -554,6 +554,16 @@ export function probes(rig, shared) {
       const out = await spend(gra(), "Violent Attraction", {}, [7]);
       assert.equal(out.ok, true, out.error);
       assert.equal(before - foe(enemy).currentHp, 7, `the 1d10 rides the ally's weapon hit: ${show(out).slice(0, 160)}`);
+      // A player's weapon hit is also offered on the card it waits on, from
+      // the after-the-roll table (scripts/test-enforce-after-roll-table.mjs
+      // runs the card, the spend and the damage).
+      const logic = await import("../../src/lib/dm/after-roll-logic.ts");
+      rig.refill(gra());
+      const d20 = (value) => ({ expression: "1d20+5", total: value + 5, natural: value, terms: [{ kind: "dice", sign: 1, count: 1, sides: 20, dice: [{ sides: 20, value, kept: true }], subtotal: value }, { kind: "modifier", sign: 1, value: 5 }] });
+      const offer = (value, weapon) => logic.hitHelperOption(sheet(gra()), "violent_attraction", { outcome: d20(value), ac: 15, critRange: 20, weapon }, "the fighter");
+      assert.match(offer(12, true)?.label ?? "", /1d10/, "a weapon attack that hits");
+      assert.equal(offer(12, false), null, "an attack that is not a weapon's");
+      assert.equal(offer(3, true), null, "a miss");
     },
     "attraction-uses": async () => {
       await uses(["wizard", "Graviturgy Magic"], "sub_violent_attraction", { 10: Math.max(1, MOD.int) })();

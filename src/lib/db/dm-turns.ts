@@ -5,6 +5,7 @@ import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
+import type { AfterRollId, WatchPower } from "@/lib/dm/after-roll-table";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
 import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
@@ -329,6 +330,9 @@ export type PendingRollStatus = "pending" | "submitted" | "fallback";
 export type PendingAttack = {
   // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
   touchOfDeath?: number;
+  // Another character's choice on the hit (Violent Attraction's 1d10),
+  // paid for when the hit stands (attack-swing.ts).
+  helperHits?: Array<{ by: string; use: AfterRollId }>;
   // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
   // thunder dice are dealt at their maximum.
   destructiveWrath?: boolean;
@@ -370,6 +374,9 @@ export type PendingAttack = {
 
 export type PendingCarry = {
   mote?: { bardId: string; die: string; sides: number };
+  // The before-the-roll features already used on this roll (Cosmic Omen,
+  // Restore Balance; the before-roll route), each once.
+  before?: Array<"cosmic_omen" | "restore_balance">;
   // The tool an ability check is made with (request_roll's `tool`), which
   // the roll's kind and detail do not say.
   tool?: string;
@@ -565,17 +572,14 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
 // (src/lib/dm/held-call.ts), drawn again when it runs.
 export type HeldCall = { id?: string; name: string; rawArguments: string; tape?: Array<[number, number]> };
 // Which feature the stop is for: Portent's number before the roll, or a
-// Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
-// once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop
-// stored before there were two is Portent's. Slayer's Counter and the Cloud
-// Rune act at the stop itself (answeredAtStop), arming nothing on the dice.
-export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods" | "slayers_counter" | "convergent_future" | "bend_luck" | "cloud_rune";
-
-// The powers answered at the stop, before the held call runs again, rather
-// than armed on its dice to be taken once the roll goes wrong.
-export function answeredAtStop(power: WatchPower | undefined): boolean {
-  return power === "slayers_counter" || power === "cloud_rune";
-}
+// watch row of src/lib/dm/after-roll-table.ts (Chronal Shift, Flash of
+// Genius, Favored by the Gods, Convergent Future, Bend Luck) decided now and
+// taken once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A
+// stop stored before there were two is Portent's. Slayer's Counter and the
+// Cloud Rune act at the stop itself (answeredAtStop), arming nothing on the
+// dice.
+export type { WatchPower } from "@/lib/dm/after-roll-table";
+export { answeredAtStop } from "@/lib/dm/after-roll-table";
 // One creature's roll the stop may answer: its tag on the dice, and the way
 // it must go for a Chronal Shift to take it ("success" a foe's, "failure" an
 // ally's).
@@ -812,6 +816,15 @@ export function setPendingCombatNote(id: string, note: string) {
   getDatabase()
     .prepare(`UPDATE pending_rolls SET combat_note = ? WHERE id = ?`)
     .run(note.slice(0, 500), id);
+}
+
+// What a parked roll carries, written while it is still open (the
+// before-roll route's used features). Null once resolved.
+export function setPendingCarry(id: string, carry: PendingCarry): PendingRoll | null {
+  const result = getDatabase()
+    .prepare(`UPDATE pending_rolls SET carry_json = ? WHERE id = ? AND status = 'pending'`)
+    .run(Object.keys(carry).length ? JSON.stringify(carry) : null, id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
 }
 
 // A parked roll the player spent Inspiration on takes its new d20 term while

@@ -21,6 +21,7 @@
 
 import type { RollResult } from "@/lib/dice";
 import type { AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { rowWords } from "@/lib/dm/after-roll-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 
@@ -69,25 +70,17 @@ export function fateOption(holder: CharacterSheet, power: FatePower, roll: Judge
   if (target === null || fateSucceeds(roll) !== false || !holdsFate(holder, power) || (own && power === "bend_luck")) {
     return null;
   }
-  const what = "ac" in roll ? "attack roll" : roll.kind === "saving_throw" ? "save" : "check";
+  // The words are the row's (after-roll-table.ts): {what} is "save",
+  // "check" or "attack roll", {name} whose roll.
+  const words = { kind: "ac" in roll ? "attack" : roll.kind, name: rollerName, other: !own };
   if (power === "convergent_future") {
-    return {
-      id: "convergent_future",
-      ...(own ? {} : { by: holder.id }),
-      label: own ? "Convergent Future: make it succeed" : `Convergent Future: ${rollerName} succeeds`,
-      note: `Use your reaction and gain a level of exhaustion: the die is ignored, and this ${what} is the lowest number that succeeds.`,
-    };
+    return { id: "convergent_future", ...(own ? {} : { by: holder.id }), ...rowWords("convergent_future", words) };
   }
   // A natural 1 on an attack misses whatever is added, and a d4 reaches 4.
   if (("ac" in roll && roll.outcome.natural === 1) || roll.outcome.total + BEND_LUCK_SIDES < target) {
     return null;
   }
-  return {
-    id: "bend_luck",
-    by: holder.id,
-    label: `Bend Luck: add 1d${BEND_LUCK_SIDES} to ${rollerName}'s roll`,
-    note: `Use your reaction and ${BEND_LUCK_POINTS} sorcery points: roll 1d${BEND_LUCK_SIDES} and add it to this ${what}.`,
-  };
+  return { id: "bend_luck", by: holder.id, ...rowWords("bend_luck", words) };
 }
 
 // The roll with its die ignored: the lowest number that succeeds against

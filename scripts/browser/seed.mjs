@@ -2546,6 +2546,11 @@ const touchTables = {};
 // card leaves the screen with it (scenario after-roll-attack).
 const SKIPPED_TITLE = "Skipped Swing";
 const skippedTables = {};
+// A player's hit with the lead's Graviturgy wizard beside them (Violent
+// Attraction): scenario after-roll-helpers. Restore Balance is used before
+// the roll (issue #908), so it has no lane on the after-the-roll card.
+const ATTRACTION_TITLE = "Heavy Swing";
+const attractionTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2582,6 +2587,12 @@ const skippedTables = {};
       features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
       resources: { channel_divinity: { max: 1, used: 0 } },
     }],
+    [ATTRACTION_TITLE, attractionTables, [], {
+      class: "wizard",
+      otherRolls: true,
+      features: [{ name: "Violent Attraction", source: "choice" }],
+      resources: { sub_violent_attraction: { max: 3, used: 0 } },
+    }],
   ]) for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(player.id, {
       title: `${title} (${viewport})`,
@@ -2603,11 +2614,14 @@ const skippedTables = {};
       3,
       heroInput({ name: "Tamsin Reed", class: patch.class ?? "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
     );
-    const { class: _heroClass, otherRolls, ...heroPatch } = patch;
+    const { class: _heroClass, otherRolls, rollerPatch, ...heroPatch } = patch;
     sheets.patchSheet(hero.id, heroPatch);
     const roller = otherRolls
       ? sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Bren Ash", class: "fighter", level: 3, feats: [], equipment: [{ name: "Longsword", qty: 1, equipped: true }] }))
       : hero;
+    if (rollerPatch) {
+      sheets.patchSheet(roller.id, rollerPatch);
+    }
     const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
       name: "start_encounter",
       args: { enemies: [{ monster: "goblin", count: 1 }] },
@@ -2699,6 +2713,32 @@ const watchTables = {};
     encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
     watchTables[viewport] = { id: table.id, hero: hero.id };
   }
+}
+
+// Out of a fight, the lead's Circle of Stars druid holds Weal (the ruling on
+// issue #908): the Watch toggle stands for her at a table the AI GM plays,
+// and her own check waits before the throw for the omen's d6 (scenario
+// before-roll).
+const STAR_TITLE = "Star Watch";
+const starTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${STAR_TITLE} (${viewport})`,
+    description: "A druid who reads the stars.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 6,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "steered" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the star watch: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 6, heroInput({ name: "Vela Stars", class: "druid", subclass: "Circle of Stars", level: 6 }));
+  sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_cosmic_omen: { max: 3, used: 0 } }, omen: "weal" });
+  starTables[viewport] = { id: table.id, hero: hero.id };
 }
 
 // A pointer move held for a watch stop (src/lib/dm/turn-hold.ts): the lead's
@@ -3931,8 +3971,10 @@ const ids = {
   flashTables,
   touchTables,
   skippedTables,
+  attractionTables,
   portentTables,
   watchTables,
+  starTables,
   heldTurnTables,
   shiftTables,
   chronalWatchTables,
@@ -4061,8 +4103,10 @@ const ids = {
     ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(skippedTables).map(([viewport, table]) => [table.id, `${SKIPPED_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(attractionTables).map(([viewport, table]) => [table.id, `${ATTRACTION_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(starTables).map(([viewport, table]) => [table.id, `${STAR_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(heldTurnTables).map(([viewport, table]) => [table.id, `${HELD_TURN_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),

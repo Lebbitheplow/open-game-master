@@ -1,5 +1,7 @@
 import { easeOrdeal } from "@/lib/dm/ordeal";
 import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
+import { COSMIC_OMEN, omenOfFace, OMEN_SIDES } from "@/lib/dm/before-roll-logic";
+import { rollExpression } from "@/lib/dice";
 import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions } from "@/lib/dm/condition-logic";
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
@@ -90,6 +92,10 @@ export function longRestPatch(
     // Portent: "When you finish a long rest, roll two d20s", and last night's
     // numbers are gone.
     ...(sheet.resources?.[PORTENT] ? { foretold: rollForetold(Math.min(3, sheet.resources[PORTENT].max)) } : {}),
+    // Cosmic Omen: a die is rolled as the rest ends, even for Weal and odd
+    // for Woe, and the omen holds until the next long rest. The druid gets
+    // no pick: the die decides (issue #908).
+    ...(sheet.resources?.[COSMIC_OMEN] ? { omen: omenOfFace(rollExpression(`1d${OMEN_SIDES}`).total) } : {}),
   };
   // Multiclass sheets recover into their per-class pools (patchSheet keeps
   // the summed hitDice mirror in sync); single-class sheets patch the

@@ -3995,17 +3995,19 @@
   "name": "Cosmic Omen",
   "group": "Circle of Stars",
   "level": 6,
-  "sha": "718487e02f0d",
+  "sha": "740bc86e59f3",
   "clauses": [
    {
-    "c": "After a long rest, read your map for Weal or Woe",
-    "is": "flavor"
+    "c": "After each long rest, roll a die: an even number is Weal and an odd one Woe until the next long rest",
+    "is": "held",
+    "by": "src/lib/dm/rest-logic.ts longRestPatch (sheet.omen from a d6, before-roll-logic.ts omenOfFace), said in take_rest's line (rest-tools.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Cosmic Omen#omen-rest"
    },
    {
-    "c": "a reaction then adds or subtracts a d6 on a roll near you",
+    "c": "When a creature you can see within 30 feet is about to make an attack roll, a saving throw or an ability check, a reaction rolls a d6 and adds it to that roll (Weal) or takes it off (Woe)",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_cosmic_omen#TRIGGER_UNCHECKED",
-    "by": "src/lib/srd/trigger-table.ts sub_cosmic_omen (a roll within 30 feet), read by reaction-triggers.ts (the spends sweep walks it clean)"
+    "by": "src/lib/dm/foresight-before.ts (the watch stop: Woe on a foe's roll, Weal on a friend's, in a fight or with the Watch toggle out of one) and the before-roll route (Weal at the hold before the druid's own check or save); the d6 goes on the roll as it is thrown (db/dice-scripts.ts armBeforeRoll), paid only if a d20 took it",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Cosmic Omen#omen-stop"
    },
    {
     "c": "a proficiency-bonus number of times",

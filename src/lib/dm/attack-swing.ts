@@ -19,6 +19,7 @@ import { budgetApplies, SNEAK_HIT, WEAPON_HIT, type TurnBudget } from "@/lib/dm/
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
+import { payHelperHit } from "@/lib/dm/after-roll";
 import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
 import { moteBurst, withMoteRoll } from "@/lib/dm/authored-mote";
@@ -350,6 +351,16 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   if (combatDie) {
     expression = `${expression}+1${combatDie}`;
     notes.push(`Combat Inspiration: +1${combatDie} damage`);
+  }
+  // A helper's dice chosen on the card the hit waited on (Violent
+  // Attraction's 1d10), paid now the hit stands, as Touch of Death is: the
+  // use and the reaction. Dice, so a critical doubles them.
+  for (const help of record.helperHits ?? []) {
+    const dice = payHelperHit(campaign, help);
+    if (dice) {
+      expression = `${expression}+${dice.expression}`;
+      notes.push(dice.note);
+    }
   }
   // Foe Slayer not needed on the roll rides the hit's damage.
   if (judged.rolledHit && (record.extras?.foeSlayer ?? 0) > 0 && markAttackTurn(campaign.id, record, FOE_SLAYER)) {

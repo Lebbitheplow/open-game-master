@@ -16,20 +16,14 @@ import {
   afterAttackOptions,
   afterRollOptions,
   CHANNEL_DIVINITY,
-  CHRONAL_SHIFT,
-  DARK_ONES_OWN_LUCK,
   extraD20Expression,
-  FAVORED_BY_THE_GODS,
-  FLASH_OF_GENIUS,
-  flashOfGeniusOption,
-  GUIDED_STRIKE_BONUS,
-  WAR_GODS_BLESSING_BONUS,
-  warGodsBlessingOption,
   heldBardicDie,
   heldOwnLuckDie,
+  helperOption,
+  hitHelperOption,
   holdsMoteDie,
+  holdsRow,
   luckRodeThrow,
-  MASTER_DUELIST,
   ownLuckDie,
   sidesOf,
   touchOfDeathDamage,
@@ -43,6 +37,7 @@ import {
   type AfterRollOption,
   type ThrownRoll,
 } from "@/lib/dm/after-roll-logic";
+import { AFTER_ROLL_ROWS, afterRollRow, ownsItself, type AfterRollRow } from "@/lib/dm/after-roll-table";
 import { allyShifters, canReactNow, inShiftReach, payChronalShift, playerAtTable, SHIFT_RANGE_FEET } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
@@ -109,7 +104,7 @@ export function optionsForPending(
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
     const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
-    const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange }, done);
+    const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange, weapon: record.weaponAttack === true }, done);
     return [...own, ...allies];
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
@@ -120,14 +115,18 @@ export function optionsForPending(
 
 // Who could answer a roll from their own screen, for a player whose rolls wait
 // (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
-// as it would on the roller's own options. Chronal Shift, War God's Blessing
-// and Flash of Genius, which the artificer may also spend on their own roll,
-// and a Rune Knight's prophetic state (mt-fb-runes.ts), theirs too.
-// A helper on the bench (one character fielded per player) answers nobody.
+// as it would on the roller's own options. Every row of after-roll-table.ts
+// that answers another's roll: Chronal Shift, War God's Blessing and Flash
+// of Genius on a miss or a failure (the artificer may also
+// spend Flash of Genius on their own roll), Violent Attraction on a weapon's
+// hit; then the rows of their own: Convergent Future and Bend Luck
+// (fate-turn.ts), a Rune Knight's prophetic state (mt-fb-runes.ts), the
+// roller's own among them. A helper on the bench (one character fielded per
+// player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
   sheet: CharacterSheet,
-  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[] } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number },
+  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[] } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number; weapon?: boolean },
   done: Pick<ThrownRoll, "shiftedBy" | "declined" | "kept"> = {},
 ): AfterRollOption[] {
   const shifts = shiftCanHelp(roll) ? allyShifters(campaignId, sheet, roll.kind, done) : [];
@@ -135,19 +134,33 @@ export function allyChoicesFor(
   const others = listSheets(campaignId)
     .map((stale) => getSheetById(stale.id) ?? stale)
     .filter((other) => !skip.has(other.id) && rollsCanWait(other) && playerAtTable(campaignId, other) && inPlay(campaignId, other) && canReactNow(campaignId, other));
-  if ("ac" in roll) {
-    // "When a creature within 30 feet of you makes an attack roll": the text
-    // asks for 30 feet and, unlike Chronal Shift and Flash of Genius ("a
-    // creature you can see"), not for sight, so a cleric beside an unseen
-    // ally may still bless the roll.
-    const fight = getActiveEncounter(campaignId);
-    const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
-    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? []), ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+  const fight = getActiveEncounter(campaignId);
+  // "Within N feet" and, where the text asks for it, "a creature you can
+  // see". War God's Blessing asks for 30 feet and not for sight, so a cleric
+  // beside an unseen ally may still bless the roll.
+  const reaches = (helper: CharacterSheet, row: AfterRollRow) =>
+    row.sight ? inShiftReach(campaignId, helper, sheet, row.rangeFt) : !fight || withinFeet(fight.id, helper.id, sheet.id, row.rangeFt ?? SHIFT_RANGE_FEET);
+  const modifierOf = (helper: CharacterSheet, row: AfterRollRow) => (row.amount?.kind === "ability" ? computeSheetDerived(helper).abilityMods[row.amount.ability] : undefined);
+  const spent = "spent" in roll ? (roll.spent ?? []) : [];
+  const helps: AfterRollOption[] = [];
+  for (const row of AFTER_ROLL_ROWS as readonly AfterRollRow[]) {
+    // Chronal Shift's helpers are allyShifters' (above), as at the watch stop;
+    // a row of its own is offered by its module, below.
+    if (row.whose === "own" || row.effect === "reroll" || ownsItself(row)) continue;
+    const id = row.id as AfterRollId;
+    if (row.ownAmongHelpers && !("ac" in roll) && !done.kept && !spent.includes(id) && canReactNow(campaignId, sheet)) {
+      const own = helperOption(sheet, id, roll, { rollerName: sheet.name, modifier: modifierOf(sheet, row), own: true });
+      if (own) helps.push(own);
+    }
+    for (const helper of others) {
+      if (!reaches(helper, row)) continue;
+      const option = row.when === "hit"
+        ? ("ac" in roll ? hitHelperOption(helper, id, { ...roll, weapon: roll.weapon === true }, sheet.name) : null)
+        : helperOption(helper, id, roll, { rollerName: sheet.name, modifier: modifierOf(helper, row) });
+      if (option) helps.push(option);
+    }
   }
-  const flash = (artificer: CharacterSheet, ally: boolean) => flashOfGeniusOption(artificer, computeSheetDerived(artificer).abilityMods.int, roll, ally);
-  const own = !done.kept && !roll.spent?.includes("flash_of_genius") && canReactNow(campaignId, sheet) ? flash(sheet, false) : null;
-  const help = others.filter((artificer) => inShiftReach(campaignId, artificer, sheet)).flatMap((artificer) => flash(artificer, true) ?? []);
-  return [...shifts, ...(own ? [own] : []), ...help, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+  return [...shifts, ...helps, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -158,6 +171,47 @@ function rerollD20s(outcome: RollResult): { outcome: RollResult; choosing: boole
   const fresh = Array.from({ length: count }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
   const rerolled = withRerolledD20(outcome, fresh);
   return rerolled ? { outcome: rerolled, choosing: false } : null;
+}
+
+// The die a held_die row adds for this character: the condition they hold,
+// or Dark One's Own Luck's own use.
+function heldDieFor(row: AfterRollRow, sheet: CharacterSheet): string | null {
+  if (row.amount?.kind !== "held") return null;
+  return row.amount.condition === "bardic inspiration" ? (heldBardicDie(sheet)?.die ?? null) : ownLuckDie(sheet);
+}
+
+// Pays for a row on the card: its use, die or luck point, and the reaction
+// for a row that costs one. False when it can no longer be paid; nothing is
+// spent then.
+function payRow(campaign: Campaign, row: AfterRollRow, giver: CharacterSheet): boolean {
+  const encounter = row.reaction ? getActiveEncounter(campaign.id) : null;
+  if (row.reaction) {
+    // Chronal Shift on the wizard's own roll asks only that the reaction is
+    // free this round, as it always has; the others that the character could
+    // take a reaction at all.
+    const able = row.effect === "reroll" ? !encounter?.reactionsUsed.includes(giver.id) : canReactNow(campaign.id, giver);
+    if (!able) return false;
+  }
+  if (row.cost === "luck_point") {
+    if (luckPointsLeft(giver.resources) < 1) return false;
+    // Audited, so an undo of the turn gives the point back.
+    spendRollCarriers(campaign.id, giver.id, LUCK_SPEND, "player");
+  } else if (row.cost === "held_die") {
+    const held = row.amount?.kind === "held" && row.amount.condition === "bardic inspiration" ? heldBardicDie(giver) : heldOwnLuckDie(giver);
+    if (held) {
+      spendRollCarriers(campaign.id, giver.id, held.condition, "player");
+    } else if (!row.counter || !spendFeatureUse(campaign, giver.id, row.counter, row.feature, "player")) {
+      return false;
+    }
+  } else if (row.cost === "channel_divinity") {
+    if (!spendFeatureUse(campaign, giver.id, CHANNEL_DIVINITY, `Channel Divinity: ${row.feature}`, "player")) return false;
+  } else if (!spendFeatureUse(campaign, giver.id, row.counter!, row.feature, "player")) {
+    return false;
+  }
+  if (encounter) {
+    markReactionUsed(encounter, giver.id);
+  }
+  return true;
 }
 
 // The player's choice, paid for and on the dice. Null when the choice is no
@@ -176,111 +230,98 @@ export function spendAfterRoll(
   // when the caller knows it: an Eloquence bard's die that leaves the roll
   // short of it is kept (ar-wbf-bard-dice-logic.ts).
   target: number | null = null,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean } | null {
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean; helperHit?: string } | null {
+  const row = afterRollRow(id);
+  const giver = payer ?? sheet;
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
-  if (id === "war_gods_blessing" || id === "flash_of_genius") {
-    const giver = payer ?? sheet;
-    if (!canReactNow(campaign.id, giver)) {
-      return null;
-    }
-    const paid = id === "war_gods_blessing"
-      ? spendFeatureUse(campaign, giver.id, CHANNEL_DIVINITY, "Channel Divinity: War God's Blessing", "player")
-      : spendFeatureUse(campaign, giver.id, FLASH_OF_GENIUS, "Flash of Genius", "player");
-    if (!paid) {
-      return null;
-    }
-    const encounter = getActiveEncounter(campaign.id);
-    if (encounter) {
-      markReactionUsed(encounter, giver.id);
-    }
-    return { outcome: withFlatBonus(outcome, id === "war_gods_blessing" ? WAR_GODS_BLESSING_BONUS : computeSheetDerived(giver).abilityMods.int), choosing: false };
-  }
+  // The rows of their own (after-roll-table.ts effect "own") spend in their
+  // modules; the monk's and rogue's go through the route's mrSpendAfterRoll.
   if (id === "prophetic_state") {
     return spendPropheticState(campaign, sheet, outcome, payer);
   }
   if (isFatePower(id)) {
     return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);
   }
-  if (id === "guided_strike") {
-    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
-  }
-  if (id === "touch_of_death") {
-    // Paid by the hit itself (attack-swing.ts hitSwing): a Parry or a Shield
-    // can still turn the roll as it lands, and a use spent here was lost then.
-    const state = sheet.resources?.[CHANNEL_DIVINITY];
-    return state && state.max - state.used > 0 ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
-  }
-  if (id === "destructive_wrath") {
-    // Paid by the hit itself, as Touch of Death is (attack-swing.ts hitSwing).
-    const state = sheet.resources?.[CHANNEL_DIVINITY];
-    return state && state.max - state.used > 0 ? { outcome, choosing: false, destructiveWrath: true } : null;
-  }
   if (id === "combat_inspiration") {
     // Paid by the hit itself too: the die leaves its holder once the hit stands.
     return combatDie(sheet) ? { outcome, choosing: false, combatInspiration: true } : null;
   }
-  if (id === "favored_by_the_gods") {
-    if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
-      return null;
-    }
-    return { outcome: withBonusDie(withBonusDie(outcome, die(4)), die(4)), choosing: false };
+  if (ownsItself(row)) {
+    return null;
   }
-  if (id === "master_duelist") {
-    if (!spendFeatureUse(campaign, sheet.id, MASTER_DUELIST, "Master Duelist", "player")) {
-      return null;
+  if (row.when === "hit") {
+    // Paid by the hit itself (attack-swing.ts hitSwing): a Parry or a Shield
+    // can still turn the roll as it lands, and a use spent here was lost then.
+    if (row.whose === "other") {
+      return payer && payer.id !== sheet.id && canReactNow(campaign.id, payer) && holdsRow(payer, row) ? { outcome, choosing: false, helperHit: payer.id } : null;
     }
-    // Obeying what the first throw obeyed (a halfling's reroll of a 1), and
-    // Elven Accuracy's third die on the advantage it now has.
-    const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : elvenAccuracy ? 3 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
-    const again = withAdvantageReroll(outcome, fresh);
-    return again ? { outcome: again, choosing: false } : null;
+    const state = sheet.resources?.[CHANNEL_DIVINITY];
+    if (!state || state.max - state.used < 1) return null;
+    return row.amount?.kind === "max" ? { outcome, choosing: false, destructiveWrath: true } : { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) };
   }
-  if (id === "lucky") {
-    if (luckPointsLeft(sheet.resources) < 1) {
-      return null;
-    }
-    // Audited, so an undo of the turn gives the point back.
-    spendRollCarriers(campaign.id, sheet.id, LUCK_SPEND, "player");
-    const extra = rollExpression(extraD20Expression(outcome.expression)).terms[0];
-    const pooled = extra.kind === "dice" ? withExtraD20(outcome, extra.dice[0]) : null;
-    return pooled ? { outcome: pooled, choosing: true } : null;
+  if (row.effect === "reroll" && payer && payer.id !== sheet.id) {
+    return payChronalShift(campaign.id, payer.id) ? rerollD20s(outcome) : null;
   }
-  if (id === "chronal_shift" && payer && payer.id !== sheet.id) {
-    if (!payChronalShift(campaign.id, payer.id)) {
-      return null;
-    }
-    return rerollD20s(outcome);
-  }
-  if (id === "chronal_shift") {
-    const encounter = getActiveEncounter(campaign.id);
-    if (encounter?.reactionsUsed.includes(sheet.id) || !spendFeatureUse(campaign, sheet.id, CHRONAL_SHIFT, "Chronal Shift", "player")) {
-      return null;
-    }
-    if (encounter) {
-      markReactionUsed(encounter, sheet.id);
-    }
-    return rerollD20s(outcome);
-  }
-  if (id === "bardic") {
-    const held = heldBardicDie(sheet);
-    if (!held) {
-      return null;
-    }
-    const added = withBonusDie(outcome, die(sidesOf(held.die)));
-    if (!unfailingDieKept(sheet, held.condition, added.total, target)) {
-      spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
+  // The die is read before it is paid: a held die is gone once spent.
+  const held = row.cost === "held_die" ? heldDieFor(row, giver) : null;
+  // An Eloquence bard's die that leaves the roll short of `target` stays on
+  // its holder (ar-wbf-bard-dice-logic.ts unfailingDieKept), so it is rolled
+  // before it is paid, and paid only if it turned the roll.
+  const bardic = row.cost === "held_die" && row.amount?.kind === "held" && row.amount.condition === "bardic inspiration" ? heldBardicDie(giver) : null;
+  if (bardic) {
+    const added = withBonusDie(outcome, die(sidesOf(bardic.die)));
+    if (!unfailingDieKept(giver, bardic.condition, added.total, target)) {
+      spendRollCarriers(campaign.id, giver.id, bardic.condition, "player");
     }
     return { outcome: added, choosing: false };
   }
-  const held = heldOwnLuckDie(sheet);
-  const size = ownLuckDie(sheet);
-  if (!size) {
+  if ((row.cost === "held_die" && !held) || !payRow(campaign, row, giver)) {
     return null;
   }
-  if (held) {
-    spendRollCarriers(campaign.id, sheet.id, held.condition, "player");
-  } else if (!spendFeatureUse(campaign, sheet.id, DARK_ONES_OWN_LUCK, "Dark One's Own Luck", "player")) {
+  switch (row.effect) {
+    case "extra_d20": {
+      const extra = rollExpression(extraD20Expression(outcome.expression)).terms[0];
+      const pooled = extra.kind === "dice" ? withExtraD20(outcome, extra.dice[0]) : null;
+      return pooled ? { outcome: pooled, choosing: true } : null;
+    }
+    case "add_die":
+      return { outcome: withBonusDie(outcome, die(sidesOf(held!))), choosing: false };
+    case "add_dice": {
+      const amount = row.amount?.kind === "dice" ? row.amount : null;
+      let added = outcome;
+      for (let at = 0; at < (amount?.count ?? 0); at += 1) added = withBonusDie(added, die(amount!.sides));
+      return { outcome: added, choosing: false };
+    }
+    case "add_flat": {
+      const amount = row.amount;
+      const value = amount?.kind === "flat" ? amount.value : amount?.kind === "ability" ? computeSheetDerived(giver).abilityMods[amount.ability] : 0;
+      return { outcome: withFlatBonus(outcome, value), choosing: false };
+    }
+    case "reroll":
+      return rerollD20s(outcome);
+    case "reroll_edge": {
+      // Obeying what the first throw obeyed (a halfling's reroll of a 1), and
+      // Elven Accuracy's third die on the advantage it now has.
+      const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : elvenAccuracy ? 3 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
+      const again = withAdvantageReroll(outcome, fresh);
+      return again ? { outcome: again, choosing: false } : null;
+    }
+    default:
+      return null;
+  }
+}
+
+// A helper's dice on a hit that now stands (Violent Attraction's 1d10),
+// chosen on the card the hit waited on: the use and the reaction are paid
+// here, as the hit lands (attack-swing.ts). Null when the helper can no
+// longer pay; the hit then deals what it would have.
+export function payHelperHit(campaign: Campaign, help: { by: string; use: AfterRollId }): { expression: string; note: string } | null {
+  const row = afterRollRow(help.use);
+  const helper = getSheetById(help.by);
+  const amount = row.amount?.kind === "dice" ? row.amount : null;
+  if (!helper || row.when !== "hit" || !amount || !payRow(campaign, row, helper)) {
     return null;
   }
-  return { outcome: withBonusDie(outcome, die(sidesOf(size))), choosing: false };
+  const dice = `${amount.count}d${amount.sides}`;
+  return { expression: dice, note: `${row.feature}: ${helper.name} adds ${dice} to the damage` };
 }

@@ -485,6 +485,9 @@ const SITES = {
   "app/api/campaigns/[campaignId]/pending-rolls/[pendingRollId]/portent/route.ts#POST": "S Portent's number on a parked roll",
   "app/api/campaigns/[campaignId]/pending-rolls/[pendingRollId]/route.ts#POST": "S Roll digitally, a held roll let go (test-enforce-sweep-dice-paths.mjs)",
   "app/api/campaigns/[campaignId]/rolls/route.ts#POST": "S the player's own dice tray",
+  // Cosmic Omen's d6, rolled with a roll it was set on at the watch stop
+  // (foresight-before.ts): a character's die beside another's d20.
+  "lib/db/dice-scripts.ts#takeArmedBefore": "D Cosmic Omen's d6 on a roll set at the watch stop (test-enforce-before-roll.mjs)",
   "lib/db/sheets.ts#capAttunement": "F an item's starting charges, rolled as it is granted (item-charge-rules.ts withStartingCharges): the item's dice, not a throw of the wearer's",
   "lib/dice/tray-rules.ts#trayExpressionProblem": "F reads an expression",
   "lib/dm/action-common.ts#rollEnemyContest": "F the creature's side of a contest",
@@ -515,6 +518,7 @@ const SITES = {
   "lib/dm/forced-save.ts#rollCharacterSave": "H", "lib/dm/forced-save.ts#rollEnemySave": "F", "lib/dm/forced-save.ts#settleHeldDie": "D a held Bardic die",
   "lib/dm/foresight-more.ts#damageCeiling": "F no die: the most a blow could deal, to read whether it could drop the hero before the watch stop",
   "lib/dm/foretold-logic.ts#rollForetold": "H Portent's two d20s at the long rest",
+  "lib/dm/rest-logic.ts#longRestPatch": "D Cosmic Omen's die at the long rest: its parity is the omen, never a roll's d20",
   "lib/dm/gear-weapon-hit.ts#enemyExtinguish": "F", "lib/dm/hazard-tools.ts#resolveHazard": "F which target a trap picks",
   "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",

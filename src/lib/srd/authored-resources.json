@@ -452,11 +452,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding a d6 (Weal) or subtracting one (Woe) on an attack, check or save by a creature within 30 feet. The omen is chosen after each long rest and does not change until the next one.",
-   "fx": {
-    "kind": "inspire",
-    "die": "d6"
-   }
+   "guidance": "A reaction used when a creature the druid can see within 30 feet is about to make an attack roll, a check or a save: a d6 added to that roll (Weal) or taken off it (Woe). The omen is read from a die rolled at each long rest (even Weal, odd Woe) and holds until the next one. A roll that can wait is answered before it is thrown, at the druid's own hold or the watch stop, so do not spend it for one there. Use it here only for a roll that never waits on anyone, and add or take the d6 as you narrate it."
   },
   {
    "id": "sub_blazing_revival",
@@ -1083,7 +1079,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction cancelling advantage or disadvantage on a roll by a creature within 60 feet."
+   "guidance": "A reaction used when a creature within 60 feet is about to roll a d20 with advantage or disadvantage: the roll is made with one d20. A roll that can wait is answered before it is thrown, at the sorcerer's own hold or the watch stop, so do not spend it for one there. Use it here only for a roll that never waits on anyone (an agent's seat, a fight nobody watches), and narrate the result."
   },
   {
    "id": "sub_trance_of_order",
@@ -1371,7 +1367,7 @@
    "ability": "int",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding 1d10 to a weapon attack's damage by a creature within 60 feet, or 2d10 to a creature's falling damage."
+   "guidance": "A reaction adding 1d10 to a weapon attack's damage by a creature within 60 feet, or 2d10 to a creature's falling damage. A player's weapon hit waits on a card that offers the 1d10, so do not spend it for them there. Use it here only for a hit that cannot wait (an enemy's, an agent's seat) or for falling damage, and narrate the result."
   },
   {
    "id": "sub_event_horizon",

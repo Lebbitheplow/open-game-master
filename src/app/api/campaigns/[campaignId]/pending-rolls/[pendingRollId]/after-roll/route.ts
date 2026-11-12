@@ -2,11 +2,12 @@ import { mrSpendAfterRoll } from "@/lib/dm/mt-mr-offers";
 import { isMrAfterRoll } from "@/lib/dm/mt-mr-offers-logic";
 import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
-import { getPendingRoll, publicPendingRoll, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
+import { getPendingRoll, publicPendingRoll, setPendingAttack, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
 import { answeredLine, bardOfHeldDie, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { recordInspiredSuccess } from "@/lib/dm/last-save";
+import { AFTER_ROLL_IDS } from "@/lib/dm/after-roll-table";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath", "unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence", "combat_inspiration", "convergent_future", "bend_luck", "prophetic_state"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(AFTER_ROLL_IDS), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -71,7 +72,9 @@ export async function POST(
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
 
-  const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = pending) => {
+  // Read again as it lands: a helper's choice on a hit (Violent Attraction)
+  // rides the attack's stored record.
+  const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = getPendingRoll(pending.id) ?? pending) => {
     const roll = landPendingRoll(context.campaign, landed, outcome, landing);
     return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   };
@@ -160,6 +163,14 @@ export async function POST(
     // Channel Divinity, so it lands with the choice.
     const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}), ...(combatInspiration ? { combatInspiration: true } : {}) };
     return land(paid.outcome, thrown.landing, { ...pending, attack });
+  }
+  if ("helperHit" in paid && paid.helperHit && pending.attack && wizard) {
+    // Another's choice on the hit (Violent Attraction): no die is thrown now.
+    // The hit carries the helper's dice and pays their use and reaction once
+    // it stands (attack-swing.ts), and the roller may still choose their own.
+    const attack = pending.attack as AttackRecord;
+    setPendingAttack(pending.id, { ...attack, helperHits: [...(attack.helperHits ?? []), { by: wizard.id, use: choice.use }] });
+    return next({ shiftedBy: [...(thrown.shiftedBy ?? []), wizard.id] });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,
   // and the model would be told the player threw it all.

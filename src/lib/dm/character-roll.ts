@@ -20,6 +20,7 @@
 // rollExpression: scripts/test-enforce-sweep-dice-sites.mjs walks the source
 // for sites that throw one and fails on a site it has not classified.
 
+import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { entryDice, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
 import { dicePreferencesOf, type DecidedRoll, type DmTurn } from "@/lib/db/dm-turns";
@@ -28,6 +29,7 @@ import { insertRoll, type RollKind, type RollVisibility, type StoredRoll } from 
 import { getSheetById } from "@/lib/db/sheets";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { afterAttackOptions, afterRollOptions, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { afterRollRow } from "@/lib/dm/after-roll-table";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterRollDeadline } from "@/lib/dm/after-roll-timer";
 import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
@@ -88,12 +90,12 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
   const reactionFree = reactionFreeFor(campaign.id, sheet.id);
   if (roll.attack) {
     const critRange = roll.attack.critRange ?? 20;
-    // A hit's own choices (Touch of Death) ride a pc_attack's record; an
-    // attack thrown by another tool asks only about a miss.
-    const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(
-      (option) => option.id !== "touch_of_death" && option.id !== "destructive_wrath" && option.id !== "combat_inspiration",
-    );
-    return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange })];
+    // A hit's choices (Touch of Death, Combat Inspiration, Violent
+    // Attraction) ride a pc_attack's record; an attack thrown by another
+    // tool asks only about a miss.
+    const onMiss = (option: AfterRollOption) => afterRollRow(option.id).when !== "hit";
+    const own = afterAttackOptions(sheet, { outcome, ac: roll.attack.ac, critRange, reactionFree, melee: roll.attack.melee === true }).filter(onMiss);
+    return [...own, ...allyChoicesFor(campaign.id, sheet, { kind: "attack", outcome, ac: roll.attack.ac, critRange }).filter(onMiss)];
   }
   const dc = typeof roll.dc === "number" ? roll.dc : null;
   return [
@@ -175,9 +177,11 @@ function rollAtDoor(campaign: Campaign, stale: CharacterSheet, asked: CharacterR
   // again (foresight.ts, chronal-shift.ts).
   const waits = mayWait && roll.kind !== "damage" && roll.kind !== "custom" && rollsCanWait(sheet) && !shiftArmedFor(campaign.id, tag);
   // Portent replaces the d20 before it is thrown: a wizard holding a number
-  // decides here, as on a requested check (invoke-roll.ts).
-  if (waits && !roll.attack && roll.kind !== "initiative" && foretoldLeft(sheet).length > 0) {
-    parkHeldCall({ ...card, parkedFor: "foretold", note: `Waiting on ${sheet.name} to roll or to use Portent.` });
+  // decides here, as on a requested check (invoke-roll.ts). So does a druid's
+  // Weal or a sorcerer's Restore Balance (before-roll-logic.ts, issue #908).
+  const beforeOwn = waits && !roll.attack ? ownBeforeRollChoices(sheet, { kind: roll.kind, expression: roll.expression, reactionFree: reactionFreeFor(campaign.id, sheet.id) }) : [];
+  if (waits && !roll.attack && roll.kind !== "initiative" && (foretoldLeft(sheet).length > 0 || beforeOwn.length > 0)) {
+    parkHeldCall({ ...card, parkedFor: "foretold", note: `Waiting on ${sheet.name} to roll or to use ${beforeRollWords(sheet, beforeOwn)}.` });
   }
   const mark = tapeMark();
   const throwOnce = () => (roll.throwIt ? roll.throwIt() : rollExpression(roll.expression, undefined, { ...(tag ? { purpose: tag } : {}) }));

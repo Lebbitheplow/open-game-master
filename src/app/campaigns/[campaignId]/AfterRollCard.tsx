@@ -7,6 +7,7 @@ import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
 import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 import { AFTER_ROLL_SECONDS } from "@/lib/dm/after-roll-logic";
+import { afterRollRow } from "@/lib/dm/after-roll-table";
 
 const STEP_IN_AFTER_MS = 3 * 60 * 1000;
 
@@ -98,7 +99,10 @@ export function AfterRollCard({
   const waitingOn = [...new Set(thrown.options.filter((option) => option.by && !mine.has(option.by)).map((option) => sheets.find((sheet) => sheet.id === option.by)?.name ?? "An ally"))];
   const onlyShifts = thrown.options.filter((option) => option.by).every((option) => option.id === "chronal_shift");
   const myHelpers = [...new Set(myShifts.map((option) => option.by))];
-  const standing = pending.kind === "attack" ? "misses as it stands" : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
+  // A hit waits on the choices that ride one (after-roll-table.ts `when: "hit"`):
+  // Touch of Death, Destructive Wrath, an ally's Violent Attraction.
+  const hits = thrown.options.some((option) => afterRollRow(option.id).when === "hit");
+  const standing = pending.kind === "attack" ? (hits ? "hits" : "misses as it stands") : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
   const clock = left !== null ? <span id={clockId} className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
   const helpLabel = `${onlyShifts ? "Use Chronal Shift on" : "Help"} ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`;
   const letItStand = myHelpers.map((helper) => (
@@ -177,7 +181,9 @@ export function AfterRollCard({
                 ? "The attack hits. You can add to its damage."
                 : thrown.options.some((option) => option.id === "destructive_wrath")
                   ? "The attack hits. You can deal its lightning and thunder at their maximum."
-                  : `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
+                  : hits
+                    ? "The attack hits. Someone may still add to its damage."
+                    : `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
               : own.length
                 ? "Before the game says what happens, you can still change it."
                 : "Before the game says what happens, someone may still help."}

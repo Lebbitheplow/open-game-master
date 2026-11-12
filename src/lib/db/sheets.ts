@@ -80,6 +80,7 @@ type SheetRow = {
   pets_json: string | null;
   summon_json?: string | null;
   foretold_json?: string | null;
+  omen?: string | null;
   watching_encounter_id?: string | null;
   exhaustion: number | null;
   death_saves_json: string | null;
@@ -182,6 +183,7 @@ function mapSheet(row: SheetRow): CharacterSheet {
     pets: repairedPets(parseJson<CharacterSheet["pets"]>(row.pets_json, [])),
     summon: parseJson<CharacterSheet["summon"]>(row.summon_json ?? null, null),
     foretold: parseJson<number[]>(row.foretold_json ?? null, []),
+    omen: row.omen === "weal" || row.omen === "woe" ? row.omen : null,
     watchingEncounterId: row.watching_encounter_id ?? null,
     exhaustion: row.exhaustion ?? 0,
     deathSaves: parseJson<CharacterSheet["deathSaves"]>(row.death_saves_json, null),
@@ -239,7 +241,7 @@ const SHEET_COLUMNS = `
   abilities_json, max_hp, current_hp, temp_hp, ac, ac_override, speed, hit_dice_json,
   classes_json, hit_dice_pools_json,
   proficiencies_json, equipment_json, gold, copper, feats_json, features_json,
-  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
+  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, omen, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
   portrait_json, notes, backstory, hopes, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
   attraction_json, open_to_advances, open_to_pacts, former_sheet_ids_json, created_at, updated_at
 `;
@@ -814,6 +816,7 @@ export function patchSheet(
     conditions: patch.conditions ?? existing.conditions,
     conditionMeta: patch.conditionMeta ?? existing.conditionMeta,
     foretold: patch.foretold ?? existing.foretold,
+    omen: patch.omen !== undefined ? patch.omen : existing.omen,
     // Resources track features and level: any patch touching them re-sizes
     // the counters (spent uses preserved, clamped). An explicit resources
     // patch (rests, use_resource) wins.
@@ -1020,7 +1023,7 @@ export function patchSheet(
           speed = ?, abilities_json = ?, proficiencies_json = ?,
           current_hp = ?, temp_hp = ?, max_hp = ?, ac = ?, ac_override = ?, xp = ?, level = ?,
           gold = ?, copper = ?, conditions_json = ?, condition_meta_json = ?, resources_json = ?, equipment_json = ?, hit_dice_json = ?,
-          spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
+          spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, omen = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
           feats_json = ?, features_json = ?, subclass = ?,
           classes_json = ?, hit_dice_pools_json = ?,
           portrait_json = ?, notes = ?, backstory = ?, hopes = ?, feat_choices_json = ?, updated_at = ?
@@ -1056,6 +1059,7 @@ export function patchSheet(
       next.wildShape ? JSON.stringify(next.wildShape) : null,
       next.pets.length ? JSON.stringify(next.pets) : null,
       next.foretold?.length ? JSON.stringify(next.foretold) : null,
+      next.omen ?? null,
       next.exhaustion,
       next.deathSaves ? JSON.stringify(next.deathSaves) : null,
       next.concentratingOn,

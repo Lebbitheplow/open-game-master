@@ -19,6 +19,7 @@
 // giver could do when it was given. Pure.
 
 import type { AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { rowWords } from "@/lib/dm/after-roll-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 
@@ -56,7 +57,7 @@ export function combatDie(sheet: Holder): { condition: string; die: string } | n
 export function combatInspirationOption(sheet: Holder): AfterRollOption[] {
   const held = combatDie(sheet);
   return held
-    ? [{ id: "combat_inspiration", label: `Combat Inspiration: add 1${held.die} damage`, note: `Spend your Bardic Inspiration die: add 1${held.die} to this hit's damage.` }]
+    ? [{ id: "combat_inspiration", ...rowWords("combat_inspiration", { amount: held.die }) }]
     : [];
 }
 

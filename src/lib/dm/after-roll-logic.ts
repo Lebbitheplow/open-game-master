@@ -11,6 +11,10 @@
 // never for a die too small to reach. A roll with no known target (a check
 // with no Difficulty Class) cannot be judged, so it asks.
 //
+// Every choice is a row of src/lib/dm/after-roll-table.ts: what it costs,
+// which rolls and whose it answers, what it does and when. This reads the
+// rows against a sheet and a thrown roll.
+//
 // Pure: the sheet and the thrown roll in, the options or the new roll out. The
 // spending is src/lib/dm/after-roll.ts.
 
@@ -21,17 +25,24 @@ import { channelOptions } from "@/lib/dm/option-costs";
 import { classLevelOf } from "@/lib/srd/trait-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
+import {
+  AFTER_ROLL_CHANNEL_OPTIONS,
+  AFTER_ROLL_ROWS,
+  afterRollRow,
+  amountWords,
+  answers,
+  fillWords,
+  mostAdded,
+  ownsItself,
+  type AfterRollId,
+  type AfterRollRow,
+} from "@/lib/dm/after-roll-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { mrAttackOffers, mrCheckOffers, type MrCheck, type MrSwing } from "@/lib/dm/mt-mr-offers-logic";
 import { combatInspirationOption } from "@/lib/dm/ar-wbf-bard-dice-logic";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath" | "combat_inspiration"
-  // The monk and rogue subclasses' (src/lib/dm/mt-mr-offers-logic.ts).
-  | "unerring_accuracy" | "homing_strikes" | "psi_knack" | "draconic_presence"
-  // Convergent Future and Bend Luck (src/lib/dm/fate-turn-logic.ts).
-  | "convergent_future" | "bend_luck"
-  // The Storm Rune's prophetic state (src/lib/dm/mt-fb-runes.ts).
-  | "prophetic_state";
+export type { AfterRollId } from "@/lib/dm/after-roll-table";
+export { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-table";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -41,8 +52,8 @@ export type AfterRollOption = {
   // Another character's, offered on their player's screen: a Chronurgy
   // wizard's Chronal Shift on an ally's roll ("after you or a creature you
   // can see within 30 feet of you makes an attack roll, an ability check,
-  // or a saving throw"), War God's Blessing, Flash of Genius. Absent: the
-  // roller's own.
+  // or a saving throw"), War God's Blessing, Flash of Genius, Violent
+  // Attraction. Absent: the roller's own.
   by?: string;
 };
 
@@ -52,22 +63,17 @@ export const CHANNEL_DIVINITY = "channel_divinity";
 export const MASTER_DUELIST = "sub_master_duelist";
 export const FAVORED_BY_THE_GODS = "sub_favored_by_the_gods";
 export const FLASH_OF_GENIUS = "art_flash_of_genius";
-export const GUIDED_STRIKE_BONUS = 10;
-export const WAR_GODS_BLESSING_BONUS = 10;
-const FAVORED_DICE = 2;
-const FAVORED_SIDES = 4;
+export const VIOLENT_ATTRACTION = "sub_violent_attraction";
+export const GUIDED_STRIKE_BONUS = mostAdded(afterRollRow("guided_strike"));
+export const WAR_GODS_BLESSING_BONUS = mostAdded(afterRollRow("war_gods_blessing"));
 
-// Spent from this card and no other: dealt to the Hand they spent a use and
-// changed nothing, since the roll they ride had already landed. use_resource
-// still takes them, for a roll that cannot wait (an agent's seat, a forced
-// save), where the GM narrates the result.
-export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS, FLASH_OF_GENIUS];
-export const isAfterRollChannelOption = (name: string) => isNamed(name, "guided strike", "war god's blessing", "touch of death");
+// The Channel Divinity options spent from this card and no other
+// (after-roll-table.ts cardOnly): the Hand deals no card for them.
+export const isAfterRollChannelOption = (name: string) => isNamed(name, ...AFTER_ROLL_CHANNEL_OPTIONS);
 
 // How long a roll waits on its player before the dice are kept as they lie
 // (src/lib/dm/after-roll-timer.ts); the card counts it down.
 export const AFTER_ROLL_SECONDS = 20;
-const OWN_LUCK_DIE = "d10";
 
 // A roll that waits on the player's choice, once its dice are known.
 export type ThrownRoll = {
@@ -163,30 +169,102 @@ export function holdsLuckPoint(sheet: CharacterSheet): boolean {
 export function ownLuckDie(sheet: CharacterSheet): string | null {
   const held = heldOwnLuckDie(sheet);
   if (held) return held.die;
-  return holdsFeature(sheet, "dark one's own luck") && usesLeft(sheet, DARK_ONES_OWN_LUCK) > 0 ? OWN_LUCK_DIE : null;
+  const row = afterRollRow("own_luck");
+  return holdsFeature(sheet, row.feature) && usesLeft(sheet, DARK_ONES_OWN_LUCK) > 0 && row.amount?.kind === "held" ? (row.amount.fallback ?? null) : null;
 }
 
-// Chronal Shift (Chronurgy 2): "after you ... make an attack roll, an ability
-// check, or a saving throw", the wizard's reaction rolls it again once they
-// see it fail, and the second roll stands. The wizard's own roll is theirs to
-// answer here; a hit on them or an ally is the reaction card's
-// (src/lib/battlemap/hand-react.ts). `reactionFree`: their reaction is not
-// spent this round (always so outside a fight).
-function chronalShiftOption(sheet: CharacterSheet, reactionFree: boolean, taken: Set<AfterRollId>, what: string): AfterRollOption | null {
-  if (!reactionFree || taken.has("chronal_shift") || usesLeft(sheet, CHRONAL_SHIFT) < 1 || !holdsFeature(sheet, "chronal shift")) {
-    return null;
-  }
-  return { id: "chronal_shift", label: "Chronal Shift: roll it again", note: `Spend a use of Chronal Shift and your reaction: roll this ${what} again, and the new roll stands.` };
+// The die a held_die row adds: the condition the sheet holds, or (Dark One's
+// Own Luck) the feature's own use.
+function heldDieOf(sheet: CharacterSheet, row: AfterRollRow): string | null {
+  if (row.amount?.kind !== "held") return null;
+  return row.amount.condition === "bardic inspiration" ? (heldBardicDie(sheet)?.die ?? null) : ownLuckDie(sheet);
 }
 
-// Favored by the Gods (Divine Soul 1): "if you fail a saving throw or miss with
-// an attack roll, you can roll 2d4 and add it to the total". `reaches` is
-// whether the most it can add carries the roll.
-function favoredOption(sheet: CharacterSheet, taken: Set<AfterRollId>, reaches: boolean, what: string): AfterRollOption | null {
-  if (!reaches || taken.has("favored_by_the_gods") || usesLeft(sheet, FAVORED_BY_THE_GODS) < 1 || !holdsFeature(sheet, "favored by the gods")) {
-    return null;
+// Whether the sheet can pay for the row now: the feature and its cost.
+// Destructive Wrath already held from the Hand takes the roll by itself
+// (destructive-wrath.ts), so it is not offered again.
+export function holdsRow(sheet: CharacterSheet, row: AfterRollRow): boolean {
+  if (row.cost === "luck_point") return holdsLuckPoint(sheet);
+  if (row.cost === "held_die") return heldDieOf(sheet, row) !== null;
+  if (row.cost === "channel_divinity") {
+    return usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, row.feature)) && !(row.id === "destructive_wrath" && holdsDestructiveWrath(sheet));
   }
-  return { id: "favored_by_the_gods", label: `Favored by the Gods: add ${FAVORED_DICE}d${FAVORED_SIDES}`, note: `Spend your use of Favored by the Gods: add ${FAVORED_DICE}d${FAVORED_SIDES} to this ${what}.` };
+  return usesLeft(sheet, row.counter ?? "") > 0 && holdsFeature(sheet, row.feature);
+}
+
+// What the row adds, in the card's words, for this holder.
+function amountFor(sheet: CharacterSheet, row: AfterRollRow, modifier?: number): string {
+  const amount = row.amount;
+  if (!amount) return "";
+  if (amount.kind === "flat") return String(amount.value);
+  if (amount.kind === "dice") return `${amount.count}d${amount.sides}`;
+  if (amount.kind === "ability") return String(modifier ?? 0);
+  if (amount.kind === "held") return heldDieOf(sheet, row) ?? "";
+  if (amount.kind === "level") return String(levelDamage(sheet, row));
+  return "";
+}
+
+function levelDamage(sheet: CharacterSheet, row: AfterRollRow): number {
+  return row.amount?.kind === "level" ? row.amount.base + row.amount.per * classLevelOf(sheet, row.amount.className) : 0;
+}
+
+// The most the row could add for this holder.
+function mostFor(sheet: CharacterSheet, row: AfterRollRow, modifier?: number): number {
+  return mostAdded(row, { held: heldDieOf(sheet, row), modifier });
+}
+
+// The roll a row reads: its kind, its dice, and the number it must reach.
+type Target = { dc: number | null } | { ac: number; critRange: number };
+type Reading = { kind: string; outcome: RollResult; target: Target; taken: ReadonlySet<string> };
+
+// An attack that hits as it stands: a natural 1 misses whatever is added to
+// it, a natural in the critical range hits.
+export function attackHits(outcome: RollResult, ac: number, critRange: number): boolean {
+  const natural = outcome.natural;
+  return natural !== undefined && natural !== 1 && (natural >= critRange || outcome.total >= ac);
+}
+
+// Whether the row, once paid, could turn this roll that falls short. A
+// fresh d20 can land at best a 20 on a check or save, and can always save a
+// miss (a natural 20 hits); a number added cannot lift a natural 1 to a hit.
+function carries(sheet: CharacterSheet, row: AfterRollRow, roll: Reading, modifier?: number): boolean {
+  const { outcome, target } = roll;
+  const natural = outcome.natural;
+  if ("ac" in target) {
+    if (row.effect === "extra_d20" || row.effect === "reroll" || row.effect === "reroll_edge") return true;
+    return natural !== 1 && outcome.total + mostFor(sheet, row, modifier) >= target.ac;
+  }
+  const reaches = (most: number) => target.dc === null || outcome.total + most >= target.dc;
+  if (row.effect === "extra_d20" || row.effect === "reroll") return natural === undefined || reaches(20 - natural);
+  return reaches(mostFor(sheet, row, modifier));
+}
+
+// The option as the card shows it. `by`: the helper answering another's roll
+// (their row's other words, when it has them); absent, the roller's own.
+function optionOf(sheet: CharacterSheet, row: AfterRollRow, kind: string, input: { by?: string; rollerName?: string; modifier?: number } = {}): AfterRollOption {
+  const words = { kind, amount: amountFor(sheet, row, input.modifier), name: input.rollerName };
+  const other = input.by !== undefined && row.otherLabel !== undefined && row.otherNote !== undefined;
+  return {
+    id: row.id as AfterRollId,
+    ...(input.by !== undefined ? { by: input.by } : {}),
+    label: fillWords(other ? row.otherLabel! : row.label, words),
+    note: fillWords(other ? row.otherNote! : row.note, words),
+  };
+}
+
+// The roller's own choices on a roll as it stands, in the table's order.
+function ownOptions(sheet: CharacterSheet, roll: Reading, when: "short" | "hit", hit?: { melee?: boolean; wrathDice?: boolean }, reactionFree = true): AfterRollOption[] {
+  const options: AfterRollOption[] = [];
+  for (const row of AFTER_ROLL_ROWS as readonly AfterRollRow[]) {
+    // A row of its own (effect "own") is offered by its module, after these.
+    if (ownsItself(row) || row.whose === "other" || row.ownAmongHelpers || row.when !== when || !answers(row, roll.kind) || roll.taken.has(row.id)) continue;
+    if (row.reaction && !reactionFree) continue;
+    if (when === "hit" && ((row.hitBy === "melee" && !hit?.melee) || (row.amount?.kind === "max" && !hit?.wrathDice))) continue;
+    if (!holdsRow(sheet, row)) continue;
+    if (when === "short" && !carries(sheet, row, roll)) continue;
+    options.push(optionOf(sheet, row, roll.kind));
+  }
+  return options;
 }
 
 export function afterRollOptions(
@@ -198,90 +276,40 @@ export function afterRollOptions(
   if (!canWaitOnRoll(roll.kind) || !leadD20(outcome) || (dc !== null && outcome.total >= dc)) {
     return [];
   }
-  // Whether a bonus of up to `most` could carry the roll over its target.
-  const reaches = (most: number) => dc === null || outcome.total + most >= dc;
   const taken = new Set(roll.spent ?? []);
-  const options: AfterRollOption[] = [];
-  // A fresh d20 can land at best a 20.
-  if (holdsLuckPoint(sheet) && !taken.has("lucky") && (outcome.natural === undefined || reaches(20 - outcome.natural))) {
-    options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
-  }
-  const bardic = heldBardicDie(sheet);
-  if (bardic && !taken.has("bardic") && reaches(sidesOf(bardic.die))) {
-    options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this roll.` });
-  }
-  const own = ownLuckDie(sheet);
-  if (own && !taken.has("own_luck") && reaches(sidesOf(own))) {
-    options.push({ id: "own_luck", label: `Add Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
-  }
-  const shift = outcome.natural === undefined || reaches(20 - outcome.natural) ? chronalShiftOption(sheet, roll.reactionFree !== false, taken, roll.kind === "saving_throw" ? "save" : "check") : null;
-  if (shift) {
-    options.push(shift);
-  }
-  const favored = roll.kind === "saving_throw" ? favoredOption(sheet, taken, reaches(FAVORED_DICE * FAVORED_SIDES), "save") : null;
-  if (favored) {
-    options.push(favored);
-  }
-  options.push(...mrCheckOffers(sheet, { kind: roll.kind, total: outcome.total, natural: outcome.natural, dc, taken, reactionFree: roll.reactionFree !== false, check: roll.check }));
-  return options;
+  return [
+    ...ownOptions(sheet, { kind: roll.kind, outcome, target: { dc }, taken }, "short", undefined, roll.reactionFree !== false),
+    // The rows of their own (after-roll-table.ts effect "own"), after the table's.
+    ...mrCheckOffers(sheet, { kind: roll.kind, total: outcome.total, natural: outcome.natural, dc, taken, reactionFree: roll.reactionFree !== false, check: roll.check }),
+  ];
 }
 
 // An attack roll waits only when it misses as it stands: a hit is already what
 // the player wants, and the game knows the target's AC where a check may have
 // no DC. A natural 1 misses whatever is added to it, so only a fresh d20 can
 // save it; a fresh d20 can always save a miss, since a natural 20 hits. Dark
-// One's Own Luck is for checks and saves alone.
+// One's Own Luck is for checks and saves alone. A hit waits on the choices
+// that ride one (Touch of Death, Destructive Wrath).
 export function afterAttackOptions(
   sheet: CharacterSheet,
   // `wrathDice`: the hit would roll lightning or thunder dice (destructive-wrath-logic.ts rollsWrathDice).
   // `swing`: the weapon and the turn, for the features that read them (mt-mr-offers-logic.ts).
   roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; wrathDice?: boolean; swing?: MrSwing },
 ): AfterRollOption[] {
-  const { outcome, ac } = roll;
-  const natural = outcome.natural;
-  if (!leadD20(outcome) || natural === undefined) {
+  const { outcome, ac, critRange } = roll;
+  if (!leadD20(outcome) || outcome.natural === undefined) {
     return [];
   }
   const taken = new Set(roll.spent ?? []);
-  if (natural !== 1 && (natural >= roll.critRange || outcome.total >= ac)) {
+  const reading: Reading = { kind: "attack", outcome, target: { ac, critRange }, taken };
+  if (attackHits(outcome, ac, critRange)) {
     return [
-      ...(roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : []),
-      ...(roll.wrathDice && !taken.has("destructive_wrath") ? destructiveWrathOption(sheet) : []),
+      ...ownOptions(sheet, reading, "hit", { melee: roll.melee, wrathDice: roll.wrathDice }),
       // A Valor bard's die on the hit's damage (ar-wbf-bard-dice-logic.ts).
       ...(!taken.has("combat_inspiration") ? combatInspirationOption(sheet) : []),
     ];
   }
-  const options: AfterRollOption[] = [];
-  if (holdsLuckPoint(sheet) && !taken.has("lucky")) {
-    options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
-  }
-  const bardic = heldBardicDie(sheet);
-  if (bardic && !taken.has("bardic") && natural !== 1 && outcome.total + sidesOf(bardic.die) >= ac) {
-    options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this attack roll.` });
-  }
-  // A fresh d20 can always save a miss: a natural 20 hits.
-  const shift = chronalShiftOption(sheet, roll.reactionFree !== false, taken, "attack roll");
-  if (shift) {
-    options.push(shift);
-  }
-  // Guided Strike (War Domain 2, Oath of Conquest 3): +10, chosen after the
-  // roll and before the GM says whether it hits. Channel Divinity is a short
-  // supply, so it is offered only where it turns the miss.
-  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, "guided strike"));
-  if (guided && !taken.has("guided_strike") && natural !== 1 && outcome.total + GUIDED_STRIKE_BONUS >= ac) {
-    options.push({ id: "guided_strike", label: `Guided Strike: add ${GUIDED_STRIKE_BONUS}`, note: `Spend a use of Channel Divinity: add ${GUIDED_STRIKE_BONUS} to this attack roll.` });
-  }
-  // Master Duelist (Swashbuckler 17): "if you miss with an attack roll, you can
-  // roll it again with advantage". A fresh d20 can always save a miss.
-  if (!taken.has("master_duelist") && usesLeft(sheet, MASTER_DUELIST) > 0 && holdsFeature(sheet, "master duelist")) {
-    options.push({ id: "master_duelist", label: "Master Duelist: roll again with advantage", note: "Spend your use of Master Duelist: roll this attack again with advantage, and the new roll stands." });
-  }
-  const favored = favoredOption(sheet, taken, natural !== 1 && outcome.total + FAVORED_DICE * FAVORED_SIDES >= ac, "attack roll");
-  if (favored) {
-    options.push(favored);
-  }
-  options.push(...mrAttackOffers(sheet, { total: outcome.total, natural, ac, taken }, roll.swing));
-  return options;
+  return [...ownOptions(sheet, reading, "short", undefined, roll.reactionFree !== false), ...mrAttackOffers(sheet, { total: outcome.total, natural: outcome.natural!, ac, taken }, roll.swing)];
 }
 
 // Whether an ally's roll, as it stands, fails where a fresh d20 could still
@@ -304,25 +332,55 @@ export function shiftCanHelp(roll: { kind: string; outcome: RollResult; dc: numb
   return natural === undefined || outcome.total - natural + 20 >= roll.dc;
 }
 
+// Another character's choice on this roll, for a row that answers another's:
+// War God's Blessing (+10 where it turns a miss), Flash of Genius (the
+// artificer's Intelligence modifier, `modifier`). A roll with no DC is not
+// offered to a helper (shiftCanHelp).
+// `own`: the helper is the roller (Flash of Genius on the artificer's own
+// roll, offered with the helpers'), where a roll with no DC still asks.
+export function helperOption(
+  helper: CharacterSheet,
+  id: AfterRollId,
+  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[] } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number },
+  input: { rollerName: string; modifier?: number; own?: boolean },
+): AfterRollOption | null {
+  const row = afterRollRow(id);
+  const { outcome } = roll;
+  if (row.when !== "short" || !answers(row, roll.kind) || !leadD20(outcome)) {
+    return null;
+  }
+  const target: Target = "ac" in roll ? { ac: roll.ac, critRange: roll.critRange } : { dc: roll.dc };
+  if ("ac" in target) {
+    if (outcome.natural === undefined || attackHits(outcome, target.ac, target.critRange)) return null;
+  } else if ((!input.own && target.dc === null) || (target.dc !== null && outcome.total >= target.dc) || !canWaitOnRoll(roll.kind)) {
+    return null;
+  }
+  if (row.amount?.kind === "ability" && (input.modifier ?? 0) < 1) {
+    return null;
+  }
+  const reading: Reading = { kind: roll.kind, outcome, target, taken: new Set("spent" in roll ? (roll.spent ?? []) : []) };
+  if (!carries(helper, row, reading, input.modifier) || !holdsRow(helper, row)) {
+    return null;
+  }
+  return optionOf(helper, row, roll.kind, { ...(input.own ? {} : { by: helper.id }), rollerName: input.rollerName, modifier: input.modifier });
+}
+
+// A helper's choice on an ally's hit (Violent Attraction: "when a creature
+// you can see within 60 feet hits with a weapon attack").
+export function hitHelperOption(helper: CharacterSheet, id: AfterRollId, roll: { outcome: RollResult; ac: number; critRange: number; weapon: boolean }, rollerName: string): AfterRollOption | null {
+  const row = afterRollRow(id);
+  if (row.when !== "hit" || row.whose === "own" || !attackHits(roll.outcome, roll.ac, roll.critRange) || (row.hitBy === "weapon" && !roll.weapon) || !holdsRow(helper, row)) {
+    return null;
+  }
+  return optionOf(helper, row, "attack", { by: helper.id, rollerName });
+}
+
 // War God's Blessing (War Domain 6): "when a creature within 30 feet of you makes
 // an attack roll, you can use your reaction to grant that creature a +10 bonus
 // to the roll... after you see the roll, but before the DM says whether the
 // attack hits or misses." Offered where the 10 turns the miss.
 export function warGodsBlessingOption(cleric: CharacterSheet, roll: { outcome: RollResult; ac: number; critRange: number }): AfterRollOption | null {
-  const { outcome, ac } = roll;
-  const natural = outcome.natural;
-  if (natural === undefined || natural === 1 || natural >= roll.critRange || outcome.total >= ac || outcome.total + WAR_GODS_BLESSING_BONUS < ac || !leadD20(outcome)) {
-    return null;
-  }
-  if (usesLeft(cleric, CHANNEL_DIVINITY) < 1 || !channelOptions(cleric).some((option) => isNamed(option.name, "war god's blessing"))) {
-    return null;
-  }
-  return {
-    id: "war_gods_blessing",
-    by: cleric.id,
-    label: `War God's Blessing: add ${WAR_GODS_BLESSING_BONUS}`,
-    note: `Use your reaction and a use of Channel Divinity: add ${WAR_GODS_BLESSING_BONUS} to this attack roll.`,
-  };
+  return helperOption(cleric, "war_gods_blessing", { kind: "attack", ...roll }, { rollerName: "" });
 }
 
 // Flash of Genius (Artificer 7): "when you or another creature you can see within
@@ -331,70 +389,31 @@ export function warGodsBlessingOption(cleric: CharacterSheet, roll: { outcome: R
 // modifier could carry it. `ally`: on another character's roll, where a roll
 // with no DC is not offered, as for Chronal Shift (shiftCanHelp).
 export function flashOfGeniusOption(artificer: CharacterSheet, intelligence: number, roll: { kind: string; outcome: RollResult; dc: number | null }, ally: boolean): AfterRollOption | null {
-  const { outcome, dc } = roll;
-  if (!canWaitOnRoll(roll.kind) || !leadD20(outcome) || intelligence < 1 || (ally && dc === null)) {
-    return null;
-  }
-  if (dc !== null && (outcome.total >= dc || outcome.total + intelligence < dc)) {
-    return null;
-  }
-  if (usesLeft(artificer, FLASH_OF_GENIUS) < 1 || !holdsFeature(artificer, "flash of genius")) {
-    return null;
-  }
-  return {
-    id: "flash_of_genius",
-    ...(ally ? { by: artificer.id } : {}),
-    label: `Flash of Genius: add ${intelligence}`,
-    note: `Use your reaction and a use of Flash of Genius: add ${intelligence} to this roll.`,
-  };
+  return helperOption(artificer, "flash_of_genius", roll, { rollerName: "", modifier: intelligence, own: !ally });
 }
 
 // The line the model reads when another character changed this roll.
 export function answeredLine(id: AfterRollId, helper: string, roller: string, before: number, after: number): string {
-  if (id === "chronal_shift") {
-    return `${helper} used Chronal Shift: ${roller} rolled again (${before} became ${after}), and the new roll stands.`;
+  const row = afterRollRow(id);
+  if (row.effect === "reroll") {
+    return `${helper} used ${row.feature}: ${roller} rolled again (${before} became ${after}), and the new roll stands.`;
   }
-  const feature = id === "war_gods_blessing" ? "War God's Blessing" : id === "convergent_future" ? "Convergent Future" : id === "bend_luck" ? "Bend Luck" : "Flash of Genius";
-  return `${helper} used ${feature}: ${roller}'s roll went from ${before} to ${after}.`;
+  if (row.when === "hit") {
+    return `${helper} used ${row.feature}: ${roller}'s hit deals ${amountWords(row)} more damage.`;
+  }
+  return `${helper} used ${row.feature}: ${roller}'s roll went from ${before} to ${after}.`;
 }
 
 // A wizard's Chronal Shift offered on another character's roll.
 export function allyShiftOption(wizardId: string, rollerName: string, kind: string): AfterRollOption {
-  const what = kind === "attack" ? "attack roll" : kind === "saving_throw" ? "save" : "check";
-  return {
-    id: "chronal_shift",
-    by: wizardId,
-    label: `Chronal Shift: make ${rollerName} roll again`,
-    note: `Spend a use of Chronal Shift and your reaction: ${rollerName} rolls this ${what} again, and the new roll stands.`,
-  };
-}
-
-// Touch of Death (Death Domain 2): "when you hit a creature with a melee attack,
-// you can use Channel Divinity to deal extra necrotic damage": the one choice
-// that waits on a hit. The cleric sees the hit before spending the use.
-function touchOfDeathOption(sheet: CharacterSheet): AfterRollOption[] {
-  if (usesLeft(sheet, CHANNEL_DIVINITY) < 1 || !channelOptions(sheet).some((option) => isNamed(option.name, "touch of death"))) {
-    return [];
-  }
-  const damage = touchOfDeathDamage(sheet);
-  return [{ id: "touch_of_death", label: `Touch of Death: add ${damage} necrotic`, note: `Spend a use of Channel Divinity: this hit deals ${damage} extra necrotic damage.` }];
-}
-
-// Destructive Wrath (Tempest Domain 2): "When you roll lightning or thunder
-// damage, you can use your Channel Divinity to deal maximum damage, instead of
-// rolling." A hit is where its damage is rolled, so the hit waits on the
-// choice as it does for Touch of Death. One already held from the Hand takes
-// the roll by itself (destructive-wrath.ts), so it is not offered again.
-function destructiveWrathOption(sheet: CharacterSheet): AfterRollOption[] {
-  if (holdsDestructiveWrath(sheet) || usesLeft(sheet, CHANNEL_DIVINITY) < 1 || !channelOptions(sheet).some((option) => isNamed(option.name, "destructive wrath"))) {
-    return [];
-  }
-  return [{ id: "destructive_wrath", label: "Destructive Wrath: maximum lightning and thunder", note: "Spend a use of Channel Divinity: this hit's lightning and thunder dice are dealt at their maximum instead of rolled." }];
+  const row = afterRollRow("chronal_shift");
+  const words = { kind, name: rollerName };
+  return { id: "chronal_shift", by: wizardId, label: fillWords(row.otherLabel!, words), note: fillWords(row.otherNote!, words) };
 }
 
 // 5 + twice the cleric level.
 export function touchOfDeathDamage(sheet: CharacterSheet): number {
-  return 5 + 2 * classLevelOf(sheet, "cleric");
+  return levelDamage(sheet, afterRollRow("touch_of_death"));
 }
 
 // The roll with its d20s thrown again (`fresh`, one for each die the lead term

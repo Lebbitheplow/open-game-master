@@ -99,6 +99,7 @@ export const KNOWN = {
 };
 
 export const RULINGS = {
+  "counter:sub_cosmic_omen": { SPENT_FOR_NOTHING: "the maintainer's ruling on issue #908: Cosmic Omen is used before the roll, at the druid's own hold (pending-rolls/[id]/before-roll) and the watch stop (src/lib/dm/foresight-before.ts), where its d6 goes on the roll; the held die laid by use_resource went, since it spent the reaction long before the roll, and \"use_resource stays for a roll that never waits on anyone\", where the GM adds or takes the d6 as they narrate" },
   "spend:ranger::Hunter's Sense::Hunter's Sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:sub_hunters_sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:cyberpunk_jury_rig": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },

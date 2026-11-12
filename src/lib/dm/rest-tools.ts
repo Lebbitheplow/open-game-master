@@ -1,4 +1,5 @@
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
+import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
@@ -297,6 +298,7 @@ export function handleTakeRest(
 
   if (args.kind === "long") {
     const rested: string[] = [];
+    const omens: string[] = [];
     for (const id of resting) {
       // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
       // incapacitated, and incapacitation ends concentration): the spell
@@ -322,8 +324,13 @@ export function handleTakeRest(
         campaign.gameSettings.variantRules.supplies === true && goingWithout(hunger?.[sheet.id]);
       // A disease shapes the rest itself: sewer plague restores no hit
       // points, cackle fever keeps its level of exhaustion (afflictions.ts).
-      auditRest(campaign, turnId, sheet, "rest_long", afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving })), reason);
+      const restPatch = afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving }));
+      auditRest(campaign, turnId, sheet, "rest_long", restPatch, reason);
       rested.push(sheet.name);
+      // The omen the stars give for the day (before-roll-logic.ts), said in the rest's line.
+      if (restPatch.omen) {
+        omens.push(`${sheet.name}'s Cosmic Omen reads ${OMEN_WORDS[restPatch.omen]}`);
+      }
     }
     recordLongRests(campaign.id, resting, endsAt);
     // The saves a disease asks at the end of a long rest.
@@ -342,7 +349,7 @@ export function handleTakeRest(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
         unaffected.length ? ` No benefit from it for ${unaffected.join("; ")}.` : ""
-      }`,
+      }${omens.length ? ` ${omens.join("; ")}.` : ""}`,
       "rest-long",
     );
     // A night passing is a timeskip: the off-screen world moves too (world
@@ -365,6 +372,7 @@ export function handleTakeRest(
       ...(living.length ? { lifestyle: living } : {}),
       ...(leaving.length ? { companionsLeft: leaving } : {}),
       ...(unaffected.length ? { unaffected: unaffected.join("; ") } : {}),
+      ...(omens.length ? { omens } : {}),
       ...(deathSaves.length ? { deathSaves } : {}),
       restedFor,
       ...(nowReads ? { now: nowReads } : {}),

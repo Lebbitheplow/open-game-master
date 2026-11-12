@@ -79,13 +79,25 @@ export type ScriptedDie = (sides: number, frame: RollFrame) => number | null;
 // for a player watching for Portent before the first d20 of a roll.
 export type DiceTape = { taped: (sides: number) => number | null; drawn: (sides: number, face: number) => void; before?: (sides: number, frame: RollFrame) => void };
 
+// A whole roll once its dice are thrown, for what is set on it before the
+// throw and changes the roll, not a die: Cosmic Omen's d6 and Restore
+// Balance's one d20 (src/lib/db/dice-scripts.ts, armed at a watch stop).
+// Registered the way the dice script is; answers the roll unchanged at any
+// other moment. Told only of a roll whose site says what it rolls.
+export type RolledHook = (result: RollResult, purpose: RollTag) => RollResult;
+
 declare global {
   var __odmScriptedDie: ScriptedDie | undefined;
   var __odmDiceTape: DiceTape | null | undefined;
+  var __odmRolled: RolledHook | undefined;
 }
 
 export function registerScriptedDice(hook: ScriptedDie) {
   globalThis.__odmScriptedDie = hook;
+}
+
+export function registerRolledHook(hook: RolledHook) {
+  globalThis.__odmRolled = hook;
 }
 
 let frame: RollFrame | null = null;
@@ -167,11 +179,13 @@ function rollFramed(expression: string, rng: DieRng, options: EntryOptions): Rol
   // returns; the one it replaced is put back for whoever was rolling.
   const outer = frame;
   frame = { purpose: options.purpose ?? null, forcedD20: null };
+  let result: RollResult;
   try {
-    return rollTerms(expression, rng, options);
+    result = rollTerms(expression, rng, options);
   } finally {
     frame = outer;
   }
+  return options.purpose && globalThis.__odmRolled ? globalThis.__odmRolled(result, options.purpose) : result;
 }
 
 // An expression's signed terms, each read by the grammar, or the reason it
