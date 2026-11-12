@@ -21,6 +21,8 @@ import { spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budge
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { dualWields, isUndeadOrFiend, offHandProblem, slotFree, smiteDice } from "@/lib/dm/attack-rules";
 import { drawRow, gearKindOf, handsFor, handsFullError, spendInteraction } from "@/lib/dm/gear-hands";
+import { aiPlaysSheet } from "@/lib/dm/companion-command";
+import { askPlayerWords, noteHandsFullAsk } from "@/lib/dm/hands-full-ask";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { planMarks, type MarkPlan } from "@/lib/dm/attack-marks";
@@ -515,7 +517,13 @@ export function planPcAttack(input: {
     if (row && row.equipped !== true && gearKindOf(row) === "weapon") {
       const swap = drawRow(sheet.equipment, row, null);
       if (swap.full.length) {
-        return { refused: { error: handsFullError(sheet.name, row.name, swap.full), refused: "rules" } };
+        // What to let go of is the player's choice (hands-full-ask.ts); a
+        // companion the storyteller runs is the storyteller's to settle.
+        const theirs = !aiPlaysSheet(campaign, sheet);
+        if (theirs) {
+          noteHandsFullAsk(turn.id, sheet.id);
+        }
+        return { refused: { error: `${handsFullError(sheet.name, row.name, swap.full)}${theirs ? askPlayerWords(sheet.name) : ""}`, refused: "rules" } };
       }
       const draw = spendInteraction(budget, {
         what: `drawing ${row.name}`,

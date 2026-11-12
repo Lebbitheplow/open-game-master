@@ -266,6 +266,30 @@
 }
 .hand-art[data-glyph] .hand-glyph:only-child { margin-inline: auto; }
 
+/* Which weapon is out (held-default.ts), on the well's left where a fan
+   still shows it: green in hand, quiet when packed, and it settles in when
+   a draw or a stow changes it. */
+.hand-wield {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  pointer-events: none;
+  animation: fade-up var(--dur-move) var(--ease-settle) both;
+}
+.hand-wield[data-wield="in-hand"] { border-color: rgba(52, 211, 153, 0.6); background: rgba(6, 78, 59, 0.78); color: #a7f3d0; }
+html[data-theme="light"] .hand-wield { background: rgba(248, 250, 252, 0.9); color: #334155; border-color: rgba(71, 85, 105, 0.45); }
+html[data-theme="light"] .hand-wield[data-wield="in-hand"] { background: rgba(209, 250, 229, 0.92); color: #065f46; border-color: rgba(6, 95, 70, 0.5); }
+
 .hand-name {
   display: block;
   flex: none;

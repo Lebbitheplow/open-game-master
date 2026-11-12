@@ -20,6 +20,7 @@ const { intentTools, describeIntent, messageIntentSchema } = await import("../sr
 const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
+const { defaultHeld } = await import("../src/lib/dm/held-default.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -291,6 +292,63 @@ test("a played gear sentence opens the gear tools for a compact call", () => {
   for (const text of ["I draw my Greatsword.", "I take off my Shield.", "I drop my Longsword.", "I pick up the Handaxe.", "I hand my Dagger to Mira."]) {
     assert.ok(autoGroups({ inEncounter: true, englishPlayerText: text }).has("gear"), text);
   }
+});
+
+// ---- which weapon is out (held-default.ts) ----
+// A player could not tell which weapon was drawn, and the storyteller chose
+// for them; every sheet now says, and every weapon card shows it.
+
+test("a weapon card says whether it is in hand or packed, and a packed one says the attack draws it", () => {
+  const cards = deriveHand(sheet({ equipment: ARMED }), FRESH_TURN);
+  assert.equal(byId(cards, "attack:longsword").wield, "in-hand");
+  assert.equal(byId(cards, "attack:dagger").wield, "stowed");
+  assert.match(byId(cards, "attack:dagger").description, /Packed away: the attack draws it with your free object interaction/);
+  assert.doesNotMatch(byId(cards, "attack:longsword").description ?? "", /Packed away/);
+  // A sheet that has not said marks nothing.
+  const unsaid = deriveHand(sheet({ equipment: [{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }] }), FRESH_TURN);
+  assert.equal(byId(unsaid, "attack:longsword").wield, undefined);
+  assert.equal(byId(unsaid, "attack:dagger").wield, undefined);
+});
+
+const NO_ARMOR = { armorName: null, shieldName: null };
+const held = (rows) => rows.filter((row) => row.equipped).map((row) => row.name);
+
+test("the default holds the first weapon the character is trained with, packs the rest, and leaves a sheet that already said alone", () => {
+  const wizard = defaultHeld([{ name: "Sling", qty: 1 }, { name: "Quarterstaff", qty: 1 }, { name: "Spellbook", qty: 1 }], NO_ARMOR, ["daggers", "darts", "slings", "quarterstaffs", "light crossbows"]);
+  assert.deepEqual(held(wizard), ["Sling"]);
+  assert.ok(wizard.every((row) => row.equipped !== undefined), "every row says");
+  const untrained = defaultHeld([{ name: "Greataxe", qty: 1 }, { name: "Quarterstaff", qty: 1 }], NO_ARMOR, ["simple"]);
+  assert.deepEqual(held(untrained), ["Quarterstaff"]);
+  assert.equal(defaultHeld(ARMED, NO_ARMOR, ["martial"]), null);
+  assert.equal(defaultHeld([], NO_ARMOR, ["martial"]), null);
+});
+
+test("the default keeps the armor and shield the armor class counted, and a weapon that fits beside the shield", () => {
+  const rows = defaultHeld(
+    [{ name: "Chain Mail", qty: 1 }, { name: "Shield", qty: 1 }, { name: "Greatsword", qty: 1 }, { name: "Longsword", qty: 1 }],
+    { armorName: "Chain Mail", shieldName: "Shield" },
+    ["simple", "martial"],
+  );
+  assert.deepEqual(held(rows), ["Chain Mail", "Shield", "Longsword"]);
+});
+
+test("a caster keeps a hand free for a spell's gestures: with a shield on the arm the weapon stays packed", () => {
+  const cleric = defaultHeld(
+    [{ name: "Chain Mail", qty: 1 }, { name: "Shield", qty: 1 }, { name: "Mace", qty: 1 }],
+    { armorName: "Chain Mail", shieldName: "Shield" },
+    ["simple"],
+    true,
+  );
+  assert.deepEqual(held(cleric), ["Chain Mail", "Shield"]);
+  const bladesinger = defaultHeld([{ name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }], NO_ARMOR, ["simple", "shortswords"], true);
+  assert.deepEqual(held(bladesinger), ["Shortsword"]);
+});
+
+test("a light blade beside a light main weapon stays in hand too, so a two-weapon fighter keeps both", () => {
+  const rogue = defaultHeld([{ name: "Shortsword", qty: 1 }, { name: "Shortbow", qty: 1 }, { name: "Dagger", qty: 2 }], NO_ARMOR, ["simple", "shortswords"]);
+  assert.deepEqual(held(rogue), ["Shortsword", "Dagger"]);
+  const fighter = defaultHeld([{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }], NO_ARMOR, ["simple", "martial"]);
+  assert.deepEqual(held(fighter), ["Longsword"]);
 });
 
 console.log(`test-hand-gear: ${passed} passed`);

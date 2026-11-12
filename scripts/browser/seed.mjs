@@ -2478,6 +2478,72 @@ const noticeTables = {};
   }
 }
 
+// Which weapon is out (scenario wield-chip, src/lib/dm/held-default.ts): a
+// fighter saved without saying what they hold, as every sheet was, gets the
+// default as they are made: the mail on, the longsword in hand, the handaxe
+// and the bow packed. Their Hand marks each weapon card.
+const WIELD_TITLE = "Wield Table";
+const wieldTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${WIELD_TITLE} (${viewport})`,
+      description: "One goblin in a lane.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the wield table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      {
+        ...heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, equipment: [{ name: "Chain Mail", qty: 1 }, { name: "Longsword", qty: 1 }, { name: "Handaxe", qty: 1 }, { name: "Longbow", qty: 1 }] }),
+        // A fighter's training, as the builder gives it, and the armor class
+        // read from the mail.
+        proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+        acOverride: false,
+      },
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the wield table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    if (place < 0) {
+      throw new Error("the wield table's fighter has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    wieldTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
 // PR 782: the after-the-roll card on a real parked roll. A table the player
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
@@ -3963,6 +4029,7 @@ const ids = {
   tidesOfChaos,
   speciesSpells,
   noticeTables,
+  wieldTables,
   afterRollTables,
   afterAttackTables,
   wrathTables,
@@ -4095,6 +4162,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(wieldTables).map(([viewport, table]) => [table.id, `${WIELD_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),

@@ -36,6 +36,7 @@ import { footprintDistance } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
 import { characterCallUnasked } from "@/lib/dm/player-word";
+import { handsFullAsked } from "@/lib/dm/hands-full-ask";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
@@ -147,6 +148,11 @@ export function handleItemCall(
   const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
   if (unasked) {
     return unasked;
+  }
+  // An attack this turn was refused for full hands: what to let go of is the
+  // player's to say, in their next message (hands-full-ask.ts).
+  if (turn?.actor === "ai" && (action === "drop" || action === "unequip") && handsFullAsked(turn.id, sheet.id)) {
+    return refuse(`${sheet.name}'s hands were full for the attack, and whether to drop something or put it away is ${sheet.name}'s player's choice. Ask them and wait for their answer; nothing was dropped or spent.`);
   }
   if (sheet.deathSaves?.dead) {
     return refuse(`${sheet.name} is dead and handles nothing.`);

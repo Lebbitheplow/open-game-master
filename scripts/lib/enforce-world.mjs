@@ -216,6 +216,7 @@ export async function openWorld(options = {}) {
   const { createUser } = await import("../../src/lib/db/users.ts");
   const campaigns = await import("../../src/lib/db/campaigns.ts");
   const sheets = await import("../../src/lib/db/sheets.ts");
+  const { getDatabase } = await import("../../src/lib/db/core.ts");
   const encounters = await import("../../src/lib/db/encounters.ts");
   const messages = await import("../../src/lib/db/messages.ts");
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
@@ -275,11 +276,38 @@ export async function openWorld(options = {}) {
     if (input.spellcasting && !input.equipment.some((item) => /component pouch/i.test(item.name ?? ""))) {
       input.equipment = [...input.equipment, { name: "Component pouch", qty: 1 }];
     }
-    return sheets.createSheet(campaignId, user.id, overrides.level ?? 1, input);
+    const made = sheets.createSheet(campaignId, user.id, overrides.level ?? 1, input);
+    // A hero whose test never said what it holds keeps the reading every
+    // sheet had before sheets said (src/lib/dm/held-default.ts): all it
+    // carries is to hand. A test about hands gives its rows `equipped`, or
+    // opens its world with `heldDefault: true` to get the default.
+    if (!options.heldDefault && !input.equipment.some((item) => item.equipped !== undefined)) {
+      forgetHeld([made.id]);
+      return sheets.getSheetById(made.id);
+    }
+    return made;
   }
 
-  const invoke = (name, args = {}) =>
-    invokeEngine(campaign(), { kind: "human", userId: owner.id }, { name, args });
+  // The rows' worn marks taken off again, as they were stored before.
+  function forgetHeld(ids) {
+    const db = getDatabase();
+    for (const id of ids) {
+      const row = db.prepare(`SELECT equipment_json FROM character_sheets WHERE id = ?`).get(id);
+      const rows = row ? JSON.parse(row.equipment_json) : [];
+      if (rows.some((item) => item.equipped !== undefined)) {
+        db.prepare(`UPDATE character_sheets SET equipment_json = ? WHERE id = ?`).run(JSON.stringify(rows.map((item) => { const next = { ...item }; delete next.equipped; return next; })), id);
+      }
+    }
+  }
+  // A fight gives every sheet that has not said the default as it begins;
+  // the ones the test left unsaid stay so.
+  const unsaid = () => (options.heldDefault ? [] : sheets.listSheets(campaignId).filter((sheet) => !sheet.equipment.some((item) => item.equipped !== undefined)).map((sheet) => sheet.id));
+
+  const invoke = (name, args = {}) => {
+    const keep = name === "start_encounter" ? unsaid() : [];
+    const out = invokeEngine(campaign(), { kind: "human", userId: owner.id }, { name, args });
+    return keep.length ? Promise.resolve(out).then((result) => (forgetHeld(keep), result)) : out;
+  };
 
   // A fight with the initiative already in, so a test starts on a known
   // turn. Enemies roll `enemyFace` on their d20; each hero rolls the face

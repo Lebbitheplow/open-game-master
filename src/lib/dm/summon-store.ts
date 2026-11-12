@@ -120,7 +120,7 @@ export function spawnSummons(campaign: Campaign, caster: CharacterSheet, input: 
       backstory: `${form.name} made by ${caster.name}'s ${record.spell}.`,
     });
     const user = createCompanionUser(name);
-    const sheet = createSheet(campaign.id, user.id, level, draft);
+    const sheet = createSheet(campaign.id, user.id, level, draft, undefined, { companion: true });
     // A creature a GM turn called up goes with the turn's revert (issue 685,
     // src/lib/dm/turn-revert.ts); sent away in the same turn, it is not
     // brought back by it either.

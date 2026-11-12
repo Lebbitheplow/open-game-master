@@ -8,7 +8,7 @@ import type { TurnBudget } from "@/lib/dm/action-budget";
 import { normalizeIntents, type EncounterIntents } from "@/lib/db/encounter-intents";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { normalizeSides, type SideExceptions } from "@/lib/dm/combat-sides-logic";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, patchSheet, settleHeldGear } from "@/lib/db/sheets";
 import { endUnsensed } from "@/lib/dm/ar-ws-senses-logic";
 import { endedByRegain } from "@/lib/dm/condition-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
@@ -368,6 +368,13 @@ export function createEncounter(
     .run(id, campaignId, kind, summary.slice(0, 300), now, now);
   // A fight a GM turn began goes with the turn's revert (issue 685).
   keepNew("encounters", id, campaignId);
+  // A sheet saved before every sheet said what it holds says so now, as the
+  // fight that makes it matter begins (src/lib/dm/held-default.ts).
+  if (kind !== "scene") {
+    for (const sheet of settleHeldGear(campaignId)) {
+      publishPersisted(campaignId, "sheet_updated", { sheet });
+    }
+  }
   return getEncounter(id);
 }
 

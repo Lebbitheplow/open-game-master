@@ -10,7 +10,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
 import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 import { HandAimBar, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
-import { HandCardFace, HandPlayedCard } from "@/app/campaigns/[campaignId]/HandCardFace";
+import { HandCardFace, HandPlayedCard, WIELD_LABEL } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandArrange } from "@/app/campaigns/[campaignId]/HandArrange";
 import { HandMoreSheet } from "@/app/campaigns/[campaignId]/HandMoreSheet";
 import { HandGroupFace, HandGroupView, fanStep } from "@/app/campaigns/[campaignId]/HandGroups";
@@ -684,7 +684,7 @@ function HandInner({
     if (boardSwap) return { title: `Replace ${boardSwap.current}?`, lines: [`Casting ${boardSwap.next} ends concentration on ${boardSwap.current} and its effects. Keep it to spend nothing.`], controls: [{ id: "hand-confirm", label: `Cast ${boardSwap.next}`, disabled: null }, { id: "hand-keep", label: `Keep ${boardSwap.current}`, disabled: null }, close] };
     if (boardChoices) {
       const matches = cards.filter(card => card.intent.card === (boardChoices === "attack" ? "attack" : "spell"));
-      return { title: boardChoices === "attack" ? "Choose a weapon" : "Choose a spell", lines: ["Choose the action, then its target and options. Nothing is sent until you play it.", ...(!matches.length ? ["No matching cards are available yet; spell details may still be loading."] : []), ...(notice ? [notice] : [])], controls: [{ id: "hand-card", label: boardChoices === "attack" ? "Weapon" : "Spell", disabled: null, options: matches.map(card => ({ value: card.id, label: `${card.name} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`, disabled: card.disabled })) }, close] };
+      return { title: boardChoices === "attack" ? "Choose a weapon" : "Choose a spell", lines: ["Choose the action, then its target and options. Nothing is sent until you play it.", ...(!matches.length ? ["No matching cards are available yet; spell details may still be loading."] : []), ...(notice ? [notice] : [])], controls: [{ id: "hand-card", label: boardChoices === "attack" ? "Weapon" : "Spell", disabled: null, options: matches.map(card => ({ value: card.id, label: `${card.name}${card.wield ? ` · ${WIELD_LABEL[card.wield]}` : ""} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`, disabled: card.disabled })) }, close] };
     }
     if (!picked) return null;
     const option = (value: string, label: string, disabled: string | null = null) => ({ value, label, disabled });
