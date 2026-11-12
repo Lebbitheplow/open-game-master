@@ -39,12 +39,33 @@ export function toHitRollWithPlayer<T extends OpenRoll>(open: readonly T[], char
   );
 }
 
+const attackWords = (roll: OpenRoll) => (roll.attack ? `${roll.attack.attacker}'s ${roll.attack.weapon} attack` : "An attack");
+
 // The End Turn button's refusal, to the player holding the card.
 export function endTurnWaitsLine(roll: OpenRoll): string {
-  const what = roll.attack ? `${roll.attack.attacker}'s ${roll.attack.weapon} attack` : "An attack";
+  const what = attackWords(roll);
   return roll.thrown
     ? `${what} is waiting on your choice. Change the roll or keep it, then end the turn.`
     : `${what} is waiting on your roll. Roll it, then end the turn.`;
+}
+
+// An attack card played while the turn's last swing still waits on its
+// player (issue 931): the card went through, pc_attack was refused for the
+// attack the roll had already spent, and the GM told the swing as "resolved
+// in the opening exchange" while its d20 was still in the player's hand. The
+// Hand answers first, in the End Turn button's words.
+export function attackCardWaitsLine(roll: OpenRoll): string {
+  const what = attackWords(roll);
+  return roll.thrown
+    ? `${what} is waiting on your choice. Change the roll or keep it first.`
+    : `${what} is waiting on your roll. Roll it first.`;
+}
+
+// The same, to whoever called pc_attack: the swing is not lost and not
+// landed, and a second call for it would be refused by the attack it spent.
+export function attackWaitsToolLine(name: string, roll: OpenRoll): string {
+  const weapon = roll.attack?.weapon ? `${roll.attack.weapon} ` : "";
+  return `${name}'s ${weapon}attack is still waiting on its player's ${roll.thrown ? "choice" : "dice"}; it has not landed. Nothing was spent. Do not call pc_attack for it again or narrate it resolved: the turn resumes once it lands, and any further attack is made after that.`;
 }
 
 // The same, to whoever called end_turn.

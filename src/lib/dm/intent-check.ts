@@ -15,7 +15,9 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { canAct, type ActKind } from "@/lib/dm/can-act";
+import { actingCombatantId, canAct, type ActKind } from "@/lib/dm/can-act";
+import { listOpenPendingRolls } from "@/lib/db/dm-turns";
+import { attackCardWaitsLine, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { reactsForAnother, timingOfUseReaction } from "@/lib/dm/reaction-tools";
@@ -199,6 +201,15 @@ export function intentRefusal(
     const able = canAct({ sheet, encounter, kind: kindOf(intent) });
     if (!able.ok) {
       return able.error;
+    }
+    // A swing on their turn still waiting on its dice (issue 931): an attack
+    // card played now (the off-hand swing too) reached pc_attack, which the
+    // spent attack refused, and the GM told the first swing as resolved. The
+    // card waits until the roll is in, as End Turn does (open-roll-logic.ts).
+    const swings = intent.card === "attack" || intent.card === "rider";
+    const waiting = swings && encounter && actingCombatantId(encounter) === sheet.id ? toHitRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter) : null;
+    if (waiting) {
+      return attackCardWaitsLine(waiting);
     }
   }
   // A reaction (Uncanny Dodge, Shield) needs the reaction the fight still
