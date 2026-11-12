@@ -13,14 +13,13 @@
 // stood where it was.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
-import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { unicornHealing } from "@/lib/dm/spirit-totem";
 import { computeSheetDerived } from "@/lib/srd";
 import { hasCondition } from "@/lib/srd/authored-effects";
@@ -45,7 +44,9 @@ function chaliceHealing(campaign: Campaign, turnId: string, caster: CharacterShe
   }
   const wis = computeSheetDerived(caster).abilityMods.wis ?? 0;
   const dice = `${(classLevelOf(caster, "druid") || caster.level) >= 10 ? "2d8" : "1d8"}+${wis}`;
-  const rolled = Math.max(0, Number(rollCard(campaign, getDmTurn(turnId), caster.id, "custom", "Starry Form (Chalice): healing", dice, null).total));
+  // The druid's own dice (character-roll.ts rollOwnDice): on physical dice
+  // their player rolls them, as the spell's own healing.
+  const rolled = Math.max(0, Number(rollOwnDice(campaign, caster, diceFor("Starry Form (Chalice): healing", caster, second), dice).total));
   const gained = regainHitPoints(campaign, turnId, second, rolled, `Starry Form: Chalice (${caster.name})`);
   return gained > 0 ? [`${second.name} regains ${gained} hit points from the chalice (${dice}).`] : [];
 }

@@ -31,7 +31,7 @@ import { addConditionInstance, type ConditionMeta, type ConditionMetaMap } from 
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { publishBattleMapUpdate, teleportSquareRefusal } from "@/lib/dm/map-tools";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
-import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { resolveFormula } from "@/lib/srd/authored-effects";
@@ -69,7 +69,8 @@ export function healOne(ctx: SpendContext, heals: Heals): string {
     return `${target.name} cannot regain hit points right now, so ${ctx.spend.name} heals nobody.`;
   }
   const dice = resolveFormula(heals.formula, ctx.held.level, ctx.mods);
-  const rolled = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.spend.name}: healing`, dice, null).total;
+  // The holder's own dice (character-roll.ts rollOwnDice), whoever is healed.
+  const rolled = rollOwnDice(ctx.campaign, ctx.sheet, diceFor(`${ctx.spend.name}: healing`, ctx.sheet, target), dice, { turn: ctx.turn }).total;
   const gained = regainHitPoints(ctx.campaign, ctx.turnId, target, rolled, `${ctx.spend.name} (${ctx.sheet.name})`);
   return `${target.name} regains ${gained} hit points (${dice}: ${rolled}).`;
 }

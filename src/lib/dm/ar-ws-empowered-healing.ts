@@ -45,7 +45,7 @@ import { answerKey } from "@/lib/dm/last-hit";
 import { answerSave, calmTrigger, openTriggers, recordCalmTrigger, recordTrigger } from "@/lib/dm/last-save";
 import { openTriggersFor, triggerSpecOf } from "@/lib/dm/reaction-triggers";
 import { regainHitPoints } from "@/lib/dm/regain";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
@@ -135,7 +135,9 @@ export function rerollHealing(ctx: SpendContext): Resolution {
   // One card for the new dice, grouped by size in the order they were picked.
   const sizes = [...new Set(picked.map((entry) => entry.sides))];
   const expression = sizes.map((sides) => `${picked.filter((entry) => entry.sides === sides).length}d${sides}`).join("+");
-  const thrown = rollCard(campaign, ctx.turn, target.id, "custom", `${spend.name}: ${record.spell ?? "healing"} on ${target.name} (${expression})`, expression, null);
+  // The sorcerer's own dice, as the feature is theirs (character-roll.ts
+  // rollOwnDice): on physical dice their player rolls them again.
+  const thrown = rollOwnDice(campaign, sheet, `${spend.name}: ${record.spell ?? "healing"} on ${target.name} (${expression})`, expression, { turn: ctx.turn });
   const fresh = thrown.terms.filter((term): term is DiceTerm => term.kind === "dice").flatMap((term) => term.dice.map((die) => die.value));
   const before = picked.reduce((sum, entry) => sum + entry.value, 0);
   const after = fresh.reduce((sum, value) => sum + value, 0);

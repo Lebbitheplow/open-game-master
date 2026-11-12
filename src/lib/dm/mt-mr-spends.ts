@@ -20,6 +20,7 @@ import { aspectOfTheWyrm } from "@/lib/dm/mt-mr-dragon";
 import { psionicEnergyDie } from "@/lib/dm/mt-mr-offers-logic";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { rollCard } from "@/lib/dm/roll-card";
+import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
@@ -88,7 +89,8 @@ function handOfHealing(ctx: SpendContext, flurry: boolean, reachFt: number): Res
     }
   }
   const dice = `1${martialArtsDie(ctx.held.level)}+${ctx.mods.wis ?? 0}`.replace("+-", "-");
-  const rolled = rollCard(campaign, ctx.turn, sheet.id, "custom", `${name}: healing`, dice, null).total;
+  // The monk's own dice (character-roll.ts rollOwnDice), whoever is healed.
+  const rolled = rollOwnDice(campaign, sheet, diceFor(`${name}: healing`, sheet, ally), dice, { turn: ctx.turn }).total;
   const gained = regainHitPoints(campaign, ctx.turnId, ally, rolled, `${name} (${sheet.name})`);
   const ended = physiciansTouch(ctx, ally);
   if (flurry && encounter && budget) {
