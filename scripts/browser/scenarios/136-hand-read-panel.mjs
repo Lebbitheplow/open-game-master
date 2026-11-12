@@ -12,7 +12,12 @@ export default {
   name: "hand-read-panel",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, root, ids, viewport } = t;
+    const { page, base, root, api, ids, viewport } = t;
+    // A spell's description comes from the content pack, which a server
+    // without one (CI's browser jobs) does not have: there a card has no
+    // text beyond its rules line, so it offers none to open.
+    const catalog = await api.get(`${base}/api/content/spells?class=wizard&level=1`);
+    const packInstalled = catalog.ok() && (await catalog.json()).packInstalled === true;
     const press = async (locator) => {
       if (t.touch) return t.tap(locator);
       await locator.focus();
@@ -57,6 +62,16 @@ export default {
 
     // Its whole text, on asking, with a finger-sized opener.
     const opener = panel.first().locator(".hand-full-text-toggle");
+    if (!packInstalled) {
+      check(!(await opener.count()), "with no content pack the held card offers no full text to open");
+      await t.tap(panel.first().getByRole("button", { name: "Close" }));
+      await eventually(async () => !(await panel.count()), { label: "the read panel closed" });
+      await press(card("Magic Missile"));
+      const aim = visible(page.locator(`${root}.hand-aim:not(.hand-read)`)).first();
+      await eventually(() => aim.count(), { label: "the aim bar of Magic Missile" });
+      check(!(await aim.locator(".hand-full-text-toggle").count()), "nor does a playable card's aim bar");
+      return;
+    }
     check(await opener.count(), "the held card offers its full text");
     const tall = await opener.evaluate((summary) => summary.getBoundingClientRect().height);
     check(viewport !== "phone" || tall >= 40, `the opener is finger-sized on a phone (${tall}px)`);
