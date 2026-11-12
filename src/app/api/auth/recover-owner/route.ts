@@ -3,7 +3,7 @@ import { PasswordBusyError, hashPassword, mintSession, passwordBusyResponse } fr
 import { getUserByUsername, isCompanionUserId, listUsers, setUserPassword } from "@/lib/db/users";
 import { checkLogin, clientIp, recordLoginFailure, recordLoginSuccess, recordPasswordSuccess } from "@/lib/login-throttle";
 import { isDeviceWorld } from "@/lib/server-env";
-import { firstAccountTakesCode, setupCodeMatches } from "@/lib/setup-code";
+import { firstAccountTakesCode, setupCodeLength, setupCodeMatches } from "@/lib/setup-code";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,10 +20,17 @@ export const dynamic = "force-dynamic";
 const recoverSchema = z.object({
   setupCode: z.string().trim().min(1).max(40),
   password: z.string().min(8).max(100),
-  // The account the app kept for its host. When it names no admin here
-  // (the app's record was lost), the world's first admin is its owner.
+  // The account the app kept for its host. When it names neither an admin
+  // nor the world's first account (the app's record was lost), the world's
+  // first admin is its owner.
   username: z.string().trim().max(24).optional(),
 });
+
+// The door opens only to a code too long to guess. Both apps hand their
+// world 32 hex characters; a code typed by hand into ODM_SETUP_CODE that is
+// shorter would make the host's password anyone's for a few guesses, and
+// the per-address count below cannot hold a caller on the Wi-Fi to it.
+const MIN_CODE_CHARACTERS = 16;
 
 // The host is the world's first account, the one the app claimed with the
 // setup code. The named account is taken when it is an admin or that first
@@ -37,7 +44,7 @@ function worldOwner(username: string | undefined) {
 }
 
 export async function POST(request: Request) {
-  if (!isDeviceWorld() || !firstAccountTakesCode()) {
+  if (!isDeviceWorld() || !firstAccountTakesCode() || setupCodeLength() < MIN_CODE_CHARACTERS) {
     return Response.json({ error: "Not found." }, { status: 404 });
   }
   const raw = await request.json().catch(() => ({}));
@@ -47,10 +54,15 @@ export async function POST(request: Request) {
   }
 
   // A device world can be on the Wi-Fi or behind a tunnel, so wrong codes
-  // share the login throttle's escalating lockout, keyed by IP.
+  // share the login throttle's escalating lockout, keyed by address. Only
+  // where the address means something (the tunnel names each caller):
+  // reached directly, every caller is "local", the app included, and one
+  // shared bucket would let anyone on the network keep the host out with a
+  // few wrong codes (login-throttle.ts sourceKey keeps the same rule). The
+  // code's length is what holds a guesser there.
   const ip = clientIp(request);
-  const throttle = `recover-owner:${ip}`;
-  const gate = checkLogin(throttle);
+  const throttle = ip && ip !== "local" ? `recover-owner:${ip}` : null;
+  const gate = throttle ? checkLogin(throttle) : { blocked: false, retryAfterSec: 0 };
   if (gate.blocked) {
     return Response.json(
       { error: `Too many attempts. Try again in ${gate.retryAfterSec}s.` },
@@ -58,10 +70,10 @@ export async function POST(request: Request) {
     );
   }
   if (!setupCodeMatches(parsed.data.setupCode)) {
-    recordLoginFailure(throttle);
+    if (throttle) recordLoginFailure(throttle);
     return Response.json({ error: "Only the app that hosts this world can do that." }, { status: 403 });
   }
-  recordLoginSuccess(throttle);
+  if (throttle) recordLoginSuccess(throttle);
 
   const owner = worldOwner(parsed.data.username);
   if (!owner) {

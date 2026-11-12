@@ -68,6 +68,12 @@ export function currentSetupCode(): string {
   return getAppSetting<string>(SETUP_CODE_KEY, "");
 }
 
+// How many characters the code that claims (or, on a device world,
+// recovers) this server has once read the way a typed one is.
+export function setupCodeLength(): number {
+  return normalize(currentSetupCode()).length;
+}
+
 export function setupCodeMatches(input: string | undefined): boolean {
   const given = normalize(input ?? "");
   const expected = normalize(currentSetupCode());

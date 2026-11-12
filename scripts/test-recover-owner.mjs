@@ -14,7 +14,7 @@ process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
 process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 process.env.ODM_ENV_FILE = path.join(dir, "no-env-file");
 process.env.ODM_DEVICE_WORLD = "1";
-process.env.ODM_SETUP_CODE = "shell-made-secret";
+process.env.ODM_SETUP_CODE = "shell-made-secret-0123";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -35,7 +35,7 @@ function call(handler, route, body, ip = "203.0.113.7") {
   return handler(
     new Request(`http://127.0.0.1:3210/api/auth/${route}`, {
       method: "POST",
-      headers: { "content-type": "application/json", "cf-connecting-ip": ip },
+      headers: { "content-type": "application/json", ...(ip ? { "cf-connecting-ip": ip } : {}) },
       body: JSON.stringify(body),
     }),
   );
@@ -45,11 +45,11 @@ const recover = (body, ip) => call(POST, "recover-owner", body, ip);
 const signIn = (username, password) => call(token, "token", { username, password });
 
 await test("a world with no owner yet has nobody to recover", async () => {
-  const response = await recover({ setupCode: "shell-made-secret", password: "new-secret-1" });
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "new-secret-1" });
   assert.equal(response.status, 404);
 });
 
-const host = claimFirstAdmin("host", await hashPassword("made-up-by-app"), "shell-made-secret");
+const host = claimFirstAdmin("host", await hashPassword("made-up-by-app"), "shell-made-secret-0123");
 assert.ok(host?.isAdmin);
 createUser("guest", await hashPassword("guest-secret-1"));
 
@@ -66,7 +66,7 @@ await test("a wrong or missing code changes nothing", async () => {
 });
 
 await test("the app's code sets the host's new password and answers with a session", async () => {
-  const response = await recover({ setupCode: "shell-made-secret", password: "app-made-new-1", username: "host" });
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-1", username: "host" });
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.ok(body.token);
@@ -77,7 +77,7 @@ await test("the app's code sets the host's new password and answers with a sessi
 });
 
 await test("a name that is no admin here recovers the world's owner, never a guest", async () => {
-  const response = await recover({ setupCode: "shell-made-secret", password: "app-made-new-2", username: "guest" });
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-2", username: "guest" });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).user.username, "host");
   assert.equal((await signIn("guest", "guest-secret-1")).status, 200, "the guest's password moved");
@@ -92,7 +92,7 @@ await test("a host a co-admin demoted is still the one let back in, never the co
   const coAdmin = createUser("coadmin", await hashPassword("coadmin-secret-1"), { isAdmin: true });
   setUserAdmin(host.id, false);
   setUserPassword(host.id, await hashPassword("temporary-nobody-saw-2"), true);
-  const response = await recover({ setupCode: "shell-made-secret", password: "app-made-new-5", username: "host" });
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-5", username: "host" });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).user.username, "host");
   assert.equal((await signIn("coadmin", "coadmin-secret-1")).status, 200, "the co-admin's password is untouched");
@@ -108,15 +108,33 @@ await test("wrong codes lock the address out", async () => {
     last = (await recover({ setupCode: `guess-${attempt}`, password: "attacker-secret" }, ip)).status;
   }
   assert.equal(last, 429);
-  assert.equal((await recover({ setupCode: "shell-made-secret", password: "app-made-new-3" }, ip)).status, 429);
+  assert.equal((await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-3" }, ip)).status, 429);
+});
+
+await test("a caller on the Wi-Fi cannot lock the app out of its own door", async () => {
+  // Reached directly, with no proxy in front, every caller is "local" and
+  // so is the app: one shared bucket would let anyone on the network keep
+  // the host out with a few wrong codes (login-throttle.ts sourceKey). The
+  // code is long enough that guessing it is no way in.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    assert.equal((await recover({ setupCode: `wifi-guess-${attempt}`, password: "attacker-secret" }, null)).status, 403);
+  }
+  const response = await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-6", username: "host" }, null);
+  assert.equal(response.status, 200);
+});
+
+await test("a code short enough to guess opens no such door", async () => {
+  process.env.ODM_SETUP_CODE = "abc-123";
+  assert.equal((await recover({ setupCode: "abc-123", password: "app-made-new-7" })).status, 404);
+  process.env.ODM_SETUP_CODE = "shell-made-secret-0123";
 });
 
 await test("a server somebody runs, or a device world started without a code, has no such door", async () => {
   delete process.env.ODM_DEVICE_WORLD;
-  assert.equal((await recover({ setupCode: "shell-made-secret", password: "app-made-new-4" })).status, 404);
+  assert.equal((await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-4" })).status, 404);
   process.env.ODM_DEVICE_WORLD = "1";
   delete process.env.ODM_SETUP_CODE;
-  assert.equal((await recover({ setupCode: "shell-made-secret", password: "app-made-new-4" })).status, 404);
+  assert.equal((await recover({ setupCode: "shell-made-secret-0123", password: "app-made-new-4" })).status, 404);
   assert.equal((await signIn("host", "app-made-new-4")).status, 401);
 });
 

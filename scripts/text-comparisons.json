@@ -223,6 +223,7 @@
     "app/api/auth/discord/callback/route.ts#[a-z]": [["key",1,"username from a Discord name (usernames are ASCII by design)"]],
     "app/api/auth/discord/callback/route.ts#toUpperCase": [["key",1,"room code"]],
     "app/api/auth/discord/start/route.ts#toUpperCase": [["key",1,"invite code"]],
+    "app/api/auth/recover-owner/route.ts#str-eq": [["key",1,"an internal sentinel value (clientIp's \"local\")"]],
     "app/api/auth/register/route.ts#[a-z]": [["key",1,"username rule (usernames are ASCII by design)"]],
     "app/api/auth/register/route.ts#toUpperCase": [["key",1,"join code"]],
     "app/api/campaigns/[campaignId]/actions/route.ts#str-eq": [["key",1,"the action body's kind, a fixed choice (table talk)"]],
