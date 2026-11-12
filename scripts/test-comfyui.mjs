@@ -19,7 +19,7 @@ process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { comfyStatus, generateComfyImage, MAX_COMFY_IMAGE_BYTES } = await import("../src/lib/comfyui.ts");
+const { comfyMissingModelMessage, comfyStatus, generateComfyImage, MAX_COMFY_IMAGE_BYTES } = await import("../src/lib/comfyui.ts");
 const { ANY_CHECKPOINT, comfyModel } = await import("../src/lib/image-models/catalog.ts");
 const { buildModelWorkflow } = await import("../src/lib/image-models/workflow.ts");
 const { getGlobalConfig, saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
@@ -372,6 +372,56 @@ await test(
     await generateComfyImage({ url: COMFY, checkpoint: "picked.safetensors", prompt: "a tavern", mode: "fast", aspect: "square", seed: 7 });
     const sent = JSON.parse(seen.find((call) => call.url.endsWith("/prompt")).body);
     assert.equal(sent.prompt["1"].inputs.ckpt_name, "picked.safetensors");
+  },
+);
+
+// ComfyUI's own words for a model it does not have, as the desktop app's
+// ComfyUI answered with an empty checkpoints folder.
+const missingCheckpoint = (list) =>
+  JSON.stringify({
+    error: { type: "prompt_outputs_failed_validation", message: "Prompt outputs failed validation" },
+    node_errors: {
+      1: {
+        errors: [{
+          type: "value_not_in_list",
+          message: "Value not in list",
+          details: "ckpt_name: 'sd_xl_base_1.0.safetensors' not in []",
+          extra_info: { input_name: "ckpt_name", input_config: [list, { tooltip: "The name of the checkpoint (model) to load." }], received_value: "sd_xl_base_1.0.safetensors" },
+        }],
+        dependent_outputs: ["7"],
+        class_type: "CheckpointLoaderSimple",
+      },
+    },
+  });
+
+await test(
+  "a checkpoint ComfyUI does not have is named with its folder, not ComfyUI's validation dump",
+  fakeComfy({ "/prompt": () => new Response(missingCheckpoint([]), { status: 400 }) }),
+  async () => {
+    await assert.rejects(
+      generateComfyImage({ url: COMFY, checkpoint: "sd_xl_base_1.0.safetensors", prompt: "a tavern", mode: "fast", aspect: "square" }),
+      (error) => {
+        assert.equal(
+          error.message,
+          'ComfyUI has no checkpoint named "sd_xl_base_1.0.safetensors" (its models/checkpoints folder is empty). ' +
+            "Put the file in ComfyUI's models/checkpoints folder, or pick another model in Admin > Image generation.",
+        );
+        return true;
+      },
+    );
+  },
+);
+
+assert.match(comfyMissingModelMessage(missingCheckpoint(["a.safetensors", "b.safetensors"])), /\(it has 2 others\)/);
+assert.equal(comfyMissingModelMessage('{"error":{"type":"invalid_prompt"},"node_errors":{}}'), null, "another rejection keeps ComfyUI's words");
+assert.equal(comfyMissingModelMessage("<html>Bad Gateway</html>"), null);
+console.log("ok - a missing-model rejection counts the files ComfyUI does have, and other rejections are left alone");
+
+await test(
+  "any other rejection still carries ComfyUI's own answer",
+  fakeComfy({ "/prompt": () => new Response('{"error":{"type":"invalid_prompt","message":"bad node"}}', { status: 400 }) }),
+  async () => {
+    await assert.rejects(generate(), /ComfyUI rejected the workflow \(400\): .*bad node/);
   },
 );
 
