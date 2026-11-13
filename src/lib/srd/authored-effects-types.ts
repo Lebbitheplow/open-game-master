@@ -26,6 +26,8 @@ export type Gate = {
   heavyArmor?: boolean;
   // The holder wears no body armor (Dragon Wings).
   unarmored?: boolean;
+  // The holder wears body armor: light, medium or heavy (Juggernaut).
+  bodyArmor?: boolean;
   // The holder wears this armor, by name (Battlerager Armor's spiked armor).
   wornArmor?: string;
   // The holder is concentrating on a spell.
@@ -133,6 +135,10 @@ export type AuthoredEffect = Base &
     // Twice the proficiency bonus on checks with these skills the holder is
     // proficient in (a mystery class's "Double proficiency bonus on Insight").
     | { kind: "skill_expertise"; skills: string[] }
+    // Proficiency in these skills while the gate holds, listed on the sheet
+    // as conditional training with `while` its words (Black Flag's
+    // Juggernaut: Athletics while wearing the Mystic Metal armor).
+    | { kind: "skill_prof"; skills: string[]; while: string }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.

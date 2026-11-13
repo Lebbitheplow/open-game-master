@@ -248,8 +248,13 @@ export function HpBar({
 // (issue #125). Ids read as names; an empty kind says so.
 export function TrainingLines({
   proficiencies,
+  conditional = [],
 }: {
   proficiencies: { languages: string[]; tools: string[]; armor: string[]; weapons: string[] };
+  // Training that holds only while a condition does (SheetDerived
+  // conditionalTraining): "Athletics while wearing the armor from Mystic
+  // Metal (Juggernaut)", marked when it holds now.
+  conditional?: Array<{ skill: string; by: string; while: string; active: boolean }>;
 }) {
   const nice = (value: string) =>
     // A word's first letter, or the letter after a quote that opens one: never
@@ -269,6 +274,19 @@ export function TrainingLines({
           <dd className="text-stone-200">{values.length ? [...new Set(values.map(nice))].join(", ") : <span className="text-stone-600">none</span>}</dd>
         </div>
       ))}
+      {conditional.length ? (
+        <div className="contents">
+          <dt className="text-stone-500">Conditional</dt>
+          <dd className="text-stone-200">
+            {conditional.map((entry, at) => (
+              <span key={`${entry.by}-${entry.skill}`}>
+                {at ? ", " : ""}
+                {nice(entry.skill)} {entry.while} ({entry.by}){entry.active ? ": holds now" : ": not now"}
+              </span>
+            ))}
+          </dd>
+        </div>
+      ) : null}
     </dl>
   );
 }

@@ -290,6 +290,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.heavyArmor && !wearsHeavy(sheet)) {
     return false;
   }
+  if (gate.bodyArmor && !wearsBodyArmor(sheet)) {
+    return false;
+  }
   if (gate.unarmored && wearsBodyArmor(sheet)) {
     return false;
   }
@@ -449,6 +452,17 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
 
 // The skills a held feature doubles the proficiency bonus of
 // (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
+// The skills a feature trains only while its gate holds, each with the
+// feature, the words of the condition, and whether it holds now: the derived
+// sheet adds the proficiency while it does and lists the training either way.
+export function authoredConditionalTraining(sheet: AuthoredSheet): Array<{ skill: string; by: string; while: string; active: boolean }> {
+  return heldAuthored(sheet).flatMap((held) =>
+    (held.entry.effects ?? []).flatMap((effect) =>
+      effect.kind === "skill_prof" ? effect.skills.map((skill) => ({ skill, by: held.feature, while: effect.while, active: gateHolds(effect.gate, sheet, held) })) : [],
+    ),
+  );
+}
+
 export function authoredExpertise(sheet: AuthoredSheet): string[] {
   return activeAuthored(sheet, "skill_expertise").flatMap(({ effect }) => effect.skills);
 }

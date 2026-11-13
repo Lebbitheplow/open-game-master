@@ -13,6 +13,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-subclass-training");
 
 const training = await import("../src/lib/srd/subclass-training.ts");
+const srd = await import("../src/lib/srd/index.ts");
 const features = await import("../src/lib/srd/features.ts");
 const { wearsUntrainedArmor } = await import("../src/lib/srd/armor.ts");
 const { casterStateProblem } = await import("../src/lib/dm/cast-rules.ts");
@@ -309,6 +310,35 @@ await test("A training pick whose whole list is held already is a pick of any sk
   assert.deepEqual(full[0].spec.skillsFrom, [], "every listed skill held: any skill");
   const open = training.grantsForHeldTraining(grants, { skills: ["insight", "religion"] });
   assert.deepEqual(open[0].spec.skillsFrom, ["insight", "performance", "persuasion"], "one still open: the list stands");
+});
+
+// Black Flag's Metallurgist (Juggernaut, Mechanist 11): "While wearing the
+// armor from your Mystic Metal feature, you have proficiency in the Athletics
+// skill." Athletics while the suit is on and not otherwise: the derived sheet
+// adds the proficiency only in it and lists the training as conditional, and
+// it never lands in proficiencies.skills, where it would hold out of armor.
+await test("The Metallurgist's Athletics holds while its armor is worn, and only then.", () => {
+  const { computeSheetDerived, proficiencyBonus } = srd;
+  const sheet = (equipped) => ({
+    class: "mechanist",
+    subclass: "Metallurgist",
+    level: 11,
+    abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+    proficiencies: { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: ["light", "medium", "heavy"], weapons: [] },
+    features: [{ name: "Juggernaut", source: "class", classId: "mechanist" }],
+    equipment: [{ name: "Chain Mail", qty: 1, equipped }],
+    conditions: [],
+  });
+  const worn = computeSheetDerived(sheet(true));
+  const bare = computeSheetDerived(sheet(false));
+  assert.equal(worn.skills.athletics, 3 + proficiencyBonus(11), "in the suit: Strength and proficiency");
+  assert.equal(bare.skills.athletics, 3, "out of it: Strength alone");
+  const listed = (derived) => (derived.conditionalTraining ?? []).map((entry) => `${entry.skill}:${entry.by}:${entry.active}`);
+  assert.deepEqual(listed(worn), ["athletics:Juggernaut:true"]);
+  assert.deepEqual(listed(bare), ["athletics:Juggernaut:false"], "the sheet still lists the training, as conditional");
+  assert.match(worn.conditionalTraining[0].while, /armor/i);
+  const other = computeSheetDerived({ ...sheet(true), class: "fighter", features: [{ name: "Juggernaut", source: "class", classId: "fighter" }] });
+  assert.equal(other.skills.athletics, 3, "another class's feature of the same name trains nothing");
 });
 
 creation.world.close();

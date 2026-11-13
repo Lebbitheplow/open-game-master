@@ -138,6 +138,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   check_adv: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredRollRiders(" },
   check_bonus: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredCheckBonus(" },
   skill_expertise: { file: "src/lib/srd/index.ts", call: "authoredExpertise(" },
+  skill_prof: { file: "src/lib/srd/index.ts", call: "authoredConditionalTraining(" },
   crit_immune: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
