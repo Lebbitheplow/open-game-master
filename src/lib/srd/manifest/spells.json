@@ -487,9 +487,9 @@
   {
    "n": "Catapult",
    "b": "xge",
-   "l": 6,
+   "l": 1,
    "s": "transmutation",
-   "c": "sorcerer,warlock,wizard"
+   "c": "artificer,sorcerer,wizard"
   },
   {
    "n": "Catnap",
@@ -1740,9 +1740,9 @@
   {
    "n": "Frostbite",
    "b": "xge",
-   "l": 5,
+   "l": 0,
    "s": "evocation",
-   "c": "sorcerer,warlock,wizard"
+   "c": "artificer,druid,sorcerer,warlock,wizard"
   },
   {
    "n": "Speedy Courier",
@@ -3118,9 +3118,9 @@
   {
    "n": "Power Word Pain",
    "b": "xge",
-   "l": 4,
+   "l": 7,
    "s": "enchantment",
-   "c": "cleric,sorcerer,warlock,wizard"
+   "c": "sorcerer,warlock,wizard"
   },
   {
    "n": "Power Word Stun",
@@ -4198,9 +4198,9 @@
   {
    "n": "Thunderclap",
    "b": "xge",
-   "l": 3,
+   "l": 0,
    "s": "evocation",
-   "c": "cleric,sorcerer,wizard"
+   "c": "artificer,bard,druid,sorcerer,warlock,wizard"
   },
   {
    "n": "Thunderous Smite",

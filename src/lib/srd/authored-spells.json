@@ -3352,6 +3352,74 @@
         "resolution": "heal",
         "note": "The target regains every hit point it is missing (heal by the difference to its maximum) and loses charmed, frightened, paralyzed and stunned; undead and constructs are unaffected."
       }
+    },
+    {
+      "name": "Frostbite",
+      "level": 0,
+      "school": "evocation",
+      "classes": [
+        "artificer",
+        "druid",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "casting_time": "1 action",
+      "range": "60 feet",
+      "components": "V, S",
+      "duration": "Instantaneous",
+      "desc": "Numbing frost creeps over one creature you can see within range. On a failed Constitution saving throw it takes 1d6 cold damage and has disadvantage on the next weapon attack roll it makes before the end of its next turn.",
+      "higher_level": "The damage increases when you reach 5th level (2d6), 11th level (3d6), and 17th level (4d6)."
+    },
+    {
+      "name": "Thunderclap",
+      "level": 0,
+      "school": "evocation",
+      "classes": [
+        "artificer",
+        "bard",
+        "druid",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "casting_time": "1 action",
+      "range": "Self (5-foot radius)",
+      "components": "S",
+      "duration": "Instantaneous",
+      "desc": "A booming crack of thunder bursts out of you, loud enough to be heard 100 feet away. Every other creature within 5 feet of you makes a Constitution saving throw, taking 1d6 thunder damage on a failure.",
+      "higher_level": "The damage increases when you reach 5th level (2d6), 11th level (3d6), and 17th level (4d6)."
+    },
+    {
+      "name": "Catapult",
+      "level": 1,
+      "school": "transmutation",
+      "classes": [
+        "artificer",
+        "sorcerer",
+        "wizard"
+      ],
+      "casting_time": "1 action",
+      "range": "60 feet",
+      "components": "S",
+      "duration": "Instantaneous",
+      "desc": "You fling one object of 1 to 5 pounds that nobody is wearing or carrying, sending it up to 90 feet in a straight line in a direction you choose. The first creature in its path makes a Dexterity saving throw, taking 3d8 bludgeoning damage on a failure, and the object stops there; if it strikes nothing it falls to the ground at the end of its flight, and anything it hits takes the same damage.",
+      "higher_level": "With a slot of 2nd level or higher the object may weigh 5 pounds more and the damage increases by 1d8 for each slot level above 1st."
+    },
+    {
+      "name": "Power Word Pain",
+      "level": 7,
+      "school": "enchantment",
+      "classes": [
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "casting_time": "1 action",
+      "range": "60 feet",
+      "components": "V",
+      "duration": "Instantaneous",
+      "desc": "You speak a word that floods one creature you can see within range with agony. If it has 100 hit points or fewer it is racked with pain, with no saving throw, unless it cannot be charmed; a creature with more hit points is unaffected. While racked with pain its speed is no more than 10 feet, it has disadvantage on attack rolls, ability checks and every saving throw but Constitution, and each spell it tries to cast fails unless it first succeeds on a Constitution saving throw. At the end of each of its turns it makes a Constitution saving throw, ending the pain on a success."
     }
   ],
   "_note_dedupe": "Entries whose names already exist upstream are skipped at import time, so this file only carries what no open source provides. If an upstream document later adds one of these, prune it here."
