@@ -58,7 +58,7 @@ import { footprintIndexes } from "@/lib/battlemap/footprint";
 // read by its top-left square alone and walked out untouched; the blast
 // catch (aoe-shape.ts standingIn) already reads every square of its size.
 function spaceIn(width: number, mover: { kind: string; refId: string }, at: XY, cells: readonly number[] | undefined): boolean {
-  return Boolean(cells?.length) && footprintIndexes(width, at, tokenFootprint(mover)).some((cell) => cells!.includes(cell));
+  return Boolean(cells?.length) && footprintIndexes(width, at, mover.kind === "enemy" ? tokenFootprint({ kind: "enemy", refId: mover.refId }) : 1).some((cell) => cells!.includes(cell));
 }
 
 // A turn for a character's saves and damage, closed once used, as an
