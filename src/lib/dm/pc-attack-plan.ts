@@ -631,6 +631,7 @@ export function planPcAttack(input: {
     enemy,
     marked: marks.applies,
     surprised: encounter.round === 1 && encounter.surprisedIds.includes(enemy.id),
+    atRange,
   });
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
   const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);
