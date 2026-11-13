@@ -20,6 +20,7 @@ import {
 } from "@/lib/characters/options";
 import type { WorldPack } from "@/lib/worlds/types";
 import { registerWorkshopClasses } from "@/lib/classes/workshop-registry";
+import { packClassTableFrom, registerPackClasses } from "@/lib/classes/pack-class-registry";
 import { isWorkshopClassId } from "@/lib/homebrew/class-data";
 
 // The option rows themselves are built in src/lib/characters/options.ts,
@@ -125,6 +126,12 @@ export function useBuilderOptions(keepRaceId?: string) {
       // the server (src/lib/classes/workshop-registry.ts), and offered with
       // or without a content pack.
       registerWorkshopClasses(workshopClassesOf(classRows));
+      // A pack's own classes (a Mechanist): their features by level, read by
+      // the subclass step and the level table as on the server
+      // (src/lib/classes/pack-class-registry.ts).
+      registerPackClasses(
+        classRows.flatMap((row) => (isWorkshopClassId(row.slug) ? [] : (packClassTableFrom(row.slug, row.data ?? {}) ?? []))),
+      );
       if (classRows.length && installed) {
         setClasses(packClassOptions(classRows));
       } else if (classRows.length) {

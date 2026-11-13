@@ -5,6 +5,7 @@ import racesJson from "@/lib/srd/races.json";
 import classesJson from "@/lib/srd/classes.json";
 import { CUSTOM_CLASS_FEATURES, findCustomClass } from "@/lib/classes";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
+import { packClassTable } from "@/lib/classes/pack-class-registry";
 import type { SheetFeature } from "@/lib/schemas/sheet";
 import { chosenFightingStyles, fittingFightingStyles } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, isOptionName, optionCost, optionSlotsFor } from "@/lib/srd/options";
@@ -175,7 +176,15 @@ const CLASS_FEATURES: Record<string, ClassFeatureTable> = {
 // A class's table: the bundled or setting one, or a workshop class's,
 // registered at run time (src/lib/classes/index.ts registerWorkshopClasses).
 function featureTableOf(classId: string): ClassFeatureTable | undefined {
-  return CLASS_FEATURES[classId] ?? workshopClassDef(classId)?.features;
+  return CLASS_FEATURES[classId] ?? workshopClassDef(classId)?.features ?? packFeatureTable(classId);
+}
+
+// A content pack's own class (src/lib/classes/pack-class-registry.ts): its
+// features by level; its subclasses are the pack's archetypes, read as
+// extras like any other prose subclass.
+function packFeatureTable(classId: string): ClassFeatureTable | undefined {
+  const pack = packClassTable(classId);
+  return pack ? { subclassLevel: pack.subclassLevel, levels: pack.levels, subclasses: [] } : undefined;
 }
 
 function clampLevel(level: number) {

@@ -199,6 +199,48 @@ test("a pack class's Max HP comes from its own hit die", () => {
   assert.equal(builderMaxHp(10, "human", 14, 5), suggestedStartingHp("fighter", "human", 14, 5));
 });
 
+// A pack's own class (Black Flag's Mechanist) had no feature table, so it
+// was stored with no class feature at any level, no subclass step and no
+// Multiattack (src/lib/classes/pack-class-registry.ts). The row here is
+// shaped as Open5e's v2 class rows are, in ODM's own words.
+{
+  const { packClassTableFrom, registerPackClasses, extraAttacksIn } = await import("../src/lib/classes/pack-class-registry.ts");
+  const { classFeaturesFor, subclassLevelFor } = await import("../src/lib/srd/features.ts");
+  const { registerPackClassFeature, effectsFor } = await import("../src/lib/srd/feature-effects.ts");
+  const { classFeatureDescription } = await import("../src/lib/classes/feature-text.ts");
+  const row = {
+    features: [
+      { name: "Proficiencies", desc: "**Armor:** Light armor", levels: [] },
+      { name: "Proficiency Bonus", desc: "[Column data]", levels: [] },
+      { name: "Gadget Sense", desc: "You can tell what a device does by handling it.", levels: [1] },
+      { name: "Tinker Subclass", desc: "Choose the tradition your inventions follow.", levels: [3] },
+      { name: "Improvement", desc: "Raise your scores.", levels: [4, 8, 12, 16, 19] },
+      { name: "Multiattack", desc: "On your turn, you can make two attacks when you take the Attack action.", levels: [5] },
+      { name: "Overclock", desc: "Push a device past its limits once per rest.", levels: [9, 13] },
+    ],
+  };
+
+  test("a pack class's own features arrive at the levels its row lists, its subclass at the level that asks for one", () => {
+    const table = packClassTableFrom("tinker-test", row);
+    assert.deepEqual(table.levels, { 1: ["Gadget Sense"], 3: ["Tinker Subclass"], 5: ["Multiattack"], 9: ["Overclock"] });
+    assert.equal(table.subclassLevel, 3);
+    registerPackClasses([table]);
+    assert.deepEqual(classFeaturesFor("tinker-test", "", 4).map((feature) => feature.name), ["Gadget Sense", "Tinker Subclass"]);
+    assert.deepEqual(classFeaturesFor("tinker-test", "", 20).map((feature) => feature.name), ["Gadget Sense", "Tinker Subclass", "Multiattack", "Overclock"]);
+    assert.equal(subclassLevelFor("tinker-test"), 3);
+    assert.equal(classFeatureDescription("tinker-test", "Overclock"), "Push a device past its limits once per rest.");
+  });
+
+  test("a pack class's Multiattack is an Extra Attack for that class alone", () => {
+    assert.equal(extraAttacksIn(row.features[5].desc), 1);
+    assert.equal(extraAttacksIn("Push a device past its limits once per rest."), 0);
+    registerPackClassFeature("tinker-test", "Multiattack", row.features[5].desc, 1);
+    const attacks = (klass) => effectsFor({ class: klass, features: [{ name: "Multiattack" }] }).filter((entry) => entry.effect.kind === "extra_attack");
+    assert.deepEqual(attacks("tinker-test").map((entry) => entry.effect.attacks), [1]);
+    assert.deepEqual(attacks("ranger"), [], "a Hunter's Multiattack is a pick, never an extra attack");
+  });
+}
+
 test("Dwarven Toughness applies under every Hill Dwarf id", () => {
   for (const id of ["hill_dwarf", "hill-dwarf", "odm-hill-dwarf"]) {
     assert.equal(suggestedStartingHp("fighter", id, 14, 5), 49, id);
