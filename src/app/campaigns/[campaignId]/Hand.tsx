@@ -539,7 +539,9 @@ function HandInner({
     (card: HandCard, native = false) => {
       if (card.disabled) {
         say(card.disabled);
-        if (!native) setReadId(card.id);
+        // Not while another card is aimed: its bar keeps the place, and the
+        // panel would only open unasked once that card is let go.
+        if (!native && !picked) setReadId(card.id);
         return;
       }
       setReadId(null);
@@ -558,8 +560,22 @@ function HandInner({
       resetChoices();
       setPickedId((current) => (!native && current === card.id ? null : card.id));
     },
-    [say, resetChoices],
+    [say, resetChoices, picked],
   );
+
+  // The read panel closed (its Close, or Escape): the keyboard goes back to
+  // the card that opened it, as letting an aimed card go does.
+  const closeRead = useCallback(() => {
+    const id = readId;
+    setReadId(null);
+    if (!id) return;
+    window.requestAnimationFrame(() => {
+      const card = [...(sectionRef.current?.querySelectorAll<HTMLElement>("[data-card-id]") ?? [])].find(
+        (element) => element.dataset.cardId === id,
+      );
+      card?.focus({ preventScroll: true });
+    });
+  }, [readId]);
 
   const toComposer = useCallback(
     (text: string) => {
@@ -875,6 +891,9 @@ function HandInner({
         if (picked) {
           event.stopPropagation();
           releaseAim();
+        } else if (reading && !boardNative) {
+          event.stopPropagation();
+          closeRead();
         } else if (openGroup) {
           event.stopPropagation();
           backToHand();
@@ -1082,19 +1101,7 @@ function HandInner({
               onCommit={() => void commit()}
             />
           ) : reading && !boardNative ? (
-            <HandReadPanel
-              card={reading}
-              onClose={() => {
-                const id = reading.id;
-                setReadId(null);
-                window.requestAnimationFrame(() => {
-                  const card = [...(sectionRef.current?.querySelectorAll<HTMLElement>("[data-card-id]") ?? [])].find(
-                    (element) => element.dataset.cardId === id,
-                  );
-                  card?.focus({ preventScroll: true });
-                });
-              }}
-            />
+            <HandReadPanel card={reading} onClose={closeRead} />
           ) : riders.length ? (
             <p className="mt-1 animate-fade-up text-xs text-amber-200/80">
               {riders.map((rider) => rider.name).join(", ")} will ride your next attack card. Press it again to take it off.

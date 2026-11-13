@@ -60,6 +60,32 @@ export default {
     check(read.rules === onCard, `it writes the card's whole rules line ("${read.rules}")`);
     check(read.size >= 12, `at a size that reads (${read.size}px)`);
 
+    // Escape lets the panel go, as it lets an aimed card go, and the keyboard
+    // lands back on the card that opened it.
+    if (!t.touch) {
+      await page.keyboard.press("Escape");
+      await eventually(async () => !(await panel.count()), { label: "Escape closed the read panel" });
+      check(await shield.evaluate((button) => button === document.activeElement), "the keyboard is back on Shield");
+      await press(shield);
+      await eventually(() => panel.count(), { label: "the read panel, opened again" });
+    }
+
+    // A held card pressed while another is aimed says why and leaves the aim
+    // bar be; letting the aimed card go opens no panel nobody asked for. A
+    // fight on the stage (and a phone) hides the rail under an aim bar, but a
+    // tall table without the stage shows both, so the press is made on the
+    // card itself.
+    const heldWhileAimed = async (aim) => {
+      await fan.locator('button.hand-card[aria-label^="Shield,"]').first().evaluate((button) => button.click());
+      await untilStill(page);
+      check(await aim.count(), "the aim bar keeps its place");
+      check(!(await panel.count()), "no read panel opens under an aimed card");
+      await page.keyboard.press("Escape");
+      await eventually(async () => !(await aim.count()), { label: "the aimed card let go" });
+      await untilStill(page);
+      check(!(await panel.count()), "and none opens once it is let go");
+    };
+
     // Its whole text, on asking, with a finger-sized opener.
     const opener = panel.first().locator(".hand-full-text-toggle");
     if (!packInstalled) {
@@ -70,6 +96,7 @@ export default {
       const aim = visible(page.locator(`${root}.hand-aim:not(.hand-read)`)).first();
       await eventually(() => aim.count(), { label: "the aim bar of Magic Missile" });
       check(!(await aim.locator(".hand-full-text-toggle").count()), "nor does a playable card's aim bar");
+      await heldWhileAimed(aim);
       return;
     }
     check(await opener.count(), "the held card offers its full text");
@@ -109,5 +136,6 @@ export default {
     check(!aimFull.includes(aimRules), "and does not write the card's rules line a second time");
     await untilStill(page);
     await t.shot("aim");
+    await heldWhileAimed(aim);
   },
 };
