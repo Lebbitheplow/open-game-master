@@ -45,6 +45,10 @@ export const CHECK_ABOUT = [
   "gathering_information",
   // Blackmail Files (fixer): against someone whose secret the roller knows.
   "known_secret",
+  // Funerary Grace (grave knight): with mourners and those who serve death.
+  "death_rites",
+  // Guild Dues (plague doctor): sourcing rare reagents, poisons or cadavers.
+  "rare_reagents",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 

@@ -971,9 +971,12 @@
    },
    {
     "c": "opportunity attacks against you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "an opportunity attack against the holder is not staged by this sweep (it needs the holder to leave a foe's reach on the holder's own turn through the move route)"
+    "run": {
+     "k": "cc_oa"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts Afterimage (oa_disadv), read by src/lib/dm/opportunity.ts resolveOpportunityAttacks (activeAuthored(sheet, \"oa_disadv\"))",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Afterimage#1"
    }
   ]
  },

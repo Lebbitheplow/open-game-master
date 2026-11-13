@@ -660,15 +660,14 @@
    },
    {
     "c": "the kit and mask are the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "cc_focus",
+     "want": "kit",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Pharmacopoeia#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf (Pharmacopoeia: kind kit) and carriesDoctorKit, read by src/lib/dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Pharmacopoeia#1"
    }
   ]
  },
@@ -1052,15 +1051,13 @@
    {
     "c": "Advantage on checks to source rare reagents, poisons, and cadavers in any settlement",
     "run": {
-     "k": "check",
+     "k": "cc_check_about",
      "skill": "investigation",
-     "want": "adv"
+     "about": "rare_reagents"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Guild Dues#0",
-    "observed": "d20s thrown for the investigation check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Guild Dues (check_adv on any check about rare_reagents), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders through request_roll's about (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Guild Dues#0"
    }
   ]
  },
@@ -1630,15 +1627,13 @@
    {
     "c": "Advantage on CHA checks with mourners, undead, and those who serve death",
     "run": {
-     "k": "check",
+     "k": "cc_check_about",
      "skill": "persuasion",
-     "want": "adv"
+     "about": "death_rites"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Funerary Grace#0",
-    "observed": "d20s thrown for the persuasion check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Funerary Grace (check_adv on CHA checks about death_rites or a creature that is undead), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders through request_roll's about and creature (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Funerary Grace#0"
    }
   ]
  },
@@ -2427,15 +2422,14 @@
    },
    {
     "c": "your voice is the instrument",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "cc_focus",
+     "want": "none",
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Mourning Song#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf (Mourning Song: kind none), read by src/lib/dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Mourning Song#1"
    }
   ]
  },

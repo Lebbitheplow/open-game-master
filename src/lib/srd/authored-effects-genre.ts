@@ -11,6 +11,7 @@
 // action, Target Lock was a sentence, Feedback Loop spent the reaction and
 // dealt nothing.
 import { GENRE_C_AUTHORED } from "@/lib/srd/authored-effects-genre-c";
+import { GENRE_CC_A_AUTHORED } from "@/lib/srd/authored-effects-genre-cc-a";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
@@ -25,7 +26,8 @@ const note = (text: string) => ({ kind: "note" as const, text });
 
 export const GENRE_AUTHORED: GenreRow[] = [
   // ---- the move as a bonus action ----
-  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }] } },
+  // "opportunity attacks against you have disadvantage" (the opportunity attack's roll reads oa_disadv).
+  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }, { kind: "oa_disadv" }] } },
   { feature: "Slippery", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Escape Artist", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Rigging Runner", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }] } },
@@ -119,4 +121,6 @@ export const GENRE_AUTHORED: GenreRow[] = [
   ...GENRE_B_STEAMPUNK_AUTHORED,
   // The fight features the 2026-11-13 creator audit built.
   ...GENRE_C_AUTHORED,
+  // The cyberpunk, dark fantasy and mystery features the second pass of that audit built.
+  ...GENRE_CC_A_AUTHORED,
 ];
