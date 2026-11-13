@@ -4,7 +4,9 @@
 // painting is asked for. Sister Ama holds Spirit Guardians at the quiet
 // table (radiant), and her book holds Bless (a boon) and Cure Wounds
 // (healing). A workshop spell wears the glyph of the spell it runs as, and
-// one that runs as nothing wears the unknown glyph. Night and day.
+// one that runs as nothing wears the unknown glyph; one with a mechanics
+// block of its own wears what that block deals, as its card does. Night
+// and day.
 import { check, eventually, untilStill } from "../lib.mjs";
 
 // The website serves icons under /assets/icons, the app shell under /game/icons.
@@ -97,8 +99,12 @@ export default {
       };
       const runs = `Frostfire Orb ${stamp}`;
       const bare = `Quiet Hum ${stamp}`;
+      // A copy of Fireball the table rewrote to deal cold: its card reads
+      // its own block first, so its row does too.
+      const block = `Rime Ball ${stamp}`;
       await spell(runs, { runsAs: "Ice Storm" });
       await spell(bare, {});
+      await spell(block, { runsAs: "Fireball", mech: { resolution: "save", save: "dex", halfOnSave: true, damageType: "cold" } });
       await t.open(`/workshop/${workshopId}?system=homebrew`);
       const kinds = page.locator(`${root}[data-tour="homebrew-kinds"]`).locator("visible=true").first();
       await eventually(() => kinds.isVisible(), { timeoutMs: 30_000, label: "the kinds of homebrew" });
@@ -106,11 +112,14 @@ export default {
       const row = (name) => page.locator(`${root}li, ${root}[role="listitem"]`).filter({ hasText: name }).locator("visible=true").first();
       await eventually(() => row(runs).count(), { timeoutMs: 20_000, label: `${runs} in the list` });
       await eventually(() => row(bare).count(), { timeoutMs: 20_000, label: `${bare} in the list` });
+      await eventually(() => row(block).count(), { timeoutMs: 20_000, label: `${block} in the list` });
       await untilStill(page);
       const runsArt = await images(row(runs));
       const bareArt = await images(row(bare));
+      const blockArt = await images(row(block));
       check(runsArt.length === 1 && glyphOf(runsArt[0].src) === "cold" && runsArt[0].drawn, `a spell run as Ice Storm wears its cold glyph, alone (${runsArt.map((img) => img.src).join(", ")})`);
       check(bareArt.length === 1 && glyphOf(bareArt[0].src) === "unknown" && bareArt[0].drawn, `a spell run as nothing wears the unknown glyph, alone (${bareArt.map((img) => img.src).join(", ")})`);
+      check(blockArt.length === 1 && glyphOf(blockArt[0].src) === "cold" && blockArt[0].drawn, `a Fireball rewritten to deal cold wears cold, as its card does (${blockArt.map((img) => img.src).join(", ")})`);
       for (const theme of ["dark", "light"]) {
         await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
         await untilStill(page);

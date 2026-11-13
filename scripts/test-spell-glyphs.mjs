@@ -287,6 +287,32 @@ test("a workshop spell away from the Hand wears the glyph of the spell it runs a
   assert.deepEqual(iconCandidates(spellGlyphIcon("Shield")), [spellGlyphSrc("guard")]);
 });
 
+// A workshop spell the table wrote a block for is cast by that block, so its
+// card reads the block first (spellGlyph's ownBlock); its workshop row and its
+// spellbook tile read the stored `mech` the same way, or the same spell wears
+// two faces again.
+test("a workshop spell with a block of its own wears the glyph its card wears", () => {
+  const cold = { resolution: "save", damageType: "cold" };
+  const cases = [
+    ["Frostfire Orb", null, cold],
+    ["Fireball", null, cold],
+    ["Frostball", "Fireball", cold],
+    ["Frostball", "Fireball", { resolution: "utility" }],
+    ["Quiet Mend", null, { resolution: "heal" }],
+    ["Quiet Hum", null, { resolution: "utility" }],
+  ];
+  for (const [name, runsAs, mech] of cases) {
+    const card = spellGlyph({ name, ...(runsAs ? { runsAs } : {}), ownBlock: true, mech, published: runsAs ? rowOf(runsAs) : null });
+    assert.equal(listedSpellGlyph(name, runsAs, mech), card, `${name}${runsAs ? ` as ${runsAs}` : ""}`);
+  }
+  assert.equal(listedSpellGlyph("Frostfire Orb", null, cold), "cold");
+  assert.equal(listedSpellGlyph("Fireball", null, cold), "cold", "a copy of Fireball rewritten to deal cold");
+  // No block the engine would cast by (no resolution): the name is read.
+  assert.equal(listedSpellGlyph("Fireball", null, {}), "fire");
+  assert.equal(listedSpellGlyph("Fireball", null, null), "fire");
+  assert.deepEqual(spellGlyphIcon("Frostfire Orb", null, cold), { kind: "glyph", key: "spell-cold" });
+});
+
 test("a card drawn small wears its glyph, and a card with none its own icon", () => {
   const hand = deriveHand(wizard, FRESH_TURN);
   const fireball = hand.find((entry) => entry.name === "Fireball");
