@@ -1,4 +1,4 @@
-// Subclasses: the twelve the SRD prints, and the 105 ODM wrote.
+// Subclasses: the twelve the SRD prints, and the 106 ODM wrote.
 //
 // SRD 5.1 has one subclass per class. Each is held here against a table
 // written out by hand (scripts/lib/enforce-srd-progression.mjs): the feature
@@ -129,8 +129,8 @@ await test("domain and oath spells arrive when the SRD says, at a level the char
 
 // ---- the authored subclasses, as written ----
 
-await test("there are 105 authored subclasses, each under a real class with a name of its own", () => {
-  assert.equal(authored.length, 105);
+await test("there are 106 authored subclasses, each under a real class with a name of its own", () => {
+  assert.equal(authored.length, 106);
   for (const classId of Object.keys(subclassesJson.classes)) {
     assert.ok(findClass(classId), `${classId} is not a class`);
     assert.ok(SRD_CLASSES[classId], `${classId} has no class table to hold it against`);

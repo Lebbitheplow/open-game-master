@@ -24,6 +24,8 @@ export type Gate = {
   heavyArmor?: boolean;
   // The holder wears no body armor (Dragon Wings).
   unarmored?: boolean;
+  // The holder wears this armor, by name (Battlerager Armor's spiked armor).
+  wornArmor?: string;
   // The holder is concentrating on a spell.
   concentrating?: boolean;
   // The holder has (or has not) a condition, by name or "name (" prefix.
@@ -403,6 +405,9 @@ export type NaturalWeapon = {
   longRangeFt?: number;
   // The die of the bonus-action second attack, when the feature grants one.
   second?: string;
+  // That bonus-action attack needs no attack before it (Battlerager Armor's
+  // spikes), where the Soulknife's second blade follows the first.
+  bonusAlone?: boolean;
   // The bite: a hit while below half hit points heals the proficiency bonus,
   // once a turn. The claws: one more claw attack in the Attack action, once a
   // turn.

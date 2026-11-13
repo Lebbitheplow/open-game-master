@@ -14,7 +14,9 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { markBondSpent } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { publishPersisted } from "@/lib/events";
-import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, packInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { recklessAbandonTempHp } from "@/lib/dm/battlerager";
+import { computeSheetDerived } from "@/lib/srd";
 import { spendManeuverDie } from "@/lib/dm/maneuver-die";
 import { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import { FRENZIED } from "@/lib/dm/frenzy";
@@ -679,6 +681,14 @@ function markAttackOptions(plan: AttackPlan) {
   const fresh = getSheetById(sheet.id) ?? sheet;
   const meta = { ...(fresh.conditionMeta as ConditionMetaMap) };
   const conditions = [...fresh.conditions];
+  // Reckless Abandon: the declaration while raging gives the Constitution
+  // modifier in temporary hit points (no stacking: the better pool stays),
+  // and the rage claims them, so they go when it ends.
+  const abandon = options.declaresReckless ? recklessAbandonTempHp(fresh, computeSheetDerived(fresh).abilityMods.con) : 0;
+  const tempHp = abandon > (fresh.tempHp ?? 0) ? abandon : undefined;
+  if (tempHp !== undefined && meta.raging) {
+    meta.raging = packInstances(instancesOf(meta.raging).map((instance) => ({ ...instance, tempHp }))) ?? meta.raging;
+  }
   if (options.declaresReckless && !conditions.some((entry) => entry.toLowerCase() === RECKLESS)) {
     conditions.push(RECKLESS);
     meta[RECKLESS] = { untilTurnOf: sheet.id };
@@ -686,7 +696,7 @@ function markAttackOptions(plan: AttackPlan) {
   if (options.bonusAttack === "frenzy" && !conditions.some((entry) => entry.toLowerCase() === FRENZIED)) {
     conditions.push(FRENZIED);
   }
-  const marked = patchSheet(sheet.id, { conditions, conditionMeta: meta });
+  const marked = patchSheet(sheet.id, { conditions, conditionMeta: meta, ...(tempHp !== undefined ? { tempHp } : {}) });
   if (marked) {
     publishPersisted(campaign.id, "sheet_updated", { sheet: marked });
   }

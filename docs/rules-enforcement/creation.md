@@ -34,7 +34,7 @@ and a million gold.
 | `src/lib/srd/backgrounds.json` | Acolyte is SRD 5.1. The other 12 are the 2014 PHB backgrounds (the file calls them "generic skill pairings") | 2014 |
 | `src/lib/backgrounds/catalog.json` | 36 setting backgrounds written by ODM | ODM |
 | `src/lib/classes/*.json` | 36 genre classes written by ODM (6 per genre), each borrowing an SRD spell list | ODM |
-| `src/lib/srd/subclasses.json`, `authored-*.json` | 105 subclasses, spells, 52 feats written by ODM ("odm-expanded") | ODM, 2014 shape |
+| `src/lib/srd/subclasses.json`, `authored-*.json` | 106 subclasses, spells, 52 feats written by ODM ("odm-expanded") | ODM, 2014 shape |
 | Content pack v1 (`wotc-srd`, `toh`, `a5e`, `taldorei`, `o5e`, ...) | Open5e v1: SRD 5.1 plus third-party OGL/CC books | 2014 family |
 | Content pack v2 backfill (`srd-2024`, `a5e-ag`, `a5e-ddg`, `a5e-gpg`, `bfrd`, `spells-that-dont-suck`) | Added only where a NAME is new (dedupe by name, `scripts/import-open5e.mjs`) | includes 2024 |
 

@@ -21,6 +21,8 @@ import { hideRefusal } from "@/lib/dm/hide-traits";
 import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { grappleSpikeDamage } from "@/lib/dm/battlerager";
+import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { hostileTo } from "@/lib/dm/combatant";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
@@ -314,6 +316,12 @@ export function contest(
     },
   );
   publishEncounter(campaign.id);
+  // Battlerager Armor: a grapple won while raging in spiked armor drives the
+  // spikes in, 3 piercing (src/lib/dm/battlerager.ts).
+  const spikes = condition === "grappled" ? grappleSpikeDamage(sheet) : 0;
+  const spiked = spikes
+    ? hurtEnemy(campaign, encounter, listEnemies(encounter.id).find((entry) => entry.id === enemy.id) ?? enemy, spikes, "piercing", "Battlerager Armor")
+    : "";
   // A flyer knocked prone or grappled to a speed of 0 falls (token-state.ts).
   const fell = landTheFlightless(campaign, encounter.id);
   return {
@@ -323,6 +331,7 @@ export function contest(
     contest: contested,
     success: true,
     ...(fell.length ? { fell: fell.join(" ") } : {}),
+    ...(spiked ? { spikes: spiked } : {}),
     applied: `${enemy.displayName} is ${condition}. The server applied the condition and its mechanics.${
       condition === "grappled" ? " It can try to escape with its action (take_action escape with its enemyId)." : ""
     }`,
