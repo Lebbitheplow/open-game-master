@@ -16,6 +16,8 @@ import { findClass } from "@/lib/srd";
 import { spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
 import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
+import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
+import { innateCantripsFor } from "@/lib/srd/racial-grants";
 import {
   cantripCapOf,
   casterViewsOf,
@@ -201,8 +203,14 @@ export function adaptSheetToLevel(
     // allowances (the earliest picks are kept). Going up keeps every spell;
     // the new room is filled in play.
     if (level < fromLevel) {
-      const views = casterViewsOf({ ...sheet, level }).map((view) =>
-        trimToLevel(view, sheet.abilities),
+      // The race's cantrips (a high elf's pick, a tiefling's Thaumaturgy) are
+      // known on top of the class's and sit with the first caster's: never
+      // trimmed with the class's.
+      const racial = new Set(
+        [...racialCantripsOf(sheet.racialChoices ?? null), ...innateCantripsFor(sheet.race, level)].map((name) => textKey(name)),
+      );
+      const views = casterViewsOf({ ...sheet, level }).map((view, index) =>
+        trimToLevel(view, sheet.abilities, index === 0 ? racial : new Set()),
       );
       sheet.spellcasting = withCasterViews(sheet.spellcasting, views);
     }
@@ -251,7 +259,7 @@ export function oweSkippedImprovements(
   return { ...admitted, features: withAsiLedger(admitted.features ?? [], taken) };
 }
 
-function trimToLevel(view: CasterView, abilities: CreateSheetInput["abilities"]): CasterView {
+function trimToLevel(view: CasterView, abilities: CreateSheetInput["abilities"], racial: ReadonlySet<string>): CasterView {
   const top = maxSpellLevelOf(view);
   // Homebrew names the checklist does not know are kept: no level to judge.
   const castable = (names: string[]) =>
@@ -282,7 +290,11 @@ function trimToLevel(view: CasterView, abilities: CreateSheetInput["abilities"])
   const baseCap = spellCapOf(view, abilities)?.count ?? null;
   // The arcana are kept apart below, one of each level.
   const cap = baseCap === null ? null : baseCap + grants.extraSpells - arcanumLevelsFor(view.classId, view.level).length;
-  const cantrips = cantripCap === null ? view.cantrips : view.cantrips.slice(0, cantripCap);
+  const isRacial = (name: string) => racial.has(textKey(name));
+  const cantrips =
+    cantripCap === null
+      ? view.cantrips
+      : [...view.cantrips.filter((name) => !isRacial(name)).slice(0, cantripCap), ...view.cantrips.filter(isRacial)];
   // A warlock keeps the first spell of each Mystic Arcanum its level still
   // has, on top of the spells known (src/lib/srd/mystic-arcanum.ts).
   const arcana = arcanumLevelsFor(view.classId, view.level).flatMap(

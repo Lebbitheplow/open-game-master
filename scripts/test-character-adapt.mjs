@@ -374,6 +374,18 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
     });
     assert.equal(adaptSheetToLevel(lore, 9, 8).spellcasting.known.length, 13, "eleven spells known at 8th and Additional Magical Secrets' two");
   });
+
+  test("a tiefling wizard joining lower keeps Thaumaturgy beside the class's cantrips", () => {
+    const wizard = sheet({
+      class: "wizard",
+      subclass: "School of Evocation",
+      race: "tiefling",
+      abilities: { str: 8, dex: 14, con: 14, int: 18, wis: 12, cha: 10 },
+      hitDice: { total: 4, spent: 0 },
+      spellcasting: { ability: "int", slots: {}, cantrips: ["Thaumaturgy", "Fire Bolt", "Light", "Mage Hand", "Prestidigitation"], known: [], prepared: [], spellbook: [] },
+    });
+    assert.deepEqual(adaptSheetToLevel(wizard, 4, 3).spellcasting.cantrips.sort(), ["Fire Bolt", "Light", "Mage Hand", "Thaumaturgy"].sort(), "three wizard cantrips at 3rd and the race's");
+  });
 }
 
 console.log(`character adapt: ${passed} assertions passed.`);
