@@ -588,11 +588,9 @@
   "clauses": [
    {
     "c": "Advantage on checks to climb, balance, and keep footing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Legs#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Sky Legs: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Sky Legs: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv athletics and acrobatics about footing), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    },
    {
     "c": "falling damage you take is halved",
@@ -954,11 +952,9 @@
   "clauses": [
    {
     "c": "Advantage on Intimidation and Persuasion aboard ships and in ports",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Corsair's Swagger#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Corsair's Swagger: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Corsair's Swagger: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation and persuasion about ships), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },

@@ -45,6 +45,18 @@ export const CHECK_ABOUT = [
   "gathering_information",
   // Blackmail Files (fixer): against someone whose secret the roller knows.
   "known_secret",
+  // Silent Salvage (scavenger): moving through ruins or wreckage.
+  "ruins",
+  // Trap Eye (scavenger): spotting a trap, an ambush or unstable ground.
+  "traps",
+  // Predator Senses (aberrant): perceiving by smell.
+  "smell",
+  // Sky Legs (aeronaut): climbing, balancing, keeping one's footing.
+  "footing",
+  // Corsair's Swagger (aeronaut): dealings aboard a ship or in a port.
+  "ships",
+  // Automatic Writing (parapsychologist): searching a place where someone died violently.
+  "violent_death",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 
@@ -70,22 +82,22 @@ export const CHECK_KEY_PROPERTIES = {
     type: "string",
     enum: [...CHECK_ABOUT, NONE],
     description:
-      "The circumstance a check is about, or 'none': the server applies the features keyed to it.",
+      "What the check is about, or 'none'; features keyed to it apply.",
   },
   creature: {
     type: "string",
     description:
-      "A check about a creature: its singular rules type or humanoid race ('undead', 'orc'), or 'none'.",
+      "A creature the check is about: rules type or humanoid race ('undead', 'orc'), or 'none'.",
   },
   terrain: {
     type: "string",
     enum: [...NATURAL_TERRAINS, NONE],
-    description: "A check made in one of these terrains, for Natural Explorer, or 'none'.",
+    description: "The terrain it is made in (Natural Explorer), or 'none'.",
   },
   by: {
     type: "string",
     enum: [...CHECK_SENSES, NONE],
-    description: "A check that needs sight or hearing, or 'none': a blinded or deafened character fails it.",
+    description: "The sense it needs, or 'none': blinded or deafened fails it.",
   },
 };
 

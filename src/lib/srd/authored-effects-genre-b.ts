@@ -108,7 +108,9 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
 
   // ---- passives on the engine's own readers (wave 2, second pass) ----
   // "Darkvision 60 ft" (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet).
-  row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }] }),
+  // "Darkvision 60 ft; advantage on Perception checks using smell" (the
+  // check names what it is about: src/lib/dm/roll-about.ts).
+  row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }, { kind: "check_adv", skills: ["perception"], about: "smell" }] }),
   // "While conscious, regain 5 HP at the start of your turn if below half HP"
   // (src/lib/dm/authored-turns.ts authoredTurnStart): at 0 hit points the
   // knight is unconscious, and regains nothing.

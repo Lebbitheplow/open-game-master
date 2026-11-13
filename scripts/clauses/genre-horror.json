@@ -2575,16 +2575,9 @@
   "clauses": [
    {
     "c": "Advantage on Investigation checks in places where someone died violently",
-    "run": {
-     "k": "check",
-     "skill": "investigation",
-     "want": "adv"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Automatic Writing#0",
-    "observed": "d20s thrown for the investigation check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Automatic Writing: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv investigation about violent_death), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },

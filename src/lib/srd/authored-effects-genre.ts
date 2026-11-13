@@ -18,6 +18,7 @@ import { GENRE_B_AUTHORED } from "@/lib/srd/authored-effects-genre-b";
 import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mystery";
 import { GENRE_B_PA_AUTHORED } from "@/lib/srd/authored-effects-genre-b-post-apocalyptic";
 import { GENRE_B_STEAMPUNK_AUTHORED } from "@/lib/srd/authored-effects-genre-b-steampunk";
+import { GENRE_GB_AUTHORED } from "@/lib/srd/authored-effects-genre-gb";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -117,6 +118,7 @@ export const GENRE_AUTHORED: GenreRow[] = [
   ...GENRE_B_MYSTERY_AUTHORED,
   ...GENRE_B_PA_AUTHORED,
   ...GENRE_B_STEAMPUNK_AUTHORED,
+  ...GENRE_GB_AUTHORED,
   // The fight features the 2026-11-13 creator audit built.
   ...GENRE_C_AUTHORED,
 ];
