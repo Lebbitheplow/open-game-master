@@ -2574,6 +2574,18 @@
    "action": "bonus"
   },
   {
+   "id": "race_saving_face",
+   "displayName": "Saving Face",
+   "match": [
+    "saving face"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "guidance": "Saving Face: after a missed attack or a failed check or save, +1 to the roll for each ally the hobgoblin sees within 30 feet (up to +5), chosen on the card the roll waits on. Once a short rest.",
+   "passive": true
+  },
+  {
    "id": "race_rabbit_hop",
    "displayName": "Rabbit Hop",
    "match": [

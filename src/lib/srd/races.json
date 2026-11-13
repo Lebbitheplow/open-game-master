@@ -1212,7 +1212,8 @@
       },
       "traits": [
         "Darkvision 60 ft",
-        "Martial Training (light armor and two martial weapons of your choice)"
+        "Martial Training (light armor and two martial weapons of your choice)",
+        "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)"
       ],
       "languages": [
         "Common",

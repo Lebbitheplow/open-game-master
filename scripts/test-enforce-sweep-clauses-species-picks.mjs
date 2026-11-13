@@ -96,12 +96,44 @@ for (const row of RACES) {
       same([charged, still.ok, refused.ok], [[200, true, true, true], true, false], `${row.name}: hooves after a 35-foot run and a longsword hit, then after a hit with no run (${run.body.error ?? ""} ${hooves.error ?? ""})`);
     });
   }
+  // Saving Face: a save that fell short gains +1 for each ally seen within
+  // 30 feet, offered only where that carries it, once a short rest.
+  if (holds(row, "saving face")) {
+    probe("saving-face", async () => {
+      const { allyChoicesFor, spendAfterRoll } = await import("../src/lib/dm/after-roll.ts");
+      const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+      const { rollExpression } = await import("../src/lib/dice.ts");
+      const t = await rig.table();
+      const who = t.hero(of());
+      const near = t.hero(plain());
+      const far = t.hero(plain());
+      await t.fight([who, near, far]);
+      t.kit.openField();
+      t.kit.place(who.id, 5, 5);
+      t.kit.place(near.id, 7, 5);
+      t.kit.place(far.id, 18, 12);
+      // An 8 on the die, +3: a Wisdom save of 11.
+      const thrown = () => {
+        t.world.clearDice();
+        t.world.dice(8);
+        const out = rollExpression("1d20+3");
+        t.world.clearDice();
+        return out;
+      };
+      const offered = (roller, dc) => allyChoicesFor(t.world.campaignId, t.sheet(roller), { kind: "saving_throw", outcome: thrown(), dc, detail: "wis" }).filter((option) => option.id === "saving_face").length;
+      const short = offered(who, 13);
+      const carries = offered(who, 12);
+      const paid = spendAfterRoll(getCampaignById(t.world.campaignId), t.sheet(who), "saving_face", thrown());
+      const spent = [paid?.outcome.total, t.used(who, "race_saving_face")];
+      same([short, carries, spent, offered(who, 12), offered(near, 12)], [0, 1, [12, 1], 0, 0], `${row.name}: one ally within 30 feet against DC 13 and DC 12, the use spent, then again, and a human's`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
-  "species.satyr.mirthful-leaps", "species.centaur.charge",
+  "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

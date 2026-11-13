@@ -2582,7 +2582,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "2ed645bdb45f",
+  "sha": "2e51dff75bc6",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2637,6 +2637,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.choices"
+   },
+   {
+    "c": "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
+    "is": "held",
+    "by": "src/lib/dm/lineage-after-roll.ts lineageChoicesFor (offered on the after-the-roll card, after-roll.ts allyChoicesFor) and spendLineageAfterRoll, its use src/lib/srd/authored-resources.json race_saving_face",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.hobgoblin.saving-face"
    }
   ]
  },

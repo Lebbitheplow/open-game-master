@@ -321,7 +321,7 @@ export function handleRequestRoll(
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
           ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id), check: { skill: args.kind === "skill_check" ? resolved.detail : null, tool: args.tool } }),
-          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
+          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null, detail: resolved.detail }),
         ]
       : [];
     if (sheet && options.length) {

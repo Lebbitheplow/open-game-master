@@ -476,6 +476,24 @@ export const AFTER_ROLL_ROWS = [
     otherLabel: "Prophetic State: {name} rolls with advantage",
     otherNote: "Use your reaction (the Storm Rune's prophetic state): this {what} has advantage, one more d20 and the higher kept.",
   },
+  {
+    // Saving Face (hobgoblin, src/lib/srd/races.json): once a short rest, a
+    // missed attack or a failed check or save gains +1 for each ally the
+    // hobgoblin sees within 30 feet, +5 at most, offered where that carries
+    // it (lineage-after-roll-logic.ts). {amount}: the bonus.
+    id: "saving_face",
+    feature: "Saving Face",
+    cost: "own",
+    counter: "race_saving_face",
+    reaction: false,
+    kinds: ["check", "save", "attack"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    label: "Saving Face: {amount}",
+    note: "Spend Saving Face (once a short rest): {amount} to this {what}, one for each ally you see within 30 feet.",
+  },
 ] as const satisfies readonly AfterRollRow[];
 
 export type AfterRollId = (typeof AFTER_ROLL_ROWS)[number]["id"];

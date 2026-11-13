@@ -468,6 +468,8 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
     // The bonus-action hooves pc_attack opens after a charge (feature-bonus-attacks.ts).
     "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    // A choice on the card a roll waits on (src/lib/dm/lineage-after-roll.ts).
+    "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
   ]);
   const uncovered = [];
   for (const race of races) {
