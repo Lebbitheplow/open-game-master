@@ -39,6 +39,8 @@ export type SpeciesProseGrants = {
   tools: string[];
   toolChoice?: { count: number; from: string[] };
   weaponChoice?: { count: number; from: string[] };
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
   spells?: SpeciesSpellGroup;
   // The one pick a trait asks for (Mental Fortitude, Otherworldly Influence).
   variants?: SpeciesVariantGroup;
@@ -331,6 +333,16 @@ export function speciesProseGrants(data: { vision?: unknown; traits?: unknown })
         count: (out.skillChoice?.count ?? 0) + (picks ? picks.count : grant.skills),
         ...(from.length ? { from } : {}),
       };
+    }
+    // "You gain proficiency in two skills or tools of your choice" (Adaptable
+    // Acumen): picks in any mix of the two kinds; "your proficiency bonus is
+    // doubled for any ability check you make that uses the chosen skill":
+    // expertise in one.
+    if (grant.any > 0 && grant.anyKinds.every((kind) => kind === "skills" || kind === "tools")) {
+      out.trainingChoice = { count: (out.trainingChoice?.count ?? 0) + grant.any };
+    }
+    if (/\bproficiency bonus is doubled for any ability check you make that uses the chosen skill\b/.test(text)) {
+      out.expertiseChoice = (out.expertiseChoice ?? 0) + 1;
     }
     // "you are proficient with two martial weapons of your choice": a pick
     // from that category of the SRD's weapons table.

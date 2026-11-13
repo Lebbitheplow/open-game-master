@@ -125,6 +125,8 @@ const GRANT_KEYS = [
   "armor",
   "weapons",
   "weaponChoice",
+  "trainingChoice",
+  "expertiseChoice",
 ] as const;
 
 function withParent(
@@ -221,6 +223,8 @@ function withProse(mechanics: RaceMechanics, data: Record<string, unknown>): Rac
   if (!merged.skillChoice && prose.skillChoice) merged.skillChoice = prose.skillChoice;
   if (!merged.toolChoice && prose.toolChoice) merged.toolChoice = prose.toolChoice;
   if (!merged.weaponChoice && prose.weaponChoice) merged.weaponChoice = prose.weaponChoice;
+  if (!merged.trainingChoice && prose.trainingChoice) merged.trainingChoice = prose.trainingChoice;
+  if (!merged.expertiseChoice && prose.expertiseChoice) merged.expertiseChoice = prose.expertiseChoice;
   if (!merged.spells && prose.spells) merged.spells = prose.spells;
   if (!merged.variants && prose.variants) merged.variants = prose.variants;
   if (prose.livingOrigin) merged.livingOrigin = true;
@@ -341,7 +345,8 @@ const LIVING_ORIGINS: Array<{ id: string; name: string; size: RaceMechanics["siz
 
 function livingOriginOption(base: PackRaceOption, origin: (typeof LIVING_ORIGINS)[number]): PackRaceOption {
   const record = `Living Origin (${origin.name})`;
-  const { livingOrigin: _choice, ...rest } = base;
+  const rest: PackRaceOption = { ...base };
+  delete rest.livingOrigin;
   return {
     ...rest,
     id: `${base.id}-${origin.id}-origin`,

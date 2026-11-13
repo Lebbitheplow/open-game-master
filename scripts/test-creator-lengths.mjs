@@ -116,6 +116,7 @@ function picksFor(race, background = acolyte, klass = fighter) {
   const racialSkills = race.skillChoice ? take(race.skillChoice.count, race.skillChoice.from) : [];
   const repeatSkills = take(repeatedGrants(background.skills, race.skills).length);
   const chosenSkills = klass.skillChoices ? take(klass.skillChoices.count, klass.skillChoices.from) : [];
+  const training = race.trainingChoice ? take(race.trainingChoice.count) : [];
   return {
     race,
     background,
@@ -135,6 +136,8 @@ function picksFor(race, background = acolyte, klass = fighter) {
     racialAncestry: takesDraconicAncestry(race.id) ? "red" : "",
     racialWeapons: race.weaponChoice ? race.weaponChoice.from.slice(0, race.weaponChoice.count) : [],
     racialVariant: race.variants?.options[0]?.id ?? "",
+    racialTraining: race.trainingChoice ? training : [],
+    racialExpertise: race.expertiseChoice ? (training[0] ?? "") : "",
     feats: racialFeatCount(race.id) ? ["Alert"] : [],
   };
 }

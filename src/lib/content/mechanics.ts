@@ -41,6 +41,10 @@ export type RaceMechanics = {
   // Weapons the player names from a list ("two martial weapons of your
   // choice": a hobgoblin, a Tome of Heroes derro), by their SRD names.
   weaponChoice?: { count: number; from: string[] };
+  // Skills or tools in any mix, the player's choice ("two skills or tools of
+  // your choice": a gearforged human chassis), and expertise in a skill held.
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
   // The size the row states ("Your size is Small."), undefined when it
   // leaves it to a subrace or says nothing; and the dwarf's "Your speed is
   // not reduced by wearing heavy armor."
@@ -481,7 +485,7 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
 
 type StructuredGrants = Pick<
   RaceMechanics,
-  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice" | "livingOrigin"
+  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice" | "livingOrigin" | "trainingChoice" | "expertiseChoice"
 >;
 
 function stringList(value: unknown): string[] | undefined {
@@ -527,6 +531,13 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
   }
   if (data.livingOrigin === true) {
     out.livingOrigin = true;
+  }
+  const training = data.trainingChoice as { count?: unknown } | undefined;
+  if (training && Number(training.count) > 0) {
+    out.trainingChoice = { count: Math.min(4, Number(training.count)) };
+  }
+  if (Number(data.expertiseChoice) > 0) {
+    out.expertiseChoice = Math.min(2, Number(data.expertiseChoice));
   }
   const weaponChoice = data.weaponChoice as { count?: unknown; from?: unknown } | undefined;
   const weaponFrom = stringList(weaponChoice?.from);

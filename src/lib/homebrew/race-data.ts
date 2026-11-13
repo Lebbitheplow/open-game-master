@@ -111,6 +111,12 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
     return spells;
   }
   if (spells.group) data.spells = spells.group;
+  // A copied human chassis's Adaptable Acumen: picks of skills or tools, and
+  // expertise in one skill.
+  const training = clamp((source.trainingChoice as Raw | undefined)?.count, 0, 4, 0);
+  if (training) data.trainingChoice = { count: training };
+  const expertise = clamp(source.expertiseChoice, 0, 2, 0);
+  if (expertise) data.expertiseChoice = expertise;
   // A copied shade's Living Origin (src/lib/content/race-options.ts).
   if (source.livingOrigin === true) data.livingOrigin = true;
   const variants = checkSpeciesVariants(source.variants);

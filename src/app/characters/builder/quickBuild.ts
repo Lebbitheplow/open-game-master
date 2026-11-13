@@ -475,6 +475,21 @@ export function fillRound(ctx: FillContext): FillRound {
       note("racialSkills", added.map(skillName).join(", "));
     }
   }
+  if (race.trainingChoice && (fields.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count && wants("racialTraining")) {
+    const held = (fields.racialTraining ?? []).filter(Boolean);
+    const added = freeSkillOrder(proficient, ALL_SKILLS).filter((skill) => !held.includes(skill)).slice(0, race.trainingChoice.count - held.length);
+    if (added.length) {
+      patch.racialTraining = [...held, ...added];
+      note("racialTraining", added.map(skillName).join(", "));
+    }
+  }
+  if (race.expertiseChoice && !fields.racialExpertise && wants("racialExpertise")) {
+    const pick = [...(patch.racialTraining ?? fields.racialTraining ?? []), ...(race.skills ?? [])].find((entry) => (ALL_SKILLS as readonly string[]).includes(entry));
+    if (pick) {
+      patch.racialExpertise = pick;
+      note("racialExpertise", skillName(pick));
+    }
+  }
   if (race.weaponChoice && (fields.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count && wants("racialWeapons")) {
     const held = (fields.racialWeapons ?? []).filter(Boolean);
     const added = race.weaponChoice.from.filter((weapon) => !held.includes(weapon)).slice(0, race.weaponChoice.count - held.length);

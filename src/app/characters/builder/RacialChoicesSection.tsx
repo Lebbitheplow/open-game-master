@@ -8,6 +8,7 @@ import { GameTerm } from "@/components/ui/GameTerm";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
+import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { contentSlug, describeSkill } from "@/lib/help";
 import { SRD_SKILLS } from "@/lib/srd";
 import { ABILITIES, type Ability } from "@/lib/schemas/sheet";
@@ -53,6 +54,10 @@ export function RacialChoicesSection({
   onToolChange,
   weapons = [],
   onWeaponsChange,
+  training = [],
+  onTrainingChange,
+  expertise = "",
+  onExpertiseChange,
   ancestry = "",
   onAncestryChange,
   variant = "",
@@ -86,6 +91,12 @@ export function RacialChoicesSection({
   // weapons), slot by slot.
   weapons?: string[];
   onWeaponsChange?: (index: number, weapon: string) => void;
+  // Skills or tools in any mix (a human chassis's Adaptable Acumen), slot by
+  // slot, and the skill its expertise doubles.
+  training?: string[];
+  onTrainingChange?: (index: number, pick: string) => void;
+  expertise?: string;
+  onExpertiseChange?: (skill: string) => void;
   // A dragonborn's draconic ancestry, by id.
   ancestry?: string;
   onAncestryChange?: (ancestry: string) => void;
@@ -118,7 +129,7 @@ export function RacialChoicesSection({
   const draconic = takesDraconicAncestry(race.id);
   const racialFeats = onFeatsChange ? racialFeatCount(race.id) : 0;
   const hasChoices = Boolean(
-    race.asiChoice || race.skillChoice || race.cantripChoice || race.toolChoice || race.weaponChoice || draconic || race.variants || repeated.length || racialFeats,
+    race.asiChoice || race.skillChoice || race.cantripChoice || race.toolChoice || race.weaponChoice || race.trainingChoice || race.expertiseChoice || draconic || race.variants || repeated.length || racialFeats,
   );
   const chosen = race.variants?.options.find((option) => option.id === variant) ?? null;
   // The half-feat's choice of score, offered once the feat is picked.
@@ -415,6 +426,55 @@ export function RacialChoicesSection({
             ))}
           </div>
         </div>
+      ) : null}
+
+      {race.trainingChoice && onTrainingChange ? (
+        <div data-builder-target="racialTraining">
+          <span className="mb-1 block text-stone-400">
+            <GameTerm id="skill">Skill</GameTerm> or tool proficiencies ({race.trainingChoice.count} of your choice, in any mix)
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: race.trainingChoice.count }, (_, index) => (
+              <Select<string>
+                key={index}
+                value={training[index] ?? ""}
+                onChange={(next) => onTrainingChange(index, next)}
+                className="min-w-0"
+                label={`Skill or tool proficiency ${index + 1}`}
+                placeholder="Choose a skill or tool..."
+                options={[
+                  { value: "", label: "Choose a skill or tool..." },
+                  ...ALL_SKILLS.filter((skill) => training[index] === skill || (!training.includes(skill) && !grantedSkills.includes(skill) && !skills.includes(skill))).map(
+                    (skill) => ({ value: skill as string, label: skillName(skill) }),
+                  ),
+                  ...KNOWN_TOOLS.filter((tool) => training[index] === tool || !training.includes(tool)).map((tool) => ({ value: tool, label: tool })),
+                ]}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {race.expertiseChoice && onExpertiseChange ? (
+        <label className="block" data-builder-target="racialExpertise">
+          <span className="mb-1 block text-stone-400">
+            Expertise: a skill you are proficient in, its proficiency bonus doubled
+          </span>
+          <Select<string>
+            value={expertise}
+            onChange={onExpertiseChange}
+            className="w-full"
+            label="Expertise"
+            placeholder="Choose a skill..."
+            options={[
+              { value: "", label: "Choose a skill..." },
+              ...[...new Set([...grantedSkills, ...skills.filter(Boolean), ...training.filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick))])].map((skill) => ({
+                value: skill,
+                label: skillName(skill),
+              })),
+            ]}
+          />
+        </label>
       ) : null}
 
       <RacialCantripPicker race={race} cantrips={cantrips} onChange={onCantripsChange} />

@@ -213,7 +213,9 @@ const legal = (race, built) =>
 const wizardOf = (race, fields = {}) =>
   builder.build({
     race, class: "fighter", background: "soldier", level: 1, scores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
-    chosenSkills: ["history", "perception"], stylePicks: ["defense"], bonusLanguages: ["Common"],
+    chosenSkills: ["history", "perception"], stylePicks: ["defense"],
+    bonusLanguages: race.languages.includes("Common") ? ["Elvish"] : ["Common"],
+    racialAsi: race.asiChoice ? (race.asiChoice.from ?? ["str", "dex", "con", "int", "wis", "cha"]).filter((ability) => !race.asi?.[ability]).slice(0, race.asiChoice.count) : [],
     racialVariant: race.variants?.options[0]?.id ?? "", racialTool: race.toolChoice?.from[0] ?? "",
     racialSkills: ["insight", "medicine"].slice(0, race.skillChoice?.count ?? 0),
     // A race skill the soldier also gives is picked again in its place.
@@ -267,6 +269,23 @@ test("the one pick a pack species' trait asks for is asked, and the option picke
   assert.ok(halfling.traitNames.includes("Living Origin (Halfling)"));
   // A character stored on the bare shade keeps its row.
   assert.ok(packRaceOptions(races, ["shade"]).some((option) => option.id === "shade"));
+});
+
+test("a gearforged on a human chassis names two skills or tools in any mix and doubles one skill, and the sheet holds them", () => {
+  const race = options.find((option) => option.id === "human-chassis");
+  assert.deepEqual([race.trainingChoice, race.expertiseChoice], [{ count: 2 }, 1]);
+  const unpicked = wizardOf(race);
+  assert.equal(unpicked.blocker?.target, "racialTraining", `the builder saved with Adaptable Acumen unpicked: ${unpicked.blocker?.message}`);
+  const built = wizardOf(race, { racialTraining: ["arcana", "thieves' tools"], racialExpertise: "arcana" });
+  assert.equal(built.blocker, null, built.blocker?.message);
+  const verdict = legal(race, built);
+  assert.deepEqual(verdict.problems, []);
+  const { skills, tools, expertise } = verdict.sheet.proficiencies;
+  assert.deepEqual([skills.includes("arcana"), tools.includes("thieves' tools"), expertise.includes("arcana")], [true, true, true]);
+  assert.deepEqual(verdict.sheet.racialChoices.training, ["arcana", "thieves' tools"]);
+  // Expertise only in a skill held: History is the fighter's, Religion nobody's.
+  const stray = legal(race, { sheet: { ...built.sheet, proficiencies: { ...built.sheet.proficiencies, expertise: ["religion"] } } });
+  assert.ok(stray.problems.some((line) => /religion/.test(line)), stray.problems.join(" | "));
 });
 
 console.log(`test-species-prose: ${passed} passed`);
