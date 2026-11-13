@@ -3,7 +3,7 @@ import { classLabelOf, spellOnListKey, type ListedSpell } from "@/lib/classes/cl
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { SRD_CLASSES, abilityMod, spellSlotsFor } from "@/lib/srd";
-import { subclassSpellsFor, subclassExpandedSpellsFor, subclassSpellListsFor } from "@/lib/srd/features";
+import { classFeaturesFor, subclassSpellsFor, subclassExpandedSpellsFor, subclassSpellListsFor } from "@/lib/srd/features";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { isCantripName, spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
 import {
@@ -452,12 +452,18 @@ export function cantripCapOf(
 }
 
 // A warlock's Mystic Arcanum reaches past pact slots: one spell of 6th level
-// at 11, 7th at 13, 8th at 15 and 9th at 17.
-function arcanumTop(view: Pick<CasterView, "classId" | "level">): number {
-  if (spellRulesClassFor(view.classId) !== "warlock") {
+// at 11, 7th at 13, 8th at 15 and 9th at 17. Only a class whose own table
+// holds the feature has one. A setting pact caster on the warlock's tables
+// (Grave Knight, Occultist) has no arcanum and no slot above 5th, so it never
+// learns a 6th to 9th level spell; issue #833 had let every class on those
+// tables reach past its slots. The builder's level-up preview, levelUpSpells
+// and spellListProblems all read this one rule.
+export function mysticArcanumTop(classId: string, level: number): number {
+  const held = textKey(classId) === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => textKey(feature.name).startsWith("mystic arcanum"));
+  if (!held) {
     return 0;
   }
-  return view.level >= 17 ? 9 : view.level >= 15 ? 8 : view.level >= 13 ? 7 : view.level >= 11 ? 6 : 0;
+  return level >= 17 ? 9 : level >= 15 ? 8 : level >= 13 ? 7 : level >= 11 ? 6 : 0;
 }
 
 // Everything the 5e tables say is wrong with the spell lists a sheet arrives
@@ -527,7 +533,7 @@ export function spellListProblems(
         problems.push(`A ${label} starts with ${allowance} spells in the spellbook; that book has ${book}.`);
       }
     }
-    const top = Math.max(maxSpellLevelOf(view), arcanumTop(view));
+    const top = Math.max(maxSpellLevelOf(view), mysticArcanumTop(view.classId, view.level));
     for (const name of dedupeNames([...held, ...view.spellbook]).filter((name) => !freeSpells.has(textKey(name)))) {
       const spellLevel = spellLevelOf(name);
       if (spellLevel !== null && spellLevel > top) {

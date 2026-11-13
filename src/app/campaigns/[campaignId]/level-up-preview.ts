@@ -30,6 +30,7 @@ import { hpBonusPerLevel, srdRaceId } from "@/lib/srd/race-id";
 import {
   cantripCapOf,
   maxSpellLevelOf,
+  mysticArcanumTop,
   spellCapOf,
   spellStyleFor,
   type CasterView,
@@ -169,14 +170,6 @@ export type CasterPreview = {
   spellCap: { label: string; count: number } | null;
 };
 
-// A warlock's Mystic Arcanum reaches past pact slots.
-function arcanumTop(list: string, level: number): number {
-  if (list !== "warlock") {
-    return 0;
-  }
-  return level >= 17 ? 9 : level >= 15 ? 8 : level >= 13 ? 7 : level >= 11 ? 6 : 0;
-}
-
 // The chosen class's casting at its new level. A third caster (an Eldritch
 // Knight, an Arcane Trickster, a workshop or pack subclass casting by their
 // rules) casts from its profile's list with its ability and knows its
@@ -219,7 +212,9 @@ export function casterPreview(input: {
   };
   const cantripCap = cantripCapOf(view);
   const spellCap = spellCapOf(view, input.abilitiesAfter);
-  const maxLevel = Math.max(maxSpellLevelOf(view), arcanumTop(list, input.level));
+  // A Mystic Arcanum reaches past pact slots for a class that holds one
+  // (spell-prep.ts mysticArcanumTop): never a setting pact caster.
+  const maxLevel = Math.max(maxSpellLevelOf(view), mysticArcanumTop(input.classId, input.level));
   // A third caster below 3rd level casts nothing yet.
   const casts = !third || input.level >= 3;
   return { casts, list, ability, style, maxLevel, cantripCap, spellCap };

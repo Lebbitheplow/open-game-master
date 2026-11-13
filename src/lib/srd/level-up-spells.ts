@@ -16,6 +16,7 @@ import {
   dedupeNames,
   grantedSpellsOf,
   maxSpellLevelOf,
+  mysticArcanumTop,
   preparedCount,
   spellCapOf,
   spellbookAllowance,
@@ -24,7 +25,6 @@ import {
   widerListOf,
   type CasterView,
 } from "@/lib/srd/spell-prep";
-import { spellRulesClassFor } from "@/lib/classes";
 import { classLabelOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import type { AbilityScores } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/legality/types";
@@ -80,14 +80,6 @@ export type SpellLevelUp = {
 
 export type SpellLevelUpResult = { view: CasterView } | { error: string };
 
-// A warlock's Mystic Arcanum reaches past pact slots.
-function arcanumTop(classList: string, level: number): number {
-  if (classList !== "warlock") {
-    return 0;
-  }
-  return level >= 17 ? 9 : level >= 15 ? 8 : level >= 13 ? 7 : level >= 11 ? 6 : 0;
-}
-
 export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   const { before, picks } = input;
   const label = `${classLabelOf(before.classId)} of level ${input.level}`;
@@ -107,10 +99,9 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   };
   let granted = grantedSpellsOf(after);
   const isGranted = (name: string) => has(granted, name);
-  // The Mystic Arcanum is the warlock's tables', read for whatever counts
-  // as one: the warlock, a workshop class on its list, or a pact caster with
-  // a list of its own (issue #833).
-  const top = Math.max(maxSpellLevelOf(after), arcanumTop(spellRulesClassFor(before.classId), input.level));
+  // The Mystic Arcanum reaches past pact slots for a class that holds one
+  // (spell-prep.ts mysticArcanumTop); a setting pact caster stops at 5th.
+  const top = Math.max(maxSpellLevelOf(after), mysticArcanumTop(before.classId, input.level));
 
   // ---- what the player asked for, as lists ----
   let removed: string[] = [];
