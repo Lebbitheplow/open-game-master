@@ -91,3 +91,11 @@ export function darkFantasyCritMarks(scene: { campaign: Campaign; sheet: Charact
   }
   return lines;
 }
+
+// Relentless Pursuit (witch hunter 10): "Your branded quarry cannot hide from
+// you": a creature the hunter's brand is on is not hidden from them, so their
+// attack on it is not made unseen (src/lib/dm/attack-sight.ts). Its
+// invisibility, a spell's, still holds.
+export function pursuedConditions(sheet: CharacterSheet, enemy: Pick<EncounterEnemy, "id">, conditions: string[]): string[] {
+  return holdsGenreFeature(sheet, "witch_hunter", "Relentless Pursuit") && brandsCreature(sheet, enemy.id) ? conditions.filter((entry) => !isConditionNamed(entry, "hidden")) : conditions;
+}

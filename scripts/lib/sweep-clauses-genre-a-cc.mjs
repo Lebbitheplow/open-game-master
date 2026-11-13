@@ -603,6 +603,26 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Relentless Pursuit: the branded foe hides; the hunter's swing at it is
+  // not made unseen, and is once the feature is gone.
+  async cc_pursuit(t, run, feature) {
+    const { listRecentRolls } = await load("lib/db/rolls.ts");
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Hunter's Brand", targetEnemyId: scene.near.id }), "Hunter's Brand");
+    const swing = async () => {
+      t.kit.setEnemy(scene.near.id, { conditions: [...t.kit.enemy(scene.near.id).conditions.filter((entry) => entry !== "hidden"), "hidden"] });
+      t.kit.freshTurn();
+      t.kit.giveTurn(scene.holder.id);
+      must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 15, 3, 3, 3]), "the swing");
+      return listRecentRolls(t.world.campaignId, 6).filter((entry) => entry.kind === "attack").at(-1)?.advantage ?? "none";
+    };
+    const pursued = await swing();
+    stripFeature(t, scene.holder.id, feature.name);
+    eq(`${pursued}/${await swing()}`, "none/disadvantage", "the swing at the hidden branded foe with Relentless Pursuit / without it");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();
