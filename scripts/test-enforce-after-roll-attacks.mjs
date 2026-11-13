@@ -394,6 +394,57 @@ await test("The lead's skip takes a card whose dice were never entered off the t
   }
 });
 
+// The hit already landed when the lead skipped the turn: left on the card,
+// its damage landed whenever the player got to it, turns later, and the
+// GM narrated an old blow as new (issue 931's kin). The skip settles it.
+await test("The lead's skip rolls a hit's owed damage on the server and lands it at once, its card closed as a fallback roll.", async () => {
+  const enemy = await stage(NONE);
+  kit.setEnemy(enemy.id, { ac: 5 });
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const [damage] = open();
+    assert.equal(damage?.kind, "damage");
+    world.signIn({ id: world.owner.id });
+    world.dice(6);
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    world.clearDice();
+    assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+    assert.ok(!open().some((entry) => entry.id === damage.id), "the damage card outlived the turn");
+    assert.equal(getPendingRoll(damage.id).status, "fallback");
+    assert.equal(hp(enemy), 400 - 9, "the owed damage (1d8 6 + Strength 3) was not dealt");
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
+// A grapple's contest never made: the skip takes its card off the table, and
+// nothing is grappled, now or when dice are entered afterwards.
+await test("The lead's skip withdraws a held grapple contest card: nothing is rolled and nothing grappled.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    assert.equal((await world.invoke("take_action", { characterId: hero.id, action: "grapple", targetEnemyId: enemy.id, reason: "seize it" })).ok, true);
+    const [card] = open();
+    assert.ok(card?.carry?.call);
+    world.signIn({ id: world.owner.id });
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+    assert.ok(!open().some((entry) => entry.id === card.id), "the contest card outlived the turn");
+    world.signIn({ id: userId });
+    const late = await call(route.pending, "POST", { dice: [20] }, { campaignId: world.campaignId, pendingRollId: card.id });
+    assert.notEqual(late.status, 200, "dice entered afterwards land nothing");
+    assert.ok(!kit.enemy(enemy.id).conditions.includes("grappled"));
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 await test("The lead's skip keeps a thrown roll as it lies: no card outlives the turn, and nothing is spent.", async () => {
   const enemy = await stage(LUCKY);
   world.dice(3);
