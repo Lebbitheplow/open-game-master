@@ -21,6 +21,7 @@ const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
 const { defaultHeld } = await import("../src/lib/dm/held-default.ts");
+const { cardFullText } = await import("../src/lib/battlemap/hand-full-text-logic.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -308,6 +309,26 @@ test("a weapon card says whether it is in hand or packed, and a packed one says 
   const unsaid = deriveHand(sheet({ equipment: [{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }] }), FRESH_TURN);
   assert.equal(byId(unsaid, "attack:longsword").wield, undefined);
   assert.equal(byId(unsaid, "attack:dagger").wield, undefined);
+});
+
+// The Hand's "Full text" (#926) writes a card's description less its rules
+// line. A weapon's notes are one run of sentences whose start is that line,
+// so a packed versatile sword its owner is not trained with wrote it twice.
+test("a packed weapon's full text tells what its rules line does not, once", () => {
+  const base = sheet();
+  const untrained = { ...base.proficiencies, weapons: ["simple"] };
+  const cards = deriveHand(sheet({ proficiencies: untrained, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: false }] }), FRESH_TURN);
+  const sword = byId(cards, "attack:longsword");
+  assert.equal(sword.wield, "stowed");
+  assert.match(sword.rules, /^Packed away/);
+  const full = cardFullText(sword);
+  assert.ok(full.length > 0, "there is more to read");
+  assert.ok(!full.includes(sword.rules), `the rules line is not written again: ${full}`);
+  assert.match(full, /Versatile/);
+  // A card whose description is its rules line has nothing more to open.
+  assert.equal(cardFullText({ rules: "One line.", description: "One line." }), "");
+  // A spell's notes: the paragraph that repeats the line goes, the rest stays.
+  assert.equal(cardFullText({ rules: "Three darts.", description: "You create three darts.\n\nThree darts.\n\nAt higher levels: one more." }), "You create three darts.\n\nAt higher levels: one more.");
 });
 
 const NO_ARMOR = { armorName: null, shieldName: null };
