@@ -527,5 +527,37 @@ await test(
   },
 );
 
+await test("A04 A content-pack subclass feature that teaches a named cantrip (\"you learn the shillelagh cantrip\") gives it: the engine lets its holder cast it.", () => {
+  if (!hasPack) return;
+  const extras = packSubclassExtras();
+  const problems = [];
+  let walked = 0;
+  for (const [classId, tables] of Object.entries(extras)) {
+    for (const table of tables) {
+      if (subclassNamesFor(classId).includes(table.name)) continue;
+      for (const [at, rows] of Object.entries(table.levels)) {
+        for (const row of rows) {
+          for (const found of row.d.toLowerCase().replace(/[*_]/g, "").matchAll(/\b(?:you learn|you know|you gain) the ([a-z' ]+?) cantrip\b/g)) {
+            walked += 1;
+            const level = Number(at);
+            const sheet = {
+              name: "Holder",
+              class: classId,
+              subclass: table.name,
+              level,
+              classes: [],
+              features: classFeaturesFor(classId, table.name, level, extras),
+              spellcasting: { ability: "wis", cantrips: [], known: [], prepared: [], slots: {}, slotsUsed: {} },
+            };
+            if (spellHeldProblem(sheet, found[1].trim(), null, { extras })) problems.push(`${table.name} ${level}: ${row.n} teaches ${found[1].trim()}, which its holder cannot cast`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(walked >= 6, `only ${walked} taught cantrips were walked`);
+  assert.deepEqual(problems, []);
+});
+
 world.close();
 finish();

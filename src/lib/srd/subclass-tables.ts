@@ -212,13 +212,32 @@ function castingProfileOf(data: Record<string, unknown>, levels: Record<string, 
   return undefined;
 }
 
+// The cantrips a pack subclass's features teach by name ("you learn the
+// shillelagh cantrip", Tome of Heroes' Old Wood), known from the feature's
+// level as a domain's list is: read only for their proficiencies, seven pack
+// subclasses taught nothing their text gave. A cantrip "of your choice" is a
+// pick, not read here.
+const TAUGHT_CANTRIP = /\b(?:you learn|you know|you gain) the ([a-z' ]+?) cantrip\b/g;
+function withTaughtCantrips(spells: Record<string, string[]> | undefined, levels: Record<string, SubclassFeatureRow[]>): Record<string, string[]> | undefined {
+  const out: Record<string, string[]> = Object.fromEntries(Object.entries(spells ?? {}).map(([level, names]) => [level, [...names]]));
+  for (const [level, rows] of Object.entries(levels)) {
+    for (const row of rows) {
+      for (const found of row.d.toLowerCase().replace(/[*_]/g, "").matchAll(TAUGHT_CANTRIP)) {
+        const [name] = spellCellNames(found[1]);
+        if (name && !(out[level] ?? []).includes(name)) (out[level] ??= []).push(name);
+      }
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 // One fetched archetype row as a table, or null when it says nothing a
 // grant could use.
 export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | null {
   const homebrew = row.source === "homebrew";
   const levels = homebrew ? homebrewLevels(row.data.levels) : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
   const printed = homebrew ? {} : proseSpellTables(String(row.data.desc ?? ""));
-  const spells = homebrew ? spellLevels(row.data.spells) : printed.spells;
+  const spells = homebrew ? spellLevels(row.data.spells) : withTaughtCantrips(printed.spells, levels);
   const expanded = homebrew ? spellLevels(row.data.expanded) : printed.expanded;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
   const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
