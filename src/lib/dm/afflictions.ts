@@ -11,6 +11,7 @@
 // A record whose conditions are all gone from the sheet was cured by other
 // means (lesser restoration, clear_condition) and is dropped when next read.
 
+import { holdsMummyRot } from "@/lib/dm/mummy-rot-logic";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -447,7 +448,8 @@ export function healCeiling(campaignId: string, sheet: CharacterSheet, max = eff
 
 export function afflictedRestPatch(sheet: CharacterSheet, patch: FullPatchSheetInput): FullPatchSheetInput {
   const next = { ...patch };
-  if (holds(sheet, "sewer plague")) {
+  // Mummy rot's cursed "can't regain hit points", a night's rest's included.
+  if (holds(sheet, "sewer plague") || holdsMummyRot(sheet.conditions)) {
     delete next.currentHp;
   }
   // The rest's own maximum (exhaustion it lowered) less Pale Tincture's damage.
@@ -558,8 +560,12 @@ export function afflictionsAfterLongRest(campaign: Campaign, turnId: string, res
   return lines;
 }
 
-// Sewer plague: hit dice heal half (SRD 5.1).
+// Sewer plague: hit dice heal half (SRD 5.1). Mummy rot: nothing, since the
+// cursed "can't regain hit points" (mummy-rot-logic.ts).
 export function hitDiceHealingFactor(sheet: Pick<CharacterSheet, "conditions">): number {
+  if (holdsMummyRot(sheet.conditions)) {
+    return 0;
+  }
   return holds(sheet, "sewer plague") ? 0.5 : 1;
 }
 

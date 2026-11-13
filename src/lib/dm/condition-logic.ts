@@ -138,6 +138,11 @@ export type ConditionMeta = {
   // charm began at: Command Undead's hourly save
   // (src/lib/dm/ar-ws-command-hours.ts).
   hourFrom?: number;
+  // Mummy rot (src/lib/dm/mummy-rot-logic.ts): the clock instant the curse
+  // took hold, and the hit point maximum its days have eaten, given back
+  // when the curse is lifted (maxHpRiders).
+  rotFrom?: number;
+  rotDrain?: number;
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry
@@ -178,6 +183,8 @@ export function maxHpRiders(
     if (drained) {
       drain += Number(drained[1]) * instancesOf(meta?.[name]).length;
     }
+    // What a curse's days have eaten (mummy rot), on the curse itself.
+    drain += Math.max(0, meta?.[name]?.rotDrain ?? 0);
   }
   return { bonus: [...strongest.values()].reduce((sum, value) => sum + value, 0), drain };
 }
