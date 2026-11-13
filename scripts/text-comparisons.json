@@ -1989,7 +1989,7 @@
     "lib/dm/zone-rules.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/genre-b-mystery-rest.ts#str-list": [["key",1,"condition names the engine lays and reads (engine vocabulary)"]],
     "lib/dm/genre-b-mystery-spends.ts#str-key": [["key",1,"effect and counter ids of this module's own tables (engine vocabulary)"]],
-    "lib/dm/genre-b-mystery-spends.ts#str-list": [["key",2,"condition names the engine lays and reads (engine vocabulary)"]],
+    "lib/dm/genre-b-mystery-spends.ts#str-list": [["key",2,"condition names the engine lays and reads (engine vocabulary)"],["key",1,"the skill table's ids a reroll answers (Silver Tongue: deception, persuasion)"]],
     "lib/srd/authored-effects-genre-b-mystery.ts#str-list": [["key",1,"condition names the engine lays and reads (engine vocabulary)"]],
     "lib/dm/genre-b-mystery-spends.ts#toUpperCase": [["key",1,"an ability id shown as its three letters (WIS, CHA)"]],
     "lib/dm/genre-b-mystery-wall.ts#str-eq": [["key",1,"token and combatant kinds (engine vocabulary)"]],

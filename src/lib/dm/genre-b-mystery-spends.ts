@@ -57,6 +57,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { rerollFailedCheck } from "@/lib/dm/genre-cc-a-checks";
 
 type Resolution = ToolError | { patch?: Record<string, unknown>; result: Record<string, unknown> };
 
@@ -533,6 +534,8 @@ const EFFECTS: Record<string, (ctx: SpendContext) => Resolution> = {
   story,
   hypnotic,
   dreams,
+  // Silver Tongue: "reroll a failed Deception or Persuasion check".
+  silver_tongue: (ctx) => rerollFailedCheck(ctx.campaign, ctx.sheet, ctx.spend.name, ["deception", "persuasion"]),
 };
 
 export function mysterySpend(ctx: SpendContext, effect: string): Resolution {
