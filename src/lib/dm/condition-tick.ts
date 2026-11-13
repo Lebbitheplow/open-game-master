@@ -34,7 +34,7 @@ import {
 import { tickConcentrationClocks } from "@/lib/dm/concentration-clock";
 import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
-import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
+import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
 import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
@@ -546,6 +546,7 @@ function heldClose(encounter: Encounter | undefined, holderId: string, instance:
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
+  const lethargic: string[] = [];
   for (const enemy of listEnemies(encounter.id)) {
     if (enemy.status !== "alive" || !enemy.conditions.length || (options.only && !options.only.has(enemy.id))) {
       continue;
@@ -565,6 +566,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
     if (hastedAs) {
       ({ conditions, meta } = withLethargy(conditions, meta, lethargyMeta(enemy.id)));
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
+      lethargic.push(enemy.id);
     }
     // One effect, one save, as a character's below: conditions one source laid
     // together with the same save (the Stone Rune's charm, incapacitation and
@@ -640,6 +642,8 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       patchEnemyConditions(enemy.id, conditions, meta);
     }
   }
+  // Once every row is written: the lethargy incapacitates (endLethargicConcentration).
+  lines.push(...endLethargicConcentration(campaign, [], lethargic));
 }
 
 function tickSheetConditions(
@@ -800,6 +804,11 @@ function tickSheetConditions(
         reason: ended.length ? `no longer ${ended.join(" or ")}${when}` : "time counted down on their conditions",
         delta: { ended, added: conditions.filter((name) => !sheet.conditions.includes(name)) },
       });
+    }
+    // The lethargy incapacitates, and that ends their own concentration
+    // (endLethargicConcentration), once this tick is written.
+    if (hastedAs && by - hasteLeft < 1) {
+      lines.push(...endLethargicConcentration(campaign, [sheet.id]));
     }
     const finished = finishing ? finishCasting(campaign, sheet.id, finishing, Boolean(options?.encounter)) : null;
     if (finished) {
