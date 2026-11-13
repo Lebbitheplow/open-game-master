@@ -51,6 +51,10 @@ export type RaceMechanics = {
   variants?: SpeciesVariantGroup;
   // A workshop species' own spells (issue #833), src/lib/content/species-spells.ts.
   spells?: SpeciesSpellGroup;
+  // A pack species whose text sends the player to another race for its
+  // size, speed and a language (a shade's Living Origin): race-options.ts
+  // offers one option per origin.
+  livingOrigin?: boolean;
 };
 
 export const RACE_SIZES = ["Tiny", "Small", "Medium", "Large"] as const;
@@ -477,7 +481,7 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
 
 type StructuredGrants = Pick<
   RaceMechanics,
-  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice"
+  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice" | "livingOrigin"
 >;
 
 function stringList(value: unknown): string[] | undefined {
@@ -520,6 +524,9 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
   const weapons = stringList(data.weapons);
   if (weapons?.length) {
     out.weapons = weapons;
+  }
+  if (data.livingOrigin === true) {
+    out.livingOrigin = true;
   }
   const weaponChoice = data.weaponChoice as { count?: unknown; from?: unknown } | undefined;
   const weaponFrom = stringList(weaponChoice?.from);

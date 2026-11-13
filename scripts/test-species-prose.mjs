@@ -66,7 +66,8 @@ const STATED = {
   alseid: { dv: 60, skills: ["stealth"] },
   erina: { dv: 60, resist: ["poison"], saves: ["poisoned"], skills: ["perception"] },
   satarre: { dv: 60, resist: ["necrotic"], skills: ["arcana"] },
-  shade: { dv: 60, resist: ["necrotic"], saves: ["poisoned"] },
+  // A shade is offered once per Living Origin.
+  ...Object.fromEntries(["human", "dwarf", "elf", "halfling", "gnome", "half-elf", "half-orc", "dragonborn", "tiefling"].map((origin) => [`shade-${origin}-origin`, { dv: 60, resist: ["necrotic"], saves: ["poisoned"] }])),
   "stoor-halfling": { dv: 0, resist: ["poison"], saves: ["poisoned"] },
 };
 
@@ -235,6 +236,37 @@ test("a pack species that names martial weapons of the player's choice asks for 
   // A simple weapon is not one of the list; the server says so.
   const off = legal(race, { sheet: { ...built.sheet, racialChoices: { ...built.sheet.racialChoices, weapons: ["Dagger", "Longsword"] } } });
   assert.ok(off.problems.some((line) => /Dagger is not a weapon/.test(line)), off.problems.join(" | "));
+});
+
+const { sizeForRace, deriveAc } = await import("../src/lib/srd/index.ts");
+test("the one pick a pack species' trait asks for is asked, and the option picked reaches the engine", () => {
+  const pick = (id) => options.find((option) => option.id === id);
+  // Mental Fortitude: one of three abilities, its saves against magic.
+  const gnome = pick("gnome-chassis");
+  assert.deepEqual(gnome.variants?.options.map((option) => option.id), ["intelligence", "wisdom", "charisma"]);
+  const unpicked = wizardOf(gnome, { racialVariant: "" });
+  assert.equal(unpicked.blocker?.target, "variant", "the builder saved a gnome chassis with no Mental Fortitude");
+  const wise = legal(gnome, wizardOf(gnome, { racialVariant: "wisdom" }));
+  assert.deepEqual(wise.problems, []);
+  const names = wise.sheet.features.filter((feature) => feature.source === "race").map((feature) => feature.name);
+  assert.ok(names.includes("Saves with advantage against spells (Wisdom)"), names.join(" | "));
+  const held = { features: wise.sheet.features, class: "fighter", level: 1 };
+  assert.deepEqual([traitSaveAdvantages(held, "wis", { magical: true }).length > 0, traitSaveAdvantages(held, "int", { magical: true }).length > 0], [true, false]);
+  // Otherworldly Influence: a tentacle that strikes, or flesh that turns a blow.
+  const mutated = pick("mutated");
+  assert.deepEqual(mutated.variants?.options.map((option) => option.id), ["alien-appendage", "tainted-blood", "tenebrous-flesh"]);
+  const raceFeatures = (variant) => legal(mutated, wizardOf(mutated, { racialVariant: variant, racialWeapons: ["Longsword", "Warhammer"] })).sheet.features;
+  assert.equal(racialNaturalWeapon(raceFeatures("alien-appendage"), "tentacle")?.srd.damage, "1d4 bludgeoning");
+  const ac = (features) => deriveAc({ abilities: { str: 10, dex: 14, con: 10, int: 10, wis: 10, cha: 10 }, equipment: [], features, class: "fighter", level: 1, acOverride: false, proficiencies: { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: [], weapons: [] } });
+  assert.equal(ac(raceFeatures("tenebrous-flesh")) - ac(raceFeatures("tainted-blood")), 1, `Tenebrous Flesh's +1 to Armor Class: ${raceFeatures("tenebrous-flesh").map((f) => f.name).join(" | ")}`);
+  // Living Origin: a shade is offered as each people it was in life, at
+  // that people's size and speed, speaking its tongue.
+  assert.equal(pick("shade"), undefined, "a bare shade, with no origin");
+  const halfling = pick("shade-halfling-origin");
+  assert.deepEqual([halfling.size, halfling.speed, halfling.languages.includes("Halfling"), sizeForRace(halfling.id, speciesRulesOf(halfling))], ["Small", 25, true, "Small"]);
+  assert.ok(halfling.traitNames.includes("Living Origin (Halfling)"));
+  // A character stored on the bare shade keeps its row.
+  assert.ok(packRaceOptions(races, ["shade"]).some((option) => option.id === "shade"));
 });
 
 console.log(`test-species-prose: ${passed} passed`);

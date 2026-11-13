@@ -111,6 +111,8 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
     return spells;
   }
   if (spells.group) data.spells = spells.group;
+  // A copied shade's Living Origin (src/lib/content/race-options.ts).
+  if (source.livingOrigin === true) data.livingOrigin = true;
   const variants = checkSpeciesVariants(source.variants);
   if ("error" in variants) {
     return variants;

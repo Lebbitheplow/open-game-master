@@ -208,6 +208,9 @@ function raceTableOf(option: RaceOption, traits: string, vision: string, bundled
     ...(option.tools ? { tools: option.tools } : {}),
     ...(option.toolChoice ? { toolChoice: option.toolChoice } : {}),
     ...(option.weaponChoice ? { weaponChoice: option.weaponChoice } : {}),
+    // A pack species' one pick (Mental Fortitude) and its Living Origin.
+    ...(option.variants ? { variants: option.variants } : {}),
+    ...(option.livingOrigin ? { livingOrigin: true } : {}),
     ...(option.armor ? { armor: option.armor } : {}),
     ...(option.weapons ? { weapons: option.weapons } : {}),
     ...(option.cantripChoice ? { cantripChoice: option.cantripChoice } : {}),

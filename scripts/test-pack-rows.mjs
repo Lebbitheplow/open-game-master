@@ -148,8 +148,8 @@ test("'Any' ability increases become the builder's asiChoice pickers", () => {
   assert.deepEqual(race("dwarf-chassis").asiChoice, { count: 2, amount: 1 });
   assert.deepEqual(race("humanhalf-elf-heritage").asi, { con: 1 });
   assert.deepEqual(race("humanhalf-elf-heritage").asiChoice, { count: 1, amount: 2 });
-  assert.deepEqual(race("shade").asi, { cha: 1 });
-  assert.deepEqual(race("shade").asiChoice, { count: 1, amount: 1 });
+  assert.deepEqual(race("shade-human-origin").asi, { cha: 1 });
+  assert.deepEqual(race("shade-human-origin").asiChoice, { count: 1, amount: 1 });
 });
 
 test("only wotc-srd and odm-expanded rows defer to the bundled race; a srd-2024 species is not offered unless a stored character names it", () => {
@@ -249,7 +249,8 @@ test("trait names: headings only, and a subrace drops its parent's choice headin
   assert.deepEqual(race("mutated").traitNames, [
     "Eldritch Resilience", "Sunlight Sensitivity", "Saves with advantage against spells (Constitution)", "Athletic Training", "Otherworldly Influence",
   ]);
-  assert.ok(race("shade").traitNames.includes("Living Origin"));
+  // A shade is offered once per Living Origin, the choice made.
+  assert.ok(race("shade-dwarf-origin").traitNames.includes("Living Origin (Dwarf)"));
   assert.deepEqual(raceMechanics(find(rows.races, "elf").data).traitNames, ["Keen Senses", "Fey Ancestry", "Trance"]);
 });
 

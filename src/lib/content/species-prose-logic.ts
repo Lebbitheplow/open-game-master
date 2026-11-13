@@ -26,6 +26,7 @@ import { ALL_SKILLS, traitHeading } from "@/lib/content/mechanics";
 import { featGrantSpec, KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SpeciesSpell, SpeciesSpellGroup } from "@/lib/content/species-spells";
+import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 
 export type SpeciesProseGrants = {
@@ -39,6 +40,11 @@ export type SpeciesProseGrants = {
   toolChoice?: { count: number; from: string[] };
   weaponChoice?: { count: number; from: string[] };
   spells?: SpeciesSpellGroup;
+  // The one pick a trait asks for (Mental Fortitude, Otherworldly Influence).
+  variants?: SpeciesVariantGroup;
+  // "Choose another race as your Living Origin": the size, speed and a
+  // language of the people the character was in life.
+  livingOrigin?: boolean;
 };
 
 const DAMAGE_TYPES = [
@@ -56,23 +62,82 @@ const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 const skillId = (words: string | undefined) =>
   words ? (ALL_SKILLS as readonly string[]).find((id) => id === words.trim().replace(/\s+/g, "_")) : undefined;
 
-// The paragraphs of a pack's trait text, each under its heading; a bulleted
-// option under a trait is a choice and is left out.
-function paragraphs(text: string): Array<{ name: string; text: string }> {
-  const out: Array<{ name: string; text: string }> = [];
+// The paragraphs of a pack's trait text, each under its heading. A bulleted
+// option under a trait ("* **Alien Appendage.** ...") is one of a choice the
+// trait offers: kept apart, never read as the trait's own words.
+type Paragraph = { name: string; text: string; bullets: Array<{ name: string; text: string }> };
+function paragraphs(text: string): Paragraph[] {
+  const out: Paragraph[] = [];
   for (const line of String(text ?? "").split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed || /^[*-]\s/.test(trimmed) || trimmed.startsWith("|")) {
+    if (!trimmed || trimmed.startsWith("|")) {
+      continue;
+    }
+    const bullet = /^[*-]\s+\*\*(.+?)\.?\*\*\.?\s*(.*)$/.exec(trimmed);
+    if (bullet) {
+      out[out.length - 1]?.bullets.push({ name: bullet[1].replace(/\.$/, "").trim(), text: bullet[2] });
+      continue;
+    }
+    if (/^[*-]\s/.test(trimmed)) {
       continue;
     }
     const head = traitHeading(trimmed);
     if (head) {
-      out.push({ name: head.name, text: head.rest });
+      out.push({ name: head.name, text: head.rest, bullets: [] });
     } else if (out.length) {
       out[out.length - 1].text = `${out[out.length - 1].text} ${trimmed}`;
     }
   }
   return out;
+}
+
+// The lines one option of a choice states, read as the trait's own are: a
+// natural weapon, a resistance, a bonus to Armor Class.
+function optionLines(name: string, text: string): string[] {
+  const out: string[] = [];
+  const weapon = /\byour (\w+) (?:is|are) (?:a )?natural (?:melee )?weapons?\b/i.exec(text) ?? /\bthis (\w+) is a natural (?:melee )?weapon\b/i.exec(text);
+  const dealt = /\b(\w+) damage equal to (\d+d\d+) \+ your strength modifier\b/i.exec(text);
+  if (weapon && dealt && DAMAGE_TYPES.includes(dealt[1].toLowerCase())) {
+    out.push(`${capital(weapon[1].toLowerCase())} (${dealt[2]} ${dealt[1].toLowerCase()} unarmed strike)`);
+  }
+  for (const sentence of sentences(text)) {
+    if (!CONDITIONAL.test(sentence)) {
+      out.push(...resisted(sentence).map((type) => `${capital(type)} Resistance`));
+    }
+  }
+  const ac = /\ba \+(\d) bonus to your armor class\b/i.exec(text);
+  if (ac) {
+    out.push(`${name} (+${ac[1]} AC)`);
+  }
+  return out;
+}
+
+const optionId = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+// The one pick a trait asks for, as a species choice
+// (src/lib/content/species-variants.ts): Otherworldly Influence's three
+// bulleted forms, Mental Fortitude's ability.
+function choiceOf(paragraph: Paragraph): SpeciesVariantGroup | null {
+  if (paragraph.bullets.length >= 2 && /\bchoose one of the following\b/i.test(paragraph.text)) {
+    return {
+      label: paragraph.name,
+      options: paragraph.bullets.map((bullet) => {
+        const lines = optionLines(bullet.name, bullet.text);
+        return { id: optionId(bullet.name), name: bullet.name, description: bullet.text, ...(lines.length ? { lines } : {}) };
+      }),
+    };
+  }
+  const ability = /\bchoose (intelligence|wisdom|charisma), (intelligence|wisdom|charisma),? or (intelligence|wisdom|charisma)\. you have advantage on saving throws made with that ability score against (?:magic|spells)\b/i.exec(paragraph.text);
+  if (ability) {
+    return {
+      label: paragraph.name,
+      options: [ability[1], ability[2], ability[3]].map((word) => {
+        const name = capital(word.toLowerCase());
+        return { id: optionId(name), name, description: `Advantage on ${name} saves against magic.`, lines: [`Saves with advantage against spells (${name})`] };
+      }),
+    };
+  }
+  return null;
 }
 
 const sentences = (text: string) =>
@@ -286,6 +351,13 @@ export function speciesProseGrants(data: { vision?: unknown; traits?: unknown })
     const spells = taughtSpells(paragraph.text);
     if (spells && !out.spells) {
       out.spells = spells;
+    }
+    const choice = choiceOf(paragraph);
+    if (choice && !out.variants) {
+      out.variants = choice;
+    }
+    if (/\bchoose another race as your living origin\b/i.test(paragraph.text)) {
+      out.livingOrigin = true;
     }
   }
   if (saveAgainst.length) {

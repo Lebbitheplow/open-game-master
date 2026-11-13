@@ -222,6 +222,8 @@ function withProse(mechanics: RaceMechanics, data: Record<string, unknown>): Rac
   if (!merged.toolChoice && prose.toolChoice) merged.toolChoice = prose.toolChoice;
   if (!merged.weaponChoice && prose.weaponChoice) merged.weaponChoice = prose.weaponChoice;
   if (!merged.spells && prose.spells) merged.spells = prose.spells;
+  if (!merged.variants && prose.variants) merged.variants = prose.variants;
+  if (prose.livingOrigin) merged.livingOrigin = true;
   return merged;
 }
 
@@ -293,7 +295,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
     parentSlugs.has(row.slug) && (row.documentSlug === "wotc-srd" || mechanicsFor(row).choiceTraitNames.length > 0);
   const offered = (row: RaceRow) =>
     !needsSubrace(row) && !secondCopy(row) && (!isEdition2024(row.documentSlug) || kept(row));
-  return rows.filter(offered).map((row) => {
+  return rows.filter(offered).flatMap((row) => {
     let mechanics = mechanicsFor(row);
     const parentSlug = String(row.data.parent_slug ?? "");
     const parent = parentSlug && parentSlug !== row.slug ? bySlug.get(parentSlug) : undefined;
@@ -307,7 +309,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
     if (!mechanics.languages.length) {
       mechanics = { ...mechanics, languages: ["Common"] };
     }
-    return {
+    const option: PackRaceOption = {
       id: idFor(row),
       name: subraceLabel(row.name, parent?.name),
       ...mechanics,
@@ -316,7 +318,42 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       documentSlug: row.documentSlug,
       source: row.document ?? row.documentSlug,
     };
+    // A shade's Living Origin is its size, speed and a language: each origin
+    // is offered as the subrace it is, so the size every engine reads by the
+    // race's id is the origin's. A character stored on the bare row keeps it.
+    return mechanics.livingOrigin && !kept(row) ? LIVING_ORIGINS.map((origin) => livingOriginOption(option, origin)) : [option];
   });
+}
+
+// The peoples a shade may have been in life, by their SRD 5.1 size, speed
+// and tongue (a human's tongue is any one of the player's choice).
+const LIVING_ORIGINS: Array<{ id: string; name: string; size: RaceMechanics["size"]; speed: number; language: string | null }> = [
+  { id: "human", name: "Human", size: "Medium", speed: 30, language: null },
+  { id: "dwarf", name: "Dwarf", size: "Medium", speed: 25, language: "Dwarvish" },
+  { id: "elf", name: "Elf", size: "Medium", speed: 30, language: "Elvish" },
+  { id: "halfling", name: "Halfling", size: "Small", speed: 25, language: "Halfling" },
+  { id: "gnome", name: "Gnome", size: "Small", speed: 25, language: "Gnomish" },
+  { id: "half-elf", name: "Half-Elf", size: "Medium", speed: 30, language: "Elvish" },
+  { id: "half-orc", name: "Half-Orc", size: "Medium", speed: 30, language: "Orc" },
+  { id: "dragonborn", name: "Dragonborn", size: "Medium", speed: 30, language: "Draconic" },
+  { id: "tiefling", name: "Tiefling", size: "Medium", speed: 30, language: "Infernal" },
+];
+
+function livingOriginOption(base: PackRaceOption, origin: (typeof LIVING_ORIGINS)[number]): PackRaceOption {
+  const record = `Living Origin (${origin.name})`;
+  const { livingOrigin: _choice, ...rest } = base;
+  return {
+    ...rest,
+    id: `${base.id}-${origin.id}-origin`,
+    name: `${base.name} (${origin.name} Origin)`,
+    size: origin.size,
+    speed: origin.speed,
+    languages: origin.language ? [...new Set([...base.languages, origin.language])] : base.languages,
+    bonusLanguages: origin.language ? 0 : Math.max(1, base.bonusLanguages),
+    traitNames: base.traitNames.map((name) => (textKey(name) === textKey("Living Origin") ? record : name)),
+    choiceTraitNames: base.choiceTraitNames.filter((name) => textKey(name) !== textKey("Living Origin")),
+    note: base.note,
+  };
 }
 
 // What the engines read off an option the bundled list does not carry
