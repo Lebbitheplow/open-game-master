@@ -120,6 +120,19 @@ await test("A Large creature's 30-foot cone reaches a hero 30 feet from its near
   assert.notEqual(fits({ shape: "sphere", feet: 10, self: true }), null, "a hero 15 feet off was in a 10-foot burst");
 });
 
+// A spell's point of origin sits within its range of the caster (SRD 5.1,
+// Range): measured from the nearest square a Large caster fills, as every
+// other range is. From its top-left square, a point 60 feet from its east
+// side read 65 and was refused.
+await test("A Large caster's 60-foot range reaches a point 60 feet from its nearest square, and not 65.", async () => {
+  const { world, sheets: [hero], enemies: [beast] } = await board([WIZARD], { 0: { x: 22, y: 8 }, e0: { x: 2, y: 4 } }, { stats: { size: "Large" } });
+  const encounterId = world.encounter().id;
+  const place = (x) => areaProblem({ encounterId, casterId: beast.id, casterName: "Beast", label: "Shatter", area: { shape: "sphere", feet: 10, self: false }, rangeFeet: 60, creatures: [{ id: hero.id, name: hero.name }], at: { x, y: 4 } });
+  // The beast fills (2..3, 4..5): (15, 4) is twelve squares past its east side.
+  assert.doesNotMatch(String(place(15)?.error ?? ""), /beyond its 60-foot range/, "a point 60 feet from the caster's side was out of range");
+  assert.match(String(place(16)?.error ?? ""), /beyond its 60-foot range/, "a point 65 feet off was in range");
+});
+
 // Thunderwave (SRD 5.1): "Self (15-foot cube)", a cube "originating from
 // you": three squares out from the caster's side, the caster outside it. The
 // Hand's aim lays it so (area-shape.ts blastTemplate); the named-creature
