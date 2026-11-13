@@ -30,7 +30,7 @@ const { world, atTable } = await openCreation();
 const builder = await openBuilder();
 const srd = await import("../src/lib/srd/index.ts");
 const { CUSTOM_BACKGROUNDS } = await import("../src/lib/backgrounds/index.ts");
-const { backgroundMechanics } = await import("../src/lib/content/mechanics.ts");
+const { backgroundField, backgroundMechanics } = await import("../src/lib/content/mechanics.ts");
 const { listBackgrounds } = await import("../src/lib/content/index.ts");
 const { contentPackInstalled } = await import("../src/lib/content/db.ts");
 // CI has no content pack; what needs a pack row asks first.
@@ -39,6 +39,7 @@ const { builderMaxHp } = await import("../src/app/characters/builder/abilityDice
 const { defaultArmor, suggestArmor } = await import("../src/lib/srd/armor.ts");
 const { classKitFor, startingKitFor } = await import("../src/lib/srd/starting-kit.ts");
 const { resolveBackgroundGear } = await import("../src/lib/srd/adventuring-gear.ts");
+const { expandBackgroundGear } = await import("../src/lib/srd/gear-choices.ts");
 
 // SRD 5.1 (Acolyte) and the 2014 Player's Handbook: skills, how many tools,
 // how many languages of choice, the purse in gold pieces, the feature.
@@ -156,9 +157,16 @@ await test("the stored sheet carries the background: skills, tools, languages, k
     assert.equal(profs.languages.length, 2 + background.languages, `${background.id} languages`);
     // The kit arrives as catalog items, the way the class kit does: a pack
     // opened, "common clothes" as "Clothes, Common" (issue #113).
+    // A kind line ("musical instrument", "artisan's tools", "gaming set") is
+    // the tool of that kind the character took the proficiency in, never an
+    // item named for the kind.
     const kit = sheet.equipment.map((item) => item.name);
-    for (const item of resolveBackgroundGear(background.equipment).filter((entry) => !/ gp$/.test(entry))) {
+    const expanded = expandBackgroundGear(resolveBackgroundGear(background.equipment), { tools: profs.tools, backgroundTools: background.tools, picks: [] });
+    for (const item of expanded.names.filter((entry) => !/ gp$/.test(entry))) {
       assert.ok(kit.includes(item), `${background.id} kit lacks ${item}`);
+    }
+    for (const name of kit) {
+      assert.ok(!/^(?:musical instrument|artisan's tools|gaming set)$/i.test(name), `${background.id} carries "${name}"`);
     }
     // The server grants the feature itself, once.
     const features = sheet.features.filter((feature) => feature.source === "background");
@@ -495,6 +503,22 @@ if (hasPack) {
       for (const tool of held) {
         assert.ok(knownTools.has(tool), `${option.id} sheet holds "${tool}"`);
       }
+    }
+  });
+
+  // The kit as inventory: a tool line ("One set of artisan's tools") is a
+  // tool, and the purse is the coin the text names, however it writes the
+  // unit ("a belt pouch containing 10g", Tal'Dorei's spelling).
+  await test("Every content-pack background's kit arrives as items, a tool line as a tool, and the coin its text names as gold, through the builder and at the table.", async () => {
+    for (const option of packOffered) {
+      const data = packRows.find((row) => row.slug === option.id).data;
+      const sheet = await seatPack(option);
+      const names = sheet.equipment.map((item) => item.name);
+      for (const name of names) {
+        assert.ok(!/artisan'?s'? tools|musical instrument|gaming set|of your choice/i.test(name), `${option.id} carries the line "${name}", not a tool`);
+      }
+      const coin = /(\d[\d,]*)\s*g(?:p|old)?\b/i.exec(backgroundField(data, "equipment"));
+      assert.equal(sheet.gold, coin ? Number(coin[1].replace(/,/g, "")) : 0, `${option.id} gold`);
     }
   });
 
