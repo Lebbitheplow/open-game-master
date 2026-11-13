@@ -1,4 +1,5 @@
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { noteToolCallHealth } from "@/lib/tool-call-health";
 import { foesAboutBlock } from "@/lib/dm/foe-return";
@@ -640,7 +641,7 @@ function buildMapText(encounterId: string, sheets: CharacterSheet[]): string | n
     }
   }
   // The drawn board, so the model sees the doors, with the shut ones named.
-  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses);
+  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses, tokenFootprint);
 }
 
 function loadContext(campaign: Campaign): TurnContext {

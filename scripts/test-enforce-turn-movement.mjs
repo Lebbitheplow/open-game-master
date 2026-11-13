@@ -285,6 +285,30 @@ await test("The walk's result gives the new distances and the movement left, so 
   assert.equal(moved.result.distancesNow, `PCs: ${world.sheet(thief.id).name} 35 ft; Kara 15 ft.`);
 });
 
+// Every rule measures between the nearest squares of two creatures
+// (board-reach.ts tilesApart): a Large goblin fills (4..5, 0..1), so Kara at
+// (6,2) is toe to toe with its corner at (5,1). The distances the model is told are
+// authoritative read it anchor to anchor, 10 feet.
+await test("The distances the walk reports and the prompt's map are measured to a Large creature's nearest square, as attacks measure them.", async () => {
+  await typedMoveStage();
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { stats: { size: "Large" } });
+  try {
+    kit.place(goblin.id, 4, 0);
+    say("player", "Kara hurries 20 feet east.", fighter);
+    const out = await ai.invoke("move_token", { token: fighter.id, x: 6, y: 2 });
+    assert.equal(out.ok, true, out.error);
+    assert.match(out.result.distancesNow, /Goblin ADJACENT/, out.result.distancesNow);
+    const { serializeMapForPrompt } = await import("../src/lib/battlemap/serialize.ts");
+    const { tokenFootprint } = await import("../src/lib/dm/board-reach.ts");
+    const { listTokens } = await import("../src/lib/db/battle-maps.ts");
+    const text = serializeMapForPrompt({ ...kit.map(), terrain: kit.map().drawnTerrain }, listTokens(kit.map().id), undefined, tokenFootprint);
+    assert.match(text, /- Kara: Enemies: Goblin ADJACENT/, text);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { size: "Small" } });
+  }
+});
+
 await test("A walk refused for want of movement says where the mover still stands and the board's distances from there.", async () => {
   await typedMoveStage();
   const [goblin] = world.enemies();
