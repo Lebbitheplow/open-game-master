@@ -133,7 +133,7 @@ export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): Owe
   // Each class's Fighting Style is a slot of its own (a paladin 2 / ranger 2
   // has two), though the sheet lists the feature once by name.
   // (src/lib/srd/style-slots.ts, the count the level-up offers by too).
-  const { count: styleCount, choices: styleChoices } = openStyleSlots(classes, sheet.features, context.extras);
+  const { count: styleCount, choices: styleChoices } = openStyleSlots(classes, sheet.features, context.extras, sheet.feats);
   const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );

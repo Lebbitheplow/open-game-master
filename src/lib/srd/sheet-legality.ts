@@ -750,7 +750,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
     const cantrips = sheetCantrips({ spellcasting: input.spellcasting ?? null });
     const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
-    const classFeatures = styleSlotFeatures(classes, context.subclassExtras);
+    const classFeatures = styleSlotFeatures(classes, context.subclassExtras, feats.feats);
     const classStyles = fightingStyleChoices(classFeatures);
     const styleSlots = fightingStyleSlots(classFeatures);
     const placedStyles = chosenFightingStyles((held?.features ?? []).filter((feature) => feature.source === "choice"));

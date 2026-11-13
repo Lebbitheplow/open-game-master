@@ -599,8 +599,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
   if (name === "martial adept") return "[pc_attack maneuver]";
   // Inspiring Leader's temporary hit points and Metamagic Adept's sorcery
   // points are counters the server spends and applies (class-resources.ts).
-  if (["inspiring leader", "metamagic adept"].includes(name)) return "[use_resource]";
-  if (["defensive duelist", "mage slayer", "sentinel"].includes(name)) return "[use_reaction]";
+  if (["inspiring leader", "metamagic adept", "fade away", "dragon fear"].includes(name)) return "[use_resource]";
+  if (["defensive duelist", "mage slayer", "sentinel", "second chance"].includes(name)) return "[use_reaction]";
   if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack feature]";
   if (name === "stunning sniper") return "[pc_attack stunShot]";
   if (["tavern brawler", "shield master"].includes(name)) return "[take_action bonus]";
@@ -611,7 +611,13 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "savage attacker", "poisoner", "athlete", "chef", "healer", "elven accuracy", "eldritch adept",
     // Mounted Combatant: the mount's area save and the redirected blow (mount-area.ts, mount-combat.ts).
     "mounted combatant",
+    // Fighting Initiate: its style is a fighting style slot (feature-effects.ts featStyleSlotFeatures).
+    "fighting initiate",
+    // The species feats the engines run: Squat Nimbleness's speed and
+    // grapple escape, Infernal Constitution's resistances and save, Dragon
+    // Hide's scales and claws, Dwarven Fortitude's Dodge.
+    "squat nimbleness", "infernal constitution", "dragon hide", "dwarven fortitude",
   ].includes(name)) return "[server]";
-  if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic"].includes(name)) return "[cast tools]";
+  if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic", "fey teleportation", "wood elf magic", "drow high magic", "artificer initiate"].includes(name)) return "[cast tools]";
   return null;
 }

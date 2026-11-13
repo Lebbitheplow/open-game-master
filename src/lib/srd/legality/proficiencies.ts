@@ -12,6 +12,7 @@ import { expertiseAllowed, expertiseSlotsFor } from "@/lib/srd/features";
 import { multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { repeatedGrants } from "@/lib/srd/racial-grants";
 import {
+  repeatedToolChoice,
   splitToolGrants,
   toolChoiceOf,
   toolPickProblem,
@@ -167,6 +168,14 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
   }
   if (race.trainingChoice && input.requireToolPicks && trainingPicks.length < race.trainingChoice.count) {
     problems.push(`Name the ${race.trainingChoice.count} skills or tools the ${race.name} is trained in.`);
+  }
+  // A tool the class, the background and the race each name (a rogue
+  // criminal's thieves' tools) is a tool of the player's choice in place of
+  // the second, after the open grants so their picks fill those first. It
+  // may be left unpicked: a sheet made before it was offered still stands.
+  const replacement = repeatedToolChoice(primary?.tools, background?.tools, race.tools);
+  if (replacement) {
+    granted.choices.push(replacement);
   }
   const fixedTools = uniqueNames([...granted.fixed, ...(race.tools ?? []), racialTool, ...trainedToolPicks].filter(Boolean));
   const heldTools = new Set((held?.tools ?? []).map(toolKey));

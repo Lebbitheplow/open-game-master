@@ -256,6 +256,53 @@ export function lucky(ctx: Ctx): ToolResult {
 }
 
 
+// Second Chance (a halfling's feat): when an attack hits the character,
+// the reaction makes the attacker roll that d20 again, and the new roll
+// stands, whichever it is. Once until a short or long rest, or until
+// initiative is rolled (resource-refills.ts initiativeRefills). Answers the
+// last attack on record at the hit Lucky would pick (luckyTarget).
+export const SECOND_CHANCE = "feat_second_chance";
+export function secondChance(ctx: Ctx): ToolResult {
+  const { campaign, sheet } = ctx;
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const counter = fresh.resources?.[SECOND_CHANCE];
+  if (!counter) {
+    return { error: `${sheet.name} has no Second Chance: it is a halfling's feat, and it is not among theirs. Nothing was spent.`, refused: "rules" };
+  }
+  if (counter.used >= counter.max) {
+    return { error: `${sheet.name} has used Second Chance; it comes back when initiative is rolled or after a short or long rest. Nothing was spent.`, refused: "rules" };
+  }
+  const fits = (hit: LastHit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("second chance") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
+  if (!record || record.source !== "attack" || attackerFoeId(record) === null || !record.swings.some((swing) => swing.hit)) {
+    return { error: `Second Chance answers an attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
+  }
+  const index = luckyTarget(record.swings);
+  if (index === -1) {
+    return { error: `${record.attacker.name}'s ${record.attack} has no d20 on record to roll again. Nothing was spent.`, refused: "rules" };
+  }
+  spendReaction(ctx);
+  const spent = getSheetById(sheet.id) ?? fresh;
+  patchSheet(sheet.id, { resources: { ...(spent.resources ?? {}), [SECOND_CHANCE]: { max: counter.max, used: counter.used + 1 } } });
+  const swing = record.swings[index] as SwingRecord & { natural: number };
+  const attack = swing.attack ?? record.attack;
+  const natural = rollExpression("1d20").total;
+  const total = swing.total - swing.natural + natural;
+  const stillHits = natural === 20 || (natural !== 1 && total >= swing.vsAc);
+  const plain = stillHits ? plainOfReroll(swing, natural) : swing;
+  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...plain, natural, total } : entry));
+  const settled = settle(ctx, record, corrected, "second chance");
+  return {
+    ok: true,
+    reaction: "Second Chance",
+    spent: SPENT(sheet.name),
+    applied: stillHits
+      ? `Second Chance: ${record.attacker.name} rolls the ${attack} again and gets ${natural}; it still hits${plain !== swing ? `, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}` : ""}.`
+      : `Second Chance: ${record.attacker.name} rolls the ${attack} again and gets ${natural}; it misses: ${settled.given} hit points come back. HP ${settled.hp}.`,
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
+  };
+}
+
 // Boundless Reserves and Sorcerous Vigor (Tome of Heroes): at the start of
 // their turn with no ki (or sorcery points) left, the reaction spends one
 // Hit Die; the die plus the Constitution modifier, halved (at least 1),

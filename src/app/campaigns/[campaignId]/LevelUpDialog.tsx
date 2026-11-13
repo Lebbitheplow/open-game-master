@@ -56,6 +56,7 @@ import {
 } from "@/lib/srd/features";
 import {
   chosenFightingStyles,
+  featStyleSlotFeatures,
   fightingStyleChoices,
   fightingStyleFeatureName,
   fightingStyleSlots,
@@ -370,11 +371,14 @@ export function LevelUpDialog({
   // Independent of the subclass, so it can be resolved before one is chosen.
   // A Swords bard's slot allows only some styles (fightingStyleChoices).
   const featuresAfter = populateFeaturesForClasses(sheet.features, nextClasses, sheet.race);
-  const styleSlots = fightingStyleSlots(featuresAfter);
+  // A feat held or taken now opens one more slot (Fighting Initiate), asked
+  // here as a class's is.
+  const styleSources = [...featuresAfter, ...featStyleSlotFeatures([...(sheet.feats ?? []), ...featsPicked])];
+  const styleSlots = fightingStyleSlots(styleSources);
   const currentStyles = chosenFightingStyles(sheet.features);
   const stylesToPick = Math.max(0, styleSlots - currentStyles.length);
   const needsStyle = stylesToPick > 0;
-  const styleOptions = fightingStyleChoices(featuresAfter).filter(
+  const styleOptions = fightingStyleChoices(styleSources).filter(
     (style) => !currentStyles.some((name) => textKey(name) === textKey(style.name)),
   );
 

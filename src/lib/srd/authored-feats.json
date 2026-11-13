@@ -276,6 +276,76 @@
       "name": "Savage Attacker",
       "prerequisite": "",
       "desc": "Once on each of your turns, when you roll damage for a melee weapon attack, you can roll the weapon's damage dice a second time and keep whichever total you like."
+    },
+    {
+      "name": "Fighting Initiate",
+      "prerequisite": "Proficiency with a martial weapon",
+      "desc": "Your martial training has taught you a fighting technique of your own. Choose one Fighting Style from the fighter's list that you do not already have; you gain it."
+    },
+    {
+      "name": "Prodigy",
+      "prerequisite": "Half-elf, half-orc, or human",
+      "desc": "You have a knack for picking things up. You gain proficiency in one skill of your choice, proficiency with one tool of your choice, and you learn one language of your choice. You also gain expertise in one skill you are proficient in."
+    },
+    {
+      "name": "Grappler",
+      "prerequisite": "Strength 13 or higher",
+      "desc": "Attacks you make against a creature you are grappling have advantage. As an action you may attempt to pin a creature you have grappled with a second grapple check; on a success, both you and it are restrained until the grapple ends."
+    },
+    {
+      "name": "Squat Nimbleness",
+      "prerequisite": "Dwarf or a Small race",
+      "desc": "Increase your Strength or Dexterity by 1, to a maximum of 20. Your walking speed increases by 5 feet. You gain proficiency in the Acrobatics or Athletics skill. You have advantage on the check you make to escape a grapple."
+    },
+    {
+      "name": "Infernal Constitution",
+      "prerequisite": "Tiefling",
+      "desc": "Increase your Constitution by 1, to a maximum of 20. Fiendish blood steels your body: you have resistance to cold and poison damage, and you have advantage on saving throws against being poisoned."
+    },
+    {
+      "name": "Fey Teleportation",
+      "prerequisite": "High elf",
+      "desc": "Increase your Intelligence or Charisma by 1, to a maximum of 20. You learn to speak, read, and write Sylvan. You can cast misty step once per short rest without a spell slot, and with your spell slots as well. Intelligence is your spellcasting ability for this spell."
+    },
+    {
+      "name": "Wood Elf Magic",
+      "prerequisite": "Wood elf",
+      "desc": "You learn one cantrip of your choice from the druid spell list. You can also cast longstrider and pass without trace, each once per long rest without a spell slot. Wisdom is your spellcasting ability for these spells."
+    },
+    {
+      "name": "Drow High Magic",
+      "prerequisite": "Drow",
+      "desc": "You can cast detect magic at will, without a spell slot. You can also cast levitate and dispel magic, each once per long rest without a spell slot. Charisma is your spellcasting ability for these spells."
+    },
+    {
+      "name": "Artificer Initiate",
+      "prerequisite": "",
+      "desc": "You learn one cantrip of your choice from the artificer spell list. Choose one 1st-level spell from the artificer spell list: you learn it, and you can cast it once without a spell slot, regaining that use when you finish a long rest, as well as with your spell slots. Intelligence is your spellcasting ability for these spells. You also gain proficiency with one type of artisan's tools of your choice."
+    },
+    {
+      "name": "Dragon Hide",
+      "prerequisite": "Dragonborn",
+      "desc": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20. Your scales harden: while you wear no armor, your Armor Class is 13 + your Dexterity modifier, and a shield still adds to it. Your claws are natural weapons: your unarmed strikes deal 1d4 slashing damage plus your Strength modifier instead of the usual damage."
+    },
+    {
+      "name": "Dwarven Fortitude",
+      "prerequisite": "Dwarf",
+      "desc": "Increase your Constitution by 1, to a maximum of 20. Whenever you take the Dodge action in combat, you can spend one Hit Die to heal yourself, rolling it and regaining that many hit points plus your Constitution modifier."
+    },
+    {
+      "name": "Fade Away",
+      "prerequisite": "Gnome",
+      "desc": "Increase your Dexterity or Intelligence by 1, to a maximum of 20. Right after you take damage, you can use your reaction to turn invisible until the end of your next turn, or until you attack or cast a spell. Once you do so, you can't again until you finish a short or long rest."
+    },
+    {
+      "name": "Dragon Fear",
+      "prerequisite": "Dragonborn",
+      "desc": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20. Instead of exhaling destructive energy, you can spend a use of your Breath Weapon on a roar: each creature of your choice within 30 feet makes a Wisdom saving throw against 8 + your proficiency bonus + your Charisma modifier or is frightened of you for 1 minute. A frightened creature repeats the save at the end of each of its turns, ending the effect on a success."
+    },
+    {
+      "name": "Second Chance",
+      "prerequisite": "Halfling",
+      "desc": "Increase your Dexterity, Constitution, or Charisma by 1, to a maximum of 20. When a creature you can see hits you with an attack roll, you can use your reaction to make it roll that attack again, and it must use the new roll. Once you do so, you can't again until you roll initiative or finish a short or long rest."
     }
   ]
 }

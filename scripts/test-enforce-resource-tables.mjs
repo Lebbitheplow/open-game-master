@@ -316,7 +316,10 @@ await test("every counter has a whole maximum of at least one and never shrinks 
       let before = 0;
       for (const level of LEVELS) {
         const max = def.maxFor(level, flat(modifier));
-        if (!Number.isInteger(max) || max < 1) {
+        // A counter every use of which another pool pays (Dragon Fear: a use
+        // of Breath Weapon) holds none of its own.
+        const paidElsewhere = Boolean(def.fallbackPool) && max === 0;
+        if (!Number.isInteger(max) || (max < 1 && !paidElsewhere)) {
           problems.push(`${def.id}: max ${max} at level ${level}, modifier ${modifier}`);
         }
         if (max < before) {

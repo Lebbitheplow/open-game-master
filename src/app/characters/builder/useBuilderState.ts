@@ -496,6 +496,7 @@ export function useBuilderState({
       level: total,
       extras: fitted.map((entry) => ({ ...entry, klass: classes.find((row) => row.id === entry.classId) })),
       pickIds,
+      feats: [...feats, ...asiChoices.flatMap((choice) => (choice?.mode === "feat" ? [choice.feat] : []))],
     });
     let { picks } = result;
     const drops = [...result.drops];

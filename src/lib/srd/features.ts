@@ -7,7 +7,7 @@ import { CUSTOM_CLASS_FEATURES, findCustomClass } from "@/lib/classes";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
 import { packClassTable } from "@/lib/classes/pack-class-registry";
 import type { SheetFeature } from "@/lib/schemas/sheet";
-import { chosenFightingStyles, fittingFightingStyles } from "@/lib/srd/feature-effects";
+import { chosenFightingStyles, featStyleSlotFeatures, fittingFightingStyles } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, isOptionName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { featOptionSlots } from "@/lib/srd/feat-combat";
 import { srdRaceId } from "@/lib/srd/race-id";
@@ -612,7 +612,8 @@ function pruneChoiceFeatures(
   // a class's own slot keeps any style the sheet holds, since a paladin's
   // Archery was legal when chosen and new picks are held to the class's list
   // where they are made (feature-effects.ts fittingFightingStyles).
-  const fitting = fittingFightingStyles(chosenFightingStyles(features), granted, undefined, false);
+  // A feat's slot (Fighting Initiate) holds one too.
+  const fitting = fittingFightingStyles(chosenFightingStyles(features), [...granted, ...featStyleSlotFeatures(feats)], undefined, false);
   const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
   // A workshop pick kept is written under its option's current name with

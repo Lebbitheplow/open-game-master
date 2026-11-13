@@ -637,6 +637,11 @@ function reconcileContextOf(input: SubmitInput, race: RaceOption | undefined): R
     level: input.derived.effectiveLevel,
     extras: input.derived.extras ?? [],
     pickIds: input.state.pickIds,
+    // A feat's fighting style slot (Fighting Initiate) keeps its style.
+    feats: [
+      ...(input.state.feats ?? []),
+      ...(input.derived.activeAsiChoices ?? []).flatMap((choice) => (choice?.mode === "feat" ? [choice.feat] : [])),
+    ],
   };
 }
 

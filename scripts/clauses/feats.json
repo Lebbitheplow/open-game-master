@@ -1358,5 +1358,489 @@
     "probe": "scripts/test-enforce-feat-combat.mjs: Savage Attacker (2014): once a turn a melee hit's weapon dice are rolled twice and the better kept; the second swing rolls once (issue #502)"
    }
   ]
+ },
+ "feat::Fighting Initiate": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "f20190e0c448",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with a martial weapon",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Your martial training has taught you a fighting technique of your own.",
+    "is": "flavor"
+   },
+   {
+    "c": "Choose one Fighting Style from the fighter's list that you do not already have; you gain it.",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts featStyleSlotFeatures: one more style slot of the fighter's list, read beside the class slots by style-slots.ts, the regrant (features.ts pruneChoiceFeatures), the save (sheet-legality.ts), the level-up and owed picks, and the builder (useBuilderDerived.ts styleSlots, reconcile.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.fighting-initiate.style"
+   }
+  ]
+ },
+ "feat::Prodigy": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "b912f92e5be1",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Half-elf, half-orc, or human",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "You have a knack for picking things up.",
+    "is": "flavor"
+   },
+   {
+    "c": "You gain proficiency in one skill of your choice, proficiency with one tool of your choice, and you learn one language of your choice.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec (a skill, a tool and a language to pick), applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prodigy.picks"
+   },
+   {
+    "c": "You also gain expertise in one skill you are proficient in.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec expertise, applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prodigy.picks"
+   }
+  ]
+ },
+ "feat::Grappler": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "4fcbf4b15fdc",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Strength 13 or higher",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Attacks you make against a creature you are grappling have advantage.",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-situation.ts (advantage while featUsable, srd/feat-use.ts)",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: The Grappler feat gives advantage on attacks against a creature its holder is grappling."
+   },
+   {
+    "c": "As an action you may attempt to pin a creature you have grappled with a second grapple check; on a success, both you and it are restrained until the grapple ends.",
+    "is": "held",
+    "by": "src/lib/dm/grappler-pin.ts (take_action pin)",
+    "probe": "scripts/test-enforce-srd-adventuring.mjs: ADV-07: feats / Grappler"
+   }
+  ]
+ },
+ "feat::Squat Nimbleness": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7e1ba2a8db81",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dwarf or a Small race",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Your walking speed increases by 5 feet.",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts parses the authored feat's speed_bonus; src/lib/srd/index.ts speedFor reads sheet.feats as features",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You gain proficiency in the Acrobatics or Athletics skill.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec (one skill of the two), applied by feat-grants.ts",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You have advantage on the check you make to escape a grapple.",
+    "is": "held",
+    "by": "src/lib/dm/grapple.ts characterEscape rolls the escape with advantage for the feat",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.squat-nimbleness.escape"
+   }
+  ]
+ },
+ "feat::Infernal Constitution": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "25228c7ffb78",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Tiefling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Fiendish blood steels your body: you have resistance to cold and poison damage, and you have advantage on saving throws against being poisoned.",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts parses the resistance, src/lib/dm/pc-defenses.ts pcResistances reads sheet.feats; src/lib/srd/trait-rules.ts heldSaveTraits adds the poisoned save advantage",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Fey Teleportation": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "50b6f9cd1643",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "High elf",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Intelligence or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You learn to speak, read, and write Sylvan.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts fixedLanguages",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You can cast misty step once per short rest without a spell slot, and with your spell slots as well.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts freeCastRest short: a Free cast (short rest) feature and its free_cast_sr_ counter, back on a short rest (class-resources.ts freeCastDef)",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Intelligence is your spellcasting ability for this spell.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts fixedAbility, read by featSpellAbility",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Wood Elf Magic": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "c208ad657f43",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Wood elf",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "You learn one cantrip of your choice from the druid spell list.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts cantrip pick from the druid list",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You can also cast longstrider and pass without trace, each once per long rest without a spell slot.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts castsEach: two Free cast features and their counters",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Wisdom is your spellcasting ability for these spells.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts fixedAbility, read by featSpellAbility",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Drow High Magic": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "3f0c3b4e0eb6",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Drow",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "You can cast detect magic at will, without a spell slot.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts atWill: a Free cast (at will) feature with no counter; src/lib/dm/caster-features.ts freeCastCounter never spends it",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You can also cast levitate and dispel magic, each once per long rest without a spell slot.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts castsEach: Free cast features and their counters",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Charisma is your spellcasting ability for these spells.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts fixedAbility, read by featSpellAbility",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Artificer Initiate": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "0c8fe0c67465",
+  "clauses": [
+   {
+    "c": "You learn one cantrip of your choice from the artificer spell list.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts cantrip pick from the artificer list",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Choose one 1st-level spell from the artificer spell list: you learn it, and you can cast it once without a spell slot, regaining that use when you finish a long rest, as well as with your spell slots.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts spell pick with a long-rest Free cast",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Intelligence is your spellcasting ability for these spells.",
+    "is": "held",
+    "by": "src/lib/srd/feat-spells.ts fixedAbility, read by featSpellAbility",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "You also gain proficiency with one type of artisan's tools of your choice.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts tool pick among artisan's tools",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Dragon Hide": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "76c9dc149cd7",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dragonborn",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Your scales harden: while you wear no armor, your Armor Class is 13 + your Dexterity modifier, and a shield still adds to it.",
+    "is": "held",
+    "by": "src/lib/srd/mt-species-traits.ts featTraitLines: Natural Armor (AC 13 + DEX), read by naturalArmorOf in the armor class",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   },
+   {
+    "c": "Your claws are natural weapons: your unarmed strikes deal 1d4 slashing damage plus your Strength modifier instead of the usual damage.",
+    "is": "held",
+    "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon reads the feat's Claws (1d4 slashing unarmed strike), read by pc_attack and the Hand",
+    "probe": "scripts/test-enforce-feats.mjs: the species feats land on the sheet and in the engines"
+   }
+  ]
+ },
+ "feat::Dwarven Fortitude": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "98b44bac0f9c",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dwarf",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Whenever you take the Dodge action in combat, you can spend one Hit Die to heal yourself, rolling it and regaining that many hit points plus your Constitution modifier.",
+    "is": "held",
+    "by": "src/lib/dm/action-tools.ts dwarvenFortitude: a hurt dwarf's Dodge spends one hit die through hit-dice.ts spendHitDice",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.dwarven-fortitude.dodge"
+   }
+  ]
+ },
+ "feat::Fade Away": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "c4fc26f62860",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Gnome",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Dexterity or Intelligence by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Right after you take damage, you can use your reaction to turn invisible until the end of your next turn, or until you attack or cast a spell.",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json feat_fade_away (a reaction buff: invisible for a round), its trigger in trigger-table.ts (damaged); attack-marks.ts ends invisibility on an attack or a cast",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.fade-away.invisible"
+   },
+   {
+    "c": "Once you do so, you can't again until you finish a short or long rest.",
+    "is": "held",
+    "by": "feat_fade_away recharges on a short rest",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.fade-away.invisible"
+   }
+  ]
+ },
+ "feat::Dragon Fear": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "bd525e3959f0",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dragonborn",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Instead of exhaling destructive energy, you can spend a use of your Breath Weapon on a roar: each creature of your choice within 30 feet makes a Wisdom saving throw against 8 + your proficiency bonus + your Charisma modifier or is frightened of you for 1 minute.",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json feat_dragon_fear: an enemy_save (Wisdom, Charisma DC, frightened 10 rounds, 30 feet) paid from breath_weapon (fallbackPool)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.dragon-fear.roar"
+   },
+   {
+    "c": "A frightened creature repeats the save at the end of each of its turns, ending the effect on a success.",
+    "is": "held",
+    "by": "SaveTerms.saveEnds: counter-saves.ts lays the condition with saveEnds, which condition-logic.ts rolls at the end of the creature's turns",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.dragon-fear.roar"
+   }
+  ]
+ },
+ "feat::Second Chance": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "df2240fa7b7d",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Halfling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Dexterity, Constitution, or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When a creature you can see hits you with an attack roll, you can use your reaction to make it roll that attack again, and it must use the new roll.",
+    "is": "held",
+    "by": "src/lib/dm/feat-reactions.ts secondChance (use_reaction 'second chance'): the hit's d20 rolled again, the new roll standing",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.second-chance.reroll"
+   },
+   {
+    "c": "Once you do so, you can't again until you roll initiative or finish a short or long rest.",
+    "is": "held",
+    "by": "feat_second_chance recharges on a short rest; resource-refills.ts initiativeRefills gives it back",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.second-chance.refill"
+   }
+  ]
  }
 }

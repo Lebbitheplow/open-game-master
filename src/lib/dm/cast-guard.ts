@@ -48,6 +48,7 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { freeCastRestOf } from "@/lib/srd/feat-spells";
 import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
 import { bareFacts, pointsOfferFor, pointsPayFirst, pointsPlan, pointsSpent, pointsWhenNoSlot } from "@/lib/dm/ar-ws-points-cast";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
@@ -631,7 +632,7 @@ export function castSpell(
     : signature
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
-        ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
+        ? { kind: "none", note: freeCastRestOf(freeCast) === "at will" ? `${name} is cast without a slot (a feat's spell at will).` : `${name} is cast without a slot (a feat's free cast): once until a ${freeCastRestOf(freeCast)} rest.` }
         : arcanum
           ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
         : grant && grantPaid
@@ -721,7 +722,8 @@ export function castSpell(
   if (signature) {
     patch.resources = spendSignature(sheet.resources, signature);
   }
-  if (freeCast) {
+  // One cast at will spends nothing.
+  if (freeCast && freeCastRestOf(freeCast) !== "at will") {
     patch.resources = spendSignature(sheet.resources, freeCast);
   }
   if (arcanum) {

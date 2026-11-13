@@ -1,6 +1,6 @@
 import type { Ability } from "@/lib/schemas/sheet";
 import { classFeaturesFor, expertiseAllowed, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
-import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
+import { featStyleSlotFeatures, fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { subclassChoicePickKept, subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick } from "@/lib/content/subclass-choices";
@@ -74,6 +74,9 @@ export type ReconcileContext = {
   // The ids a stored workshop subclass choice's picks keep, by the pick's
   // name (useBuilderState pickIds): a pick its author renamed is kept.
   pickIds?: Readonly<Record<string, string>>;
+  // The feats chosen: one may open a fighting style slot (Fighting
+  // Initiate), whose style is kept like a class's.
+  feats?: ReadonlyArray<string>;
 };
 
 export type ReconcileExtra = { klass?: ClassOption; subclass: string; level: number; skills?: string[] };
@@ -378,7 +381,10 @@ export function reconcilePicks(
   const featuresOf = classes.map((entry) => classFeaturesFor(entry.klass.id, entry.subclass, entry.level));
   // Each with the class that grants it: a paladin's and a ranger's Fighting
   // Style offer their own four styles (feature-effects.ts fightingStyleChoices).
-  const features = featuresOf.flatMap((list, index) => list.map((feature) => ({ ...feature, classId: classes[index].klass.id })));
+  const features = [
+    ...featuresOf.flatMap((list, index) => list.map((feature) => ({ ...feature, classId: classes[index].klass.id }))),
+    ...featStyleSlotFeatures(context.feats),
+  ];
   // Only the styles the slots allow (a Swords bard: Dueling or Two-Weapon
   // Fighting); a pick may name the style rather than its id.
   const allowedStyles = new Set(fightingStyleChoices(features).flatMap((style) => [style.id, textKey(style.name)]));

@@ -12,8 +12,19 @@
 // walking cost. Pure and database-free, like the rest of src/lib/srd.
 import { holdsFeature } from "@/lib/srd/feature-names";
 
-type Held = { features?: ReadonlyArray<{ name: string }> | null };
-const linesOf = (sheet: Held | null | undefined) => (sheet?.features ?? []).map((feature) => feature.name.trim());
+type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null };
+// A feat that gives the body what a lineage's trait does (Dragon Hide's
+// scales and claws), as the trait lines the readers below and
+// racial-weapons.ts already read.
+export function featTraitLines(feats: ReadonlyArray<string> | null | undefined): string[] {
+  return (feats ?? []).some((feat) => feat.trim().toLowerCase() === "dragon hide")
+    ? ["Natural Armor (AC 13 + DEX)", "Claws (1d4 slashing unarmed strike)"]
+    : [];
+}
+const linesOf = (sheet: Held | null | undefined) => [
+  ...(sheet?.features ?? []).map((feature) => feature.name.trim()),
+  ...featTraitLines(sheet?.feats),
+];
 
 // ---- Natural Armor ----
 

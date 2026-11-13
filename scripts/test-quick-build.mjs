@@ -447,7 +447,9 @@ await test("every subclass's fill saves, and fills its training from the grant's
 await test("a subclass's or a feat's own tool is no extra pick of the class's", async () => {
   const alchemist = (await runFill(fresh({ level: 3, classId: "artificer", subclass: "Alchemist" }))).fields;
   for (const pick of ["smith's tools", "alchemist's supplies"]) {
-    await saves({ ...alchemist, toolPicks: [pick] }, `Alchemist with ${pick} as the artificer's artisan's tools`);
+    // The fill's other picks stay (a background that repeats the artificer's
+    // thieves' tools owes a replacement); only the artisan's tools change.
+    await saves({ ...alchemist, toolPicks: [pick, ...alchemist.toolPicks.slice(1).filter((tool) => tool !== pick)] }, `Alchemist with ${pick} as the artificer's artisan's tools`);
   }
   const mercy = (await runFill(fresh({ level: 3, classId: "monk", subclass: "Way of Mercy" }))).fields;
   await saves({ ...mercy, toolPicks: ["lute"] }, "Way of Mercy with a lute as the monk's tool");

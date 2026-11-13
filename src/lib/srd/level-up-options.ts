@@ -266,7 +266,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
   const featurePicks: NonNullable<LevelUpOptions["choices"]["featurePicks"]> = [];
   // Each class's slots at its own level (style-slots.ts): the sheet lists
   // "Fighting Style" once, and a fighter taking paladin 2 was offered none.
-  const styleSlots = openStyleSlots(classesAfter, sheet.features, context.subclassExtras);
+  const styleSlots = openStyleSlots(classesAfter, sheet.features, context.subclassExtras, sheet.feats);
   if (styleSlots.count > 0) {
     featurePicks.push({
       label: "Fighting Style",

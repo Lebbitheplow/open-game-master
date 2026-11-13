@@ -358,6 +358,7 @@ function rollCounterSave(
     types: effect.types,
     ...(most ? { most } : {}),
     magical: effect.magical ?? def.id !== "breath_weapon",
+    ...(effect.saveEnds ? { saveEnds: true } : {}),
   }, aim ?? {});
 }
 
