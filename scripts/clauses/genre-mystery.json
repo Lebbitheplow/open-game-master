@@ -1465,7 +1465,8 @@
     "probe": "not run: the observers' Perception against the grifter is a check the engine does not key to its holder's feature.",
     "observed": "nothing in the engine answers to Patient Hands: no typed effect, no authored row, no typed counter (its counter: none)",
     "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the observers' Perception against the grifter is a check the engine does not key to its holder's feature."
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the observers' Perception against the grifter is a check the engine does not key to its holder's feature.",
+    "read_only": true
    }
   ]
  },
@@ -2937,7 +2938,7 @@
     "c": "when a creature within 30 ft dies, hold its spirit: it can be revived within 24 hours as if freshly dead",
     "is": "held",
     "by": "src/lib/dm/genre-b-mystery-spends.ts anchor and src/lib/dm/genre-b-mystery-anchor.ts (the hold on the audit trail; src/lib/dm/revival.ts minutesSinceDeath answers 0 while it runs)",
-    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on, where Revivify's minute had long run out; a living ally and one who died out of reach are refused, nothing spent; scripts/test-genre-b-mystery-features.mjs Anchor of the Living: laid on a dying ally, it holds their spirit if they die within the minute"
+    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on"
    },
    {
     "c": "within 30 ft",

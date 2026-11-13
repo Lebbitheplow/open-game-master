@@ -762,8 +762,9 @@
    {
     "c": "when missed in melee",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs test reaction:genre::duelist s flourish::Duelist's Flourish",
-    "by": "src/lib/srd/trigger-table.ts (\"duelist's flourish\": a melee attack that missed the holder), read by src/lib/dm/reaction-triggers.ts"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Duelist's Flourish#1:riposte",
+    "by": "src/lib/srd/trigger-table.ts (\"duelist's flourish\": a melee attack that missed the holder), read by src/lib/dm/reaction-triggers.ts",
+    "k": "riposte"
    },
    {
     "c": "riposte with one weapon attack",
@@ -910,7 +911,8 @@
     "probe": "not run: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
     "observed": "nothing in the engine answers to Master of the High Wire: no typed effect, no authored row, no typed counter (its counter: none)",
     "sev": "low",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost)."
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
+    "read_only": true
    }
   ],
   "name": {
@@ -1109,7 +1111,7 @@
    {
     "c": "A prepared stone: 1/rest, add +1d4 to one formula's damage or healing",
     "is": "held",
-    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
+    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; scripts/test-genre-b-features-3.mjs Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
     "by": "src/lib/srd/authored-effects-genre-b.ts Catalyst Stone (spend: the catalyst stone mark; spell_rider healing gated on it, read by src/lib/dm/heal-bonus.ts), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded / genreBHealed"
    },
    {
@@ -1127,7 +1129,7 @@
    {
     "c": "+1d4",
     "is": "held",
-    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
+    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; scripts/test-genre-b-features-3.mjs Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
     "by": "src/lib/srd/authored-effects-genre-b.ts Catalyst Stone (spend: the catalyst stone mark; spell_rider healing gated on it, read by src/lib/dm/heal-bonus.ts), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded / genreBHealed"
    }
   ]
@@ -2608,7 +2610,8 @@
     "probe": "not run: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed.",
     "observed": "nothing in the engine answers to Boiler Plate: no typed effect, no authored row, no typed counter (its counter: none)",
     "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed."
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed.",
+    "read_only": true
    },
    {
     "c": "Your tuned armor grants +1 AC",

@@ -249,7 +249,7 @@ await run("Stand at the Dawn: an ally within 30 ft who drops to 0 drops to WIS m
 });
 
 for (const [level, cut] of [[1, 3], [10, 6]]) {
-  await run(`Hardened: at level ${level} every blow this round loses ${cut} (the CON modifier${level >= 10 ? ", twice" : ""})`, async () => {
+  await run(`Hardened: at level ${level} every blow this round loses ${cut}, the CON modifier ${level >= 10 ? "twice" : "once"}`, async () => {
     const hero = rig.holder(feature("road_warrior", level >= 10 ? "Hardened (2 uses)" : "Hardened", level));
     await rig.fight(hero);
     assert.equal(await rig.damageLost(hero, "fire"), 20, "before the spend");

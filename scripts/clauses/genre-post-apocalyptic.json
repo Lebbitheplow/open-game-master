@@ -605,7 +605,7 @@
    {
     "c": "reduce all damage you take this round by your CON modifier",
     "is": "held",
-    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 1 every blow this round loses 3 (the CON modifier)",
+    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 1 every blow this round loses 3, the CON modifier once",
     "by": "src/lib/srd/authored-effects-genre-b.ts Hardened spend (the hardened condition for the round) and src/lib/srd/genre-b-combat.ts genreDamageCut, taken off every blow by src/lib/dm/pc-damage.ts before resistance"
    }
   ]
@@ -757,7 +757,7 @@
    {
     "c": "Hardened has 2 uses and reduces damage by twice your CON modifier",
     "is": "held",
-    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 10 every blow this round loses 6 (the CON modifier, twice)",
+    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 10 every blow this round loses 6, the CON modifier twice",
     "by": "src/lib/srd/genre-b-combat.ts genreDamageCut (twice the CON modifier with Hardened (2 uses)); the two uses are the upgrade line's name (scripts/generate-class-resources.mjs namedUses)"
    },
    {
