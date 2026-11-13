@@ -1166,6 +1166,7 @@
     "lib/classes/use-feature-text.ts#partial": [["key",1,"feature-text keys"]],
     "lib/classes/class-spell-list.ts#partial": [["key",1,"a workshop class id's \"homebrew-\" prefix"]],
     "lib/classes/class-spell-list.ts#whole": [["key",1,"a spell's class lists against a list key, by textKey"],["identity",1,"a spell on a workshop class's own list by whole name"]],
+    "lib/comfyui.ts#fallback": [["key",1,"a ComfyUI rejection's model inputs (ckpt_name, unet_name, vae_name) are protocol keys; a rejection naming none keeps ComfyUI's own words"]],
     "lib/comfyui.ts#partial": [["key",2,"checkpoint file names"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/compressed-json.ts#partial": [["key",2,"the Accept-Encoding header's content codings (protocol)"]],
     "lib/content/authored-feats.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
