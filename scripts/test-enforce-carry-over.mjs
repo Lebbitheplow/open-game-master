@@ -63,5 +63,15 @@ await test("What lasts until somebody's next turn ends with the fight: no Dodge 
   assert.deepEqual(world.sheet(hero.id).conditions, []);
 });
 
+await test("GAME STATE gives the hit point maximum the hero really has, as the sheet and the heal tool do", async () => {
+  // Exhaustion level 4 halves the maximum (SRD 5.1, Exhaustion). The sheet
+  // showed 15/15 and heal refused to go past 15, while the storyteller read
+  // "HP 15/30" every turn and narrated a hero badly hurt.
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 30 });
+  world.patch(hero.id, { exhaustion: 4, currentHp: 15 });
+  assert.match(describeSheet(world.sheet(hero.id), "a player", false), /\n  HP 15\/15 \|/);
+});
+
 world.close();
 finish();

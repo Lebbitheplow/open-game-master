@@ -35,7 +35,7 @@ import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { authoredFeatureTags } from "@/lib/srd/authored-effects";
 import { rollKeyCue } from "@/lib/srd/roll-keys";
 import { heldRollKeys } from "@/lib/dm/roll-feature-riders";
-import { describeConditionDuration, describeExhaustion } from "@/lib/dm/condition-logic";
+import { describeConditionDuration, describeExhaustion, effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { describeConditionEffects } from "@/lib/srd/condition-effects";
 import { presetFor, packFor } from "@/lib/worlds/preset";
 import { nameRegisterHint } from "@/lib/genres";
@@ -707,9 +707,12 @@ export function describeSheet(
   const loadLine = load
     ? `  Carrying ${load.carriedLb} lb of a ${load.capacityLb} lb capacity${load.unweighed ? ` (${load.unweighed} item${load.unweighed === 1 ? "" : "s"} of unknown weight, so the total is a floor)` : ""}${load.note ? `: ${load.note}` : ""}${load.overCapacity ? ". OVER CAPACITY: they cannot pick up anything more." : ""}`
     : null;
+  // The maximum the hero really has (exhaustion 4 halves it, an Amulet of
+  // Health raises it), as the sheet and heal read it: the stored one told the
+  // storyteller a halved hero at full health was badly hurt.
   const lines = [
     `- ${sheet.name} (${sizeForRace(sheet.race)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
-    `  HP ${sheet.currentHp}/${sheet.maxHp}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
+    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,
     `  Languages (complete list; they cannot speak, read, or understand any other language): ${sheet.proficiencies.languages.join(", ") || "Common only"} | Tool proficiencies: ${sheet.proficiencies.tools.join(", ") || "none"} | Armor training: ${sheet.proficiencies.armor.join(", ") || "none"} | Weapon training: ${sheet.proficiencies.weapons.join(", ") || "none"}`,
