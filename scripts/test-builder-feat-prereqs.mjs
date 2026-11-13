@@ -289,6 +289,24 @@ test("a feat that asks for a species or a size is refused to every other species
   }
 });
 
+// SRD 5.1: a rogue and a bard are proficient with longswords, rapiers and
+// shortswords, a druid with scimitars, a monk with shortswords, all martial
+// weapons; the class rows name them in the plural. "Proficiency with a
+// martial weapon" (Fighting Initiate, Martial Scholar) read only the word
+// "martial", and every one of them was refused.
+test("a class trained in martial weapons by name meets a feat's 'proficiency with a martial weapon'", () => {
+  const who = (weapons) => ({ abilities: { str: 14, dex: 14, con: 14, int: 14, wis: 14, cha: 14 }, armor: [], casts: false, raceId: "human", raceName: "Human", weapons });
+  for (const [label, weapons] of [
+    ["rogue", ["simple", "hand crossbows", "longswords", "rapiers", "shortswords"]],
+    ["druid", ["clubs", "daggers", "darts", "javelins", "maces", "quarterstaffs", "scimitars", "sickles", "slings", "spears"]],
+    ["monk", ["simple", "shortswords"]],
+    ["high elf wizard", ["daggers", "darts", "slings", "quarterstaffs", "light crossbows", "longsword", "shortsword", "shortbow", "longbow"]],
+  ]) {
+    assert.equal(checkPrerequisite("Proficiency with a martial weapon", who(weapons)).state, "met", `a ${label} is refused`);
+  }
+  assert.equal(checkPrerequisite("Proficiency with a martial weapon", who(["daggers", "darts", "slings", "quarterstaffs", "light crossbows"])).state, "unmet", "a wizard qualifies");
+});
+
 function prerequisiteNoteOf(check) {
   return check.requirements.map((entry) => entry.note).join("; ");
 }

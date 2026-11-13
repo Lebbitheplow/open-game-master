@@ -435,7 +435,9 @@ function requirementCheck(requirement: string, who: FeatCandidate, waiting: Feat
   }
   const weapon = /^(?:one |a )?(martial|simple|ranged|melee)(?: (ranged|melee))? weapons?$/.exec(wanted);
   if (weapon && who.weapons !== undefined) {
-    const owned = who.weapons.map(textKey);
+    // A class row names its weapons in the plural ("longswords",
+    // "scimitars"), a species' training in the singular.
+    const owned = who.weapons.flatMap((entry) => [textKey(entry), textKey(entry).replace(/s$/, "")]);
     const names = weapon[1] === "martial" ? MARTIAL_WEAPONS : weapon[1] === "ranged" || weapon[2] === "ranged" ? RANGED_WEAPONS : [];
     const broad = weapon[1] === "simple" ? ["simple", "martial"] : weapon[1] === "martial" ? ["martial"] : ["simple", "martial"];
     return held(
