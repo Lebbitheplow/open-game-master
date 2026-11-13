@@ -565,9 +565,9 @@ try {
       const helper = choices.models.find((model) => model.id === "gpt-4");
       assert.equal(helper.contextTokens, 262_144);
       assert.equal(helper.catalog?.contextTokens, 8192, "the catalog row itself is unchanged");
-      assert.ok(!helper.verdict.warnings.some((warning) => /small for a campaign/.test(warning)), helper.verdict.warnings.join(" | "));
+      assert.ok(!helper.verdict.warnings.some((warning) => /window is small/.test(warning)), helper.verdict.warnings.join(" | "));
       const plain = logic.assessModel({ role: "utility", id: "gpt-4", catalog: helper.catalog, listed: true });
-      assert.ok(plain.warnings.some((warning) => /8K window is small for a campaign/.test(warning)), "the catalog's own size still warns where the server says nothing");
+      assert.ok(plain.warnings.some((warning) => /8K window is small for the helper/.test(warning)), "the catalog's own size still warns where the server says nothing");
     } finally {
       wide.close();
     }

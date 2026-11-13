@@ -399,7 +399,12 @@ const missingCheckpoint = (list) =>
 
 await test(
   "a checkpoint ComfyUI does not have is named with its folder, not ComfyUI's validation dump",
-  fakeComfy({ "/prompt": () => new Response(missingCheckpoint([]), { status: 400 }) }),
+  // The list did not answer, so the submission is what finds the file missing
+  // (a ComfyUI that does answer it is refused earlier, by name, below).
+  fakeComfy({
+    "/object_info/CheckpointLoaderSimple": () => new Response("busy", { status: 503 }),
+    "/prompt": () => new Response(missingCheckpoint([]), { status: 400 }),
+  }),
   async () => {
     await assert.rejects(
       generateComfyImage({ url: COMFY, checkpoint: "sd_xl_base_1.0.safetensors", prompt: "a tavern", mode: "fast", aspect: "square" }),
