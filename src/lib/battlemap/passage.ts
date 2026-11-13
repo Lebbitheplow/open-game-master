@@ -11,6 +11,7 @@
 import { adaptedSpeeds } from "@/lib/srd/genre-b-post-apocalyptic";
 import { climbsFreely } from "@/lib/srd/feat-combat";
 import { steampunkStride } from "@/lib/srd/genre-b-steampunk-moves";
+import { SWARM_SHAPE } from "@/lib/srd/genre-gb-conditions";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, TERRAIN, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
@@ -110,7 +111,8 @@ export function pcMoveTraits(input: {
   // crossesAnyGround): difficult terrain costs no extra.
   anyGround?: boolean;
 }): MoveTraits {
-  const moverSize = sizeForRace(input.sheet.race);
+  // Splintered Form's swarm shape moves as a Tiny creature (genre-gb-conditions.ts).
+  const moverSize = (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, SWARM_SHAPE)) ? "tiny" : sizeForRace(input.sheet.race);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
   const base = moveTraitsFrom(input.sheet.features);
   // Rigging Runner climbs the same way; Master of the High Wire and an armored

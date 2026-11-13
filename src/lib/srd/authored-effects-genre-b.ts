@@ -24,6 +24,7 @@
 // Pure data; no database.
 import type { AuthoredEntry, ReactionDoes, SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+import { SWARM_SHAPE } from "@/lib/srd/genre-gb-conditions";
 
 const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "subclass">): GenreRow => ({
   feature,
@@ -308,7 +309,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Reaction when hit: gain resistance to that instance of damage."
   react("Ectoplasmic Shield", ["spirit_medium"], "mystery_ectoplasmic_shield", { kind: "reduce", amount: "half", who: "self" }),
   // "reaction when hit: split into a swarm shape until your next turn, taking half damage from the attack".
-  react("Splintered Form", ["aberrant"], "post_apocalyptic_splintered_form", { kind: "reduce", amount: "half", who: "self" }),
+  // The swarm shape lasts until the aberrant's next turn (genre-gb-conditions.ts).
+  react("Splintered Form", ["aberrant"], "post_apocalyptic_splintered_form", { kind: "reduce", amount: "half", who: "self", form: SWARM_SHAPE }),
   // "Reaction when hit in melee: the attacker takes 2d6 acid as an ampoule bursts."
   react("Vitriol Ampoule", ["alchemist"], "steampunk_vitriol_ampoule", { kind: "strike_back", amount: "2d6", type: "acid", melee: true }),
 ];

@@ -1468,14 +1468,15 @@
    },
    {
     "c": "split into a swarm shape until your next turn, taking half damage from the attack and moving through gaps freely",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY",
-    "note": "The half damage is built (use_reaction reduce half); moving through gaps until the next turn is not."
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Splintered Form: the reaction halves the hit and lays the swarm shape until the aberrant's next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Splintered Form (reduce half, form swarm shape), laid by src/lib/dm/authored-reactions.ts for a round; src/lib/battlemap/passage.ts pcMoveTraits walks its holder as Tiny (src/lib/srd/genre-gb-conditions.ts)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Splintered Form: the reaction halves the hit and lays the swarm shape until the aberrant's next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Splintered Form (reduce half, form swarm shape), laid by src/lib/dm/authored-reactions.ts for a round; src/lib/battlemap/passage.ts pcMoveTraits walks its holder as Tiny (src/lib/srd/genre-gb-conditions.ts)"
    }
   ]
  },

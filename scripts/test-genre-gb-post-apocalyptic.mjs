@@ -120,5 +120,37 @@ await run("Last Ride of the Reaver: the spend lays a minute in which speed doubl
   assert.ok(plain.ok && !plain.damage?.expression.includes("4d6"), `a hit with no run rolled ${plain.damage?.expression}`);
 });
 
+// ---- GB07: Splintered Form ----
+
+await run("Splintered Form: the reaction halves the hit and lays the swarm shape until the aberrant's next turn, in which they walk through a hostile creature's space that otherwise blocks the way", async () => {
+  const row = feature("aberrant", "Splintered Form", 10);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  await rig.clubbed(near, hero);
+  rig.kit.giveTurn(rig.ally.id);
+  rig.must(await world.invoke("use_reaction", { characterId: hero.id, feature: "Splintered Form", reason: "test" }), "use_reaction Splintered Form");
+  assert.equal(world.sheet(hero.id).currentHp, 97, "the hit was not halved");
+  const meta = world.sheet(hero.id).conditionMeta?.["swarm shape"];
+  assert.ok(world.sheet(hero.id).conditions.includes("swarm shape") && meta?.rounds === 1, `the shape's record: ${JSON.stringify(meta)}`);
+  // A corridor one square wide, the creature standing in it.
+  const { walkCharacter } = await load("lib/dm/token-rules.ts");
+  const { getActiveBattleMap } = await load("lib/battlemap/view.ts");
+  const through = () => {
+    const walls = [];
+    for (let x = 3; x <= 11; x += 1) walls.push([x, 1, "#"], [x, 3, "#"]);
+    kit.openField(walls);
+    rig.myTurn(hero);
+    kit.place(hero.id, 4, 2);
+    kit.place(near.id, 6, 2);
+    kit.place(rig.ally.id, 1, 9);
+    const out = walkCharacter(world.campaign(), world.encounter(), getActiveBattleMap(world.campaignId), world.sheet(hero.id), kit.token(hero.id), { x: 8, y: 2 }, {});
+    return out?.error ? "blocked" : `${kit.token(hero.id).x},${kit.token(hero.id).y}`;
+  };
+  assert.equal(through(), "8,2", "the swarm could not pass the creature");
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+  const blocked = through();
+  assert.notEqual(blocked, "8,2", "without the swarm shape the aberrant walked through the creature");
+});
+
 rig.world.close();
 finish();

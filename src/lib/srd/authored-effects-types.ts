@@ -1122,7 +1122,9 @@ export type ReactionDoes =
   // `nearZone`: the creature it covers, the holder too, must stand within
   // `feet` of the holder's zone of that spell (Guardian Coil's tentacle:
   // src/lib/dm/zone-reach.ts), in place of a reach from the holder.
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number }
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number; form?: string }
+  // `form`: a shape the holder takes until their next turn, laid as this
+  // condition (Splintered Form's swarm: src/lib/srd/genre-gb-conditions.ts).
   // `whole`: the whole blow, whatever `amount` says (Capacitor Soul), and
   // `regainSlot`: the holder then regains one expended spell slot of that level.
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
