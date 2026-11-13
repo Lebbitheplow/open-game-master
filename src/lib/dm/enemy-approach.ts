@@ -15,7 +15,7 @@ import { passableTiles } from "@/lib/battlemap/passage";
 import { getSheetById } from "@/lib/db/sheets";
 import { sizeForRace } from "@/lib/srd";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { resolvePcOpportunityAttacks } from "@/lib/dm/opportunity";
+import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { publishEphemeral } from "@/lib/events";
 import { swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
@@ -253,16 +253,28 @@ export function approachTarget(
     }
   }
   let provoked: string[] = [];
+  let stoppedBySwing = false;
   if (!options.dryRun && (landing.x !== origin.x || landing.y !== origin.y)) {
-    moveToken(attacker.id, landing.x, landing.y, attacker.movedThisRound + cost);
-    publishEphemeral(campaign.id, "battle_map_updated", {});
     // Walking is walking: whoever it leaves behind gets their opportunity
     // attack, however it came to move, unless it Disengaged this turn: a
     // Nimble Escape goblin's Disengage held for move_token and was forgotten
-    // by this walk-up (issue #621).
-    provoked = resolvePcOpportunityAttacks(campaign, enemy.id, origin, landing, walked.length ? walked : undefined, move.disengaged);
-    // The spell areas it walked into (src/lib/dm/zone-triggers.ts).
-    provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: enemy.id }, origin, walked.length ? walked : [landing]));
+    // by this walk-up (issue #621). Rolled before the token moves, as on
+    // move_token: a hit that leaves its speed at 0 (Sentinel, Hold the Line)
+    // or drops it ends the walk-up on the square the swing was taken on.
+    const struck = resolvePcOpportunityWalk(campaign, enemy.id, origin, landing, walked.length ? walked : undefined, move.disengaged);
+    provoked = struck.notes;
+    if (struck.stoppedAt) {
+      const at = walked.findIndex((step) => step.x === struck.stoppedAt?.x && step.y === struck.stoppedAt?.y);
+      walked = at >= 0 ? walked.slice(0, at + 1) : [];
+      landing = struck.stoppedAt;
+      stoppedBySwing = true;
+    }
+    if (landing.x !== origin.x || landing.y !== origin.y) {
+      moveToken(attacker.id, landing.x, landing.y, attacker.movedThisRound + cost);
+      publishEphemeral(campaign.id, "battle_map_updated", {});
+      // The spell areas it walked into (src/lib/dm/zone-triggers.ts).
+      provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: enemy.id }, origin, walked.length ? walked : [landing]));
+    }
   }
   const distance = apart(landing);
   const moved = landing.x !== origin.x || landing.y !== origin.y;
@@ -272,13 +284,21 @@ export function approachTarget(
     ...(moved ? { movedTo: `(${landing.x},${landing.y})` } : {}),
     ...(provoked.length ? { opportunityAttacks: provoked } : {}),
   };
+  // Dropped on the way, it attacks nobody: enemy_attack says it fell
+  // (enemy-attack.ts, the walk "may have drawn an opportunity attack that
+  // killed it"), not that it could not reach.
+  if (stoppedBySwing && listEnemies(encounterId).find((entry) => entry.id === enemy.id)?.status !== "alive") {
+    return base;
+  }
   if (reachesFrom(landing) && swingMode(profile, distance)) {
     // A Wind Wall between them turns its arrows (zone-rules.ts): each shot
     // through it is made and misses.
     const deflected = swingMode(profile, distance)?.ranged ? missileDeflection(encounterId, enemy.id, targetRef, target.name) : null;
     return deflected ? { ...base, deflected } : base;
   }
-  const why = fear
+  const why = stoppedBySwing
+    ? `${attacker.name} was stopped at (${landing.x},${landing.y}) by an opportunity attack, its speed 0 for the rest of the turn: it is ${distance * 5} ft from ${target.name} and cannot reach them this turn`
+    : fear
     ? `${attacker.name} is frightened and will not move closer to what it fears`
     : profile.melee
       ? `${attacker.name} is ${distance * 5} ft from ${target.name} and cannot reach them this turn`

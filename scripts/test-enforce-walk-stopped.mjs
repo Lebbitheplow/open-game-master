@@ -113,4 +113,19 @@ await test("Whoever it drags stays with it: stopped where it began, the held cha
   world.patch(ana.id, { conditions: [], conditionMeta: {} });
 });
 
+// enemy_attack's walk-up is a walk too (enemy-approach.ts): stopped as it
+// leaves Orin's side, the goblin never reaches Ana, and swings at nobody.
+await test("enemy_attack's walk-up a Sentinel stops ends where the swing was taken, short of its target.", async () => {
+  const goblin = await stage();
+  kit.place(orin.id, 6, 7);
+  kit.place(ana.id, 1, 7);
+  kit.dice(15, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: ana.id });
+  assert.equal(out.ok, false, JSON.stringify(out));
+  assert.match(out.error, /was stopped at \(5,7\) by an opportunity attack, its speed 0 for the rest of the turn: it is 20 ft from Ana and cannot reach them/);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("stopped"), "no Sentinel stop on it");
+  assert.deepEqual(at(goblin.id), { x: 5, y: 7 }, "the stopped goblin walked on toward Ana");
+  assert.equal(world.sheet(ana.id).currentHp, world.sheet(ana.id).maxHp, "it struck Ana from where it never got");
+});
+
 await finish();
