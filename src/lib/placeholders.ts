@@ -55,13 +55,7 @@ const RACE_FAMILY: Record<string, string> = {
   eladrin: "elf",
   sea_elf: "elf",
   duergar: "dwarf",
-  // Until these have plates of their own, the nearest people's face reads
-  // truer than a human's: a bird's, a sea-touched genasi's, a reptile's, a
-  // dragon's.
-  aarakocra: "kenku",
-  triton: "genasi-water",
-  serpentfolk: "lizardfolk",
-  kobold: "dragonborn",
+
   drow: "drow",
   lightfoot_halfling: "halfling",
   stout_halfling: "stout-halfling",
@@ -185,6 +179,12 @@ const RACE_FAMILY: Record<string, string> = {
 };
 
 // Every race id with a plate of its own, for the test that walks them.
+// The bundled lineages with no plate painted yet. Another people's face
+// would show the wrong creature on a token (docs/art/creature-art-guidance.md,
+// token-readability.md), so until the art pass paints them each draws the
+// neutral adventurer plate (characterPlaceholder), as any race without art.
+export const LINEAGES_AWAITING_ART = ["triton", "serpentfolk", "kobold", "aarakocra"] as const;
+
 export function raceFamilyIds(): string[] {
   return Object.keys(RACE_FAMILY);
 }

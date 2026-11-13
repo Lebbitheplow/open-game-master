@@ -111,7 +111,7 @@ const FAMILY_WORDS: Array<[RegExp, string]> = [
   [/erina/, "erina"],
   [/satarre/, "satarre"],
   [/(^|[\s_])shade([\s_]|$)/, "shade"],
-  [/kenku|ravenfolk|aarakocra/, "kenku"],
+  [/kenku|ravenfolk/, "kenku"],
   [/tortle/, "tortle"],
   [/genasi.*air|air.*genasi/, "genasi-air"],
   [/genasi.*earth|earth.*genasi/, "genasi-earth"],
