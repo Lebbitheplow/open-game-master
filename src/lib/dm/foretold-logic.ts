@@ -18,6 +18,24 @@ export function rollForetold(count: number): number[] {
   return Array.from({ length: count }, () => rollExpression("1d20").total);
 }
 
+// The numbers said aloud: "17, 9 and 3".
+export function foretoldWords(numbers: readonly number[]): string {
+  return numbers.length > 1 ? `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}` : String(numbers[0] ?? "");
+}
+
+// GAME STATE's Portent line. Without it the storyteller never saw the numbers:
+// a player who asked it for new ones after a rest got numbers made up in prose
+// that never reached the sheet, and the roll card then offered last night's.
+export function foretoldStateLine(sheet: Pick<CharacterSheet, "resources" | "foretold">): string | null {
+  if (!sheet.resources?.[PORTENT]) {
+    return null;
+  }
+  const left = foretoldLeft(sheet);
+  return left.length
+    ? `  Portent: foretold ${foretoldWords(left)}, rolled at their last long rest. The player puts one on a d20 from the roll card before it is thrown. Only a long rest (take_rest) rolls new ones; never invent them.`
+    : "  Portent: no foretold numbers left. Only a long rest (take_rest) rolls new ones; never invent them.";
+}
+
 // The sheet's numbers with one of them gone.
 export function foretoldWithout(numbers: readonly number[], value: number): number[] {
   const at = numbers.indexOf(value);

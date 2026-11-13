@@ -1,5 +1,6 @@
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
 import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
+import { foretoldWords } from "@/lib/dm/foretold-logic";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
@@ -299,6 +300,7 @@ export function handleTakeRest(
   if (args.kind === "long") {
     const rested: string[] = [];
     const omens: string[] = [];
+    const portents: string[] = [];
     for (const id of resting) {
       // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
       // incapacitated, and incapacitation ends concentration): the spell
@@ -331,6 +333,11 @@ export function handleTakeRest(
       if (restPatch.omen) {
         omens.push(`${sheet.name}'s Cosmic Omen reads ${OMEN_WORDS[restPatch.omen]}`);
       }
+      // Portent's new numbers, said in the same line: unsaid, the table only
+      // found them on the sheet, and the storyteller not at all.
+      if (restPatch.foretold?.length) {
+        portents.push(`${sheet.name}'s Portent foretells ${foretoldWords(restPatch.foretold)}`);
+      }
     }
     recordLongRests(campaign.id, resting, endsAt);
     // The saves a disease asks at the end of a long rest.
@@ -349,7 +356,7 @@ export function handleTakeRest(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
         unaffected.length ? ` No benefit from it for ${unaffected.join("; ")}.` : ""
-      }${omens.length ? ` ${omens.join("; ")}.` : ""}`,
+      }${[...omens, ...portents].length ? ` ${[...omens, ...portents].join("; ")}.` : ""}`,
       "rest-long",
     );
     // A night passing is a timeskip: the off-screen world moves too (world
@@ -373,6 +380,7 @@ export function handleTakeRest(
       ...(leaving.length ? { companionsLeft: leaving } : {}),
       ...(unaffected.length ? { unaffected: unaffected.join("; ") } : {}),
       ...(omens.length ? { omens } : {}),
+      ...(portents.length ? { portents } : {}),
       ...(deathSaves.length ? { deathSaves } : {}),
       restedFor,
       ...(nowReads ? { now: nowReads } : {}),

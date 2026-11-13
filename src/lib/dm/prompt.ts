@@ -25,6 +25,7 @@ import { selectedCharacter } from "@/lib/player-characters";
 // custom feature (src/lib/classes/feature-text.ts).
 import "@/lib/classes/feature-text-all";
 import { resourceDef } from "@/lib/srd/class-resources";
+import { foretoldStateLine } from "@/lib/dm/foretold-logic";
 import { featEngineTag } from "@/lib/srd/feat-combat";
 import { featFactsFor } from "@/lib/characters/catalog";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -742,6 +743,10 @@ export function describeSheet(
     lines.push(
       `  Resources (limited uses; spend with use_resource BEFORE narrating the feature): ${parts.join(", ")}`,
     );
+  }
+  const foretold = foretoldStateLine(sheet);
+  if (foretold) {
+    lines.push(foretold);
   }
   for (const pet of sheet.pets ?? []) {
     const attacks = pet.attacks.length
