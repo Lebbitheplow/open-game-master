@@ -124,7 +124,7 @@ export function optionsForPending(
 // hit; then the rows of their own: Convergent Future and Bend Luck
 // (fate-turn.ts), a Rune Knight's prophetic state (mt-fb-runes.ts), the
 // roller's own among them; and the roller's own lineage choices, which count
-// the allies in sight (lineage-after-roll.ts: Saving Face). A helper on the
+// the allies in sight (lineage-after-roll.ts: Saving Face, Lucky Footwork). A helper on the
 // bench (one character fielded per player) answers nobody. `detail`: the
 // roll's record, which names a save's ability.
 export function allyChoicesFor(
@@ -252,7 +252,7 @@ export function spendAfterRoll(
   if (isFatePower(id)) {
     return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);
   }
-  // The lineages' own (Saving Face): lineage-after-roll.ts.
+  // The lineages' own (Saving Face, Lucky Footwork): lineage-after-roll.ts.
   if (isLineageAfterRoll(id)) {
     return spendLineageAfterRoll(campaign, sheet, id, outcome);
   }

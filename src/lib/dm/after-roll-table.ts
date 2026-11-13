@@ -494,6 +494,21 @@ export const AFTER_ROLL_ROWS = [
     label: "Saving Face: {amount}",
     note: "Spend Saving Face (once a short rest): {amount} to this {what}, one for each ally you see within 30 feet.",
   },
+  {
+    // Lucky Footwork (rabbitfolk): a failed Dexterity save gains 1d4 for the
+    // reaction, not while prone or at speed 0 (lineage-after-roll-logic.ts).
+    id: "lucky_footwork",
+    feature: "Lucky Footwork",
+    cost: "own",
+    reaction: true,
+    kinds: ["save"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    label: "Lucky Footwork: add 1d4",
+    note: "Use your reaction: roll 1d4 and add it to this Dexterity save.",
+  },
 ] as const satisfies readonly AfterRollRow[];
 
 export type AfterRollId = (typeof AFTER_ROLL_ROWS)[number]["id"];

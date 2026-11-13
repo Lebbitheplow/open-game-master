@@ -3,13 +3,22 @@
 // Saving Face, what a parked roll offers, and spending what the player chose.
 
 import type { Campaign } from "@/lib/db/campaigns";
+import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import type { RollResult } from "@/lib/dice";
+import { rollExpression, type RollResult } from "@/lib/dice";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
-import { withFlatBonus, type AfterRollId, type AfterRollOption } from "@/lib/dm/after-roll-logic";
-import { inShiftReach } from "@/lib/dm/chronal-shift";
-import { lineageOffers, SAVING_FACE, SAVING_FACE_FEET, savingFaceBonus } from "@/lib/dm/lineage-after-roll-logic";
+import { withBonusDie, withFlatBonus, type AfterRollId, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { canReactNow, inShiftReach } from "@/lib/dm/chronal-shift";
+import {
+  footworkGrounded,
+  lineageOffers,
+  LUCKY_FOOTWORK_DIE,
+  SAVING_FACE,
+  SAVING_FACE_FEET,
+  savingFaceBonus,
+} from "@/lib/dm/lineage-after-roll-logic";
 import { inPlay } from "@/lib/dm/roster";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -29,7 +38,7 @@ type Roll =
 // The roller's own lineage choices on this roll (after-roll.ts allyChoicesFor
 // asks, beside the helpers'). `kept`: the roller already let it stand.
 export function lineageChoicesFor(campaignId: string, sheet: CharacterSheet, roll: Roll, kept = false): AfterRollOption[] {
-  if (kept || !holdsFeature(sheet, "Saving Face")) {
+  if (kept || !holdsFeature(sheet, "Saving Face", "Lucky Footwork")) {
     return [];
   }
   const outcome = roll.outcome;
@@ -39,7 +48,9 @@ export function lineageChoicesFor(campaignId: string, sheet: CharacterSheet, rol
     natural: outcome.natural,
     target: "ac" in roll ? { ac: roll.ac, critRange: roll.critRange } : { dc: roll.dc },
     taken: new Set("spent" in roll ? (roll.spent ?? []) : []),
-    allies: alliesInSight(campaignId, sheet),
+    reactionFree: canReactNow(campaignId, sheet),
+    allies: holdsFeature(sheet, "Saving Face") ? alliesInSight(campaignId, sheet) : 0,
+    detail: "detail" in roll ? roll.detail : null,
   });
 }
 
@@ -53,6 +64,17 @@ export function spendLineageAfterRoll(campaign: Campaign, stale: CharacterSheet,
       return null;
     }
     return { outcome: withFlatBonus(outcome, bonus), choosing: false };
+  }
+  if (id === "lucky_footwork") {
+    if (!canReactNow(campaign.id, sheet) || footworkGrounded(sheet)) {
+      return null;
+    }
+    const encounter = getActiveEncounter(campaign.id);
+    if (encounter) {
+      markReactionUsed(encounter, sheet.id);
+    }
+    const die = { sides: LUCKY_FOOTWORK_DIE, value: rollExpression(`1d${LUCKY_FOOTWORK_DIE}`).total, kept: true };
+    return { outcome: withBonusDie(outcome, die), choosing: false };
   }
   return null;
 }

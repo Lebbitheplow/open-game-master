@@ -128,12 +128,44 @@ for (const row of RACES) {
       same([short, carries, spent, offered(who, 12), offered(near, 12)], [0, 1, [12, 1], 0, 0], `${row.name}: one ally within 30 feet against DC 13 and DC 12, the use spent, then again, and a human's`);
     });
   }
+  // Lucky Footwork: a failed Dexterity save, the reaction, a d4 added, where
+  // a 4 could carry it; never another save, nor a prone rabbitfolk.
+  if (holds(row, "lucky footwork")) {
+    probe("lucky-footwork", async () => {
+      const { allyChoicesFor, spendAfterRoll } = await import("../src/lib/dm/after-roll.ts");
+      const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+      const { rollExpression } = await import("../src/lib/dice.ts");
+      const t = await rig.table();
+      const who = t.hero(of());
+      const down = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, down, other]);
+      t.patch(down, { conditions: ["prone"] });
+      // An 8 on the die, +3: a save of 11.
+      const thrown = () => {
+        t.world.clearDice();
+        t.world.dice(8);
+        const out = rollExpression("1d20+3");
+        t.world.clearDice();
+        return out;
+      };
+      const offered = (roller, detail, dc = 14) => allyChoicesFor(t.world.campaignId, t.sheet(roller), { kind: "saving_throw", outcome: thrown(), dc, detail }).filter((option) => option.id === "lucky_footwork").length;
+      const seen = [offered(who, "DEX save against Fireball"), offered(who, "wis"), offered(who, "dex", 16), offered(down, "dex"), offered(other, "dex")];
+      const out = thrown();
+      t.world.dice(3);
+      const paid = spendAfterRoll(getCampaignById(t.world.campaignId), t.sheet(who), "lucky_footwork", out);
+      t.world.clearDice();
+      const spent = [paid?.outcome.total, t.world.encounter().reactionsUsed.includes(who.id)];
+      same([seen, spent, offered(who, "dex")], [[1, 0, 0, 0, 0], [14, true], 0], `${row.name}: a Dexterity save of 11 against DC 14, a Wisdom save, DC 16, a prone rabbitfolk, a human; the d4 of 3 and the reaction; then again`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
+  "species.rabbitfolk.lucky-footwork",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

@@ -470,6 +470,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
     // A choice on the card a roll waits on (src/lib/dm/lineage-after-roll.ts).
     "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
+    "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
   ]);
   const uncovered = [];
   for (const race of races) {
