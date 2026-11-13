@@ -12,7 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression } from "@/lib/dice";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { secondTypeShare } from "@/lib/dm/damage-parts";
-import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
+import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { planSpellFx } from "@/lib/battlemap/fx-plan";
@@ -485,6 +485,7 @@ export function handleCastAtPlayer(
       damageType,
       magical: use?.magical || Boolean(args.spell),
       spellBy: args.spell ? use?.enemy.stats.type : undefined,
+      school: castSpell ? spellSchoolFor(castSpell, spellAuthorsFor(campaign)) : null,
     }),
     use?.enemy ?? null,
     claim,

@@ -100,9 +100,11 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
     out.push({ roll: "save", against: ["poison", "poisoned"], note: "Antitoxin: advantage on saves against poison" });
   }
   // Duergar Resilience: advantage on saves against being charmed or
-  // paralyzed (its illusions have no word on a save; the GM's).
+  // paralyzed, and against an illusion spell (the school the engine that
+  // knows the spell names: roll-about.ts saveAgainst).
   if (holdsFeature(sheet, "duergar resilience")) {
     out.push({ roll: "save", against: ["charmed", "paralyzed"], note: "Duergar Resilience: advantage on saves against being charmed or paralyzed" });
+    out.push({ roll: "save", schools: ["illusion"], note: "Duergar Resilience: advantage on saves against illusions" });
   }
   // Magic Resistance (a serpentfolk): advantage on every save against a
   // spell or other magical effect.

@@ -64,6 +64,7 @@ export function viewerMoves(input: {
       // What the jump move will allow (src/lib/dm/jump-reach.ts).
       jumpFeet: reach.longFeet,
       highJumpFeet: reach.highFeet,
+      ...(reach.leapDie ? { jumpDie: reach.leapDie } : {}),
       runningStart,
       drag: held.length
         ? {

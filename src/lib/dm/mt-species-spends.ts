@@ -16,28 +16,55 @@
 //     end of a turn on which they moved 0 feet (mt-species-turns.ts).
 //   - Celestial Revelation (aasimar): the form named, a bonus action, a
 //     minute; Necrotic Shroud's saves as it comes down.
+//   - Rabbit Hop (rabbitfolk): a bonus action leaps the rabbitfolk to the
+//     square named, up to 5 feet times the proficiency bonus in a straight
+//     line, drawing no opportunity attack and spending none of the turn's
+//     movement, while their speed is above 0. With no square named (a Hand
+//     card) the use is paid and the leap waits on move_token, as a feature's
+//     teleport does (feature-teleport.ts).
+//   - Tainted Blood (a mutated derro's Otherworldly Influence, read from its
+//     pack text by species-prose-logic.ts): a reaction to piercing or
+//     slashing damage just taken, once a short rest; the derro and each
+//     creature within 5 feet take necrotic damage equal to its level.
+//   - Shifting (shifter) with a subtype picked: the subtype's own form
+//     ("shifted (beasthide)"...), Beasthide's extra 1d6 temporary hit points
+//     with it. A shifter with no subtype on the sheet takes the counter's
+//     own form through the generic spend.
 //
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path; must not import mutations.ts.
 import { holdsTinker, tinker } from "@/lib/dm/rock-gnome-tinker";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { priceTheAction, publishSheet } from "@/lib/dm/combat-features";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { rollEnemySave } from "@/lib/dm/forced-save";
-import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { computeSheetDerived } from "@/lib/srd";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { computeSheetDerived, speedFor } from "@/lib/srd";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
+import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHIFT_FORMS, SHIFTED, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
+import { rollOwnDice } from "@/lib/dm/character-roll";
+import { freshLastHit, writeLastHit, type LastHit } from "@/lib/dm/last-hit";
+import { canReactNow } from "@/lib/dm/chronal-shift";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
+import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
+import { planLongJump } from "@/lib/srd/jump";
+import { conditionSpeed } from "@/lib/srd/condition-effects";
+import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
+import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 
-export type SpeciesSpendArgs = { variant?: string };
+// `x`, `y`: the square a leap lands on (Rabbit Hop).
+export type SpeciesSpendArgs = { variant?: string; x?: number; y?: number };
 
 export function speciesTraitSpend(
   campaign: Campaign,
@@ -55,6 +82,10 @@ export function speciesTraitSpend(
   if (name === "celestial revelation" && sheet.resources?.[REVELATION_COUNTER]) return celestialRevelation(campaign, turnId, sheet, args.variant);
   // A rock gnome's clockwork devices (rock-gnome-tinker.ts).
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
+  if (name === "tainted blood" && sheet.resources?.[TAINTED_BLOOD]) return taintedBlood(campaign, turnId, sheet);
+  if (name === "rabbit hop" && sheet.resources?.[RABBIT_HOP]) return rabbitHop(campaign, sheet, args);
+  const form = shiftFormOf(sheet);
+  if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;
 }
 
@@ -253,4 +284,192 @@ function celestialRevelation(campaign: Campaign, turnId: string, sheet: Characte
       : `Necrotic Shroud: no creature stands within ${SHROUD_FEET} feet, so nobody saves.`,
   );
   return { ...result, shroud: { dc, frightened, saved: held } };
+}
+
+// ---- Shifting, by subtype ----
+
+const SHIFTING_COUNTER = "race_shifting";
+const SHIFT_ROUNDS = 10;
+
+// The subtype a shifter's sheet holds ("Beasthide (shifted: ...)"), or null.
+export function shiftFormOf(sheet: CharacterSheet): (typeof SHIFT_FORMS)[number] | null {
+  return SHIFT_FORMS.find((form) => holdsFeature(sheet, form.subtype)) ?? null;
+}
+
+// "Shifting (a bonus action for 1 minute of temporary hit points twice your
+// proficiency bonus, as many times a long rest as your proficiency bonus)",
+// in the form the subtype gives.
+function shifting(campaign: Campaign, sheet: CharacterSheet, form: (typeof SHIFT_FORMS)[number]): ToolResult {
+  const state = sheet.resources[SHIFTING_COUNTER];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Shifting left until a long rest. Nothing was spent.`, refused: "rules" };
+  }
+  if (sheet.conditions.some((entry) => isConditionNamed(entry, SHIFTED))) {
+    return { error: `${sheet.name} is already shifted; the form lasts its minute. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const price = priceTheAction(sheet, encounter, "Shifting", "bonus");
+  if ("error" in price) {
+    return toolError(price);
+  }
+  price.commit();
+  const twice = 2 * computeSheetDerived(sheet).proficiencyBonus;
+  const extra = "extraTempHp" in form ? form.extraTempHp : null;
+  const tempHp = extra ? Math.max(twice, rollOwnDice(campaign, sheet, `${sheet.name}: Shifting (${form.subtype}) temporary hit points`, `${twice}+${extra}`).total) : twice;
+  const updated = patchSheet(sheet.id, {
+    resources: { ...sheet.resources, [SHIFTING_COUNTER]: { max: state.max, used: state.used + 1 } },
+    ...(tempHp > sheet.tempHp ? { tempHp } : {}),
+  });
+  setOwn(campaign, updated ?? sheet, [[form.condition, { rounds: SHIFT_ROUNDS, source: sheet.id }]]);
+  return {
+    ok: true,
+    resource: "Shifting",
+    cost: "their bonus action",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a long rest",
+    applied: [`${sheet.name} shifts (${form.subtype}) for a minute${tempHp > sheet.tempHp ? `, with ${tempHp} temporary hit points` : `, keeping their ${sheet.tempHp} temporary hit points`}.`],
+  };
+}
+
+// ---- Tainted Blood ----
+
+const TAINTED_BLOOD = "race_tainted_blood";
+const TAINTED_FEET = 5;
+const TAINTED_ANSWER = "tainted blood";
+
+function taintedBlood(campaign: Campaign, turnId: string, sheet: CharacterSheet): ToolResult {
+  const state = sheet.resources[TAINTED_BLOOD];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Tainted Blood left until a short or long rest. Nothing was spent.`, refused: "rules" };
+  }
+  // The wound it answers: piercing or slashing damage just taken, not yet answered by it.
+  const cut = (record: LastHit) => !record.answered.includes(TAINTED_ANSWER) && /\b(piercing|slashing)\b/i.test(record.type ?? "");
+  const wound = freshLastHit(campaign.id, sheet.id, cut);
+  if (!wound) {
+    return { error: `Tainted Blood answers piercing or slashing damage ${sheet.name} has just taken, and none has landed. Nothing was spent.`, refused: "rules" };
+  }
+  if (!canReactNow(campaign.id, sheet)) {
+    return { error: `${sheet.name} has no reaction to spend on Tainted Blood now. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const turn = getDmTurn(turnId);
+  patchSheet(sheet.id, { resources: { ...sheet.resources, [TAINTED_BLOOD]: { max: state.max, used: state.used + 1 } } });
+  if (encounter) {
+    markReactionUsed(encounter, sheet.id);
+  }
+  writeLastHit(campaign.id, { ...wound, answered: [...wound.answered, TAINTED_ANSWER] });
+  const amount = Math.max(1, sheet.level);
+  const near = (ref: string) => {
+    if (!encounter) return false;
+    const apart = tilesBetween(encounter.id, sheet.id, ref);
+    return apart !== null && apart * 5 <= TAINTED_FEET;
+  };
+  const struck: string[] = [];
+  const self = getSheetById(sheet.id) ?? sheet;
+  applyPcDamage(campaign, turnId, self, { amount, type: "necrotic", reason: "Tainted Blood" });
+  struck.push(sheet.name);
+  const sheets = listSheets(campaign.id).map((stale) => getSheetById(stale.id) ?? stale);
+  for (const other of sheets) {
+    if (other.id !== sheet.id && !other.deathSaves?.dead && near(other.id)) {
+      applyPcDamage(campaign, turnId, other, { amount, type: "necrotic", reason: `${sheet.name}'s Tainted Blood` });
+      struck.push(other.name);
+    }
+  }
+  if (encounter && turn) {
+    const sheetsById = new Map(sheets.map((entry) => [entry.id, entry]));
+    for (const enemy of listEnemies(encounter.id)) {
+      if (enemy.status === "alive" && near(enemy.id)) {
+        applyEnemyDamage(campaign, turn, encounter, enemy, amount, sheets, sheetsById, "necrotic");
+        struck.push(enemy.displayName);
+      }
+    }
+    publishEncounter(campaign.id);
+  }
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    resource: "Tainted Blood",
+    cost: "their reaction",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a short or long rest",
+    applied: [`${sheet.name}'s blood sprays from the wound: ${amount} necrotic damage to ${struck.join(", ")}.`],
+  };
+}
+
+// ---- Rabbit Hop ----
+
+const RABBIT_HOP = "race_rabbit_hop";
+
+function rabbitHop(campaign: Campaign, sheet: CharacterSheet, args: SpeciesSpendArgs): ToolResult {
+  const state = sheet.resources[RABBIT_HOP];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Rabbit Hop left until a long rest. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, sheet.id) : null;
+  if (conditionSpeed(sheet.conditions, speedFor(sheet)) <= 0) {
+    return { error: `${sheet.name}'s speed is 0, and Rabbit Hop needs a speed above 0. Nothing was spent.`, refused: "rules" };
+  }
+  const feet = 5 * computeSheetDerived(sheet).proficiencyBonus;
+  if (!encounter || !map || !token || args.x === undefined || args.y === undefined) {
+    const price = priceTheAction(sheet, encounter, "Rabbit Hop", "bonus");
+    if ("error" in price) {
+      return toolError(price);
+    }
+    price.commit();
+    patchSheet(sheet.id, { resources: { ...sheet.resources, [RABBIT_HOP]: { max: state.max, used: state.used + 1 } } });
+    creditFeatureTeleport(sheet.id, "Rabbit Hop", feet);
+    publishSheet(campaign, sheet.id);
+    return {
+      ok: true,
+      resource: "Rabbit Hop",
+      cost: "their bonus action",
+      left: `${state.max - state.used - 1}/${state.max}`,
+      refills: "on a long rest",
+      applied: [
+        token
+          ? `${sheet.name} leaps up to ${feet} feet, drawing no opportunity attacks: move their token with move_token, teleport true, spell "Rabbit Hop" and casterCharacterId ${sheet.id} (or spend it with x and y next time).`
+          : `${sheet.name} leaps up to ${feet} feet; with no battle map, narrate where they land.`,
+      ],
+    };
+  }
+  const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
+  // A straight leap of `feet`, over the squares under it, as a jump goes
+  // (src/lib/srd/jump.ts), with none of the turn's movement spent.
+  const plan = planLongJump({
+    terrain: map.terrain,
+    width: map.width,
+    height: map.height,
+    occupied: occupiedTiles(map, listTokens(map.id), token, footprintLookup(enemiesById)),
+    from: token,
+    to: { x: args.x, y: args.y },
+    strength: 0,
+    extraFeet: feet,
+    runningStart: true,
+    budgetTiles: Number.MAX_SAFE_INTEGER,
+    name: sheet.name,
+  });
+  if (!plan.ok) {
+    return { error: `Rabbit Hop leaps up to ${feet} feet in a straight line: ${plan.error} Nothing was spent.`, retry: true };
+  }
+  const price = priceTheAction(sheet, encounter, "Rabbit Hop", "bonus");
+  if ("error" in price) {
+    return toolError(price);
+  }
+  price.commit();
+  patchSheet(sheet.id, { resources: { ...sheet.resources, [RABBIT_HOP]: { max: state.max, used: state.used + 1 } } });
+  // The leap draws no opportunity attack, and is not the turn's movement.
+  moveToken(token.id, args.x, args.y, token.movedThisRound);
+  releaseGrapplesOutOfReach(campaign);
+  publishBattleMapUpdate(campaign.id);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    resource: "Rabbit Hop",
+    cost: "their bonus action",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a long rest",
+    applied: [`${sheet.name} leaps ${plan.feet} feet to (${args.x},${args.y}), drawing no opportunity attacks.`],
+  };
 }

@@ -61,7 +61,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      The background reader names a tool by the SRD's name for it
 //      ("Herbalist kit" is the herbalism kit, "Cartographers' tools" the
 //      cartographer's tools): a Desert Runner was proficient in no tool the
-//      table knows.
+//      table knows. The bundled satyr, centaur, hobgoblin and rabbitfolk
+//      carry the trait lines their moments are played by (Mirthful Leaps,
+//      Charge, Saving Face, Lucky Footwork), the shifter its subtype pick, and
+//      a pack option's reaction burst (Tainted Blood) reads as a line.
 export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

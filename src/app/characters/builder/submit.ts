@@ -212,7 +212,7 @@ export function ancestryBlocks(
     owed.push(block("racialTraining", `Pick the ${race.trainingChoice.count} skills or tools your ${race.name} trained in.`));
   }
   if (race.expertiseChoice && !state.racialExpertise) {
-    owed.push(block("racialExpertise", `Pick the skill your ${race.name} doubles its proficiency in (expertise).`));
+    owed.push(block("racialExpertise", `Pick the skill or tool your ${race.name} doubles its proficiency in (expertise).`));
   }
   if (race.weaponChoice && (state.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count) {
     owed.push(block("racialWeapons", `Pick the ${race.weaponChoice.count === 1 ? "weapon" : `${race.weaponChoice.count} weapons`} your ${race.name} trained with (weapon proficiency).`));
@@ -737,8 +737,8 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
       ...picks.expertisePicks.filter((skill) =>
         expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
       ),
-      // The race's own expertise (Adaptable Acumen), on a skill held.
-      ...(race.expertiseChoice && picks.racialExpertise && skills.includes(picks.racialExpertise) ? [picks.racialExpertise] : []),
+      // The race's own expertise (Adaptable Acumen), on a skill or a tool held.
+      ...(race.expertiseChoice && picks.racialExpertise && (skills.includes(picks.racialExpertise) || (preview.proficiencies.tools ?? []).includes(picks.racialExpertise)) ? [picks.racialExpertise] : []),
     ],
     languages: [
       ...new Set([

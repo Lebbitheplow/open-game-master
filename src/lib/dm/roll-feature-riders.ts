@@ -146,7 +146,7 @@ export function rollFeatureRiders(
   const traitSaves =
     sheet && derivationKind === "saving_throw"
       ? [
-          ...traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType }),
+          ...traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType, school: args.school }),
           // The horror classes' saves keyed to who forces them (genre-a-horror-holds.ts).
           ...horrorSourcedSaves(sheet, { against: named(args.against), magical: args.magical, casterType: args.casterType, sourceType: args.sourceType }),
         ]

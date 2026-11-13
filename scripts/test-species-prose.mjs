@@ -27,6 +27,7 @@ const { traitSaveAdvantages, featureConditionImmunities } = await import("../src
 const { racialNaturalWeapon } = await import("../src/lib/srd/racial-weapons.ts");
 const { swimsFrom } = await import("../src/lib/battlemap/types.ts");
 const { hpBonusPerLevel } = await import("../src/lib/srd/race-id.ts");
+const { toolProficiencyBonus } = await import("../src/lib/dm/roll-riders.ts");
 
 const { races } = JSON.parse(readFileSync(new URL("./fixtures/pack-species-rows.json", import.meta.url), "utf8"));
 const options = packRaceOptions(races);
@@ -271,7 +272,7 @@ test("the one pick a pack species' trait asks for is asked, and the option picke
   assert.ok(packRaceOptions(races, ["shade"]).some((option) => option.id === "shade"));
 });
 
-test("a gearforged on a human chassis names two skills or tools in any mix and doubles one skill, and the sheet holds them", () => {
+test("a gearforged on a human chassis names two skills or tools in any mix and doubles one of them, skill or tool, and the sheet holds them", () => {
   const race = options.find((option) => option.id === "human-chassis");
   assert.deepEqual([race.trainingChoice, race.expertiseChoice], [{ count: 2 }, 1]);
   const unpicked = wizardOf(race);
@@ -286,6 +287,16 @@ test("a gearforged on a human chassis names two skills or tools in any mix and d
   // Expertise only in a skill held: History is the fighter's, Religion nobody's.
   const stray = legal(race, { sheet: { ...built.sheet, proficiencies: { ...built.sheet.proficiencies, expertise: ["religion"] } } });
   assert.ok(stray.problems.some((line) => /religion/.test(line)), stray.problems.join(" | "));
+  // "Choose one of those skills or tools": the tool doubles on its checks.
+  const tooled = wizardOf(race, { racialTraining: ["arcana", "thieves' tools"], racialExpertise: "thieves' tools" });
+  assert.equal(tooled.blocker, null, tooled.blocker?.message);
+  const toolVerdict = legal(race, tooled);
+  assert.deepEqual(toolVerdict.problems, []);
+  assert.ok(toolVerdict.sheet.proficiencies.expertise.includes("thieves' tools"), toolVerdict.sheet.proficiencies.expertise.join(" | "));
+  assert.equal(toolProficiencyBonus(toolVerdict.sheet, "thieves' tools", 2)?.bonus, 4);
+  // A tool the character does not hold is no expertise.
+  const loose = legal(race, { sheet: { ...tooled.sheet, proficiencies: { ...tooled.sheet.proficiencies, expertise: ["smith's tools"] } } });
+  assert.ok(loose.problems.some((line) => /smith's tools/.test(line)), loose.problems.join(" | "));
 });
 
 console.log(`test-species-prose: ${passed} passed`);

@@ -89,6 +89,8 @@ function picksFor(row) {
   if (row.asiChoice) picks.racialAsi = ["int", "wis", "dex"].filter((ability) => !row.asi?.[ability]).slice(0, row.asiChoice.count);
   if (row.cantripChoice) picks.racialCantrips = ["Fire Bolt"].slice(0, row.cantripChoice.count);
   if (row.ancestryChoice) picks.racialAncestry = "red";
+  // A pick among packages (a shifter's subtype): the first.
+  if (row.variants) picks.racialVariant = row.variants.options[0].id;
   return Object.keys(picks).length ? picks : null;
 }
 

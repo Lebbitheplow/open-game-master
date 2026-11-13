@@ -209,8 +209,9 @@
    },
    {
     "c": "adv. vs illusions",
-    "is": "left",
-    "why": "The GM's: a save carries no word for an illusion (src/lib/dm/roll-about.ts SAVE_AGAINST holds conditions, damage types, disease), so the GM grants this advantage on the roll by hand."
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts heldSaveTraits (Duergar Resilience keyed to the illusion school), the school named by the engines that know the spell (src/lib/dm/cast-at-player.ts, aoe-characters.ts through roll-about.ts saveAgainst)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.duergar.illusions"
    },
    {
     "c": "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
@@ -2582,7 +2583,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "2ed645bdb45f",
+  "sha": "2e51dff75bc6",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2637,6 +2638,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.choices"
+   },
+   {
+    "c": "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
+    "is": "held",
+    "by": "src/lib/dm/lineage-after-roll.ts lineageChoicesFor (offered on the after-the-roll card, after-roll.ts allyChoicesFor) and spendLineageAfterRoll, its use src/lib/srd/authored-resources.json race_saving_face",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.hobgoblin.saving-face"
    }
   ]
  },
@@ -2644,7 +2651,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "7494b92acb5b",
+  "sha": "526990d2ff44",
   "clauses": [
    {
     "c": "\"speed\":35",
@@ -2705,6 +2712,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
+   },
+   {
+    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "is": "held",
+    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
    }
   ]
  },
@@ -2818,7 +2831,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "b1815ab05df7",
+  "sha": "739cd5f5dfd8",
   "clauses": [
    {
     "c": "\"speed\":40",
@@ -2867,6 +2880,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
+   },
+   {
+    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "is": "held",
+    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
    }
   ]
  },
@@ -2874,7 +2893,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "b07a8c9b724c",
+  "sha": "866cb3231073",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2909,7 +2928,7 @@
    {
     "c": "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)",
     "is": "held",
-    "by": "src/lib/srd/authored-resources.json race_rabbit_hop (proficiency-bonus uses, long rest), spent by use_resource",
+    "by": "src/lib/srd/authored-resources.json race_rabbit_hop (proficiency-bonus uses, long rest), spent by use_resource through src/lib/dm/mt-species-spends.ts rabbitHop (the leap to the square named, 5 feet times the proficiency bonus, no opportunity attack)",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rabbitfolk.rabbit-hop"
    },
    {
@@ -2923,6 +2942,12 @@
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
+    "is": "held",
+    "by": "src/lib/dm/lineage-after-roll.ts lineageChoicesFor (offered on the after-the-roll card of a Dexterity save, after-roll.ts allyChoicesFor) and spendLineageAfterRoll (the reaction and the d4)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.rabbitfolk.lucky-footwork"
    }
   ]
  },
@@ -2930,7 +2955,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "86de397afaa6",
+  "sha": "6369e86714d6",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2979,6 +3004,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)\"]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for, its lines written on the sheet by variantFeatureNames); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.shifter.subtypes"
    }
   ]
  }

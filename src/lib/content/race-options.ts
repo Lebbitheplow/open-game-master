@@ -243,6 +243,8 @@ function withSrd(parsed: RaceMechanics, srd: SrdRace): RaceMechanics {
     ...((srd.size ?? parsed.size) ? { size: (srd.size as RaceMechanics["size"]) ?? parsed.size } : {}),
     // Every bundled dwarf carries the Dwarf's own Speed trait.
     ...(parsed.heavyArmorSpeed || isDwarf(srd.id) ? { heavyArmorSpeed: true } : {}),
+    // A bundled pick among packages (a shifter's subtype).
+    ...(srd.variants ? { variants: srd.variants } : {}),
   };
   for (const key of GRANT_KEYS) {
     if (srd[key] !== undefined) {

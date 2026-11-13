@@ -94,7 +94,9 @@ function paragraphs(text: string): Paragraph[] {
 }
 
 // The lines one option of a choice states, read as the trait's own are: a
-// natural weapon, a resistance, a bonus to Armor Class.
+// natural weapon, a resistance, a bonus to Armor Class, a burst of damage
+// around the holder as a reaction to a wound (Tainted Blood: its use and its
+// effect are src/lib/dm/mt-species-spends.ts, its counter race_tainted_blood).
 function optionLines(name: string, text: string): string[] {
   const out: string[] = [];
   const weapon = /\byour (\w+) (?:is|are) (?:a )?natural (?:melee )?weapons?\b/i.exec(text) ?? /\bthis (\w+) is a natural (?:melee )?weapon\b/i.exec(text);
@@ -110,6 +112,10 @@ function optionLines(name: string, text: string): string[] {
   const ac = /\ba \+(\d) bonus to your armor class\b/i.exec(text);
   if (ac) {
     out.push(`${name} (+${ac[1]} AC)`);
+  }
+  const burst = /\bwhen you take (\w+) or (\w+) damage, you can use your reaction\b[^.]*\.\s*you and each creature within (\d+) feet of you take (\w+) damage equal to your level\b.*?\buntil you finish a (short|long)\b/i.exec(text);
+  if (burst && DAMAGE_TYPES.includes(burst[4].toLowerCase())) {
+    out.push(`${name} (reaction, 1/${burst[5].toLowerCase()} rest: level in ${burst[4].toLowerCase()} to all within ${burst[3]} ft)`);
   }
   return out;
 }

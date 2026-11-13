@@ -2574,6 +2574,42 @@
    "action": "bonus"
   },
   {
+   "id": "race_saving_face",
+   "displayName": "Saving Face",
+   "match": [
+    "saving face"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "guidance": "Saving Face: after a missed attack or a failed check or save, +1 to the roll for each ally the hobgoblin sees within 30 feet (up to +5), chosen on the card the roll waits on. Once a short rest.",
+   "passive": true
+  },
+  {
+   "id": "race_tainted_blood",
+   "displayName": "Tainted Blood",
+   "match": [
+    "tainted blood"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "A reaction to piercing or slashing damage just taken: the derro's blood sprays, and the derro and each creature within 5 feet take necrotic damage equal to the derro's level. Once a short rest. The server deals the damage."
+  },
+  {
+   "id": "race_inspired_ingenuity",
+   "displayName": "Inspired Ingenuity",
+   "match": [
+    "inspired ingenuity"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "guidance": "Inspired Ingenuity: a check's d20 of 9 or lower counts as a 10 for the reaction, chosen on the card the check waits on. Once a short rest.",
+   "passive": true
+  },
+  {
    "id": "race_rabbit_hop",
    "displayName": "Rabbit Hop",
    "match": [
@@ -2584,7 +2620,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action: the rabbitfolk leaps up to 5 feet times their proficiency bonus without provoking opportunity attacks, if their speed is above 0. Uses equal to the proficiency bonus, back on a long rest."
+   "guidance": "A bonus action: the rabbitfolk leaps to the square named (x and y), up to 5 feet times their proficiency bonus in a straight line, drawing no opportunity attacks and spending none of the turn's movement, if their speed is above 0. Uses equal to the proficiency bonus, back on a long rest. The server moves the token."
   },
   {
    "id": "race_shifting",

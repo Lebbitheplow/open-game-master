@@ -315,7 +315,11 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
   const heldExpertise = new Set((held?.expertise ?? []).map(lower));
   const expertise = uniqueNames([...(held?.expertise ?? []), ...(sent.expertise ?? [])].map(lower));
   const classIds = input.classes.map((entry) => entry.id);
-  const unproficient = expertise.filter((skill) => !expertiseAllowed(skill, [...skills, ...(input.grantedSkills ?? []).map(lower)], classIds));
+  // A race's expertise may double a tool held (Adaptable Acumen: "one of
+  // those skills or tools"), as a rogue's may double thieves' tools.
+  const racialToolExpertise = race.expertiseChoice ? lower(input.racialExpertise ?? "") : "";
+  const toolHeld = (pick: string) => pick === racialToolExpertise && tools.some((tool) => lower(tool) === pick);
+  const unproficient = expertise.filter((skill) => !expertiseAllowed(skill, [...skills, ...(input.grantedSkills ?? []).map(lower)], classIds) && !toolHeld(skill));
   if (unproficient.length) {
     problems.push(
       `Expertise doubles a proficiency the character has; ${unproficient.join(", ")} ${unproficient.length === 1 ? "is" : "are"} not among their skills.`,
@@ -330,7 +334,7 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
   if (expertisePicks.length > Math.max(0, expertiseSlots - heldExpertise.size)) {
     problems.push(
       expertiseSlots
-        ? `This character has earned expertise in ${plural(expertiseSlots, "skill")}, not ${expertise.length}.`
+        ? `This character has earned expertise in ${plural(expertiseSlots, "skill")}${race.expertiseChoice ? " or tool" : ""}, not ${expertise.length}.`
         : `Expertise is a rogue's feature (1st and 6th level) and a bard's (3rd and 10th); this character has none to pick.`,
     );
   }

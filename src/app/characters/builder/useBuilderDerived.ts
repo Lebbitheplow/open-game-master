@@ -618,8 +618,9 @@ export function useBuilderDerived({
     // of them (SRD 5.1, Bard and Rogue: "choose two of your skill
     // proficiencies"), a Lore bard's subclass skills and a feat's among them,
     // as the level-up already allows.
-    // And the race's own (a human chassis's Adaptable Acumen), on a skill held.
-    const racial = race?.expertiseChoice && racialExpertise && trained.skills.includes(racialExpertise) ? [racialExpertise] : [];
+    // And the race's own (a human chassis's Adaptable Acumen), on a skill or
+    // a tool held.
+    const racial = race?.expertiseChoice && racialExpertise && (trained.skills.includes(racialExpertise) || trained.tools.includes(racialExpertise)) ? [racialExpertise] : [];
     const own = [...expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id))), ...racial];
     return { ...trained, expertise: [...new Set([...own, ...(trained.expertise ?? [])])] };
   }, [proficientSkills, klass, classList, grants, classLanguages, race, racialWeapons, racialExpertise, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);

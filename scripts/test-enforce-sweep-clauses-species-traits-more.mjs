@@ -286,19 +286,25 @@ for (const row of RACES) {
     });
   }
   // A use counted in proficiency bonuses, back on a long rest; Shifting also
-  // lays its form and twice the proficiency bonus in temporary hit points.
+  // lays its form and twice the proficiency bonus in temporary hit points,
+  // and Rabbit Hop leaps the rabbitfolk 5 feet times the proficiency bonus
+  // (15 at 5th level) in a straight line, no farther, drawing no opportunity
+  // attack and spending none of the turn's movement.
   for (const [trait, id, name, resource] of [["rabbit hop", "rabbit-hop", "Rabbit Hop", "race_rabbit_hop"], ["shifting (", "shifting", "Shifting", "race_shifting"]]) {
     if (!holds(row, trait)) continue;
     probe(id, async () => {
       const t = await rig.table();
       const who = t.hero(of());
       await t.fight([who]);
-      const out = await t.use(who, name);
+      const hops = resource === "race_rabbit_hop";
+      const far = hops ? await t.use(who, name, { x: 5, y: 9 }) : null;
+      const out = await t.use(who, name, hops ? { x: 5, y: 8 } : {});
       const seen = [out.ok, t.max(who, resource), t.used(who, resource), t.budget()?.bonusUsed];
-      const form = resource === "race_shifting" ? [t.has(who, "shifted"), t.sheet(who).tempHp] : [];
+      const token = t.kit.token(who.id);
+      const form = resource === "race_shifting" ? [t.has(who, "shifted"), t.sheet(who).tempHp] : [Boolean(far?.error), token.x, token.y, token.movedThisRound];
       await t.kit.endFight();
       await t.rest("long");
-      same([seen, form, t.used(who, resource)], [[true, 3, 1, true], resource === "race_shifting" ? [true, 6] : [], 0], `${row.name}: one use of three at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 6 temporary hit points, " : ""}and every use back after a long rest (${out.error ?? ""})`);
+      same([seen, form, t.used(who, resource)], [[true, 3, 1, true], resource === "race_shifting" ? [true, 6] : [true, 5, 8, 0], 0], `${row.name}: one use of three at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 6 temporary hit points, " : "a 20-foot hop refused and a 15-foot one landed, "}and every use back after a long rest (${out.error ?? ""})`);
     });
   }
   if (holds(row, "expert forgery")) {

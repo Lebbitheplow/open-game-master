@@ -1212,7 +1212,8 @@
       },
       "traits": [
         "Darkvision 60 ft",
-        "Martial Training (light armor and two martial weapons of your choice)"
+        "Martial Training (light armor and two martial weapons of your choice)",
+        "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)"
       ],
       "languages": [
         "Common",
@@ -1262,7 +1263,8 @@
       "traits": [
         "Ram (1d4 bludgeoning unarmed strike)",
         "Magic Resistance (adv. on saves against spells and other magic)",
-        "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)"
+        "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
+        "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)"
       ],
       "languages": [
         "Common",
@@ -1359,6 +1361,7 @@
       },
       "traits": [
         "Hooves (1d4 bludgeoning unarmed strike)",
+        "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
         "Equine Build (count as one size larger for carrying)",
         "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)"
       ],
@@ -1388,7 +1391,8 @@
       "traits": [
         "Hare-Trigger (add your proficiency bonus to initiative)",
         "Perception proficiency (Leporine Senses)",
-        "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)"
+        "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)",
+        "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)"
       ],
       "languages": [
         "Common",
@@ -1423,6 +1427,40 @@
           "athletics",
           "intimidation",
           "survival"
+        ]
+      },
+      "variants": {
+        "label": "Shifter subtype",
+        "options": [
+          {
+            "id": "beasthide",
+            "name": "Beasthide",
+            "lines": [
+              "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)"
+            ]
+          },
+          {
+            "id": "longtooth",
+            "name": "Longtooth",
+            "lines": [
+              "Longtooth (shifted: a Fangs attack as a bonus action)",
+              "Fangs (while shifted, 1d6 piercing unarmed strike)"
+            ]
+          },
+          {
+            "id": "swiftstride",
+            "name": "Swiftstride",
+            "lines": [
+              "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)"
+            ]
+          },
+          {
+            "id": "wildhunt",
+            "name": "Wildhunt",
+            "lines": [
+              "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)"
+            ]
+          }
         ]
       }
     }

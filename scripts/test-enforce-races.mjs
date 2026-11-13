@@ -94,6 +94,8 @@ function buildRace(raceId, fields = {}) {
     // A dragonborn chooses an ancestry; a race that repeats one of the
     // soldier's skills chooses another in its place.
     racialAncestry: raceId === "dragonborn" ? "red" : "",
+    // A race offering a pick among packages (a shifter's subtype) takes its first.
+    racialVariant: race.variants?.options[0]?.id ?? "",
     repeatSkills: (race.skills ?? []).filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
     // The variant human's feat, a racial choice like the rest (issue #124).
     feats: raceId === "variant_human" ? ["Alert"] : [],
@@ -188,11 +190,14 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
     for (const armor of rule?.armor ?? race.armor ?? []) {
       assert.ok(sheet.proficiencies.armor.includes(armor), `${race.id} lacks ${armor} armor`);
     }
-    // The race's traits, and a dragonborn's chosen ancestry beside them.
+    // The race's traits, a dragonborn's chosen ancestry beside them, and the
+    // lines of a pick among packages (a shifter's first subtype, buildRace).
     const traits = sheet.features
       .filter((feature) => feature.source === "race" && !/^draconic ancestry:/i.test(feature.name))
       .map((feature) => feature.name);
-    assert.deepEqual(traits, race.traits, `${race.id} traits`);
+    const option = race.variants?.options[0];
+    const picked = option ? [`${race.variants.label} (${option.name})`, ...(option.lines ?? [])] : [];
+    assert.deepEqual(traits, [...race.traits, ...picked], `${race.id} traits`);
     assert.equal(
       sheet.features.some((feature) => /^draconic ancestry: red/i.test(feature.name)),
       race.id === "dragonborn",
@@ -388,6 +393,9 @@ await test("the builder offers the lineages players look for, with no content pa
     const built = buildRace(id);
     assert.equal(built.blocker, null, `${id}: ${built.blocker?.message}`);
   }
+  // A shifter is asked for its subtype (the stored sheet above carries the
+  // lines of the one picked).
+  assert.match(buildRace("shifter", { racialVariant: "" }).blocker?.message ?? "", /shifter subtype/i);
 });
 
 await test("with the content pack, the SRD's races come through its rows unchanged", () => {

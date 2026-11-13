@@ -141,6 +141,8 @@ export function srdRaceOptions(): RaceOption[] {
     weaponChoice: race.weaponChoice,
     trainingChoice: race.trainingChoice,
     expertiseChoice: race.expertiseChoice,
+    // A pick among packages (a shifter's subtype).
+    ...(race.variants ? { variants: race.variants } : {}),
     note: race.traits.join(" · "),
   }));
 }

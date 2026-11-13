@@ -22,6 +22,8 @@ import type { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { defenseRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { spellSchoolFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
 
 export function aoeOnCharacters(input: {
@@ -75,6 +77,8 @@ export function aoeOnCharacters(input: {
         damageType: input.type,
         magical: Boolean(input.spell),
         spellBy: input.spell && enemyUse ? enemyUse.enemy.stats.type : undefined,
+        // The spell's school (a duergar's resilience against illusions).
+        school: input.spell ? spellSchoolFor(input.spell, spellAuthorsFor(campaign)) : null,
       }),
       enemyUse?.enemy ?? null,
       null,

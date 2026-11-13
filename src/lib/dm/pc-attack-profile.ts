@@ -38,6 +38,7 @@ import { longLimbedFeet } from "@/lib/srd/mt-species-traits";
 import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
 import { beastFormRefusal } from "@/lib/dm/mt-fb-beast";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -122,6 +123,12 @@ export function buildAttackProfile(
   const shapedAttacks = shapeAttacks(sheet.wildShape);
   // A lineage's bite or claws (src/lib/srd/racial-weapons.ts).
   const racial = !granted && !natural && !args.spell?.trim() && !sheet.wildShape ? racialNaturalWeapon(sheet.features, weaponName, sheet.feats) : null;
+  // A lineage weapon its trait keeps to a form ("Fangs (while shifted, 1d6
+  // piercing unarmed strike)", a longtooth shifter's) strikes only in it.
+  const formLine = racial ? sheet.features.find((feature) => feature.name.trim().toLowerCase().startsWith(`${racial.feature.toLowerCase()} (while shifted`)) : null;
+  if (formLine && !sheet.conditions.some((entry) => isConditionNamed(entry, "shifted"))) {
+    return { error: `${sheet.name}'s ${racial!.feature.toLowerCase()} strike only while shifted, and they are not: use_resource Shifting first. Nothing was rolled.`, refused: "rules" };
+  }
   if (granted) {
     const grantedMeta = (sheet.conditionMeta as ConditionMetaMap)[granted.condition];
     // The spell the attack comes from: the one the casting recorded on the
