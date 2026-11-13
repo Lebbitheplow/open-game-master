@@ -72,5 +72,38 @@ await test("A05 Every subclass pick-list's option with a level prerequisite is c
   assert.deepEqual(problems, []);
 });
 
+const { openOptionSlots } = await import("../src/lib/srd/options.ts");
+const { classFeaturesFor } = await import("../src/lib/srd/features.ts");
+
+await test(
+  "A06 A Way of the Four Elements monk learns Elemental Attunement and one other discipline: the builder, the owed picks and the save all keep a slot for it, and the fill takes it.",
+  async () => {
+    const problems = [];
+    const at3 = (picks) =>
+      openOptionSlots({
+        classId: "monk",
+        subclass: "Way of the Four Elements",
+        level: 3,
+        features: [...classFeaturesFor("monk", "Way of the Four Elements", 3), ...picks.map((name) => ({ name: optionFeatureName("discipline", name), source: "choice" }))],
+      }).find((slot) => slot.kind === "discipline");
+    const last = at3(["Fangs of the Fire Snake"]);
+    if (last.options.map((option) => option.n).join() !== "Elemental Attunement") {
+      problems.push(`with one other discipline chosen, the last pick offers ${last.options.length} options`);
+    }
+    if (at3([]).options.length < 2) problems.push("the first pick offers only Elemental Attunement");
+    // The fill takes it.
+    const { fields } = await sweep.library.fill(sweep.library.fresh({ level: 3, classId: "monk", subclass: "Way of the Four Elements" }));
+    if (!fields.optionPicks.includes(optionFeatureName("discipline", "Elemental Attunement"))) problems.push(`the fill took ${fields.optionPicks.join(", ")}`);
+    // The save refuses two others.
+    const optionPicks = fields.optionPicks
+      .filter((name) => !name.startsWith(optionFeatureName("discipline", "")))
+      .concat([optionFeatureName("discipline", "Fangs of the Fire Snake"), optionFeatureName("discipline", "Water Whip")]);
+    const stored = await door.library(sweep.library.derive({ ...fields, optionPicks }));
+    if (stored.ok) problems.push("two disciplines without Elemental Attunement were stored");
+    else if (!/Elemental Attunement/.test(stored.error ?? "")) problems.push(`refused for another reason: ${stored.error}`);
+    assert.deepEqual(problems, []);
+  },
+);
+
 sweep.close();
 finish();

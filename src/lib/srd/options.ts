@@ -80,6 +80,10 @@ type KindMeta = {
   // Other feature names the engines read this kind's picks from ("Favored
   // Enemy Improvement: orcs", check-traits.ts), counted toward its slots.
   families?: string[];
+  // The option the picks must hold (Disciple of the Elements: "you learn
+  // the Elemental Attunement discipline and one other"): a slot's last pick
+  // offers only it until it is chosen.
+  required?: string;
 };
 
 const KINDS = (optionsJson as { kinds: Record<OptionKind, KindMeta> }).kinds;
@@ -497,16 +501,32 @@ export function openOptionSlots(input: {
       continue;
     }
     const chosen = chosenOptions(input.features, kind);
+    const remaining = Math.max(0, total - usedOf(chosen, kind));
+    const offered = optionsFor(kind, input.spellbook);
+    const required = KINDS[kind].required;
+    // The last pick left goes to the option the kind requires, when it is
+    // not held yet (a Four Elements monk's Elemental Attunement).
+    const mustTake = required && remaining > 0 && remaining <= 1 && !chosen.some((name) => textKey(name) === textKey(required));
     slots.push({
       kind,
       label: KINDS[kind].label,
       total,
       chosen,
-      remaining: Math.max(0, total - usedOf(chosen, kind)),
-      options: optionsFor(kind, input.spellbook),
+      remaining,
+      options: mustTake ? offered.filter((option) => textKey(option.n) === textKey(required)) : offered,
     });
   }
   return slots;
+}
+
+// Why a slot's picks are not legal: they fill it without the option the
+// kind requires (two disciplines, neither Elemental Attunement), or null.
+export function requiredPickProblem(slot: Pick<OptionSlot, "kind" | "label" | "chosen" | "remaining" | "total">): string | null {
+  const required = KINDS[slot.kind]?.required;
+  if (!required || slot.total <= 0 || slot.remaining > 0 || slot.chosen.some((name) => textKey(name) === textKey(required))) {
+    return null;
+  }
+  return `${slot.label}: ${required} is one of the picks, learned with the first; choose it in place of another.`;
 }
 
 // Whether a pick of this option may be made from this spellbook: a spell

@@ -68,7 +68,7 @@ import { judgeStartingGear, wealthCeilingGold } from "@/lib/srd/starting-wealth"
 import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
+import { findOptionByFeatureName, openOptionSlots, optionReqProblem, pickInSpellbook, requiredPickProblem } from "@/lib/srd/options";
 import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickProblems, withHeldPickIds } from "@/lib/srd/subclass-choice-picks";
 import { SUBCLASS_CHOICE_RECORD } from "@/lib/content/subclass-choices";
@@ -781,6 +781,23 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         } else {
           placedStyles.push(style);
         }
+      }
+    }
+  }
+  // A kind whose picks must hold one option (a Four Elements monk's
+  // Elemental Attunement beside the other discipline), judged when the save
+  // makes a pick of that kind.
+  if (!policy.trustsHeld) {
+    const heldPicks = new Set((held?.features ?? []).filter((feature) => feature.source === "choice").map((feature) => textKey(feature.name)));
+    const newKinds = new Set(
+      featured.features
+        .filter((feature) => feature.source === "choice" && !heldPicks.has(textKey(feature.name)))
+        .flatMap((feature) => findOptionByFeatureName(feature.name)?.k ?? []),
+    );
+    for (const entry of classes) {
+      for (const slot of openOptionSlots({ classId: entry.id, subclass: entry.subclass ?? "", level: entry.level, features: featured.features })) {
+        const missing = newKinds.has(slot.kind) ? requiredPickProblem(slot) : null;
+        if (missing) problems.push(missing);
       }
     }
   }

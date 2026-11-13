@@ -667,6 +667,8 @@ export function fillRound(ctx: FillContext): FillRound {
       favored_enemy: ["Undead", "Fiends", "Monstrosities"],
       favored_terrain: ["Forest", "Mountain", "Grassland"],
       land_circle: ["Forest"],
+      // Disciple of the Elements: Elemental Attunement and one other.
+      discipline: ["Elemental Attunement"],
     };
     for (const slot of derived.optionSlots) {
       const first = preferred[slot.kind] ?? [];
