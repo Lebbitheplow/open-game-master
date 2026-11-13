@@ -7,7 +7,7 @@ import { findPath, reachableTiles, walkPathWithBudget } from "@/lib/battlemap/mo
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import { bestFiringPosition } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
-import { chebyshev, climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
+import { climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { footprintDistance, footprintForSize, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 
@@ -270,7 +270,7 @@ export function approachTarget(
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.rangeTiles) ??
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.longRangeTiles);
     const allowed =
-      spot && (!fear || chebyshev(spot.at.x, spot.at.y, fear.x, fear.y) >= chebyshev(origin.x, origin.y, fear.x, fear.y));
+      spot && (!fear || fearDistance(spot.at, fear) >= fearDistance(origin, fear));
     const route = spot && allowed ? (findPath(map.terrain, map.width, map.height, occupied, attacker, spot.at) ?? []) : [];
     // A firing position Aggressive's speed would carry it away from a hostile to is not taken.
     const live = getEncounter(encounterId);
