@@ -31,6 +31,7 @@ import { lineageRiders } from "@/lib/srd/mt-species-traits";
 import { graveTouchedDie } from "@/lib/dm/ar-wbf-warlock-grave-logic";
 import { genreAttackBonus, genreStrikeRiders } from "@/lib/dm/genre-a-strikes";
 import { programRiders } from "@/lib/dm/genre-a-cyberpunk-programs";
+import { genreBRiders } from "@/lib/srd/genre-b-combat";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -102,6 +103,7 @@ export function attackDamageRiders(input: {
           ...lineageRiders(sheet, { surprised: input.surprised }),
           ...graveTouchedDie(sheet, profile),
           ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked, conditions: input.enemy.conditions } : undefined),
+          ...genreBRiders(sheet, profile, input.enemy),
         ]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {

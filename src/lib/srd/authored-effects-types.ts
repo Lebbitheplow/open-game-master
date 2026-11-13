@@ -127,18 +127,24 @@ export type AuthoredEffect = Base &
     // An ability modifier (never less than 0) added to checks with these
     // skills (Elegant Courtier: Wisdom on Persuasion).
     | { kind: "check_bonus"; skills: string[]; ability: Ability }
+    // Twice the proficiency bonus on checks with these skills the holder is
+    // proficient in (a mystery class's "Double proficiency bonus on Insight").
+    | { kind: "skill_expertise"; skills: string[] }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.
-    | { kind: "ignore_resist"; types: string[] }
+    // `spells`: only the damage of the holder's spells (Perfected Instability's mutations).
+    | { kind: "ignore_resist"; types: string[]; spells?: boolean }
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     // `besideDowned`: while an ally at 0 HP stands within 5 feet (Shield the Fallen).
-    | { kind: "attacked_disadv"; from: string[]; besideDowned?: boolean }
+    | { kind: "attacked_disadv"; from: string[]; besideDowned?: boolean; rangeFt?: number }
     // Attack rolls against the holder are at disadvantage while the holder
     // stands entirely in darkness (Lunar Empowerment's New Moon:
     // src/lib/dm/ar-ws-lunar-empowerment.ts darkVeil).
     | { kind: "attacked_disadv_dark" }
+    // disadvantage. `rangeFt`: every attack such a creature makes within this
+    // reach of the holder is (Dawnlight: "undead and mutants in it").
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).
@@ -235,8 +241,12 @@ export type AuthoredEffect = Base &
     | {
         kind: "mark";
         condition: string;
-        effect: "disadv_others" | "attacked_adv" | "save_disadv" | "ally_bonus_dice";
+        // `no_regain`: the creature regains no hit points while it lasts
+        // (src/lib/dm/vitals-logic.ts regainBlockedBy).
+        effect: "disadv_others" | "attacked_adv" | "save_disadv" | "ally_bonus_dice" | "no_regain";
         melee?: boolean;
+        // Only a hit with an improvised weapon (no SRD weapon by that name).
+        improvised?: boolean;
         oncePerTurn?: boolean;
         firstRoundOnly?: boolean;
         // The mark lasts until the end of the holder's next turn, not its start
@@ -270,8 +280,10 @@ export type AuthoredEffect = Base &
     // `channel`: also against the holder's Channel Divinity (Elder Champion:
     // "against your spells and Channel Divinity").
     // `damageTypes`: only against a spell that deals one of these (Corona of
-    // Light: fire or radiant).
-    | { kind: "enemy_save"; when: "hidden" | "marked" | "near"; mark?: string; rangeFt?: number; anyCaster?: boolean; damageTypes?: string[]; channel?: boolean }
+    // Light: fire or radiant). `any`: whenever the holder's own spell asks it.
+    // `types`: only creatures of these types (Mistress of the Threshold:
+    // undead; The Grid Bows: constructs).
+    | { kind: "enemy_save"; when: "hidden" | "marked" | "near" | "any"; mark?: string; rangeFt?: number; anyCaster?: boolean; damageTypes?: string[]; channel?: boolean; types?: string[] }
     // Once on each of the holder's turns, a creature their attack hits saves
     // against their spell save DC or takes `condition` until the end of the
     // holder's next turn (Form of Dread: src/lib/dm/hit-save.ts).
@@ -282,12 +294,14 @@ export type AuthoredEffect = Base &
         kind: "aura_resist";
         rangeFt: number | Array<[number, number]>;
         spells?: boolean;
-        typeFrom?: { condition: string; map: Record<string, string> };
-        // Fixed damage types (Miasma Ward's poison, Pallbearer's Procession's necrotic).
+        // Fixed damage types (Walk Through the Valley: necrotic; Miasma
+        // Ward's poison, Pallbearer's Procession's necrotic).
         types?: string[];
+        typeFrom?: { condition: string; map: Record<string, string> };
       }
     // A creature that hits the holder takes damage back.
-    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean }
+    // `attacks`: only a hit by an attack whose name holds one of these words.
+    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[] }
     // Enemies starting their turn near the holder take damage (Aura of
     // Conquest: only frightened ones).
     // `holdsSpeed`: a creature frightened of the holder has speed 0 while in
@@ -355,7 +369,8 @@ export type AuthoredEffect = Base &
     // Casting the spell gives temporary hit points, and damage never breaks
     // the concentration on it (Grasping Tentacles).
     // `school`: every spell of that school (Focused Conjuration).
-    | { kind: "concentration_guard"; spell?: string; school?: string; tempHp: Formula }
+    // `anySpell`: every spell the holder casts (The Word Made Iron's sermons).
+    | { kind: "concentration_guard"; spell?: string; school?: string; anySpell?: boolean; tempHp: Formula }
     // A single-target spell of the school and level range strikes a second
     // creature within 5 feet of the first (Improved Reaper: 1st to 5th level
     // necromancy; Reaper: a necromancy cantrip; Moon Fire: sacred flame).
@@ -496,8 +511,13 @@ export type NaturalWeapon = {
   extraAttack?: boolean;
   // Its attack and damage rolls use this ability, whatever the weapon's kind
   // (Armor Model: "you use Intelligence for the attack and damage rolls of
-  // the armor's weapon").
+  // the armor's weapon"; Chimeric Limb: "1d8 + CHA slashing").
   ability?: Ability;
+  // Its blows are magical (Perfect Chimera: "counts as magical").
+  magical?: boolean;
+  // A later feature that remakes the same weapon (Perfect Chimera's Chimeric
+  // Limb): it stands in for the earlier feature's when both are held.
+  remakes?: boolean;
 };
 
 export type AuthoredEffectKind = AuthoredEffect["kind"];
@@ -580,6 +600,9 @@ export type SpendDoes =
       // them with it (Dread Lord's gloom: a row of
       // src/lib/battlemap/zones-features.ts, gone with the condition).
       zone?: string;
+      // A genre area laid with the condition (src/lib/dm/genre-b-zones.ts):
+      // Dawnlight's light.
+      genreZone?: GenreZoneSpec;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -749,9 +772,16 @@ export type SpendDoes =
   // named in targetCharacterId is the one healed, and with none named every
   // one in reach is.
   | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string; divided?: boolean; chosen?: boolean }
+  // Conditions ended: one on a creature in reach, or `every` one on each
+  // ally in reach, with `heal` hit points and `exhaustion` levels off
+  // (src/lib/dm/genre-b-cure.ts: Break the Delusion, Revelation).
+  | { kind: "cure"; ends: string[]; rangeFt: number; every?: boolean; heal?: Formula; exhaustion?: number }
   // A creature touched rolls the die and regains one spent spell slot of
   // that level or lower (Bolstering Magic).
   | { kind: "regain_slot"; die: string }
+  // The holder regains expended slots worth this many levels, the highest
+  // first (Aether Capacitor: the Intelligence modifier).
+  | { kind: "regain_slot_levels"; levels: Formula }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   // `noHalf`: a creature that saves takes nothing (Searing Sunburst).
   // `rangeFt`: how far from the holder a creature named may stand.
@@ -769,7 +799,9 @@ export type SpendDoes =
   // SNEAK_HIT) and lands on a second creature within `rangeFt` of the one the
   // Sneak Attack struck, never that one; holding `firstToo`, the struck one
   // takes it as well (Wails from the Grave, Death's Friend).
-  | { kind: "die_damage"; dice: Formula; type: string; afterSneak?: { rangeFt: number; firstToo?: string } }
+  | { kind: "die_damage"; dice: Formula; type: string; afterSneak?: { rangeFt: number; firstToo?: string }; until?: string }
+  // `until`: a condition the creature carries until the start of its own next
+  // turn (Arc Coil: "the target cannot take reactions until its next turn").
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a
   // defensive flourish.
   | { kind: "flourish" }
@@ -930,13 +962,32 @@ export type SpendDoes =
   | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number }
   // A dark fantasy class's spend whose text no shape above holds
   // (src/lib/dm/genre-a-dark-fantasy-spends.ts).
-  | { kind: "dark_fantasy"; play: DarkFantasyPlay };
+  | { kind: "dark_fantasy"; play: DarkFantasyPlay }
+  // One of the mystery classes' own spends, by its name in
+  // src/lib/dm/genre-b-mystery-spends.ts (Guardian Shade's shade, the Quiet
+  // Court's procession, Anchor of the Living's hold).
+  // `target`: what its Hand card is aimed at (src/lib/battlemap/hand-subclass.ts).
+  | { kind: "mystery"; effect: string; target?: "enemy" | "ally" }
+  // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
+  | ({ kind: "zone" } & GenreZoneSpec)
+  // A draught the drinker heals by, curing poison once `upgrade.feature` is
+  // held (src/lib/dm/genre-b-cure.ts genreDraught: Emergency Draught).
+  | { kind: "draught"; formula: Formula; upgrade?: { feature: string; ends: string[]; condition: string; rounds: number } }
+  // One of the holder's hit dice spent to heal (Regenerative Strain).
+  | { kind: "hit_die" };
 
 export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind" | "wings_unfurled" | "wyrm_frighten" | "wyrm_ward";
 
 // A precondition of a spend that a gate's words cannot say: the light on the
 // holder's square, or a mark this turn left (src/lib/dm/mt-mr-needs.ts).
 export type SpendNeed = "shadows" | "unarmed_in_action" | "flurry_harm" | "attack_action";
+
+// An area a genre spend lays, by its row of src/lib/battlemap/zones-genre-b.ts.
+// `rangeFt`: thrown onto the creature named (or the nearest foe) within this
+// reach; without it the area stands on the holder. `dcAbility`: its save DC is
+// 8 + proficiency + this modifier. `upgrade`: the row laid instead while the
+// holder has that feature (The Last Dawn Rises' burning light).
+export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string } };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

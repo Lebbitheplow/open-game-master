@@ -34,6 +34,8 @@ import { openStoneChange } from "@/lib/dm/ar-ws-stone";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { eruptOnCast } from "@/lib/dm/ar-ws-heart-storm";
+import { genreFreeCast as genreBFreeCast } from "@/lib/dm/genre-b-free-cast";
+import { removeConditions, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -60,7 +62,6 @@ import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
@@ -113,9 +114,8 @@ import { wardOnCast } from "@/lib/dm/arcane-ward";
 import { casterCost } from "@/lib/dm/spell-self";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { revisedOnlySpell, revisedOnlySpellProblem } from "@/lib/content/edition";
-import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // Which tool the cast came through. It decides two things only: whether a
 // casting whose shares are resolved one call at a time (Eldritch Blast's
@@ -620,6 +620,9 @@ export function castSpell(
   // A genre capstone's slotless cast (genre-a-casts.ts): Singularity's mark,
   // Apocrypha's 6th level spell.
   const genreCast = input.ritual || signature || freeCast || arcanum || slowHeld || byPoints ? null : genreFreeCast(sheet, facts, input.level);
+  // A genre feature's slotless cast (Overpressure Valve, Sublimation, Reactor
+  // Heart...): its mark on the caster pays (src/lib/dm/genre-b-free-cast.ts).
+  const genreFree = input.ritual || signature || freeCast || arcanum || slowHeld || byPoints || genreCast ? null : genreBFreeCast(sheet, facts?.level, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
     !input.ritual && !signature && !freeCast && !byPoints && /^command$/i.test(engine.trim()) &&
@@ -630,7 +633,7 @@ export function castSpell(
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
-  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !byPoints && !genreCast;
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !byPoints && !genreCast && !genreFree;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const planned: SlotPlan | ToolError = input.ritual
@@ -647,6 +650,8 @@ export function castSpell(
           ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
         : genreCast
           ? { kind: "none", note: genreCast.note }
+        : genreFree
+          ? { kind: "none", note: `${name} is cast with no spell slot (${genreFree.condition}${genreFree.spent ? ", now spent" : ", for the minute"}).` }
         : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
@@ -668,7 +673,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (pointsPaid ? pointsPaid.level : grantPaid ? grant?.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (pointsPaid ? pointsPaid.level : grantPaid ? grant?.castAt ?? null : genreFree ? genreFree.level : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -745,6 +750,13 @@ export function castSpell(
   }
   if (genreCast) {
     Object.assign(patch, genreFreeCastPatch(sheet, genreCast, patch.resources ?? sheet.resources));
+  }
+  // A one-cast genre mark is spent by the cast it paid for.
+  if (genreFree?.spent) {
+    const held = patch.conditions ?? sheet.conditions;
+    const left = removeConditions(held, patch.conditionMeta ?? sheet.conditionMeta, held.filter((entry) => isConditionNamed(entry, genreFree.condition)));
+    patch.conditions = left.conditions;
+    patch.conditionMeta = left.meta;
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.

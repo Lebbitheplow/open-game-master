@@ -11,6 +11,10 @@ import { pickChaos, wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
 import { resolveCyberSpend } from "@/lib/dm/genre-a-cyberpunk-spends";
+import { regainSlotLevels } from "@/lib/srd/slot-levels";
+import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
+import { layGenreZone } from "@/lib/dm/genre-b-zones";
+import { mysterySpend } from "@/lib/dm/genre-b-mystery-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -460,6 +464,11 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       if (area) {
         lines.push(area);
       }
+      // A genre buff's area stands on its holder (no rangeFt), which never
+      // refuses (genre-b-zones.ts: Dawnlight's light).
+      if (does.genreZone) {
+        lines.push(...(layGenreZone({ campaign, sheet, name: ctx.spend.name }, does.genreZone) as string[]));
+      }
       return { patch, result: { applied: lines } };
     }
     case "save_effect": {
@@ -604,6 +613,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return healArea(ctx, does);
     case "note":
       return { result: { applied: does.text } };
+    case "mystery":
+      return mysterySpend(ctx, does.effect);
     case "aoe_report": {
       // Rolled in the spend on the creatures the call names, half on a save
       // (src/lib/dm/counter-saves.ts): it handed these numbers back for an
@@ -678,7 +689,14 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       const rolled = damageDice(ctx, enemy, dice);
       const first = answer?.alsoFirst ? getEnemy(answer.firstId) : null;
       const alsoFirst = first && first.status === "alive" ? { first: { name: first.displayName, ...damageEnemy(ctx, first, rolled, does.type) } } : {};
-      return { result: { rolled: `${dice}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, does.type), ...alsoFirst } };
+      const dealt = damageEnemy(ctx, enemy, rolled, does.type);
+      // Arc Coil: "the target cannot take reactions until its next turn".
+      const struck = getEnemy(enemy.id);
+      if (does.until && struck && struck.currentHp > 0 && !immuneToCondition(struck, does.until)) {
+        layEnemyConditionInstance(ctx.campaign, struck, does.until, { source: sheet.id, untilTurnOf: struck.id });
+        return { result: { rolled: `${dice}: ${rolled}`, ...dealt, ...alsoFirst, applied: `${struck.displayName} is ${does.until} until its next turn.` } };
+      }
+      return { result: { rolled: `${dice}: ${rolled}`, ...dealt, ...alsoFirst } };
     }
     case "flourish": {
       const enemy = targetEnemy(ctx);
@@ -903,6 +921,36 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
     }
     case "dark_fantasy":
       return playDarkFantasy(ctx, does.play);
+    // Break the Delusion, Deliverance, Revelation (src/lib/dm/genre-b-cure.ts):
+    // the hit points first, which refuse with nobody to heal.
+    case "cure": {
+      const healed = does.heal ? healArea(ctx, { kind: "heal_area", formula: does.heal, rangeFt: does.rangeFt }) : null;
+      if (healed && "error" in healed) {
+        return healed;
+      }
+      const cured = genreCure(ctx, does);
+      return "error" in cured ? cured : { result: { ...(healed?.result ?? {}), ...cured.result } };
+    }
+    case "draught":
+      return genreDraught(ctx, does);
+    case "hit_die":
+      return genreHitDie(ctx);
+    case "zone": {
+      const laid = layGenreZone({ campaign, sheet, name: ctx.spend.name, targetEnemyId: ctx.args.targetEnemyId }, does);
+      return Array.isArray(laid) ? { result: { applied: laid } } : laid;
+    }
+    case "regain_slot_levels": {
+      const slots = sheet.spellcasting?.slots;
+      const levels = Math.max(1, Number(formula(ctx, does.levels)) || 0);
+      const back = slots ? regainSlotLevels(slots, levels) : null;
+      if (!slots || !sheet.spellcasting || !back?.regained.length) {
+        return { error: `${sheet.name} has no expended spell slot of ${levels} level${levels === 1 ? "" : "s"} or lower for ${ctx.spend.name} to restore. Nothing was spent.`, refused: "rules" };
+      }
+      return {
+        patch: { spellcasting: { ...sheet.spellcasting, slots: back.slots } },
+        result: { applied: [`${sheet.name} regains ${back.regained.map((level) => `a level ${level} slot`).join(", ")} (${levels} slot level${levels === 1 ? "" : "s"}).`] },
+      };
+    }
   }
 }
 

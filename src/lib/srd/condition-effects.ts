@@ -20,6 +20,8 @@ import { AUTHORED_CONDITION_ROWS } from "@/lib/srd/authored-conditions";
 import { AFFLICTION_CONDITION_EFFECTS } from "@/lib/srd/affliction-conditions";
 import { LAST_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-last";
 import { GENRE_A_CONDITIONS } from "@/lib/srd/genre-a-conditions";
+import { GENRE_B_CONDITION_EFFECTS } from "@/lib/srd/genre-b-conditions";
+import { GENRE_B_MYSTERY_CONDITION_EFFECTS } from "@/lib/srd/genre-b-mystery-conditions";
 import { NUMBERED_CONDITION_EFFECTS, STRIKE_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-spells";
 import type { ConditionEffectRow, SaveAbilityId } from "@/lib/srd/condition-effect-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -829,6 +831,8 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
   ...AFFLICTION_CONDITION_EFFECTS,
   ...LAST_CONDITION_EFFECTS,
   ...GENRE_A_CONDITIONS,
+  ...GENRE_B_CONDITION_EFFECTS,
+  ...GENRE_B_MYSTERY_CONDITION_EFFECTS,
 ];
 
 // The registry row a condition name resolves to, or null: a row's term as
@@ -1000,6 +1004,9 @@ export function conditionRollRiders(
       if (matchesRollKind(grant, kind, ability)) {
         riders.advantageSources.push("advantage");
         riders.notes.push(`${condition}: advantage`);
+        // Advantage on "the next" roll is spent by it (The Game Afoot, Chorus
+        // of the Dead); before this the condition gave it to every roll.
+        used = true;
       }
     }
     for (const grant of row.disadvantageOn ?? []) {

@@ -164,7 +164,12 @@
       "uses": 2,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "omni-tool mastery",
+          "uses": 4
+        }
+      ],
       "guidance": "2/long rest, 10 minutes of tinkering restores a broken device or gives a tool user +1d4 for 1 hour."
     },
     {
@@ -449,7 +454,16 @@
       "uses": 1,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "favor network",
+          "uses": 2
+        },
+        {
+          "match": "shadow network",
+          "uses": 3
+        }
+      ],
       "guidance": "1/long rest, call in a favor: gear, a ride, a name, or entry somewhere (GM adjudicates scope)."
     },
     {
@@ -484,7 +498,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1
       }
     },
     {
@@ -660,7 +675,8 @@
         "kind": "enemy_save",
         "save": "con",
         "dice": "3d8",
-        "half": true
+        "half": true,
+        "type": "radiant"
       }
     },
     {
@@ -699,7 +715,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "str",
-        "condition": "restrained"
+        "condition": "restrained",
+        "rounds": 1,
+        "rangeFt": 15
       }
     },
     {
@@ -795,7 +813,8 @@
         "kind": "enemy_save",
         "save": "con",
         "dice": "10d10",
-        "half": true
+        "half": true,
+        "type": "necrotic"
       }
     },
     {
@@ -895,7 +914,10 @@
       "fx": {
         "kind": "aoe",
         "dice": "2d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 100,
+        "rangeFt": 20,
+        "type": "poison"
       }
     },
     {
@@ -920,7 +942,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "dex",
-        "dice": "2d6"
+        "dice": "2d6",
+        "rangeFt": 15,
+        "type": "piercing"
       }
     },
     {
@@ -1141,7 +1165,10 @@
       "fx": {
         "kind": "aoe",
         "dice": "3d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 10,
+        "rangeFt": 15,
+        "type": "fire"
       }
     },
     {
@@ -2036,7 +2063,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "the rolodex",
+          "uses": 3
+        }
+      ],
       "guidance": "1/rest, ask the GM who in the current scene knows something about your story; you get a true pointer."
     },
     {
@@ -2056,7 +2088,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1
       }
     },
     {
@@ -2091,7 +2124,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "the scene speaks",
+          "uses": 3
+        }
+      ],
       "guidance": "1/short rest, after examining a scene, person, or object, ask the GM one pointed question; the answer is a true, useful clue."
     },
     {
@@ -2111,7 +2149,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10,
+        "rangeFt": 30
       }
     },
     {
@@ -2161,7 +2201,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10
       }
     },
     {
@@ -2181,7 +2222,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "dice": "2d8"
+        "dice": "2d8",
+        "rounds": 10,
+        "type": "necrotic"
       }
     },
     {
@@ -2553,7 +2596,9 @@
         "kind": "enemy_save",
         "save": "dex",
         "condition": "restrained",
-        "dice": "4d6"
+        "dice": "4d6",
+        "rangeFt": 15,
+        "type": "bludgeoning"
       }
     },
     {
@@ -2618,7 +2663,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1,
+        "rangeFt": 15
       }
     },
     {
@@ -2654,7 +2701,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "blinded"
+        "condition": "blinded",
+        "rounds": 1,
+        "rangeFt": 10
       }
     },
     {
@@ -2739,7 +2788,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "dice": "2d8"
+        "dice": "2d8",
+        "rounds": 10
       }
     },
     {
@@ -2844,7 +2894,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "second adaptation",
+          "uses": 2
+        }
+      ],
       "guidance": "1/long rest, after taking elemental damage, gain resistance to that type until you rest."
     },
     {
@@ -2964,7 +3019,9 @@
       "fx": {
         "kind": "aoe",
         "dice": "8d6",
-        "save": "con"
+        "save": "con",
+        "rangeFt": 30,
+        "type": "radiant"
       }
     },
     {
@@ -3250,7 +3307,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "improved catalyst",
+          "uses": 3
+        }
+      ],
       "guidance": "A prepared stone: 1/rest, add +1d4 to one formula's damage or healing."
     },
     {
@@ -3296,11 +3358,14 @@
       "ability": null,
       "recharge": "long",
       "upgrades": [],
-      "guidance": "1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves).",
+      "guidance": "1/long rest, a 20-ft radius acid fog centred on a creature within 60 ft for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves).",
       "fx": {
         "kind": "aoe",
         "dice": "3d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 10,
+        "rangeFt": 60,
+        "type": "acid"
       }
     },
     {
@@ -3317,6 +3382,26 @@
       "recharge": "long",
       "upgrades": [],
       "guidance": "1/long rest, brew a greater elixir: drinker gains advantage on everything for 1 minute."
+    },
+    {
+      "id": "steampunk_emergency_draught",
+      "displayName": "Emergency Draught",
+      "match": [
+        "emergency draught"
+      ],
+      "classes": [
+        "alchemist"
+      ],
+      "uses": 2,
+      "ability": null,
+      "recharge": "long",
+      "upgrades": [],
+      "guidance": "2/long rest, brew a draught: the drinker regains 2d4 + INT HP as a bonus action.",
+      "fx": {
+        "kind": "heal_target",
+        "dice": "2d4+int"
+      },
+      "action": "bonus"
     },
     {
       "id": "steampunk_emergency_release",
@@ -3336,7 +3421,9 @@
         "kind": "enemy_save",
         "save": "dex",
         "dice": "3d8",
-        "half": true
+        "half": true,
+        "rangeFt": 10,
+        "type": "fire"
       }
     },
     {
@@ -3351,7 +3438,12 @@
       "uses": 2,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "field repair (2d8)",
+          "uses": 4
+        }
+      ],
       "guidance": "2/rest, 1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally."
     },
     {
@@ -3412,7 +3504,7 @@
       "ability": null,
       "recharge": "short",
       "upgrades": [],
-      "guidance": "1/rest, loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute."
+      "guidance": "1/rest, loose a box of whirring gears at a creature within 30 ft: a 15-ft cube centred on it becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute."
     },
     {
       "id": "steampunk_living_dynamo",
@@ -3501,7 +3593,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "fourth gadget",
+          "uses": 2
+        }
+      ],
       "guidance": "1/rest, a gadget or machine you hold works at double effect for 1 minute."
     },
     {
@@ -3566,7 +3663,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "blinded"
+        "condition": "blinded",
+        "rounds": 1,
+        "rangeFt": 5
       }
     },
     {
@@ -3586,7 +3685,10 @@
       "fx": {
         "kind": "enemy_save",
         "save": "dex",
-        "dice": "3d8"
+        "dice": "3d8",
+        "rangeFt": 5,
+        "type": "fire",
+        "pushFeet": 10
       }
     },
     {
@@ -3667,7 +3769,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10
       }
     },
     {

@@ -359,6 +359,7 @@ function rollCounterSave(
     rangeFt: reachFt ?? effect.rangeFt,
     ...(effect.cone ? { cone: true } : {}),
     types: effect.types,
+    ...(effect.pushFeet ? { pushFeet: effect.pushFeet } : {}),
     ...(most ? { most } : {}),
     magical: effect.magical ?? def.id !== "breath_weapon",
   }, aim ?? {});

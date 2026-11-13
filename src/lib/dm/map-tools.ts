@@ -65,6 +65,7 @@ import { auraMenaceAsk } from "@/lib/dm/aura-menace";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
+import { picketHolds } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
 import { nearerSquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
@@ -844,6 +845,8 @@ export function handleMoveToken(
           landing,
           walkedPart(path, landing),
           Boolean(disengaged),
+          // Picket Stance strikes a walker that Disengaged (genre-b-mystery-enforcer.ts).
+          picketHolds,
         )
       : { notes: [] as string[] };
   const opportunity = struck.notes;
@@ -895,7 +898,6 @@ export function handleMoveToken(
   if (resolved.kind === "enemy" && resolved.enemy) {
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
-
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
   const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).

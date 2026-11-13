@@ -29,7 +29,7 @@ import { darkFantasyOnHit } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { horrorAfterEnemyHit, horrorAttackSituation } from "@/lib/dm/genre-a-horror-hits";
 import { endHorrorMarks } from "@/lib/dm/genre-a-horror-marks";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
@@ -56,9 +56,12 @@ import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMa
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
+import { genreBOnKill } from "@/lib/dm/genre-b-kills";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
+import { weaponNamed } from "@/lib/srd/weapons";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -163,7 +166,7 @@ export function authoredIncomingAttack(input: {
         sources.push("disadvantage");
         notes.push(`${held.feature}: ${target.name} stands over ${fallen.name}, so the attack is at disadvantage`);
       }
-    } else if (effect.from.some((kind) => type.includes(kind))) {
+    } else if (!effect.rangeFt && effect.from.some((kind) => type.includes(kind))) {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
@@ -202,6 +205,16 @@ export function authoredIncomingAttack(input: {
     sources.push("disadvantage");
     notes.push(`${lit}: it attacks ${target.name} at disadvantage`);
   }
+  // An area the holder stands in (Dawnlight's light): the creature's every
+  // attack within it, on the holder or anyone else.
+  for (const holder of fielded(input.campaignId)) {
+    for (const { effect, held } of activeAuthored(holder, "attacked_disadv")) {
+      if (effect.rangeFt && effect.from.some((kind) => type.includes(kind)) && withinFeet(input.encounterId, holder.id, attacker.id, effect.rangeFt)) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: a ${type} within ${effect.rangeFt} feet of ${holder.name} attacks at disadvantage`);
+      }
+    }
+  }
   // Totemic Attunement (Bear): a creature within 5 feet of the raging
   // barbarian attacks anyone else at disadvantage.
   for (const guardian of fielded(input.campaignId)) {
@@ -228,7 +241,7 @@ export function authoredIncomingAttack(input: {
 export function authoredAfterHit(
   campaign: Campaign,
   // `taken`: what the character took of it past their defenses.
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean },
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean; attackName?: string },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
@@ -263,6 +276,11 @@ export function authoredAfterHit(
       break;
     }
     if (spurned.includes(held.feature) || (effect.melee && input.ranged)) {
+      continue;
+    }
+    // Only a hit with an attack of this kind, by the stat block's attack name
+    // (Toxic Blood: "a creature that hits you with a bite").
+    if (effect.attacks && !effect.attacks.some((kind) => words(textKey(input.attackName ?? "")).includes(kind))) {
       continue;
     }
     const amount =
@@ -441,6 +459,10 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
     if (effect.weapon && textKey(effect.weapon) !== textKey(weaponName ?? "")) {
       continue;
     }
+    // An improvised weapon is a thing no SRD weapon row names (a chair leg).
+    if (effect.improvised && (!weaponName || weaponNamed(weaponName) || authoredNaturalWeapon(sheet, weaponName))) {
+      continue;
+    }
     if (effect.firstRoundOnly && encounter.round > 1) {
       continue;
     }
@@ -572,6 +594,8 @@ export function authoredOnKill(
     }
   }
   lines.push(...endHorrorMarks(campaign, fielded(campaign.id), enemy));
+  // Message Sent, Skull Takers (src/lib/dm/genre-b-kills.ts).
+  lines.push(...genreBOnKill(campaign, encounter, enemy, killerId));
   return lines;
 }
 

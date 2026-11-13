@@ -279,6 +279,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.concentrating && !sheet.concentratingOn) {
     return false;
   }
+  if (gate.belowHalf && !(typeof sheet.currentHp === "number" && typeof sheet.maxHp === "number" && sheet.currentHp * 2 < sheet.maxHp)) {
+    return false;
+  }
   if (gate.condition && !hasCondition(sheet, gate.condition)) {
     return false;
   }
@@ -424,6 +427,12 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
   ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
 }
 
+// The skills a held feature doubles the proficiency bonus of
+// (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
+export function authoredExpertise(sheet: AuthoredSheet): string[] {
+  return activeAuthored(sheet, "skill_expertise").flatMap(({ effect }) => effect.skills);
+}
+
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
   // The saves the sheet itself records, where the caller's sheet carries them.
   const own = new Set(((sheet as { proficiencies?: { saves?: string[] } }).proficiencies?.saves ?? []).map((save) => textKey(save)));
@@ -555,6 +564,7 @@ const HELD_CHECKS: Array<{ condition: string; skills: string[]; label: string }>
 
 export function authoredRollRiders(
   sheet: AuthoredSheet,
+  // `creature`: a check about a creature of a type (Lord of the Green's beasts and plants).
   input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout; creature?: string },
 ): { advantage: string[]; spent: string[] } {
   const advantage: string[] = [];
@@ -576,7 +586,9 @@ export function authoredRollRiders(
         advantage.push(`${held.label}: advantage`);
       }
     }
-    const roll = { roll: "check" as const, skill, ability: input.ability, about: input.about, creature: input.creature };
+    // The key's skills are ids ("sleight_of_hand"), which textKey above spells
+    // with spaces: a two-word skill's advantage was never read.
+    const roll = { roll: "check" as const, skill: input.skill, ability: input.ability, about: input.about, creature: input.creature };
     for (const note of new Set(authoredCheckTraits(sheet).filter((key) => keyFits(key, roll)).map((key) => key.note))) {
       advantage.push(note);
     }

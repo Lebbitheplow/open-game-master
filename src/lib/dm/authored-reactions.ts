@@ -57,6 +57,7 @@ import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
+import { bodyguardExtras } from "@/lib/dm/genre-b-mystery-enforcer";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -778,6 +779,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           : `${ctx.sheet.name} takes ${share === raw ? `the ${raw} damage` : `half of the ${raw} damage (${share})`} meant for ${ally.name}, whose ${settled.given} hit points come back.`,
         taken,
         ...(stepped ? { teleported: stepped } : {}),
+        ...bodyguardExtras(ctx.campaign, ctx.turn, encounter ?? null, getSheetById(ctx.sheet.id) ?? ctx.sheet, ally, record, ctx.sheets, ctx.sheetsById),
       };
     }
     case "echo_hit": {

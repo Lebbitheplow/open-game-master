@@ -1,5 +1,6 @@
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
+import { canSurprise } from "@/lib/dm/genre-b-surprise";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
@@ -54,6 +55,12 @@ export function decideAmbush(
       const sheet = getSheetById(stale.id) ?? stale;
       if (cannotBeSurprised(sheet, enemies)) {
         return false;
+      }
+      // Only the hiders that can surprise this one count: Anticipate
+      // Violence and Scent the Wind (src/lib/dm/genre-b-surprise.ts).
+      const counted = stealth.filter((_, index) => canSurprise(sheet, enemies[index]));
+      if (counted.length < stealth.length) {
+        return counted.length > 0 && Math.min(...counted) >= passiveScore(campaign, sheet, "perception");
       }
       return lowest >= passiveScore(campaign, sheet, "perception");
     });

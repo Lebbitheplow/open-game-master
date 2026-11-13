@@ -34,6 +34,7 @@ import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allySaveAura } from "@/lib/dm/aura";
 import { allyInitiativeAura } from "@/lib/dm/divine-auras";
+import { genreBSaveAuras } from "@/lib/dm/genre-b-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
 import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -66,6 +67,7 @@ import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
 import { horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
+import { nemesisClaim, treatmentUndoes } from "@/lib/dm/genre-b-mystery-dossier";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -85,6 +87,9 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     ...(sentinel ? { initiativeBonus: sentinel.bonus, initiativeNote: sentinel.note } : {}),
     // The genre classes' auras on saves and checks (src/lib/dm/genre-a-auras.ts).
     ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { lent: lentRolls(campaign.id, sheet) } : {}),
+    // The genre auras an ally holds (Steadying Presence, Fear No Rust):
+    // rolls.ts adds them to a save against what each names.
+    ...(kind === "saving_throw" ? { saveAuras: genreBSaveAuras(campaign.id, sheet) } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
@@ -366,7 +371,8 @@ export function rollCharacterSave(
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
   // Land's Stride: advantage against Entangle and its kind (mt-srd-druid.ts).
-  const claimed = claim ?? horrorCultSave(sheet, resists, from) ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
+  // Nemesis Study: a save the detective's nemesis forces (genre-b-mystery-dossier.ts).
+  const claimed = claim ?? horrorCultSave(sheet, resists, from) ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null) ?? nemesisClaim(campaign.id, sheet, from) ?? landsStrideClaim(sheet, detail);
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {
@@ -623,8 +629,14 @@ export function rollEnemySave(
     });
     options.record.turn?.rollIds.push(roll.id);
   }
-  const made = outcome.total >= dc;
-  const resisted = !made && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
+  // An alienist's treatment undoes the save (genre-b-mystery-dossier.ts): as
+  // if it rolled a 1, or not to be resisted at all.
+  const undone = treatmentUndoes(campaignId, enemy, options.magical === true);
+  if (undone?.face && outcome.natural !== undefined) {
+    outcome = { ...outcome, total: outcome.total - outcome.natural + undone.face };
+  }
+  const made = !undone?.hard && outcome.total >= dc;
+  const resisted = !made && !undone?.hard && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
   if (!made && !resisted) {
     noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
   }
@@ -643,6 +655,7 @@ export function rollEnemySave(
       ...coverNote(covered),
       ...riders.notes,
       ...authored.notes,
+      ...(undone ? [undone.note] : []),
       ...(shiftedBy ? [`${shiftedBy}'s Chronal Shift: rolled again (${firstTotal} became ${outcome.total})`] : []),
     ],
   };

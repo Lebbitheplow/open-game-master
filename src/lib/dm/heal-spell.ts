@@ -24,6 +24,7 @@
 
 import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
+import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
@@ -300,6 +301,8 @@ export function castHealingSpell(
   if (broken) {
     riders.push(broken);
   }
+  // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
+  riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
   return {
     amount: Math.max(1, amount),
     note: `${name}: ${scaled?.note ?? expression}${riders.length ? ` (${riders.join(", ")})` : ""}, ${Math.max(1, amount)} hit points.${shared}`,

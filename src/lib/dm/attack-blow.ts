@@ -8,6 +8,7 @@
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { horrorOnHit } from "@/lib/dm/genre-a-horror-hits";
+import { genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -263,6 +264,13 @@ export function landSwingBlow(
   const horror = over ? [] : horrorOnHit(campaign, { sheet, enemy, crit, dead, weapon: record.weaponAttack ?? !record.spell });
   if (authored.length || horror.length) {
     out.subclassFeatures = [...authored, ...horror];
+  }
+  // The genre casters' riders on a spell attack that struck (genre-b-spell-hits.ts).
+  if (record.spell && live && !over) {
+    const genre = genreBSpellLanded({ campaign, turn: scene.turn, encounter: live, sheet, enemy, damageType: record.damageType, dealt: Number(applied.damageApplied ?? dealt) || 0, first: true, sheets: scene.sheets, sheetsById: scene.sheetsById });
+    if (genre.length) {
+      out.genreFeatures = genre;
+    }
   }
   // Vampiric Touch: the caster regains half the necrotic damage dealt
   // (spell-attack-riders.ts). The spell's condition landed with the hit.

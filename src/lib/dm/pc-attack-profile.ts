@@ -4,7 +4,8 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
-import { isPactWeapon } from "@/lib/srd/pact-weapon";
+import { isPactWeapon, holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
+import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
 import { getMounts } from "@/lib/db/mounts";
@@ -336,15 +337,15 @@ export function buildAttackProfile(
     }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
-    // A weapon whose feature names its ability (Armor Model: Intelligence)
-    // rolls with it, whatever its kind would use.
+    // A weapon whose feature names its ability (Armor Model: Intelligence,
+    // Chimeric Limb: Charisma) rolls with it, whatever its kind would use.
     const own = natural.weapon.ability;
     const swingDerived = own ? { ...derived, abilityMods: { ...derived.abilityMods, str: derived.abilityMods[own], dex: derived.abilityMods[own] } } : derived;
     profile = weaponAttackProfile(swingDerived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
       riders,
       martialArts: false,
     });
-    profile = { ...profile, proficient: true, riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
+    profile = { ...profile, proficient: true, ...(natural.weapon.magical ? { magicWeapon: true } : {}), riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
     kind = "weapon";
   } else if (shapedAttacks?.length && sheet.wildShape) {
     // Transformed: the form's natural attacks replace the sheet's weapons,
@@ -423,6 +424,7 @@ export function buildAttackProfile(
         kensei: kenseiStance(sheet),
         unarmedForm: unarmedForm(sheet, derived.abilityMods),
         brawler: brawlerUnarmed(sheet),
+        strike: genreStrike(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
         twoHanded,

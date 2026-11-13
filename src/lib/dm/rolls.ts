@@ -1,6 +1,7 @@
 import type { LentRoll } from "@/lib/srd/genre-a-lent";
 import { named } from "@/lib/dm/roll-about";
 import { LUCK_SPEND, computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
+import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { featCheckRider } from "@/lib/srd/feat-combat";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
@@ -342,6 +343,8 @@ function resolveUnfloored(
     totemAdvantage?: { saves: string[]; checks: string[]; skills: string[]; note: string } | null;
     // What allies' auras lend this roll (src/lib/dm/genre-a-auras.ts).
     lent?: LentRoll[];
+    // An ally's genre aura on a save against one thing (src/lib/dm/genre-b-auras.ts).
+    saveAuras?: GenreSaveAura[];
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -554,8 +557,12 @@ function resolveUnfloored(
         ? !extras?.death && totem.saves.includes(String(derivationAbility ?? ""))
         : (derivationKind === "skill_check" || derivationKind === "ability_check") && (totem.checks.includes(String(derivationAbility ?? "")) || Boolean(totemSkill && totem.skills.includes(totemSkill)))),
   );
+  // Steadying Presence, Fear No Rust, Walk Through the Valley: a die or
+  // advantage on a save against what the ally's aura names.
+  const genreAura = derivationKind === "saving_throw" ? saveAuraRiders(extras?.saveAuras, named(args.against)) : saveAuraRiders(undefined, undefined);
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
+    ...(genreAura.advantage ? ["advantage" as const] : []),
     ...(charming ? ["advantage" as const] : []),
     ...(extras?.effectAdvantage ? ["advantage" as const] : []),
     ...(extras?.effectDisadvantage ? ["disadvantage" as const] : []),
@@ -572,7 +579,7 @@ function resolveUnfloored(
   const bond = extras?.bondDie && derivationKind ? extras.bondDie : null;
   // A check named against the hold it escapes (`against: "grappled"`).
   const escapes = (derivationKind === "skill_check" || derivationKind === "ability_check") && extras?.escapeDie && extras.escapeDie.against.includes(named(args.against) ?? "") ? extras.escapeDie : null;
-  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}`;
+  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}${genreAura.dice}`;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
     riders.inspirationCondition,
@@ -597,6 +604,7 @@ function resolveUnfloored(
     ...riders.notes,
     ...(bond ? [bond.note] : []),
     ...(escapes ? [escapes.note] : []),
+    ...genreAura.notes,
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
       : []),
@@ -742,7 +750,7 @@ function resolveUnfloored(
     // Jack of All Trades / Remarkable Athlete: raw ability checks never
     // carry proficiency, so a covered ability always gets the half bonus.
     const halfScope =
-      (defense as { halfProficiency?: "all" | "physical" | null }).halfProficiency ?? null;
+      (defense as { halfProficiency?: "all" | "physical" | "mental" | null }).halfProficiency ?? null;
     // Jack of All Trades rounds down; Remarkable Athlete (the physical
     // scope) rounds up.
     const halfBonus =

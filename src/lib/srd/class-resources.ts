@@ -5,6 +5,7 @@
 // rests refill by recharge type. Pure and dependency-light so test scripts
 // import it directly.
 
+import { genreBCounterTerms } from "@/lib/srd/genre-b-counter-terms";
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
@@ -107,6 +108,8 @@ export type ResourceEffect =
 // What a save a counter forces is held to beyond its ability, read by the
 // spend that rolls it (src/lib/dm/counter-saves.ts) and the Hand's card.
 export type SaveTerms = {
+  // A creature that fails is pushed this far from the holder (Steamvent Burst).
+  pushFeet?: number;
   // The DC: "spell" is the spell save DC, an ability 8 + proficiency + its
   // modifier. Absent, the area features' 8 + proficiency + Constitution and
   // the others' best modifier, as before.
@@ -193,8 +196,8 @@ export function resolveDiceFormula(
 }
 
 function saveTermsOf(fx: SaveTerms): SaveTerms {
-  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical } = fx;
-  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, pushFeet } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, pushFeet }).filter(([, value]) => value !== undefined)) as SaveTerms;
 }
 
 // Lifts a JSON fx row into the executable effect shape.
@@ -788,6 +791,9 @@ const CUSTOM_RESOURCE_DEFS: ResourceDef[] = [
   // What the prose cannot carry: a trigger the server spends it on, a cost,
   // a recharge by level (src/lib/srd/genre-counter-terms.ts).
   ...GENRE_COUNTER_TERMS[row.id],
+  // What later features of the mystery, post-apocalyptic and steampunk
+  // catalogs say of the counter (src/lib/srd/genre-b-counter-terms.ts).
+  ...genreBCounterTerms(row),
 }));
 
 // The limited-use features of the authored subclass layer. Same row shape as

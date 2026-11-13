@@ -32,6 +32,7 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { silenceRefusal } from "@/lib/dm/cast-rules";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
+import { withWallOfMuscle } from "@/lib/dm/genre-b-mystery-wall";
 
 function zonesOf(map: BattleMap | null): SpellZone[] {
   if (!map?.spellZones.length) {
@@ -67,7 +68,7 @@ export function withZoneSteps(traits: MoveTraits, map: BattleMap, moverKind: str
   const mover = moverOf(map, moverKind, moverRef);
   const zones = zonesOf(map);
   const own = moverSpellTraits(mover);
-  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : zoneStepCost(zones, map.width, moverKind, typeof traits === "object" && traits.anyGround === true), barredCells(zones, mover)), zones, mover);
+  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : withWallOfMuscle(map, moverKind, moverRef, zoneStepCost(zones, map.width, moverKind, typeof traits === "object" && traits.anyGround === true)), barredCells(zones, mover)), zones, mover);
   if (!step && !Object.keys(own).length) {
     return traits;
   }

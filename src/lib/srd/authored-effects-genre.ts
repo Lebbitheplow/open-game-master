@@ -13,6 +13,8 @@
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
+import { GENRE_B_AUTHORED } from "@/lib/srd/authored-effects-genre-b";
+import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mystery";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -101,9 +103,13 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Barrow Ward", entry: { subclass: "genre", reactions: [{ name: "Barrow Ward", does: { kind: "reduce", amount: "cha+prof", who: "ally", rangeFt: 10 } }] } },
   { feature: "Penance Shared", entry: { subclass: "genre", reactions: [{ name: "Penance Shared", does: { kind: "take_for_ally", rangeFt: 5, share: "halved" } }] } },
   { feature: "The Mark Burns Back", entry: { subclass: "genre", reactions: [{ name: "The Mark Burns Back", does: { kind: "strike_back", amount: "cha+level", type: "necrotic" } }] } },
-  { feature: "Bodyguard", entry: { subclass: "genre", reactions: [{ name: "Bodyguard", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
+  // Meat Shield (6th level): "Bodyguard works for allies within 10 ft".
+  { feature: "Bodyguard", entry: { subclass: "genre", reactions: [{ name: "Bodyguard", does: { kind: "take_for_ally", rangeFt: [[1, 5], [6, 10]] } }] } },
   { feature: "Duelist's Flourish", entry: { subclass: "genre", reactions: [{ name: "Duelist's Flourish", does: { kind: "attack", rangeFt: 5 } }] } },
   { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
   { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
   ...GENRE_A_AUTHORED,
+  // The mystery, post-apocalyptic and steampunk classes' own (wave 2).
+  ...GENRE_B_AUTHORED,
+  ...GENRE_B_MYSTERY_AUTHORED,
 ];

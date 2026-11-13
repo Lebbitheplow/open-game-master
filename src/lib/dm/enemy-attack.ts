@@ -944,7 +944,7 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
+  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }));
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

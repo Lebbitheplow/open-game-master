@@ -94,6 +94,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "dark_fantasy") return DARK_FANTASY_AIM[does.play];
   // A horror counter says what it is aimed at (genre-a-horror-spends.ts).
   if (does.kind === "horror_spend") return does.aim ?? "none";
+  // A mystery class's own spend says what it is aimed at (genre-b-mystery-spends.ts).
+  if (does.kind === "mystery") return does.target ?? "none";
   return "none";
 }
 

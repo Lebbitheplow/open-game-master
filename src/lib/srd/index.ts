@@ -1,6 +1,6 @@
 import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
+import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
 import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
@@ -12,10 +12,9 @@ import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
 import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
-import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
-import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -544,7 +543,12 @@ export function computeSheetDerived(
   // the Champion's, which covers the physical abilities only, rounds up.
   const halfScope = defense.halfProficiency ?? null;
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
-  const expertise = sheet.proficiencies.expertise ?? [];
+  // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
+  // doubles a proficiency the sheet has, as Expertise does.
+  const expertise = [
+    ...(sheet.proficiencies.expertise ?? []),
+    ...authoredExpertise(sheet).filter((skill) => sheet.proficiencies.skills.includes(skill)),
+  ];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
   // and a skill lent for a while (Knowledge of the Ages, borrowed-proficiency.ts).
   const featureSkills = [...featureSkillProficiencies({ features: riderFeatures }), ...borrowedProficiencies(sheet.conditions).skills];
@@ -580,7 +584,8 @@ export function computeSheetDerived(
   const initiativeParts = keepMeaningful([
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
-    { label: "half proficiency", value: halfScope ? halfPb : 0 },
+    // Sharpened Logic's Intelligence and Wisdom half does not reach it.
+    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },

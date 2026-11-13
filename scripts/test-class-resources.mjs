@@ -216,6 +216,10 @@ test("the passive defs are the ones something else spends", () => {
   // the slot recoveries take_rest, the damage path and the cast guard spend
   // (src/lib/dm/genre-a-slots.ts).
   assert.deepEqual(passive.filter((id) => /^(cyberpunk|dark_fantasy|horror)_/.test(id)), ["cyberpunk_bullet_time", "cyberpunk_nanite_reserve", "cyberpunk_one_more_dawn", "cyberpunk_overwatch", "cyberpunk_the_net_remembers", "dark_fantasy_deathless_vigor", "dark_fantasy_martyr_s_endurance", "horror_apocrypha", "horror_bitter_endurance", "horror_blood_ward", "horror_final_benediction", "horror_pain_tolerance", "horror_predictive_model", "horror_seventh_seal", "horror_the_debt_comes_due", "horror_the_last_candle", "horror_the_one_who_lives", "horror_unfinished_ritual", "horror_won_t_die_here", "cyberpunk_autodoc_implant"]);
+  // The genre classes' passive counters are their own line: Hard to Kill is
+  // burned by the damage path (src/lib/srd/genre-b-counter-terms.ts), and so
+  // is an ally's Stand at the Dawn (src/lib/dm/genre-b-drops.ts).
+  assert.deepEqual(passive.filter((id) => /^(mystery|post_apocalyptic|steampunk)_/.test(id)), ["mystery_hard_to_kill", "post_apocalyptic_stand_at_the_dawn"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {
