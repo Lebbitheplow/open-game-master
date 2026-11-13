@@ -503,7 +503,13 @@ if (hasPack) {
       for (const choice of choices) {
         assert.ok(choice.count > 0 && choice.from.length >= choice.count, `${option.id} choice ${choice.label}`);
       }
-      const held = (await seatPack(option)).proficiencies.tools;
+      const seated = await seatPack(option);
+      const held = seated.proficiencies.tools;
+      // A language the text names outright (a Forest Dweller's Sylvan, a
+      // Crime Syndicate Member's Thieves' Cant) is on the sheet too.
+      for (const language of option.knownLanguages ?? []) {
+        assert.ok(seated.proficiencies.languages.some((known) => known.toLowerCase().replace(/[’']/g, "") === language.toLowerCase().replace(/[’']/g, "")), `${option.id} lacks ${language}: ${seated.proficiencies.languages}`);
+      }
       for (const tool of fixed) {
         assert.ok(held.includes(tool), `${option.id} sheet lacks ${tool}: ${held}`);
       }
