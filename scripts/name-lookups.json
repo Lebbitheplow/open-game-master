@@ -1576,6 +1576,7 @@
     "lib/dm/conscience-voice-logic.ts#whole": [["search",1,"a demand's key words read in a narration (issue 615): a partial hit is the point, and a miss only posts the companion's line"]],
     "lib/dm/conscience-voice-logic.ts#whole-single": [["identity",1,"a line's speaker is the companion, by id or whole name (textKey) (issue 615)"]],
     "lib/dm/consumables.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "lib/dm/context-probe-logic.ts#keyed": [["key",4,"the saved context windows by their endpoint and model cache key (contextCacheKey), never a name a person wrote"]],
     "lib/dm/context-probe-logic.ts#fallback": [["key",1,"model ids and their aliases (protocol), a sole listed model, a parameter count in a model id"]],
     "lib/dm/context-probe-logic.ts#first": [["key",1,"model ids and their aliases (protocol), a sole listed model, a parameter count in a model id"]],
     "lib/dm/context-probe-logic.ts#partial": [["key",1,"model ids and their aliases (protocol), a sole listed model, a parameter count in a model id"],["key",2,"a chat template's own variable names (reasoning_effort, enable_thinking): protocol, never prose"]],

@@ -18,12 +18,16 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { setDmStatus } from "@/lib/dm/status";
 import { withoutRollMarkers } from "@/lib/dm/tool-text";
 import { MAX_MODEL_CALLS, ROLL_RESULT_NOTE, reenterDmTurn, startDmTurn } from "@/lib/dm/turn";
+import { probeStoryWindow } from "@/lib/dm/context-retrieval";
+import { storyContextTokens, storyWindowAssumed } from "@/lib/model-client";
 import { isUnbuiltTurn } from "@/lib/dm/turn-halt";
 import {
   assistantTextOf,
+  carriedDirectorBlock,
   checkRetryEligible,
   danglingToolCallIds,
   retryCallIndex,
+  promptOutgrown,
   rewindHaltedCall,
 } from "@/lib/dm/retry-turn-logic";
 
@@ -144,6 +148,15 @@ export function requestTurnRetry(request: RetryRequest): RetryResult {
     return { ok: true, turnId, correctionId };
   }
 
+  // The turn as its prompt was built, before the repairs below touch it:
+  // what the job decides from once it knows the narrator's window now.
+  const asBuilt = {
+    callIndex: claimed.callIndex,
+    narrationParts: [...claimed.narrationParts],
+    conversation: [...claimed.conversation],
+    contextTrace: claimed.contextTrace,
+  };
+
   // Undo the model call the crash swallowed: its narration never reached the
   // conversation, so the retried model would otherwise write that beat twice.
   const rewind = rewindHaltedCall({
@@ -205,6 +218,20 @@ export function requestTurnRetry(request: RetryRequest): RetryResult {
       return;
     }
     try {
+      // A prompt packed against a window that has since grown, and that the
+      // model never answered (issue #925), is built again from the
+      // transcript rather than replayed: the per-call fit can drop lines
+      // but never add back the ones the guess left out. The player's line
+      // is in the transcript once and the old row is closed unnarrated, so
+      // the table sees one turn; the director's steer it took rides along.
+      await probeStoryWindow(freshCampaign.settings);
+      const now = { tokens: storyContextTokens(freshCampaign.settings), assumed: storyWindowAssumed(freshCampaign.settings) };
+      if (promptOutgrown(asBuilt, now)) {
+        fresh.status = "done";
+        saveDmTurn(fresh);
+        await startDmTurn(campaignId, { directorBlock: carriedDirectorBlock(asBuilt) });
+        return;
+      }
       await reenterDmTurn(freshCampaign, fresh);
     } catch (error) {
       // advance() finalizes its own failures, so this only catches a throw

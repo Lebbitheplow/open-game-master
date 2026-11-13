@@ -180,3 +180,21 @@ export function resolveVariantIndex(variants: string[], index: number): number {
   }
   return index;
 }
+
+// Whether a finished turn's stored prompt was packed against a guessed
+// window that has since been reported larger, and left lines out for it
+// (issue #925): a reroll replays that prompt, so every take would miss the
+// scene the first one missed. Such a turn is refused, not rerolled.
+export function toldWithoutHistory(
+  trace: { window?: { tokens: number; assumed: boolean }; historyEvicted?: number } | null | undefined,
+  now: { tokens: number; assumed: boolean },
+): boolean {
+  const built = trace?.window;
+  if (!built?.assumed || now.assumed) {
+    return false;
+  }
+  return (trace?.historyEvicted ?? 0) > 0 && now.tokens > built.tokens;
+}
+
+export const TOLD_WITHOUT_HISTORY =
+  "This turn was told without most of the story before it (the narrator's server had not said how much it can read yet), so a new take would miss the scene too. Revert this turn in the event log and send the move again instead.";

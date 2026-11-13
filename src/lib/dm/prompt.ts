@@ -10,7 +10,7 @@ import { sceneIds } from "@/lib/ambience/catalog";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
+import { ADVENTURE_BEGINS_NOTE, haltedTurnPrefix, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
@@ -84,6 +84,7 @@ import {
   estimateTokens,
   fitHistory,
   historyAllowanceTokens,
+  historyGapNote,
   responseReserveTokens,
   usableTokens,
   type BlockKind,
@@ -1969,7 +1970,11 @@ export function buildDmMessages(
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 
-  const rendered = history.map((message) => {
+  // A halted turn's notice ("The GM ran into a problem: ...") is for the
+  // table, not the story: a turn started over by Retry read it as a table
+  // note and could narrate the server's trouble into the scene.
+  const told = history.filter((message) => !(message.authorType === "system" && haltedTurnPrefix(message.content)));
+  const rendered = told.map((message) => {
     const name = message.characterId
       ? sheetsById.get(message.characterId)?.name ?? "Unknown"
       : "Unknown";
@@ -1994,7 +1999,7 @@ export function buildDmMessages(
       message.authorType === "player" && message.intent
         ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt) })}`
         : "";
-    return { message, id: message.id, seq: message.seq, text: `${content}${card}` };
+    return { message, id: message.id, seq: message.seq, text: `${content}${card}`, gm: message.authorType === "dm" };
   });
   const uncovered = cutCoveredHistory(rendered, state.summaryCoveredSeq ?? null);
 
@@ -2016,6 +2021,10 @@ export function buildDmMessages(
   const historyAllowance = historyAllowanceTokens(state.contextLimitTokens, fixedTokens);
   const fitted = fitHistory(uncovered.kept, historyAllowance);
   const keptText = new Map(fitted.kept.map((entry) => [entry.id, entry.text]));
+  // Lines no summary covers that were left out: said at the head of the
+  // transcript, ahead of the lines the per-call fit may drop, so the gap
+  // reads as a gap and not as the summary's last scene running on.
+  const gapNote = historyGapNote(fitted.dropped, state.summaryCoveredSeq != null);
   const historyMessages: ChatMessage[] = uncovered.kept
     .filter((entry) => keptText.has(entry.id))
     .map((entry) => ({
@@ -2054,6 +2063,7 @@ export function buildDmMessages(
     promptTokens:
       estimateTokens(systemParts.join("\n\n")) +
       fitted.tokens +
+      estimateTokens(gapNote) +
       estimateTokens(state.directorBlock ?? "") +
       toolTokens,
     blocks: [
@@ -2135,7 +2145,7 @@ export function buildDmMessages(
       {
         id: "history",
         kind: "history" as BlockKind,
-        tokens: fitted.tokens,
+        tokens: fitted.tokens + estimateTokens(gapNote),
         included: true,
         reason:
           uncovered.cut || fitted.dropped || fitted.clipped
@@ -2196,10 +2206,11 @@ export function buildDmMessages(
   // with the moment, after the transcript (src/lib/dm/narration-tidy-logic.ts).
   const sameClosing = repeatedClosing(history.filter((message) => message.authorType === "dm").map((message) => message.content));
   const variety = sameClosing ? closingVarietyNote(sameClosing) : "";
-  const historyStart = table ? 2 : 1;
+  const historyStart = (table ? 2 : 1) + (gapNote ? 1 : 0);
   const messages: ChatMessage[] = [
     { role: "system", content: rules },
     ...(table ? [{ role: "user" as const, content: table }] : []),
+    ...(gapNote ? [{ role: "user" as const, content: gapNote }] : []),
     ...historyMessages,
     // The state, then the instruction to take the turn, so the newest player
     // line is still what the model resolves (src/lib/prompt-boundary.ts).

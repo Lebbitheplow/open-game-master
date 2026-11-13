@@ -3,8 +3,10 @@
 import assert from "node:assert/strict";
 import {
   assistantTextOf,
+  carriedDirectorBlock,
   checkRetryEligible,
   danglingToolCallIds,
+  promptOutgrown,
   retryCallIndex,
   rewindHaltedCall,
 } from "../src/lib/dm/retry-turn-logic.ts";
@@ -221,6 +223,65 @@ test("assistant text collects only assistant prose", () => {
     { role: "assistant", content: [{ type: "image_url" }] },
   ]);
   assert.equal(text, "First.\nSecond.");
+});
+
+// Issue #925: a prompt packed against the 16K stand-in while the narrator
+// was down, replayed by Retry once the server was up at 64K.
+const PROMPT = [
+  { role: "system", content: "rules" },
+  { role: "user", content: "state" },
+  { role: "assistant", content: "An older narration the history rendered." },
+  { role: "user", content: "[Kara | attempt] I try the crystal on the chains." },
+];
+function built(overrides = {}) {
+  return {
+    callIndex: 0,
+    narrationParts: [],
+    conversation: PROMPT,
+    contextTrace: { window: { tokens: 16_384, assumed: true }, shape: { promptMessages: PROMPT.length } },
+    ...overrides,
+  };
+}
+const known = { tokens: 65_536, assumed: false };
+
+test("a never-answered prompt built on a guess is rebuilt once the window is known", () => {
+  assert.equal(promptOutgrown(built(), known), true);
+  // The history renders past GM lines as assistant messages: only what comes
+  // after the prompt counts as the turn having happened.
+  assert.equal(promptOutgrown(built({ conversation: [...PROMPT, { role: "user", content: "[System] Your last attempt..." }] }), known), true, "a retry note is not an answer");
+});
+
+test("a known window that has grown rebuilds too; one that has not, or a guess, replays", () => {
+  const sixteen = { window: { tokens: 16_384, assumed: false }, shape: { promptMessages: PROMPT.length } };
+  assert.equal(promptOutgrown(built({ contextTrace: sixteen }), known), true, "16K known, now 64K");
+  assert.equal(promptOutgrown(built({ contextTrace: sixteen }), { tokens: 16_384, assumed: false }), false, "the same window");
+  assert.equal(promptOutgrown(built(), { tokens: 16_384, assumed: true }), false, "still only a guess: nothing better to build on");
+  assert.equal(promptOutgrown(built({ contextTrace: { ...sixteen, window: { tokens: 65_536, assumed: false } } }), { tokens: 32_768, assumed: false }), false, "a window that shrank is fitted per call");
+});
+
+test("a turn that already happened in any part is replayed, never rebuilt", () => {
+  assert.equal(promptOutgrown(built({ callIndex: 1 }), known), false, "a call the model answered");
+  assert.equal(promptOutgrown(built({ narrationParts: ["The chains hum."] }), known), false, "narration banked");
+  const call = { role: "assistant", content: "", tool_calls: [{ id: "c1", type: "function", function: { name: "roll_check", arguments: "{}" } }] };
+  assert.equal(promptOutgrown(built({ conversation: [...PROMPT, call] }), known), false, "an assistant message past the prompt");
+  assert.equal(promptOutgrown(built({ conversation: [...PROMPT, { role: "tool", tool_call_id: "c1", content: "{}" }] }), known), false, "a tool result past the prompt");
+});
+
+test("a row from before the window was kept is replayed as before", () => {
+  assert.equal(promptOutgrown(built({ contextTrace: { shape: { promptMessages: PROMPT.length } } }), known), false);
+  assert.equal(promptOutgrown(built({ contextTrace: null }), known), false);
+  assert.equal(promptOutgrown(built({ contextTrace: { window: { tokens: 16_384, assumed: true } } }), known), false, "no shape: the prompt's end is unknown");
+});
+
+test("the director's steer a rebuilt prompt carries is its last message, only when one rode", () => {
+  const steer = "[Director] Make the sage speak first.";
+  const withSteer = [...PROMPT, { role: "user", content: steer }];
+  assert.equal(
+    carriedDirectorBlock({ conversation: withSteer, contextTrace: { blocks: [{ id: "director" }], shape: { promptMessages: withSteer.length } } }),
+    steer,
+  );
+  assert.equal(carriedDirectorBlock({ conversation: PROMPT, contextTrace: { blocks: [{ id: "history" }], shape: { promptMessages: PROMPT.length } } }), undefined);
+  assert.equal(carriedDirectorBlock({ conversation: PROMPT, contextTrace: null }), undefined);
 });
 
 console.log(`${passed} retry turn tests passed`);

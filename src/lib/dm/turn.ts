@@ -219,7 +219,7 @@ import { takeDirectorArm } from "@/lib/db/director-arms";
 import { listPins } from "@/lib/db/pins";
 import { isStageEnabled } from "@/lib/dm/stages";
 import { renderVariantRules } from "@/lib/dm/rules-logic";
-import { storyContextTokens } from "@/lib/model-client";
+import { storyContextTokens, storyEndpointUnreachable, storyWindowAssumed } from "@/lib/model-client";
 import { restoreMentionedNpcs } from "@/lib/dm/npc-archive";
 import { handleRecallStory } from "@/lib/dm/recall";
 import { handleSearchLore, searchLoreTool } from "@/lib/dm/lore-search";
@@ -227,7 +227,7 @@ import { handleReadCard, readCardTool } from "@/lib/dm/prep-card-tool";
 import { countPrepCards } from "@/lib/db/prep-cards";
 import { handleWriteCampaignNote, writeCampaignNoteTool } from "@/lib/dm/note-tools";
 import { buildTurnRetrieval, probeStoryWindow } from "@/lib/dm/context-retrieval";
-import { estimateTokens, promptWindowTokens, type ContextTrace } from "@/lib/dm/context-budget";
+import { compactionEvicted, estimateTokens, promptWindowTokens, type ContextTrace } from "@/lib/dm/context-budget";
 import { maybeProposeItemChange, offerLinesForPrompt } from "@/lib/dm/proposal-intercept";
 import { maybeCloseChapter } from "@/lib/dm/chapter-close";
 import {
@@ -648,7 +648,17 @@ function loadContext(campaign: Campaign): TurnContext {
   };
 }
 
-export async function startDmTurn(campaignId: string) {
+// What a turn started over by Retry carries from the prompt it replaces
+// (src/lib/dm/retry-turn.ts): the director's one-turn steer, which that
+// prompt already took, so it is neither lost nor taken twice.
+export type CarriedTurn = { directorBlock?: string };
+
+// The halt for a narrator that is not up yet (issue #925): the turn waits
+// for it rather than packing its prompt against a window nobody reported.
+export const NARRATOR_NOT_ANSWERING =
+  "the narrator's server is not answering yet (it may still be loading). Press Retry once it is up.";
+
+export async function startDmTurn(campaignId: string, carried: CarriedTurn = {}) {
   const campaign = getCampaignById(campaignId);
   if (!campaign || campaign.status !== "active") {
     // A turn asked of a table that is not playing (back in the lobby, ended)
@@ -688,7 +698,7 @@ export async function startDmTurn(campaignId: string) {
   setJobStage("setting_scene");
   let opened: { context: TurnContext; turn: DmTurn } | null;
   try {
-    opened = await openTurn(campaign, history, pendingWhispers, opening);
+    opened = await openTurn(campaign, history, pendingWhispers, opening, carried);
   } catch (error) {
     haltOpeningTurn(campaignId, opening, error);
     return;
@@ -711,8 +721,25 @@ async function openTurn(
   history: CampaignMessage[],
   pendingWhispers: ReturnType<typeof listPendingPlayerWhispers>,
   opening: OpeningTurn,
+  carried: CarriedTurn = {},
 ): Promise<{ context: TurnContext; turn: DmTurn } | null> {
   const campaignId = campaign.id;
+  // The window decides the tool profile and every budget below, so the
+  // endpoint is asked for it first: the first turn after a restart (or with
+  // retrieval switched off) planned against the assumed default otherwise.
+  // Asked before anything of the turn is spent (a companion's leaving, the
+  // initiative stragglers), since a narrator that is not up stops it here.
+  await probeStoryWindow(campaign.settings);
+  // Issue #925: the app's own llama-server was still starting, the prompt
+  // was packed against the 16K stand-in on a 64K server, and the GM told a
+  // scene an hour old. Nothing listening and no window ever reported: the
+  // turn is halted unbuilt, its notice offers Retry, and the Retry starts
+  // over from the transcript once the server is up. A server that answers
+  // without a window (not llama.cpp) still plays on the stand-in.
+  if (storyWindowAssumed(campaign.settings) && storyEndpointUnreachable(campaign.settings)) {
+    console.warn(`[dm-turn] campaign ${campaignId}: the narrator's server did not answer; the turn waits for it instead of guessing its window.`);
+    throw new DmJobStopped(NARRATOR_NOT_ANSWERING);
+  }
   // Table talk put to the DM and nothing else since it last spoke: the turn
   // is an out-of-character answer, which spends nothing a real turn would
   // (src/lib/dm/ooc-question.ts).
@@ -771,11 +798,8 @@ async function openTurn(
   const stages = campaign.gameSettings.stages;
   // The tool definitions ride on every call of this turn and were never
   // budgeted (issue #120), so they come off the window before any block is
-  // packed, here and in the retrieval budget.
-  // The window decides the tool profile and every budget below, so the
-  // endpoint is asked for it first: the first turn after a restart (or with
-  // retrieval switched off) planned against the assumed default otherwise.
-  await probeStoryWindow(campaign.settings);
+  // packed, here and in the retrieval budget. The window was asked for at
+  // the top of the turn.
   const toolTokens = dmTurnToolTokens(campaign);
   opening.stage = "searching_lore";
   setJobStage("searching_lore");
@@ -789,9 +813,11 @@ async function openTurn(
   // before the conversation is persisted below, which is what makes a retry
   // correct: retry-turn.ts replays that stored conversation, so the directive
   // is still in the prompt it re-runs, neither lost nor applied twice.
-  const directorArm = oocOnly ? null : takeDirectorArm(campaignId);
+  // A turn Retry started over carries the steer its first prompt took, and
+  // leaves any steer armed since for the turn after.
+  const directorArm = oocOnly || carried.directorBlock !== undefined ? null : takeDirectorArm(campaignId);
   // A Romance cue armed before romance went off is dropped (issue 501).
-  const directorBlock = buildDirectorBlock(directorArm, campaign.gameSettings);
+  const directorBlock = carried.directorBlock ?? buildDirectorBlock(directorArm, campaign.gameSettings);
   if (directorArm) {
     // Clear the armed badge for every client now that the steer is spent.
     publishPersisted(campaignId, "director_armed", {
@@ -1066,8 +1092,11 @@ async function openTurn(
   // buildDmMessages fills this in on the state object it was handed, so the
   // trace is carried onto the turn row rather than recomputed. What the turn
   // changed for the model rides with it, for the Context panel.
+  // The window rides too, so Retry can tell a prompt packed against a guess
+  // (retry-turn-logic.ts promptOutgrown) and compaction never trusts one.
+  const window = { tokens: storyContextTokens(campaign.settings), assumed: storyWindowAssumed(campaign.settings) };
   turn.contextTrace = promptState.contextTrace
-    ? { ...promptState.contextTrace, profile: profileTrace, ...(prefix ? { prefix } : {}), ...(tuning.notes.length ? { tuning: tuning.notes } : {}) }
+    ? { ...promptState.contextTrace, window, profile: profileTrace, ...(prefix ? { prefix } : {}), ...(tuning.notes.length ? { tuning: tuning.notes } : {}) }
     : null;
   // Remember which player whispers this turn's prompt carries; finalize()
   // marks them answered only when the turn succeeds.
@@ -2941,7 +2970,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     setJobStage("closing_chapter");
     await maybeCloseChapter(campaignId, { beatCompleted, beatGated, beatClaimed });
     if (isStageEnabled(context.campaign.gameSettings.stages, "compaction")) {
-      compactHistoryInBackground(campaignId, undefined, Date.now(), { evicted: turn.contextTrace?.historyEvicted ?? 0 });
+      compactHistoryInBackground(campaignId, undefined, Date.now(), { evicted: compactionEvicted(turn.contextTrace) });
     }
     // The world-simulation heartbeat: pure dice, sparks land in the NEXT
     // turn's prompt, so background clocks never trigger model calls. A turn

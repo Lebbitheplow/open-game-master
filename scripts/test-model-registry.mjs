@@ -542,6 +542,28 @@ try {
     assert.match((await down.error.json()).error, /Could not reach the backend at http:\/\/127\.0\.0\.1:9\/v1 to list its models/);
   });
 
+  // Issue #925: a helper served at 262,144 tokens was reported as "a 33K
+  // window is small for a campaign", the catalog row's size, while the same
+  // report showed the server's 262,144.
+  await test("a model is judged by the window its server reports, not the catalog row's", async () => {
+    const wide = http.createServer((request, response) => {
+      response.setHeader("content-type", "application/json");
+      response.end(request.url === "/v1/models" ? JSON.stringify({ data: [{ id: "gpt-4", context_length: 262_144 }] }) : "{}");
+    });
+    await new Promise((resolve) => wide.listen(0, "127.0.0.1", resolve));
+    try {
+      const choices = await modelChoices({ role: "utility", provider: "custom", baseUrl: `http://127.0.0.1:${wide.address().port}/v1`, selected: "gpt-4" });
+      const helper = choices.models.find((model) => model.id === "gpt-4");
+      assert.equal(helper.contextTokens, 262_144);
+      assert.equal(helper.catalog?.contextTokens, 8192, "the catalog row itself is unchanged");
+      assert.ok(!helper.verdict.warnings.some((warning) => /small for a campaign/.test(warning)), helper.verdict.warnings.join(" | "));
+      const plain = logic.assessModel({ role: "utility", id: "gpt-4", catalog: helper.catalog, listed: true });
+      assert.ok(plain.warnings.some((warning) => /8K window is small for a campaign/.test(warning)), "the catalog's own size still warns where the server says nothing");
+    } finally {
+      wide.close();
+    }
+  });
+
   await test("the wizard's list is kept to the models that can narrate, led by the catalog's pick, with no name in code", () => {
     const listed = (ids) => ids.map((id) => ({ id, label: id }));
     const fit = store.fitListedModels("https://api.openai.com/v1", listed(["gpt-image-1", "gpt-5.6", "gpt-4", "my-finetune"]));

@@ -30,7 +30,11 @@ import {
   MAX_VARIANTS,
   REROLL_TEMP_OFFSET,
   computeRerollTemperature,
+  TOLD_WITHOUT_HISTORY,
+  toldWithoutHistory,
 } from "@/lib/dm/renarrate-logic";
+import { probeStoryWindow } from "@/lib/dm/context-retrieval";
+import { storyContextTokens, storyWindowAssumed } from "@/lib/model-client";
 
 // Narration reroll: the DB/IO rim around renarrate-logic.ts.
 //
@@ -94,6 +98,11 @@ export async function runRenarrate(input: {
   }
   if (!turn.conversation.length) {
     return { error: "This narration has no stored conversation to replay.", status: 400 };
+  }
+  await probeStoryWindow(campaign.settings);
+  const window = { tokens: storyContextTokens(campaign.settings), assumed: storyWindowAssumed(campaign.settings) };
+  if (toldWithoutHistory(turn.contextTrace, window)) {
+    return { error: TOLD_WITHOUT_HISTORY, status: 409 };
   }
 
   const variants = seedVariants(message.variants ?? [], message.content);
