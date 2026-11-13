@@ -266,5 +266,33 @@ await test("Every pick-list wears a painted icon: its own option's, or its kind'
   assert.deepEqual(bare, []);
 });
 
+// The class's skill picks are the class's: the species' and background's
+// skills on its list are not picks of it (a soldier fighter's Athletics and
+// Intimidation hid the two it owed), a setting class counts as an SRD one
+// does, and the languages a species or background leaves to the player are
+// owed and made on the sheet. A legal sheet the builder made owes nothing.
+await test("Choices owed: the class's skills leave out the species' and background's, a setting class owes its own, and the languages a species and background leave open are owed and picked on the sheet", async () => {
+  const { owedChoiceGroups } = await import("../src/lib/srd/owed-choices.ts");
+  const { applyOwedPicks } = await import("../src/lib/srd/owed-picks-logic.ts");
+  const prof = (skills, languages = ["Common"]) => ({ ...PROF, skills, languages });
+  const soldier = sheetOf({ class: "fighter", level: 1, background: "soldier", proficiencies: prof(["athletics", "intimidation"]) });
+  assert.ok(owedChoiceGroups(soldier).levelUp.includes("2 Fighter skills"), owedChoiceGroups(soldier).levelUp.join(" | "));
+  const picked = sheetOf({ class: "fighter", level: 1, background: "soldier", proficiencies: prof(["athletics", "intimidation", "acrobatics", "perception"]) });
+  assert.ok(!owedChoiceGroups(picked).levelUp.some((line) => /skill/.test(line)), "a soldier fighter with its two picks owes none");
+  const netrunner = sheetOf({ class: "netrunner", level: 1, background: "soldier", proficiencies: prof(["athletics", "intimidation"]) });
+  assert.ok(owedChoiceGroups(netrunner).levelUp.some((line) => /^2 .*skills$/.test(line)), `a setting class: ${owedChoiceGroups(netrunner).levelUp.join(" | ")}`);
+  // A human acolyte: one language of the species' choice and two of the background's.
+  const acolyte = sheetOf({ class: "cleric", subclass: "Life Domain", level: 1, background: "acolyte", proficiencies: prof(["insight", "religion", "history", "medicine"]) });
+  assert.ok(owedChoiceGroups(acolyte).onSheet.includes("Languages to choose: 3 languages"), owedChoiceGroups(acolyte).onSheet.join(" | "));
+  const made = applyOwedPicks(acolyte, { featChoices: { "Languages to choose": { languages: ["Elvish"] } } });
+  assert.equal(made.ok, true, made.error);
+  assert.ok(made.proficiencies.languages.includes("Elvish"));
+  assert.ok(owedChoiceGroups({ ...acolyte, proficiencies: made.proficiencies }).onSheet.includes("Languages to choose: 2 languages"));
+  const spoken = applyOwedPicks(acolyte, { featChoices: { "Languages to choose": { languages: ["Common"] } } });
+  assert.equal(spoken.ok, false, "a language already spoken is no pick");
+  const full = sheetOf({ ...acolyte, proficiencies: prof(acolyte.proficiencies.skills, ["Common", "Elvish", "Dwarvish", "Giant"]) });
+  assert.ok(!owedChoiceGroups(full).onSheet.some((line) => /Languages/.test(line)), "a legal acolyte owes no language");
+});
+
 world.close?.();
 finish();

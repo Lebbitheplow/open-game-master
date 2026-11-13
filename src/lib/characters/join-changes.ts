@@ -157,6 +157,11 @@ export function joinChanges(
     spellcasting: seated.spellcasting,
     featChoices: seated.featChoices,
     race: seated.race,
+    // The species' and background's own grants are no class picks, and
+    // the languages they leave open are owed (owed-languages.ts).
+    background: (seated as { background?: string }).background,
+    racialChoices: (seated as { racialChoices?: { skills?: string[] } | null }).racialChoices,
+    backgroundChoices: (seated as { backgroundChoices?: { skills?: string[] } | null }).backgroundChoices,
   } as Parameters<typeof owedChoiceGroups>[0], owedContext);
 
   return { changes, owed: [...groups.levelUp, ...groups.onSheet], owedOnSheet: groups.onSheet };

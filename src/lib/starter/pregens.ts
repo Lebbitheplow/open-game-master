@@ -72,7 +72,7 @@ export const PREGENS: Pregen[] = [
       maxHp: 14,
       ac: 14,
       hitDice: { die: "d12", total: 1, spent: 0 },
-      proficiencies: { saves: ["str", "con"], skills: ["athletics", "survival"], expertise: [], languages: ["Common"], tools: ["drum"], armor: [], weapons: [] },
+      proficiencies: { saves: ["str", "con"], skills: ["athletics", "survival", "intimidation", "perception"], expertise: [], languages: ["Common", "Giant", "Orc"], tools: ["drum"], armor: [], weapons: [] },
       equipment: [...pack([["Greataxe"], ["Handaxe", 2]]), ...EXPLORER, ...pack([["Javelin", 4]])],
       backstory: "Raised in the high passes, Brakk came down to the lowlands when the herds died, and has not found a reason to go back.",
     },
@@ -91,7 +91,7 @@ export const PREGENS: Pregen[] = [
       maxHp: 12,
       ac: 18,
       hitDice: { die: "d10", total: 1, spent: 0 },
-      proficiencies: { saves: ["str", "con"], skills: ["athletics", "perception"], expertise: [], languages: ["Common"], tools: ["dice set"], armor: [], weapons: [] },
+      proficiencies: { saves: ["str", "con"], skills: ["athletics", "intimidation", "perception", "survival"], expertise: [], languages: ["Common", "Dwarvish"], tools: ["dice set"], armor: [], weapons: [] },
       equipment: [...pack([["Chain Mail"], ["Longsword"], ["Shield"], ["Light Crossbow"], ["Crossbow Bolts", 20]]), ...DUNGEONEER],
       // A fighter's 1st-level Fighting Style, which the sheet listed as owed
       // once fighting styles were (issue #833): Defense, for the chain mail.
@@ -115,9 +115,9 @@ export const PREGENS: Pregen[] = [
       hitDice: { die: "d8", total: 1, spent: 0 },
       proficiencies: {
         saves: ["dex", "int"],
-        skills: ["stealth", "acrobatics", "perception", "investigation"],
+        skills: ["stealth", "deception", "acrobatics", "perception", "investigation", "sleight_of_hand"],
         expertise: ["stealth", "perception"],
-        languages: ["Common"],
+        languages: ["Common", "Elvish"],
         tools: ["thieves' tools", "dice set"],
         armor: [],
         weapons: [],
@@ -141,7 +141,7 @@ export const PREGENS: Pregen[] = [
       maxHp: 10,
       ac: 15,
       hitDice: { die: "d8", total: 1, spent: 0 },
-      proficiencies: { saves: ["wis", "cha"], skills: ["medicine", "insight"], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: [] },
+      proficiencies: { saves: ["wis", "cha"], skills: ["insight", "religion", "medicine", "history"], expertise: [], languages: ["Common", "Celestial", "Elvish", "Dwarvish"], tools: [], armor: [], weapons: [] },
       equipment: [...pack([["Mace"], ["Scale Mail"], ["Spear"]]), ...PRIEST, ...pack([["Shield"], ["Holy Symbol"]])],
       spellcasting: {
         ability: "wis",
