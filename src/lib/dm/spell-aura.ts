@@ -14,9 +14,8 @@
 // What comes at the END of the target's turn is src/lib/dm/spell-turn-end.ts.
 //
 // Called from condition-tick.ts startTurnConditions with the combatants
-// whose turns are starting. The damage lands straight on the enemy row (this
-// clock path must not import enemy-damage.ts, which imports it): the
-// resistances, a concentration save, death and the token all follow here.
+// whose turns are starting. An enemy's damage lands through the enemy
+// damage path (hurtEnemy below), a character's through the character's.
 
 import { lashOut } from "@/lib/dm/confusion";
 import type { CombatSide } from "@/lib/dm/combat-sides-logic";
@@ -24,11 +23,9 @@ import { sideOf } from "@/lib/dm/combatant";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { dmRoll, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
-import { restoreOwnForm } from "@/lib/db/enemy-form";
-import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { spellMechanicsFor } from "@/lib/content";
@@ -37,76 +34,60 @@ import { addDice } from "@/lib/srd/spell-scaling";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { instancesOf, removeConditionInstances, withTempHpClaim, type ConditionMetaMap, type SaveAbilityId } from "@/lib/dm/condition-logic";
-import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
-import { enemyHpCap } from "@/lib/dm/monster-abilities";
 import { closeStandInTurn, openStandInTurn } from "@/lib/db/dm-turns";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { healDeathHook } from "@/lib/dm/death";
 import { regainBlockedBy } from "@/lib/dm/vitals-logic";
-import { clearSpellConditionsByName } from "@/lib/dm/concentration";
-import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
-import { freeFromCorpse, noteBlowFromInside } from "@/lib/dm/swallow";
 import { withActor } from "@/lib/dm/acting-party";
 import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
 
 const FEET_PER_TILE = 5;
 
-// Damage from a running spell landing on an enemy: its resistances, the
-// hit points, a concentration save, and death. Returns the line for the table.
+// Damage from a running spell (or a feature's lasting harm) landing on an
+// enemy, through the one enemy damage path (enemy-damage.ts applyEnemyDamage):
+// its resistances and absorption, a Polymorph's form, Undead Fortitude, a
+// troll's fall at 0 (down, to regenerate), concentration, death and the
+// token. This path once wrote the hit points itself and killed at 0
+// outright: a zombie Acid Arrow's second burn dropped got no Undead
+// Fortitude, and a troll Spirit Guardians dropped was dead, not down
+// (audit 2026-11-13). The fight's end waits for the next GM turn, as after
+// an opportunity attack. Returns the line for the table.
 export function hurtEnemy(campaign: Campaign, encounter: Encounter, enemy: EncounterEnemy, amount: number, type: string, why: string, mundane = false): string {
-  // The board's defences as well as the block's: Silence, the water, a
-  // golem's Absorption (enemy-defenses.ts). Gear on the ground (caltrops)
-  // is no spell and no magic (zones-gear.ts).
-  const adjusted = meetEnemyPart(campaign.id, enemy, amount, type, { magical: !mundane, spell: !mundane });
-  if (adjusted.absorbed > 0) {
-    const healed = Math.min(enemyHpCap(enemy), enemy.currentHp + adjusted.absorbed);
-    patchEnemyHp(enemy.id, healed, "alive");
-    return `${enemy.displayName} absorbs the ${type} from ${why} and regains ${healed - enemy.currentHp} hit points.`;
+  const before = getEnemy(enemy.id) ?? enemy;
+  const sheets = listSheets(campaign.id);
+  const out = withOpportunityTurn(campaign.id, (turn) =>
+    applyEnemyDamage(campaign, turn, encounter, before, amount, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), type || undefined, {
+      // Gear on the ground (caltrops) is no spell and no magic (zones-gear.ts).
+      magical: !mundane,
+      spell: !mundane,
+      holdVictory: true,
+    }),
+  );
+  if ("error" in out) {
+    return `${before.displayName} takes no damage from ${why}.`;
   }
-  if (adjusted.amount <= 0) {
-    return `${enemy.displayName} takes no damage from ${why}.`;
+  const after = getEnemy(enemy.id);
+  const absorbed = typeof out.absorbed === "number" ? out.absorbed : 0;
+  if (absorbed > 0) {
+    return `${before.displayName} absorbs the ${type} from ${why} and regains ${absorbed} hit points.`;
   }
-  // A Polymorph's beast dropped to 0 reverts, the excess carrying over to
-  // the creature's own hit points (enemy-damage.ts does the same).
-  const own = enemy.stats.polymorphedFrom;
-  if (own && adjusted.amount >= enemy.currentHp) {
-    restoreOwnForm(enemy.id, own);
-    const reverted = getEnemy(enemy.id);
-    const excess = adjusted.amount - enemy.currentHp;
-    const line = `${enemy.displayName}'s ${own.form} form drops to 0 hit points from ${why} and its own form returns.`;
-    return reverted && excess > 0 ? `${line} ${hurtEnemy(campaign, encounter, reverted, excess, "", why)}` : line;
+  // What it took: the hit points it lost, or, from a form that broke, the
+  // beast's and the excess.
+  const dealt = typeof out.damageApplied === "number" ? out.damageApplied : Math.max(0, before.currentHp - (after?.currentHp ?? before.currentHp));
+  if (dealt <= 0 && !out.formEnded && !out.undeadFortitude) {
+    return `${before.displayName} takes no damage from ${why}.`;
   }
-  const hp = Math.max(0, enemy.currentHp - adjusted.amount);
-  patchEnemyHp(enemy.id, hp, hp <= 0 ? "dead" : "alive");
-  // A lasting effect's owner inside the creature that swallowed it (the
-  // caller names the owner, acting-party.ts): the damage counts toward the
-  // regurgitation, and a death frees what it swallowed (swallow.ts).
-  noteBlowFromInside(campaign, encounter.id, enemy.id, enemy.currentHp - hp);
-  const corpse = hp <= 0 ? freeFromCorpse(campaign, enemy) : null;
-  if (enemy.concentration) {
-    const dc = Math.max(10, Math.floor(adjusted.amount / 2));
-    // The same save the damage path rolls (enemy-damage.ts): its conditions
-    // count, and the DM sees the roll.
-    const kept = hp > 0 && rollEnemySave(campaign.id, enemy, "con", dc, { record: { detail: `${enemy.displayName}: concentration on ${enemy.concentration} (CON save)` } }).success;
-    if (!kept) {
-      setEnemyConcentration(enemy.id, null);
-      clearSpellConditionsByName(campaign, enemy.concentration, undefined, enemy.id);
-    }
-  }
-  if (hp <= 0) {
-    const map = getBattleMapForEncounter(encounter.id);
-    if (map) {
-      removeTokenByRef(map.id, enemy.id);
-    }
-    return `${enemy.displayName} takes ${adjusted.amount}${type ? ` ${type}` : ""} damage from ${why} and falls.${corpse ? ` ${corpse}` : ""}`;
-  }
-  spellEffectsOnEnemyDamage(enemy.id);
-  return `${enemy.displayName} takes ${adjusted.amount}${type ? ` ${type}` : ""} damage from ${why}.`;
+  const took = `${before.displayName} takes ${dealt}${type ? ` ${type}` : ""} damage from ${why}`;
+  const fell = out.dead ? " and falls." : out.down ? " and falls at 0 hit points, not dead: it regenerates at the start of its turn unless what stops it has landed." : ".";
+  const extras = [out.formEnded, out.undeadFortitude, out.concentrationBroken, out.concentration, out.swallowedFreed].filter((line): line is string => typeof line === "string" && line.length > 0);
+  return [`${took}${fell}`, ...extras].join(" ");
 }
 
 // Spirit Guardians and its kind, around every caster holding one.
