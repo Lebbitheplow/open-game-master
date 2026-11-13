@@ -2,16 +2,13 @@ import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { getCampaignById } from "@/lib/db/campaigns";
-import { claimRestDie, inShortRestWindow, restDieLeft } from "@/lib/db/clock";
+import { inShortRestWindow } from "@/lib/db/clock";
 import { dicePreferencesOf } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { listSheets } from "@/lib/db/sheets";
 import { ownSheetFor } from "@/lib/character-seat";
 import { entryDice } from "@/lib/dice";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
-import { hitDiceRoll, partyChefDie, partySongOfRestDie, spendHitDice } from "@/lib/dm/hit-dice";
-import { hearsSong } from "@/lib/dm/mt-srd-bard";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { claimWindowRestDice, hitDiceRoll, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,22 +49,6 @@ function typesFaces(campaignId: string, userId: string): boolean {
   return parkReasonFor(preferences.dicePolicy, preferences.member) === "real_dice";
 }
 
-// The one die a song and a meal each add to this character's next spend, if
-// the rest still owes it to them: a creature that spends hit dice gets each
-// once a rest. Read here and claimed only once a spend lands, so showing a
-// player what to roll, or a spend the rules refuse, uses neither up.
-function restDice(campaignId: string, sheet: CharacterSheet): { songDie: string | null; chefDie: string | null } {
-  const party = listSheets(campaignId);
-  const song = partySongOfRestDie(party);
-  const chef = partyChefDie(party);
-  return {
-    // "Who can hear your performance" (mt-srd-bard.ts), as the GM's spend
-    // asks it (rest-tools.ts): a deafened listener gets no song's die.
-    songDie: song && hearsSong(sheet) && restDieLeft(campaignId, sheet.id, "sung") ? song : null,
-    chefDie: chef && restDieLeft(campaignId, sheet.id, "fed") ? chef : null,
-  };
-}
-
 // Whether the asking player's character is in the short-rest window now, so
 // the sheet offers "Spend a hit die" only while the engine would take it.
 // For a seat on physical dice it also says what the next hit die rolls, so
@@ -85,7 +66,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ camp
   if (!open || !sheet || !typesFaces(campaignId, context.user.id)) {
     return Response.json({ open });
   }
-  const extra = restDice(campaignId, sheet);
+  const extra = windowRestDice(campaignId, sheet);
   const ask = hitDiceRoll(sheet, 1, extra);
   return Response.json({
     open,
@@ -144,7 +125,7 @@ export async function POST(
   // spends hit dice, once per rest. The GM's own spend added the meal's die
   // (rest-tools.ts) and this route never did, so a player who chose their
   // own hit dice ate the meal for nothing.
-  const extra = restDice(campaignId, sheet);
+  const extra = windowRestDice(campaignId, sheet);
   const sent = parsed.data.faces;
   if (sent?.some((face) => face !== "digital") && !typesFaces(campaignId, context.user.id)) {
     // As a roll card refuses them (pending-rolls/[pendingRollId]/route.ts).
@@ -183,11 +164,6 @@ export async function POST(
   if ("error" in spent) {
     return refuse(spent.error);
   }
-  if (extra.songDie) {
-    claimRestDie(campaignId, sheet.id, "sung");
-  }
-  if (extra.chefDie) {
-    claimRestDie(campaignId, sheet.id, "fed");
-  }
+  claimWindowRestDice(campaignId, sheet.id, extra);
   return Response.json({ ok: true, ...spent });
 }

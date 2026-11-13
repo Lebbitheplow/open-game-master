@@ -124,6 +124,64 @@ await test("A short rest leaves out a hero who dies in the death saves its hour 
   away();
 });
 
+// #932: the player says how many in chat; the AI passes it on inside the
+// rest it just took, instead of resting again and rolling a d20 check.
+await test("Inside the short rest just taken, the AI spends the hit dice the player named this turn, with no more time passing and nothing refilled again.", async () => {
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { handleTakeRest } = await import("../src/lib/dm/rest-tools.ts");
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  world.patch(hero.id, { currentHp: 10, hitDice: { die: "d10", total: 4, spent: 0 } });
+  const rested = await world.invoke("take_rest", { kind: "short" });
+  assert.equal(rested.ok, true, rested.error);
+  assert.ok(rested.result.choosing?.includes(sheet().name));
+  assert.match(rested.result.choosingNote, /take_rest kind short with spend/);
+  assert.match(rested.result.choosingNote, /Never request_roll a hit die/);
+  const clock = getClock(world.campaignId).instant;
+  const sheets = world.sheets();
+  const byId = new Map(sheets.map((entry) => [entry.id, entry]));
+  const call = JSON.stringify({ kind: "short", spend: [{ characterId: hero.id, dice: 1 }] });
+
+  // No word from the player this turn: the count is theirs, so nothing is spent.
+  world.say("dm", "The hour passes in the quiet of the ruin.");
+  const unasked = handleTakeRest(world.campaign(), createDmTurn(world.campaignId, [], "ai").id, call, sheets, byId);
+  assert.equal(unasked.retry, true, JSON.stringify(unasked));
+  assert.match(unasked.error, /did not say this turn how many hit dice/);
+  assert.equal(sheet().hitDice.spent, 0);
+
+  world.say("player", "I spend 1 hit die", sheet());
+  world.dice(7);
+  const spent = handleTakeRest(world.campaign(), createDmTurn(world.campaignId, [], "ai").id, call, sheets, byId);
+  world.clearDice();
+  assert.equal(spent.ok, true, spent.error);
+  assert.equal(spent.inTheRestJustTaken, true);
+  assert.equal(sheet().hitDice.spent, 1, "the d10 was spent");
+  assert.equal(sheet().currentHp, 10 + 7 + 2, "and healed: the face plus CON");
+  assert.equal(getClock(world.campaignId).instant, clock, "no second hour passed");
+  const roll = getDatabase().prepare(`SELECT detail, expression FROM rolls WHERE character_id = ? ORDER BY rowid DESC LIMIT 1`).get(hero.id);
+  assert.match(roll.detail, /short rest: 1 hit die/);
+  assert.match(roll.expression, /^1d10\b/, "a d10, never a d20");
+});
+
+await test("The AI's request_roll for a hit die is refused before anything is rolled, pointing at take_rest.", async () => {
+  const { createDmTurn, getDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { handleRequestRoll } = await import("../src/lib/dm/invoke-roll.ts");
+  const sheets = world.sheets();
+  const turn = getDmTurn(createDmTurn(world.campaignId, [], "ai").id);
+  const before = getDatabase().prepare(`SELECT COUNT(*) AS n FROM rolls`).get().n;
+  const refused = handleRequestRoll(
+    world.campaign(),
+    turn,
+    JSON.stringify({ kind: "custom", characterId: hero.id, expression: "1d20+1", reason: "Jason spends a hit die to heal" }),
+    sheets,
+    new Map(sheets.map((entry) => [entry.id, entry])),
+    new Set(),
+    { toolCallId: "call-1" },
+  );
+  assert.equal(refused.retry, true, JSON.stringify(refused));
+  assert.match(refused.error, /through take_rest, never request_roll/);
+  assert.equal(getDatabase().prepare(`SELECT COUNT(*) AS n FROM rolls`).get().n, before, "nothing was rolled");
+});
+
 leave();
 world.close();
 finish();

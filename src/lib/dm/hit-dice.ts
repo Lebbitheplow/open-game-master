@@ -19,7 +19,9 @@
 
 import { chefRestDie, hitDieHealingFloor } from "@/lib/srd/feat-combat";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { claimRestDie, restDieLeft } from "@/lib/db/clock";
+import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollEnteredDice, rollExpression, type RollResult } from "@/lib/dice";
@@ -201,6 +203,33 @@ export function partyChefDie(sheets: Array<Pick<CharacterSheet, "id">>): string 
     }
   }
   return null;
+}
+
+// The one die a song and a meal each add to this character's next spend, if
+// the open short rest still owes it to them: a creature that spends hit dice
+// gets each once a rest. Read here and claimed (claimWindowRestDice) only once
+// a spend lands, so showing a player what to roll, or a spend the rules
+// refuse, uses neither up. One reading for the sheet's spend and the GM's
+// spend inside the rest (rest-tools.ts).
+export function windowRestDice(campaignId: string, sheet: CharacterSheet): { songDie: string | null; chefDie: string | null } {
+  const party = listSheets(campaignId);
+  const song = partySongOfRestDie(party);
+  const chef = partyChefDie(party);
+  return {
+    // "Who can hear your performance" (mt-srd-bard.ts): a deafened
+    // listener gets no song's die.
+    songDie: song && hearsSong(sheet) && restDieLeft(campaignId, sheet.id, "sung") ? song : null,
+    chefDie: chef && restDieLeft(campaignId, sheet.id, "fed") ? chef : null,
+  };
+}
+
+export function claimWindowRestDice(campaignId: string, sheetId: string, used: { songDie: string | null; chefDie?: string | null }) {
+  if (used.songDie) {
+    claimRestDie(campaignId, sheetId, "sung");
+  }
+  if (used.chefDie) {
+    claimRestDie(campaignId, sheetId, "fed");
+  }
 }
 
 export function partySongOfRestDie(sheets: Array<Pick<CharacterSheet, "id">>): string | null {

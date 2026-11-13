@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/invoke-roll.ts#partial": [["pattern",1,"a fixed pattern over the model's roll reason that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/infusion-picks.ts#bypass": [["identity", 2, "a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
     "lib/srd/infusion-picks.ts#helper": [["identity", 1, "a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
     "lib/dm/infusion-servant.ts#fallback": [["identity", 1, "a record by its whole name (textKey on both sides): the square named, else the turn's first, among the squares stood in"]],
@@ -1690,7 +1691,7 @@
     "lib/dm/engine-boundary.ts#first": [["key",1,"swing outcomes by position"]],
     "lib/dm/engine-boundary.ts#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/engine-boundary.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/dm/engine-boundary.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",10,"what narration says against the turn's tool outcomes (names in prose)"],["search",3,"creature names in the narration guard's prose"],["key",2,"ODM's own prompt headings"],["key",1,"the party's fighters by the creature key the guard gives them, one entry a key (issue 931)"]],
+    "lib/dm/engine-boundary.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",10,"what narration says against the turn's tool outcomes (names in prose)"],["search",3,"creature names in the narration guard's prose"],["key",3,"ODM's own prompt headings and tool names"],["key",1,"the party's fighters by the creature key the guard gives them, one entry a key (issue 931)"]],
     "lib/dm/entity-logic.ts#partial": [["search",1,"entity tokens for similarity"]],
     "lib/dm/entity-review-logic.ts#partial": [["search",2,"rename and duplicate suggestions"]],
     "lib/dm/entity-review-logic.ts#whole": [["search",1,"rename and duplicate suggestions"]],

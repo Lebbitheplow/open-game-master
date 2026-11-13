@@ -359,7 +359,7 @@ await test("The gear rules match the gear engine: damage_object remembers damage
   assert.match(text, /A charged item \(a wand, a staff\) goes through use_item with the spell it casts named in spell/);
   assert.match(text, /the server spends no slot for it and uses the item's save DC and attack bonus/);
   assert.match(text, /the server refuses a scroll the reader cannot read \(and the scroll is kept\) and rolls the check for one above their level/);
-  assert.match(text, /a player at the table chooses and rolls their own hit dice from their sheet/);
+  assert.match(text, /a player at the table chooses their own hit dice, on their sheet or by telling you a number you pass on with take_rest short spend/);
   assert.match(text, /Attuning to a magic item takes a short rest/);
   // One purchase call is every trade now, at a shop or not (issue #471).
   assert.match(text, /every purchase, sale, or trade goes through ONE purchase call/);
