@@ -1,5 +1,6 @@
 import { ABILITIES, fitName, LANGUAGE_NAME_MAX, type Ability } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { canonicalToolName } from "@/lib/srd/tool-choices";
 import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
 import type { SpeciesSpellGroup } from "@/lib/content/species-spells";
 
@@ -682,7 +683,7 @@ function backgroundTools(text: string): string[] {
   if (bare) {
     return [`${bare[1]} ${bare[1].toLowerCase() === "one" ? "tool" : "tools"} of your choice`];
   }
-  return /\bchoice\b|\bor\b/i.test(plain) ? [plain] : proficiencyList(plain);
+  return /\bchoice\b|\bor\b/i.test(plain) ? [plain] : proficiencyList(plain).map(canonicalToolName);
 }
 
 // Items split at the commas outside parentheses and numbers ("a bag of 1,000

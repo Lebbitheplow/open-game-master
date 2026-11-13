@@ -45,6 +45,35 @@ export const MUSICAL_INSTRUMENTS = [
 
 export const GAMING_SETS = ["dice set", "dragonchess set", "playing card set", "three-dragon ante set"];
 
+// The SRD's other tools and kits, and every tool together: what "two tools
+// of your choice" picks from.
+export const OTHER_TOOLS = [
+  "disguise kit",
+  "forgery kit",
+  "herbalism kit",
+  "navigator's tools",
+  "poisoner's kit",
+  "thieves' tools",
+  "vehicles (land)",
+  "vehicles (water)",
+];
+export const ALL_TOOLS = [...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS];
+
+// Names compared without their apostrophes and plural or possessive s, so
+// "Cartographers’ tools" and "Thieves’ tools" find the SRD's tools.
+const looseKey = (name: string) => textKey(name.replace(/['‘’`]/g, "")).replace(/s\b/g, "");
+// A pack's other word for a tool the SRD names (Tome of Heroes' Desert Runner).
+const TOOL_ALIASES: Record<string, string> = { [looseKey("herbalist kit")]: "herbalism kit", [looseKey("herbalist's kit")]: "herbalism kit" };
+const BY_LOOSE_KEY = new Map(ALL_TOOLS.map((tool) => [looseKey(tool), tool]));
+
+// The SRD's name for a tool a row spells its own way, or the entry as it
+// came when it names no SRD tool (a setting's "electronics kit"). A sheet
+// proficient in "Herbalist kit" was never proficient with a herbalism kit.
+export function canonicalToolName(entry: string): string {
+  const key = looseKey(entry);
+  return BY_LOOSE_KEY.get(key) ?? TOOL_ALIASES[key] ?? entry;
+}
+
 export type ToolChoice = { count: number; from: string[]; label: string };
 
 const COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, a: 1, any: 1 };
@@ -60,6 +89,11 @@ export function toolChoiceOf(entry: string): ToolChoice | null {
     if (tools.length > 1) {
       return { count: COUNTS[named[1]], from: tools, label: "tool" };
     }
+  }
+  // "Two tools of your choice" (the open5e Con Artist): picks from every tool.
+  const open = /^(one|two|three|a|any) tools? of your choice\.?$/.exec(text);
+  if (open) {
+    return { count: COUNTS[open[1]], from: ALL_TOOLS, label: "tool" };
   }
   const kinds: Array<[RegExp, string[], string]> = [
     [/artisan'?s? tools?/, ARTISANS_TOOLS, "artisan's tools"],

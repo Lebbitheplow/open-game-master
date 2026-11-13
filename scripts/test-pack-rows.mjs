@@ -73,7 +73,7 @@ test("a pack background's languages, tools and gear carry through, v1 prose and 
   const occultist = background("occultist");
   assert.equal(occultist.languages, 2);
   assert.deepEqual(occultist.knownLanguages, []);
-  assert.deepEqual(occultist.tools, ["Thieves' tools"]);
+  assert.deepEqual(occultist.tools, ["thieves' tools"]);
   assert.deepEqual(occultist.equipment, [
     "A book of obscure lore holding clues to an occult location",
     "a bottle of black ink",
@@ -86,8 +86,8 @@ test("a pack background's languages, tools and gear carry through, v1 prose and 
   const cultist = background("cultist");
   assert.equal(cultist.languages, 1);
   assert.deepEqual(cultist.equipment, ["Holy symbol (amulet or reliquary)", "common clothes", "robes", "5 torches"]);
-  assert.deepEqual(background("deep-hunter").tools, ["Leatherworker’s tools"]);
-  assert.deepEqual(background("freebooter").tools, ["Navigator's tools", "vehicles (water)"]);
+  assert.deepEqual(background("deep-hunter").tools, ["leatherworker's tools"]);
+  assert.deepEqual(background("freebooter").tools, ["navigator's tools", "vehicles (water)"]);
   const scoundrel = background("scoundrel");
   assert.deepEqual(scoundrel.tools, ["One type of gaming set", "thieves' tools"]);
   assert.equal(scoundrel.equipment[0], "A bag of 1,000 ball bearings");
@@ -115,7 +115,7 @@ test("negatives grant nothing, choices stay one entry, named languages are known
 test("the builder's background options carry the pack rows' grants", () => {
   const options = mergedBackgroundOptions(rows.backgrounds.map((row) => ({ ...row, source: "open5e" })));
   const occultist = options.find((option) => option.id === "occultist");
-  assert.deepEqual(occultist.tools, ["Thieves' tools"]);
+  assert.deepEqual(occultist.tools, ["thieves' tools"]);
   assert.equal(occultist.languages, 2);
   assert.equal(occultist.equipment.length, 7);
   assert.deepEqual(options.find((option) => option.id === "forest-dweller").knownLanguages, ["Sylvan"]);
