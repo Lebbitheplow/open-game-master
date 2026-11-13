@@ -7,6 +7,7 @@
 // Nothing here refuses the attack.
 
 import { textKey } from "@/lib/language/text-logic";
+import { runToward } from "@/lib/dm/mt-fb-charge";
 import { authoredNaturalWeapon, authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
@@ -67,6 +68,8 @@ export function foldDamageRiders(input: {
   // Gutter Fighting's "a creature that has not acted yet this combat".
   const fight = input.enemy?.id ? getActiveEncounter(campaignId) : null;
   const notActed = Boolean(fight && input.enemy?.id && enemyNotActed(fight, input.enemy.id));
+  // The run straight at it this turn, for a rider that rides one (Ram Speed).
+  const ranFt = fight && input.enemy?.id ? runToward(fight, sheet.id, input.enemy.id) : 0;
   let profile = input.profile;
 
   // Rage, an ability a feature adds (Aura of Hate), the dice a held
@@ -75,7 +78,7 @@ export function foldDamageRiders(input: {
   // attack-damage-riders.ts, which the Hand's attack cards print from too.
   // The server folds them into the damage dice so both the digital and
   // physical-dice paths carry them.
-  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed });
+  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed, ranFt });
   for (const rider of toHitRiders) {
     profile = { ...profile, toHit: profile.toHit + rider.amount, riderNotes: [...profile.riderNotes, `${rider.feature}: +${rider.amount} to hit`] };
   }

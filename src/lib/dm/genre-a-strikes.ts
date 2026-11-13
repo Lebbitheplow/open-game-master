@@ -31,6 +31,9 @@ export type StrikeTarget = {
   marked?: ReadonlySet<string>;
   // The conditions the creature carries, for a vsCondition rider.
   conditions?: readonly string[];
+  // How many feet straight at the creature the attacker ran this turn
+  // (mt-fb-charge.ts runToward), for an afterRunFt rider.
+  ranFt?: number;
 };
 
 const mods = (sheet: Pick<CharacterSheet, "abilities">) =>
@@ -73,6 +76,7 @@ export function genreStrikeRiders(
     if (effect.weapons && !effect.weapons.some((name) => weapon.has(textKey(name)))) continue;
     if (effect.vsTypes && !(type && effect.vsTypes.some((kind) => type.includes(kind)))) continue;
     if (effect.vsNotActed && !target?.notActed) continue;
+    if (effect.afterRunFt && (target?.ranFt ?? 0) < effect.afterRunFt) continue;
     if (effect.vsMark && !markRides(sheet, effect.vsMark, target)) continue;
     if (effect.vsCondition && !target?.conditions?.some((entry) => isConditionNamed(entry, effect.vsCondition!))) continue;
     out.push({

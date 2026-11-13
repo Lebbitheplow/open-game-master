@@ -22,6 +22,7 @@ import { counterSaveDc } from "@/lib/srd/counter-rules";
 import { computeSheetDerived } from "@/lib/srd";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { textKey } from "@/lib/language/text-logic";
+import { chargedFeet } from "@/lib/srd/mt-fb-run";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export function hitSavesOnHit(campaign: Campaign, encounter: Encounter, sheet: CharacterSheet, struck: EncounterEnemy): string[] {
@@ -37,21 +38,35 @@ export function hitSavesOnHit(campaign: Campaign, encounter: Encounter, sheet: C
     if (!budgetApplies(budget, sheet.id, live.round)) {
       continue;
     }
-    const claimed = claimOncePerTurn(budget, `authored:hit_save:${textKey(held.feature)}`);
-    if (!claimed) {
-      continue;
+    if (effect.afterRunFt) {
+      // A charge's save rides each hit the run ended in (Locomotive Charge:
+      // "when you move 15+ ft straight toward a creature and hit it"), on the
+      // turn's record of the run (mt-fb-charge.ts).
+      if (chargedFeet(budget?.oncePerTurn, enemy.id) < effect.afterRunFt) {
+        continue;
+      }
+    } else {
+      const claimed = claimOncePerTurn(budget, `authored:hit_save:${textKey(held.feature)}`);
+      if (!claimed) {
+        continue;
+      }
+      storeBudget(live, claimed);
     }
-    storeBudget(live, claimed);
     const barred = riderBarred(enemy, effect.condition, null);
     if (barred) {
       lines.push(`${held.feature}: ${barred}`);
       continue;
     }
-    const dc = counterSaveDc("spell", computeSheetDerived(sheet), 0);
+    const dc = counterSaveDc(effect.dcAbility ?? "spell", computeSheetDerived(sheet), 0);
     const save = rollEnemySave(campaign.id, enemy, effect.save, dc, { against: effect.condition, origin: { ref: sheet.id } });
     const shown = save.total ?? "an automatic failure";
     if (save.success) {
       lines.push(`${held.feature}: ${enemy.displayName} holds (${shown} vs DC ${dc}); not ${effect.condition}.`);
+      continue;
+    }
+    if (effect.lasting) {
+      applyRiderCondition(campaign, enemy, effect.condition, { meta: { source: sheet.id } });
+      lines.push(`${held.feature}: ${enemy.displayName} fails the ${effect.save.toUpperCase()} save (${shown} vs DC ${dc}) and is ${effect.condition}.`);
       continue;
     }
     applyRiderCondition(campaign, enemy, effect.condition, { meta: untilTurnEnd(sheet.id, { source: sheet.id }) });

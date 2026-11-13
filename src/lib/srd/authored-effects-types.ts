@@ -288,7 +288,18 @@ export type AuthoredEffect = Base &
     // Once on each of the holder's turns, a creature their attack hits saves
     // against their spell save DC or takes `condition` until the end of the
     // holder's next turn (Form of Dread: src/lib/dm/hit-save.ts).
-    | { kind: "hit_save"; save: Ability; condition: string }
+    // `dcAbility`: the DC is 8 + proficiency + this modifier, not the spell
+    // save DC. `afterRunFt`: only a melee hit after a run of at least this
+    // many feet straight at the creature (src/lib/dm/mt-fb-charge.ts), each
+    // such hit rather than once a turn. `lasting`: the condition has no turn
+    // to end on (prone ends by standing up): Locomotive Charge.
+    | { kind: "hit_save"; save: Ability; condition: string; dcAbility?: Ability; afterRunFt?: number; lasting?: boolean }
+    // A melee hit after a run of at least `afterRunFt` feet straight at the
+    // creature shoves it `feet` away (Ram Speed): src/lib/dm/genre-run-hits.ts.
+    | { kind: "run_push"; feet: number; afterRunFt: number }
+    // The holder's ranged weapon attacks count as silvered and magical
+    // (Blessed Ammunition): src/lib/dm/pc-attack-profile.ts.
+    | { kind: "ranged_material"; silvered?: true; magical?: true }
     // Allies in range (and the holder) resist: spell damage, or the damage
     // type the holder's own condition names.
     | {
@@ -464,6 +475,9 @@ export type AuthoredEffect = Base &
         oncePerTurn?: boolean;
         vsTypes?: string[];
         vsNotActed?: boolean;
+        // Only after a run of at least this many feet straight at the
+        // creature this turn (Ram Speed, Daring Maneuver: mt-fb-charge.ts).
+        afterRunFt?: number;
         // Only a hit on the creature this mark of the holder's names
         // (Improved Quarry: "Quarry damage rises to +2d6").
         vsMark?: string;

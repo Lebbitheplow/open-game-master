@@ -447,15 +447,9 @@
   "clauses": [
    {
     "c": "Your ranged attacks count as silvered and magical",
-    "run": {
-     "k": "magical",
-     "mode": "ranged"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Blessed Ammunition#0",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 3, the text 6",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Blessed Ammunition: a witch hunter's pistol shot passes a werewolf's immunity to nonmagical blows that aren't silvered; without it, nothing lands",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (ranged_material), read by src/lib/dm/pc-attack-profile.ts"
    }
   ]
  },
@@ -2554,14 +2548,9 @@
   "clauses": [
    {
     "c": "Your healing dirges add your CHA modifier again to HP restored",
-    "run": {
-     "k": "spell_heal"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Lament of the Lost#0",
-    "observed": "hit points a Healing Word restored on a 3: the engine gives 5, the text 7",
-    "where": "the heal tool (src/lib/dm/heal): no rider for the feature on a healing spell",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs: Lament of the Lost: a dirgesinger's healing spell adds the CHA modifier again",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (a healing spell_rider), read by src/lib/dm/heal-bonus.ts healAdditions"
    }
   ]
  },

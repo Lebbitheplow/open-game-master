@@ -4,6 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
+import { activeAuthored } from "@/lib/srd/authored-effects";
 import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
@@ -438,6 +439,13 @@ export function buildAttackProfile(
       material,
     });
     profile = swing(hands.twoHanded);
+    // Blessed Ammunition: a witch hunter's ranged attacks count as silvered
+    // and magical, whatever the weapon (authored ranged_material).
+    for (const { effect } of activeAuthored(sheet, "ranged_material")) {
+      if (profile.ranged) {
+        profile = { ...profile, material: { ...(profile.material ?? {}), ...(effect.silvered ? { silvered: true } : {}) }, ...(effect.magical ? { magicWeapon: true } : {}) };
+      }
+    }
     // A torch's 1 fire is for a melee attack with it; thrown past its reach
     // it is any object (src/lib/srd/gear-weapons.ts).
     if (profile.gearWeapon && !profile.ranged && thrownAtRange(profile, target.apart)) {

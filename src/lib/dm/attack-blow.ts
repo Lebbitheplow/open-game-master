@@ -6,6 +6,7 @@
 // lands (pc-attack-parked.ts).
 
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
+import { runPush } from "@/lib/dm/genre-run-hits";
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { horrorOnHit } from "@/lib/dm/genre-a-horror-hits";
 import { genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
@@ -234,6 +235,11 @@ export function landSwingBlow(
     const kinetic = kineticShove(scene, record);
     if (kinetic) {
       notes.push(kinetic);
+    }
+    // Ram Speed's shove after a run (genre-run-hits.ts).
+    const rammed = runPush(scene, record);
+    if (rammed) {
+      notes.push(rammed);
     }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);

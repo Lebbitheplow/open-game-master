@@ -10,6 +10,7 @@
 // Before this every one of them cost nothing: Afterimage's Dash took the
 // action, Target Lock was a sentence, Feedback Loop spent the reaction and
 // dealt nothing.
+import { GENRE_C_AUTHORED } from "@/lib/srd/authored-effects-genre-c";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
@@ -116,4 +117,6 @@ export const GENRE_AUTHORED: GenreRow[] = [
   ...GENRE_B_MYSTERY_AUTHORED,
   ...GENRE_B_PA_AUTHORED,
   ...GENRE_B_STEAMPUNK_AUTHORED,
+  // The fight features the 2026-11-13 creator audit built.
+  ...GENRE_C_AUTHORED,
 ];

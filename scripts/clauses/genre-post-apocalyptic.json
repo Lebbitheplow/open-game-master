@@ -714,16 +714,15 @@
   "clauses": [
    {
     "c": "When you move 20+ ft straight toward a target and hit with a melee attack, deal +2d6 and shove it 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Ram Speed: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Ram Speed: a road warrior's melee hit after a 20-foot run straight at the creature deals 2d6 more and shoves it 10 feet; standing still, neither",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, read by src/lib/dm/genre-a-strikes.ts; run_push, read by src/lib/dm/genre-run-hits.ts), on the run src/lib/dm/mt-fb-charge.ts records"
    },
    {
     "c": "+2d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Ram Speed: a road warrior's melee hit after a 20-foot run straight at the creature deals 2d6 more and shoves it 10 feet; standing still, neither",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, read by src/lib/dm/genre-a-strikes.ts; run_push, read by src/lib/dm/genre-run-hits.ts), on the run src/lib/dm/mt-fb-charge.ts records"
    }
   ]
  },
