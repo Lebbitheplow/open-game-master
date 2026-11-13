@@ -441,10 +441,12 @@ export function incapacitatedBy(conditions: string[]): string | null {
   return has(conditions, INCAPACITATING);
 }
 
-export function effectiveSpeed(conditions: string[], baseSpeed: number): number {
+// `whole`: a speed nothing reduces (conditionSpeed), which the hard zeroes
+// still hold.
+export function effectiveSpeed(conditions: string[], baseSpeed: number, whole = false): number {
   // Effect conditions adjust the speed (haste x2, longstrider +10) before
   // the hard zeroes (grappled, restrained, incapacitated) override.
-  return has(conditions, SPEED_ZERO) ? 0 : conditionSpeed(conditions, baseSpeed);
+  return has(conditions, SPEED_ZERO) ? 0 : conditionSpeed(conditions, baseSpeed, whole);
 }
 
 // Merges advantage sources 5e-style: any advantage plus any disadvantage

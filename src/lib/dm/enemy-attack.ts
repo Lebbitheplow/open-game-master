@@ -9,6 +9,7 @@
 // against stat block (src/lib/dm/enemy-strike.ts).
 
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { paBlowResists } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -757,6 +758,8 @@ export function handleEnemyAttack(
       ...(attack.spellAttack ? { spell: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+      // What the post-apocalyptic classes resist of this creature's blow (One Blood).
+      ...paBlowResists({ campaignId: campaign.id, encounterId: encounter.id, attacker: standing, target: getSheetById(target.id) ?? target, ranged, spellAttack: Boolean(attack.spellAttack) }),
     };
     // The Cloud Rune (cloud-rune.ts): a knight's player turns the hit onto
     // another creature before its damage is rolled, on the same roll, so the
@@ -833,6 +836,8 @@ export function handleEnemyAttack(
     const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
     // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {

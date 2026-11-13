@@ -20,6 +20,7 @@ import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { genreBAuraAttack } from "@/lib/dm/genre-b-auras";
+import { attackAuraExtras } from "@/lib/dm/attack-roll-extras";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { getSheetById } from "@/lib/db/sheets";
 import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
@@ -124,9 +125,10 @@ export function foldDamageRiders(input: {
     profile = { ...profile, toHit: profile.toHit + attackEffect.bonus };
   }
   // An ally's genre aura on the attack roll (Warlord of the Wastes).
-  const aura = genreBAuraAttack(campaignId, sheet);
-  if (aura.bonus) {
-    profile = { ...profile, toHit: profile.toHit + aura.bonus, riderNotes: [...profile.riderNotes, `${aura.features.join(", ")}: +${aura.bonus} to hit`] };
+  // attackAuraExtras is the one reading of it, which the Hand's cards print.
+  const aura = attackAuraExtras(genreBAuraAttack(campaignId, sheet));
+  if (aura) {
+    profile = { ...profile, toHit: profile.toHit + aura.flat, riderNotes: [...profile.riderNotes, aura.note] };
   }
   if (damageEffect.bonus) {
     profile = {

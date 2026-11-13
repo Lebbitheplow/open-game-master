@@ -15,6 +15,7 @@ import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
 import { GENRE_B_AUTHORED } from "@/lib/srd/authored-effects-genre-b";
 import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mystery";
+import { GENRE_B_PA_AUTHORED } from "@/lib/srd/authored-effects-genre-b-post-apocalyptic";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -107,9 +108,10 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Bodyguard", entry: { subclass: "genre", reactions: [{ name: "Bodyguard", does: { kind: "take_for_ally", rangeFt: [[1, 5], [6, 10]] } }] } },
   { feature: "Duelist's Flourish", entry: { subclass: "genre", reactions: [{ name: "Duelist's Flourish", does: { kind: "attack", rangeFt: 5 } }] } },
   { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
-  { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
+  { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split", ownSummon: true } }] } },
   ...GENRE_A_AUTHORED,
   // The mystery, post-apocalyptic and steampunk classes' own (wave 2).
   ...GENRE_B_AUTHORED,
   ...GENRE_B_MYSTERY_AUTHORED,
+  ...GENRE_B_PA_AUTHORED,
 ];

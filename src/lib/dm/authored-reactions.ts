@@ -746,6 +746,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id) {
         return { error: `${reaction.name} takes the hit an ally took: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
+      if (does.ownSummon && ally.summon?.casterId !== ctx.sheet.id) {
+        return { error: `${reaction.name} answers damage to ${ctx.sheet.name}'s own beast, and ${ally.name} is not it. Nothing was spent.`, refused: "rules" };
+      }
       const feet = reachAtLevel(does.rangeFt, held.level);
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };

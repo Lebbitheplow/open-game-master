@@ -26,6 +26,8 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
 import { genreDropHold as genreBDropHold } from "@/lib/dm/genre-b-drops";
+import { packBeastHold } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { paDamaged } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { cutParts, genreDamageCut } from "@/lib/srd/genre-b-combat";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
@@ -104,7 +106,10 @@ export type PcDamageInput = {
   // with no attacker. A resistance to damage "dealt by other creatures"
   // (Emissary of Redemption) does not meet it.
   noCreature?: boolean;
-  // Resistances this blow alone meets (a fall's, for Kinetic Buffer).
+  // Resistances this blow alone meets (a fall's, for Kinetic Buffer), and
+  // the damage types this one blow is resisted in by who dealt it or how
+  // (One Blood against a creature the pack has not wounded:
+  // src/lib/dm/genre-b-post-apocalyptic-blows.ts), a comma-separated line each.
   resists?: string[];
   reason?: string;
 };
@@ -114,7 +119,7 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature">;
+export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature" | "resists">;
 
 export type BlowDefenses = {
   resisted: string;
@@ -407,13 +412,20 @@ export function applyPcDamage(
   if (carried > 0 && !math.dropped) {
     afflictionStress(campaign, turnId, sheet.id, "damage");
   }
+  // Rapid Adaptation, Hardened Mutation (genre-b-post-apocalyptic-blows.ts).
+  const answered = carried > 0 && !math.dropped ? paDamaged(campaign, sheet, { hpAfter: math.currentHp, types: input.parts?.length ? input.parts.map((part) => part.type) : [input.type ?? ""] }) : {};
+  // Pack Endurance holds a packmaster's beast at 1 (genre-b-post-apocalyptic-beast.ts).
+  const packHold = math.dropped ? packBeastHold(campaign, sheet) : null;
+  if (packHold) {
+    return { ok: true, hp: `1/${sheet.maxHp}`, damageApplied: carried, held: "Pack Endurance", note: packHold };
+  }
   // A summoned creature at 0 hit points disappears (summon-store.ts).
   const vanished = summonAfterDamage(campaign, sheet, math.dropped, carried);
   if (vanished) {
     return { ok: true, hp: `${math.currentHp}/${sheet.maxHp}`, damageApplied: carried, ...(math.dropped ? { dropped: true } : {}), vanished };
   }
   const bond = wardingBondShare(campaign, turnId, sheet, input, adjusted.amount);
-  const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond };
+  const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond, ...answered };
   // A hero held at 1 hit point (Death Ward, Undying Sentinel, Relentless
   // Endurance, Relentless Rage) still took the blow: the concentration save,
   // the stress of damage and what their defences did ride the hold as they

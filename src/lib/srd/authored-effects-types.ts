@@ -786,6 +786,16 @@ export type SpendDoes =
   // `noHalf`: a creature that saves takes nothing (Searing Sunburst).
   // `rangeFt`: how far from the holder a creature named may stand.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string; noHalf?: boolean; rangeFt?: number }
+  // The packmaster's beasts (src/lib/dm/genre-b-post-apocalyptic-beast.ts):
+  // the beast bonded, Call the Wild's wolves, Shared Fury on the pair, the
+  // beast grown monstrous by Legend of the Pack.
+  | { kind: "pack"; call: "bonded" | "wild" | "fury" | "legend" }
+  // The post-apocalyptic classes' spends that reach by distance or take a
+  // named choice (src/lib/dm/genre-b-post-apocalyptic-spends.ts): Flock's
+  // Shepherd, Testify, Apex Genome's damage type (the call's variant).
+  // `target`, `othersOnly`, `rangeFt`: what the Hand's card asks and prints,
+  // as a buff's do.
+  | { kind: "wastes"; call: "shepherd" | "testify" | "genome"; target?: "ally"; othersOnly?: boolean; rangeFt?: number }
   // `touched`: a willing creature the holder touches is the one moved.
   // `shadows`: only from dim light or darkness to dim light or darkness
   // (Shadow Walk: src/lib/dm/ar-ws-shadow-light.ts).
@@ -1128,7 +1138,9 @@ export type ReactionDoes =
   // `bond`: both creatures carry this condition (Protective Bond, the
   // Emboldening Bond); `teleport`: the holder steps to an open square beside
   // the ally first (src/lib/dm/protective-bond.ts).
-  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; bond?: string; teleport?: true }
+  // `ownSummon`: only a creature the holder made ("when your beast within 30
+  // ft takes damage": a packmaster's bonded beast, Blood Bond).
+  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; bond?: string; teleport?: true; ownSummon?: boolean }
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";

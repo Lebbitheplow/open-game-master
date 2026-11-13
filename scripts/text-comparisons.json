@@ -2511,6 +2511,8 @@
     "lib/srd/authored-effects-genre-b.ts#str-list": [["key",9,"genre feature and condition names, damage, skill, ability and creature-type ids (engine vocabulary)"]],
     "lib/srd/genre-b-combat.ts#str-eq": [["key",2,"genre feature and condition names, damage and skill ids (engine vocabulary)"]],
     "lib/srd/genre-b-conditions.ts#str-list": [["key",2,"damage types the registry rows resist (engine vocabulary)"]],
+    "lib/dm/genre-b-post-apocalyptic-blows.ts#str-list": [["key",1,"the elemental damage type ids Rapid Adaptation answers (engine vocabulary)"]],
+    "lib/srd/authored-effects-genre-b-post-apocalyptic.ts#str-list": [["key",3,"damage and creature-type ids of the post-apocalyptic rows (engine vocabulary)"]],
     "lib/srd/currency.ts#str-list": [["key",2,"coin denominations"]],
     "lib/srd/currency.ts#toLowerCase": [["key",1,"coin denominations in a price"]],
     "lib/srd/dc.ts#str-list": [["key",1,"difficulty tiers (the schema's enum)"]],

@@ -14,6 +14,7 @@
 // Anything still unknown is COUNTED AS UNKNOWN, never as zero: the result
 // reports how many carried items had no weight so nobody reads a total as
 // exact when it is not.
+import { carryDoubled } from "@/lib/srd/genre-b-post-apocalyptic";
 import { gearWeightLb } from "@/lib/srd/adventuring-gear";
 import { matchArmor } from "@/lib/srd/armor";
 import { rowName } from "@/lib/srd/item-row";
@@ -212,7 +213,8 @@ export function encumbranceFor(input: {
   const strength = Math.max(1, itemAbilityScore("str", Math.floor(input.strength || 1), input.equipment ?? [], input.wearer));
   // Powerful Build counts one size larger (src/lib/srd/mt-species-traits.ts),
   // and Adjust Density doubles or halves what its creature carries (ar-ws-density.ts).
-  const multiplier = carryMultiplier(carrySize(input.size, input.wearer)) * Math.max(1, input.carryFactor ?? 1) * densityCarryFactor(input.wearer?.conditions);
+  // Packrat: "Carry capacity doubles" (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const multiplier = carryMultiplier(carrySize(input.size, input.wearer)) * Math.max(1, input.carryFactor ?? 1) * densityCarryFactor(input.wearer?.conditions) * (carryDoubled(input.wearer) ? 2 : 1);
   const { pounds, unweighed } = carriedWeight(input.equipment ?? [], input.coins ?? 0);
   const encumberedAtLb = round2(strength * 5 * multiplier);
   const heavilyEncumberedAtLb = round2(strength * 10 * multiplier);

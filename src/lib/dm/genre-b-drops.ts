@@ -9,10 +9,14 @@
 //     preacher)                      they instead drop to WIS-mod x 5 HP", the
 //                                    preacher's use, the preacher conscious
 //                                    and on the ally's side
+//   Pack Endurance (packmaster)      "the same holds for you while it lives":
+//                                    the packmaster's use, their beast alive
+//                                    (genre-b-post-apocalyptic-beast.ts)
 //
 // A new hold of this kind is a branch here, never a check in pc-damage.ts.
 import { spendGenreHold } from "@/lib/srd/genre-b-counter-terms";
 import { nearbyHolders } from "@/lib/dm/genre-b-auras";
+import { packmasterHold } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -33,6 +37,11 @@ export function genreDropHold(campaignId: string, sheet: CharacterSheet): GenreD
   const own = spendGenreHold(sheet.resources as Uses | undefined);
   if (own) {
     return { name: own.name, hp: 1, resources: own.resources };
+  }
+  // Pack Endurance: "the same holds for you while it lives".
+  const pack = packmasterHold(campaignId, sheet);
+  if (pack) {
+    return { name: pack.name, hp: 1, resources: pack.resources };
   }
   for (const preacher of nearbyHolders(campaignId, sheet, "waste_preacher", "Stand at the Dawn", 30)) {
     const state = (preacher.resources as Uses | undefined)?.[STAND_AT_THE_DAWN];

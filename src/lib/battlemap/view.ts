@@ -1,4 +1,5 @@
 import { formSenses } from "@/lib/srd/mt-srd-form-senses";
+import { speedCannotBeReduced } from "@/lib/srd/genre-b-post-apocalyptic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
 import { tokenSides } from "@/lib/dm/combatant";
@@ -175,7 +176,13 @@ export function pcMoveBudget(
   // ranger's own turn of the fight's first round (turn-extra-attacks-logic.ts).
   const ambush = encounter.kind !== "scene" && ownTurnOf(encounter, sheet.id) && ambushRound(sheet, encounter.round) ? 10 : 0;
   // Sole Survivor: the last conscious party member's speed doubles.
-  const speed = soleSurvivorSpeed(campaignId, sheet, exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush)));
+  // Unstoppable: a conscious road warrior's speed is never reduced, by a
+  // condition or by exhaustion (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const speed = soleSurvivorSpeed(
+    campaignId,
+    sheet,
+    speedCannotBeReduced(sheet) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush)),
+  );
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
   if (encounter.kind === "scene") {

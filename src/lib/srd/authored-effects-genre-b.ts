@@ -67,7 +67,13 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Immune to poison and disease": the damage and the condition.
   // "a creature that hits you with a bite takes 2d6 poison".
   row("Toxic Blood", ["aberrant"], { effects: [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned"] }, { kind: "retaliate", formula: "2d6", type: "poison", melee: true, attacks: ["bite"] }] }),
-  row("Chameleon Skin", ["aberrant"], { effects: [{ kind: "check_adv", skills: ["stealth"] }] }),
+  // "1/rest, turn near-invisible until you attack or cast": invisible, which an
+  // attack or a cast ends as it ends the spell's (src/lib/dm/attack-marks.ts).
+  row("Chameleon Skin", ["aberrant"], {
+    counter: "post_apocalyptic_chameleon_skin",
+    effects: [{ kind: "check_adv", skills: ["stealth"] }],
+    spends: [{ name: "Chameleon Skin", pool: { id: "post_apocalyptic_chameleon_skin" }, does: { kind: "buff", condition: "invisible", rounds: 600 } }],
+  }),
   row("Scrap Armor Weave", ["salvage_tech"], { effects: [{ kind: "ac", amount: 1 }, { kind: "resist", types: ["lightning"] }] }),
   // The holder's own part of "You and allies within 10 ft have resistance to
   // necrotic damage and advantage against fear".
@@ -156,10 +162,11 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
     kind: "save_effect", save: "wis", dcAbility: "int", condition: "pressure point", rounds: 1,
     onFail: "It answers the question truthfully, or refuses where everyone can see it refuse.",
   }),
-  // "you and your beast each gain +2 to damage rolls for 1 minute" (the beast's +2 is the GM's: no pet carries the holder's conditions).
-  spend("Shared Fury", ["packmaster"], "post_apocalyptic_shared_fury", undefined, { kind: "buff", condition: "shared fury", rounds: 10 }),
+  // "you and your beast each gain +2 to damage rolls for 1 minute": the bonded beast carries it too (src/lib/dm/genre-b-post-apocalyptic-beast.ts).
+  spend("Shared Fury", ["packmaster"], "post_apocalyptic_shared_fury", undefined, { kind: "pack", call: "fury" }),
   // "Bonus action: one ally within 30 ft gains temp HP equal to your level + WIS mod."
-  spend("Flock's Shepherd", ["waste_preacher"], "post_apocalyptic_flock_s_shepherd", "bonus", { kind: "buff", target: "ally", othersOnly: true, condition: "shepherded", rounds: 600, tempHp: "level+wis" }),
+  // Within 30 feet, and two allies with Congregation (src/lib/dm/genre-b-post-apocalyptic-spends.ts).
+  spend("Flock's Shepherd", ["waste_preacher"], "post_apocalyptic_flock_s_shepherd", "bonus", { kind: "wastes", call: "shepherd", target: "ally", othersOnly: true, rangeFt: 30 }),
   // "project a 10-ft energy dome for 1 minute: allies inside gain +2 AC".
   spend("Salvaged Shield Node", ["salvage_tech"], "post_apocalyptic_salvaged_shield_node", undefined, { kind: "buff", target: "allies", rangeFt: 10, count: "8", condition: "salvaged shield node", rounds: 10 }),
   // "brew a greater elixir: drinker gains advantage on everything for 1 minute."

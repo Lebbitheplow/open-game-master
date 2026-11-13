@@ -15,6 +15,8 @@ import { regainSlotLevels } from "@/lib/srd/slot-levels";
 import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
 import { layGenreZone } from "@/lib/dm/genre-b-zones";
 import { mysterySpend } from "@/lib/dm/genre-b-mystery-spends";
+import { packSpend } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { wastesSpend } from "@/lib/dm/genre-b-post-apocalyptic-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -935,6 +937,10 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return genreDraught(ctx, does);
     case "hit_die":
       return genreHitDie(ctx);
+    case "pack":
+      return packSpend({ campaign, turn: ctx.turn, sheet, level: ctx.held.level }, does.call);
+    case "wastes":
+      return wastesSpend(ctx, does.call);
     case "zone": {
       const laid = layGenreZone({ campaign, sheet, name: ctx.spend.name, targetEnemyId: ctx.args.targetEnemyId }, does);
       return Array.isArray(laid) ? { result: { applied: laid } } : laid;

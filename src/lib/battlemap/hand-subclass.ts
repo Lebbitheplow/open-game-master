@@ -96,6 +96,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "horror_spend") return does.aim ?? "none";
   // A mystery class's own spend says what it is aimed at (genre-b-mystery-spends.ts).
   if (does.kind === "mystery") return does.target ?? "none";
+  // A sermon that names its ally (Flock's Shepherd).
+  if (does.kind === "wastes") return does.target ?? "none";
   return "none";
 }
 
@@ -363,7 +365,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         action === "reaction"
           ? { card: "reaction", feature: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) }
           : { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
-      ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
+      ...((does.kind === "buff" || does.kind === "wastes") && does.othersOnly ? { othersOnly: true } : {}),
       ...sightOf(aimDoes(does, aim.variant), aim.target),
       // Alter Memories reaches a creature the wizard has charmed: the aim bar
       // offers the charmed alone, and the engine judges whose charm it is.

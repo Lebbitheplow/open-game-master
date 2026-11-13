@@ -57,6 +57,7 @@ import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { genreBOnKill } from "@/lib/dm/genre-b-kills";
+import { packOnHit, packTactics } from "@/lib/dm/genre-b-post-apocalyptic-pack";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
@@ -310,6 +311,12 @@ export function authoredAttackSituation(input: {
   const spent: string[] = [];
   let autoCrit: string | null = null;
   const type = textKey(enemy.stats.type ?? "");
+  // Pack Tactics Training, Apex Pair (src/lib/dm/genre-b-post-apocalyptic-pack.ts).
+  const pack = packTactics(input.campaignId, encounter.id, sheet, enemy);
+  if (pack) {
+    sources.push("advantage");
+    notes.push(pack);
+  }
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
     let applies = false;
     if (effect.vs === "not_acted") {
@@ -441,6 +448,8 @@ export function authoredOnHit(
       lines.push(...hitSavesOnHit(campaign, encounter, sheet, enemy));
     }
   }
+  // A packmaster and their beast: One Blood's wound, the takedown, the monstrous beast's fear.
+  lines.push(...packOnHit(campaign, encounter, sheet, input.enemy));
   if (input.dead) {
     lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false, input.spell));
   }
