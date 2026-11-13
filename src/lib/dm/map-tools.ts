@@ -1,4 +1,5 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
+import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
@@ -627,7 +628,8 @@ export function handleMoveToken(
     }
     // The move a character readied releases off their turn, by whoever runs
     // the table (readied-release.ts: their reaction, up to their speed).
-    if (fresh && readiedHeld(fresh)?.holds === "move" && !ownTurn) {
+    // A readied move, or Road Rage's move as an ally drops (genre-gb-road-rage.ts).
+    if (fresh && (readiedHeld(fresh)?.holds === "move" || roadRaging(fresh)) && !ownTurn) {
       return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
     }
     // Off their own turn, a character in the order is the game saying no, as

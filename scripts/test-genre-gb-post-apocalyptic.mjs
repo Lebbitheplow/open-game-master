@@ -251,5 +251,40 @@ await run("Witnessed: a road warrior dropped to 0 stays conscious and on their f
   assert.ok(again.conditions.includes("unconscious"), `the second drop: ${JSON.stringify(again.conditions)}`);
 });
 
+// ---- GB13: Road Rage ----
+
+await run("Road Rage: when an ally within 30 feet drops to 0, the road warrior may move off their turn and make one attack, spending the use; before any drop, or with the ally 35 feet off, nothing", async () => {
+  const row = feature("road_warrior", "Road Rage", 14);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  const lash = async () => {
+    kit.giveTurn(rig.ally.id);
+    world.clearDice();
+    world.dice(15, 4, 4, 4);
+    const out = await world.invoke("use_reaction", { characterId: hero.id, feature: "Road Rage", targetEnemyId: near.id, reason: "test" });
+    world.clearDice();
+    return out;
+  };
+  const early = await lash();
+  assert.equal(early.ok, false, "Road Rage answered with nobody down");
+  assert.equal(used(hero, "post_apocalyptic_road_rage"), 0, "the refused use was spent");
+  world.patch(rig.ally.id, { currentHp: 3 });
+  await rig.clubbed(near, rig.ally);
+  assert.equal(world.sheet(rig.ally.id).currentHp, 0, "the ally did not drop");
+  assert.ok(world.sheet(hero.id).conditions.includes("road rage"), `the warrior's marks: ${JSON.stringify(world.sheet(hero.id).conditions)}`);
+  const answered = await lash();
+  assert.ok(answered.ok, `Road Rage after the drop: ${answered.error}`);
+  assert.equal(used(hero, "post_apocalyptic_road_rage"), 1, "the use was not spent");
+  assert.ok(300 - kit.enemy(near.id).currentHp > 0, "the attack dealt nothing");
+  // An ally 35 feet off drops: no rage.
+  await rig.fight(hero);
+  const { near: other } = { near: world.enemies()[0] };
+  kit.place(rig.ally.id, 12, 2);
+  kit.place(other.id, 13, 2);
+  world.patch(rig.ally.id, { currentHp: 3 });
+  await rig.clubbed(kit.enemy(other.id), rig.ally);
+  assert.ok(!world.sheet(hero.id).conditions.includes("road rage"), "an ally 35 feet off woke the rage");
+});
+
 rig.world.close();
 finish();

@@ -841,13 +841,15 @@
    },
    {
     "c": "when an ally within 30 ft drops to 0 HP, immediately move your speed and make one attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Road Rage: when an ally within 30 feet drops to 0, the road warrior may move off their turn and make one attack",
+    "by": "src/lib/dm/genre-gb-road-rage.ts roadRageWakes (from src/lib/dm/death.ts at the drop: the road rage mark within 30 feet), the reaction attack in src/lib/srd/authored-effects-genre-gb.ts, the off-turn move in src/lib/dm/map-tools.ts move_token"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Road Rage: when an ally within 30 feet drops to 0, the road warrior may move off their turn and make one attack",
+    "by": "src/lib/dm/genre-gb-road-rage.ts roadRageWakes (from src/lib/dm/death.ts at the drop: the road rage mark within 30 feet), the reaction attack in src/lib/srd/authored-effects-genre-gb.ts, the off-turn move in src/lib/dm/map-tools.ts move_token"
    }
   ]
  },

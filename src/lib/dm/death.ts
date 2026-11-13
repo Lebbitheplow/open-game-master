@@ -1,3 +1,4 @@
+import { roadRageWakes } from "@/lib/dm/genre-gb-road-rage";
 import { WITNESSED } from "@/lib/dm/vitals-logic";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
@@ -217,6 +218,11 @@ export function applyDamageDeathHook(
       recordDeath(campaign, fresh, "killed outright by massive damage");
       tableNote(campaign, `${fresh.name} is killed outright by massive damage.`, "cue-death");
       return { dead: true, note: `${fresh.name} is killed INSTANTLY (massive damage). This death is real; narrate it.` };
+    }
+    // Road Rage: a road warrior within 30 feet answers the drop (genre-gb-road-rage.ts).
+    const raged = roadRageWakes(campaign, fresh);
+    if (raged.length) {
+      tableNote(campaign, raged.join(" "), "cue-death");
     }
     // Witnessed: a road warrior with the day's use keeps fighting at 0 for a
     // minute, the use spent, stable while it lasts (vitals-logic.ts WITNESSED).

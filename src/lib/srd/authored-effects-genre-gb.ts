@@ -8,7 +8,7 @@
 // Pure data; no database.
 import type { AuthoredEffect, AuthoredEntry, SpendDoes } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
-import { ARC_LAMP, EAR_TRUMPET, GRAPNEL, LAST_RIDE, POCKET_SHIELD, SKELETON_KEY } from "@/lib/srd/genre-gb-conditions";
+import { ARC_LAMP, EAR_TRUMPET, GRAPNEL, LAST_RIDE, POCKET_SHIELD, ROAD_RAGE, SKELETON_KEY } from "@/lib/srd/genre-gb-conditions";
 
 const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "subclass">): GenreRow => ({
   feature,
@@ -72,6 +72,13 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
   // "A hooked chain (1d8 piercing, 15-ft reach)": a weapon the feature is,
   // proficient (src/lib/dm/genre-gb-hook.ts gives it its reach and drag).
   row("Chained Hook", ["road_warrior"], { effects: [{ kind: "natural_weapon", weapon: { name: "Chained Hook", aliases: ["hooked chain", "chain"], dice: "1d8", type: "piercing", reach: true } }] }),
+  // "1/rest, when an ally within 30 ft drops to 0 HP, immediately move your
+  // speed and make one attack": the drop marks the warrior (genre-gb-road-rage.ts),
+  // and the mark answers one weapon attack, which spends the use.
+  row("Road Rage", ["road_warrior"], {
+    counter: "post_apocalyptic_road_rage",
+    reactions: [{ name: "Road Rage", pool: { id: "post_apocalyptic_road_rage" }, gate: { condition: ROAD_RAGE }, does: { kind: "attack", rangeFt: 5, weaponRange: true } }],
+  }),
 ];
 
 function gadget(name: string, does: SpendDoes, effects: AuthoredEffect[] = []): GenreRow {
