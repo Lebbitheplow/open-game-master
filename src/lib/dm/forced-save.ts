@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { ruinsInitiative } from "@/lib/dm/genre-gb-ruins";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
@@ -76,7 +77,10 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
   // An ally's Aura of the Sentinel on initiative (divine-auras.ts): every
   // initiative roll comes through here, so the ally's bonus is read once.
-  const sentinel = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  const sentinelAura = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  // Trap Eye's +2 in ruins rides the same bonus (genre-gb-ruins.ts).
+  const ruins = kind === "initiative" ? ruinsInitiative(campaign.id, sheet) : null;
+  const sentinel = sentinelAura || ruins ? { bonus: (sentinelAura?.bonus ?? 0) + (ruins?.bonus ?? 0), note: [sentinelAura?.note, ruins?.note].filter(Boolean).join("; ") } : null;
   // Exalted Champion's allies (exalted-aura.ts): advantage on Wisdom and death saves.
   const exalted = kind === "saving_throw" ? exaltedAllyAdvantage(campaign.id, sheet) : null;
   return {

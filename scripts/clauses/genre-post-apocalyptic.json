@@ -139,8 +139,9 @@
    },
    {
     "c": "+2 initiative in ruins",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Trap Eye#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Trap Eye: a scavenger's initiative is +2 where the place's ambience is ruins",
+    "by": "src/lib/dm/genre-gb-ruins.ts ruinsInitiative (the current location's ambience bed ruins), read by src/lib/dm/forced-save.ts rollExtrasFor"
    }
   ]
  },
@@ -540,11 +541,9 @@
   "clauses": [
    {
     "c": "In ruins you cannot be surprised, tracked, or flanked, and your Scrap Sense recharges on any rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::One With the Ruins#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to One With the Ruins: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs One With the Ruins: in ruins a scavenger is not surprised and not flanked, and Scrap Sense comes back on a short rest",
+    "by": "src/lib/dm/genre-gb-ruins.ts oneWithTheRuins (src/lib/dm/surprise-guard.ts, src/lib/dm/attack-spatial.ts enemyFlanks) and scrapOnAnyRest (src/lib/dm/rest-logic.ts); being tracked is a creature's Survival check the GM calls, nothing tracks a character on the engine"
    },
    {
     "c": "your Scrap Sense recharges on any rest",

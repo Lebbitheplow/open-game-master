@@ -152,5 +152,52 @@ await run("Splintered Form: the reaction halves the hit and lays the swarm shape
   assert.notEqual(blocked, "8,2", "without the swarm shape the aberrant walked through the creature");
 });
 
+// ---- GB10: in ruins (Trap Eye's initiative, One With the Ruins) ----
+
+const places = await load("lib/db/locations.ts");
+const standIn = (bed) => {
+  const place = places.upsertCurrentLocation({ campaignId: world.campaignId, name: bed === "ruins" ? "The Drowned Mall" : "Open Road" });
+  places.setLocationLinks(place.id, { ambience: { bed, music: "" } });
+};
+
+await run("Trap Eye: a scavenger's initiative is +2 where the place's ambience is ruins, and not elsewhere or without the feature", async () => {
+  const row = feature("scavenger", "Trap Eye", 6);
+  const hero = rig.holder(row);
+  try {
+    standIn("ruins");
+    const { on, off } = await rig.both(hero, row, async () => rig.initiative(hero));
+    assert.deepEqual([on, off], ["1d20+5", "1d20+3"], `initiative in ruins: ${on} with Trap Eye, ${off} without`);
+    standIn("camp");
+    assert.equal(rig.initiative(hero), "1d20+3", "the +2 held outside ruins");
+  } finally {
+    standIn("camp");
+  }
+});
+
+await run("One With the Ruins: in ruins a scavenger is not surprised and not flanked, and Scrap Sense comes back on a short rest", async () => {
+  const row = feature("scavenger", "One With the Ruins", 15);
+  const hero = rig.holder(row);
+  const { cannotBeSurprised } = await load("lib/dm/surprise-guard.ts");
+  const { enemyFlanks } = await load("lib/dm/attack-spatial.ts");
+  const { shortRestResourcePatch } = await load("lib/dm/rest-logic.ts");
+  try {
+    const { near, far } = await rig.fight(hero);
+    kit.place(far.id, 4, 2);
+    kit.place(rig.ally.id, 1, 9);
+    const read = async () => ({ surprised: !cannotBeSurprised(world.sheet(hero.id), []), flanked: enemyFlanks(world.encounter().id, near.id, hero.id) });
+    standIn("ruins");
+    const ruins = await rig.both(hero, row, read);
+    assert.deepEqual(ruins.on, { surprised: false, flanked: false }, `in ruins with the feature: ${JSON.stringify(ruins.on)}`);
+    assert.equal(ruins.off.flanked, true, "the staging flanks nobody");
+    standIn("camp");
+    assert.equal((await read()).flanked, true, "outside ruins the scavenger was not flanked");
+    const sheet = world.sheet(hero.id);
+    const spent = { ...sheet, resources: { ...sheet.resources, post_apocalyptic_scrap_sense: { ...sheet.resources.post_apocalyptic_scrap_sense, used: 1 } } };
+    assert.equal(shortRestResourcePatch(spent)?.resources?.post_apocalyptic_scrap_sense?.used, 0, "Scrap Sense did not come back on a short rest");
+  } finally {
+    standIn("camp");
+  }
+});
+
 rig.world.close();
 finish();
