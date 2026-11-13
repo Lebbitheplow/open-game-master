@@ -2706,7 +2706,8 @@
    "ability": null,
    "recharge": "short",
    "action": "none",
-   "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage. A player's weapon hit waits on a card that offers it, so do not spend it for them there; spend it here only for a hit that cannot wait, and add the die yourself. The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use."
+   "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage, chosen on the card the hit waits on, which spends it. The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use.",
+   "passive": true
   }
  ]
 }
