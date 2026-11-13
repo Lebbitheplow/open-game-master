@@ -1200,6 +1200,153 @@
         "Common",
         "Auran"
       ]
+    },
+    {
+      "id": "hobgoblin",
+      "name": "Hobgoblin",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "con": 2,
+        "int": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Martial Training (light armor and two martial weapons of your choice)"
+      ],
+      "languages": [
+        "Common",
+        "Goblin"
+      ],
+      "armor": [
+        "light"
+      ],
+      "weaponChoice": {
+        "count": 2,
+        "from": [
+          "Battleaxe",
+          "Flail",
+          "Glaive",
+          "Greataxe",
+          "Greatsword",
+          "Halberd",
+          "Lance",
+          "Longsword",
+          "Maul",
+          "Morningstar",
+          "Pike",
+          "Rapier",
+          "Scimitar",
+          "Shortsword",
+          "Trident",
+          "War Pick",
+          "Warhammer",
+          "Whip",
+          "Blowgun",
+          "Hand Crossbow",
+          "Heavy Crossbow",
+          "Longbow",
+          "Net"
+        ]
+      }
+    },
+    {
+      "id": "satyr",
+      "name": "Satyr",
+      "speed": 35,
+      "size": "Medium",
+      "asi": {
+        "cha": 2,
+        "dex": 1
+      },
+      "traits": [
+        "Ram (1d4 bludgeoning unarmed strike)",
+        "Magic Resistance (adv. on saves against spells and other magic)",
+        "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skills": [
+        "performance",
+        "persuasion"
+      ],
+      "toolChoice": {
+        "count": 1,
+        "from": [
+          "bagpipes",
+          "drum",
+          "dulcimer",
+          "flute",
+          "lute",
+          "lyre",
+          "horn",
+          "pan flute",
+          "shawm",
+          "viol"
+        ]
+      }
+    },
+    {
+      "id": "fairy",
+      "name": "Fairy",
+      "speed": 30,
+      "size": "Small",
+      "asi": {
+        "dex": 2,
+        "cha": 1
+      },
+      "traits": [
+        "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+        "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "innateSpells": {
+        "trait": "Fairy Magic",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Druidcraft",
+            "level": 1
+          },
+          {
+            "name": "Faerie Fire",
+            "level": 3,
+            "per": "long"
+          },
+          {
+            "name": "Enlarge/Reduce",
+            "level": 5,
+            "per": "long"
+          }
+        ]
+      }
+    },
+    {
+      "id": "owlfolk",
+      "name": "Owlfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Superior Darkvision 120 ft",
+        "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+        "Stealth proficiency (Silent Feathers)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skills": [
+        "stealth"
+      ]
     }
   ],
   "_license_authored": "The lineages below the SRD nine are original content for Open Game Master: their trait lines are written from scratch to state the mechanics. No publisher's descriptive text is reproduced."

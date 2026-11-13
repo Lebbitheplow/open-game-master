@@ -89,6 +89,7 @@ function buildRace(raceId, fields = {}) {
     racialAsi: ["str", "dex", "con"].slice(0, race.asiChoice?.count ?? 0),
     racialSkills: free.slice(0, race.skillChoice?.count ?? 0),
     racialTool: race.toolChoice?.from[0] ?? "",
+    racialWeapons: race.weaponChoice ? race.weaponChoice.from.slice(0, race.weaponChoice.count) : [],
     racialCantrips: race.cantripChoice ? ["Prestidigitation"] : [],
     // A dragonborn chooses an ancestry; a race that repeats one of the
     // soldier's skills chooses another in its place.
@@ -139,8 +140,8 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
 });
 
 await test("every bundled race is well formed, and none lowers a score", () => {
-  assert.equal(srd.SRD_RACES.length, 39);
-  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 39);
+  assert.equal(srd.SRD_RACES.length, 43);
+  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 43);
   for (const race of srd.SRD_RACES) {
     assert.ok([25, 30, 35].includes(race.speed), `${race.id} speed ${race.speed}`);
     assert.ok(["Small", "Medium"].includes(race.size), `${race.id} size`);
@@ -374,6 +375,7 @@ await test("a lineage's own armor bonus holds out of armor beside the Defense st
 const SOUGHT = {
   eladrin: "Elf (Eladrin)", sea_elf: "Elf (Sea)", duergar: "Dwarf (Duergar)",
   triton: "Triton", serpentfolk: "Serpentfolk", kobold: "Kobold", aarakocra: "Aarakocra",
+  hobgoblin: "Hobgoblin", satyr: "Satyr", fairy: "Fairy", owlfolk: "Owlfolk",
 };
 await test("the builder offers the lineages players look for, with no content pack", () => {
   const missing = Object.entries(SOUGHT).filter(([id, name]) => builder.races.find((entry) => entry.id === id)?.name !== name).map(([id]) => id);

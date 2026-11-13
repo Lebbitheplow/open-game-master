@@ -271,7 +271,8 @@ for (const row of RACES) {
       const light = flightOf(encounter, t.kit.token(who.id));
       t.patch(who, { equipment: [{ name: "Chain Mail", equipped: true }] });
       const heavy = flightOf(encounter, t.kit.token(who.id));
-      same([bare, light, heavy, flightOf(encounter, t.kit.token(other.id))], [50, 50, null, null], `${row.name}: flying speed bare, in leather, in chain mail, and a human's`);
+      const feet = Number(/flying speed of (\d+)/.exec(row.traits.join(" "))[1]);
+      same([bare, light, heavy, flightOf(encounter, t.kit.token(other.id))], [feet, feet, null, null], `${row.name}: flying speed bare, in leather, in chain mail, and a human's`);
     });
   }
   if (holds(row, "expert forgery")) {
@@ -507,6 +508,7 @@ const NAMES = [
   "species.triton.speeds", "species.triton.breath",
   "species.serpentfolk.magic-resistance", "species.serpentfolk.poison-immunity",
   "species.kobold.pack-tactics", "species.aarakocra.flight", "species.aarakocra.natural-weapon",
+  "species.satyr.magic-resistance", "species.satyr.natural-weapon", "species.fairy.flight", "species.owlfolk.flight",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

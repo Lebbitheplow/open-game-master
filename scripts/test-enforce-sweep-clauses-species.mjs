@@ -104,6 +104,7 @@ const NAMES = [
   "species.eladrin.save-advantage", "species.sea_elf.save-advantage", "species.duergar.save-advantage",
   "species.triton.speed", "species.serpentfolk.speed", "species.kobold.speed", "species.aarakocra.speed",
   "species.triton.resistance", "species.serpentfolk.resistance",
+  "species.hobgoblin.speed", "species.satyr.speed", "species.fairy.speed", "species.owlfolk.speed",
   "species.stout_halfling.resistance", "species.tiefling.resistance", "species.aasimar.resistance", "species.fire_genasi.resistance",
   "species.water_genasi.resistance", "species.air_genasi.resistance", "species.warforged.resistance",
   "species.hill_dwarf.save-advantage", "species.mountain_dwarf.save-advantage", "species.high_elf.save-advantage", "species.wood_elf.save-advantage", "species.drow.save-advantage", "species.lightfoot_halfling.save-advantage", "species.stout_halfling.save-advantage",

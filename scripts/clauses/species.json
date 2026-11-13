@@ -2577,5 +2577,241 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"
    }
   ]
+ },
+ "species::hobgoblin": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "2ed645bdb45f",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.hobgoblin.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.grants"
+   },
+   {
+    "c": "\"asi\":{\"con\":2,\"int\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.grants"
+   },
+   {
+    "c": "Darkvision 60 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.darkvision"
+   },
+   {
+    "c": "light armor",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.grants"
+   },
+   {
+    "c": "two martial weapons of your choice",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.choices"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Goblin\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.grants"
+   },
+   {
+    "c": "\"armor\":[\"light\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.grants"
+   },
+   {
+    "c": "\"weaponChoice\":{\"count\":2,\"from\":[\"Battleaxe\",\"Flail\",\"Glaive\",\"Greataxe\",\"Greatsword\",\"Halberd\",\"Lance\",\"Longsword\",\"Maul\",\"Morningstar\",\"Pike\",\"Rapier\",\"Scimitar\",\"Shortsword\",\"Trident\",\"War Pick\",\"Warhammer\",\"Whip\",\"Blowgun\",\"Hand Crossbow\",\"Heavy Crossbow\",\"Longbow\",\"Net\"]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hobgoblin.choices"
+   }
+  ]
+ },
+ "species::satyr": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "7494b92acb5b",
+  "clauses": [
+   {
+    "c": "\"speed\":35",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.satyr.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "\"asi\":{\"cha\":2,\"dex\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "Ram (1d4 bludgeoning unarmed strike)",
+    "is": "held",
+    "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon, read by pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.satyr.natural-weapon"
+   },
+   {
+    "c": "Magic Resistance (adv. on saves against spells and other magic)",
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts heldSaveTraits (Magic Resistance), read by request_roll from the save's `magical`",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.satyr.magic-resistance"
+   },
+   {
+    "c": "Performance and Persuasion proficiency",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "one musical instrument of your choice",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "\"skills\":[\"performance\",\"persuasion\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "\"toolChoice\":{\"count\":1,\"from\":[\"bagpipes\",\"drum\",\"dulcimer\",\"flute\",\"lute\",\"lyre\",\"horn\",\"pan flute\",\"shawm\",\"viol\"]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
+   }
+  ]
+ },
+ "species::fairy": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "c3b31a1c487d",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.fairy.speed"
+   },
+   {
+    "c": "\"size\":\"Small\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"cha\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
+   },
+   {
+    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.fairy.flight"
+   },
+   {
+    "c": "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
+   },
+   {
+    "c": "\"innateSpells\":{\"trait\":\"Fairy Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Druidcraft\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\"},{\"name\":\"Enlarge/Reduce\",\"level\":5,\"per\":\"long\"}]}",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
+   }
+  ]
+ },
+ "species::owlfolk": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "d7d05fe069a8",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.owlfolk.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "Superior Darkvision 120 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.darkvision"
+   },
+   {
+    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.owlfolk.flight"
+   },
+   {
+    "c": "Stealth proficiency (Silent Feathers)",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"skills\":[\"stealth\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   }
+  ]
  }
 }

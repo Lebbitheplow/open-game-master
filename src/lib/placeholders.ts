@@ -183,7 +183,7 @@ const RACE_FAMILY: Record<string, string> = {
 // would show the wrong creature on a token (docs/art/creature-art-guidance.md,
 // token-readability.md), so until the art pass paints them each draws the
 // neutral adventurer plate (characterPlaceholder), as any race without art.
-export const LINEAGES_AWAITING_ART = ["triton", "serpentfolk", "kobold", "aarakocra"] as const;
+export const LINEAGES_AWAITING_ART = ["triton", "serpentfolk", "kobold", "aarakocra", "hobgoblin", "satyr", "fairy", "owlfolk"] as const;
 
 export function raceFamilyIds(): string[] {
   return Object.keys(RACE_FAMILY);
