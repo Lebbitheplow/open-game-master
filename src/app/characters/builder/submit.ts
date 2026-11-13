@@ -393,7 +393,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum">> & { klass: Pick<ClassOption, "name">; casterLevel: number };
+> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name">; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -441,6 +441,12 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
     if (spellsOver > 0) {
       owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
     }
+  }
+  // An Arcane Trickster's Mage Hand among the cantrips, once they are all
+  // chosen (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
+  const named = derived.requiredCantrip;
+  if (named && derived.cantripAdvice !== null && derived.chosenCantrips.length >= derived.cantripAdvice && !derived.chosenCantrips.some((name) => name.toLowerCase() === named.toLowerCase())) {
+    owed.push(block("spells", `Take ${named} as one of your cantrips: your subclass's spellcasting teaches it.`));
   }
   // A warlock's Mystic Arcanum: one spell of each level reached, beside the
   // spells known (src/lib/srd/spell-prep.ts arcanumSplit).

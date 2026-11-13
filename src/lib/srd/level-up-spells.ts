@@ -30,7 +30,7 @@ import { spellRulesClassFor } from "@/lib/classes";
 import { classLabelOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import type { AbilityScores } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/legality/types";
-import { thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
+import { thirdCasterCantripProblem, thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
@@ -327,6 +327,23 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
     return {
       error: `A ${label} knows ${cantripCap} ${cantripCap === 1 ? "cantrip" : "cantrips"}; that list would have ${cantrips.length - input.freeCantrips}.`,
     };
+  }
+  // The cantrip a third caster's Spellcasting names (an Arcane Trickster's
+  // Mage Hand), once the new cantrips fill the list.
+  const namedCantrip = newCantrips.length
+    ? thirdCasterCantripProblem({
+        classId: before.classId,
+        subclass: input.subclass,
+        profile: after.progression,
+        level: input.level,
+        // A race's cantrips sit on top of the class's, so the list is full at
+        // the class's count plus theirs.
+        cantrips,
+        cap: cantripCap === null ? null : cantripCap + input.freeCantrips,
+      })
+    : null;
+  if (namedCantrip) {
+    return { error: namedCantrip };
   }
   const tableCap = spellCapOf(after, input.abilities);
   const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;

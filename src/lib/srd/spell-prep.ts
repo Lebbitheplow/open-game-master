@@ -8,6 +8,7 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { isCantripName, spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
 import {
   isThirdCaster,
+  thirdCasterCantripProblem,
   thirdCasterCantrips,
   thirdCasterList,
   thirdCasterProfileOf,
@@ -567,6 +568,15 @@ export function spellListProblems(
     freeCount = 0;
     if (cantripCap !== null && cantrips.length > cantripCap) {
       problems.push(`A ${label} knows ${cantripCap} ${cantripCap === 1 ? "cantrip" : "cantrips"}; that list has ${cantrips.length}.`);
+    }
+    // An Arcane Trickster's Mage Hand among them (third-caster.ts). Judged
+    // on a new sheet, as the book is: one already in play keeps what it has.
+    const namedCantrip =
+      options.bookAllowance === false
+        ? null
+        : thirdCasterCantripProblem({ classId: view.classId, subclass: view.subclass, profile: view.progression, level: view.level, cantrips, cap: cantripCap });
+    if (namedCantrip) {
+      problems.push(namedCantrip);
     }
     const granted = grantedSpellsOf(view);
     const held = dedupeNames([...heldSpells(view), ...view.pending]).filter((name) => !isCantripName(name) && !freeSpells.has(textKey(name)));

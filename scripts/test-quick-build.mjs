@@ -228,6 +228,22 @@ await test("a warlock built at 11, 13, 15, 17 and 20 holds its spells known and 
   }
 });
 
+// The Arcane Trickster's Spellcasting teaches Mage Hand among its cantrips
+// (the creator spells audit, P04): the fill takes it, and a full list
+// without it is owed before the save.
+await test("an Arcane Trickster built at 3 and 10 knows Mage Hand, and a full list without it is owed", async () => {
+  const { spellsBlocks } = await import("../src/app/characters/builder/submit.ts");
+  const rogue = builder.classes.find((entry) => entry.id === "rogue");
+  for (const level of [3, 10]) {
+    const { fields } = await runFill(fresh({ level, classId: "rogue", subclass: "Arcane Trickster" }));
+    assert.ok(fields.cantrips.includes("Mage Hand"), `trickster ${level}: ${fields.cantrips.join(", ")}`);
+    await saves(fields, `trickster at ${level}`);
+    const swapped = { ...fields, cantrips: fields.cantrips.map((name) => (name === "Mage Hand" ? "Fire Bolt" : name)) };
+    const owed = spellsBlocks(derive(swapped).derived, rogue);
+    assert.ok(owed.some((block) => /Mage Hand/.test(JSON.stringify(block))), `trickster ${level} owes Mage Hand`);
+  }
+});
+
 await test("the shortage reads plainly for one, none, and cantrips", async () => {
   const { spellShortageLines } = await import("../src/app/characters/builder/spellSupply.ts");
   const base = { className: "artificer", cantripCap: 2, listCap: 4, listVerb: "prepare", maxSpellLevel: 2 };

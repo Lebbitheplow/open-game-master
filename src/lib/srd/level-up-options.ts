@@ -26,7 +26,7 @@ import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { openOptionSlots, optionFeatureName, optionReqProblem } from "@/lib/srd/options";
 import { openStyleSlots } from "@/lib/srd/style-slots";
-import { thirdCasterAnySchoolPicks, thirdCasterOutside, thirdCasterProfileOf, thirdCasterSchools } from "@/lib/srd/third-caster";
+import { thirdCasterAnySchoolPicks, thirdCasterOutside, thirdCasterProfileOf, thirdCasterRequiredCantrip, thirdCasterSchools } from "@/lib/srd/third-caster";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { subclassChoicePickName } from "@/lib/content/subclass-choices";
@@ -126,6 +126,9 @@ export type LevelUpOptions = {
       newCantrips: number;
       // Spells to learn, prepare or write in the book with this level.
       newSpells: number;
+      // The cantrip a third caster's Spellcasting names (an Arcane
+      // Trickster's Mage Hand), when the new cantrips must include it.
+      requiredCantrip?: string;
       // A warlock's Mystic Arcanum levels still without a spell: one spell of
       // each to name beside newSpells, never counted in it.
       arcanum?: number[];
@@ -399,6 +402,8 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
         }
       : null;
     const slotTop = maxSpellLevelOf({ classId: klass.id, level: classLevelAfter, subclass: subclassNow, progression });
+    const named = thirdCasterRequiredCantrip(klass.id, subclassNow, progression, classLevelAfter);
+    const requiredCantrip = named && newCantrips > 0 && !(view?.cantrips ?? []).some((name) => textKey(name) === textKey(named)) ? named : null;
     choices.spells = {
       list: caster.list,
       // The new spells' reach: the slots' (a warlock's arcana are their own).
@@ -406,12 +411,14 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       newCantrips,
       newSpells,
       ...(arcana.open.length ? { arcanum: arcana.open } : {}),
+      ...(requiredCantrip ? { requiredCantrip } : {}),
       style: caster.style,
       mayReplaceOne: caster.style === "known" && knownBefore.length > 0,
       ...(schools ? { schools } : {}),
       note: [
         STYLE_NOTE[caster.style],
         grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
+        requiredCantrip ? `${requiredCantrip} must be one of the new cantrips: the subclass's Spellcasting teaches it.` : "",
         arcana.open.length
           ? `Mystic Arcanum: also name one warlock spell of level ${arcana.open.join(", ")} in levelUpSpells, beside the new spells and not counted in them.`
           : "",

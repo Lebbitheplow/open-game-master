@@ -61,7 +61,7 @@ import {
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
 import { arcanumSplit, mysticArcanumLevels, spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
-import { isThirdCaster } from "@/lib/srd/third-caster";
+import { isThirdCaster, thirdCasterRequiredCantrip } from "@/lib/srd/third-caster";
 import {
   abilitiesAfterLevel,
   casterPreview,
@@ -782,8 +782,18 @@ export function LevelUpDialog({
       };
     }
     if (level === 0) {
-      return remainingCantrips !== null && cantripPicks.length >= remainingCantrips
-        ? { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` }
+      if (remainingCantrips !== null && cantripPicks.length >= remainingCantrips) {
+        return { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` };
+      }
+      // An Arcane Trickster's Mage Hand: the last open cantrip is kept for
+      // it (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
+      const named = thirdCasterRequiredCantrip(classChoice, effectiveSubclass, progression, classLevelAfter);
+      const owesNamed =
+        named &&
+        textKey(name) !== textKey(named) &&
+        ![...cantripList, ...cantripPicks].some((entry) => textKey(entry) === textKey(named));
+      return owesNamed && remainingCantrips !== null && cantripPicks.length >= remainingCantrips - 1
+        ? { short: `${named} first`, long: `Your subclass's Spellcasting teaches ${named}: choose it as one of the new cantrips, then ${name} if there is room.` }
         : null;
     }
     if (isArcanumLevel(level) && level !== null) {

@@ -147,6 +147,7 @@ export type CasterDesk = {
   // above the slots, one of each level, outside the spells known count.
   arcanumLevels: number[];
   chosenArcanum: string[];
+  requiredCantrip: string | null;
   spellWider: { spells: string[]; lists: string[] };
   cantripAdvice: number | null;
   spellAdvice: ReturnType<typeof builderSpellAdvice>;
@@ -236,6 +237,7 @@ function casterDeskOf(
     maxSpellLevel: casting.maxSpellLevel,
     arcanumLevels: casting.arcanumLevels,
     chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellWider,
     cantripAdvice: casting.cantripCap === null ? null : casting.cantripCap + spellGrants.extraCantrips,
     spellAdvice: withExtras(casts && abilities ? builderSpellAdvice(casting, row, subclass, level, abilities) : null, spellGrants),
@@ -1162,6 +1164,7 @@ export function useBuilderDerived({
             maxSpellLevel,
             arcanumLevels,
             chosenArcanum,
+            requiredCantrip: casting.requiredCantrip,
             spellWider,
             cantripAdvice,
             spellAdvice,
@@ -1198,7 +1201,7 @@ export function useBuilderDerived({
     klass, extras, classList, leadIndex, multiclass, casterSpellLists, shownAbilities, effectiveLevel, casterKlass, casterSubclass,
     casterLevel, casts, spellSearchClass, maxSpellLevel, arcanumLevels, chosenArcanum, spellWider, cantripAdvice, spellAdvice, starters, subclassSpells,
     castingLabel, spellStyle, spellbookAdvice, racialCantrips, featSpells, chosenCantrips, chosenSpells, chosenPrepared,
-    spellSupply, casting.ability, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
+    spellSupply, casting.ability, casting.requiredCantrip, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
   ]);
 
   return {
@@ -1277,6 +1280,7 @@ export function useBuilderDerived({
     maxSpellLevel,
     arcanumLevels,
     chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellGrants,
   };
 }

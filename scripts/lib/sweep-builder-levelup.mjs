@@ -195,7 +195,13 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
       const free = pool.filter(
         (spell) => !heldSpells.has(key(spell.name)) && !dropped.has(spell.name) && (!kept || spell.level === 0 || kept.includes(key(spell.school))),
       );
-      const cantrips = free.filter((spell) => spell.level === 0).slice(0, choices.spells.newCantrips);
+      // The cantrip the offer says a third caster's Spellcasting names (an
+      // Arcane Trickster's Mage Hand) comes first.
+      const named = choices.spells.requiredCantrip ? key(choices.spells.requiredCantrip) : null;
+      const cantrips = free
+        .filter((spell) => spell.level === 0)
+        .sort((a, b) => Number(key(b.name) === named) - Number(key(a.name) === named))
+        .slice(0, choices.spells.newCantrips);
       // One of the highest level, the spell a new level is for, and the rest
       // of 3rd level once the caster has it: a wizard who only ever wrote
       // the highest spell would hold one 3rd-level spell at 20 and owe a

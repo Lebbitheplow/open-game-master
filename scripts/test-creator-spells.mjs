@@ -235,4 +235,46 @@ await test("P02: each arcanum level-up takes the level's new spell and its arcan
   assert.match("error" in twice ? twice.error : "taken", /Mystic Arcanum/);
 });
 
+// ---- P04: the Arcane Trickster's Mage Hand ----
+//
+// The Arcane Trickster's Spellcasting: "You learn three cantrips: mage hand
+// and two other cantrips of your choice from the wizard spell list"; Mage
+// Hand Legerdemain and Versatile Trickster both work through that hand. The
+// builder, the creation check and the level-up all took any three wizard
+// cantrips, so a trickster could be saved without the hand its features use.
+const trickster = (level, cantrips, known = ["Disguise Self", "Charm Person", "Sleep"]) => ({
+  class: "rogue",
+  level,
+  subclass: "Arcane Trickster",
+  abilities: { str: 10, dex: 16, con: 12, int: 16, wis: 10, cha: 10 },
+  features: [],
+  spellcasting: { ability: "int", known, prepared: [], cantrips },
+});
+
+await test("P04: an Arcane Trickster's full cantrip list holds Mage Hand, at creation and at the level that brings it", () => {
+  const without = spellListProblems(trickster(3, ["Minor Illusion", "Friends", "Fire Bolt"]));
+  assert.ok(without.some((line) => /Mage Hand/.test(line)), JSON.stringify(without));
+  assert.deepEqual(spellListProblems(trickster(3, ["Mage Hand", "Minor Illusion", "Friends"])), []);
+  assert.deepEqual(spellListProblems(trickster(3, ["Minor Illusion"])), [], "a list with room left for it is not refused");
+  const knight = { ...trickster(3, ["Fire Bolt", "Light"], ["Shield", "Magic Missile", "Thunderwave"]), class: "fighter", subclass: "Eldritch Knight" };
+  assert.deepEqual(spellListProblems(knight), [], "an Eldritch Knight names no cantrip");
+  const rogue = casterViewsOf({ ...trickster(2, []), subclass: "" })[0] ?? { classId: "rogue", ability: "int", level: 2, subclass: "", style: "known", known: [], prepared: [], cantrips: [], pending: [], spellbook: [] };
+  const up = (cantrips) =>
+    levelUpSpells({
+      before: { ...rogue, subclass: "", known: [], prepared: [], cantrips: [] },
+      level: 3,
+      subclass: "Arcane Trickster",
+      list: "wizard",
+      firstLevel: false,
+      abilities: trickster(3, []).abilities,
+      freeCantrips: 0,
+      spellOf: bundledSpellFacts,
+      picks: { kind: "picks", spells: [...cantrips, "Disguise Self", "Charm Person", "Sleep"] },
+    });
+  const refused = up(["Minor Illusion", "Friends", "Fire Bolt"]);
+  assert.match("error" in refused ? refused.error : "taken", /Mage Hand/);
+  const taken = up(["Mage Hand", "Minor Illusion", "Friends"]);
+  assert.ok(!("error" in taken), "error" in taken ? taken.error : "");
+});
+
 finish();
