@@ -471,6 +471,14 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     // A choice on the card a roll waits on (src/lib/dm/lineage-after-roll.ts).
     "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
     "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
+    // A shifter's subtype lines, picked in the builder: the form Shifting lays
+    // (mt-species-spends.ts), the fangs, the step and the denied advantage.
+    "Shifter subtype (Beasthide)", "Shifter subtype (Longtooth)", "Shifter subtype (Swiftstride)", "Shifter subtype (Wildhunt)",
+    "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)",
+    "Longtooth (shifted: a Fangs attack as a bonus action)",
+    "Fangs (while shifted, 1d6 piercing unarmed strike)",
+    "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)",
+    "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)",
   ]);
   const uncovered = [];
   for (const race of races) {

@@ -16,6 +16,10 @@
 //     end of a turn on which they moved 0 feet (mt-species-turns.ts).
 //   - Celestial Revelation (aasimar): the form named, a bonus action, a
 //     minute; Necrotic Shroud's saves as it comes down.
+//   - Shifting (shifter) with a subtype picked: the subtype's own form
+//     ("shifted (beasthide)"...), Beasthide's extra 1d6 temporary hit points
+//     with it. A shifter with no subtype on the sheet takes the counter's
+//     own form through the generic spend.
 //
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path; must not import mutations.ts.
@@ -35,7 +39,9 @@ import { computeSheetDerived } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
+import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHIFT_FORMS, SHIFTED, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 
 export type SpeciesSpendArgs = { variant?: string };
 
@@ -55,6 +61,8 @@ export function speciesTraitSpend(
   if (name === "celestial revelation" && sheet.resources?.[REVELATION_COUNTER]) return celestialRevelation(campaign, turnId, sheet, args.variant);
   // A rock gnome's clockwork devices (rock-gnome-tinker.ts).
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
+  const form = shiftFormOf(sheet);
+  if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;
 }
 
@@ -253,4 +261,49 @@ function celestialRevelation(campaign: Campaign, turnId: string, sheet: Characte
       : `Necrotic Shroud: no creature stands within ${SHROUD_FEET} feet, so nobody saves.`,
   );
   return { ...result, shroud: { dc, frightened, saved: held } };
+}
+
+// ---- Shifting, by subtype ----
+
+const SHIFTING_COUNTER = "race_shifting";
+const SHIFT_ROUNDS = 10;
+
+// The subtype a shifter's sheet holds ("Beasthide (shifted: ...)"), or null.
+export function shiftFormOf(sheet: CharacterSheet): (typeof SHIFT_FORMS)[number] | null {
+  return SHIFT_FORMS.find((form) => holdsFeature(sheet, form.subtype)) ?? null;
+}
+
+// "Shifting (a bonus action for 1 minute of temporary hit points twice your
+// proficiency bonus, as many times a long rest as your proficiency bonus)",
+// in the form the subtype gives.
+function shifting(campaign: Campaign, sheet: CharacterSheet, form: (typeof SHIFT_FORMS)[number]): ToolResult {
+  const state = sheet.resources[SHIFTING_COUNTER];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Shifting left until a long rest. Nothing was spent.`, refused: "rules" };
+  }
+  if (sheet.conditions.some((entry) => isConditionNamed(entry, SHIFTED))) {
+    return { error: `${sheet.name} is already shifted; the form lasts its minute. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const price = priceTheAction(sheet, encounter, "Shifting", "bonus");
+  if ("error" in price) {
+    return toolError(price);
+  }
+  price.commit();
+  const twice = 2 * computeSheetDerived(sheet).proficiencyBonus;
+  const extra = "extraTempHp" in form ? form.extraTempHp : null;
+  const tempHp = extra ? Math.max(twice, rollOwnDice(campaign, sheet, `${sheet.name}: Shifting (${form.subtype}) temporary hit points`, `${twice}+${extra}`).total) : twice;
+  const updated = patchSheet(sheet.id, {
+    resources: { ...sheet.resources, [SHIFTING_COUNTER]: { max: state.max, used: state.used + 1 } },
+    ...(tempHp > sheet.tempHp ? { tempHp } : {}),
+  });
+  setOwn(campaign, updated ?? sheet, [[form.condition, { rounds: SHIFT_ROUNDS, source: sheet.id }]]);
+  return {
+    ok: true,
+    resource: "Shifting",
+    cost: "their bonus action",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a long rest",
+    applied: [`${sheet.name} shifts (${form.subtype}) for a minute${tempHp > sheet.tempHp ? `, with ${tempHp} temporary hit points` : `, keeping their ${sheet.tempHp} temporary hit points`}.`],
+  };
 }

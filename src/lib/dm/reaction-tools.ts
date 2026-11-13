@@ -57,6 +57,7 @@ import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
+import { lineageReaction } from "@/lib/dm/lineage-reactions";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
@@ -745,6 +746,12 @@ function useReaction(
   const stride = mantleMove(ctx);
   if (stride) {
     return stride;
+  }
+  // A lineage's own reaction (a swiftstride shifter's step):
+  // src/lib/dm/lineage-reactions.ts.
+  const lineage = lineageReaction(ctx);
+  if (lineage) {
+    return lineage;
   }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.

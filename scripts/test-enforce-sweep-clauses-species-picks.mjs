@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
-import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
+import { assert, clauseRig, d20Faces } from "./lib/sweep-clauses-srd-rig.mjs";
 import { plain, same, walkTo } from "./lib/sweep-clauses-species-rig.mjs";
 
 const rig = await clauseRig();
@@ -159,13 +159,71 @@ for (const row of RACES) {
       same([seen, spent, offered(who, "dex")], [[1, 0, 0, 0, 0], [14, true], 0], `${row.name}: a Dexterity save of 11 against DC 14, a Wisdom save, DC 16, a prone rabbitfolk, a human; the d4 of 3 and the reaction; then again`);
     });
   }
+  // The shifter's subtype, picked in the builder: Shifting lays that
+  // subtype's form. Beasthide: 1d6 more temporary hit points and +1 AC.
+  // Longtooth: no fangs until shifted, then a bonus-action bite. Swiftstride:
+  // 10 more feet of speed, and a 10-foot step as a reaction when a foe stands
+  // within 5 feet. Wildhunt: advantage on Wisdom checks, and a prone wildhunt
+  // is attacked with one d20 where a prone swiftstride is attacked with two.
+  if (row.variants?.label === "Shifter subtype") {
+    probe("subtypes", async () => {
+      const t = await rig.table();
+      const linesOf = (id) => row.variants.options.find((option) => option.id === id).lines;
+      const shifter = (id) => t.hero(of({ racialChoices: { variant: id }, features: linesOf(id).map((name) => ({ name, source: "race" })), equipment: [{ name: "Shortsword", equipped: true }] }));
+      const tooth = shifter("longtooth");
+      const hide = shifter("beasthide");
+      const stride = shifter("swiftstride");
+      const hunt = shifter("wildhunt");
+      const [foe] = await t.fight([tooth, hide, stride, hunt]);
+      const shift = async (who, faces = []) => {
+        t.kit.giveTurn(who.id);
+        return t.use(who, "Shifting", {}, faces);
+      };
+      const early = await t.swing(tooth, foe, [15, 3], { weapon: "Fangs" });
+      const toothShift = await shift(tooth);
+      t.freshTurn();
+      const fangs = await t.swing(tooth, foe, [15, 3], { weapon: "Fangs", bonusAttack: "feature" });
+      const longtooth = [early.ok, toothShift.ok, t.has(tooth, "shifted (longtooth)"), fangs.ok, t.budget()?.bonusUsed];
+      const bareAc = t.ac(hide);
+      await shift(hide, [4]);
+      const beasthide = [t.has(hide, "shifted (beasthide)"), t.sheet(hide).tempHp, t.ac(hide) - bareAc];
+      const { conditionSpeed } = await import("../src/lib/srd/condition-effects.ts");
+      const walk = (who) => conditionSpeed(t.sheet(who).conditions, t.speed(who));
+      const bareSpeed = walk(stride);
+      await shift(stride);
+      t.kit.place(stride.id, 6, 6);
+      t.foesTurn(foe);
+      const far = await t.invoke("use_reaction", { characterId: stride.id, feature: "Swiftstride", x: 6, y: 9 });
+      const step = await t.invoke("use_reaction", { characterId: stride.id, feature: "Swiftstride", x: 6, y: 8 });
+      const token = t.kit.token(stride.id);
+      const swiftstride = [walk(stride) - bareSpeed, Boolean(far.error), step.ok, token.x, token.y];
+      const wisBefore = (await t.roll(hunt, { kind: "ability_check", ability: "wis" }, [10, 4])).faces.length;
+      await shift(hunt);
+      const wisAfter = (await t.roll(hunt, { kind: "ability_check", ability: "wis" }, [10, 4])).faces.length;
+      const proneFaces = async (who) => {
+        t.kit.place(who.id, 7, 5);
+        t.patch(who, { conditions: [...t.sheet(who).conditions, "prone"] });
+        await t.strike(foe, who, [16, 3, 4]);
+        // The rolls oldest first: the club's is the last attack.
+        const swing = t.lastRolls(6).filter((entry) => entry.kind === "attack").at(-1);
+        t.kit.place(who.id, 12, 12);
+        return d20Faces(swing).length;
+      };
+      const wildhunt = [wisBefore, wisAfter, await proneFaces(hunt), await proneFaces(stride)];
+      same(
+        [longtooth, beasthide, swiftstride, wildhunt],
+        [[false, true, true, true, true], [true, 10, 1], [10, true, true, 6, 8], [1, 2, 1, 2]],
+        `${row.name}: Longtooth's fangs before and after the shift, Beasthide's hit points and AC, Swiftstride's speed and step, Wildhunt's Wisdom check and a prone attack (${early.error ?? ""} ${fangs.error ?? ""} ${step.error ?? ""})`,
+      );
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
-  "species.rabbitfolk.lucky-footwork",
+  "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

@@ -477,7 +477,17 @@ export function subclassSpellListsFor(classId: string, subclass: string, extras?
   return (subclassTableOf(classId, subclass, extras)?.spellLists ?? []).map((entry) => textKey(entry));
 }
 
-const RACES = (racesJson as { races: Array<{ id: string; traits: string[] }> }).races;
+const RACES = (racesJson as { races: Array<{ id: string; traits: string[]; variants?: { label: string; options: Array<{ name: string; lines?: string[] }> } }> }).races;
+
+// The race features a bundled race's pick writes (a shifter's subtype:
+// src/lib/content/species-variants.ts variantFeatureNames), by any of its
+// options: the record "Shifter subtype (Beasthide)" and the option's lines.
+// Only the player's pick wrote them, so the regrant keeps the ones held.
+function bundledVariantNames(raceId: string): Set<string> {
+  const race = RACES.find((entry) => entry.id === srdRaceId(raceId));
+  const group = race?.variants;
+  return new Set(group ? group.options.flatMap((option) => [`${group.label} (${option.name})`, ...(option.lines ?? [])]).map((name) => textKey(name)) : []);
+}
 
 // Race ids arrive as SRD ids (half_elf), content-pack slugs (half-elf) or
 // the pack's own copies of the bundled rows (odm-half-elf); all three find
@@ -549,6 +559,7 @@ export function populateFeaturesForClasses(
   // A race the bundled data doesn't describe (a content-pack Catfolk) has its
   // trait names written by the builder; they are the only copy there is.
   const keepsRaceNames = racialTraits.length === 0;
+  const picked = bundledVariantNames(raceId);
   const grantedNames = new Set(granted.map((feature) => textKey(feature.name)));
   const kept = pruneChoiceFeatures(
     existing.filter(
@@ -560,7 +571,9 @@ export function populateFeaturesForClasses(
           (feature.source === "race" && keepsRaceNames) ||
           // A dragonborn's chosen ancestry is a race feature only the
           // player's pick names; the regrant keeps it.
-          (feature.source === "race" && takesDraconicAncestry(raceId) && ancestryOf([feature]) !== null)) &&
+          (feature.source === "race" && takesDraconicAncestry(raceId) && ancestryOf([feature]) !== null) ||
+          // A bundled race's own pick (a shifter's subtype) likewise.
+          (feature.source === "race" && picked.has(textKey(feature.name)))) &&
         !grantedNames.has(textKey(feature.name)),
     ),
     classes,

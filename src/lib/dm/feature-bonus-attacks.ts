@@ -17,6 +17,7 @@
 //     modifier (minimum of 1)", once a short rest.
 //   Charge (centaur, src/lib/srd/races.json): the hooves as a bonus action
 //     after a 30-foot run straight at a creature and a melee weapon hit on it.
+//   Longtooth (shifter): the fangs as a bonus action while shifted.
 //   Pistol and Blade (steampunk catalog): "When you attack with a melee
 //     weapon, make one firearm attack as a bonus action."
 //   Swift Quiver (the authored spell, src/lib/srd/authored-spells.json): "a
@@ -29,6 +30,7 @@
 // No database: pc-attack-options.ts asks it in its refusal pass.
 import { WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budget";
 import { chargedFeet } from "@/lib/srd/mt-fb-run";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { classLevelFor } from "@/lib/srd/multiclass";
 import { weaponNamed } from "@/lib/srd/weapons";
@@ -138,6 +140,17 @@ export function featureBonusAttack(input: {
       refusals.push({ error: "Charge's hooves follow a run of at least 30 feet straight at the creature and a melee weapon hit on it this turn, and neither has come before this attack.", refused: "rules" });
     } else {
       return { feature: "Charge" };
+    }
+  }
+  // Longtooth (a shifter's subtype): "shifted: a Fangs attack as a bonus
+  // action", in the form Shifting lays.
+  if (holds(sheet, "longtooth")) {
+    if (!sheet.conditions.some((entry) => isConditionNamed(entry, "shifted"))) {
+      refusals.push({ error: "Longtooth's fangs strike as a bonus action while shifted, and they are not shifted: use_resource Shifting first.", refused: "rules" });
+    } else if (!/\bfangs?\b/i.test(profile.weapon)) {
+      refusals.push({ error: "Longtooth's bonus attack is made with the fangs: send weapon \"fangs\".", retry: true });
+    } else {
+      return { feature: "Longtooth" };
     }
   }
   if (holds(sheet, "pistol and blade")) {

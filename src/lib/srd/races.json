@@ -1428,6 +1428,40 @@
           "intimidation",
           "survival"
         ]
+      },
+      "variants": {
+        "label": "Shifter subtype",
+        "options": [
+          {
+            "id": "beasthide",
+            "name": "Beasthide",
+            "lines": [
+              "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)"
+            ]
+          },
+          {
+            "id": "longtooth",
+            "name": "Longtooth",
+            "lines": [
+              "Longtooth (shifted: a Fangs attack as a bonus action)",
+              "Fangs (while shifted, 1d6 piercing unarmed strike)"
+            ]
+          },
+          {
+            "id": "swiftstride",
+            "name": "Swiftstride",
+            "lines": [
+              "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)"
+            ]
+          },
+          {
+            "id": "wildhunt",
+            "name": "Wildhunt",
+            "lines": [
+              "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)"
+            ]
+          }
+        ]
       }
     }
   ],

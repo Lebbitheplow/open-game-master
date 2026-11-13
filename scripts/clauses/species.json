@@ -2954,7 +2954,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "86de397afaa6",
+  "sha": "6369e86714d6",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -3003,6 +3003,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)\"]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for, its lines written on the sheet by variantFeatureNames); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.shifter.subtypes"
    }
   ]
  }
