@@ -636,6 +636,24 @@ export function backgroundField(data: Record<string, unknown>, field: string): s
   return String(data[field] ?? "");
 }
 
+// The feature a background row names and what it does. A v1 row carries
+// them as `feature` and `feature_desc`; a v2 row (Level Up's Adventurer's
+// Guide and its kin) as a benefit of type "feature", named by its heading,
+// so without this a Cultist or a Guard reached the sheet with no feature.
+export function backgroundFeatureOf(data: Record<string, unknown>): { feature: string; featureDesc: string } {
+  const feature = String(data.feature ?? "").trim();
+  if (feature) {
+    return { feature, featureDesc: String(data.feature_desc ?? "").trim() };
+  }
+  if (Array.isArray(data.benefits)) {
+    const benefit = (data.benefits as Array<{ type?: unknown; name?: unknown; desc?: unknown }>).find((entry) => entry.type === "feature");
+    if (benefit) {
+      return { feature: String(benefit.name ?? "").trim(), featureDesc: String(benefit.desc ?? "").trim() };
+    }
+  }
+  return { feature: "", featureDesc: "" };
+}
+
 function backgroundSkills(text: string): Pick<BackgroundMechanics, "skills" | "skillChoice"> {
   // Where the fixed skills end and the pick begins: "and either Insight or
   // History", "plus one of your choice from among ...", "Your choice of two

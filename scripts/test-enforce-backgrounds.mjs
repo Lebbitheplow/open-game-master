@@ -416,6 +416,76 @@ await test("Each level gained adds the hit die's value plus the Constitution mod
 });
 
 if (hasPack) {
+  // Every content-pack background the builder offers, read from its own
+  // text, then built and seated: what the builder offered is what the sheet
+  // holds.
+  const { mergedBackgroundOptions } = await import("../src/lib/characters/options.ts");
+  const { KNOWN_TOOLS } = await import("../src/lib/srd/feat-grant-text.ts");
+  const packRows = listBackgrounds({ limit: 200 });
+  const packOffered = mergedBackgroundOptions(packRows).filter((row) => row.documentSlug);
+  const knownTools = new Set(KNOWN_TOOLS);
+  const seatPack = async (option) => {
+    const backgroundSkills = option.skillChoice ? option.skillChoice.from.filter((skill) => !option.skills.includes(skill)).slice(0, option.skillChoice.count) : [];
+    const classSkills = ["acrobatics", "history", "insight", "perception", "survival", "athletics"]
+      .filter((skill) => !option.skills.includes(skill) && !backgroundSkills.includes(skill))
+      .slice(0, 2);
+    const built = builder.build({
+      race: "human",
+      class: "fighter",
+      background: option,
+      chosenSkills: classSkills,
+      stylePicks: ["defense"],
+      bonusLanguages: ["Elvish", "Dwarvish", "Giant", "Gnomish", "Orc"].slice(0, 1 + (option.languages ?? 0)),
+      backgroundSkills,
+    });
+    assert.equal(built.blocker, null, `${option.id}: ${built.blocker?.message}`);
+    const seated = await atTable(built.sheet);
+    assert.equal(seated.status, 201, `${option.id}: ${seated.error}`);
+    return seated.sheet;
+  };
+
+  // The feature a row names: a v1 row's `feature` field, a v2 row's benefit
+  // of type "feature" (Level Up's Adventurer's Guide and its kin).
+  await test("Every content-pack background grants the feature its text names, with the feature's text, through the builder and at the table.", async () => {
+    assert.ok(packOffered.length > 30, `${packOffered.length} pack backgrounds`);
+    for (const option of packOffered) {
+      const data = packRows.find((row) => row.slug === option.id).data;
+      const v2 = Array.isArray(data.benefits) ? data.benefits.find((benefit) => benefit.type === "feature") : null;
+      const named = String(data.feature ?? v2?.name ?? "").trim();
+      assert.ok(named, `${option.id} names no feature in its text`);
+      assert.equal(option.feature, named, `${option.id} feature`);
+      // Four Level Up rows (Farmer, Guildmember, Marauder, Trader) name a
+      // feature the pack carries no text for; every other row's text arrives.
+      const text = String(data.feature_desc ?? v2?.desc ?? "").trim();
+      assert.equal(option.featureDesc ?? "", text, `${option.id} feature text`);
+      const sheet = await seatPack(option);
+      const features = sheet.features.filter((feature) => feature.source === "background").map((feature) => feature.name);
+      assert.deepEqual(features, [`${named} (${option.name})`.slice(0, 80)], option.id);
+    }
+  });
+
+  // Each tool the SRD's name for it, or a choice the builder asks: "Two of
+  // your choice" is two picks, not a proficiency in the sentence.
+  await test("Every content-pack background's tools are real tools, a named one under the SRD's name and an open one asked, through the builder and at the table.", async () => {
+    for (const option of packOffered) {
+      const { fixed, choices } = tools.splitToolGrants(option.tools ?? []);
+      for (const tool of fixed) {
+        assert.ok(knownTools.has(tool), `${option.id} grants "${tool}", which is no tool's name`);
+      }
+      for (const choice of choices) {
+        assert.ok(choice.count > 0 && choice.from.length >= choice.count, `${option.id} choice ${choice.label}`);
+      }
+      const held = (await seatPack(option)).proficiencies.tools;
+      for (const tool of fixed) {
+        assert.ok(held.includes(tool), `${option.id} sheet lacks ${tool}: ${held}`);
+      }
+      assert.equal(held.length, fixed.length + choices.reduce((sum, choice) => sum + choice.count, 0), `${option.id} tools: ${held}`);
+      for (const tool of held) {
+        assert.ok(knownTools.has(tool), `${option.id} sheet holds "${tool}"`);
+      }
+    }
+  });
+
   await test("Every background gives two skill proficiencies: a pack row that grants none is not offered.", () => {
     const short = listBackgrounds({ limit: 200 })
       .filter((row) => {

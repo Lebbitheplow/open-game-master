@@ -5,6 +5,7 @@
 // and the rule cannot drift apart. Pure functions on plain data: no React,
 // no database.
 import {
+  backgroundFeatureOf,
   backgroundMechanics,
   classMechanics,
   type ClassMechanics,
@@ -289,8 +290,7 @@ export function mergedBackgroundOptions(rows: ContentRow[]): BackgroundOption[] 
   const packBackgrounds: BackgroundOption[] = rows
     .filter((row) => !bundledIds.has(row.slug.toLowerCase().replace(/-/g, "_")))
     .map((row) => {
-      const feature = String(row.data?.feature ?? "").trim();
-      const featureDesc = String(row.data?.feature_desc ?? "").trim();
+      const { feature, featureDesc } = backgroundFeatureOf(row.data ?? {});
       const mechanics = backgroundMechanics(row.data);
       // A workshop background's kit is already catalog items, its coin its own.
       const grants = row.data?.grants as { purse?: unknown } | undefined;
