@@ -16,7 +16,7 @@ import { spendAction, type SpendResult, type TurnBudget } from "@/lib/dm/action-
 import { weaponOf } from "@/lib/dm/attack-logic";
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
-import { armorOfRow, isWorn, wearingIsExplicit } from "@/lib/srd/armor";
+import { armorOfRow, guessStands, isWorn, wearingIsExplicit } from "@/lib/srd/armor";
 import { wearSlotOf } from "@/lib/srd/wear-slots";
 import { matchWeapon, type SrdWeapon } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
@@ -73,6 +73,51 @@ export function handsFullFor(equipment: readonly EquipmentItem[], row: Equipment
   const others = heldRows(equipment).filter((item) => item !== row && textKey(item.name) !== textKey(row.name));
   const used = others.reduce((sum, item) => sum + handsFor(item), 0);
   return used + handsFor(row) > 2 ? others.map((item) => item.name) : [];
+}
+
+// Whether the engine's guess at what is in hand still stands (armor.ts).
+export { guessStands };
+
+// The free first change from the engine's guess. Its pick came from list
+// order, not from the player, so a weapon they take up while it stands is
+// drawn as part of the same act and the guessed weapons in the way are put
+// away with it (last chosen first, only as many as the hands need), with no
+// object interaction spent on either. A shield stays: the armor class
+// counted it, and taking it off is an action. Null when the guess is gone,
+// the row is not a weapon, or the shield alone leaves no room. The pack
+// comes back with every guess mark off, so the normal rule holds after.
+export function guessedRehand(
+  equipment: readonly EquipmentItem[],
+  row: EquipmentItem,
+): { equipment: EquipmentItem[]; putAway: string[] } | null {
+  const at = equipment.indexOf(row);
+  if (at < 0 || !guessStands(equipment) || gearKindOf(row) !== "weapon") {
+    return null;
+  }
+  const next: EquipmentItem[] = equipment.map((item, index) => {
+    const { heldGuess: _guess, ...rest } = item;
+    void _guess;
+    return index === at ? { ...rest, equipped: true } : rest;
+  });
+  const guessed = equipment
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) => index !== at && item.heldGuess === true && item.equipped === true && gearKindOf(item) === "weapon");
+  const putAway: string[] = [];
+  while (handsFullFor(next, next[at]).length) {
+    const last = guessed.pop();
+    if (!last) {
+      return null;
+    }
+    next[last.index] = { ...next[last.index], equipped: false };
+    putAway.unshift(last.item.name);
+  }
+  return { equipment: next, putAway };
+}
+
+// What the free first change did, in the result's words.
+export function rehandLine(who: string, putAway: readonly string[], taken: string): string {
+  const away = putAway.length ? `puts away ${putAway.join(" and ")} and ` : "";
+  return `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`;
 }
 
 // The refusal for a draw with no hand free, with the ways out: dropping

@@ -192,6 +192,14 @@ export function wearingIsExplicit(equipment: ReadonlyArray<{ equipped?: boolean 
   return equipment.some((item) => item.equipped !== undefined);
 }
 
+// Whether the marks are still the engine's guess at what is in hand
+// (src/lib/dm/held-default.ts): a row still carries the guess's flag and the
+// sheet says what it holds. Kept here, beside the reading it qualifies, so
+// the sheet's toggle asks without the attack engine in its bundle.
+export function guessStands(equipment: ReadonlyArray<{ equipped?: boolean; heldGuess?: true }>): boolean {
+  return wearingIsExplicit(equipment) && equipment.some((item) => item.heldGuess === true);
+}
+
 export function isWorn(
   item: { equipped?: boolean },
   equipment: ReadonlyArray<{ equipped?: boolean }>,

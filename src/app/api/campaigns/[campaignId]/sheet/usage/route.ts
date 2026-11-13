@@ -16,7 +16,7 @@ import { recordManualTicks } from "@/lib/dm/manual-ticks";
 import { attunementRefusal, gearChanges, gearPatch, usageLowers, usageSpendsHitDice } from "@/lib/dm/usage-rules";
 import { acBreakdownFor } from "@/lib/srd";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { gearKindOf, handsFor, handsFullError, handsFullFor, spendInteraction } from "@/lib/dm/gear-hands";
+import { gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { advanceClock } from "@/lib/db/clock";
@@ -187,10 +187,23 @@ export async function POST(
     }
     wornEquipment = worn.equipment;
   }
-  let shieldBudget: ReturnType<typeof spendAction> | null = null;
-  if (encounter && parsed.data.gear) {
+  // While the hands are still the engine's guess (src/lib/dm/held-default.ts)
+  // the first weapon taken up or put away is free, and one taken up puts the
+  // guessed weapons in its way away with it, as the Hand and handle_item do
+  // (gear-hands.ts guessedRehand).
+  const gearAsked = Object.entries(parsed.data.gear ?? {});
+  const guessing = guessStands(sheet.equipment) && gearAsked.length === 1;
+  const [asked, askedChange] = gearAsked[0] ?? [];
+  const askedRow = guessing ? sheet.equipment.find((item) => item.name === asked) : undefined;
+  const rehand = askedRow && askedChange?.equipped === true ? guessedRehand(sheet.equipment, askedRow) : null;
+  const freeByGuess = Boolean(askedRow && gearKindOf(askedRow) === "weapon" && (rehand || askedChange?.equipped === false));
+  if (rehand) {
+    wornEquipment = rehand.equipment;
+  }
+  if (parsed.data.gear) {
     // Two hands: a weapon or a shield taken up needs one free, as the DM's
-    // handle_item asks (src/lib/dm/gear-hands.ts).
+    // handle_item and the Hand ask (src/lib/dm/gear-hands.ts), in a fight or
+    // out of one, so the sheet never says three hands hold something.
     const after = wornEquipment ?? sheet.equipment;
     for (const [name, change] of Object.entries(parsed.data.gear)) {
       const row = after.find((item) => item.name === name);
@@ -203,6 +216,9 @@ export async function POST(
         return refuse(handsFullError(sheet.name, name, full, kind === "shield" ? "strapped on" : "drawn"));
       }
     }
+  }
+  let shieldBudget: ReturnType<typeof spendAction> | null = null;
+  if (encounter && parsed.data.gear) {
     if (changes.armor.length) {
       return refuse(
         `Armor takes minutes to put on or take off, so ${changes.armor[0]} cannot change during a fight. A shield takes one action, and a weapon the free object interaction.`,
@@ -251,7 +267,7 @@ export async function POST(
       }
       for (const name of changes.held) {
         const row = sheet.equipment.find((item) => item.name === name);
-        if (!row) {
+        if (!row || freeByGuess) {
           continue;
         }
         const on = parsed.data.gear[name]?.equipped === true;
@@ -379,5 +395,7 @@ export async function POST(
   publishPersisted(campaignId, "sheet_audit", { entry, characterName: sheet.name });
   publishPersisted(campaignId, "sheet_updated", { sheet: updated });
 
-  return Response.json({ sheet: updated, ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}) });
+  // What the free first change did, said plainly (gear-hands.ts rehandLine).
+  const note = rehand && askedRow ? rehandLine(sheet.name, rehand.putAway, askedRow.name) : null;
+  return Response.json({ sheet: updated, ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}), ...(note ? { note } : {}) });
 }

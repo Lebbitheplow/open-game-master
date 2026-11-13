@@ -10,7 +10,10 @@ import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
-import { defaultHeld } from "@/lib/dm/held-default";
+import { defaultHeld, keepHeldGuess, unguessed } from "@/lib/dm/held-default";
+import { guessStands } from "@/lib/dm/gear-hands";
+import { lastAttackDetail } from "@/lib/db/rolls";
+import { rollAgainst } from "@/lib/roll-labels";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
@@ -407,32 +410,54 @@ function capAttunement(
 // the marks are worked out on the pack as the rules read it (homebrew rows
 // with their blocks) and kept on the rows as stored. The armor and shield it
 // marks are the ones the armor class already counted, so the AC is the same.
+// Each weapon row it decides carries the guess's mark (`heldGuess`).
 function withDefaultHeld(
   stored: EquipmentItem[],
   read: EquipmentItem[],
   source: Omit<AcSource, "equipment"> & { proficiencies: { armor: string[]; weapons?: string[] } },
+  preferred: string | null = null,
 ): EquipmentItem[] {
   if (read.length !== stored.length) {
     return stored;
   }
   const armor = acBreakdownFor({ ...source, equipment: read });
-  const held = defaultHeld(read, armor, source.proficiencies.weapons ?? [], Boolean(source.spellcasting));
-  return held ? stored.map((item, at) => ({ ...item, equipped: held[at]?.equipped ?? false })) : stored;
+  const held = defaultHeld(read, armor, source.proficiencies.weapons ?? [], Boolean(source.spellcasting), preferred);
+  return held
+    ? stored.map((item, at) => {
+        const { heldGuess: _guess, ...rest } = item;
+        void _guess;
+        return { ...rest, equipped: held[at]?.equipped ?? false, ...(held[at]?.heldGuess ? { heldGuess: true as const } : {}) };
+      })
+    : stored;
 }
 
-// Every sheet in a campaign that never said what it holds is given the
-// default (src/lib/dm/held-default.ts); its armor class is unchanged. The
-// sheets that changed, for the caller to announce.
+// The weapon row a character's own latest attack roll was made with, when
+// one is stored and they still carry it (src/lib/db/rolls.ts).
+function lastAttackedWith(sheet: CharacterSheet): string | null {
+  const detail = lastAttackDetail(sheet.campaignId, sheet.id);
+  if (!detail) {
+    return null;
+  }
+  return sheet.equipment.find((item) => detail.startsWith(rollAgainst(item.name, "")))?.name ?? null;
+}
+
+// Every sheet in a campaign that never said what it holds, or whose marks
+// are still the engine's guess, is given the default as a fight begins
+// (src/lib/dm/held-default.ts): the weapon its last attack roll used when
+// one is stored, else the first that fits. Its armor class is unchanged.
+// The sheets that changed, for the caller to announce.
 export function settleHeldGear(campaignId: string): CharacterSheet[] {
   const changed: CharacterSheet[] = [];
   for (const sheet of listSheets(campaignId)) {
-    if (sheet.isCompanion || wearingIsExplicit(sheet.equipment)) {
+    const guessed = guessStands(sheet.equipment);
+    if (sheet.isCompanion || (wearingIsExplicit(sheet.equipment) && !guessed)) {
       continue;
     }
     const row = getDatabase().prepare(`SELECT equipment_json FROM character_sheets WHERE id = ?`).get(sheet.id) as { equipment_json: string } | undefined;
     const stored = parseJson<EquipmentItem[]>(row?.equipment_json ?? "[]", []);
-    const equipment = withDefaultHeld(stored, sheet.equipment, sheet);
-    const updated = equipment === stored ? null : patchSheet(sheet.id, { equipment });
+    const equipment = withDefaultHeld(stored, guessed ? unguessed(sheet.equipment) : sheet.equipment, sheet, lastAttackedWith(sheet));
+    const same = equipment === stored || (guessed && equipment.every((item, at) => item.equipped === stored[at]?.equipped));
+    const updated = same ? null : patchSheet(sheet.id, { equipment }, { guessing: true });
     if (updated) {
       changed.push(updated);
     }
@@ -780,7 +805,9 @@ export function patchSheet(
   input: FullPatchSheetInput,
   // An undo putting back what a change took (src/lib/sheet-undo.ts): the hit
   // points it returns were never lost, so nothing ends on their regain.
-  options: { restoring?: boolean } = {},
+  // `guessing`: the engine's own guess at what is in hand, which keeps its
+  // marks (src/lib/dm/held-default.ts keepHeldGuess).
+  options: { restoring?: boolean; guessing?: boolean } = {},
 ): CharacterSheet | null {
   const existing = getSheetById(sheetId);
   if (!existing) {
@@ -1048,7 +1075,10 @@ export function patchSheet(
   // the number here rather than waiting for someone to retype it.
   // Attunement is judged against the sheet as it now stands (class, race,
   // alignment, spellcasting may have changed with the same patch).
-  next.equipment = capAttunement(next.equipment, next);
+  // A mark set by anyone ends the engine's guess at what is in hand, on
+  // every path that writes the pack (src/lib/dm/held-default.ts). An undo
+  // puts back the pack as it was, guess and all.
+  next.equipment = capAttunement(keepHeldGuess(existing.equipment, next.equipment, options.guessing || options.restoring), next);
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,

@@ -20,7 +20,7 @@ import type { Advantage } from "@/lib/dice";
 import { spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budget";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { dualWields, isUndeadOrFiend, offHandProblem, slotFree, smiteDice } from "@/lib/dm/attack-rules";
-import { drawRow, gearKindOf, handsFor, handsFullError, spendInteraction } from "@/lib/dm/gear-hands";
+import { drawRow, gearKindOf, guessedRehand, handsFor, handsFullError, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { askPlayerWords, noteHandsFullAsk } from "@/lib/dm/hands-full-ask";
 import { wearingIsExplicit } from "@/lib/srd/armor";
@@ -514,7 +514,17 @@ export function planPcAttack(input: {
   let drawn: AttackPlan["drawn"] = null;
   if (budget && kind === "weapon" && wearingIsExplicit(sheet.equipment)) {
     const row = sheet.equipment.find((item) => item.name === profile.weapon) ?? null;
-    if (row && row.equipped !== true && gearKindOf(row) === "weapon") {
+    // While the hands are still the engine's guess (held-default.ts), the
+    // first weapon taken up is free, and the guessed ones in its way go
+    // away with it: no interaction, no refusal, nothing to ask.
+    const guessed = row && row.equipped !== true ? guessedRehand(sheet.equipment, row) : null;
+    if (row && guessed) {
+      const throws = atRange && (profile.properties ?? []).includes("thrown");
+      drawn = {
+        equipment: throws ? guessed.equipment.map((item, at) => (at === sheet.equipment.indexOf(row) ? { ...item, equipped: row.equipped } : item)) : guessed.equipment,
+        note: rehandLine(sheet.name, guessed.putAway, row.name),
+      };
+    } else if (row && row.equipped !== true && gearKindOf(row) === "weapon") {
       const swap = drawRow(sheet.equipment, row, null);
       if (swap.full.length) {
         // What to let go of is the player's choice (hands-full-ask.ts); a

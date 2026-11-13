@@ -20,7 +20,8 @@ const { intentTools, describeIntent, messageIntentSchema } = await import("../sr
 const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
-const { defaultHeld } = await import("../src/lib/dm/held-default.ts");
+const { defaultHeld, keepHeldGuess } = await import("../src/lib/dm/held-default.ts");
+const { guessedRehand } = await import("../src/lib/dm/gear-hands.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -349,6 +350,76 @@ test("a light blade beside a light main weapon stays in hand too, so a two-weapo
   assert.deepEqual(held(rogue), ["Shortsword", "Dagger"]);
   const fighter = defaultHeld([{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }], NO_ARMOR, ["simple", "martial"]);
   assert.deepEqual(held(fighter), ["Longsword"]);
+});
+
+// ---- the engine's guess never costs a turn (held-default.ts, gear-hands.ts) ----
+// An archer whose pack reads Shortsword, Longbow and whose sheet never said
+// was handed the sword: the bow's card was shut for full hands, and the only
+// way to shoot on turn one was to drop the sword.
+
+const ARCHER_GUESS = () => [
+  { name: "Leather Armor", qty: 1, equipped: true },
+  { name: "Shortsword", qty: 1, equipped: true, heldGuess: true },
+  { name: "Longbow", qty: 1, equipped: false, heldGuess: true },
+];
+const flagsOf = (rows) => rows.filter((row) => row.heldGuess).map((row) => row.name);
+
+test("the default marks each weapon it decided as its guess, and the archer's last attack picks the bow", () => {
+  const rows = defaultHeld([{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }], { armorName: "Leather Armor", shieldName: null }, ["simple", "martial"]);
+  assert.deepEqual(held(rows), ["Leather Armor", "Shortsword"]);
+  assert.deepEqual(flagsOf(rows), ["Shortsword", "Longbow"]);
+  const shooter = defaultHeld([{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }], { armorName: "Leather Armor", shieldName: null }, ["simple", "martial"], false, "Longbow");
+  assert.deepEqual(held(shooter), ["Leather Armor", "Longbow"]);
+});
+
+test("while the guess stands the bow's card opens: playing it puts the sword away, free, and the chip still says Packed", () => {
+  const cards = deriveHand(sheet({ equipment: ARCHER_GUESS() }), FRESH_TURN);
+  const bow = byId(cards, "attack:longbow");
+  assert.equal(bow.disabled, null);
+  assert.equal(bow.wield, "stowed");
+  assert.match(bow.description, /playing it puts away Shortsword and takes it up, free this once/);
+  // Even with the interaction already gone: the change spends none.
+  assert.equal(byId(deriveHand(sheet({ equipment: ARCHER_GUESS() }), { ...FRESH_TURN, interactionUsed: true }), "attack:longbow").disabled, null);
+  const draw = byId(cards, "gear:draw");
+  assert.equal(draw.cost, "free");
+  assert.ok(!draw.interaction, "the draw card spends no interaction");
+  assert.equal(draw.disabled, null);
+  // The same pack marked by the player: the card is shut for full hands.
+  const marked = ARCHER_GUESS().map(({ heldGuess, ...row }) => (void heldGuess, row));
+  assert.match(byId(deriveHand(sheet({ equipment: marked }), FRESH_TURN), "attack:longbow").disabled ?? "", /hands are full \(Shortsword\)/);
+});
+
+test("the free change takes the bow, puts the sword away, and ends the guess, so the next change is the normal rule", () => {
+  const rows = ARCHER_GUESS();
+  const once = guessedRehand(rows, rows[2]);
+  assert.deepEqual(once.putAway, ["Shortsword"]);
+  assert.deepEqual(held(once.equipment), ["Leather Armor", "Longbow"]);
+  assert.deepEqual(flagsOf(once.equipment), []);
+  assert.equal(guessedRehand(once.equipment, once.equipment[1]), null, "a second change is not free");
+  // A shield the armor class counted stays: with it on the arm a two-handed
+  // weapon still has no room, and the normal refusal holds.
+  const guard = [{ name: "Shield", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: true, heldGuess: true }, { name: "Greatsword", qty: 1, equipped: false, heldGuess: true }];
+  assert.equal(guessedRehand(guard, guard[2]), null);
+  // Two guessed blades: a third one-handed weapon puts away only the last.
+  const pair = [{ name: "Shortsword", qty: 1, equipped: true, heldGuess: true }, { name: "Dagger", qty: 1, equipped: true, heldGuess: true }, { name: "Handaxe", qty: 1, equipped: false, heldGuess: true }];
+  assert.deepEqual(guessedRehand(pair, pair[2]).putAway, ["Dagger"]);
+});
+
+test("any change to what is held or worn ends the guess on every row; a write that leaves the marks keeps it and never adds it", () => {
+  const before = ARCHER_GUESS();
+  const same = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Leather Armor" ? { ...row, qty: 1 } : row)));
+  assert.deepEqual(flagsOf(same), ["Shortsword", "Longbow"]);
+  const toggled = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Longbow" ? { ...row, equipped: true } : row)));
+  assert.deepEqual(flagsOf(toggled), []);
+  const offArmor = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Leather Armor" ? { ...row, equipped: false } : row)));
+  assert.deepEqual(flagsOf(offArmor), []);
+  const dropped = keepHeldGuess(before, ARCHER_GUESS().filter((row) => row.name !== "Shortsword"));
+  assert.deepEqual(flagsOf(dropped), []);
+  // A player's edit cannot hand itself the free change.
+  const marked = before.map(({ heldGuess, ...row }) => (void heldGuess, row));
+  assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS())), []);
+  // The guess itself writes its marks.
+  assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS(), true)), ["Shortsword", "Longbow"]);
 });
 
 console.log(`test-hand-gear: ${passed} passed`);
