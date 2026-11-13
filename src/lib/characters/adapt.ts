@@ -14,6 +14,7 @@ import {
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { findClass } from "@/lib/srd";
 import { spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
+import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
 import {
   cantripCapOf,
   casterViewsOf,
@@ -273,7 +274,12 @@ function trimToLevel(view: CasterView, abilities: CreateSheetInput["abilities"])
   const cantripCap = cantripCapOf(view);
   const cap = spellCapOf(view, abilities)?.count ?? null;
   const cantrips = cantripCap === null ? view.cantrips : view.cantrips.slice(0, cantripCap);
-  const known = capList(castable(view.known), cap);
+  // A warlock keeps the first spell of each Mystic Arcanum its level still
+  // has, on top of the spells known (src/lib/srd/mystic-arcanum.ts).
+  const arcana = arcanumLevelsFor(view.classId, view.level).flatMap(
+    (spellLevel) => view.known.find((name) => spellLevelOf(name) === spellLevel) ?? [],
+  );
+  const known = [...capList(castable(view.known), cap), ...arcana];
   const prepared = capList(castable(view.prepared), cap);
   const room = cap === null ? Infinity : Math.max(0, cap - spellsAgainstLimit(prepared, granted));
   const pending = castable(view.pending).slice(0, room);

@@ -327,4 +327,27 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
   assert.deepEqual(adaptSheetToLevel(barbarian(19, champion), 19, 20).abilities, barbarian(19).abilities);
 });
 
+// Mystic Arcanum (SRD 5.1, Warlock): an arcanum sits beside the Spells Known
+// column, so a level 20 warlock joining a level 13 table keeps its 6th- and
+// 7th-level arcana and the column's twelve spells. The trim read the pact
+// slots' 5th level as the ceiling and dropped every arcanum.
+{
+  const { checklistSpellsOn } = await import("../src/lib/srd/spell-lists.ts");
+  const listOf = (spellLevel) => checklistSpellsOn("warlock").filter((spell) => spell.level === spellLevel).map((spell) => spell.name);
+  const regular = [1, 2, 3, 4, 5].flatMap(listOf).slice(0, 15);
+  const arcana = [6, 7, 8, 9].map((spellLevel) => listOf(spellLevel)[0]);
+  test("a warlock joining below the level it was built keeps each arcanum its new level still has", () => {
+    const warlock = sheet({
+      class: "warlock",
+      subclass: "The Fiend",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 20 },
+      hitDice: { total: 20, spent: 0 },
+      spellcasting: { ability: "cha", slots: {}, cantrips: ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Prestidigitation"], known: [...regular, ...arcana], prepared: [] },
+    });
+    const known = adaptSheetToLevel(warlock, 20, 13).spellcasting.known;
+    assert.deepEqual(known.filter((name) => arcana.includes(name)), arcana.slice(0, 2), "the 6th- and 7th-level arcana stay, the 8th and 9th go");
+    assert.equal(known.filter((name) => !arcana.includes(name)).length, 12, "the column's twelve spells at 13th");
+  });
+}
+
 console.log(`character adapt: ${passed} assertions passed.`);
