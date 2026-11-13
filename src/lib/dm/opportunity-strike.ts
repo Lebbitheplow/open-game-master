@@ -22,7 +22,7 @@ import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -97,6 +97,21 @@ export function opportunitySight(input: {
 // character of the other side (issue 503). Returns the table line. A swing
 // at a character leaves the record its reactions answer, as an enemy's
 // attack does (last-hit.ts): Shield, Uncanny Dodge, Riposte on a miss.
+// Whose turn a swing lands in, for what holds only for what is left of that
+// turn (Sentinel's stop): the walker's own when it is taking it (handed over, or held
+// for it), otherwise the one the pointer is on. Written as begun, so that
+// turn's end takes it (turn-end.ts). It was written as the walker's NEXT
+// turn: a goblin a Sentinel stopped on its way out stood still through its
+// whole next turn too, and could not flee on it either.
+function turnUnderWay(encounter: Encounter, walkerId: string): string {
+  const legendary = encounter.legendary;
+  if ((legendary.due ?? []).includes(walkerId) || (legendary.handoff?.enemyIds ?? []).includes(walkerId)) {
+    return walkerId;
+  }
+  const entry = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return entry ? orderEntryId(entry) : walkerId;
+}
+
 export function pcOpportunitySwing(input: {
   campaign: Campaign;
   encounter: Encounter;
@@ -210,11 +225,11 @@ export function pcOpportunitySwing(input: {
   // Relentless Avenger answers the hit (src/lib/dm/authored-reactions-more.ts).
   if (adjudicated.hit) {
     markOpportunityHit(campaign, sheet);
-    // Sentinel: the creature's speed is 0 for the rest of its turn.
+    // Sentinel: the creature's speed is 0 for the rest of the turn.
     if (hasSentinel(sheet)) {
       const fresh = getFoe(enemy.id);
       if (fresh && !fresh.conditions.includes("stopped")) {
-        patchEnemyConditions(fresh.id, [...fresh.conditions, "stopped"], { ...fresh.conditionMeta, stopped: { source: sheet.id, untilTurnEndOf: enemy.id } });
+        patchEnemyConditions(fresh.id, [...fresh.conditions, "stopped"], { ...fresh.conditionMeta, stopped: { source: sheet.id, untilTurnEndOf: turnUnderWay(encounter, fresh.id), turnBegun: true } });
         notes.push("Sentinel: its speed is 0 for the rest of the turn");
       }
     }
