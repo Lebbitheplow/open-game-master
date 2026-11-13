@@ -32,6 +32,8 @@ import { board, zonesOf } from "./lib/enforce-zones.mjs";
 
 const { test, finish } = suite("test-enforce-area-shapes");
 const { boardCatchesCast } = await import("../src/lib/dm/area-casting.ts");
+const { areaProblem } = await import("../src/lib/dm/aoe-shape.ts");
+const { getBattleMapForEncounter, getTokenByRef, moveToken } = await import("../src/lib/db/battle-maps.ts");
 
 const WIZARD = caster("wizard", "int", ["Fireball", "Burning Hands", "Lightning Bolt", "Shatter", "Ice Storm", "Web"], [], 9);
 const DRUID = caster("druid", "wis", ["Entangle", "Wall of Fire"], [], 9);
@@ -95,6 +97,27 @@ await test("Lightning Bolt refuses creatures in opposite directions; one line ho
   along.world.clearDice();
   assert.equal(cast.ok, true, cast.error);
   assert.ok(enemyOf(along.world, along.enemies[1].id).currentHp < enemyOf(along.world, along.enemies[1].id).maxHp);
+});
+
+// A breath or a burst from a creature larger than a square starts at the
+// edge of its space (a Large dragon fills four squares). Measured from its
+// top-left square, a breath east lost a square of its own body.
+await test("A Large creature's 30-foot cone reaches a hero 30 feet from its near edge, not 35; its 10-foot burst reaches 10 feet from any side of it.", async () => {
+  const { world, sheets: [hero], enemies: [beast] } = await board([WIZARD], { 0: { x: 15, y: 4 }, e0: { x: 8, y: 4 } }, { stats: { size: "Large" } });
+  const encounterId = world.encounter().id;
+  const map = getBattleMapForEncounter(encounterId);
+  const stand = (x, y) => moveToken(getTokenByRef(map.id, hero.id).id, x, y, 0);
+  const fits = (area) => areaProblem({ encounterId, casterId: beast.id, casterName: "Beast", label: "Breath", area, rangeFeet: null, creatures: [{ id: hero.id, name: hero.name }] });
+  const cone = { shape: "cone", feet: 30, self: true };
+  // The beast fills (8..9, 4..5): (15, 4) is six squares past its east edge.
+  assert.equal(fits(cone), null, "a hero 30 feet from the beast's edge was out of its 30-foot cone");
+  stand(16, 4);
+  assert.notEqual(fits(cone), null, "a hero 35 feet off was caught");
+  // (11, 5) is two squares from its east edge, three from its top-left square.
+  stand(11, 5);
+  assert.equal(fits({ shape: "sphere", feet: 10, self: true }), null, "a hero 10 feet from the beast's side was out of its 10-foot burst");
+  stand(12, 5);
+  assert.notEqual(fits({ shape: "sphere", feet: 10, self: true }), null, "a hero 15 feet off was in a 10-foot burst");
 });
 
 await test("An effect whose ids name nobody is refused with the creatures there are, and harms nobody.", async () => {
