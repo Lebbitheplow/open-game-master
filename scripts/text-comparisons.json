@@ -84,7 +84,7 @@
     "lib/dm/ar-wbf-warlock-grave-logic.ts#str-eq": [["key",2,"a damage type's own key (necrotic), asked of pc_attack through textKey and read off the attack's profile: engine vocabulary"]],
     "lib/dm/ar-wbf-warlock-projection-logic.ts#str-list": [["key",1,"the two schools of magic Spirit Projection names, held against a spell's own school key (textKey): engine vocabulary"]],
     "lib/dm/ar-wbf-warlock-ward.ts#toUpperCase": [["display",3,"ability abbreviation shown in a roll note"]],
-    "lib/dm/hit-save.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
+    "lib/dm/hit-save.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
     "lib/dm/ar-ws-alter-memories.ts#toUpperCase": [["display",5,"ability abbreviations shown"]],
     "lib/dm/ar-ws-command-hours.ts#toUpperCase": [["display",1,"ability abbreviations shown"]],
     "lib/dm/ar-ws-deflection.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],

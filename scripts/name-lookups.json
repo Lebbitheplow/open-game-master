@@ -3041,7 +3041,7 @@
     "lib/srd/authored-mt-fb.ts#whole": [["identity",1,"a skill by its whole id, textKey on the roll's side"]],
     "lib/srd/mt-fb-run.ts#partial": [["key",2,"the turn's own marks: a key the engine wrote, by its prefix and its colon"]],
     "lib/srd/mt-fb-run.ts#number": [["parse",1,"the feet in a key the engine wrote"]],
-    "lib/dm/mt-fb-charge.ts#partial": [["key",6,"the turn's own marks: a key the engine wrote, by its prefix, and the square in it"]],
+    "lib/dm/mt-fb-charge.ts#partial": [["key",7,"the turn's own marks: a key the engine wrote, by its prefix, and the square in it"]],
     "lib/dm/authored-attacks.ts#partial": [["key",1,"the turn's own mark of a Rapid Strike owed, by its prefix"]],
     "lib/dm/authored-attacks.ts#whole-single": [["key",1,"the enemy id a turn mark carries against the target's id"]],
     "lib/dm/authored-attacks.ts#whole": [["key",1,"a turn mark struck from the turn's list by its whole text"]],
