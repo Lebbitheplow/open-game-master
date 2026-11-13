@@ -138,6 +138,9 @@ export type HandCard = {
   shot?: { reachFt: number; normalFt: number; longFt: number; thrown: boolean };
   // A dice expression the preview can average; null when nothing is rolled.
   damage: string | null;
+  // A melee weapon thrown past its reach: what that ranged attack rolls,
+  // without Rage or a melee hit's riders. Absent when it is the same.
+  thrownDamage?: string;
   damageType: string;
   // The second type of a spell that deals two at once (Ice Storm's cold).
   secondType?: string;

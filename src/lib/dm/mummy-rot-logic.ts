@@ -13,12 +13,14 @@
 // maximum comes back whole when the curse is lifted. Pure; the clock's half
 // is src/lib/dm/mummy-rot.ts.
 
+import { isConditionNamed } from "@/lib/srd/feature-names";
+
 export const MUMMY_ROT = "cursed (mummy rot)";
 export const ROT_DICE = "3d6";
 const DAY_MINUTES = 24 * 60;
 
 export function holdsMummyRot(conditions: readonly string[]): boolean {
-  return conditions.some((name) => name.trim().toLowerCase() === MUMMY_ROT);
+  return conditions.some((name) => isConditionNamed(name, MUMMY_ROT));
 }
 
 // How many full days since the curse took hold end in (from, to]: one drop

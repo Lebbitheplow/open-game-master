@@ -494,6 +494,7 @@ const SITES = {
   "lib/dice/tray-rules.ts#trayExpressionProblem": "F reads an expression",
   "lib/dm/action-common.ts#rollEnemyContest": "F the creature's side of a contest",
   "lib/dm/advance-tick.ts#tickAdvances": "F d100",
+  "lib/dm/mummy-rot.ts#mummyRotClock": "F the curse's daily 3d6 off the hit point maximum (test-enforce-mummy-rot.mjs): the disease's dice, not a throw of the cursed",
   "lib/dm/after-roll.ts#rerollD20s": "H an extra d20 on the after-the-roll card (Lucky, Chronal Shift)",
   "lib/dm/after-roll.ts#spendAfterRoll": "H the die or d20 a choice on the after-the-roll card adds",
   "lib/dm/mt-fb-runes.ts#spendPropheticState": "H the d20 the Storm Rune's prophetic state adds on the after-the-roll card",

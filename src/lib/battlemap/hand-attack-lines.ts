@@ -35,6 +35,9 @@ export function attackDamageLine(input: {
   profile: AttackProfile;
   riders: CombatRiders;
   kind: AttackKind;
+  // The weapon thrown past its reach: a ranged attack, so Rage and the
+  // riders of a melee hit stay off it (attack-damage-riders.ts).
+  atRange?: boolean;
 }): AttackDamageLine {
   const { turn, profile } = input;
   const read = attackDamageRiders(input);

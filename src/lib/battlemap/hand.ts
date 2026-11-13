@@ -169,6 +169,14 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       notes.push(`Sneak Attack +${riders.sneakAttackDice}d6 once a turn when it applies.`);
     }
     notes.push(...line.notes, ...rolled.notes);
+    // A melee weapon thrown past its reach makes a ranged attack, which
+    // pc_attack rolls without Rage or a melee hit's riders (Improved Divine
+    // Smite). The card showed the melee sum for a throw too.
+    const thrown = profile.thrown && !profile.ranged && !offHand
+      ? attackDamageLine({ sheet, turn, profile, riders, kind: "weapon", atRange: true }).damage
+      : null;
+    const thrownDamage = thrown && thrown !== damage ? thrown : null;
+    if (thrownDamage) notes.push(`Thrown at range: ${thrownDamage}, without the melee bonuses.`);
     if (shillelagh) notes.push(`${shillelagh.note}.`);
     notes.push(...profile.riderNotes.map((note) => `${note}.`));
     if (!profile.proficient) notes.push("Not proficient.");
@@ -198,6 +206,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       ...(rolled.toHitDice ? { toHitDice: rolled.toHitDice } : {}),
       ...(rolled.rollAdvantage ? { rollAdvantage: rolled.rollAdvantage } : {}),
       damage,
+      ...(thrownDamage ? { thrownDamage } : {}),
       damageType: profile.damageType,
       melee: !profile.ranged,
       ...(wield ? { wield } : {}),

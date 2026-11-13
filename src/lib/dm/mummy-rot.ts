@@ -7,12 +7,13 @@ import { effectiveMaxHp, type ConditionMetaMap } from "@/lib/dm/condition-logic"
 import { MUMMY_ROT, ROT_DICE, holdsMummyRot, rotDaysBetween } from "@/lib/dm/mummy-rot-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // The clock's half of mummy rot (src/lib/dm/mummy-rot-logic.ts): when the
 // curse took hold, and the 3d6 the maximum loses for every 24 hours after.
 
 function metaKey(meta: ConditionMetaMap): string {
-  return Object.keys(meta).find((name) => name.trim().toLowerCase() === MUMMY_ROT) ?? MUMMY_ROT;
+  return Object.keys(meta).find((name) => isConditionNamed(name, MUMMY_ROT)) ?? MUMMY_ROT;
 }
 
 // Marks the hour the curse took hold, once: a second rotting fist on a

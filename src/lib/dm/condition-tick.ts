@@ -222,7 +222,7 @@ export function endTurnBoundAtFightEnd(campaign: Campaign): void {
     }
     // A readied spell never released is lost, and its concentration with it
     // (readied-spell.ts), as when the turn it waited for starts.
-    const lostSpell = tick.expired.some((name) => name.toLowerCase() === "readied") ? readiedSpellOf(sheet)?.spell : undefined;
+    const lostSpell = tick.expired.some((name) => isConditionNamed(name, "readied")) ? readiedSpellOf(sheet)?.spell : undefined;
     if (lostSpell && textKey(sheet.concentratingOn ?? "") === textKey(lostSpell)) {
       breakConcentration(campaign, null, sheet.id, "the readied spell was never released");
     }
