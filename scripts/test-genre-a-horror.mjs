@@ -100,7 +100,8 @@ await test("Their Power, Your Hands: the next stigmata of 5th level or lower cos
   must(await spend(scene, "horror_their_power_your_hands"), "Their Power, Your Hands");
   let before = t.foeHp(scene.near.id);
   must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" }), "Inflict Wounds");
-  assert.equal(before - t.foeHp(scene.near.id), 30, "Inflict Wounds at its maximum");
+  // 3d10 at its maximum, and First Scar's +2 necrotic on a stigmata hit.
+  assert.equal(before - t.foeHp(scene.near.id), 32, "Inflict Wounds at its maximum, and First Scar's 2");
   assert.equal(sheet(scene.holder.id).spellcasting.slots["1"].used, 4, "no slot spent");
   assert.ok(!marked(scene.holder.id), "the cast clears the mark");
   // A save spell (cast_at_enemy): Blight, 8d8 at most 64 on a failed save.
@@ -112,7 +113,7 @@ await test("Their Power, Your Hands: the next stigmata of 5th level or lower cos
   const out = await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Blight" });
   t.world.clearDice();
   assert.notEqual(out.ok, false, JSON.stringify(out).slice(0, 300));
-  assert.equal(before - t.foeHp(scene.near.id), 64, "Blight at its maximum");
+  assert.equal(before - t.foeHp(scene.near.id), 66, "Blight at its maximum, and First Scar's 2");
   assert.ok(!marked(scene.holder.id), "the cast clears the mark");
 });
 
