@@ -57,16 +57,21 @@ export function enemyAttackProfile(attack: EnemyAttack, traits: string[] = []): 
   };
 }
 
-// The first melee attack of a block, the one an opportunity attack is made
-// with, and its reach in squares. Null when the block has no melee attack.
+// The creature's reach and the melee attack an opportunity attack is made
+// with there: its longest-reaching one, the first listed of those. "Moves
+// out of your reach" (SRD 5.1) is the reach of any melee attack it has: a
+// dragon's tail strikes at 15 feet though its bite, listed first, reaches
+// 10, and a hero stepping out of the tail's reach provoked nothing. Null
+// when the block has no melee attack.
 export function opportunityWeapon(stats: Pick<EnemyStats, "attacks" | "traits">): { attack: EnemyAttack; reachTiles: number } | null {
+  let best: { attack: EnemyAttack; reachTiles: number } | null = null;
   for (const attack of stats.attacks ?? []) {
     const profile = enemyAttackProfile(attack, stats.traits ?? []);
-    if (profile.melee) {
-      return { attack, reachTiles: profile.reachTiles };
+    if (profile.melee && (!best || profile.reachTiles > best.reachTiles)) {
+      best = { attack, reachTiles: profile.reachTiles };
     }
   }
-  return null;
+  return best;
 }
 
 // How one swing is made from `distance` squares away: in melee within

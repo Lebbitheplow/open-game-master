@@ -243,6 +243,34 @@ await test("An ogre walking in to attack squeezes a one-square gap at double cos
   }
 });
 
+// ---- the reach an opportunity attack is measured by ----
+
+// SRD 5.1: an opportunity attack comes "when a hostile creature that you can
+// see moves out of your reach". A dragon's tail reaches 15 feet though its
+// bite, listed first, reaches 10: only the bite's reach was read, and a hero
+// stepping out of the tail's provoked nothing.
+await test("A creature's reach for an opportunity attack is its longest melee reach, made with the attack that reaches there.", async () => {
+  const goblin = await stage();
+  kit.setEnemy(goblin.id, { stats: { attacks: [
+    { name: "Bite", toHit: 6, damage: "1d10+4", type: "piercing", mode: "melee", reach: 10 },
+    { name: "Tail", toHit: 6, damage: "1d8+4", type: "bludgeoning", mode: "melee", reach: 15 },
+  ] } });
+  try {
+    kit.place(goblin.id, 10, 4);
+    kit.place(kara.id, 13, 4);
+    world.signIn({ id: kara.userId });
+    const response = await moveRoute.POST(
+      new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 15, y: 4 }) }),
+      { params: Promise.resolve({ campaignId: world.campaignId }) },
+    );
+    const body = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(body.opportunityAttacks?.length, 1, `leaving the tail's 15-foot reach drew no opportunity attack: ${JSON.stringify(body.opportunityAttacks)}`);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { attacks: [{ name: "Scimitar", toHit: 4, damage: "1d6+2", type: "slashing", mode: "melee", reach: 5 }] } });
+  }
+});
+
 // ---- mounting ----
 
 await test("Mounting costs half the rider's speed during their own move; the AI is refused off their turn, the console is not.", async () => {
