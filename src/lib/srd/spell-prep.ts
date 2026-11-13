@@ -233,6 +233,13 @@ export function grantedSpellsOf(view: CasterView): string[] {
   return learned.length ? dedupeNames([...subclass, ...learned]) : subclass;
 }
 
+// The cantrips among them (the Light Domain's light, the Celestial patron's
+// light and sacred flame): known on top of the Cantrips Known column, filed
+// with the cantrips, never counted in it.
+export function grantedCantripsOf(view: CasterView): string[] {
+  return grantedSpellsOf(view).filter((name) => isCantripName(name));
+}
+
 // What this caster may learn beyond its class's list: its subclass's
 // expanded spells (a warlock patron's), by name, and other classes' lists
 // (a Divine Soul's cleric list). Learned, they count like any other spell.
@@ -563,7 +570,9 @@ export function spellListProblems(
     const grants = classSpellGrants(view);
     const baseCantripCap = cantripCapOf(view);
     const cantripCap = baseCantripCap === null ? null : baseCantripCap + grants.extraCantrips;
-    const named = dedupeNames(view.cantrips).filter((name) => !free.has(textKey(name)));
+    // A subclass's own cantrips (the Light Domain's light) sit on top too.
+    const grantedCantrips = new Set(grantedCantripsOf(view).map(textKey));
+    const named = dedupeNames(view.cantrips).filter((name) => !free.has(textKey(name)) && !grantedCantrips.has(textKey(name)));
     const cantrips = named.slice(0, Math.max(0, named.length - freeCount));
     freeCount = 0;
     if (cantripCap !== null && cantrips.length > cantripCap) {

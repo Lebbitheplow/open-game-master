@@ -32,6 +32,7 @@ import type { AbilityScores } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/legality/types";
 import { thirdCasterCantripProblem, thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
+import { isCantripName } from "@/lib/srd/spell-lists";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
 import { originSwap } from "@/lib/dm/ar-ws-origin-swap";
@@ -195,8 +196,18 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
     };
   }
 
-  // The subclass's always-prepared spells arrive on their own, free.
+  // The subclass's always-prepared spells arrive on their own, free; a
+  // cantrip among them (the Light Domain's light) with the cantrips, where
+  // a cantrip is kept and cast.
   for (const name of granted) {
+    if (isCantripName(name)) {
+      if (!has(after.cantrips, name)) {
+        after.cantrips.push(name);
+      }
+      after.known = after.known.filter((entry) => textKey(entry) !== textKey(name));
+      after.prepared = after.prepared.filter((entry) => textKey(entry) !== textKey(name));
+      continue;
+    }
     const home = after.style === "known" ? after.known : after.prepared;
     if (!has([...after.known, ...after.prepared, ...after.pending], name)) {
       home.push(name);
@@ -204,7 +215,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   }
 
   // ---- every new name: a real spell, on the list, within reach ----
-  const newCantrips = added(after.cantrips, before.cantrips);
+  const newCantrips = added(after.cantrips, before.cantrips).filter((name) => !isGranted(name));
   const beforeSpells = [...before.known, ...before.prepared, ...before.pending, ...before.spellbook];
   const newSpells = added(
     [...after.known, ...after.prepared, ...after.pending, ...after.spellbook],
@@ -319,7 +330,8 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   const notArcanum = (arcana: { arcanum: string[] }) => (name: string) => !has(arcana.arcanum, name);
   const tableCantrips = cantripCapOf(after);
   const cantripCap = tableCantrips === null ? null : tableCantrips + grants.extraCantrips;
-  const cantrips = dedupeNames(after.cantrips);
+  // A subclass's own cantrips are known on top of the column.
+  const cantrips = dedupeNames(after.cantrips).filter((name) => !isGranted(name));
   if (newCantrips.length && cantripCap === null) {
     return { error: `A ${label} knows no cantrips.` };
   }

@@ -694,7 +694,7 @@ export function LevelUpDialog({
   const freeCantrips = freeCantripsIn(sheet, cantripList, speciesCantrips);
   const cantripRoom =
     cantripAllowance !== null
-      ? Math.max(0, cantripAllowance - Math.max(0, cantripList.length - freeCantrips))
+      ? Math.max(0, cantripAllowance - Math.max(0, cantripList.filter((name) => !grantedFree.has(textKey(name))).length - freeCantrips))
       : null;
   // The picks from any class's list (src/lib/srd/any-list-picks-logic.ts):
   // the spells already held off the class's list use up the features'

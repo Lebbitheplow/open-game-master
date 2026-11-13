@@ -248,7 +248,7 @@ function casterDeskOf(
     spellbookAdvice: spellStyle === "spellbook" ? spellbookAllowance(level) : null,
     racialCantrips: [],
     featSpells: { cantrips: [], spells: [] },
-    chosenCantrips: lists.cantrips,
+    chosenCantrips: lists.cantrips.filter((name) => !free.has(textKey(name))),
     chosenSpells,
     chosenPrepared: spellStyle === "spellbook" ? lists.bookPrepared.filter((name) => book.has(textKey(name))) : chosenSpells,
     spellSupply:
@@ -1100,10 +1100,12 @@ export function useBuilderDerived({
       ),
     [featNames, featDescOf, featChoices],
   );
+  // A subclass's own cantrips (the Light Domain's light) are known on top
+  // of the class's count too (src/lib/srd/spell-prep.ts grantedCantripsOf).
   const chosenCantrips = useMemo(() => {
-    const free = new Set([...racialCantrips, ...featSpells.cantrips].map((name) => textKey(name)));
+    const free = new Set([...racialCantrips, ...featSpells.cantrips, ...subclassSpells].map((name) => textKey(name)));
     return cantrips.filter((name) => !free.has(textKey(name)));
-  }, [cantrips, racialCantrips, featSpells]);
+  }, [cantrips, racialCantrips, featSpells, subclassSpells]);
   // A warlock's arcana sit beside the spells known (spell-prep.ts arcanumSplit).
   const arcanumLevels = casting.arcanumLevels;
   const chosenArcanum = useMemo(

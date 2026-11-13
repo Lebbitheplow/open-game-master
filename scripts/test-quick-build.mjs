@@ -244,6 +244,26 @@ await test("an Arcane Trickster built at 3 and 10 knows Mage Hand, and a full li
   }
 });
 
+// A subclass that teaches cantrips (the Light Domain's Light, the Celestial
+// patron's Light and Sacred Flame, Lunar Sorcery's Sacred Flame) gives them
+// on top of the class's Cantrips Known (the creator spells audit, P05): the
+// builder fills the class's own count beside them and the server saves it.
+await test("a subclass's own cantrips ride on top of the class's cantrips, in the builder and at the save", async () => {
+  const { isCantripName } = await import("../src/lib/srd/spell-lists.ts");
+  for (const [classId, subclass, level] of [["cleric", "Light Domain", 1], ["warlock", "The Celestial", 1], ["sorcerer", "Lunar Sorcery", 1]]) {
+    const { fields } = await runFill(fresh({ level, classId, subclass }));
+    const built = derive(fields);
+    const granted = built.derived.subclassSpells.filter((name) => isCantripName(name));
+    assert.ok(granted.length, `${subclass} teaches a cantrip`);
+    assert.equal(built.derived.chosenCantrips.length, built.derived.cantripAdvice, `${subclass}: ${fields.cantrips.join(", ")}`);
+    const saved = await saves(fields, `${subclass} at ${level}`);
+    const cantrips = saved.sheet.spellcasting.cantrips;
+    for (const name of granted) {
+      assert.ok(cantrips.includes(name), `${subclass}: ${name} among the cantrips (${cantrips.join(", ")})`);
+    }
+  }
+});
+
 await test("the shortage reads plainly for one, none, and cantrips", async () => {
   const { spellShortageLines } = await import("../src/app/characters/builder/spellSupply.ts");
   const base = { className: "artificer", cantripCap: 2, listCap: 4, listVerb: "prepare", maxSpellLevel: 2 };

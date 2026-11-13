@@ -277,4 +277,38 @@ await test("P04: an Arcane Trickster's full cantrip list holds Mage Hand, at cre
   assert.ok(!("error" in taken), "error" in taken ? taken.error : "");
 });
 
+// ---- P05: a subclass's own cantrips ----
+//
+// The Light Domain's Bonus Cantrip ("you gain the light cantrip"), the
+// Celestial patron's light and sacred flame and Lunar Sorcery's sacred flame
+// are known on top of the class's Cantrips Known. The creation check counted
+// them in it, and the level-up filed them with the prepared or known spells,
+// so a Light cleric holding three cleric cantrips and light was refused.
+const withSubclass = (klass, subclass, level, ability, cantrips, known, prepared) => ({
+  class: klass, subclass, level, abilities: { str: 10, dex: 10, con: 10, int: 16, wis: 16, cha: 16 }, features: [],
+  spellcasting: { ability, cantrips, known, prepared },
+});
+
+await test("P05: a subclass's cantrips sit on top of the class's at creation and are filed as cantrips at a level-up", () => {
+  const sheets = [
+    withSubclass("cleric", "Light Domain", 1, "wis", ["Sacred Flame", "Guidance", "Thaumaturgy", "Light"], [], ["Bless", "Cure Wounds", "Shield of Faith", "Healing Word", "Burning Hands", "Faerie Fire"]),
+    withSubclass("warlock", "The Celestial", 1, "cha", ["Eldritch Blast", "Minor Illusion", "Light", "Sacred Flame"], ["Hex", "Cure Wounds"], []),
+    withSubclass("sorcerer", "Lunar Sorcery", 1, "cha", ["Fire Bolt", "Light", "Mage Hand", "Prestidigitation", "Sacred Flame"], ["Magic Missile", "Sleep"], []),
+  ];
+  assert.deepEqual(sheets.flatMap((sheet) => spellListProblems(sheet).map((line) => `${sheet.subclass}: ${line}`)), []);
+  const fresh = { classId: "cleric", ability: "wis", level: 0, subclass: "", style: "prepared", known: [], prepared: [], cantrips: [], pending: [], spellbook: [] };
+  const first = levelUpSpells({
+    before: fresh, level: 1, subclass: "Light Domain", list: "cleric", firstLevel: true, abilities: sheets[0].abilities, freeCantrips: 0,
+    spellOf: bundledSpellFacts, picks: { kind: "picks", spells: ["Sacred Flame", "Guidance", "Thaumaturgy", "Bless"] },
+  });
+  assert.ok(!("error" in first), "error" in first ? first.error : "");
+  assert.ok(first.view.cantrips.includes("Light") && !first.view.prepared.includes("Light"), JSON.stringify(first.view));
+  const celestial = levelUpSpells({
+    before: { ...fresh, classId: "warlock", ability: "cha", style: "known" }, level: 1, subclass: "The Celestial", list: "warlock", firstLevel: true,
+    abilities: sheets[1].abilities, freeCantrips: 0, spellOf: bundledSpellFacts, picks: { kind: "picks", spells: ["Eldritch Blast", "Minor Illusion", "Hex", "Cure Wounds"] },
+  });
+  assert.ok(!("error" in celestial), "error" in celestial ? celestial.error : "");
+  assert.deepEqual([...celestial.view.cantrips].sort(), ["Eldritch Blast", "Light", "Minor Illusion", "Sacred Flame"]);
+});
+
 finish();

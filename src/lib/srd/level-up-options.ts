@@ -38,6 +38,7 @@ import {
   grantedSpellsOf,
   preparedCount,
   arcanumSplit,
+  grantedCantripsOf,
   maxSpellLevelOf,
   mysticArcanumLevels,
   spellbookAllowance,
@@ -367,7 +368,9 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     // Magical Secrets, the Book of Shadows: picks from any list, some on top
     // of the class's counts (src/lib/srd/class-spell-grants.ts).
     const grants = classSpellGrants({ classId: klass.id, level: classLevelAfter, subclass: subclassNow, features: sheet.features });
-    const cantripsHeld = view ? dedupeNames(view.cantrips).length - context.freeCantrips : 0;
+    // A subclass's own cantrips (the Light Domain's light) sit on top.
+    const grantedCantrips = new Set((view ? grantedCantripsOf({ ...view, level: classLevelAfter, subclass: subclassNow }) : []).map(textKey));
+    const cantripsHeld = view ? dedupeNames(view.cantrips).filter((name) => !grantedCantrips.has(textKey(name))).length - context.freeCantrips : 0;
     const newCantrips = caster.cantripCap === null ? 0 : Math.max(0, caster.cantripCap + grants.extraCantrips - Math.max(0, cantripsHeld));
     let newSpells = 0;
     // A warlock's arcana sit beside the spells known (spell-prep.ts

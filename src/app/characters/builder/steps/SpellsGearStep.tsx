@@ -577,7 +577,7 @@ export function SpellsSection({
     }
     let tileState: SpellTile["state"];
     if (level === 0) {
-      tileState = isRacial(name) || isFeat(name) ? "granted" : has(cantrips, name) ? "ready" : "available";
+      tileState = isRacial(name) || isFeat(name) || isGranted(name) ? "granted" : has(cantrips, name) ? "ready" : "available";
     } else if (isGranted(name) || isFeat(name)) {
       tileState = "granted";
     } else if (wizard) {
