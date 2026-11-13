@@ -401,7 +401,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     inFight: true,
     // A Bladesinger's cantrip is one attack of the Attack action, counted
     // against the attacks it grants (src/lib/dm/ar-ws-cantrip-attack.ts).
-    budget: turn.myTurn ? budgetOf(turn, sheet, asAttack ? 1 + riders.extraAttacks : 1) : null,
+    budget: turn.myTurn ? budgetOf(turn, sheet, asAttack ? Math.max(1 + riders.extraAttacks, turn.attacksAllowed ?? 0) : 1) : null,
     reactionSpent: turn.reactionUsed,
     // Mantle of Majesty, Elder Champion (the school is the pack's, so
     // Embodiment of the Law is the engine's to decide).

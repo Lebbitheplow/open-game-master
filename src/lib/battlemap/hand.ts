@@ -84,7 +84,7 @@ export function carriedWeapons(sheet: Pick<CharacterSheet, "equipment">): Carrie
 function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
-  const allowed = 1 + riders.extraAttacks;
+  const allowed = Math.max(1 + riders.extraAttacks, turn.attacksAllowed ?? 0);
   const standing = standingGate(sheet, turn, "attack");
   // Martial Arts only with no armor and no shield (the engine's own gate).
   const martialArts = martialArtsApplies(sheet);
@@ -386,7 +386,7 @@ const BONUS_MOVES: MoveAction[] = ["dash", "disengage", "hide", "dodge"];
 
 function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, board: HandOptions["board"]): HandCard[] {
   const derived = computeSheetDerived(sheet);
-  const allowed = 1 + riders.extraAttacks;
+  const allowed = Math.max(1 + riders.extraAttacks, turn.attacksAllowed ?? 0);
   // The engine's own refusals of a basic action on the rules (take_action's
   // words): a grapple with both hands full (cast-rules.ts
   // grappleHandsProblem), a Hide a watcher sees clearly (the board view's

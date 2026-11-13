@@ -308,6 +308,11 @@ export type HandTurn = {
   bonusUsed: boolean;
   reactionUsed: boolean;
   attacksMade: number;
+  // The engine's count of the Attack action's swings this turn, once its
+  // budget exists: what the sheet alone cannot say (a pact weapon's Thirsting
+  // Blade, a beast form's Multiattack, Dread Ambusher's first-round swing, an
+  // attack a feature added). Absent before the turn spent anything.
+  attacksAllowed?: number;
   extraActions?: number;
   // Action Surge's additional action, not yet spent.
   grantedActions?: number;
@@ -621,6 +626,10 @@ export function grantedRideMark(name: string): string {
 // in hand.ts so the board's token menu (hand-hud.ts) asks it without pulling
 // every card builder into the board's first load: the table display page
 // loads the board and never deals a hand.
-export function attacksAllowed(sheet: CharacterSheet): number {
-  return 1 + combatRiders(sheet).extraAttacks;
+// The engine's own count wins once its budget has one: read from the sheet
+// alone, a warlock's Thirsting Blade swing or a druid bear's second claw was
+// greyed out as "already made all 1 of their attacks" while the engine
+// allowed it.
+export function attacksAllowed(sheet: CharacterSheet, turn?: Pick<HandTurn, "attacksAllowed">): number {
+  return Math.max(1 + combatRiders(sheet).extraAttacks, turn?.attacksAllowed ?? 0);
 }
