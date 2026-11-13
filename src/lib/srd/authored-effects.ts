@@ -260,6 +260,12 @@ export function wearsArmorNamed(sheet: Pick<AuthoredSheet, "equipment">, name: s
   return items.some((item) => isWorn(item, items) && textKey(matchArmor(item)?.name ?? item.name ?? "") === wanted);
 }
 
+// The suit a feature transformed, worn (the row's `transmuted` mark).
+export function wearsTransmutedArmor(sheet: Pick<AuthoredSheet, "equipment">, feature: string): boolean {
+  const items = sheet.equipment ?? [];
+  return items.some((item) => isWorn(item, items) && textKey((item as { transmuted?: string }).transmuted ?? "") === textKey(feature));
+}
+
 // Any body armor on, light to heavy (a shield is not worn on the body):
 // Dragon Wings cannot come through it (SRD 5.1). The sheet's fly speed, the
 // board's and the spend read this one answer (issue #833 review).
@@ -290,7 +296,7 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.heavyArmor && !wearsHeavy(sheet)) {
     return false;
   }
-  if (gate.bodyArmor && !wearsBodyArmor(sheet)) {
+  if (gate.transmutedArmor && !wearsTransmutedArmor(sheet, gate.transmutedArmor)) {
     return false;
   }
   if (gate.unarmored && wearsBodyArmor(sheet)) {
@@ -450,8 +456,6 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
   ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
 }
 
-// The skills a held feature doubles the proficiency bonus of
-// (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
 // The skills a feature trains only while its gate holds, each with the
 // feature, the words of the condition, and whether it holds now: the derived
 // sheet adds the proficiency while it does and lists the training either way.
@@ -463,6 +467,8 @@ export function authoredConditionalTraining(sheet: AuthoredSheet): Array<{ skill
   );
 }
 
+// The skills a held feature doubles the proficiency bonus of
+// (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
 export function authoredExpertise(sheet: AuthoredSheet): string[] {
   return activeAuthored(sheet, "skill_expertise").flatMap(({ effect }) => effect.skills);
 }

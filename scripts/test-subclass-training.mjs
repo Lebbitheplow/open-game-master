@@ -319,14 +319,14 @@ await test("A training pick whose whole list is held already is a pick of any sk
 // it never lands in proficiencies.skills, where it would hold out of armor.
 await test("The Metallurgist's Athletics holds while its armor is worn, and only then.", () => {
   const { computeSheetDerived, proficiencyBonus } = srd;
-  const sheet = (equipped) => ({
+  const sheet = (equipped, transmuted = "Mystic Metal") => ({
     class: "mechanist",
     subclass: "Metallurgist",
     level: 11,
     abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
     proficiencies: { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: ["light", "medium", "heavy"], weapons: [] },
     features: [{ name: "Juggernaut", source: "class", classId: "mechanist" }],
-    equipment: [{ name: "Chain Mail", qty: 1, equipped }],
+    equipment: [{ name: "Chain Mail", qty: 1, equipped, ...(transmuted ? { transmuted } : {}) }],
     conditions: [],
   });
   const worn = computeSheetDerived(sheet(true));
@@ -339,7 +339,44 @@ await test("The Metallurgist's Athletics holds while its armor is worn, and only
   assert.match(worn.conditionalTraining[0].while, /armor/i);
   const other = computeSheetDerived({ ...sheet(true), class: "fighter", features: [{ name: "Juggernaut", source: "class", classId: "fighter" }] });
   assert.equal(other.skills.athletics, 3, "another class's feature of the same name trains nothing");
+  // "The armor from your Mystic Metal feature": a suit never transformed is
+  // not it, worn or not.
+  assert.equal(computeSheetDerived(sheet(true, null)).skills.athletics, 3, "an untransformed suit trains nothing");
 });
+
+// Mystic Metal is used on a suit (use_resource "Mystic Metal", an hour of
+// focus outside a fight): that row carries the mark, a second use moves it,
+// and Juggernaut reads the mark.
+if (hasPack) {
+  await test("Mystic Metal marks the suit it transforms, and Juggernaut reads that suit.", async () => {
+    const { clauseRig } = await import("./lib/sweep-clauses-srd-rig.mjs");
+    const t = await (await clauseRig()).table();
+    const who = t.hero({
+      class: "mechanist",
+      subclass: "Metallurgist",
+      level: 11,
+      equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Scale Mail", qty: 1, equipped: false }],
+      proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple"] },
+    });
+    const marked = () => t.sheet(who).equipment.filter((item) => item.transmuted).map((item) => item.name);
+    const athletics = () => t.derived(who).skills.athletics;
+    assert.deepEqual(marked(), [], "no suit is transformed yet");
+    assert.equal(athletics(), 3, "nothing applies before a suit is transformed");
+    const out = await t.use(who, "Mystic Metal");
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual(marked(), ["Chain Mail"], "the suit worn is the one transformed");
+    assert.equal(athletics(), 3 + srd.proficiencyBonus(11));
+    const moved = await t.use(who, "Mystic Metal", { variant: "Scale Mail" });
+    assert.equal(moved.ok, true, moved.error);
+    assert.deepEqual(marked(), ["Scale Mail"], "a second use moves the transformation");
+    assert.equal(athletics(), 3, "the chain mail worn is no longer the transformed suit");
+    await t.fight([who]);
+    const busy = await t.use(who, "Mystic Metal", { variant: "Chain Mail" });
+    assert.notEqual(busy.ok, true, "an hour of focus is not taken in a fight");
+    assert.match(String(busy.error), /hour/);
+    assert.deepEqual(marked(), ["Scale Mail"]);
+  });
+}
 
 creation.world.close();
 finish();

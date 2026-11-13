@@ -6,17 +6,26 @@ import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 
 export const PACK_CLASS_AUTHORED: GenreRow[] = [
   {
-    // Black Flag's Metallurgist (Juggernaut, Mechanist 11): "While wearing the
-    // armor from your Mystic Metal feature, you have proficiency in the
-    // Athletics skill." Mystic Metal turns the suit the mechanist wears into
-    // mystic metal and it stays so until they move it to another; the sheet
-    // keeps no mark of which suit, so the body armor worn is read as that
-    // suit. Out of armor the proficiency is not there.
+    // Black Flag's Metallurgist (Mystic Metal, Mechanist 3): an hour of
+    // focus in contact with a nonmagical suit of armor transmutes it into
+    // mystic metal, until the mechanist ends it or transmutes another. The
+    // suit's row carries the mark (src/lib/dm/transmute-armor.ts).
+    feature: "Mystic Metal",
+    classes: ["mechanist"],
+    entry: {
+      subclass: "Metallurgist",
+      spends: [{ name: "Mystic Metal", action: "none", does: { kind: "transmute_armor", feature: "Mystic Metal" } }],
+    },
+  },
+  {
+    // Juggernaut (Mechanist 11): "While wearing the armor from your Mystic
+    // Metal feature, you have proficiency in the Athletics skill". Read off
+    // the transformed suit's mark: in any other suit, or none, it is not there.
     feature: "Juggernaut",
     classes: ["mechanist"],
     entry: {
       subclass: "Metallurgist",
-      effects: [{ kind: "skill_prof", skills: ["athletics"], while: "while wearing the armor from Mystic Metal", gate: { bodyArmor: true } }],
+      effects: [{ kind: "skill_prof", skills: ["athletics"], while: "while wearing the armor from Mystic Metal", gate: { transmutedArmor: "Mystic Metal" } }],
     },
   },
 ];

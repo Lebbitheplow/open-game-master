@@ -229,6 +229,10 @@ export const equipmentItemSchema = z.object({
   // repaired (src/lib/dm/rock-gnome-tinker.ts): it works for 24 hours after.
   // Absent on every other row.
   madeAt: z.number().int().min(0).optional(),
+  // A class feature's lasting transformation of this suit, by the feature's
+  // name (Black Flag's Mystic Metal: src/lib/dm/transmute-armor.ts). One row
+  // carries it at a time; a later use moves it. Absent on every other row.
+  transmuted: z.string().trim().min(1).max(60).optional(),
   // An artificer's infusion laid in the item (src/lib/srd/infusions.ts,
   // src/lib/dm/infuse-item.ts): which, by whom, at what level and instant,
   // the mundane weapon or suit it is built on, and its one choice (Resistant
