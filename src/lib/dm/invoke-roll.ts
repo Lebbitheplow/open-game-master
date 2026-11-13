@@ -37,6 +37,7 @@ import { autoApplyDamageRoll } from "@/lib/dm/enemy-damage";
 import { heldInitiative, recordInitiativeRoll } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import {
+  customRollIsCheck,
   resolveRollExpression,
   resolveSheetRef,
   rollArgsSchema,
@@ -150,6 +151,17 @@ export function handleRequestRoll(
       error: model
         ? `${sheet.name}'s damage on an enemy comes from pc_attack (or the spell tools), which roll the hit first and apply the damage themselves; request_roll does not apply a party character's damage to an enemy.`
         : `${sheet.name}'s damage on an enemy comes from Player attacks or a cast form, which roll the hit first; a bare damage roll does not land on an enemy.`,
+      retry: true,
+    };
+  }
+
+  // The AI's custom d20 for a party character is a check, a save or an
+  // attack with a modifier it made up (customRollIsCheck, issue 942): sent
+  // back to the kind that reads the sheet. A person at the console rolls
+  // what they rule.
+  if (model && sheet && customRollIsCheck(args)) {
+    return {
+      error: `A d20 for ${sheet.name} is a check, a save or an attack, and the server rolls it from their sheet: send kind ability_check or saving_throw with the ability, skill_check with the skill, or pc_attack for a swing, with no expression. Nothing was rolled.`,
       retry: true,
     };
   }

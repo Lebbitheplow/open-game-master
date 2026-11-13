@@ -114,7 +114,7 @@ import {
   salvageXmlToolCalls,
   unknownSheetRef,
 } from "@/lib/dm/rolls";
-import { stripToolText, withoutRollMarkers, withoutServerLines } from "@/lib/dm/tool-text";
+import { ARC_MARKER, stripToolText, withoutRollMarkers, withoutServerLines } from "@/lib/dm/tool-text";
 import {
   collectExchanges,
   earlierFigures,
@@ -130,8 +130,10 @@ import {
 import { withoutAsides, type PartRead } from "@/lib/dm/claims-logic";
 import {
   createOrphanCloserFilter,
+  arcBookkeepingPrompt,
+  REPEAT_LOOKBACK,
   REPEATED_NARRATION_PROMPT,
-  repeatsNarration,
+  repeatsEarlierNarration,
   tableNarrationParts,
   withoutOrphanClosers,
 } from "@/lib/dm/narration-tidy-logic";
@@ -1958,14 +1960,16 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // first step, with no model call to choose the tool (directCards), on a
   // turn that has run nothing yet.
   const direct = turn.callIndex > 0 || calledToolNames(turn.conversation).length ? [] : directCards(context);
-  // The last turn's narration said again with no tool is sent back once.
+  // A recent turn's narration said again with no tool is sent back once.
+  // Held against the GM's newest passages, not the last alone: a copy of one
+  // four replies back read as the story jumping backwards (issue 942).
   let repeatNudged = false;
-  let lastNarration: string | null = null;
-  const previousNarration = () =>
-    (lastNarration ??=
-      listRecentMessages(campaignId, 12)
-        .filter((message) => message.authorType === "dm")
-        .at(-1)?.content ?? "");
+  let earlier: string[] | null = null;
+  const earlierNarrations = () => (earlier ??= recentGmNarrations(campaignId));
+  // Whether the last call's prose, the only narration it could give, was an
+  // earlier passage again: nothing of it is kept, and the narration is asked
+  // for once more (narrateAfterToolLeak).
+  let finalRepeated = false;
   // Whether an empty reply was already asked again, and whether the call
   // that ended the loop came back empty (see narrateAfterToolLeak).
   let emptyRetried = false;
@@ -1973,6 +1977,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a reply that was only the model's plan, not narration (the
   // reader's aside claims: src/lib/dm/claims-logic.ts).
   let planNudged = false;
+  // One shot at a reply that wrote the story arc's bookkeeping instead of
+  // making the calls it stands for (arcBookkeepingPrompt, issue 941).
+  let arcNudged = false;
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2244,8 +2251,14 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const planOnly = Boolean(prose) && !narration;
     const planBesideCalls = planOnly && toolCalls.length > 0 && !finalCall;
     // On the last call the tools never run (toolChoice "none"; a leaked call
-    // is dropped), so its prose is the only narration there will be.
-    if (narration && (!calledOutcomeTool || finalCall)) {
+    // is dropped), so its prose is the only narration there will be, unless
+    // it is an earlier passage said again (issue 942): that is asked for
+    // anew below rather than posted as this turn's story.
+    const finalRepeat = finalCall && Boolean(narration) && repeatsEarlierNarration(narration, earlierNarrations());
+    if (finalRepeat) {
+      finalRepeated = true;
+    }
+    if (narration && !finalRepeat && (!calledOutcomeTool || finalCall)) {
       turn.narrationParts.push(narration);
       if (read) {
         partReads.set(narration, read);
@@ -2566,12 +2579,26 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         !toolCalls.length &&
         narration &&
         turn.narrationParts[turn.narrationParts.length - 1] === narration &&
-        repeatsNarration(narration, previousNarration())
+        repeatsEarlierNarration(narration, earlierNarrations())
       ) {
         repeatNudged = true;
         turn.narrationParts.pop();
         turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
         turn.conversation.push({ role: "user", content: REPEATED_NARRATION_PROMPT });
+        saveDmTurn(turn);
+        continue;
+      }
+      // A reply that ticked a waypoint or closed the beat in words ("[waypoint=3]",
+      // "The [NOW] beat is complete.") made none of the calls those stand
+      // for: the journal it handed over never reached the sheet and the step
+      // stayed open (issue 941). The markers were cut from the narration;
+      // the reply is held back and the model sent once to make the calls and
+      // narrate the moment.
+      if (!finalCall && !arcNudged && !toolCalls.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration && ARC_MARKER.test(prose)) {
+        arcNudged = true;
+        turn.narrationParts.pop();
+        turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
+        turn.conversation.push({ role: "user", content: arcBookkeepingPrompt(prose) });
         saveDmTurn(turn);
         continue;
       }
@@ -2874,9 +2901,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   if (
     !failed &&
     !turn.narrationParts.length &&
-    (finalCallLeaked || (lastReplyEmpty && !turn.playerWhisperIds.length))
+    (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
   ) {
-    failed = await narrateAfterToolLeak(context, turn);
+    failed = await narrateAfterToolLeak(context, turn, finalRepeated);
   }
   // A card no call carried out, the correction included, did not happen: it
   // goes back to its player, and the guard keeps the story from telling it
@@ -3478,6 +3505,23 @@ async function answerOutOfCharacter(
 // call answers a turn whose last reply came back empty after its one retry.
 const TOOLS_CLOSED_PROMPT =
   "[System] Tools are closed for this turn: nothing you call now will run. Narrate the moment to the table in prose, from what has already resolved, and do not describe the outcome of anything that did not. If you need something from a player, ask it in the narration.";
+// Added when the reply this call stands in for was an earlier passage said
+// again (issue 942): told so, the model narrates the new moment.
+const TOOLS_CLOSED_REPEAT_NOTE =
+  " Your last reply repeated one of your earlier narrations word for word: this is a new moment, so tell only what is new since the player's latest action, and never repeat an earlier passage.";
+// What the table reads when the rescue too was an earlier passage: the turn
+// stops with nothing posted and can be retried, rather than telling the
+// table a scene it already played (issue 942).
+const REPEATED_RESCUE_FAILURE = "The Game Master repeated an earlier passage instead of narrating this turn, so it was stopped. Retry the turn.";
+
+// The GM's newest passages, oldest first, that a reply is held against
+// (narration-tidy-logic.ts repeatsEarlierNarration).
+function recentGmNarrations(campaignId: string): string[] {
+  return listRecentMessages(campaignId, REPEAT_LOOKBACK * 4)
+    .filter((message) => message.authorType === "dm")
+    .slice(-REPEAT_LOOKBACK)
+    .map((message) => message.content);
+}
 
 // Sent once a turn when a reply was only a plan. It was streamed, so it
 // does not claim the players never saw it, and it leaves the table's tone
@@ -3491,7 +3535,7 @@ function planCorrection(toolsClosed: boolean): string {
   }, ending on what they decide next. Never describe your own next steps to the table.`;
 }
 
-async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
+async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn, repeated = false) {
   const { campaign, sheets } = context;
   const campaignId = campaign.id;
   const filter = createStreamingArtifactFilter();
@@ -3504,7 +3548,7 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
     publishEphemeral(campaignId, "dm_delta", { text });
   });
   const ask = (tools: unknown[]) =>
-    requestDmMessage(campaign.settings, [...turn.conversation, { role: "user", content: TOOLS_CLOSED_PROMPT }], {
+    requestDmMessage(campaign.settings, [...turn.conversation, { role: "user", content: `${TOOLS_CLOSED_PROMPT}${repeated ? TOOLS_CLOSED_REPEAT_NOTE : ""}` }], {
       tools,
       toolChoice: "none",
       harness: { campaignId, turn: true },
@@ -3544,12 +3588,24 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
   // Read for the narrator's asides like the final call: a reply that was
   // only a plan keeps nothing, and finalize writes the empty-turn line
   // rather than the plan. There is no second rescue.
-  const narration = prose ? withoutOrphanClosers(withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage)) : "";
+  const read = prose ? withoutOrphanClosers(withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage)) : "";
+  // An earlier passage said again is no narration of this turn (issue 942).
+  const again = Boolean(read) && repeatsEarlierNarration(read, recentGmNarrations(campaignId));
+  const narration = again ? "" : read;
   if (narration) {
     turn.narrationParts.push(narration);
   }
   saveDmTurn(turn);
   resetDraftIfWithheld(campaignId, turn, shown, shownFrom);
+  // A copy of an earlier passage is asked for once more, told so; a second
+  // copy stops the turn for a retry.
+  if (again && !repeated) {
+    return narrateAfterToolLeak(context, turn, true);
+  }
+  if (again) {
+    console.warn(`[dm-turn] the tools-closed narration repeated one of the last ${REPEAT_LOOKBACK} GM passages; the turn stops for a retry.`);
+    return REPEATED_RESCUE_FAILURE;
+  }
   // Other rescue errors retain the existing empty-turn fallback. A stopped
   // repetition is different: the model produced a harmful partial stream,
   // so finalize must leave this turn failed and available for retry. (A

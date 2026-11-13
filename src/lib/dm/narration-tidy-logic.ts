@@ -5,7 +5,7 @@
 // Dependency-free so scripts/test-narration-tidy.mjs can import it directly.
 
 import { textKey } from "../language/text-logic.ts";
-import { DM_TOOL_NAME_PATTERN, withoutRollMarkers } from "./tool-text.ts";
+import { ARC_MARKER, DM_TOOL_NAME_PATTERN, withoutRollMarkers } from "./tool-text.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 // A sentence shorter than this may be said twice on purpose: a shouted
@@ -14,9 +14,12 @@ const MIN_REPEAT_CHARS = 30;
 
 const SENTENCE = /[^.!?\n]+(?:[.!?]+["'”’)\]]*)?\s*|\s+/g;
 
+// A sentence cut at a line's start leaves the next one's own space there
+// (" What do you do next?"); an indented list item keeps its indent.
 function tidyBlankLines(text: string): string {
   return text
     .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+(?=[^\s*+\-\d])/g, "\n")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -55,14 +58,17 @@ const TOOL_NAME = new RegExp(`\\b(?:${DM_TOOL_NAME_PATTERN.split("|").filter((na
 
 // A sentence naming one of those tools is the model reasoning aloud ("the
 // correct next step is to call move_token for Bram", gpt-oss-20b), never the
-// story.
+// story. So is one holding the story arc's markers ("The [NOW] beat is
+// complete.", "[waypoint=3]": tool-text.ts ARC_MARKER, issue 941), cut here
+// too for the passages no reply read covered (a reroll, a continued scene).
 export function withoutToolTalk(text: string): string {
-  if (!TOOL_NAME.test(text)) {
+  const talk = (piece: string) => TOOL_NAME.test(piece) || ARC_MARKER.test(piece);
+  if (!talk(text)) {
     return text;
   }
   let out = "";
   for (const piece of text.match(SENTENCE) ?? [text]) {
-    out += TOOL_NAME.test(piece) ? (/\s*$/.exec(piece)?.[0] ?? "") : piece;
+    out += talk(piece) ? (/\s*$/.exec(piece)?.[0] ?? "") : piece;
   }
   return tidyBlankLines(out);
 }
@@ -198,8 +204,29 @@ export function closingVarietyNote(line: string): string {
   return `[Variety] Your last replies all ended on the same line ("${line}"). End this one another way: on what someone says or does, a sound, or the choice in front of the party, without that line.`;
 }
 
+// Whether a reply is mostly one of the recent narrations said again, not only
+// the newest: after two rolls Qwen3.6-35B wrote, word for word, the passage
+// from four replies back (the loot of a body searched long before), and the
+// table read the story jumping backwards (issue 942).
+export function repeatsEarlierNarration(text: string, earlier: readonly string[]): boolean {
+  return earlier.some((previous) => repeatsNarration(text, previous));
+}
+
+// How many of the GM's newest passages a reply is held against.
+export const REPEAT_LOOKBACK = 8;
+
+// Sent once when a reply with no call wrote the story arc's bookkeeping
+// (tool-text.ts ARC_MARKER): Qwen3.6-35B handed the party a journal in words
+// and ticked its step as "[waypoint=3]" (issue 941). The step ticks, and the
+// beat completes, only from the calls themselves. Quotes the model's own
+// marked sentences so it knows which ones.
+export function arcBookkeepingPrompt(text: string): string {
+  const marked = (text.match(/[^.!?\n]+[.!?]*/g) ?? []).map((piece) => piece.trim()).filter((piece) => ARC_MARKER.test(piece));
+  return `[System] That reply wrote the story arc's bookkeeping into the story (${marked.map((piece) => `"${piece}"`).join(", ")}). The table never reads it, and it changes nothing: a waypoint is ticked only by the call that does what it names (grant_item for a thing gained, move_party for a place reached, set_npc or npc_reaction for a person met, end_encounter for a fight won), with that step's number as \`waypoint\`, and a beat ends only with complete_beat. Make the calls this moment needs, then narrate it to the players without any marker.`;
+}
+
 export const REPEATED_NARRATION_PROMPT =
-  "[System] That reply repeats your previous narration almost word for word. The player has acted again, and this is a new moment. Resolve what they just did with the tools (in a fight: the attack, move or spell they declared, on their turn), then narrate only what is new.";
+  "[System] That reply repeats one of your earlier narrations almost word for word. The player has acted again, and this is a new moment. Resolve what they just did with the tools (in a fight: the attack, move or spell they declared, on their turn), then narrate only what is new.";
 
 // An English bold heading for a turn, a round or the fight itself, read only
 // at an English table: "**Bram's Turn**", "**Round 1:**", "**Combat
