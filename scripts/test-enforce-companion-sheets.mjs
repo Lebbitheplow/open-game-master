@@ -317,6 +317,15 @@ await test("a warlock companion levelled from 10th to 11th learns the column's s
   assert.equal(levels.filter((level) => level <= 5).length, 11);
 });
 
+await test("a College of Lore companion holds Additional Magical Secrets' two spells beside the bard's count", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "bard", { level: 6 });
+  const sheet = world.sheet(id);
+  if (sheet.subclass !== "College of Lore") return;
+  assert.deepEqual(spellListProblems(sheet, { bookAllowance: true }), []);
+  assert.equal(sheet.spellcasting.known.length, 11, "nine spells known at 6th and the college's two");
+});
+
 // ---- the classes of other settings ----
 
 await test("every setting class makes a companion, and the companion levels", async () => {
