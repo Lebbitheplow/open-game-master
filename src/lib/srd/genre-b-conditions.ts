@@ -129,8 +129,9 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
   { id: "baptism_of_ash", match: ["baptism of ash"], summary: "Baptism of Ash: +1 to attack rolls until the preacher's next turn.", attackDie: "1" },
   // Alpha's Roar: "cower (no move toward you)" (the walk: enemy-approach.ts).
   { id: "cowering", match: ["cowering"], summary: "Cowering: it never moves toward the packmaster whose roar it failed against." },
-  // Fumes and Vapors: "save (CON) or retch, losing their action".
-  { id: "retching", match: ["retching"], summary: "Retching: it loses its action while the fumes last.", noAction: true },
+  // Fumes and Vapors: "save (CON) or retch, losing their action". The
+  // condition is Stinking Cloud's "retching" row (condition-effects-tail.ts),
+  // which already takes the action.
   // Arc Coil: "the target cannot take reactions until its next turn".
   { id: "arc_shocked", match: ["arc shocked"], summary: "Arc shocked: no reactions until its next turn.", noReactions: true },
   { id: "chain_arc", match: ["chain arc"], summary: "Chain Arc: the next lightning spell that strikes one creature jumps to a second within 15 ft for half." },
