@@ -9,6 +9,7 @@
 // against stat block (src/lib/dm/enemy-strike.ts).
 
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { paBlowResists } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -67,6 +68,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import { naturesSanctuaryRefusal } from "@/lib/dm/srd-defenses";
 import { conditionRollRiders, conditionTurnShape } from "@/lib/srd/condition-effects";
+import { darkFantasyWeaponWard } from "@/lib/dm/genre-a-dark-fantasy-wards";
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
 import { swimsFrom } from "@/lib/battlemap/types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -751,8 +753,13 @@ export function handleEnemyAttack(
       // Magic Weapons: its weapon attacks are magical; so is a spell attack,
       // and a blow the block prints as magical ("magical bludgeoning").
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // A spell's attack is a spell to what answers one (ICE Pick, The Mark
+      // Burns Back) and to a defence against spells: it was kept as magic only.
+      ...(attack.spellAttack ? { spell: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+      // What the post-apocalyptic classes resist of this creature's blow (One Blood).
+      ...paBlowResists({ campaignId: campaign.id, encounterId: encounter.id, attacker: standing, target: getSheetById(target.id) ?? target, ranged, spellAttack: Boolean(attack.spellAttack) }),
     };
     // The Cloud Rune (cloud-rune.ts): a knight's player turns the hit onto
     // another creature before its damage is rolled, on the same roll, so the
@@ -806,7 +813,10 @@ export function handleEnemyAttack(
     // immune to poison takes none of a bite's venom). A penalty can bring a
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
-    const dealt = shrunk(blow.amount);
+    // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const dealt = warded.amount;
+    notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
     // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
     // dice: a reaction that later leaves the target standing when it landed
@@ -826,6 +836,8 @@ export function handleEnemyAttack(
     const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
     // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {
@@ -937,7 +949,7 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
+  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }));
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

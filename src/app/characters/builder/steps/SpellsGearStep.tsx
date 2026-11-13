@@ -76,6 +76,7 @@ export function SpellsGearStep({
         onRemove={actions.removeEquipmentItem}
         purse={purse}
         inputClass={inputClass}
+        itemLabel={(name) => displayName(pack, "items", name)}
         kit={
           <>
             {klass && derived.classKit && derived.kitChoices ? (

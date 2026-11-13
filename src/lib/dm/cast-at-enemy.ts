@@ -11,6 +11,7 @@
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
+import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -58,8 +59,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { areaShareProblem, markRepeatStruck, openAreaCast, recordAreaShare, repeatStrikeProblem } from "@/lib/dm/area-casting";
 import { castShares } from "@/lib/srd/spell-mechanics";
 // What the spell does beyond damage and condition (src/lib/dm/spell-riders.ts).
-import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip } from "@/lib/dm/spell-riders";
-import { layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
+import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip, layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
 import { sleepPool } from "@/lib/dm/spell-pool";
 import { handleDispelMagic } from "@/lib/dm/dispel";
 import { overchannelProblem, payOverchannel } from "@/lib/dm/caster-features";
@@ -73,6 +73,7 @@ import { itemCastOpen } from "@/lib/dm/item-casts";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { swallowCover } from "@/lib/dm/swallow";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
 
 const castArgsSchema = z.object({
   characterId: z.string(),
@@ -474,8 +475,15 @@ export function handleCastAtEnemy(
   // dice stay written (landSpellDamage maximizes them) so a spell of two types
   // keeps both: collapsed to one number here, Ice Storm landed all as hail.
   const overchannel = Boolean(args.overchannel && damageExpression);
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  const genreMaximum = Boolean(damageExpression) && genreCastsAtMaximum(sheet, spellLevel) !== null;
   if (overchannel) {
     base.overchannel = payOverchannel(campaign, turn, sheet.id, spellLevel);
+  }
+  // Reality Rend: the next damaging psionic at its maximum (genre-a-cyberpunk-spends.ts).
+  const rend = damageExpression ? spendRealityRend(campaign, sheet) : null;
+  if (rend) {
+    base.realityRend = rend;
   }
 
   // The enemy's save, from its real stat block with its conditions and
@@ -569,7 +577,7 @@ export function handleCastAtEnemy(
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
         ...(sharedSecond !== undefined ? { sharedSecond } : {}),
-        ...(overchannel ? { atMaximum: true } : {}),
+        ...(overchannel || rend || genreMaximum ? { atMaximum: true } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;

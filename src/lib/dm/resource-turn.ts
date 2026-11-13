@@ -16,7 +16,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
-import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
+import { matchResource, RAGING, type ResourceAction, sheetCatalog } from "@/lib/srd/class-resources";
 import { ACTION_SURGED, RAGE_ENTERED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -52,7 +52,7 @@ export function prepareResourceCharge(
   // different things (Channel Divinity's Turn Undead is an action).
   override?: ResourceAction,
 ): ResourceCharge {
-  const found = matchResource(resourceName);
+  const found = matchResource(resourceName, sheetCatalog(sheet));
   const def = found && override ? { ...found, action: override } : found;
   const encounter = getActiveEncounter(campaign.id);
   // Out of a fight there is no turn to charge, and a feature whose uses cost
@@ -98,13 +98,13 @@ export function prepareResourceCharge(
   if (heldOff) {
     return heldOff;
   }
-  if (def.id === "action_surge") {
+  if (def.id === "action_surge" || def.extraAction) {
     // SRD 5.1 fighter, Action Surge: "only once on the same turn", whatever
     // uses are left. Refused before the use is spent.
     const turn = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
     if (turn?.oncePerTurn.includes(ACTION_SURGED)) {
       return {
-        error: `${sheet.name} has already used Action Surge this turn, and it can be used only once on the same turn. The use is not spent; it is there on a later turn.`,
+        error: `${sheet.name} has already used ${def.displayName} this turn, and it can be used only once on the same turn. The use is not spent; it is there on a later turn.`,
         refused: "rules",
       };
     }

@@ -35,6 +35,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey, words } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { ownTurnOf } from "@/lib/dm/held-turn";
+import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 
 // The character whose turn it is, when the pointer rests on one and their
 // turn has begun (held-turn.ts ownTurnOf): in the goblins' pass before Brom
@@ -178,7 +179,15 @@ export function authoredEnemySave(
           continue;
         }
         const mine = holder.id === actorId;
-        if (effect.when === "hidden") {
+        if (effect.types && !effect.types.includes(creatureTypeOf(enemy.stats))) {
+          continue;
+        }
+        if (effect.when === "any") {
+          if (mine) {
+            sources.push("disadvantage");
+            notes.push(`${held.feature}: disadvantage on the save against ${holder.name}'s spell`);
+          }
+        } else if (effect.when === "hidden") {
           if (mine && hasCondition(holder, "hidden")) {
             sources.push("disadvantage");
             notes.push(`${held.feature}: ${holder.name} is hidden from it; disadvantage on the save`);
@@ -223,7 +232,7 @@ export function authoredEnemySave(
 
 // Inescapable Destruction: the acting character's damage of this type
 // ignores the creature's resistance to it.
-export function authoredIgnoresResistance(campaignId: string, damageType: string | undefined): string | null {
+export function authoredIgnoresResistance(campaignId: string, damageType: string | undefined, spell = false): string | null {
   const type = (damageType ?? "").trim().toLowerCase();
   if (!type) {
     return null;
@@ -233,7 +242,7 @@ export function authoredIgnoresResistance(campaignId: string, damageType: string
   if (!actor) {
     return null;
   }
-  const held = activeAuthored(actor, "ignore_resist").find(({ effect }) => effect.types.includes(type));
+  const held = activeAuthored(actor, "ignore_resist").find(({ effect }) => effect.types.includes(type) && (!effect.spells || spell));
   return held ? held.held.feature : null;
 }
 
@@ -267,6 +276,10 @@ export function authoredAuraResistances(campaignId: string, sheet: CharacterShee
         !encounter ||
         withinFeet(encounter.id, holder.id, sheet.id, reach(effect.rangeFt, held.level));
       if (!inRange) {
+        continue;
+      }
+      if (effect.types) {
+        out.push(...effect.types);
         continue;
       }
       if (effect.spells) {

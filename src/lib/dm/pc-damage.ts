@@ -25,6 +25,10 @@ import { soulHold } from "@/lib/dm/soul-of-artifice";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
+import { genreDropHold as genreBDropHold } from "@/lib/dm/genre-b-drops";
+import { packBeastHold } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { paDamaged } from "@/lib/dm/genre-b-post-apocalyptic-blows";
+import { cutParts, genreDamageCut } from "@/lib/srd/genre-b-combat";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -32,18 +36,13 @@ import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
 import { masteryOfDeathHold } from "@/lib/dm/mastery-of-death";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
-import {
-  damageAdjust,
-  effectiveMaxHp,
-  pcImmunities,
-  pcResistances,
-  removeConditions,
-} from "@/lib/dm/condition-logic";
+import { damageAdjust, effectiveMaxHp, pcImmunities, pcResistances, removeConditions, wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
+import { genreDropHold } from "@/lib/dm/genre-drop-holds";
+import { genreBelowHalf } from "@/lib/dm/genre-a-slots";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
-import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
@@ -56,10 +55,14 @@ import { afflictionStress } from "@/lib/dm/afflictions";
 import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
+import { soleSurvivorResistances } from "@/lib/dm/genre-a-horror-party";
 
 export type PcDamageInput = {
   // What was rolled or sent, before resistance.
   amount: number;
+  // Hardened's cut is taken (src/lib/srd/genre-b-combat.ts genreDamageCut):
+  // the blow re-enters with what is left, and is not cut twice.
+  cut?: boolean;
   type?: string;
   // A critical hit: two death save failures on a character already at 0.
   crit?: boolean;
@@ -103,6 +106,11 @@ export type PcDamageInput = {
   // with no attacker. A resistance to damage "dealt by other creatures"
   // (Emissary of Redemption) does not meet it.
   noCreature?: boolean;
+  // Resistances this blow alone meets (a fall's, for Kinetic Buffer), and
+  // the damage types this one blow is resisted in by who dealt it or how
+  // (One Blood against a creature the pack has not wounded:
+  // src/lib/dm/genre-b-post-apocalyptic-blows.ts), a comma-separated line each.
+  resists?: string[];
   reason?: string;
 };
 
@@ -111,7 +119,7 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature">;
+export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures" | "noCreature" | "resists">;
 
 export type BlowDefenses = {
   resisted: string;
@@ -145,7 +153,7 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   const shape = sheet.wildShape;
   const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), soleSurvivorResistances(campaignId, sheet), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
   const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);
@@ -251,6 +259,16 @@ export function applyPcDamage(
   }
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is already dead.`, retry: true };
+  }
+  // Hardened: "reduce all damage you take this round by your CON modifier",
+  // before resistance (SRD 5.1: resistance comes after every other modifier).
+  const cut = input.cut ? 0 : genreDamageCut(sheet);
+  if (cut > 0) {
+    if (amount <= cut) {
+      return { ok: true, hp: `${sheet.currentHp}/${effectiveMaxHp(sheet)}`, damageCut: cut, note: `Hardened takes all ${amount} damage off the blow; ${sheet.name} loses nothing.` };
+    }
+    const out = applyPcDamage(campaign, turnId, sheet, { ...input, amount: amount - cut, cut: true, ...(input.parts?.length ? { parts: cutParts(input.parts, cut) } : {}) });
+    return out.error ? out : { ...out, damageCut: `Hardened takes ${cut} off the blow.` };
   }
   // Oil (SRD 5.1 Adventuring Gear): "If the target takes any fire damage
   // before the oil dries (after 1 minute), the target takes an additional 5
@@ -380,10 +398,26 @@ export function applyPcDamage(
     ...stoked,
   });
   publishSheet(campaign, sheet.id);
+  // Unfinished Ritual: the blow that takes the apostate below half gives
+  // their slots back (src/lib/dm/genre-a-slots.ts).
+  const ritual = genreBelowHalf(getSheetById(sheet.id) ?? sheet, sheet.currentHp, math.currentHp, effectiveMaxHp(sheet));
+  if (ritual) {
+    patchSheet(sheet.id, ritual.patch);
+    audit(campaign, turnId, sheet, "apply_damage", { unfinishedRitual: true }, reason, ritual.patch);
+    publishSheet(campaign, sheet.id);
+  }
+  const ritualInfo = ritual ? { unfinishedRitual: ritual.line } : {};
   // Damage is great stress: cackle fever's laughter, madness's confusion
   // (src/lib/dm/afflictions.ts).
   if (carried > 0 && !math.dropped) {
     afflictionStress(campaign, turnId, sheet.id, "damage");
+  }
+  // Rapid Adaptation, Hardened Mutation (genre-b-post-apocalyptic-blows.ts).
+  const answered = carried > 0 && !math.dropped ? paDamaged(campaign, sheet, { hpAfter: math.currentHp, types: input.parts?.length ? input.parts.map((part) => part.type) : [input.type ?? ""] }) : {};
+  // Pack Endurance holds a packmaster's beast at 1 (genre-b-post-apocalyptic-beast.ts).
+  const packHold = math.dropped ? packBeastHold(campaign, sheet) : null;
+  if (packHold) {
+    return { ok: true, hp: `1/${sheet.maxHp}`, damageApplied: carried, held: "Pack Endurance", note: packHold };
   }
   // A summoned creature at 0 hit points disappears (summon-store.ts).
   const vanished = summonAfterDamage(campaign, sheet, math.dropped, carried);
@@ -391,7 +425,7 @@ export function applyPcDamage(
     return { ok: true, hp: `${math.currentHp}/${sheet.maxHp}`, damageApplied: carried, ...(math.dropped ? { dropped: true } : {}), vanished };
   }
   const bond = wardingBondShare(campaign, turnId, sheet, input, adjusted.amount);
-  const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond };
+  const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond, ...answered };
   // A hero held at 1 hit point (Death Ward, Undying Sentinel, Relentless
   // Endurance, Relentless Rage) still took the blow: the concentration save,
   // the stress of damage and what their defences did ride the hold as they
@@ -401,6 +435,7 @@ export function applyPcDamage(
     afflictionStress(campaign, turnId, sheet.id, "damage");
     return {
       ...held,
+      ...ritualInfo,
       ...shapeInfo,
       ...proneInfo,
       ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
@@ -435,6 +470,20 @@ export function applyPcDamage(
         undyingSentinel: true,
         note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
       });
+    }
+    // Hard to Kill (enforcer 7), an ally's Stand at the Dawn (src/lib/dm/genre-b-drops.ts).
+    const genreHold = genreBDropHold(campaign.id, sheet);
+    if (genreHold) {
+      const patch: FullPatchSheetInput = { currentHp: genreHold.hp, ...(genreHold.resources ? { resources: genreHold.resources } : {}) };
+      patchSheet(sheet.id, patch);
+      audit(campaign, turnId, sheet, "apply_damage", { held: genreHold.name }, reason, patch);
+      publishSheet(campaign, sheet.id);
+      if (genreHold.giver) {
+        patchSheet(genreHold.giver.id, { resources: genreHold.giver.resources });
+        publishSheet(campaign, genreHold.giver.id);
+      }
+      const whose = genreHold.giver ? `${genreHold.giver.name}'s ${genreHold.name}` : genreHold.name;
+      return tookIt({ ok: true, hp: `${genreHold.hp}/${effectiveMaxHp(sheet)}`, held: genreHold.name, note: `${sheet.name} should have fallen, but ${whose} holds them at ${genreHold.hp} HP. The use is spent.` });
     }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
@@ -496,6 +545,15 @@ export function applyPcDamage(
   } else if (soul) {
     soulInfo = { soulOfArtifice: soul.why };
   }
+  // The genre classes' "drop to 1 instead" counters (src/lib/dm/genre-drop-holds.ts).
+  const genre = genreDropHold(campaign, sheet, math, input, (target, patch, delta) => {
+    patchSheet(target.id, patch);
+    audit(campaign, turnId, target, "apply_damage", delta, reason, patch);
+    publishSheet(campaign, target.id);
+  });
+  if (genre) {
+    return tookIt(genre);
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
@@ -538,6 +596,7 @@ export function applyPcDamage(
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
     ...soulInfo,
+    ...ritualInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,

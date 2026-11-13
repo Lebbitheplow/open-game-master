@@ -135,7 +135,7 @@
             { "n": "Stake and Salt", "d": "Your Hunter's Kit wardings cover the whole party; craft two per rest." },
             { "n": "Vampiric Scholar", "d": "Advantage on checks to identify or recall lore about undead and shapechangers." }
           ],
-          "7": [{ "n": "Piercing the Heart", "d": "Your critical hits against undead or shapechangers stun them until the end of your next turn (CON save negates)." }],
+          "7": [{ "n": "Piercing the Heart", "d": "Your critical hits against undead or shapechangers stun them until the end of your next turn (CON save negates, DC 8 + proficiency bonus + STR or DEX mod)." }],
           "11": [{ "n": "Blessed Silver", "d": "Your Silvered Strikes deal +1d8 radiant against undead, fiends, and shapechangers." }],
           "15": [{ "n": "The Stake Remembers", "d": "1/long rest, an attack against a creature at half HP or lower becomes an automatic critical if it hits." }]
         }

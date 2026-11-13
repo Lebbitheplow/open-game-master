@@ -1,4 +1,5 @@
 import { formSenses } from "@/lib/srd/mt-srd-form-senses";
+import { speedCannotBeReduced } from "@/lib/srd/genre-b-post-apocalyptic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
 import { tokenSides } from "@/lib/dm/combatant";
@@ -11,14 +12,14 @@ import { effectiveAmbient } from "@/lib/battlemap/daylight";
 import { weatherObscurementTiles } from "@/lib/srd/weather";
 import { listEffects } from "@/lib/db/active-effects";
 import { applyField, resolveField } from "@/lib/dm/effects-logic";
-import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy, orderEntryId } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { ownZoneFeet } from "@/lib/dm/zone-reach";
 import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor, wearsMediumOrHeavyArmor } from "@/lib/srd/authored-effects";
-import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
+import { authoredDarkvisionFeet, attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
@@ -28,7 +29,6 @@ import { crossesAnyGround } from "@/lib/dm/ar-wbf-feat-turn";
 import { listSheets } from "@/lib/db/sheets";
 import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
-import { orderEntryId } from "@/lib/db/encounters";
 import {
   getBattleMapForEncounter,
   getExplored,
@@ -61,7 +61,6 @@ import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/b
 import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
-import { attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
 import { windStepOn } from "@/lib/dm/jump-reach";
 import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
@@ -71,6 +70,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
 import { enemiesAhead, ownTurnOf } from "@/lib/dm/held-turn";
+import { soleSurvivorSpeed } from "@/lib/dm/genre-a-horror-party";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -175,7 +175,14 @@ export function pcMoveBudget(
   // Dread Ambusher: "on your first turn 10 extra feet of speed", on the
   // ranger's own turn of the fight's first round (turn-extra-attacks-logic.ts).
   const ambush = encounter.kind !== "scene" && ownTurnOf(encounter, sheet.id) && ambushRound(sheet, encounter.round) ? 10 : 0;
-  const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush));
+  // Sole Survivor: the last conscious party member's speed doubles.
+  // Unstoppable: a conscious road warrior's speed is never reduced, by a
+  // condition or by exhaustion (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const speed = soleSurvivorSpeed(
+    campaignId,
+    sheet,
+    speedCannotBeReduced(sheet) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush)),
+  );
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
   if (encounter.kind === "scene") {

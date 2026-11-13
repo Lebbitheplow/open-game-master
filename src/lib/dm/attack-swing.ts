@@ -6,7 +6,10 @@
 
 import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
 import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
+import { SPELL_HIT } from "@/lib/dm/genre-a-cyberpunk-spends";
+import { horrorCritMaximum } from "@/lib/dm/genre-a-horror-hits";
 import { getSheetById } from "@/lib/db/sheets";
+import { finalVerdictDice } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import { NET_HOLD } from "@/lib/dm/net-hold";
@@ -43,9 +46,8 @@ import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
+import { GREAT_WEAPON_MASTER_READY, BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { hasCondition } from "@/lib/srd/authored-effects";
 
@@ -192,6 +194,10 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // to the holders of a rider.
     if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
+    } else {
+      // A spell attack's hit, for what answers a creature a psionic hit
+      // (Synaptic Overload, src/lib/dm/genre-a-cyberpunk-spends.ts).
+      markAttackTurn(campaign.id, record, `${SPELL_HIT}${record.targetEnemyId}`);
     }
     // The hit that spent the turn's Sneak Attack names its creature, so a
     // feature that answers a Sneak Attack (Wails from the Grave) knows the
@@ -392,12 +398,24 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     }
     notes.push(WRATH_NOTE);
   }
-  const asked = wrath?.expression ?? rolled;
+  // Final Verdict (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  const verdict = finalVerdictDice(getSheetById(sheet.id) ?? sheet, getFoe(enemy.id) ?? enemy, record, wrath?.expression ?? rolled, wrath?.riders ?? riders, crit);
+  if (verdict) {
+    notes.push(verdict.note);
+  }
+  // Deathblow: a critical on the slayer's Quarry at its maximum (genre-a-horror-hits.ts).
+  const deathblow = crit && !stunShot && !wrath && !verdict
+    ? horrorCritMaximum(sheet, enemy.id, rolled, riders, (dice) => critDamageExpression(dice, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }))
+    : null;
+  if (deathblow) {
+    notes.push(deathblow.note);
+  }
+  const asked = deathblow?.expression ?? verdict?.expression ?? wrath?.expression ?? rolled;
   return {
     ask: {
       expression: asked,
-      riders: wrath?.riders ?? riders,
-      ...(wrath?.noDice ? { noDice: true } : {}),
+      riders: deathblow?.riders ?? wrath?.riders ?? riders,
+      ...(wrath?.noDice || deathblow ? { noDice: true } : {}),
       crit,
       stunShot,
       feats: spendDamageFeats(scene, record, asked),

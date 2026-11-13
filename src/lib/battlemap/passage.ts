@@ -8,6 +8,7 @@
 //
 // Pure: the caller hands in the tokens, their footprints and their sizes.
 
+import { adaptedSpeeds } from "@/lib/srd/genre-b-post-apocalyptic";
 import { climbsFreely } from "@/lib/srd/feat-combat";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
@@ -115,8 +116,12 @@ export function pcMoveTraits(input: {
   // A worn item's swimming or climbing speed (SRD 5.1, Ring of Swimming,
   // Slippers of Spider Climbing) moves through water and up walls at cost.
   const worn = input.sheet.equipment?.length ? itemSpeeds(input.sheet.equipment, input.sheet, input.sheet.speed ?? 30) : {};
-  const traits = typeof freely === "object" && freely !== null && (worn.swim || worn.climb)
-    ? { ...freely, ...(worn.swim ? { swims: true } : {}), ...(worn.climb ? { climbs: true } : {}) }
+  // Second Adaptation's hour of a climbing or a swimming speed (genre-b-post-apocalyptic.ts).
+  const adapted = adaptedSpeeds(input.sheet.conditions);
+  const swim = worn.swim || adapted.swim;
+  const climb = worn.climb || adapted.climb;
+  const traits = typeof freely === "object" && freely !== null && (swim || climb)
+    ? { ...freely, ...(swim ? { swims: true } : {}), ...(climb ? { climbs: true } : {}) }
     : freely;
   // Earth Walk (earth genasi): difficult ground of earth or stone costs no
   // extra movement (src/lib/srd/mt-species-traits.ts).

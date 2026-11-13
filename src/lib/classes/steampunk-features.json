@@ -30,7 +30,7 @@
             { "n": "Improved Familiar Frame", "d": "Your familiar gains a sting (1d8 + INT piercing, 30 ft) and HP equal to 3 x your level." },
             { "n": "Wind-Up Ally", "d": "Command your familiar as a bonus action." }
           ],
-          "7": [{ "n": "Gear Swarm", "d": "1/rest, loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute." }],
+          "7": [{ "n": "Gear Swarm", "d": "1/rest, loose a box of whirring gears at a creature within 30 ft: a 15-ft cube centred on it becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute." }],
           "11": [{ "n": "Twin Automata", "d": "Build a second familiar; both act on your command." }],
           "15": [{ "n": "The Great Work Walks", "d": "1/long rest, your familiars merge into a brass juggernaut for 10 minutes (double HP, 2d10 + INT slam, you may ride it)." }]
         }
@@ -80,7 +80,7 @@
         ],
         "2": [{ "n": "School of Practice", "d": "Chooses an alchemical school (subclass)." }],
         "3": [{ "n": "Reagent Pouch", "d": "You can identify any potion, poison, or chemical by smell and taste safely." }],
-        "5": [{ "n": "Emergency Draught", "d": "Brew 2 draughts per long rest: drinker regains 2d4 + INT HP as a bonus action." }],
+        "5": [{ "n": "Emergency Draught", "d": "2/long rest, brew a draught: the drinker regains 2d4 + INT HP as a bonus action." }],
         "6": [{ "n": "Acid Resistant Apron", "d": "Resistance to acid and poison damage." }],
         "7": [{ "n": "Fumes and Vapors", "d": "1/rest, a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save (CON) or retch, losing their action." }],
         "9": [{ "n": "Improved Catalyst", "d": "Catalyst Stone adds +1d8 and has 3 uses per rest." }],
@@ -101,7 +101,7 @@
             { "n": "Etching Acid", "d": "Your acid damage reduces a hit target's AC by 1 until your next turn (not cumulative)." }
           ],
           "6": [{ "n": "Vitriol Ampoule", "d": "Reaction when hit in melee: the attacker takes 2d6 acid as an ampoule bursts, INT-mod uses per long rest." }],
-          "10": [{ "n": "Dissolving Mist", "d": "1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)." }],
+          "10": [{ "n": "Dissolving Mist", "d": "1/long rest, a 20-ft radius acid fog centred on a creature within 60 ft for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)." }],
           "14": [{ "n": "Universal Solvent", "d": "Your acid formulae treat immunity as resistance; Etching Acid stacks to -3 AC." }]
         }
       }
@@ -146,13 +146,13 @@
       "levels": {
         "1": [
           { "n": "Conduit Body", "d": "Casts sorcerer-list spells as aetheric arts using CHA; sparks visibly arc across you when you cast." },
-          { "n": "Galvanic Discharge", "d": "1/rest, a creature that touches or melee-hits you takes 1d8 lightning." }
+          { "n": "Galvanic Discharge", "d": "1/rest, charge your skin for 1 minute: the next creature that touches or melee-hits you takes 1d8 lightning." }
         ],
         "2": [{ "n": "Static Sense", "d": "Detect active machines, aether lines, and charged creatures within 30 ft." }],
         "3": [{ "n": "Grounded Stance", "d": "Resistance to lightning damage." }],
         "5": [{ "n": "Surge Casting", "d": "2/rest, cast a cantrip as a bonus action after casting a leveled art." }],
         "7": [{ "n": "Power the Works", "d": "Your touch runs any machine without fuel for 1 hour, CHA-mod uses per long rest." }],
-        "9": [{ "n": "Capacitor Soul", "d": "1/long rest, absorb a lightning or aether effect targeting you: negate it and regain a 1st-level slot." }],
+        "9": [{ "n": "Capacitor Soul", "d": "1/long rest, reaction when a lightning or aether effect hits you: absorb it, taking no damage, and regain a 1st-level slot." }],
         "11": [{ "n": "Storm Step", "d": "1/rest, turn to crackling energy and move 30 ft through creatures and objects as a bonus action." }],
         "13": [{ "n": "Overcharge", "d": "1/long rest, a damaging art rolls maximum dice; you take 1d10 lightning backlash." }],
         "15": [{ "n": "Aetheric Battery", "d": "1/long rest, regain expended slot levels equal to your CHA modifier." }],

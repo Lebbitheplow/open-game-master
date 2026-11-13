@@ -17,6 +17,7 @@
 // and a library sheet's trim to a lower table.
 
 import { classFeaturesFor } from "@/lib/srd/features";
+import { isNamed } from "@/lib/srd/feature-names";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -39,7 +40,7 @@ export function holdsMysticArcanum(classId: string): boolean {
   if (!id) {
     return false;
   }
-  return id === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => textKey(feature.name).startsWith("mystic arcanum"));
+  return id === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => isNamed(feature.name, "Mystic Arcanum"));
 }
 
 // The arcanum spell levels a class has at its level: [6] at warlock 11,

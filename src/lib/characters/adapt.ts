@@ -6,6 +6,7 @@ import { derivedMaxHp, hpBonusPerLevelFor } from "@/lib/srd/hit-points";
 import { hpBonusPerLevel } from "@/lib/srd/race-id";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import {
+  featureHitPoints,
   holdsFeature,
   reachesPrimalChampion,
   withPrimalChampion,
@@ -141,11 +142,18 @@ export function adaptSheetToLevel(
   // sheet taken past 20 gains it, as the level-up there would have given
   // it; one taken below gives it back with the feature. Whether the scores
   // carry it is read off the feature, as the level-up reads it.
+  // A sheet that lists its class features says so by holding the feature.
+  // A library sheet lists none (they are written when it is read), and the
+  // door that stored it at barbarian 20 wrote the points on (sheet-legality
+  // adds them last), so its level is the answer. Read off the list alone, a
+  // library barbarian 20 kept the points below 20, and was refused for
+  // Strength 24, and took them a second time at a level 20 table.
+  const listsClassFeatures = (input.features ?? []).some((feature) => feature.source === "class");
   const wasChampion =
     reachesPrimalChampion({
       class: input.class,
       classes: (input.classes ?? []).length > 1 ? input.classes : [{ id: input.class, level: fromLevel }],
-    }) && holdsFeature(input, "primal champion");
+    }) && (holdsFeature(input, "primal champion") || !listsClassFeatures);
   const isChampion = reachesPrimalChampion({ class: sheet.class, classes: classList });
   if (wasChampion && !isChampion) {
     sheet.abilities = withoutPrimalChampion(sheet.abilities);
@@ -168,6 +176,10 @@ export function adaptSheetToLevel(
           classes: dice,
           con: sheet.abilities.con,
           perLevelBonus: hpBonusPerLevelFor(hpBonusPerLevel(sheet.race) > 0, sheet.feats ?? []),
+          // Draconic Resilience's point per sorcerer level, which the door
+          // counts too: left out, a draconic sorcerer joining a level 1
+          // table was refused for one hit point short.
+          extraHp: featureHitPoints({ class: sheet.class, subclass: sheet.subclass, level, classes: classList, features: sheet.features }),
         })
       : Math.max(1, Math.round((sheet.maxHp / Math.max(1, fromLevel)) * level));
   }

@@ -1,0 +1,453 @@
+// The horror classes' features the fifth genre-a round built
+// (src/lib/srd/authored-effects-genre-a-horror.ts and the readers it names):
+// the controls the clause ledger's probes do not stage. Each case fails
+// without its mechanism: the feature was a line of the GM's prompt.
+import assert from "node:assert/strict";
+import { openClauseRig, must } from "./lib/sweep-clauses-genre-a.mjs";
+import { d20Faces } from "./lib/enforce-combat.mjs";
+
+const t = await openClauseRig();
+const { horrorCheckRider, horrorMagicalAgainst } = await import("../src/lib/srd/genre-a-horror-holds.ts");
+const { soleSurvivorResistances, soleSurvivorSpeed } = await import("../src/lib/dm/genre-a-horror-party.ts");
+const forced = await import("../src/lib/dm/forced-save.ts");
+const campaigns = await import("../src/lib/db/campaigns.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const d20s = () => t.world.diceLog().filter((die) => die.sides === 20).length;
+// One save the engine forces on the holder for a creature of the fight.
+function forcedSave(scene, from, resists, ability = "wis") {
+  t.world.clearDice();
+  t.world.diceLog();
+  t.world.dice(5, 17);
+  forced.rollCharacterSave(campaigns.getCampaignById(t.world.campaignId), null, sheet(scene.holder.id), ability, 10, "a probe", resists, t.kit.enemy(from.id));
+  t.world.clearDice();
+  return d20s();
+}
+const typed = (enemy, type) => t.kit.setEnemy(enemy.id, { stats: { ...t.kit.enemy(enemy.id).stats, type } });
+let passed = 0;
+async function test(name, fn) {
+  await fn();
+  passed += 1;
+  console.log(`ok - ${name}`);
+}
+const sheet = (id) => t.world.sheet(id);
+const spend = (scene, resource, args = {}) => t.world.invoke("use_resource", { characterId: scene.holder.id, resource, ...args });
+
+await test("Forbidden Lore doubles proficiency on Arcana and Religion, not on History", () => {
+  t.fresh();
+  const hero = sheet(t.hero("occultist", 1).id);
+  assert.equal(horrorCheckRider(hero, "arcana", "int").expertise, true);
+  assert.equal(horrorCheckRider(hero, "religion", "int").expertise, true);
+  assert.equal(horrorCheckRider(hero, "history", "int").expertise, false);
+});
+
+await test("Desperate Strength adds 2 to STR and DEX checks below half hit points only", () => {
+  t.fresh();
+  const hero = sheet(t.hero("survivor", 11).id);
+  assert.equal(horrorCheckRider({ ...hero, currentHp: 40 }, null, "str").bonus, 2);
+  assert.equal(horrorCheckRider({ ...hero, currentHp: 40 }, "acrobatics", "dex").bonus, 2);
+  assert.equal(horrorCheckRider({ ...hero, currentHp: 40 }, null, "int").bonus, 0, "an INT check");
+  assert.equal(horrorCheckRider({ ...hero, currentHp: 60 }, null, "str").bonus, 0, "above half");
+});
+
+await test("Quarry without Extinction moves its one mark; with it the second creature takes its own", async () => {
+  const scene = await t.stage({ classId: "slayer", level: 20 });
+  t.kit.place(scene.far.id, 4, 6);
+  must(await spend(scene, "Quarry", { targetEnemyId: scene.near.id }), "the first mark");
+  t.kit.giveTurn(scene.holder.id);
+  must(await spend(scene, "Quarry", { targetEnemyId: scene.far.id }), "the second mark");
+  const marks = sheet(scene.holder.id).conditions.filter((entry) => entry.toLowerCase().startsWith("quarry"));
+  assert.equal(marks.length, 2, `two marks at 20th level: ${marks}`);
+  const level7 = await t.stage({ classId: "slayer", level: 7 });
+  t.kit.place(level7.far.id, 4, 6);
+  must(await spend(level7, "Quarry", { targetEnemyId: level7.near.id }), "the first mark at 7th");
+  t.kit.giveTurn(level7.holder.id);
+  must(await spend(level7, "Quarry", { targetEnemyId: level7.far.id }), "the second mark at 7th");
+  const one = sheet(level7.holder.id);
+  assert.deepEqual(one.conditions.filter((entry) => entry.toLowerCase().startsWith("quarry")), ["quarry"]);
+  assert.equal(one.conditionMeta.quarry.quarry, level7.far.id, "the mark moved");
+});
+
+await test("Consecrated Tools: magical against fiends and undead, not against a construct", () => {
+  t.fresh();
+  const hero = sheet(t.hero("exorcist", 1).id);
+  assert.equal(horrorMagicalAgainst(hero, "undead"), true);
+  assert.equal(horrorMagicalAgainst(hero, "fiend (demon)"), true);
+  assert.equal(horrorMagicalAgainst(hero, "construct"), false);
+});
+
+await test("Sole Survivor: no resistance while an ally stands; every type and double speed once the last one drops", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 15 });
+  const holder = () => sheet(scene.holder.id);
+  assert.equal(soleSurvivorResistances(t.world.campaignId, holder()), "", "the hurt ally is still up");
+  assert.equal(soleSurvivorSpeed(t.world.campaignId, holder(), 30), 30);
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 10, type: "fire" }), "the control damage");
+  assert.equal(t.hp(scene.holder.id), 90, "full damage while an ally stands");
+  t.world.patch(scene.ally.id, { currentHp: 0, conditions: ["unconscious", "prone"] });
+  assert.equal(soleSurvivorSpeed(t.world.campaignId, holder(), 30), 60);
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 10, type: "fire" }), "the damage");
+  assert.equal(t.hp(scene.holder.id), 85, "half once the holder is the last one conscious");
+});
+
+await test("Their Power, Your Hands: the next stigmata of 5th level or lower costs no slot and deals its maximum", async () => {
+  const slotsGone = (id) => t.world.patch(id, { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 4 }, 2: { max: 3, used: 3 }, 3: { max: 3, used: 3 }, 4: { max: 3, used: 3 } }, prepared: ["Inflict Wounds", "Blight"], known: ["Inflict Wounds", "Blight"], cantrips: [] } });
+  const marked = (id) => sheet(id).conditions.some((entry) => entry.toLowerCase().startsWith("their power"));
+  // A spell attack (pc_attack): Inflict Wounds, 3d10 at most 30.
+  let scene = await t.stage({ classId: "apostate", level: 20 });
+  slotsGone(scene.holder.id);
+  const unpaid = await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" });
+  assert.ok(unpaid.ok === false || unpaid.error, "with every slot spent and no mark, the cast is not paid");
+  t.kit.giveTurn(scene.holder.id);
+  must(await spend(scene, "horror_their_power_your_hands"), "Their Power, Your Hands");
+  let before = t.foeHp(scene.near.id);
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" }), "Inflict Wounds");
+  assert.equal(before - t.foeHp(scene.near.id), 30, "Inflict Wounds at its maximum");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["1"].used, 4, "no slot spent");
+  assert.ok(!marked(scene.holder.id), "the cast clears the mark");
+  // A save spell (cast_at_enemy): Blight, 8d8 at most 64 on a failed save.
+  scene = await t.stage({ classId: "apostate", level: 20 });
+  slotsGone(scene.holder.id);
+  must(await spend(scene, "horror_their_power_your_hands"), "Their Power, Your Hands");
+  before = t.foeHp(scene.near.id);
+  t.world.dice(1, 1, 1, 1, 1, 1, 1, 1, 1);
+  const out = await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Blight" });
+  t.world.clearDice();
+  assert.notEqual(out.ok, false, JSON.stringify(out).slice(0, 300));
+  assert.equal(before - t.foeHp(scene.near.id), 64, "Blight at its maximum");
+  assert.ok(!marked(scene.holder.id), "the cast clears the mark");
+});
+
+await test("Bleeding Power: a 1st-level stigmata with no slot for 1d4 that nothing reduces; Deeper Scars: up to 3rd for 2d4", async () => {
+  const slotsGone = (id) => t.world.patch(id, { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 4 }, 2: { max: 3, used: 3 }, 3: { max: 3, used: 3 } }, prepared: ["Inflict Wounds", "Vampiric Touch"], known: ["Inflict Wounds", "Vampiric Touch"], cantrips: [] } });
+  let scene = await t.stage({ classId: "apostate", level: 2 });
+  slotsGone(scene.holder.id);
+  t.world.dice(3);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power");
+  t.world.clearDice();
+  assert.equal(t.hp(scene.holder.id), 97, "the 1d4 backlash");
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Inflict Wounds" }), "Inflict Wounds with no slot");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["1"].used, 4, "no slot spent");
+  assert.equal(sheet(scene.holder.id).resources.horror_bleeding_power.used, 1);
+  // 11th level: a 3rd-level stigmata, and 2d4 past the apostate's necrotic resistance.
+  scene = await t.stage({ classId: "apostate", level: 11 });
+  slotsGone(scene.holder.id);
+  t.world.dice(3, 3);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power at 11th");
+  t.world.clearDice();
+  assert.equal(t.hp(scene.holder.id), 94, "the 2d4 backlash, unreduced");
+  must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Vampiric Touch" }), "Vampiric Touch with no slot");
+  assert.equal(sheet(scene.holder.id).spellcasting.slots["3"].used, 3, "no slot spent");
+  // 2nd level: no 3rd-level stigmata.
+  scene = await t.stage({ classId: "apostate", level: 2 });
+  slotsGone(scene.holder.id);
+  must(await spend(scene, "horror_bleeding_power"), "Bleeding Power");
+  const refused = await t.kit.swing(scene.holder.id, scene.near.id, [15, 1, 1, 1], { spell: "Vampiric Touch" });
+  assert.ok(refused.ok === false || refused.error, "a 3rd-level stigmata is not paid at 2nd level");
+});
+
+await test("Borrowed Eyes: a WIS save, and a creature the occultist cannot see is refused with nothing spent", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 6 });
+  // The far foe: Veilsight (occultist 3, "See invisible and ethereal creatures
+  // within 30 ft") sees an invisible creature beside the occultist.
+  t.kit.setEnemy(scene.far.id, { conditions: ["invisible"] });
+  const unseen = await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.far.id });
+  assert.equal(unseen.ok, false, "an invisible creature 70 feet off");
+  assert.equal(sheet(scene.holder.id).resources.horror_borrowed_eyes.used, 0, "nothing spent");
+  t.world.dice(1);
+  must(await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id }), "Borrowed Eyes");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(scene.near.id).conditions.some((entry) => entry.toLowerCase().startsWith("borrowed eyes")), "the failed save lends its eyes");
+});
+
+await test("Ink-Stained Mind: a fiend's fear is saved against with advantage, a humanoid's is not, and a fiend's poison is not", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 7 });
+  typed(scene.near, "fiend (devil)");
+  assert.equal(forcedSave(scene, scene.near, { against: "frightened" }), 2, "the fiend's fear");
+  assert.equal(forcedSave(scene, scene.far, { against: "frightened" }), 1, "a humanoid's fear");
+  assert.equal(forcedSave(scene, scene.near, { against: "poisoned" }, "con"), 1, "the fiend's poison");
+});
+
+await test("Turncoat's Insight: a cultist's spell and a fiend's spell are saved against with advantage, a cultist's club is not", async () => {
+  const scene = await t.stage({ classId: "apostate", level: 13 });
+  const cultist = { ...scene.near };
+  getDatabase().prepare("UPDATE encounter_enemies SET slug = ? WHERE id = ?").run("cultist", scene.near.id);
+  assert.equal(t.kit.enemy(scene.near.id).slug, "cultist", "the staged cultist");
+  assert.equal(forcedSave(scene, cultist, { magical: true }), 2, "the cultist's spell");
+  assert.equal(forcedSave(scene, cultist, {}), 1, "the cultist's own ability");
+  assert.equal(forcedSave(scene, scene.far, { magical: true }), 1, "a humanoid's spell");
+  typed(scene.far, "fiend");
+  assert.equal(forcedSave(scene, scene.far, { magical: true, casterType: "fiend" }), 2, "a fiend's spell");
+});
+
+await test("Seen Worse: frightened is refused while an ally sees the survivor, and lands once the only ally awake is blinded", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 14 });
+  const fear = () => t.world.invoke("set_condition", { characterId: scene.holder.id, condition: "frightened", sourceEnemyId: scene.near.id });
+  const out = await fear();
+  assert.ok(!out.ok || !sheet(scene.holder.id).conditions.includes("frightened"), "an ally sees them");
+  t.world.patch(scene.ally.id, { conditions: ["blinded"] });
+  must(await fear(), "the fear with no ally seeing them");
+  assert.ok(sheet(scene.holder.id).conditions.includes("frightened"), "the fallen ally and the blinded one see nothing");
+});
+
+await test("Alone in the Dark: no bonus with an ally within 10 feet, +1 AC once none is, and nothing off the board", async () => {
+  const { acWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const scene = await t.stage({ classId: "survivor", level: 3 });
+  const ac = () => acWithEffects(t.world.campaignId, sheet(scene.holder.id));
+  const base = ac();
+  t.kit.place(scene.ally.id, 7, 5);
+  assert.equal(ac(), base, "the ally 10 feet off");
+  t.kit.place(scene.ally.id, 8, 5);
+  assert.equal(ac(), base, "the fallen ally still beside them");
+  t.kit.place(scene.fallen.id, 16, 12);
+  assert.equal(ac(), base + 1, "nobody within 10 feet");
+  t.fresh();
+  const lone = sheet(t.hero("survivor", 3).id);
+  assert.equal(acWithEffects(t.world.campaignId, lone), base, "off the board the party stands together");
+});
+
+const used = (id, counter) => sheet(id).resources[counter].used;
+const foeHas = (id, name) => t.kit.enemy(id).conditions.some((entry) => entry.toLowerCase().startsWith(name));
+const fearless = (enemy) => t.kit.setEnemy(enemy.id, { stats: { ...t.kit.enemy(enemy.id).stats, type: "undead", conditionImmune: "frightened, poisoned" } });
+
+await test("Rite of Repulsion: a fearless undead is left out before Voice of Authority and turned with it; Greater Rite adds 2d8 radiant", async () => {
+  let scene = await t.stage({ classId: "exorcist", level: 9 });
+  fearless(scene.near);
+  const none = await spend(scene, "horror_rite_of_repulsion");
+  assert.equal(none.ok, false, "only a fearless undead in reach");
+  assert.equal(used(scene.holder.id, "horror_rite_of_repulsion"), 0, "nothing spent");
+  // A second undead in reach that fear can move: it alone saves.
+  typed(scene.far, "undead");
+  t.kit.place(scene.far.id, 8, 5);
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite on the one fear moves");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.far.id, "turned") && !foeHas(scene.near.id, "turned"), "the fearless one is not turned");
+  assert.equal(t.foeHp(scene.far.id), 300, "no damage before Greater Rite");
+  // 10th level: Voice of Authority takes the fearless one too.
+  scene = await t.stage({ classId: "exorcist", level: 10 });
+  fearless(scene.near);
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite at 10th");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "turned"), "Voice of Authority");
+  // 11th level: 2d8 radiant on the failed save, none on a made one.
+  scene = await t.stage({ classId: "exorcist", level: 11 });
+  typed(scene.near, "undead");
+  typed(scene.far, "fiend");
+  t.kit.place(scene.far.id, 8, 5);
+  t.world.dice(4, 4, 1, 20);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite at 11th");
+  t.world.clearDice();
+  const hurt = [300 - t.foeHp(scene.near.id), 300 - t.foeHp(scene.far.id)].sort((a, b) => a - b);
+  assert.deepEqual(hurt, [0, 8], "2d8 on the one that failed, nothing on the one that saved");
+});
+
+await test("Binding Words: readied, the next rite restrains the first creature it takes hold of and spends the words", async () => {
+  const scene = await t.stage({ classId: "exorcist", level: 9 });
+  typed(scene.near, "fiend");
+  must(await spend(scene, "horror_binding_words"), "Binding Words");
+  assert.equal(used(scene.holder.id, "horror_binding_words"), 1);
+  assert.ok(!foeHas(scene.near.id, "restrained"), "nothing is bound before the rite");
+  t.world.dice(20);
+  must(await spend(scene, "horror_rite_of_repulsion"), "a rite the fiend resists");
+  t.world.clearDice();
+  assert.ok(!foeHas(scene.near.id, "restrained") && sheet(scene.holder.id).conditions.includes("binding words"), "a made save keeps the words readied");
+  t.kit.freshTurn();
+  t.world.dice(1);
+  must(await spend(scene, "horror_rite_of_repulsion"), "the rite");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "turned") && foeHas(scene.near.id, "restrained"), "turned and restrained");
+  assert.ok(!sheet(scene.holder.id).conditions.includes("binding words"), "the words are spent");
+});
+
+await test("Bitter Endurance: twice the level in temporary hit points as initiative is rolled, once a long rest", async () => {
+  t.fresh();
+  const hero = t.hero("survivor", 7);
+  const refused = await t.world.invoke("use_resource", { characterId: hero.id, resource: "horror_bitter_endurance" });
+  assert.equal(refused.ok, false, "no call spends it");
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "initiative", reason: "a fight starts" }), "initiative");
+  assert.equal(sheet(hero.id).tempHp, 14);
+  assert.equal(used(hero.id, "horror_bitter_endurance"), 1);
+  t.world.patch(hero.id, { tempHp: 0 });
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "initiative", reason: "a second fight" }), "initiative again");
+  assert.equal(sheet(hero.id).tempHp, 0, "once a long rest");
+});
+
+await test("Terminal Focus: the turn's action comes back in the first round, and the use is refused in the second", async () => {
+  let scene = await t.stage({ classId: "survivor", level: 18 });
+  must(await t.world.invoke("take_action", { characterId: scene.holder.id, action: "dodge" }), "the first turn's action");
+  assert.ok(t.budget().actionUsed, "the action is spent");
+  must(await spend(scene, "horror_terminal_focus"), "Terminal Focus");
+  assert.ok(!t.budget().actionUsed, "a second turn's action");
+  must(await t.world.invoke("take_action", { characterId: scene.holder.id, action: "dodge" }), "the second turn's action");
+  scene = await t.stage({ classId: "survivor", level: 18 });
+  t.kit.saveEncounter({ ...t.world.encounter(), round: 2 });
+  const late = await spend(scene, "horror_terminal_focus");
+  assert.equal(late.ok, false, "round 2");
+  assert.equal(used(scene.holder.id, "horror_terminal_focus"), 0, "nothing spent");
+});
+
+await test("Observer Effect: a failed CHA save ends a creature's invisibility for the minute, a made one does not", async () => {
+  let scene = await t.stage({ classId: "parapsychologist", level: 18 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+  t.world.dice(1);
+  must(await spend(scene, "horror_observer_effect", { targetEnemyId: scene.near.id }), "Observer Effect");
+  t.world.clearDice();
+  assert.ok(!foeHas(scene.near.id, "invisible") && foeHas(scene.near.id, "observed"), "seen, and observed");
+  scene = await t.stage({ classId: "parapsychologist", level: 18 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+  t.world.dice(20);
+  must(await spend(scene, "horror_observer_effect", { targetEnemyId: scene.near.id }), "Observer Effect against a made save");
+  t.world.clearDice();
+  assert.ok(foeHas(scene.near.id, "invisible"), "the save negates");
+});
+
+const strike = async (scene, enemy, faces, args = {}) => {
+  t.kit.giveTurn(scene.holder.id);
+  const before = t.foeHp(enemy.id);
+  const out = must(await t.kit.swing(scene.holder.id, enemy.id, faces, args), "the staged attack");
+  return { out: out.result, loss: before - t.foeHp(enemy.id) };
+};
+
+await test("The Stake Remembers: a hit on a creature at half its hit points is a critical and spends the mark; above half it is neither", async () => {
+  const scene = await t.stage({ classId: "slayer", level: 15 });
+  must(await spend(scene, "horror_the_stake_remembers"), "The Stake Remembers");
+  const healthy = await strike(scene, scene.near, [15, 3, 3, 3, 3, 3, 3]);
+  assert.ok(!healthy.out.crit, "above half its hit points");
+  assert.ok(sheet(scene.holder.id).conditions.includes("the stake remembers"), "the mark is kept for a creature it fits");
+  t.kit.setEnemy(scene.near.id, { currentHp: 150 });
+  const bloodied = await strike(scene, scene.near, [15, 3, 3, 3, 3, 3, 3]);
+  assert.equal(bloodied.out.crit, true, "an automatic critical at half");
+  assert.ok(!sheet(scene.holder.id).conditions.includes("the stake remembers"), "spent");
+});
+
+await test("Deathblow: a critical on the Quarry deals the same maximum whatever the dice show, and more than a rolled one", async () => {
+  const crit = async (level, face) => {
+    const scene = await t.stage({ classId: "slayer", level });
+    must(await spend(scene, "Quarry", { targetEnemyId: scene.near.id }), "Quarry");
+    return (await strike(scene, scene.near, [20, face, face, face, face, face, face, face, face])).loss;
+  };
+  const ones = await crit(15, 1);
+  assert.equal(await crit(15, 2), ones, "the dice do not matter");
+  assert.ok(ones > (await crit(14, 2)), "more than a 14th-level slayer's rolled critical");
+  // Not the Quarry: an ordinary critical.
+  const scene = await t.stage({ classId: "slayer", level: 15 });
+  const a = (await strike(scene, scene.near, [20, 1, 1, 1, 1, 1, 1])).loss;
+  const b = (await strike(scene, scene.near, [20, 2, 2, 2, 2, 2, 2])).loss;
+  assert.ok(b > a, "a creature that is not the Quarry takes the rolled critical");
+});
+
+await test("Piercing the Heart: a critical stuns an undead that fails its CON save, and not a humanoid", async () => {
+  const scene = await t.stage({ classId: "slayer", level: 7 });
+  typed(scene.near, "undead");
+  await strike(scene, scene.near, [20, 1, 1, 1, 1, 1, 1, 1]);
+  assert.ok(foeHas(scene.near.id, "stunned"), "the undead is stunned");
+  t.kit.place(scene.far.id, 5, 4);
+  await strike(scene, scene.far, [20, 1, 1, 1, 1, 1, 1, 1]);
+  assert.ok(!foeHas(scene.far.id, "stunned"), "a humanoid is not");
+});
+
+await test("Called Shot: the next weapon hit blinds the creature for the called sense, hobbles it for the movement, and spends the mark; a bare call is asked which", async () => {
+  let scene = await t.stage({ classId: "slayer", level: 13 });
+  must(await spend(scene, "horror_called_shot", { variant: "sense" }), "Called Shot (sense)");
+  assert.ok(!foeHas(scene.near.id, "blinded"), "nothing before the hit");
+  await strike(scene, scene.near, [15, 3, 3, 3]);
+  assert.ok(foeHas(scene.near.id, "blinded"), "blinded on the hit");
+  assert.ok(!sheet(scene.holder.id).conditions.some((entry) => entry.startsWith("called shot")), "the mark is spent");
+  scene = await t.stage({ classId: "slayer", level: 13 });
+  const bare = await spend(scene, "horror_called_shot");
+  assert.equal(bare.ok, false, "which shot is asked");
+  assert.equal(used(scene.holder.id, "horror_called_shot"), 0, "nothing spent");
+  must(await spend(scene, "horror_called_shot", { variant: "movement" }), "Called Shot (movement)");
+  await strike(scene, scene.near, [15, 3, 3, 3]);
+  assert.ok(foeHas(scene.near.id, "hobbling shot"), "speed 0 for the movement");
+});
+
+await test("Ectoplasmic Sample: a hit on an undead marks it for the party's attacks, and a humanoid is not marked", async () => {
+  const hits = await import("../src/lib/dm/genre-a-horror-hits.ts");
+  const scene = await t.stage({ classId: "parapsychologist", level: 7 });
+  typed(scene.near, "undead");
+  await strike(scene, scene.near, [15, 3, 3]);
+  assert.ok(hits.horrorSampled(t.kit.enemy(scene.near.id)), "the sample is taken");
+  t.kit.place(scene.far.id, 5, 4);
+  await strike(scene, scene.far, [15, 3, 3]);
+  assert.ok(!hits.horrorSampled(t.kit.enemy(scene.far.id)), "a humanoid is no spirit");
+});
+
+await test("No Witnesses Left: +1d8 against the creature that dropped an ally, nothing against another", async () => {
+  const scene = await t.stage({ classId: "survivor", level: 11 });
+  t.world.patch(scene.ally.id, { currentHp: 1 });
+  await t.clubs(scene, scene.ally, 19, 6);
+  assert.equal(sheet(scene.ally.id).currentHp, 0, "the ally is down");
+  assert.ok(foeHas(scene.near.id, "downed an ally"), "the record on the creature that did it");
+  t.kit.place(scene.far.id, 5, 4);
+  const witness = await strike(scene, scene.near, [15, 3, 5]);
+  const other = await strike(scene, scene.far, [15, 3, 5]);
+  assert.equal(witness.loss - other.loss, 5, "the d8 rides the hit on the one that downed the ally");
+});
+
+await test("Resonance Lock: the parapsychologist's psychic and force damage ignores resistance, their fire does not", async () => {
+  const { authoredIgnoresResistance } = await import("../src/lib/dm/authored-saves.ts");
+  const scene = await t.stage({ classId: "parapsychologist", level: 15 });
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "psychic"), "Resonance Lock");
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "force"), "Resonance Lock");
+  assert.equal(authoredIgnoresResistance(t.world.campaignId, "fire"), null);
+  assert.ok(scene.holder);
+});
+
+await test("Veilsight: an invisible creature within 30 feet is attacked with no disadvantage; before the feature it is", async () => {
+  const thrown = async (level) => {
+    const scene = await t.stage({ classId: "occultist", level });
+    t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+    await strike(scene, scene.near, [15, 15, 3, 3]);
+    const attack = t.kit.lastRolls(4).find((roll) => roll.kind === "attack");
+    return d20Faces(attack).length;
+  };
+  assert.equal(await thrown(2), 2, "an unseen target: disadvantage");
+  assert.equal(await thrown(3), 1, "Veilsight sees it");
+});
+
+await test("Nine Lives: Won't Die Here also ends the worst condition, and before the feature it ends none", async () => {
+  const drop = async (level) => {
+    const scene = await t.stage({ classId: "survivor", level }, { hp: 5 });
+    t.world.patch(scene.holder.id, { conditions: ["poisoned", "frightened"] });
+    must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 20, type: "fire" }), "the blow");
+    return sheet(scene.holder.id);
+  };
+  const before = await drop(8);
+  assert.equal(before.currentHp, 1, "Won't Die Here");
+  assert.deepEqual([...before.conditions].sort(), ["frightened", "poisoned"], "no condition ends at 8th level");
+  const after = await drop(9);
+  assert.equal(after.currentHp, 1, "Won't Die Here");
+  assert.deepEqual(after.conditions, ["poisoned"], "frightened ends, the lesser stays");
+});
+
+await test("Warden of the Threshold: a foe cannot teleport out of or into the 30 feet around the occultist; an ally, and a jump that crosses nothing, may", async () => {
+  const jump = (token, x, y, more = {}) => t.world.invoke("move_token", { token, x, y, teleport: true, rangeFeet: 500, ...more });
+  const scene = await t.stage({ classId: "occultist", level: 15 });
+  const out = await jump(scene.near.id, 15, 12);
+  assert.equal(out.ok, false, "out of the radius");
+  assert.match(String(out.error), /Warden of the Threshold/);
+  const into = await jump(scene.far.id, 6, 6);
+  assert.equal(into.ok, false, "into the radius");
+  must(await jump(scene.near.id, 6, 6), "a jump inside the radius");
+  must(await jump(scene.far.id, 18, 12), "a jump outside the radius");
+  must(await jump(scene.ally.id, 15, 12), "the warden allows an ally");
+  // 14th level: no ward.
+  const early = await t.stage({ classId: "occultist", level: 14 });
+  must(await jump(early.near.id, 15, 12), "no ward before 15th level");
+});
+
+await test("Walk Between: a square the occultist cannot see is refused, one in sight is taken", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 11 });
+  // A wall across the board between the occultist at (5,5) and row 9.
+  t.kit.openField(Array.from({ length: t.kit.map().width }, (_, x) => [x, 8, "#"]));
+  must(await spend(scene, "horror_walk_between"), "Walk Between");
+  const blind = await t.world.invoke("move_token", { token: scene.holder.id, x: 5, y: 10, teleport: true, spell: "Walk Between", casterCharacterId: scene.holder.id });
+  assert.equal(blind.ok, false, "behind the wall");
+  assert.match(String(blind.error), /can see/);
+  must(await t.world.invoke("move_token", { token: scene.holder.id, x: 9, y: 5, teleport: true, spell: "Walk Between", casterCharacterId: scene.holder.id }), "a square in sight");
+  assert.equal(t.kit.token(scene.holder.id).x, 9);
+});
+
+t.close();
+console.log(`test-genre-a-horror: ${passed} passed`);

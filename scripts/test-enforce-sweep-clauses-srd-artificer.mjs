@@ -269,7 +269,7 @@ P["artificer.infuse-item.effects"] = async () => {
 P["artificer.infuse-item.rules"] = async () => {
   const { buildAttackProfile } = await import("../src/lib/dm/pc-attack-profile.ts");
   const { initiativeAdvantage } = await import("../src/lib/srd/trait-rules.ts");
-  const { hasAlert } = await import("../src/lib/dm/encounter-open.ts");
+  const { cannotBeSurprised } = await import("../src/lib/dm/surprise-guard.ts");
   const { makesOwnAmmunition } = await import("../src/lib/srd/infusions.ts");
   const { setConcentration } = await import("../src/lib/dm/concentration.ts");
   const { rollCharacterSave } = await import("../src/lib/dm/forced-save.ts");
@@ -288,7 +288,7 @@ P["artificer.infuse-item.rules"] = async () => {
   assert.equal(initiativeAdvantage(t.sheet(a)), null, "the helm's advantage before attunement");
   attuneAll(a);
   assert.match(String(initiativeAdvantage(t.sheet(a))), /Helm of Awareness/, "Helm of Awareness: advantage on initiative");
-  assert.equal(hasAlert(t.sheet(a)), true, "Helm of Awareness: the wearer cannot be surprised");
+  assert.equal(cannotBeSurprised(t.sheet(a), []), true, "Helm of Awareness: the wearer cannot be surprised");
   assert.equal(t.speed(a) - speed, 5, "Arcane Propulsion Armor: 5 feet of walking speed");
   const fist = buildAttackProfile(t.world.campaignId, t.sheet(a), { weapon: "Unarmed Strike" }).profile;
   assert.deepEqual([/1d8/.test(fist.damageExpression), fist.damageType, fist.proficient, fist.thrown, fist.rangeTiles, fist.longRangeTiles], [true, "force", true, true, 4, 12], `the gauntlets: ${JSON.stringify(fist).slice(0, 300)}`);

@@ -404,7 +404,10 @@ export type HandOptions = {
 // `bright`: the square is in bright light, said as the refusal's opening
 // (one-with-shadows.ts brightSquare), where a feature of dim light or darkness
 // is refused (Steps of Night, One with Shadows, Shadow Step, Cloak of Shadows).
-export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string };
+// `attackAura`: what an ally's aura adds to this character's attack rolls
+// where they stand (src/lib/dm/genre-b-auras.ts genreBAuraAttack: Warlord of
+// the Wastes), which pc_attack adds and the attack cards print.
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string; attackAura?: { bonus: number; features: string[] } };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,

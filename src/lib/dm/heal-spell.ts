@@ -23,6 +23,9 @@
 // This module does not import mutations.ts: the cast is handed in.
 
 import { spellBreaker } from "@/lib/dm/spell-breaker";
+import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
+import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
+import { mendedHide } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
@@ -251,7 +254,7 @@ export function castHealingSpell(
     // Circle of Mortality: on a creature at 0 hit points (authored-effects.ts).
     authoredHealMax(caster, target) !== null ||
     target.conditions.some((entry) => entry.toLowerCase() === "beacon of hope");
-  const withBond = [expression, ...added.dice].join("+");
+  const withBond = healDiceFloor(caster, [expression, ...added.dice].join("+"));
   const full = bonus > 0 ? `${withBond}+${bonus}` : bonus < 0 ? `${withBond}-${-bonus}` : withBond;
   let amount: number;
   if (maximize) {
@@ -298,6 +301,14 @@ export function castHealingSpell(
   const broken = spellBreaker(campaign, caster, target.id, slotLevel);
   if (broken) {
     riders.push(broken);
+  }
+  // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
+  riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  // Mended Hide: a packmaster's healing on their own beast is doubled.
+  const mended = mendedHide(caster, target);
+  if (mended) {
+    amount *= 2;
+    riders.push(mended);
   }
   return {
     amount: Math.max(1, amount),

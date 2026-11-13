@@ -25,6 +25,7 @@ import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { carriesCyberdeck, genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -249,8 +250,20 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
   // (ar-wbf-bard-casting-logic.ts).
   // A Genie warlock's vessel is their focus ("and your spellcasting focus",
   // genie-vessel.ts).
+  // A genre caster's own focus rule (src/lib/srd/genre-a-cyberpunk-focus.ts):
+  // an esper needs none, a rigger's is the drone (the cast guard asks whether
+  // one stands), a netrunner's is the cyberdeck and no other focus.
+  const genre = genreFocusOf(sheet);
+  if (genre?.kind === "none" || genre?.kind === "drone") {
+    return null;
+  }
   if (sheet.equipment.some((item) => hasItemTag(item, "component_pouch")) || subclassFocus(sheet) || holdsFeature(sheet, "Genie's Vessel")) {
     return null;
+  }
+  if (genre?.kind === "cyberdeck") {
+    return carriesCyberdeck(sheet.equipment) || sheet.equipment.some((item) => hasItemTag(item, "arcane_focus"))
+      ? null
+      : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name} needs their cyberdeck as the focus (${genre.feature}; a Cyberdeck or an arcane focus on the sheet) or a component pouch to cast it, and carries neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];

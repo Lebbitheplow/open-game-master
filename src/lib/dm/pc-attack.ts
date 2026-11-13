@@ -689,9 +689,10 @@ function markAttackOptions(plan: AttackPlan) {
   if (tempHp !== undefined && meta.raging) {
     meta.raging = packInstances(instancesOf(meta.raging).map((instance) => ({ ...instance, tempHp }))) ?? meta.raging;
   }
-  if (options.declaresReckless && !conditions.some((entry) => entry.toLowerCase() === RECKLESS)) {
-    conditions.push(RECKLESS);
-    meta[RECKLESS] = { untilTurnOf: sheet.id };
+  const reckless = options.recklessCondition ?? RECKLESS;
+  if (options.declaresReckless && !conditions.some((entry) => entry.toLowerCase() === reckless)) {
+    conditions.push(reckless);
+    meta[reckless] = { untilTurnOf: sheet.id };
   }
   if (options.bonusAttack === "frenzy" && !conditions.some((entry) => entry.toLowerCase() === FRENZIED)) {
     conditions.push(FRENZIED);

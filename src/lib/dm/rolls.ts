@@ -1,5 +1,7 @@
+import type { LentRoll } from "@/lib/srd/genre-a-lent";
 import { named } from "@/lib/dm/roll-about";
-import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { LUCK_SPEND, computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
+import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { featCheckRider } from "@/lib/srd/feat-combat";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
@@ -22,7 +24,6 @@ import {
   hasHalflingLuck,
 } from "@/lib/srd/feature-effects";
 import { strengthCheckFloor } from "@/lib/srd/trait-rules";
-import { computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, withoutIdArguments, withoutServerLines, xmlToolCallRegex } from "@/lib/dm/tool-text";
@@ -38,6 +39,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
 import { authoredCheckSwap } from "@/lib/srd/authored-effects";
 import { tranceResolved } from "@/lib/dm/ar-ws-trance-floor";
+import { horrorCheckRider } from "@/lib/srd/genre-a-horror-holds";
 
 export { rollArgsSchema, rollDcFor, type RollArgs } from "@/lib/dm/roll-args";
 
@@ -339,6 +341,10 @@ function resolveUnfloored(
     // A Spirit Totem's aura the roller stands in (src/lib/dm/spirit-totem.ts):
     // advantage on saves and checks of these abilities and on these skills.
     totemAdvantage?: { saves: string[]; checks: string[]; skills: string[]; note: string } | null;
+    // What allies' auras lend this roll (src/lib/dm/genre-a-auras.ts).
+    lent?: LentRoll[];
+    // An ally's genre aura on a save against one thing (src/lib/dm/genre-b-auras.ts).
+    saveAuras?: GenreSaveAura[];
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -476,6 +482,7 @@ function resolveUnfloored(
     ability: derivationAbility,
     movedLittle: extras?.movedLittle,
     keepHeldDie: extras?.keepHeldDie,
+    lent: extras?.lent,
   });
   if ("error" in riders) {
     return riders;
@@ -550,8 +557,12 @@ function resolveUnfloored(
         ? !extras?.death && totem.saves.includes(String(derivationAbility ?? ""))
         : (derivationKind === "skill_check" || derivationKind === "ability_check") && (totem.checks.includes(String(derivationAbility ?? "")) || Boolean(totemSkill && totem.skills.includes(totemSkill)))),
   );
+  // Steadying Presence, Fear No Rust, Walk Through the Valley: a die or
+  // advantage on a save against what the ally's aura names.
+  const genreAura = derivationKind === "saving_throw" ? saveAuraRiders(extras?.saveAuras, named(args.against)) : saveAuraRiders(undefined, undefined);
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
+    ...(genreAura.advantage ? ["advantage" as const] : []),
     ...(charming ? ["advantage" as const] : []),
     ...(extras?.effectAdvantage ? ["advantage" as const] : []),
     ...(extras?.effectDisadvantage ? ["disadvantage" as const] : []),
@@ -568,13 +579,14 @@ function resolveUnfloored(
   const bond = extras?.bondDie && derivationKind ? extras.bondDie : null;
   // A check named against the hold it escapes (`against: "grappled"`).
   const escapes = (derivationKind === "skill_check" || derivationKind === "ability_check") && extras?.escapeDie && extras.escapeDie.against.includes(named(args.against) ?? "") ? extras.escapeDie : null;
-  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}`;
+  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}${genreAura.dice}`;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
     riders.inspirationCondition,
     riders.peerless,
     helped,
     ...effects.spent,
+    ...genreAura.spent,
     ...riders.authoredSpent,
     riders.inspired ? INSPIRATION_SPEND : null,
     bond?.spend ?? null,
@@ -593,6 +605,7 @@ function resolveUnfloored(
     ...riders.notes,
     ...(bond ? [bond.note] : []),
     ...(escapes ? [escapes.note] : []),
+    ...genreAura.notes,
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
       : []),
@@ -656,9 +669,12 @@ function resolveUnfloored(
         : 0;
     // Sight rot: its penalty rides the checks that rely on sight.
     const sightRot = skill.id === "perception" || skill.id === "investigation" ? sightRotPenalty(sheet.conditions) : 0;
+    // The horror classes' check riders (Forbidden Lore, Desperate Strength).
+    const horror = horrorCheckRider(sheet, skill.id, checkAbility);
+    const doubled = featRider?.expertise || horror.expertise;
     const featProficiency =
-      featRider?.expertise && !proficientSkill ? 2 * derived.proficiencyBonus : featRider?.expertise && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
-    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency;
+      doubled && !proficientSkill ? 2 * derived.proficiencyBonus : doubled && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
+    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency + horror.bonus;
     // Indomitable Might: a Strength check never totals below the score.
     const mightFloor =
       checkAbility === "str"
@@ -677,6 +693,7 @@ function resolveUnfloored(
     );
     const skillNotes = [
       ...(conditionNotes ?? []),
+      ...horror.notes,
       ...(sightRot ? [`sight rot: -${sightRot} on a check that relies on sight`] : []),
       ...(checkAbility !== skill.ability ? [`a ${checkAbility.toUpperCase()} (${skill.name}) check: ${checkAbility.toUpperCase()} in place of ${skill.ability.toUpperCase()}, the skill's proficiency kept`] : []),
       ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
@@ -734,7 +751,7 @@ function resolveUnfloored(
     // Jack of All Trades / Remarkable Athlete: raw ability checks never
     // carry proficiency, so a covered ability always gets the half bonus.
     const halfScope =
-      (defense as { halfProficiency?: "all" | "physical" | null }).halfProficiency ?? null;
+      (defense as { halfProficiency?: "all" | "physical" | "mental" | null }).halfProficiency ?? null;
     // Jack of All Trades rounds down; Remarkable Athlete (the physical
     // scope) rounds up.
     const halfBonus =
@@ -750,7 +767,7 @@ function resolveUnfloored(
     const tool =
       args.kind === "ability_check" && args.tool ? toolProficiencyBonus(sheet, args.tool, derived.proficiencyBonus) : null;
     const checkBonus =
-      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus : 0;
+      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus + horrorCheckRider(sheet, null, args.ability).bonus : 0;
     const modifier =
       (args.kind === "saving_throw"
         ? derived.saves[args.ability]

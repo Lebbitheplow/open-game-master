@@ -84,7 +84,7 @@ export const AUTHORED_DATA_W2_MT_FB: Record<string, AuthoredEntry> = {
   "fighter::Rune: Storm Rune": {
     subclass: "Rune Knight",
     counter: "sub_storm_rune",
-    // Cannot be surprised while conscious: encounter-open.ts hasAlert.
+    // Cannot be surprised while conscious: surprise-guard.ts cannotBeSurprised.
     effects: [{ kind: "check_adv", skills: ["arcana"] }],
     // A minute of prophetic state, in which a reaction turns an attack roll
     // that hit the knight or a creature they can see within 60 feet to

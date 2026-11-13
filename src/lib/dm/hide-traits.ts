@@ -28,6 +28,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { vanishesInPlainSight } from "@/lib/srd/genre-b-mystery";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
 const rank = (size: string | undefined) => {
@@ -51,8 +52,13 @@ function lightlyObscuredByNature(campaign: Campaign, map: { outdoors?: boolean; 
 // creature that can see you clearly"), or null. The board view sends it for
 // the viewer's own token, so the Hand shuts its Hide cards in these words;
 // before it the cards were open on a lit, open field and the engine refused.
-export function hideRefusal(campaign: Campaign, encounterId: string, sheet: CharacterSheet): ToolError | null {
+// `plain`: the verdict with no Vanish, for the Hide that must pay for it.
+export function hideRefusal(campaign: Campaign, encounterId: string, sheet: CharacterSheet, options: { plain?: boolean } = {}): ToolError | null {
   const watcher = seenClearlyDespiteTraits(campaign, encounterId, sheet);
+  // Vanish: "Hide ... even in plain sight" while a use is left (src/lib/srd/genre-b-mystery.ts).
+  if (watcher && !options.plain && vanishesInPlainSight(sheet)) {
+    return null;
+  }
   return watcher
     ? { error: `${sheet.name} cannot hide: ${watcher} sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.`, refused: "rules" }
     : null;

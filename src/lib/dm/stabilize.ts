@@ -9,6 +9,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 import { recordSteadied } from "@/lib/dm/last-save";
+import { fieldSurgeonWait } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { catalogName } from "@/lib/srd/adventuring-gear";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -41,6 +42,8 @@ import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { lastRites, ritesWard, triageWait } from "@/lib/dm/genre-a-dark-fantasy-vitals";
+import { horrorStabilizesWithoutCheck } from "@/lib/srd/genre-a-horror-holds";
 
 // A healer's kit holds ten uses (SRD 5.1, Adventuring Gear). The count lives
 // on the row's `charges`; a row with none recorded is a full kit, so every
@@ -212,7 +215,14 @@ export function handleStabilize(
   }
 
   let check: Record<string, unknown> = {};
-  if (method === "check") {
+  // Last Rites stabilizes with no check (src/lib/dm/genre-a-dark-fantasy-vitals.ts).
+  const rites = method === "check" ? lastRites(healer, sheet) : null;
+  // Death's Old Acquaintance (survivor): "stabilizing you takes no check".
+  const noCheck = method === "check" && !rites ? horrorStabilizesWithoutCheck(sheet) : null;
+  if (noCheck) {
+    how = `${healer.name} tends to ${sheet.name}, and ${noCheck} needs no Medicine check`;
+  }
+  if (method === "check" && !rites && !noCheck) {
     const resolved = resolveRollExpression(
       {
         kind: "skill_check",
@@ -275,6 +285,9 @@ export function handleStabilize(
   } else if (readied) {
     readied.release();
   }
+  if (rites) {
+    how = rites;
+  }
 
   if (kitPatch) {
     write(campaign, turnId, healer, "use_item", { item: "healer's kit" }, reason, kitPatch);
@@ -301,13 +314,19 @@ export function handleStabilize(
       note: `${how}. Healer: ${sheet.name} is stable and regains 1 hit point, awake again.`,
     };
   }
-  const wait = rollStableTimer(campaign, sheet);
+  // Triage wakes them in a minute with 1d4 hit points, and Last Rites wards
+  // them (src/lib/dm/genre-a-dark-fantasy-vitals.ts).
+  const triage = triageWait(campaign, turn ?? null, healer, sheet, { conditions: sheet.conditions, conditionMeta: sheet.conditionMeta });
+  // Field Surgeon: a minute, not 1d4 hours (genre-a-cyberpunk-defenses.ts).
+  const minute = triage ? null : fieldSurgeonWait(healer, sheet);
+  const wait = triage ?? minute ?? rollStableTimer(campaign, sheet);
+  const laid = rites ? ritesWard(wait.conditions, wait.conditionMeta) : wait;
   // Stable resets both counts (SRD 5.1, Stabilizing a Creature).
   const nextTrack = stableDeathTrack();
   write(campaign, turnId, sheet, "stabilize", { deathSaves: nextTrack, healer: healer.name }, reason, {
     deathSaves: nextTrack,
-    conditions: wait.conditions,
-    conditionMeta: wait.conditionMeta,
+    conditions: laid.conditions,
+    conditionMeta: laid.conditionMeta,
   });
   // A kit or Spare the Dying throws no die, so without this line the table
   // would see the sheet turn stable with nothing to say how.
@@ -316,7 +335,7 @@ export function handleStabilize(
     ok: true,
     stabilized: true,
     ...check,
-    note: `${how}. ${sheet.name} is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}, or sooner if healed.`,
+    note: `${how}. ${sheet.name} is stable: no more death saves, but still unconscious at 0 HP. ${triage ? `Triage: they wake with ${triage.hp} hit points in 1 minute` : "hours" in wait ? `They regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}` : "They regain 1 hit point in 1 minute (Field Surgeon)"}, or sooner if healed.`,
   };
 }
 

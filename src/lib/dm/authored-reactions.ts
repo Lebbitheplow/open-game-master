@@ -19,8 +19,10 @@ import { answersRefusal, noteAnswer } from "@/lib/dm/mt-fb-surge";
 import { landTurnedMiss, missedAttackOn, turnedMissRefusal } from "@/lib/dm/ar-ws-charm-miss";
 import { deflectionAftermath, deflectionFirst } from "@/lib/dm/ar-ws-deflection";
 import { pullStraightToward, pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
+import { regainSlot, swapPlaces } from "@/lib/dm/genre-b-steampunk-reactions";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
+import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
@@ -45,8 +47,8 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, savedIt, type LastSave } from "@/lib/dm/last-save";
+import { ENTROPIC_EDGE, reachAtLevel } from "@/lib/dm/reaction-kinds";
+import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, savedIt, type LastSave, damageDealtBy } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -55,8 +57,8 @@ import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type Tr
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
-import { reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
+import { bodyguardExtras } from "@/lib/dm/genre-b-mystery-enforcer";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -511,7 +513,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       let reduction: number;
       let rolled = "";
-      if (does.amount === "half") {
+      if (does.whole) {
+        reduction = swing.raw;
+      } else if (does.amount === "half") {
         reduction = Math.ceil(swing.raw / 2);
       } else if (does.amount === "ward") {
         // Projected Ward: the Arcane Ward takes what it can hold (arcane-ward.ts).
@@ -527,7 +531,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         reduction = Math.max(0, rollCard(ctx.campaign, ctx.turn, holder.id, "custom", `${holder.name}: ${reaction.name}`, expression, null).total);
         rolled = `${expression}: ${reduction}`;
       }
-      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" ? "half" : reduction) : entry));
+      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" && !does.whole ? "half" : reduction) : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       // Vengeful Ancestors: what Spirit Shield prevented strikes the attacker.
       const reflected: Record<string, unknown> = {};
@@ -539,7 +543,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           publishEncounter(ctx.campaign.id);
         }
       }
-      return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...reflected };
+      // Capacitor Soul: the slot the absorbed charge gives back (genre-b-steampunk-reactions.ts).
+      const regained = does.regainSlot ? regainSlot(ctx.campaign, holder.id, does.regainSlot) : null;
+      return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...(regained ? { regained } : {}), ...reflected };
     }
     // Unstable Backlash: the Wild Surge rolled again (mt-fb-wild-surge.ts).
     case "resurge": {
@@ -581,7 +587,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (hidden) return hidden;
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
+      if (does.rangedOnly && !hit.record.ranged) {
+        return { error: `${reaction.name} answers a ranged attack, and ${hit.record.attack} was made in melee. Nothing was spent.`, refused: "rules" };
+      }
       const swing = hit.record.swings[hit.index];
+      // "When a hostile program or spell targets you" (ICE Pick): a spell's
+      // attack or its missile, never a club.
+      if (does.spellOnly && hit.record.source !== "missile" && !swing.flags?.spell) {
+        return { error: `${reaction.name} answers a spell that targets ${covered.name}, and ${hit.record.attack} was no spell. Nothing was spent.`, refused: "rules" };
+      }
       // "A creature you can see within 10 feet" (the tail of Form of the Beast).
       const striker = attackerFoeId(hit.record);
       if (does.attackerWithinFt && encounter && striker && !withinFeet(encounter.id, ctx.sheet.id, striker, does.attackerWithinFt)) {
@@ -725,12 +739,20 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? cutBlow(entry, "half") : entry));
       const settled = settle(ctx, hit.record, corrected, label);
-      return { applied: `${target.name} resists this ${type} damage: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      if (does.lingers) {
+        const now = getSheetById(target.id) ?? target;
+        const name = `${does.lingers} (${type})`;
+        reactionPatch(ctx.campaign, ctx.turn.id, target.id, { conditions: [...now.conditions, name], conditionMeta: { ...(now.conditionMeta ?? {}), [name]: { rounds: 1 } } }, `${reaction.name}: resistance to ${type} until the next turn`);
+      }
+      return { applied: `${target.name} resists this ${type} damage${does.lingers ? " until the start of their next turn" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "take_for_ally": {
       const ally = allyOf(ctx);
       if (!ally || ally.id === ctx.sheet.id) {
         return { error: `${reaction.name} takes the hit an ally took: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
+      }
+      if (does.ownSummon && ally.summon?.casterId !== ctx.sheet.id) {
+        return { error: `${reaction.name} answers damage to ${ctx.sheet.name}'s own beast, and ${ally.name} is not it. Nothing was spent.`, refused: "rules" };
       }
       const feet = reachAtLevel(does.rangeFt, held.level);
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
@@ -759,12 +781,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const stepped = does.teleport ? teleportBeside(ctx.campaign.id, ctx.sheet.id, ally.id) : null;
       // The damage lands on the paladin as it was dealt: nothing reduces it.
       const taken = applyPcDamage(ctx.campaign, ctx.turn.id, getSheetById(ctx.sheet.id) ?? ctx.sheet, { amount: share, reason: `${reaction.name} for ${ally.name}` });
+      // Intercept Protocol: the two trade places (genre-b-steampunk-reactions.ts).
+      const swapped = does.swap && encounter ? swapPlaces(ctx.campaign, encounter.id, ctx.sheet.id, ally.id) : null;
       return {
+        ...(swapped ? { swapped } : {}),
         applied: share_ === "split"
           ? `${ctx.sheet.name} takes ${share} of the ${raw} damage and ${ally.name} keeps ${kept}: ${settled.given} hit points come back to ${ally.name}.`
           : `${ctx.sheet.name} takes ${share === raw ? `the ${raw} damage` : `half of the ${raw} damage (${share})`} meant for ${ally.name}, whose ${settled.given} hit points come back.`,
         taken,
         ...(stepped ? { teleported: stepped } : {}),
+        ...bodyguardExtras(ctx.campaign, ctx.turn, encounter ?? null, getSheetById(ctx.sheet.id) ?? ctx.sheet, ally, record, ctx.sheets, ctx.sheetsById),
       };
     }
     case "echo_hit": {
@@ -829,7 +855,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const record = does.afterSave
         ? null
         : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => hit.source !== "effect" && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
-      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : attackerFoeId(record));
+      // With no hit open, the creature whose damage is on record (a breath
+      // weapon, a spell's save: last-save.ts recordDamage).
+      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : (attackerFoeId(record) ?? damageDealtBy(ctx.campaign.id, ctx.sheet.id)));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }
@@ -838,6 +866,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       if (does.melee && (!record || record.ranged || !record.swings.some((swing) => swing.hit))) {
         return noHit(ctx.sheet.name, reaction.name, "a melee attack that hit them");
+      }
+      // Flashfire Litany: the open hit, by a creature of the types named.
+      if (does.vsTypes && (!record || record.attacker.id !== enemy.id || !record.swings.some((swing) => swing.hit))) {
+        return noHit(ctx.sheet.name, reaction.name, `a hit by a ${does.vsTypes.join(" or ")}`);
+      }
+      if (does.vsTypes && !does.vsTypes.includes(creatureTypeOf(enemy.stats))) {
+        return { error: `${enemy.displayName} is no ${does.vsTypes.join(" or ")}; ${reaction.name} answers only theirs. Nothing was spent.`, refused: "rules" };
       }
       // An answer to a save reaches the creature that forced it wherever it
       // is; its reach is the one who saved (savedAgainst).

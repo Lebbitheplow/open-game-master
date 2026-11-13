@@ -6,6 +6,8 @@
 import { importWorkshopBundle } from "@/lib/db/workshop-bundle";
 import { workshopBundleSchema } from "@/lib/workshop/bundle";
 import fs from "node:fs/promises";
+import { unknownReskinIds } from "@/lib/worlds/draft-check";
+import { contentRaceKeys } from "@/lib/worlds/draft-integrity";
 import {
   INSTALLED_DIR,
   installedPackPath,
@@ -63,6 +65,17 @@ export async function installWorldPack(raw: unknown): Promise<InstallResult> {
       ok: false,
       status: 400,
       error: `That file is not a valid world pack: ${first ? `${first.path.join(".")} ${first.message}` : "unknown problem"}.`,
+    };
+  }
+  // A renamed race, class or background the creator does not offer would
+  // vanish from the installed world (draft-check.ts says why), so the file is
+  // held to the rule the workshop's export already keeps.
+  const unknown = unknownReskinIds(parsed.data, contentRaceKeys());
+  if (unknown.length) {
+    return {
+      ok: false,
+      status: 400,
+      error: `That world pack renames options the character creator does not have: ${unknown.join(" ")}`,
     };
   }
   // artKeys is the loader's word, not the author's: whatever the manifest

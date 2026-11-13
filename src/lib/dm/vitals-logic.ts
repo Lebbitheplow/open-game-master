@@ -13,6 +13,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { LANCED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { textKey } from "@/lib/language/text-logic";
 
 export const UNCONSCIOUS = "unconscious";
@@ -113,13 +114,24 @@ export const NEGATIVE_ENERGY = "negative energy";
 // What keeps a creature from regaining hit points now, or null: Chill
 // Touch's grip until its caster's next turn, negative energy, or no air at
 // 0 hit points.
+export const TETANUS = "tetanus";
+
 export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number }): string | null {
   const held = sheet.conditions.map((entry) => entry.trim().toLowerCase());
   if (held.includes("chill touch")) {
     return "chill touch";
   }
+  // Tetanus Edge (scavenger): "the target cannot regain HP until your next
+  // turn", the mark its hit lays (src/lib/dm/authored-hooks.ts markEnemy).
+  if (held.includes(TETANUS)) {
+    return TETANUS;
+  }
   if (held.includes(NEGATIVE_ENERGY)) {
     return NEGATIVE_ENERGY;
+  }
+  // Lance the Wound (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+  if (held.includes(LANCED)) {
+    return LANCED;
   }
   return sheet.currentHp <= 0 && held.includes(SUFFOCATING) ? SUFFOCATING : null;
 }

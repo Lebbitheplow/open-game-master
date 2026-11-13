@@ -50,13 +50,14 @@
   "clauses": [
    {
     "c": "Double proficiency bonus in two skills you are proficient with",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Expertise#0:expertise",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Expertise#0:expertise",
     "k": "expertise",
     "p": {
      "slots": 2
     },
-    "observed": "a level 2 detective is owed 0 expertise pick(s), and the text gives 2 by now"
+    "observed": "a level 2 detective is owed 0 expertise pick(s), and the text gives 2 by now",
+    "by": "src/lib/srd/features.ts EXPERTISE_GRANTS (the owed picks)"
    }
   ]
  },
@@ -121,8 +122,8 @@
   "clauses": [
    {
     "c": "Advantage on saves against fear and charm",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Practiced Composure#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Practiced Composure#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
@@ -130,7 +131,8 @@
       "charmed"
      ]
     },
-    "observed": "a save against frightened threw 1 d20 with Practiced Composure (1 without it)"
+    "observed": "a save against frightened threw 1 d20 with Practiced Composure (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "con artists find you a hard mark",
@@ -147,22 +149,28 @@
   "clauses": [
    {
     "c": "You cannot be surprised while conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Anticipate Violence#0:no_surprise",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Anticipate Violence#0:no_surprise",
     "k": "no_surprise",
-    "observed": "the holder of Anticipate Violence was surprised with the party"
+    "by": "src/lib/dm/genre-b-surprise.ts canSurprise, read by src/lib/dm/encounter-open.ts decideAmbush"
    },
    {
     "c": "+2 initiative",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Anticipate Violence#1:init",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Anticipate Violence#1:init",
     "k": "init",
     "p": {
      "bonus": 2
     },
-    "observed": "initiative rolls 1d20+3 with Anticipate Violence (1d20+3 without it)"
+    "observed": "initiative rolls 1d20+3 with Anticipate Violence (1d20+3 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "initiative_bonus"
+   ]
+  }
  },
  "detective::Expertise (2 more skills)": {
   "source": "src/lib/classes/mystery-features.json",
@@ -172,13 +180,14 @@
   "clauses": [
    {
     "c": "Double proficiency bonus in two more proficient skills",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Expertise (2 more skills)#0:expertise",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Expertise (2 more skills)#0:expertise",
     "k": "expertise",
     "p": {
      "slots": 4
     },
-    "observed": "a level 10 detective is owed 0 expertise pick(s), and the text gives 4 by now"
+    "observed": "a level 10 detective is owed 0 expertise pick(s), and the text gives 4 by now",
+    "by": "src/lib/srd/features.ts EXPERTISE_GRANTS (the owed picks)"
    }
   ]
  },
@@ -215,13 +224,15 @@
    },
    {
     "c": "an interrogation question must be answered truthfully or the subject visibly refuses (WIS save to refuse quietly)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_pressure_point#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_pressure_point",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "(WIS save to refuse quietly)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_pressure_point#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_pressure_point",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    }
   ]
  },
@@ -247,23 +258,21 @@
    {
     "c": "Reaction",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Deductive Counter#0:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "mystery_deductive_counter",
-     "cost": "reaction"
-    }
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)",
+    "probe": "scripts/test-genre-b-features.mjs Ectoplasmic Shield; scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_deductive_counter",
+    "note": "The use costs the reaction through use_reaction; a use_resource spend of its own is refused toward it (it pinned the old spend that answered nothing)."
    },
    {
     "c": "when attacked",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_deductive_counter#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_deductive_counter",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "your read of the attacker imposes disadvantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_deductive_counter#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_deductive_counter",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "INT-mod uses per long rest",
@@ -287,8 +296,8 @@
   "clauses": [
    {
     "c": "Keen Deduction has 3 uses per short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::The Scene Speaks#0:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::The Scene Speaks#0:uses",
     "k": "uses",
     "p": {
      "id": "mystery_keen_deduction",
@@ -296,7 +305,8 @@
      "rest": "short"
     },
     "observed": "mystery_keen_deduction holds 1 use(s) at level 17, and the text gives 3",
-    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_the_scene_speaks (3 a short rest), whose spend does nothing, and the feature it upgrades keeps its count"
+    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_the_scene_speaks (3 a short rest), whose spend does nothing, and the feature it upgrades keeps its count",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -394,17 +404,23 @@
   "clauses": [
    {
     "c": "Add half your proficiency bonus to INT and WIS checks you are not proficient in",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Sharpened Logic#0:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test detective::Sharpened Logic#0:skill",
     "k": "skill",
     "p": {
      "skill": "insight",
      "half": true,
      "proficient": false
     },
-    "observed": "a insight check adds 3 with Sharpened Logic (3 without it), and the text makes it 4"
+    "observed": "a insight check adds 3 with Sharpened Logic (3 without it), and the text makes it 4",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts (half_proficiency, scope mental)"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "half_proficiency"
+   ]
+  }
  },
  "detective::The Game Afoot": {
   "source": "src/lib/classes/mystery-features.json",
@@ -426,13 +442,15 @@
    },
    {
     "c": "grant yourself and allies within 30 ft advantage on the next check made in pursuit of a suspect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_the_game_afoot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_the_game_afoot",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_the_game_afoot#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_the_game_afoot",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
@@ -449,11 +467,9 @@
    },
    {
     "c": "advantage on all checks and saves opposing them until the case ends",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap detective::Nemesis Study#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Nemesis Study: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts nemesisClaim and socialEdge: social_check against the nemesis, a grapple or shove contest with it (src/lib/dm/combat-actions.ts) and every save it forces (src/lib/dm/forced-save.ts rollCharacterSave) are rolled with advantage; the Nemesis Study spend names the foe, one at a time",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Nemesis Study: checks opposing the nemesis and saves it forces are rolled with advantage; another foe's are not; a new nemesis replaces the old"
    }
   ]
  },
@@ -465,13 +481,14 @@
   "clauses": [
    {
     "c": "Double proficiency bonus on Insight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Read the Mind's Wound#0:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Read the Mind's Wound#0:skill",
     "k": "skill",
     "p": {
      "skill": "insight"
     },
-    "observed": "a insight check adds 5 with Read the Mind's Wound (5 without it), and the text makes it 7"
+    "observed": "a insight check adds 5 with Read the Mind's Wound (5 without it), and the text makes it 7",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "1/rest",
@@ -500,11 +517,10 @@
   "clauses": [
    {
     "c": "During a short rest, one creature you counsel regains an extra hit die of HP and ends one fear or charm effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Talking Cure#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Talking Cure: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-rest.ts talkingCure, asked by src/lib/dm/rest-tools.ts as a short rest ends (the patient's own hit die + CON regained and not spent, one fear or charm ended)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Talking Cure#0:unhooked; scripts/test-genre-b-mystery-features.mjs Talking Cure: a short rest gives the alienist's most troubled companion an extra hit die of hit points and ends their fear"
    }
   ]
  },
@@ -563,21 +579,21 @@
   "clauses": [
    {
     "c": "Allies within 10 ft add +1d4 to saves against fear and madness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Steadying Presence: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Steadying Presence#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Steadying Presence: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
@@ -601,29 +617,16 @@
    },
    {
     "c": "a willing or restrained creature answers three questions truthfully under trance (WIS save resists if unwilling)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Hypnotic Induction#1:fx",
-    "k": "fx",
-    "p": {
-     "id": "mystery_hypnotic_induction",
-     "absent": [
-      "condition"
-     ]
-    },
-    "observed": "the spend hands back condition \"restrained\", which the text does not lay on anyone",
-    "note": "the generator read the text's precondition (\"a willing or restrained creature\") as the condition a failed save lays: the spend hands aoe_damage condition \"restrained\"",
-    "kind": "rule-wrong"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts hypnotic (no condition is laid: the creature must be restrained, or the alienist hold Master of the Couch, and then saves WIS or answers)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Hypnotic Induction: an unrestrained creature in a fight is refused with nothing spent; a restrained one saves (WIS) or answers, and no condition is laid; Master of the Couch takes a hostile creature as it stands"
    },
    {
     "c": "(WIS save resists if unwilling)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Hypnotic Induction#2:fx",
-    "k": "fx",
-    "p": {
-     "id": "mystery_hypnotic_induction",
-     "save": "wis"
-    }
+    "by": "src/lib/dm/genre-b-mystery-spends.ts hypnotic (WIS save against 8 + proficiency + INT)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Hypnotic Induction: an unrestrained creature in a fight is refused with nothing spent; a restrained one saves (WIS) or answers, and no condition is laid; Master of the Couch takes a hostile creature as it stands",
+    "note": "the generic fx probe spent it on an unrestrained goblin, which the text does not let it take (\"a willing or restrained creature\"); the focused case stages the restraint"
    }
   ]
  },
@@ -635,8 +638,8 @@
   "clauses": [
    {
     "c": "Advantage on saves against fear, charm, and madness",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Professional Detachment#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Professional Detachment#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
@@ -644,7 +647,8 @@
       "charmed"
      ]
     },
-    "observed": "a save against frightened threw 1 d20 with Professional Detachment (1 without it)"
+    "observed": "a save against frightened threw 1 d20 with Professional Detachment (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -668,18 +672,15 @@
    },
    {
     "c": "end one charm, fear, or illusion effect on a creature within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_break_the_delusion"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Break the Delusion\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, end one charm, fear, or illusion effect on a creature within 30 ft.\"}"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Break the Delusion: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); an illusion is no condition the board holds"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Break the Delusion#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Break the Delusion: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); an illusion is no condition the board holds"
    }
   ]
  },
@@ -696,11 +697,10 @@
    },
    {
     "c": "advantage on Insight and Persuasion against it permanently",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Case Study#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Case Study: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts socialEdge, asked by src/lib/dm/social-tools.ts social_check (advantage on Persuasion against the creature on file, picked once by the Case Study spend)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Case Study: Persuasion against the creature studied is rolled with advantage, no other approach and no other person is, and the pick is for good",
+    "note": "Insight against the creature studied has no door: request_roll names no person a check is about (its creature field is a type or race), so that half waits on a tool field measured against the compact budget (handoff)"
    }
   ]
  },
@@ -712,11 +712,10 @@
   "clauses": [
    {
     "c": "Your Talking Cure works on two creatures per rest and also removes one level of exhaustion",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Depth Analysis#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Depth Analysis: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "by": "src/lib/dm/genre-b-mystery-rest.ts talkingCure (two patients, a level of exhaustion off each)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Depth Analysis#0:unhooked; scripts/test-genre-b-mystery-features.mjs Talking Cure: a short rest gives the alienist's most troubled companion an extra hit die of hit points and ends their fear; Depth Analysis counsels two and takes a level of exhaustion off each"
    }
   ]
  },
@@ -740,13 +739,9 @@
    },
    {
     "c": "read a sleeping or unconscious creature's dreams for three true impressions",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Unconscious Speaks#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_the_unconscious_speaks"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Unconscious Speaks\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, read a sleeping or unconscious creature's dreams for three t"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts dreams (a waking creature is refused with nothing spent; the three impressions are the GM's to give)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Unconscious Speaks: a waking creature is refused with nothing spent; an unconscious one's dreams are read"
    }
   ]
  },
@@ -758,13 +753,14 @@
   "clauses": [
    {
     "c": "Immune to being frightened",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Iron Composure#0:immune_cond",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Iron Composure#0:immune_cond",
     "k": "immune_cond",
     "p": {
      "condition": "frightened"
     },
-    "observed": "set_condition laid frightened on the holder of Iron Composure"
+    "observed": "set_condition laid frightened on the holder of Iron Composure",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "your mind cannot be read unless you allow it",
@@ -781,16 +777,14 @@
   "clauses": [
    {
     "c": "Your Steadying Presence radius is 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Group Therapy: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Group Therapy: Steadying Presence reaches 30 ft",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "allies in it are immune to madness effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Group Therapy#0:unhooked"
+    "is": "left",
+    "why": "Madness is no condition or save the SRD 5.1 engine names (src/lib/dm/roll-about.ts SAVE_AGAINST): the catalog line is handed to the GM as the feature's rule (src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses; they have no meaning beyond their text.\")."
    }
   ]
  },
@@ -814,13 +808,9 @@
    },
    {
     "c": "cure a creature of a long-term madness, phobia, or compulsion, including magical ones",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Radical Breakthrough#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_radical_breakthrough"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Radical Breakthrough\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cure a creature of a long-term madness, phobia, or compulsion,"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Radical Breakthrough (cure: a madness, phobia or compulsion laid by name, and the fear or charm magic left, src/lib/dm/genre-b-cure.ts)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Radical Breakthrough: a madness or a magical fear on the patient ends; a patient with none is refused, nothing spent"
    }
   ]
  },
@@ -857,18 +847,19 @@
    },
    {
     "c": "cast one treatment of 5th level or lower without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::The Examined Mind#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "mystery_the_examined_mind"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Examined Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast one treatment of 5th level or lower without a slot; it canno"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "it cannot be resisted by creatures you have a Trauma Map of",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts treatmentUndoes (a creature whose Trauma Map is on file fails the save, Legendary Resistance and all), the map filed by the at-will Trauma Map spend (src/lib/srd/authored-effects-genre-b-mystery.ts)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Examined Mind: its treatment cannot be resisted by a creature whose Trauma Map the alienist holds, and any other creature saves as it rolls"
    }
   ]
  },
@@ -892,13 +883,15 @@
    },
    {
     "c": "impose disadvantage on a creature's attack or check by voicing its doubt aloud (WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_dream_logic#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_dream_logic",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "(WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_dream_logic#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_dream_logic",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
@@ -910,11 +903,9 @@
   "clauses": [
    {
     "c": "Advantage on checks to interpret dreams, art, ciphers, and ritual symbolism",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Symbol Reading#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Symbol Reading: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Symbol Reading: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about hidden_message (src/lib/srd/authored-effects.ts authoredRollRiders); a dream is no check the engine names"
    }
   ]
  },
@@ -950,15 +941,15 @@
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::Projection#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#2:fx",
     "k": "fx",
     "p": {
      "id": "mystery_projection",
      "resolve": "rounds",
      "rounds": 10
     },
-    "observed": "the condition's record is {\"source\":\"4011440a-982e-442b-b2aa-89061f49cd36\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":14}}, and the text says 10 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "(WIS save negates)",
@@ -1023,8 +1014,9 @@
    },
    {
     "c": "your treatments treat one target's saving throw as if it rolled a 1",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_archetype_made_flesh#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts archetype (the mark on the creature named) and src/lib/dm/genre-b-mystery-dossier.ts treatmentUndoes, asked by src/lib/dm/forced-save.ts rollEnemySave (the d20 of its next save against the alienist's spell counts as 1)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Archetype Made Flesh: the creature marked makes its next save against the alienist's treatment as if it rolled a 1, once; an unmarked creature's 20 stands"
    }
   ]
  },
@@ -1033,9 +1025,6 @@
   "group": "grifter",
   "level": 1,
   "sha": "361f07c1dd68",
-  "name": {
-   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
-  },
   "clauses": [
    {
     "c": "1/short rest",
@@ -1056,15 +1045,13 @@
    },
    {
     "c": "Deception or Persuasion check",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Silver Tongue#2:no_floor",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Silver Tongue#2:no_floor",
     "k": "no_floor",
     "p": {
      "skill": "deception"
     },
-    "observed": "a 2 on the die for deception totalled 13: [{\"sides\":20,\"value\":10,\"kept\":true,\"rerolledFrom\":2}]",
-    "note": "the bard's College of Eloquence feature of the same name (src/lib/srd/authored-effects-data*.ts \"bard::Silver Tongue\", check_floor 10) runs for the grifter through heldAuthored's borrowedRow: every Deception and Persuasion d20 below 10 counts as 10, always, from 1st level, while the text gives one reroll a short rest",
-    "kind": "rule-wrong"
+    "by": "src/lib/srd/authored-effects.ts heldAuthored: a genre feature no longer borrows another class's row of the same name (the bard's Silver Tongue floor)"
    }
   ]
  },
@@ -1081,11 +1068,9 @@
    },
    {
     "c": "Deception checks to hold it have advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::A New Face#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to A New Face: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs A New Face: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about disguise (src/lib/srd/authored-effects.ts authoredRollRiders)"
    }
   ]
  },
@@ -1097,13 +1082,14 @@
   "clauses": [
    {
     "c": "Double proficiency bonus in two skills you are proficient with",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Expertise#0:expertise",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Expertise#0:expertise",
     "k": "expertise",
     "p": {
      "slots": 2
     },
-    "observed": "a level 2 grifter is owed 0 expertise pick(s), and the text gives 2 by now"
+    "observed": "a level 2 grifter is owed 0 expertise pick(s), and the text gives 2 by now",
+    "by": "src/lib/srd/features.ts EXPERTISE_GRANTS (the owed picks)"
    }
   ]
  },
@@ -1181,10 +1167,10 @@
    },
    {
     "c": "escape grapples with advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Slippery#1:escape_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Slippery#1:escape_adv",
     "k": "escape_adv",
-    "observed": "the escape threw 2 d20 with Slippery and 2 without it"
+    "by": "src/lib/srd/genre-b-combat.ts genreEscapeAdvantage, read by src/lib/dm/grapple.ts characterEscape"
    }
   ]
  },
@@ -1209,13 +1195,14 @@
   "clauses": [
    {
     "c": "Double proficiency bonus in two more proficient skills",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Expertise (2 more skills)#0:expertise",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Expertise (2 more skills)#0:expertise",
     "k": "expertise",
     "p": {
      "slots": 4
     },
-    "observed": "a level 10 grifter is owed 0 expertise pick(s), and the text gives 4 by now"
+    "observed": "a level 10 grifter is owed 0 expertise pick(s), and the text gives 4 by now",
+    "by": "src/lib/srd/features.ts EXPERTISE_GRANTS (the owed picks)"
    }
   ]
  },
@@ -1227,27 +1214,29 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs",
     "observed": "nothing in the engine answers to Twist the Knife: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (oncePerTurn)"
    },
    {
     "c": "+2d6 damage against a creature that is charmed, deceived by you, or unaware you are a threat",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Twist the Knife#2:rider",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die): the charm is the board's; deceit and a creature unaware are the GM's to say"
    },
    {
     "c": "+2d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Twist the Knife#2:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Twist the Knife#2:rider",
     "k": "rider",
     "p": {
      "dice": "2d6",
      "foeCondition": "charmed"
     },
-    "observed": "a hit rolls 1d8+3 with Twist the Knife (1d8+3 without it), and the text makes it 2d6"
+    "observed": "a hit rolls 1d8+3 with Twist the Knife (1d8+3 without it), and the text makes it 2d6",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -1289,15 +1278,16 @@
   "clauses": [
    {
     "c": "Advantage on saves against charm and against magic that would read your thoughts or force truth",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Mirror Talk#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Mirror Talk#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
       "charmed"
      ]
     },
-    "observed": "a save against charmed threw 1 d20 with Mirror Talk (1 without it)"
+    "observed": "a save against charmed threw 1 d20 with Mirror Talk (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -1306,9 +1296,6 @@
   "group": "grifter",
   "level": 15,
   "sha": "63a647c25710",
-  "name": {
-   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
-  },
   "clauses": [
    {
     "c": "Silver Tongue recharges to 3 uses per short rest",
@@ -1344,18 +1331,21 @@
    },
    {
     "c": "a creature that can hear you treats you as a trusted friend for 10 minutes (WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_everybody_s_friend",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (charmed by the grifter)"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_everybody_s_friend",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (charmed by the grifter)"
    },
    {
     "c": "(WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_everybody_s_friend#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_everybody_s_friend",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (charmed by the grifter)"
    }
   ]
  },
@@ -1367,8 +1357,7 @@
   "clauses": [
    {
     "c": "Hide as a bonus action even in plain sight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Vanish#0:bonus_route",
+    "is": "held",
     "k": "bonus_route",
     "p": {
      "actions": [
@@ -1376,8 +1365,8 @@
      ],
      "plainSight": true
     },
-    "observed": "hide as a bonus action: Holder cannot hide: Goblin 1 sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.",
-    "where": "src/lib/dm/action-tools.ts take_action hide (a hider in plain sight is refused whatever feature they hold)"
+    "by": "src/lib/srd/genre-b-mystery.ts vanishesInPlainSight, read by src/lib/dm/hide-traits.ts hideRefusal (the engine and the Hand); src/lib/dm/combat-actions.ts hide spends a use for a Hide made in plain sight",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Vanish#0:bonus_route; scripts/test-genre-b-mystery-features.mjs Vanish: a grifter watched in the open hides all the same, for a use each time, and is refused once the uses are gone"
    },
    {
     "c": "3/long rest",
@@ -1460,22 +1449,23 @@
   "clauses": [
    {
     "c": "Advantage on Sleight of Hand",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Patient Hands#0:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Patient Hands#0:skill",
     "k": "skill",
     "p": {
      "skill": "sleight_of_hand",
      "advantage": true
     },
-    "observed": "a sleight_of_hand check threw 1 d20 with Patient Hands (1 without it)"
+    "observed": "a sleight_of_hand check threw 1 d20 with Patient Hands (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "observers have disadvantage to catch you",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Patient Hands#1:unhooked",
-    "k": "unhooked",
+    "probe": "not run: the observers' Perception against the grifter is a check the engine does not key to its holder's feature.",
     "observed": "nothing in the engine answers to Patient Hands: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the observers' Perception against the grifter is a check the engine does not key to its holder's feature."
    }
   ]
  },
@@ -1487,11 +1477,10 @@
   "clauses": [
    {
     "c": "A creature that has believed one of your lies has disadvantage on Insight against you thereafter",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Sunk Cost#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Sunk Cost: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts noteBelievedLie and socialEdge, asked by src/lib/dm/social-tools.ts social_check: a Deception that succeeded is on file, and later lies to that person meet a DC 5 lower (a passive Insight at disadvantage, SRD 5.1 Passive Checks)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Sunk Cost#0:unhooked; scripts/test-genre-b-mystery-features.mjs Sunk Cost: once a creature has believed the grifter's lie, their next lie meets a DC 5 lower; a grifter without the feature gets no such edge"
    }
   ]
  },
@@ -1545,15 +1534,15 @@
    },
    {
     "c": "until their next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::House of Cards#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#2:fx",
     "k": "fx",
     "p": {
      "id": "mystery_house_of_cards",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"037e4a3e-4ce7-4641-9fc7-4347e0bc829c\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":16}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "(WIS save negates)",
@@ -1573,19 +1562,17 @@
   "group": "enforcer",
   "level": 1,
   "sha": "82ebab75bd4c",
-  "name": {
-   "stray": "use_resource \"Intimidating Presence\" runs the Berserker barbarian's 10th-level action for a 1st-level enforcer (src/lib/dm/combat-features.ts intimidatingPresence: holdsFeature by name)"
-  },
   "clauses": [
    {
     "c": "Double proficiency bonus on Intimidation",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Intimidating Presence#0:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Intimidating Presence#0:skill",
     "k": "skill",
     "p": {
      "skill": "intimidation"
     },
-    "observed": "a intimidation check adds 5 with Intimidating Presence (5 without it), and the text makes it 7"
+    "observed": "a intimidation check adds 5 with Intimidating Presence (5 without it), and the text makes it 7",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "creatures of your level or lower avoid provoking you",
@@ -1642,8 +1629,8 @@
   "clauses": [
    {
     "c": "Your unarmed strikes deal 1d6 + STR bludgeoning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Heavy Hands#0:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Heavy Hands#0:rider",
     "k": "rider",
     "p": {
      "dice": "1d6+3",
@@ -1651,7 +1638,8 @@
       "weapon": "Unarmed strike"
      }
     },
-    "observed": "a hit rolls 1+3 with Heavy Hands (1+3 without it), and the text makes it 1d6+3"
+    "observed": "a hit rolls 1+3 with Heavy Hands (1+3 without it), and the text makes it 1d6+3",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    },
    {
     "c": "you can grapple as a bonus action",
@@ -1713,8 +1701,7 @@
   "clauses": [
    {
     "c": "Bodyguard works for allies within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#0:take_hit",
+    "is": "held",
     "k": "take_hit",
     "p": {
      "name": "Bodyguard",
@@ -1727,16 +1714,14 @@
       4
      ]
     },
-    "observed": "use_reaction Bodyguard: Ally is beyond 5 feet of Holder. Nothing was spent.",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED Bodyguard (rangeFt 5 at every level)"
+    "by": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED Bodyguard (take_for_ally rangeFt 10 from 6th level, reaction-kinds.ts reachAtLevel)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Meat Shield#0:take_hit; scripts/test-genre-b-mystery-features.mjs Meat Shield: Bodyguard reaches an ally 10 feet off"
    },
    {
     "c": "you move up to 10 ft to intercept",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Meat Shield#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Meat Shield: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts bodyguardExtras (the step to the ally's side, asked by src/lib/dm/authored-reactions.ts take_for_ally)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Meat Shield: Bodyguard reaches an ally 10 feet off, and the enforcer steps to their side to take the blow"
    }
   ]
  },
@@ -1760,8 +1745,9 @@
    },
    {
     "c": "when you drop to 0 HP, drop to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_hard_to_kill#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_hard_to_kill; scripts/test-genre-b-features.mjs",
+    "by": "src/lib/dm/pc-damage.ts (spendGenreHold, src/lib/srd/genre-b-counter-terms.ts): the damage path holds them at 1 and spends the use; a use_resource of its own is refused"
    }
   ]
  },
@@ -1797,27 +1783,27 @@
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Menace#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#2:fx",
     "k": "fx",
     "p": {
      "id": "mystery_menace",
      "resolve": "far",
      "feet": 30
     },
-    "observed": "a creature 30 ft and more away was caught: [\"frightened\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Menace#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#3:fx",
     "k": "fx",
     "p": {
      "id": "mystery_menace",
      "resolve": "rounds",
      "rounds": 10
     },
-    "observed": "the condition's record is {\"source\":\"a827e4c9-a563-4426-b896-458ada85f786\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":15}}, and the text says 10 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (WIS)",
@@ -1840,8 +1826,8 @@
   "clauses": [
    {
     "c": "Resistance to bludgeoning damage from nonmagical attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Iron Jaw#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Iron Jaw#0:resist",
     "k": "resist",
     "p": {
      "types": [
@@ -1849,7 +1835,8 @@
      ],
      "nonmagical": true
     },
-    "observed": "20 bludgeoning damage took 20 hit points with Iron Jaw (20 without it), and the text makes it 10"
+    "observed": "20 bludgeoning damage took 20 hit points with Iron Jaw (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -1884,16 +1871,23 @@
   "clauses": [
    {
     "c": "Advantage against being moved, knocked prone, or grappled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Immovable: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "k": "save_adv",
+    "p": {
+     "against": [
+      "prone",
+      "grappled"
+     ],
+     "ability": "str"
+    },
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Immovable (save_adv against prone and grappled) and src/lib/srd/genre-b-combat.ts genreEscapeAdvantage (the escape from a grapple); no enemy rider or area the engine rolls pushes a character on a save of its own, so being moved has no roll to give advantage on",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Immovable#0:save_adv; scripts/test-genre-b-mystery-features.mjs Immovable: a creature the enforcer grapples rolls its escape at disadvantage, and the enforcer escapes a grapple with advantage"
    },
    {
     "c": "your grapples escape at disadvantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Immovable#0:unhooked"
+    "is": "held",
+    "by": "src/lib/srd/genre-b-combat.ts genreGripDisadvantage, read by src/lib/dm/grapple.ts enemyEscape through src/lib/dm/action-common.ts rollEnemyContest (hindered)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Immovable: a creature the enforcer grapples rolls its escape at disadvantage, and the enforcer escapes a grapple with advantage"
    }
   ]
  },
@@ -1905,21 +1899,21 @@
   "clauses": [
    {
     "c": "After you drop a creature, its allies save (WIS) or are frightened of you until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Message Sent: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Message Sent: the fallen creature's allies save or are frightened of the enforcer, however far",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Message Sent: the fallen creature's allies save or are frightened of the enforcer, however far",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Message Sent#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Message Sent: the fallen creature's allies save or are frightened of the enforcer, however far",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    }
   ]
  },
@@ -1931,16 +1925,15 @@
   "clauses": [
    {
     "c": "Allies within 10 ft gain +1 AC while you are conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Guardian's Instinct: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Guardian's Instinct: allies within 10 ft gain +1 AC while the enforcer is conscious",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Guardian's Instinct#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Guardian's Instinct: allies within 10 ft gain +1 AC while the enforcer is conscious",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
@@ -1952,15 +1945,16 @@
   "clauses": [
    {
     "c": "Hard to Kill recharges on a short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Unbreakable#0:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Unbreakable#0:uses",
     "k": "uses",
     "p": {
      "id": "mystery_hard_to_kill",
      "n": 1,
      "rest": "short"
     },
-    "observed": "mystery_hard_to_kill did not come back on a short rest (left used 1)"
+    "observed": "mystery_hard_to_kill did not come back on a short rest (left used 1)",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -1972,16 +1966,15 @@
   "clauses": [
    {
     "c": "Enemies treat all squares within 10 ft of you as difficult terrain",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Wall of Muscle: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-wall.ts withWallOfMuscle, asked by src/lib/dm/zone-rules.ts withZoneSteps for every walk (two squares, the cost of difficult terrain, only for a creature on the other side)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Wall of Muscle: a creature fighting the enforcer pays double for every square within 10 feet of them, and walks at full speed once the feature is gone"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Wall of Muscle#0:unhooked"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-wall.ts withWallOfMuscle, asked by src/lib/dm/zone-rules.ts withZoneSteps for every walk (two squares, the cost of difficult terrain, only for a creature on the other side)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Wall of Muscle: a creature fighting the enforcer pays double for every square within 10 feet of them, and walks at full speed once the feature is gone"
    }
   ]
  },
@@ -1993,16 +1986,16 @@
   "clauses": [
    {
     "c": "While below half HP, resistance to all damage and your attacks deal +10 damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs Last Man Standing",
     "observed": "nothing in the engine answers to Last Man Standing: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers and src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    },
    {
     "c": "resistance to all damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#1:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Last Man Standing#1:resist",
     "k": "resist",
     "p": {
      "types": [
@@ -2010,18 +2003,16 @@
      ],
      "belowHalf": true
     },
-    "observed": "20 fire damage took 20 hit points with Last Man Standing (20 without it), and the text makes it 10"
+    "observed": "20 fire damage took 20 hit points with Last Man Standing (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "your attacks deal +10 damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Last Man Standing#2:rider",
-    "k": "rider",
-    "p": {
-     "dice": "+13",
-     "belowHalf": true
-    },
-    "observed": "a hit rolls 1d8+3 with Last Man Standing (1d8+3 without it), and the text makes it +13"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs Last Man Standing",
+    "observed": "a hit rolls 1d8+3 with Last Man Standing (1d8+3 without it), and the text makes it +13",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)",
+    "note": "The +10 rides the hit as its own term (1d8+3+10); the ledger's rider probe looks for it folded into the modifier."
    }
   ]
  },
@@ -2045,13 +2036,15 @@
    },
    {
     "c": "allies within 30 ft gain temp HP equal to your level + CON mod",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_rally_the_line#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_rally_the_line",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_rally_the_line#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_rally_the_line",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    }
   ]
  },
@@ -2063,11 +2056,10 @@
   "clauses": [
    {
     "c": "Advantage on Persuasion with laborers, dockhands, and the working poor",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Working Class Hero#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Working Class Hero: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts socialEdge, asked by src/lib/dm/social-tools.ts social_check (advantage on Persuasion with a person on file as working folk, filed by the Working Class Hero spend)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Working Class Hero#0:unhooked; scripts/test-genre-b-mystery-features.mjs Working Class Hero: Persuasion with a person the enforcer has on file as working folk is rolled with advantage, and with anyone else it is not"
    },
    {
     "c": "they will hide or help you",
@@ -2084,11 +2076,9 @@
   "clauses": [
    {
     "c": "Enemies leaving your reach provoke opportunity attacks even if they Disengage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Picket Stance#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Picket Stance: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts picketHolds, read by src/lib/dm/map-tools.ts move_token and src/lib/dm/opportunity.ts resolvePcOpportunityAttacks (only)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Picket Stance: a creature that Disengages and walks out of the enforcer's reach still takes their opportunity attack"
    }
   ]
  },
@@ -2100,11 +2090,9 @@
   "clauses": [
    {
     "c": "When you use Bodyguard, the attacker takes your STR mod + proficiency in damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::Solidarity#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Solidarity: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-enforcer.ts bodyguardExtras (STR modifier + proficiency bonus onto the attacker, untyped)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Solidarity: the creature whose blow Bodyguard took loses the enforcer's STR modifier + proficiency bonus"
    }
   ]
  },
@@ -2128,23 +2116,21 @@
    },
    {
     "c": "you and all allies within 30 ft each gain a reaction attack when any one of you is hit, for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_general_strike"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"General Strike\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, you and all allies within 30 ft each gain a reaction attack when any"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (the enforcer's reaction to a hit on one of those within 30 feet spends the use, lays the strike on them for a minute and is their own attack; then each striker's reaction attack at the creature that hit one of them); src/lib/srd/authored-effects-genre-b-mystery.ts General Strike gives the counter to the reaction",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: the enforcer calls it with their reaction as an ally within 30 feet is hit, which lays the strike on those in reach for a minute and is their own attack; then each striker answers a hit on any of them; nobody does before the call, and a plain spend is refused"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (REACH_FEET 30 at the call, the condition's 10 rounds)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: a hit on an ally beyond 30 feet is no call, and an ally out of reach when it is called is no striker"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap enforcer::General Strike#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-reactions.ts generalStrike (REACH_FEET 30 at the call, the condition's 10 rounds)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs General Strike: the enforcer calls it with their reaction as an ally within 30 feet is hit, which lays the strike on those in reach for a minute and is their own attack; then each striker answers a hit on any of them; nobody does before the call, and a plain spend is refused"
    }
   ]
  },
@@ -2204,13 +2190,14 @@
    },
    {
     "c": "double proficiency bonus on Investigation",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Shorthand#1:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Shorthand#1:skill",
     "k": "skill",
     "p": {
      "skill": "investigation"
     },
-    "observed": "a investigation check adds 5 with Shorthand (5 without it), and the text makes it 7"
+    "observed": "a investigation check adds 5 with Shorthand (5 without it), and the text makes it 7",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -2237,16 +2224,16 @@
   "clauses": [
    {
     "c": "A creature you surprise with a question answers before thinking: one truthful sentence (WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Doorstep Ambush: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts doorstep (the at-will Doorstep Ambush spend: the creature asked saves WIS against 8 + proficiency + CHA or answers, and is wary of the press for ten minutes, so a second question does not surprise it)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Doorstep Ambush#0:unhooked; scripts/test-genre-b-mystery-features.mjs Doorstep Ambush: the creature asked saves (WIS) or answers one truthful sentence, and is not surprised by a second question"
    },
    {
     "c": "(WIS save negates)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Doorstep Ambush#0:unhooked"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts doorstep (rollEnemySave WIS)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Doorstep Ambush: the creature asked saves (WIS) or answers one truthful sentence, and is not surprised by a second question"
    }
   ]
  },
@@ -2272,18 +2259,15 @@
    {
     "c": "Reaction",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Duck the Consequences#0:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "mystery_duck_the_consequences",
-     "cost": "reaction"
-    }
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)",
+    "probe": "scripts/test-genre-b-features.mjs Ectoplasmic Shield; scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_duck_the_consequences",
+    "note": "The use costs the reaction through use_reaction; a use_resource spend of its own is refused toward it (it pinned the old spend that answered nothing)."
    },
    {
     "c": "impose disadvantage on one attack against you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_duck_the_consequences#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_duck_the_consequences",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "CHA-mod uses per long rest",
@@ -2307,11 +2291,8 @@
   "clauses": [
    {
     "c": "Public figures hesitate: creatures who know you are press have disadvantage on Intimidation against you and think twice before violence",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Byline Armor#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Byline Armor: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "left",
+    "why": "Roleplay the GM plays, with no roll the engine makes: no door rolls a creature's Intimidation against a character (a player decides how their character takes a threat; social_check rolls the party's words on a person, never the reverse), and whether a public figure thinks twice before violence is the GM's to play. The catalog line is handed to the GM as the feature's rule (src/lib/classes/mystery-features.json _note; src/lib/dm/prompt.ts: \"Treat listed features exactly as described in parentheses\")."
    }
   ]
  },
@@ -2337,14 +2318,15 @@
    {
     "c": "1/long rest",
     "is": "held",
-    "by": "src/lib/classes/resources.json (uses, ability, recharge, upgrades) through src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS",
+    "by": "src/lib/classes/resources.json (uses, recharge) and src/lib/srd/genre-b-counter-terms.ts (Syndicated's 2 uses)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Front Page Pressure#0:uses",
     "k": "uses",
     "p": {
      "id": "mystery_front_page_pressure",
-     "n": 1,
+     "n": 2,
      "rest": "long"
-    }
+    },
+    "note": "The level-11 holder also takes Syndicated (\"2 uses per long rest\"), which the same level grants."
    },
    {
     "c": "publish or threaten to: a named organization must respond publicly within a day, opening a door for the party",
@@ -2374,21 +2356,20 @@
   "clauses": [
    {
     "c": "Advantage on initiative",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Two Steps Ahead#0:init",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Two Steps Ahead#0:init",
     "k": "init",
     "p": {
      "advantage": true
     },
-    "observed": "initiative rolls 1d20+3 with Two Steps Ahead (1d20+3 without it)"
+    "observed": "initiative rolls 1d20+3 with Two Steps Ahead (1d20+3 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "you cannot be surprised by creatures you have investigated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Two Steps Ahead#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Two Steps Ahead: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-dossier.ts investigatedBy, asked by src/lib/dm/genre-b-surprise.ts canSurprise (src/lib/dm/encounter-open.ts decideAmbush); the Investigated spend of the feature's row puts a creature on file",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Two Steps Ahead: a creature the muckraker has investigated cannot surprise them; one they have not still can"
    }
   ]
  },
@@ -2405,15 +2386,16 @@
    },
    {
     "c": "Headline Instinct has 3 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Rolodex#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Rolodex#1:uses",
     "k": "uses",
     "p": {
      "id": "mystery_headline_instinct",
      "n": 3,
      "rest": "any"
     },
-    "observed": "mystery_headline_instinct holds 1 use(s) at level 15, and the text gives 3"
+    "observed": "mystery_headline_instinct holds 1 use(s) at level 15, and the text gives 3",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -2475,18 +2457,19 @@
    },
    {
     "c": "publish the truth: a named creature's public standing collapses, and its allies must save (WIS) or abandon it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves",
+    "is": "held",
     "k": "spend_moves",
     "p": {
      "id": "mystery_the_story_of_the_century"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Story of the Century\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, publish the truth: a named creature's public standing coll"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts story (the named creature's allies in the fight save WIS against 8 + proficiency + CHA or flee for the minute, src/lib/dm/flee-logic.ts FLEEING)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::The Story of the Century#1:spend_moves; scripts/test-genre-b-mystery-features.mjs The Story of the Century: the named creature's allies save (WIS) or abandon it and flee"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::The Story of the Century#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts story",
+    "probe": "scripts/test-genre-b-mystery-features.mjs The Story of the Century: the named creature's allies save (WIS) or abandon it and flee; the creature itself does not save"
    }
   ]
  },
@@ -2511,11 +2494,10 @@
   "clauses": [
    {
     "c": "Advantage on checks made under time pressure",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Print Deadline#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Print Deadline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/srd/genre-b-mystery-conditions.ts print deadline (advantage on the next ability check, spent by it), laid by the GM's Print Deadline spend (src/lib/dm/genre-b-mystery-spends.ts deadline): whether the clock is on a check is the GM's to say",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Print Deadline#0:unhooked; scripts/test-genre-b-mystery-features.mjs Print Deadline: with the clock on a check the muckraker's next ability check has advantage, and the one after does not"
    }
   ]
  },
@@ -2545,8 +2527,8 @@
    },
    {
     "c": "2 uses per long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap muckraker::Syndicated#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test muckraker::Syndicated#1:uses",
     "k": "uses",
     "p": {
      "id": "mystery_front_page_pressure",
@@ -2554,7 +2536,8 @@
      "rest": "long"
     },
     "observed": "mystery_front_page_pressure holds 1 use(s) at level 11, and the text gives 2",
-    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_syndicated (2 a long rest), whose spend does nothing, and the feature it upgrades keeps its count"
+    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, mystery_syndicated (2 a long rest), whose spend does nothing, and the feature it upgrades keeps its count",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -2632,13 +2615,15 @@
    },
    {
     "c": "a shielding spirit grants you or an ally +2 AC until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_spirit_ward#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_spirit_ward; scripts/test-genre-b-features.mjs",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_spirit_ward#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_spirit_ward; scripts/test-genre-b-features.mjs",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "WIS-mod uses per long rest",
@@ -2747,15 +2732,16 @@
   "clauses": [
    {
     "c": "Resistance to necrotic damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Between Worlds#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Between Worlds#0:resist",
     "k": "resist",
     "p": {
      "types": [
       "necrotic"
      ]
     },
-    "observed": "20 necrotic damage took 20 hit points with Between Worlds (20 without it), and the text makes it 10"
+    "observed": "20 necrotic damage took 20 hit points with Between Worlds (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "spirits cannot possess you unless you allow it",
@@ -2815,13 +2801,9 @@
   "clauses": [
    {
     "c": "A bound protective spirit follows you: 1/rest, it negates one attack that would hit you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Guardian Shade#0:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_guardian_shade"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Guardian Shade\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"A bound protective spirit follows you: 1/rest, it negates one attack that would hit "
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-b-mystery.ts Guardian Shade (a reaction on its own counter: the hit on the medium becomes a miss, src/lib/dm/authored-reactions.ts force_miss), kept to a hit on the medium by src/lib/dm/genre-b-mystery-reactions.ts",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Guardian Shade: the bound spirit turns aside an attack that hit the medium, for its use and their reaction; with no hit on record, or for a hit on an ally, it is refused and nothing is spent"
    },
    {
     "c": "1/rest",
@@ -2862,13 +2844,15 @@
    },
    {
     "c": "hostile entities get a CHA save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts ferrywoman (an undead saves CHA against 8 + proficiency + WIS or is laid to rest; a possessed character is released, the possessor in the fight saving first)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Ferrywoman's Due: an undead that fails its CHA save is laid to rest and one that makes it stays; a creature that is no spirit is refused, nothing spent; a possessed ally is released"
    },
    {
     "c": "CHA save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ferrywoman_s_due#GUIDANCE_ONLY"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts ferrywoman (an undead saves CHA against 8 + proficiency + WIS or is laid to rest; a possessed character is released, the possessor in the fight saving first)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Ferrywoman's Due: an undead that fails its CHA save is laid to rest and one that makes it stays; a creature that is no spirit is refused, nothing spent; a possessed ally is released"
    }
   ]
  },
@@ -2898,11 +2882,10 @@
   "clauses": [
    {
     "c": "Spirit Ward can protect two creatures at once and also grants advantage on their next save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Chorus of the Dead#0:unhooked",
+    "is": "held",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Chorus of the Dead: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts spiritWard (the ally named and the medium both warded, each with the chorus's advantage on the next save, src/lib/srd/genre-b-mystery-conditions.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Chorus of the Dead#0:unhooked; scripts/test-genre-b-mystery-features.mjs Chorus of the Dead: Spirit Ward on an ally wards the medium too, and each has advantage on their next save, once"
    }
   ]
  },
@@ -2919,15 +2902,16 @@
    },
    {
     "c": "has 3 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Deathless Counsel#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Deathless Counsel#1:uses",
     "k": "uses",
     "p": {
      "id": "mystery_speak_with_the_departed",
      "n": 3,
      "rest": "any"
     },
-    "observed": "mystery_speak_with_the_departed holds 1 use(s) at level 17, and the text gives 3"
+    "observed": "mystery_speak_with_the_departed holds 1 use(s) at level 17, and the text gives 3",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -2951,18 +2935,15 @@
    },
    {
     "c": "when a creature within 30 ft dies, hold its spirit: it can be revived within 24 hours as if freshly dead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "mystery_anchor_of_the_living"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Anchor of the Living\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, when a creature within 30 ft dies, hold its spirit: it can be "
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts anchor and src/lib/dm/genre-b-mystery-anchor.ts (the hold on the audit trail; src/lib/dm/revival.ts minutesSinceDeath answers 0 while it runs)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on, where Revivify's minute had long run out; a living ally and one who died out of reach are refused, nothing spent; scripts/test-genre-b-mystery-features.mjs Anchor of the Living: laid on a dying ally, it holds their spirit if they die within the minute"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Anchor of the Living#1:spend_moves"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts anchor and src/lib/dm/genre-b-mystery-anchor.ts (the hold on the audit trail; src/lib/dm/revival.ts minutesSinceDeath answers 0 while it runs)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Anchor of the Living: a spirit held as its creature dies within 30 feet is found freshly dead a day on, where Revivify's minute had long run out; a living ally and one who died out of reach are refused, nothing spent"
    }
   ]
  },
@@ -2986,13 +2967,15 @@
    },
    {
     "c": "call a procession of spirits: for 1 minute they obscure, terrify (WIS save), and strike (2d8 necrotic) as you direct",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt and src/lib/srd/authored-effects-genre-b-mystery.ts Queen of the Quiet Court (the call lays the procession on the medium for 10 rounds: attacks against them at disadvantage, and Direct the Procession sends it at another creature with no further use)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic, obscures the medium, and is sent at another creature on a later turn for no further use"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_queen_of_the_quiet_court#HANDS_BACK"
+    "is": "held",
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt and src/lib/srd/authored-effects-genre-b-mystery.ts Queen of the Quiet Court (the call lays the procession on the medium for 10 rounds: attacks against them at disadvantage, and Direct the Procession sends it at another creature with no further use)",
+    "probe": "scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic, obscures the medium, and is sent at another creature on a later turn for no further use"
    },
    {
     "c": "(WIS save)",
@@ -3011,28 +2994,26 @@
    },
    {
     "c": "2d8 necrotic",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#4:fx",
     "k": "fx",
     "p": {
      "id": "mystery_queen_of_the_quiet_court",
      "dice": "2d8",
      "type": "necrotic"
     },
-    "observed": "the spend hands back no necrotic damage type ({\"ok\":true,\"resource\":\"Queen of the Quiet Court\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, call a procession of spirits: for 1 minute they obscure, terrify (WIS save), and strike (2d8 necro)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "terrify (WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#5:fx",
+    "is": "held",
     "k": "fx",
     "p": {
      "id": "mystery_queen_of_the_quiet_court",
      "condition": "frightened"
     },
-    "observed": "the spend hands back condition undefined, and the text's is frightened ({\"ok\":true,\"resource\":\"Queen of the Quiet Court\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, call a procession of spirits: for 1 minute they obscure, terrify (WIS save), a)",
-    "note": "the generator joined the text's two effects: the spend hands aoe_damage a WIS save against 2d8 damage, where the text's save is against the terror and the 2d8 strike has none",
-    "kind": "rule-wrong"
+    "by": "src/lib/dm/genre-b-mystery-spends.ts quietCourt (WIS save against 8 + proficiency + WIS or frightened of the medium for a minute)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#5:fx; scripts/test-genre-b-mystery-features.mjs Queen of the Quiet Court: the procession frightens the creature it is sent at for a minute (WIS save) and strikes it for 2d8 necrotic"
    }
   ]
  },
@@ -3070,23 +3051,21 @@
    {
     "c": "Reaction",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Ectoplasmic Shield#0:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "mystery_ectoplasmic_shield",
-     "cost": "reaction"
-    }
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)",
+    "probe": "scripts/test-genre-b-features.mjs Ectoplasmic Shield; scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_ectoplasmic_shield",
+    "note": "The use costs the reaction through use_reaction; a use_resource spend of its own is refused toward it (it pinned the old spend that answered nothing)."
    },
    {
     "c": "when hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ectoplasmic_shield#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_ectoplasmic_shield; scripts/test-genre-b-features.mjs",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "gain resistance to that instance of damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_ectoplasmic_shield#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:mystery_ectoplasmic_shield; scripts/test-genre-b-features.mjs",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "WIS-mod uses per long rest",
@@ -3144,17 +3123,21 @@
   "sha": "4f1ce1fae4b7",
   "clauses": [
    {
-    "c": "Creatures you can see cannot become undead, and undead within 30 ft have disadvantage on saves against your workings",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Mistress of the Threshold: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "c": "Creatures you can see cannot become undead",
+    "is": "left",
+    "why": "No creature becomes undead on the engine: the SRD's Animate Dead and Create Undead raise a corpse the GM places as a new creature, so whether one rises within the spirit medium's sight is the GM's ruling (src/lib/classes/mystery-features.json _note: \"d = one-line rules text the DM treats as authoritative\")."
+   },
+   {
+    "c": "undead within 30 ft have disadvantage on saves against your workings",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Mistress of the Threshold: a undead saves against the holder's spell at disadvantage, and a creature of another type does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Mistress of the Threshold (enemy_save near, 30 ft, undead), read by src/lib/dm/authored-saves.ts authoredEnemySave on the spirit medium's own spell"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Mistress of the Threshold#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Mistress of the Threshold: a undead saves against the holder's spell at disadvantage, and a creature of another type does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Mistress of the Threshold (enemy_save near, 30 ft, undead), read by src/lib/dm/authored-saves.ts authoredEnemySave on the spirit medium's own spell"
    }
   ]
  }
