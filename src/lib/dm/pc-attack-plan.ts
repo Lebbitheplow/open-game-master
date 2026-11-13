@@ -11,6 +11,7 @@ import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
+import { steampunkAttackCover } from "@/lib/dm/genre-b-steampunk-cover";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -332,6 +333,13 @@ export function planPcAttack(input: {
   if (focus) {
     featNotes.push(`${focus.name} (Enhanced Arcane Focus): ${enemy.displayName}'s half cover does not count`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
+  }
+  // Powder Discipline's shot and Precision Engineering's schematic
+  // (src/lib/dm/genre-b-steampunk-cover.ts).
+  const steamCover = steampunkAttackCover(sheet, { spell: kind === "spell", weapon: weaponAttack, base: profile.base }, geometry.cover, enemy.displayName);
+  if (steamCover) {
+    featNotes.push(steamCover.note);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - (geometry.cover - steamCover.cover), cover: steamCover.cover, screen: steamCover.cover ? geometry.screen : null };
   }
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {
     featNotes.push("Sharpshooter: no disadvantage at long range");

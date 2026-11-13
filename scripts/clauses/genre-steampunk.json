@@ -220,11 +220,9 @@
   "clauses": [
    {
     "c": "Your schematics ignore half cover and treat three-quarters cover as half",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Precision Engineering#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Precision Engineering: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Precision Engineering: a machinist's spell attack meets no half cover, and a schematic's DEX save counts three-quarters cover as half",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts steampunkAttackCover (src/lib/dm/pc-attack-plan.ts) and schematicSaveCover (src/lib/dm/cast-at-enemy.ts)"
    }
   ]
  },
@@ -972,11 +970,9 @@
   "clauses": [
    {
     "c": "Your firearm attacks ignore half cover",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Powder Discipline#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Powder Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Powder Discipline: a firearm shot meets no half cover",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts steampunkAttackCover, read by src/lib/dm/pc-attack-plan.ts"
    },
    {
     "c": "reloading never costs you an attack",
@@ -3151,11 +3147,9 @@
   "clauses": [
    {
     "c": "Allies behind you have three-quarters cover against ranged attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Bulwark Advance#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Bulwark Advance: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Bulwark Advance: a creature's ranged attack at an ally behind the knight meets three-quarters cover",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts bulwarkCoverRaise, read for each ranged swing by src/lib/dm/enemy-attack.ts"
    }
   ]
  },

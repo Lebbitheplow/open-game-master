@@ -20,6 +20,7 @@ import { placeSpellZone } from "@/lib/dm/zone-cast";
 import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { coverFor } from "@/lib/dm/attack-spatial";
+import { schematicSaveCover } from "@/lib/dm/genre-b-steampunk-cover";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -522,7 +523,8 @@ export function handleCastAtEnemy(
       against: conditions,
       // Cover between the caster and the target counts on a DEX save,
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.
-      cover: mech?.ignoresCover ? 0 : coverFor(encounter.id, sheet.id, enemy.id),
+      // Precision Engineering's schematic counts less of it (genre-b-steampunk-cover.ts).
+      cover: mech?.ignoresCover ? 0 : schematicSaveCover(sheet, coverFor(encounter.id, sheet.id, enemy.id)),
       // Corona of Light leans only against fire and radiant spells.
       ...(damageType ? { damageType } : {}),
       ...spellSaveOptions(mech, enemy),

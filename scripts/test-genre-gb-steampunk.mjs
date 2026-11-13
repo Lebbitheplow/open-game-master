@@ -26,6 +26,12 @@ const run = async (name, body) => {
   }
 };
 const foe = (enemy) => kit.enemy(enemy.id);
+const { dice, clearDice } = await import("./lib/enforce-world.mjs");
+// The dice an enemy's swing reads: a d20 low enough to miss, then damage.
+const clearDiceFaces = (face) => {
+  clearDice();
+  dice(face, 3, 3, 3);
+};
 
 // ---- GB01: Universal Solvent, Heart of the Storm ----
 
@@ -147,6 +153,74 @@ await run("Hold the Line: a creature fighting the knight pays double for the squ
   assert.equal(await walk(7), 3, "with a longsword the square two away was held");
   world.patch(hero.id, { equipment: [{ name: "Glaive", qty: 1, equipped: true }, { name: "Chain Shirt", qty: 1, equipped: true }] });
   assert.equal(await walk(7), 4, "with a glaive the square two away was not held");
+});
+
+// ---- GB03: cover (Powder Discipline, Precision Engineering, Bulwark Advance) ----
+
+// A low wall in the square before the creature at (10, 2): half cover from the west.
+const behindWall = (near) => {
+  kit.openField([[9, 1, "|"], [9, 2, "|"], [9, 3, "|"]]);
+  kit.place(near.id, 10, 2);
+};
+
+await run("Powder Discipline: a firearm shot meets no half cover, and without the feature the shot does", async () => {
+  const row = feature("aeronaut", "Powder Discipline", 7);
+  const hero = rig.holder(row, { gear: "firearm" });
+  const { near } = await rig.fight(hero);
+  behindWall(near);
+  const shoot = async (weapon) => {
+    rig.myTurn(hero);
+    const out = await kit.swing(hero.id, near.id, [15, 3, 3, 3, 3], { weapon });
+    if (!out.ok) throw new Error(`pc_attack: ${out.error}`);
+    return out.result.vsAc;
+  };
+  const { on, off } = await rig.both(hero, row, () => shoot("Pistol"));
+  assert.deepEqual([on, off], [13, 15], `the pistol shot met AC ${on} with Powder Discipline and ${off} without it`);
+});
+
+await run("Precision Engineering: a machinist's spell attack meets no half cover, and a schematic's DEX save counts three-quarters cover as half", async () => {
+  const row = feature("machinist", "Precision Engineering", 10);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  world.patch(hero.id, { spellcasting: { ...(world.sheet(hero.id).spellcasting ?? {}), ability: "int", cantrips: ["Fire Bolt"] } });
+  behindWall(near);
+  const cast = async () => {
+    rig.myTurn(hero);
+    const out = await kit.swing(hero.id, near.id, [15, 3, 3, 3, 3], { spell: "Fire Bolt" });
+    if (!out.ok) throw new Error(`Fire Bolt: ${out.error}`);
+    return out.result.vsAc;
+  };
+  const { on, off } = await rig.both(hero, row, cast);
+  assert.deepEqual([on, off], [13, 15], `Fire Bolt met AC ${on} with Precision Engineering and ${off} without it`);
+  const { schematicSaveCover } = await load("lib/dm/genre-b-steampunk-cover.ts");
+  const sheet = world.sheet(hero.id);
+  assert.deepEqual([schematicSaveCover(sheet, 5), schematicSaveCover(sheet, 2), schematicSaveCover(sheet, 0)], [2, 0, 0], "the save's cover after the feature");
+  const bare = { ...sheet, features: sheet.features.filter((entry) => entry.name !== row.name) };
+  assert.deepEqual([schematicSaveCover(bare, 5), schematicSaveCover(bare, 2)], [5, 2], "without the feature the save's cover changed");
+});
+
+await run("Bulwark Advance: a creature's ranged attack at an ally behind the knight meets three-quarters cover, and an ally out of the line has none", async () => {
+  const row = feature("steam_knight", "Bulwark Advance", 11);
+  const hero = rig.holder(row, { gear: "armor" });
+  const { near } = await rig.fight(hero);
+  kit.openField();
+  kit.place(rig.ally.id, 4, 2);
+  kit.place(near.id, 10, 2);
+  kit.setEnemy(near.id, { stats: { attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing" }] } });
+  const shot = async () => {
+    kit.handOnEnemies();
+    kit.freshRound();
+    clearDiceFaces(2);
+    const out = await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: rig.ally.id });
+    if (!out.ok) throw new Error(`enemy_attack: ${out.error}`);
+    return out.result.vsAc;
+  };
+  const base = world.sheet(rig.ally.id).ac;
+  const { on, off } = await rig.both(hero, row, shot);
+  // The knight's body alone is half cover; the feature makes it three-quarters.
+  assert.deepEqual([on - base, off - base], [5, 2], `the shot met AC ${on} with Bulwark Advance and ${off} without it (base ${base})`);
+  kit.place(rig.ally.id, 5, 5);
+  assert.equal(await shot(), base, "an ally out of the line had cover");
 });
 
 rig.world.close();
