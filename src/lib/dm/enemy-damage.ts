@@ -39,6 +39,7 @@ import { absorbs } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { settleFullThrottle } from "@/lib/dm/genre-b-steampunk-ends";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { planDeathFx } from "@/lib/battlemap/fx-plan";
@@ -265,6 +266,8 @@ export function settleFightState(campaign: Campaign, encounterId: string): { ite
   endFightEffects(campaign.id);
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
+  // Full Throttle that ended with the fight burns its knight (genre-b-steampunk-ends.ts).
+  settleFullThrottle(campaign);
   // Whoever is still inside a creature that swallowed them comes out, prone
   // (swallow.ts swallowFightEnd).
   const swallowedOut = swallowFightEnd(campaign, encounterId);

@@ -20,6 +20,7 @@ import type { AttackRecord, DamageAsk } from "@/lib/dm/attack-record";
 import { attackStage, attackTurn, emitAttackFx, finishSwing, markAttackTurn, type SwingScene } from "@/lib/dm/attack-swing";
 import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
+import { steampunkHitMarks } from "@/lib/dm/genre-b-steampunk-hits";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -218,6 +219,8 @@ export function landSwingBlow(
     if (gripped) {
       notes.push(gripped);
     }
+    // Sky Duelist's critical hit (src/lib/dm/genre-b-steampunk-hits.ts).
+    notes.push(...steampunkHitMarks(scene, record, crit));
     const repelled = repellingBlast(scene, record);
     if (repelled) {
       notes.push(repelled);

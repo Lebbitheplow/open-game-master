@@ -61,8 +61,9 @@ export function attackDamageLine(input: {
 // they give, as the roll is made.
 // `aura`: what an ally's aura adds where this character stands, as the board
 // view sends it (HandBoardFacts.attackAura: Warlord of the Wastes' +1).
-export function attackRollLine(sheet: CharacterSheet, toHit: number, aura?: AttackAura | null): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
-  const extras = attackRollExtras(sheet);
+// `swing`: the weapon the card swings, for a feature's die on a weapon's roll.
+export function attackRollLine(sheet: CharacterSheet, toHit: number, aura?: AttackAura | null, swing?: { base?: string }): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
+  const extras = attackRollExtras(sheet, null, swing);
   const split = splitRollSuffix(extras.diceSuffix);
   const shed = attackAuraExtras(aura);
   return {

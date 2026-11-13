@@ -7,8 +7,7 @@
 
 import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
 import { bondRider } from "@/lib/dm/emboldening-bond";
-import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
-import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
+import { liftsSmallHeavyPenalty, shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { hasSunlightSensitivity } from "@/lib/srd/trait-rules";
@@ -240,7 +239,7 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage, a mote's inspiration die
   // (attack-roll-extras.ts, which the Hand's cards print from too).
-  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet));
+  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet), kind === "weapon" ? profile : undefined);
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);

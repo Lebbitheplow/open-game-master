@@ -880,11 +880,9 @@
   "clauses": [
    {
     "c": "Your critical hits with one-handed weapons knock the target prone or disarm it (your choice)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Duelist#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Sky Duelist: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Sky Duelist: a critical hit with a one-handed weapon",
+    "by": "src/lib/dm/genre-b-steampunk-hits.ts steampunkHitMarks (src/lib/dm/attack-blow.ts landSwingBlow): prone by default, disarmed when it cannot fall, the trade told to the GM"
    }
   ]
  },
@@ -1906,13 +1904,9 @@
    },
    {
     "c": "ignore being disarmed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Backup Rig#2:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_backup_rig"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Backup Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"When an effect would destroy or disable a held gadget, it survives; 1/long rest, igno"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Backup Rig: a weapon let fall is in the hand again",
+    "by": "src/lib/dm/genre-b-steampunk-spends.ts rearm (the Backup Rig row of src/lib/srd/authored-effects-genre-b-steampunk.ts)"
    }
   ]
  },
@@ -2020,16 +2014,15 @@
   "clauses": [
    {
     "c": "Add +1d4 to attack rolls made with gadget-augmented weapons (tech blades and firearms you have tuned)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Prodigy's Precision: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Prodigy's Precision: a tuned weapon's attack roll adds 1d4",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts tunedAttackDie through src/lib/dm/attack-roll-extras.ts attackRollExtras (pc_attack and the Hand's card)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Prodigy's Precision#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Prodigy's Precision: a tuned weapon's attack roll adds 1d4",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts tunedAttackDie through src/lib/dm/attack-roll-extras.ts attackRollExtras (pc_attack and the Hand's card)"
    }
   ]
  },
@@ -2099,11 +2092,9 @@
   "clauses": [
    {
     "c": "Once per turn, make one extra firearm attack as part of the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Auto-Loader Harness#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Auto-Loader Harness: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Auto-Loader Harness: after the Attack action's two attacks",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts autoLoaderSwing (src/lib/dm/pc-attack-spend.ts) and autoLoaderOpen (the Hand's gate)"
    }
   ]
  },
@@ -2153,7 +2144,7 @@
   "source": "src/lib/classes/steampunk-features.json",
   "group": "aether_channeler",
   "level": 1,
-  "sha": "298db0115f48",
+  "sha": "1b58f795fd37",
   "clauses": [
    {
     "c": "1/rest",
@@ -2168,14 +2159,22 @@
     }
    },
    {
-    "c": "a creature that touches or melee-hits you takes 1d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_galvanic_discharge#GUIDANCE_ONLY"
+    "c": "charge your skin for 1 minute",
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Galvanic Discharge: the charge",
+    "by": "the Galvanic Discharge row of src/lib/srd/authored-effects-genre-b-steampunk.ts (a buff that lays the charge, a retaliate that spends it: src/lib/dm/authored-hooks.ts, src/lib/dm/genre-b-steampunk-ends.ts spendRetaliateMark)"
+   },
+   {
+    "c": "the next creature that touches or melee-hits you takes 1d8 lightning",
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Galvanic Discharge: the charge",
+    "by": "the Galvanic Discharge row of src/lib/srd/authored-effects-genre-b-steampunk.ts (a buff that lays the charge, a retaliate that spends it: src/lib/dm/authored-hooks.ts, src/lib/dm/genre-b-steampunk-ends.ts spendRetaliateMark); a touch that is no attack is the GM's to shock by apply_damage"
    },
    {
     "c": "1d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_galvanic_discharge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Galvanic Discharge: the charge",
+    "by": "the Galvanic Discharge row of src/lib/srd/authored-effects-genre-b-steampunk.ts (a buff that lays the charge, a retaliate that spends it: src/lib/dm/authored-hooks.ts, src/lib/dm/genre-b-steampunk-ends.ts spendRetaliateMark)"
    }
   ]
  },
@@ -2282,7 +2281,7 @@
   "source": "src/lib/classes/steampunk-features.json",
   "group": "aether_channeler",
   "level": 9,
-  "sha": "ff86c8915d6b",
+  "sha": "c744073a41e4",
   "clauses": [
    {
     "c": "1/long rest",
@@ -2297,9 +2296,22 @@
     }
    },
    {
-    "c": "absorb a lightning or aether effect targeting you: negate it and regain a 1st-level slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_capacitor_soul#GUIDANCE_ONLY"
+    "c": "reaction when a lightning or aether effect hits you",
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Capacitor Soul: a lightning hit",
+    "by": "the Capacitor Soul row of src/lib/srd/authored-effects-genre-b-steampunk.ts (reaction reduce \"all\" on lightning, regainSlot: src/lib/dm/authored-reactions.ts, src/lib/dm/genre-b-steampunk-reactions.ts regainSlot); an aether effect is lightning on the SRD engine"
+   },
+   {
+    "c": "absorb it, taking no damage",
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Capacitor Soul: a lightning hit",
+    "by": "the Capacitor Soul row of src/lib/srd/authored-effects-genre-b-steampunk.ts (reaction reduce \"all\" on lightning, regainSlot: src/lib/dm/authored-reactions.ts, src/lib/dm/genre-b-steampunk-reactions.ts regainSlot); an aether effect is lightning on the SRD engine"
+   },
+   {
+    "c": "regain a 1st-level slot",
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Capacitor Soul: a lightning hit",
+    "by": "the Capacitor Soul row of src/lib/srd/authored-effects-genre-b-steampunk.ts (reaction reduce \"all\" on lightning, regainSlot: src/lib/dm/authored-reactions.ts, src/lib/dm/genre-b-steampunk-reactions.ts regainSlot); an aether effect is lightning on the SRD engine"
    }
   ]
  },
@@ -2420,11 +2432,9 @@
    },
    {
     "c": "Galvanic Discharge is always active",
-    "is": "gap",
-    "probe": "not run: Galvanic Discharge's 1d8 strike back is not built (its counter stays the GM's, RULINGS in scripts/lib/sweep-spends-known.mjs).",
-    "observed": "nothing in the engine answers to Lightning Rod: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: Galvanic Discharge's 1d8 strike back is not built (its counter stays the GM's, RULINGS in scripts/lib/sweep-spends-known.mjs)."
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Lightning Rod: every melee hit",
+    "by": "the Lightning Rod row of src/lib/srd/authored-effects-genre-b.ts (a retaliate with no charge to spend)"
    }
   ]
  },
@@ -2923,40 +2933,27 @@
    },
    {
     "c": "when reduced below half HP, vent: attackers within 10 ft take 3d8 fire (DEX save halves)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_emergency_release#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Emergency Release: refused at full hit points",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (requires below_half, read by src/lib/srd/counter-rules.ts counterGate for use_resource and the card) and the counter's fx in src/lib/classes/resources.json; \"when reduced below half\" is the state of having fewer than half one's hit points, on the knight's own turn"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_emergency_release#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Emergency Release: refused at full hit points",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (requires below_half, read by src/lib/srd/counter-rules.ts counterGate for use_resource and the card) and the counter's fx in src/lib/classes/resources.json; \"when reduced below half\" is the state of having fewer than half one's hit points, on the knight's own turn"
    },
    {
     "c": "(DEX save halves)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#3:fx",
-    "k": "fx",
-    "p": {
-     "id": "steampunk_emergency_release",
-     "save": "dex",
-     "made": {
-      "dice": "3d8",
-      "takes": "half"
-     }
-    }
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Emergency Release: refused at full hit points",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (requires below_half, read by src/lib/srd/counter-rules.ts counterGate for use_resource and the card) and the counter's fx in src/lib/classes/resources.json; \"when reduced below half\" is the state of having fewer than half one's hit points, on the knight's own turn"
    },
    {
     "c": "3d8 fire",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#4:fx",
-    "k": "fx",
-    "p": {
-     "id": "steampunk_emergency_release",
-     "dice": "3d8",
-     "type": "fire"
-    },
-    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Emergency Release: refused at full hit points",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (requires below_half, read by src/lib/srd/counter-rules.ts counterGate for use_resource and the card) and the counter's fx in src/lib/classes/resources.json; \"when reduced below half\" is the state of having fewer than half one's hit points, on the knight's own turn"
    }
   ]
  },
@@ -2989,11 +2986,9 @@
   "clauses": [
    {
     "c": "Piston Strike applies to every melee hit, not once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Barrage#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Piston Barrage: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs Piston Barrage: every melee hit",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (oncePerTurn lifted for a holder of Piston Barrage)"
    }
   ]
  },
@@ -3046,13 +3041,15 @@
    },
    {
     "c": "take 3d10 fire when it ends",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Full Throttle: when the minute ends",
+    "by": "src/lib/dm/genre-b-steampunk-ends.ts settleFullThrottle (src/lib/dm/condition-tick.ts: each round's wrap and the clock)"
    },
    {
     "c": "3d10 fire",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-triggers.mjs Full Throttle: when the minute ends",
+    "by": "src/lib/dm/genre-b-steampunk-ends.ts settleFullThrottle (src/lib/dm/condition-tick.ts: each round's wrap and the clock)"
    }
   ]
  },
@@ -3070,8 +3067,9 @@
    },
    {
     "c": "Head of Steam is free once per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::The Engine Eternal#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-steampunk-attacks.mjs The Engine Eternal: the first Head of Steam of a turn",
+    "by": "src/lib/dm/genre-b-steampunk-turn.ts freeSpendThisTurn (src/lib/dm/authored-spends.ts) and src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey (the Hand's card)"
    }
   ]
  },
@@ -3121,13 +3119,13 @@
    },
    {
     "c": "swap places with an adjacent ally targeted by an attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Intercept Protocol#1:take_hit",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Intercept Protocol#1:take_hit",
+    "by": "src/lib/dm/genre-b-steampunk-reactions.ts swapPlaces (take_for_ally swap, src/lib/dm/authored-reactions.ts)",
     "k": "take_hit",
     "p": {
      "swap": true
-    },
-    "observed": "the two did not swap places"
+    }
    },
    {
     "c": "adjacent",

@@ -3293,7 +3293,8 @@
       "ability": null,
       "recharge": "long",
       "upgrades": [],
-      "guidance": "1/long rest, absorb a lightning or aether effect targeting you: negate it and regain a 1st-level slot."
+      "guidance": "1/long rest, reaction when a lightning or aether effect hits you: absorb it, taking no damage, and regain a 1st-level slot.",
+      "action": "reaction"
     },
     {
       "id": "steampunk_catalyst_stone",
@@ -3489,7 +3490,7 @@
       "ability": null,
       "recharge": "short",
       "upgrades": [],
-      "guidance": "1/rest, a creature that touches or melee-hits you takes 1d8 lightning."
+      "guidance": "1/rest, charge your skin for 1 minute: the next creature that touches or melee-hits you takes 1d8 lightning."
     },
     {
       "id": "steampunk_gear_swarm",

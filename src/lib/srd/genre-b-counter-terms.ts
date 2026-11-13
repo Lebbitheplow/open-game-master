@@ -15,6 +15,8 @@ type Terms = {
   upgrades?: Array<{ match: string; uses: number }>;
   rechargeFor?: (level: number) => Recharge;
   passive?: boolean;
+  // The holder's state a use asks for (src/lib/srd/counter-rules.ts counterGate).
+  requires?: "below_half";
 };
 
 const GENRE_B_COUNTER_TERMS: Record<string, Terms> = {
@@ -41,6 +43,9 @@ const GENRE_B_COUNTER_TERMS: Record<string, Terms> = {
   post_apocalyptic_rapid_adaptation: { passive: true, upgrades: [{ match: "Second Adaptation", uses: 2 }] },
   // "regain expended slot levels ... when you drop below half HP": the damage path, there too.
   post_apocalyptic_hardened_mutation: { passive: true },
+  // "1/rest, when reduced below half HP, vent": used while the knight has
+  // fewer than half their hit points, refused before then with nothing spent.
+  steampunk_emergency_release: { requires: "below_half" },
   steampunk_field_repair: { upgrades: [{ match: "Field Repair (2d8)", uses: 4 }] },
   steampunk_overpressure_valve: { upgrades: [{ match: "Perpetual Motion", uses: 2 }] },
   steampunk_catalyst_stone: { upgrades: [{ match: "Improved Catalyst", uses: 3 }] },

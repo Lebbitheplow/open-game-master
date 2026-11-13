@@ -17,6 +17,7 @@ import { layGenreZone } from "@/lib/dm/genre-b-zones";
 import { mysterySpend } from "@/lib/dm/genre-b-mystery-spends";
 import { packSpend } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { wastesSpend } from "@/lib/dm/genre-b-post-apocalyptic-spends";
+import { steampunkSpend } from "@/lib/dm/genre-b-steampunk-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -420,9 +421,13 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
         const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, otherOutcomes(does, condition));
         // One form at a time: a constellation taken again replaces the one it
         // finds (it was added beside it, two forms at once).
-        const kept = cleared.conditions.filter((entry) => textKey(entry) !== textKey(condition) && !(does.replaces && hasCondition({ conditions: [entry] }, does.replaces)));
+        // `debt`: the untimed mark the condition leaves behind when it ends
+        // (Full Throttle's boiler strain, genre-b-steampunk-ends.ts).
+        const kept = cleared.conditions.filter(
+          (entry) => textKey(entry) !== textKey(condition) && !(does.replaces && hasCondition({ conditions: [entry] }, does.replaces)) && !(does.debt && isConditionNamed(entry, does.debt)),
+        );
         patch = {
-          conditions: [...kept, condition],
+          conditions: [...kept, condition, ...(does.debt ? [does.debt] : [])],
           conditionMeta: {
             ...cleared.meta,
             [condition]: {
@@ -935,6 +940,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
     }
     case "draught":
       return genreDraught(ctx, does);
+    case "steampunk":
+      return steampunkSpend(ctx, does);
     case "hit_die":
       return genreHitDie(ctx);
     case "pack":

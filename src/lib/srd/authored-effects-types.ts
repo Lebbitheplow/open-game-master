@@ -5,6 +5,7 @@
 import type { CheckAbout, SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
+import type { SteampunkSpend } from "@/lib/srd/genre-b-steampunk-types";
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -301,7 +302,8 @@ export type AuthoredEffect = Base &
       }
     // A creature that hits the holder takes damage back.
     // `attacks`: only a hit by an attack whose name holds one of these words.
-    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[] }
+    // `spends`: the holder's mark the blow uses up (Galvanic Discharge's charge).
+    | { kind: "retaliate"; formula: Formula | "half_dealt"; type: string; melee?: boolean; attacks?: string[]; spends?: string }
     // Enemies starting their turn near the holder take damage (Aura of
     // Conquest: only frightened ones).
     // `holdsSpeed`: a creature frightened of the holder has speed 0 while in
@@ -603,6 +605,10 @@ export type SpendDoes =
       // A genre area laid with the condition (src/lib/dm/genre-b-zones.ts):
       // Dawnlight's light.
       genreZone?: GenreZoneSpec;
+      // A second, untimed mark laid on the holder with the condition and left
+      // behind when it ends, for what the ending costs (Full Throttle's boiler
+      // strain, src/lib/dm/genre-b-steampunk-ends.ts).
+      debt?: string;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -980,6 +986,9 @@ export type SpendDoes =
   | { kind: "mystery"; effect: string; target?: "enemy" | "ally" }
   // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
   | ({ kind: "zone" } & GenreZoneSpec)
+  // The steampunk classes' own spends (src/lib/srd/genre-b-steampunk-types.ts,
+  // resolved by src/lib/dm/genre-b-steampunk-spends.ts).
+  | ({ kind: "steampunk" } & SteampunkSpend)
   // A draught the drinker heals by, curing poison once `upgrade.feature` is
   // held (src/lib/dm/genre-b-cure.ts genreDraught: Emergency Draught).
   | { kind: "draught"; formula: Formula; upgrade?: { feature: string; ends: string[]; condition: string; rounds: number } }
@@ -1095,7 +1104,9 @@ export type ReactionDoes =
   // `nearZone`: the creature it covers, the holder too, must stand within
   // `feet` of the holder's zone of that spell (Guardian Coil's tentacle:
   // src/lib/dm/zone-reach.ts), in place of a reach from the holder.
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string } }
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number }
+  // `whole`: the whole blow, whatever `amount` says (Capacitor Soul), and
+  // `regainSlot`: the holder then regains one expended spell slot of that level.
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
@@ -1140,7 +1151,8 @@ export type ReactionDoes =
   // the ally first (src/lib/dm/protective-bond.ts).
   // `ownSummon`: only a creature the holder made ("when your beast within 30
   // ft takes damage": a packmaster's bonded beast, Blood Bond).
-  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; bond?: string; teleport?: true; ownSummon?: boolean }
+  // `swap`: the two trade places on the board (Intercept Protocol).
+  | { kind: "take_for_ally"; rangeFt: number | Array<[number, number]>; share?: "halved" | "split"; resistFrom?: number; bond?: string; teleport?: true; ownSummon?: boolean; swap?: boolean }
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";
