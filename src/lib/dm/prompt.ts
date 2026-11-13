@@ -1584,7 +1584,7 @@ export const requestRollTool = {
         expression: {
           type: "string",
           description:
-            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
+            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's roll (enemy_attack) or a party character's attack (pc_attack).",
         },
         damageType: {
           type: "string",
@@ -1611,7 +1611,7 @@ export const requestRollTool = {
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total and reports it; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools and is refused here.",
+            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools, never here.",
         },
         reason: {
           type: "string",

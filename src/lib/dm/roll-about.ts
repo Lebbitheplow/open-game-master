@@ -70,7 +70,7 @@ export const CHECK_KEY_PROPERTIES = {
     type: "string",
     enum: [...CHECK_ABOUT, NONE],
     description:
-      "The circumstance a check is about, or 'none': the server applies the features keyed to it.",
+      "What the check is about, or 'none': the server applies the features keyed to it.",
   },
   creature: {
     type: "string",
@@ -80,12 +80,12 @@ export const CHECK_KEY_PROPERTIES = {
   terrain: {
     type: "string",
     enum: [...NATURAL_TERRAINS, NONE],
-    description: "A check made in one of these terrains, for Natural Explorer, or 'none'.",
+    description: "The check's terrain, for Natural Explorer, or 'none'.",
   },
   by: {
     type: "string",
     enum: [...CHECK_SENSES, NONE],
-    description: "A check that needs sight or hearing, or 'none': a blinded or deafened character fails it.",
+    description: "A check needing sight or hearing, or 'none': blinded or deafened, it fails.",
   },
 };
 
