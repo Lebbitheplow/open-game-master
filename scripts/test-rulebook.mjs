@@ -19,9 +19,10 @@ process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
 process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-routes.mjs", import.meta.url);
 
-const { rulebookContents, rulebookPage, rulebookPages, rulebookSearch, QUICK_LINKS } = await import(
+const { rulebookContents, rulebookPage, rulebookPages, rulebookSearch, localeFromAcceptLanguage, QUICK_LINKS } = await import(
   "../src/lib/rulebook/book.ts"
 );
+const { crosswalkFor } = await import("../src/lib/rulebook/crosswalk.ts");
 const { anchorSlug, blockText, inlineText, parseBook, parseInline, stripInline } = await import(
   "../src/lib/rulebook/markdown.ts"
 );
@@ -296,6 +297,122 @@ try {
     assert.equal(snippetFor("Short text.", ["x"]), "Short text.");
   });
 
+  // ---- the French book ----
+  // The same binding in the official French print (srd-5.1-fr.json, built by
+  // scripts/import-srd-rulebook-fr.mjs): identical page ids in the identical
+  // order, the print's titles and text, and the three pages no wave covers
+  // falling back to their English page. The English assertions above stay
+  // bound to the default locale.
+  await test("the French book binds the same pages under the same ids", () => {
+    const enPages = rulebookPages();
+    const frPages = rulebookPages("fr");
+    assert.equal(frPages.length, enPages.length);
+    assert.deepEqual(frPages.map((page) => page.id), enPages.map((page) => page.id));
+    const frContents = rulebookContents("fr");
+    assert.equal(frContents.pageCount, rulebookContents().pageCount);
+    assert.deepEqual(
+      frContents.chapters.map((chapter) => [chapter.id, chapter.numeral, chapter.pages]),
+      rulebookContents().chapters.map((chapter) => [chapter.id, chapter.numeral, chapter.pages]),
+    );
+    // The folios a bookmark keeps hold in both books.
+    assert.deepEqual(
+      frContents.chapters.flatMap((chapter) => chapter.entries.map((entry) => [entry.id, entry.folio])),
+      rulebookContents().chapters.flatMap((chapter) => chapter.entries.map((entry) => [entry.id, entry.folio])),
+    );
+  });
+
+  await test("the French book reads the print's titles and words", () => {
+    const frContents = rulebookContents("fr");
+    assert.deepEqual(
+      frContents.chapters.map((chapter) => chapter.title),
+      [
+        "Races",
+        "Classes",
+        "Au-delà du niveau 1",
+        "Personnalité et historique",
+        "Équipement",
+        "Dons",
+        "Utiliser les valeurs de caractéristique",
+        "Aventure",
+        "Combat",
+        "Sorts",
+        "Description des sorts",
+        "Conduite du jeu",
+        "Objets magiques",
+        "Monstres",
+        "Créatures diverses",
+        "Personnages non-joueurs",
+        "Annexes",
+      ],
+    );
+    assert.deepEqual(frContents.parts.map((part) => part.title), ["Joueurs", "Le maître du jeu", "Monstres"]);
+    assert.equal(frContents.source.title, "Document de Référence du Système 5.1");
+    const goblin = rulebookPage("goblin", "fr").page;
+    assert.equal(goblin.title, "Gobelin");
+    assert.equal(goblin.meta, "Humanoïde (gobelin) de taille P, neutre mauvais");
+    assert.match(goblin.md, /Classe d’armure/);
+    const fireball = rulebookPage("fireball", "fr").page;
+    assert.equal(fireball.title, "Boule de feu");
+    assert.equal(fireball.meta, "Évocation du 3e niveau");
+    assert.equal(fireball.group, "Niveau 3", "the spells chapter groups by the French level names");
+    assert.equal(rulebookPage("mage-hand", "fr").page.group, "Sorts mineurs");
+    // The chapter blurbs are the English book's (the FR print prints none);
+    // the parts carry the French the reader shows.
+    assert.equal(frContents.chapters[0].blurb, rulebookContents().chapters[0].blurb);
+    assert.match(frContents.parts[0].blurb, /Manuel des joueurs/);
+    assert.match(frContents.parts[0].blurb, /créer un héros/);
+  });
+
+  await test("the crosswalk speaks the reader's language but reads the English book's names", () => {
+    const walk = crosswalkFor(rulebookPage("fireball", "fr").page, "fr");
+    assert.equal(walk.support, "engine", "Boule de feu stays an engine spell");
+    assert.match(walk.where, /Les outils d'incantation le lancent/);
+    const magicItems = crosswalkFor(rulebookPage("magic-items", "fr").page, "fr");
+    assert.match(magicItems.where, /Atelier : Objets \(harmonisation, effets, ajouts, charges, sorts\)/);
+    const enFireball = crosswalkFor(rulebookPage("fireball").page, "en");
+    assert.equal(enFireball.support, "engine");
+    assert.match(enFireball.where, /The cast tools roll it/);
+  });
+
+  await test("the magic-items chapter's rules pages read French, binding unchanged", () => {
+    const enArtifacts = rulebookPage("artifacts").page;
+    const frArtifacts = rulebookPage("artifacts", "fr").page;
+    assert.equal(frArtifacts.title, "Les artefacts");
+    assert.match(frArtifacts.md, /L’orbe des dragons/);
+    assert.match(rulebookPage("magic-items", "fr").page.md, /Harmonisation/);
+    assert.equal(rulebookPage("sentient-magic-items", "fr").page.title, "Les objets magiques intelligents");
+    // The binding never moves: same neighbours as the English book.
+    assert.equal(rulebookPage("artifacts", "fr").next?.id, "adamantine-armor");
+    assert.equal(rulebookPage("artifacts", "fr").prev?.id, "sentient-magic-items");
+    const frFireball = rulebookPage("fireball", "fr");
+    assert.equal(frFireball.prev.id, rulebookPage("fireball").prev.id);
+    assert.equal(frFireball.next.id, rulebookPage("fireball").next.id);
+  });
+
+  const topFr = (query) => rulebookSearch(query, undefined, "fr").hits[0];
+  await test("the French book's search stems French and finds the French words", () => {
+    assert.equal(topFr("boule de feu").page, "fireball");
+    assert.deepEqual([topFr("lutte").page, topFr("lutte").at], ["combat", "lutte"]);
+    assert.equal(topFr("dragon noir adulte").page, "adult-black-dragon-chromatic");
+    assert.equal(topFr("sac contenant").page, "adventuring-gear");
+    // The English query reads the English book by default, and vice versa.
+    assert.equal(rulebookSearch("boule de feu").hits.length, 0, "no French words in the English book's index");
+    assert.equal(topFr("grapple"), undefined, "no English words in the French book's index");
+    // A French hit carries the French words the reader marks.
+    const [hit] = rulebookSearch("lutte", undefined, "fr").hits;
+    assert.ok(hit.words.includes("lutte"), hit.words.join(","));
+  });
+
+  await test("the request's Accept-Language picks the book", () => {
+    assert.equal(localeFromAcceptLanguage(null), "en");
+    assert.equal(localeFromAcceptLanguage("fr"), "fr");
+    assert.equal(localeFromAcceptLanguage("fr-CA"), "fr");
+    assert.equal(localeFromAcceptLanguage("en"), "en");
+    assert.equal(localeFromAcceptLanguage("en-GB,en;q=0.9,fr;q=0.8"), "en", "the first language the app speaks wins");
+    assert.equal(localeFromAcceptLanguage("de-DE,fr;q=0.9"), "fr", "an app language after an unknown one still wins");
+    assert.equal(localeFromAcceptLanguage("de"), "en");
+  });
+
   // ---- the routes ----
   const { createUser } = await import("../src/lib/db/users.ts");
   const { mintSession } = await import("../src/lib/auth.ts");
@@ -326,6 +443,18 @@ try {
     assert.equal(found.hits[0].at, "cover");
     const long = await searchRoute.GET(new Request(`http://x/api/rulebook/search?q=${"a".repeat(5000)}`));
     assert.equal(long.status, 200, "an overlong query is cut, not refused");
+
+    // The reader's Accept-Language picks the book the routes answer with.
+    const inFrench = { headers: { "Accept-Language": "fr" } };
+    const frContents = await (await contentsRoute.GET(new Request("http://x/api/rulebook", inFrench))).json();
+    assert.equal(frContents.chapters.find((chapter) => chapter.id === "spells").title, "Description des sorts");
+    const frPage = await (await pageRoute.GET(new Request("http://x/api/rulebook/pages/fireball", inFrench), params("fireball"))).json();
+    assert.equal(frPage.page.title, "Boule de feu");
+    const frFound = await (await searchRoute.GET(new Request(`http://x/api/rulebook/search?q=${encodeURIComponent("boule de feu")}`, inFrench))).json();
+    assert.equal(frFound.hits[0].page, "fireball");
+    // A request without the header keeps reading the English book.
+    const enContents = await (await contentsRoute.GET()).json();
+    assert.equal(enContents.chapters.find((chapter) => chapter.id === "spells").title, "Spells");
   });
 
   console.log(`\n${passed} rulebook checks passed`);
