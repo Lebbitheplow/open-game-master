@@ -103,6 +103,10 @@ const conditionInstanceSchema = z.object({
     // The clock instant (in-world minutes) a commanding charm's running hour
     // began at (Command Undead's hourly save, src/lib/dm/ar-ws-command-hours.ts).
     hourFrom: z.number().int().min(0).optional(),
+    // Mummy rot: when the curse took hold, and the maximum it has eaten
+    // (src/lib/dm/mummy-rot-logic.ts).
+    rotFrom: z.number().int().min(0).optional(),
+    rotDrain: z.number().int().min(0).max(5000).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),

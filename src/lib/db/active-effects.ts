@@ -333,6 +333,18 @@ export function endFightEffects(campaignId: string): ActiveEffect[] {
   return persistTick(campaignId, endEncounterEffects(listEffects(campaignId)));
 }
 
+// The fight is over, and so is whatever was laid on its foes. A foe of an
+// ended fight is no longer in any GAME STATE (one who comes back to a later
+// fight is a new row, src/lib/dm/foe-return.ts), so a curse cast on a goblin
+// with no end of its own ("manual") stayed on the effects list for good: told
+// to the storyteller every turn as "someone" under a -2 AC, and shown on the
+// table's panel.
+export function endFoeEffects(campaignId: string, enemyIds: readonly string[]): ActiveEffect[] {
+  const foes = new Set(enemyIds);
+  const laid = listEffects(campaignId).filter((effect) => effect.targetKind === "enemy" && foes.has(effect.targetId));
+  return laid.length ? persistTick(campaignId, { kept: [], expired: laid }) : [];
+}
+
 // In-world minutes passing outside a fight: travel, a rest, pass_time. Inside
 // one the round wrap owns every lifetime (tickEffectRound), as it owns timed
 // conditions, so the same time is never counted twice.

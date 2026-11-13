@@ -20,6 +20,7 @@ import {
   longRestPatch,
   settleAttuning,
   shortRestResourcePatch,
+  slotRecoveryPlan,
 } from "@/lib/dm/rest-logic";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
@@ -631,17 +632,14 @@ function applySlotRecovery(
         continue;
       }
       // Multiclass: Arcane/Natural Recovery reads the wizard/druid levels.
-      let budget = def.effect.levels(resourceLevel(def, sheet));
+      // The highest slots the budget allows (rest-logic.ts slotRecoveryPlan).
+      const plan = slotRecoveryPlan(sheet.spellcasting.slots, def.effect.levels(resourceLevel(def, sheet)));
       const slots = { ...sheet.spellcasting.slots };
       const regained: string[] = [];
-      for (const level of [1, 2, 3, 4, 5]) {
+      for (const level of plan) {
         const slot = slots[String(level)];
-        while (slot && slot.used > 0 && budget >= level) {
-          slots[String(level)] = { max: slot.max, used: slot.used - 1 };
-          slot.used -= 1;
-          budget -= level;
-          regained.push(`level ${level}`);
-        }
+        slots[String(level)] = { max: slot.max, used: slot.used - 1 };
+        regained.push(`level ${level}`);
       }
       if (!regained.length) {
         continue;

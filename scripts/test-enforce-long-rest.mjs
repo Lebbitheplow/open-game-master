@@ -415,6 +415,20 @@ await test("a character who wakes at exhaustion level 4 wakes at the halved maxi
   assert.equal(table.sheet(mending.id).currentHp, 30);
 });
 
+await test("a hit point maximum drained until a long rest comes back, and the hit points fill all of it", async () => {
+  // SRD 5.1 Wight, Life Drain: "The reduction lasts until the target finishes
+  // a long rest", and a long rest regains all lost hit points. The hero lay
+  // down at 20 of a drained 30 and once woke at 30 of 40.
+  const table = await openTable();
+  const drained = table.addHero({ class: "fighter", level: 5, maxHp: 40 });
+  const name = "max hp reduced (-10)";
+  table.patch(drained.id, { currentHp: 20, conditions: [name], conditionMeta: { [name]: { source: "wight", untilLongRest: true } } });
+  assert.equal(table.sheet(drained.id).maxHp, 30);
+  assert.equal((await longRest(table)).ok, true);
+  const woke = table.sheet(drained.id);
+  assert.deepEqual([woke.currentHp, woke.maxHp, woke.conditions], [40, 40, []]);
+});
+
 await test("under the heroic variant the hour-long rest still comes once a day", async () => {
   const table = await openTable({ gameSettings: { variantRules: { restVariant: "heroic" } } });
   const fighter = table.addHero({ class: "fighter", level: 5, maxHp: 44 });
