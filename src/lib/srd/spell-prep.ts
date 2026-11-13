@@ -1,4 +1,4 @@
-import { findCustomClass, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
+import { cantripRulesClassFor, findCustomClass, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
 import { classLabelOf, spellOnListKey, type ListedSpell } from "@/lib/classes/class-spell-list";
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -448,7 +448,7 @@ export function cantripCapOf(
   if (isThirdCaster(view.classId, view.subclass, view.progression)) {
     return view.level >= 3 ? thirdCasterCantrips(view.classId, view.level, view.progression) : null;
   }
-  return suggestedCantripCount(spellRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
+  return suggestedCantripCount(cantripRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
 }
 
 // A warlock's Mystic Arcanum reaches past pact slots: one spell of 6th level
