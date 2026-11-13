@@ -2489,7 +2489,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "272a322e11c8",
+  "sha": "820b3679bf93",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2504,7 +2504,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"int\":1}",
+    "c": "\"asi\":{\"dex\":2,\"str\":-2}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"

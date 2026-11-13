@@ -1171,7 +1171,7 @@
       "size": "Small",
       "asi": {
         "dex": 2,
-        "int": 1
+        "str": -2
       },
       "traits": [
         "Darkvision 60 ft",

@@ -141,7 +141,35 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
   }
 });
 
-await test("every bundled race is well formed, and none lowers a score", () => {
+// The lineages added beyond the SRD, as the books they come from print
+// them (restated in this project's own words in races.json): what each row
+// must carry. A field left out here is checked elsewhere.
+const BOOKS = {
+  // Volo's Guide to Monsters: a kobold's Strength drops by 2.
+  kobold: { asi: { dex: 2, str: -2 } },
+};
+
+await test("every added lineage carries what its book prints", () => {
+  const wrong = [];
+  for (const [id, book] of Object.entries(BOOKS)) {
+    const race = srd.SRD_RACES.find((entry) => entry.id === id);
+    for (const [field, value] of Object.entries(book)) {
+      if (field === "traits") {
+        for (const line of value) if (!race.traits.includes(line)) wrong.push(`${id} lacks "${line}"`);
+      } else if (field === "notTraits") {
+        for (const line of value) if (race.traits.some((trait) => trait.toLowerCase().startsWith(line.toLowerCase()))) wrong.push(`${id} carries "${line}"`);
+      } else if (JSON.stringify(race[field] ?? null) !== JSON.stringify(value)) {
+        wrong.push(`${id} ${field}: ${JSON.stringify(race[field] ?? null)}, the book ${JSON.stringify(value)}`);
+      }
+    }
+  }
+  assert.deepEqual(wrong, []);
+  // A kobold's Strength is lowered on the sheet the builder makes.
+  const kobold = buildRace("kobold");
+  assert.equal(kobold.blocker, null, kobold.blocker?.message);
+});
+
+await test("every bundled race is well formed, and none lowers a score but where its book does", () => {
   assert.equal(srd.SRD_RACES.length, 46);
   assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 46);
   for (const race of srd.SRD_RACES) {
@@ -152,7 +180,8 @@ await test("every bundled race is well formed, and none lowers a score", () => {
     assert.ok(race.traits.length > 0, `${race.id} has no traits`);
     for (const [ability, bonus] of Object.entries(race.asi)) {
       assert.ok(["str", "dex", "con", "int", "wis", "cha"].includes(ability));
-      assert.ok(bonus === 1 || bonus === 2, `${race.id} ${ability} ${bonus}`);
+      // A lowered score only where the book prints one (BOOKS below).
+      assert.ok(bonus === 1 || bonus === 2 || BOOKS[race.id]?.asi?.[ability] === bonus, `${race.id} ${ability} ${bonus}`);
     }
     for (const skill of race.skills ?? []) {
       assert.ok(srd.findSkill(skill), `${race.id} grants ${skill}`);
