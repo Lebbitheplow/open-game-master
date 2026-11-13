@@ -45,12 +45,29 @@ export const MUSICAL_INSTRUMENTS = [
 
 export const GAMING_SETS = ["dice set", "dragonchess set", "playing card set", "three-dragon ante set"];
 
-const OTHER_TOOLS = [
+// The SRD's other tools and kits.
+export const OTHER_TOOLS = [
   "thieves' tools", "disguise kit", "forgery kit", "herbalism kit", "navigator's tools", "poisoner's kit",
-  "vehicles (land)", "vehicles (water)", "tinker's tools",
+  "vehicles (land)", "vehicles (water)",
 ];
-// Every tool the SRD's equipment chapter names.
+// Every tool the SRD's equipment chapter names: what "two tools of your
+// choice" picks from.
 export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS])];
+
+// Names compared without their apostrophes and plural or possessive s, so
+// "Cartographers' tools" and "Thieves' tools" find the SRD's tools.
+const looseKey = (name: string) => textKey(name.replace(/['‘’`]/g, "")).replace(/s\b/g, "");
+// A pack's other word for a tool the SRD names (Tome of Heroes' Desert Runner).
+const TOOL_ALIASES: Record<string, string> = { [looseKey("herbalist kit")]: "herbalism kit", [looseKey("herbalist's kit")]: "herbalism kit" };
+const BY_LOOSE_KEY = new Map(KNOWN_TOOLS.map((tool) => [looseKey(tool), tool]));
+
+// The SRD's name for a tool a row spells its own way, or the entry as it
+// came when it names no SRD tool (a setting's "electronics kit"). A sheet
+// proficient in "Herbalist kit" was never proficient with a herbalism kit.
+export function canonicalToolName(entry: string): string {
+  const key = looseKey(entry);
+  return BY_LOOSE_KEY.get(key) ?? TOOL_ALIASES[key] ?? entry;
+}
 
 // `optional`: a choice the player is owed but a stored sheet may lack (the
 // tool in place of one given twice, below): a character made before it was
@@ -110,8 +127,8 @@ export function toolChoiceOf(entry: string): ToolChoice | null {
     }
   }
   // Any tool at all: "two additional tools your choice" (Black Flag's
-  // Mechanist), "two tools of your choice".
-  const any = /^(one|two|three|a|any) (?:additional |more |other )?tools? (?:of )?(?:your )?choice$/.exec(text);
+  // Mechanist), "two tools of your choice" (the open5e Con Artist).
+  const any = /^(one|two|three|a|any) (?:additional |more |other )?tools? (?:of )?(?:your )?choice\.?$/.exec(text);
   if (any) {
     return { count: COUNTS[any[1]], from: [...KNOWN_TOOLS], label: "tool" };
   }

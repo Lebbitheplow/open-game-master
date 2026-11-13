@@ -598,7 +598,9 @@ export async function PATCH(
   // table.
   // The hopes for the story are the player's to change at any time too:
   // what they would love to see happen moves as the story does.
-  const cosmeticKeys = new Set(["portrait", "notes", "backstory", "hopes"]);
+  // So is the personality (trait, ideal, bond, flaw): who the character is
+  // grows in play, and none of it moves a number.
+  const cosmeticKeys = new Set(["portrait", "notes", "backstory", "hopes", "persona"]);
   const patchedKeys = Object.entries(parsed.data)
     .filter(([, value]) => value !== undefined)
     .map(([key]) => key);
@@ -619,7 +621,7 @@ export async function PATCH(
     return Response.json(
       {
         error:
-          "Only portrait, notes, backstory, and hopes for the story can be changed here outside of a level-up. Ask the party lead to adjust other stats.",
+          "Only portrait, notes, backstory, personality, and hopes for the story can be changed here outside of a level-up. Ask the party lead to adjust other stats.",
       },
       { status: 403 },
     );
@@ -681,6 +683,7 @@ export async function PATCH(
     ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
     ...(parsed.data.backstory !== undefined ? { backstory: parsed.data.backstory } : {}),
     ...(parsed.data.hopes !== undefined ? { hopes: parsed.data.hopes } : {}),
+    ...(parsed.data.persona !== undefined ? { persona: parsed.data.persona } : {}),
   };
   const updated = patchSheet(sheet.id, cosmetic);
   // Portraits are cosmetic, so unlike stats they mirror to the library

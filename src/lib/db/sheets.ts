@@ -29,6 +29,7 @@ import { featsAsRun } from "@/lib/srd/feat-effects";
 import { serverSpeciesName, serverSpeciesRules } from "@/lib/characters/species-rules";
 import {
   keyedFeatChoices,
+  personaSchema,
   type CharacterSheet,
   type CreateSheetInput,
   type EquipmentItem,
@@ -96,6 +97,7 @@ type SheetRow = {
   notes: string;
   backstory: string | null;
   hopes?: string | null;
+  persona_json?: string | null;
   is_companion: number | null;
   companion_kind: string | null;
   commanded_by?: string | null;
@@ -198,6 +200,7 @@ function mapSheet(row: SheetRow): CharacterSheet {
     portrait: parseJson<CharacterSheet["portrait"]>(row.portrait_json, null),
     notes: row.notes,
     backstory: row.backstory ?? "",
+    ...personaOf(row.persona_json),
     hopes: row.hopes ?? "",
     isCompanion: row.is_companion === 1,
     companionKind:
@@ -248,7 +251,7 @@ const SHEET_COLUMNS = `
   classes_json, hit_dice_pools_json,
   proficiencies_json, equipment_json, gold, copper, feats_json, features_json,
   spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, omen, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
-  portrait_json, notes, backstory, hopes, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
+  portrait_json, notes, backstory, hopes, persona_json, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
   attraction_json, open_to_advances, open_to_pacts, former_sheet_ids_json, created_at, updated_at
 `;
 
@@ -347,6 +350,17 @@ export function setSheetSummon(sheetId: string, summon: CharacterSheet["summon"]
     .prepare(`UPDATE character_sheets SET summon_json = ? WHERE id = ?`)
     .run(summon ? JSON.stringify(summon) : null, sheetId);
   return getSheetById(sheetId);
+}
+
+// The personality as stored: '' when none of the four lines holds anything,
+// so a blank panel and a sheet from before the field read alike.
+function personaJson(persona: CharacterSheet["persona"]): string {
+  return persona && (persona.trait || persona.ideal || persona.bond || persona.flaw) ? JSON.stringify(persona) : "";
+}
+
+function personaOf(raw: string | null | undefined): Pick<CharacterSheet, "persona"> {
+  const parsed = raw ? personaSchema.safeParse(parseJson<unknown>(raw, null)) : null;
+  return parsed?.success ? { persona: parsed.data } : {};
 }
 
 // Backgrounds grant a named feature ("Shelter of the Faithful"). It is added
@@ -559,9 +573,9 @@ export function createSheet(
         level, xp, abilities_json, max_hp, current_hp, temp_hp, ac, ac_override, speed,
         hit_dice_json, classes_json, hit_dice_pools_json, proficiencies_json, equipment_json, gold, copper, feats_json,
         features_json, resources_json, spellcasting_json, conditions_json, portrait_json,
-        notes, backstory, hopes, feat_choices_json, attraction_json, created_at, updated_at
+        notes, backstory, hopes, persona_json, feat_choices_json, attraction_json, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   ).run(
     id,
@@ -609,6 +623,7 @@ export function createSheet(
     // Older library sheet_json blobs predate the field.
     input.backstory ?? "",
     input.hopes ?? "",
+    personaJson(input.persona),
     featChoicesJson(input.featChoices),
     // Older library sheet_json blobs and companion drafts predate the field.
     attractionJson(input.attraction),
@@ -947,6 +962,7 @@ export function patchSheet(
     portrait: patch.portrait !== undefined ? patch.portrait : existing.portrait,
     notes: patch.notes ?? existing.notes,
     backstory: patch.backstory ?? existing.backstory,
+    persona: patch.persona ?? existing.persona,
     hopes: patch.hopes ?? existing.hopes ?? "",
     featChoices: patch.featChoices ?? existing.featChoices,
   };
@@ -1115,7 +1131,7 @@ export function patchSheet(
           spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, omen = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
           feats_json = ?, features_json = ?, subclass = ?,
           classes_json = ?, hit_dice_pools_json = ?,
-          portrait_json = ?, notes = ?, backstory = ?, hopes = ?, feat_choices_json = ?, updated_at = ?
+          portrait_json = ?, notes = ?, backstory = ?, hopes = ?, persona_json = ?, feat_choices_json = ?, updated_at = ?
         WHERE id = ?
       `,
     )
@@ -1162,6 +1178,7 @@ export function patchSheet(
       next.notes,
       next.backstory,
       next.hopes ?? "",
+      personaJson(next.persona),
       featChoicesJson(next.featChoices),
       nowIso(),
       sheetId,

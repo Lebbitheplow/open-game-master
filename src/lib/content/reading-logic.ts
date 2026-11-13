@@ -58,6 +58,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      lizardfolk and warforged picks name their lists (their stored
 //      readings are the bundled rows), and a race walks at the speed its
 //      text states over the field beside it.
+//      The background reader names a tool by the SRD's name for it
+//      ("Herbalist kit" is the herbalism kit, "Cartographers' tools" the
+//      cartographer's tools): a Desert Runner was proficient in no tool the
+//      table knows.
 export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
