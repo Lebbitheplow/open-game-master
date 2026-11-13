@@ -50,6 +50,16 @@ import { liveZones, publishZones, saveZones } from "@/lib/dm/zone-store";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { withActor } from "@/lib/dm/acting-party";
+import { tokenFootprint } from "@/lib/dm/board-reach";
+import { footprintIndexes } from "@/lib/battlemap/footprint";
+
+// Whether a creature standing at `at` is in an area: any square of its space
+// inside it. A Large ogre with three of its four squares in a Moonbeam was
+// read by its top-left square alone and walked out untouched; the blast
+// catch (aoe-shape.ts standingIn) already reads every square of its size.
+function spaceIn(width: number, mover: { kind: string; refId: string }, at: XY, cells: readonly number[] | undefined): boolean {
+  return Boolean(cells?.length) && footprintIndexes(width, at, tokenFootprint(mover)).some((cell) => cells!.includes(cell));
+}
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -406,11 +416,11 @@ function areasAfterMove(
     if (!touches(zone, trigger, victim)) {
       continue;
     }
-    let wasIn = zone.cells.includes(tileIndex(map.width, start.x, start.y));
+    let wasIn = spaceIn(map.width, mover, start, zone.cells);
     let enteredAt: XY | null = null;
     let inside = 0;
     for (const step of walked) {
-      const nowIn = zone.cells.includes(tileIndex(map.width, step.x, step.y));
+      const nowIn = spaceIn(map.width, mover, step, zone.cells);
       if (nowIn) {
         inside += 1;
       }
@@ -576,13 +586,12 @@ function momentFor(
     if (!token || !victim) {
       continue;
     }
-    const cell = tileIndex(map.width, token.x, token.y);
     for (const zone of zones) {
       const trigger = zoneRowFor(zone)?.trigger;
       if (!trigger?.on.includes(moment) || !touches(zone, trigger, victim)) {
         continue;
       }
-      const inArea = zone.cells.includes(cell) || (moment === "end" && Boolean(zone.hot?.includes(cell)));
+      const inArea = spaceIn(map.width, token, token, zone.cells) || (moment === "end" && spaceIn(map.width, token, token, zone.hot));
       if (inArea && moment === "end" && victim.kind === "enemy") {
         const begun = zone.struck?.[`${id}:begun`];
         if (!begun || zone.struck?.[`${id}:end`] === begun) {
