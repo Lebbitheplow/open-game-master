@@ -19,7 +19,7 @@ import {
 } from "@/lib/srd/starting-wealth";
 import { suggestArmor } from "@/lib/srd/armor";
 import { classFeaturesFor, subclassSpellsFor } from "@/lib/srd/features";
-import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
+import { featStyleSlotFeatures, fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
 import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
@@ -934,9 +934,11 @@ export function useBuilderDerived({
 
   // Fighting styles the class has earned by this level. Stored on the sheet
   // as "choice"-sourced features so the level-up regrant preserves them.
-  const styleSlots = useMemo(() => fightingStyleSlots(grantedFeatures), [grantedFeatures]);
+  // A feat opens one more (Fighting Initiate).
+  const styleSlotSources = useMemo(() => [...grantedFeatures, ...featStyleSlotFeatures(featNames)], [grantedFeatures, featNames]);
+  const styleSlots = useMemo(() => fightingStyleSlots(styleSlotSources), [styleSlotSources]);
   // The styles those slots allow (a Swords bard: Dueling or Two-Weapon Fighting).
-  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures, klass?.id), [grantedFeatures, klass?.id]);
+  const styleChoices = useMemo(() => fightingStyleChoices(styleSlotSources, klass?.id), [styleSlotSources, klass?.id]);
 
   // Invocations, maneuvers, metamagic, pact boons, infusions, runes and
   // elemental disciplines: the pick-lists that used to be feature names with

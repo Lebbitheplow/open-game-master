@@ -88,6 +88,9 @@ P["feat.prerequisites"] = async () => {
     "Heavy Armor Master": [who({ armor: ["light", "medium"] }), who({ armor: ["light", "medium", "heavy"] })],
     "Medium Armor Master": [who({ armor: ["light"] }), who({ armor: ["light", "medium"] })],
     "Moderately Armored": [who(), who({ armor: ["light"] })],
+    Grappler: [who(), who({ abilities: { ...plainScores, str: 13 } })],
+    "Fighting Initiate": [who({ weapons: ["simple"] }), who({ weapons: ["simple", "longswords"] })],
+    Prodigy: [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "half_orc", raceName: "Half-Orc" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -97,6 +100,49 @@ P["feat.prerequisites"] = async () => {
     else if (unmetPrerequisite(text, holder)) wrong.push(`${feat}: "${text}" refused with it`);
   }
   assert.deepEqual(wrong, []);
+};
+
+// Fighting Initiate: a barbarian, who has no fighting style of its own,
+// keeps the style the feat chose through the sheet door's regrant; without
+// the feat the same style is a pick nothing opened, and is dropped.
+P["feat.fighting-initiate.style"] = async () => {
+  const t = await rig.table();
+  const style = { name: "Fighting Style: Archery", source: "choice" };
+  const base = { class: "barbarian", level: 4, features: [style] };
+  const plain = t.hero(base);
+  const initiate = t.hero({ ...base, feats: ["Fighting Initiate"] });
+  const holds = (who) => t.sheet(who).features.some((feature) => feature.name === style.name);
+  assert.equal(holds(plain), false, "a barbarian with no fighting style slot kept Archery");
+  assert.equal(holds(initiate), true, "a Fighting Initiate barbarian lost the style the feat chose");
+  const { openStyleSlots } = await import("../src/lib/srd/style-slots.ts");
+  const open = openStyleSlots([{ id: "barbarian", level: 4 }], [], undefined, ["Fighting Initiate"]);
+  assert.equal(open.count, 1, "the feat opens one style to pick");
+  assert.equal(open.choices.length, 6, "of the fighter's six");
+  assert.equal(openStyleSlots([{ id: "barbarian", level: 4 }], [style], undefined, ["Fighting Initiate"]).count, 0, "the style held fills it");
+};
+
+// Prodigy: a skill, a tool and a language of the player's choice, and
+// expertise in a skill they are proficient in, each landing on the sheet.
+P["feat.prodigy.picks"] = async () => {
+  const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
+  const { featGrantSpec, applyFeatGrants } = await import("../src/lib/srd/feat-grants.ts");
+  const desc = authoredFeatDesc("Prodigy");
+  const spec = featGrantSpec(desc);
+  assert.deepEqual([spec.skills, spec.tools, spec.languages, spec.expertise], [1, 1, 1, 1], "Prodigy's picks as read from its text");
+  const proficiencies = { saves: ["str", "con"], skills: ["athletics"], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: [] };
+  const verdict = applyFeatGrants({
+    proficiencies,
+    feats: [{ name: "Prodigy", desc }],
+    choices: { prodigy: { skills: ["stealth"], tools: ["thieves' tools"], languages: ["Elvish"], expertise: ["athletics"] } },
+    strict: true,
+  });
+  assert.deepEqual(verdict.problems, []);
+  assert.ok(verdict.proficiencies.skills.includes("stealth"), "the skill");
+  assert.ok(verdict.proficiencies.tools.includes("thieves' tools"), "the tool");
+  assert.ok(verdict.proficiencies.languages.includes("Elvish"), "the language");
+  assert.ok(verdict.proficiencies.expertise.includes("athletics"), "the expertise");
+  const unpicked = applyFeatGrants({ proficiencies, feats: [{ name: "Prodigy", desc }], choices: {}, strict: true });
+  assert.ok(unpicked.problems.length > 0, "Prodigy taken with nothing picked was accepted");
 };
 
 const d20s = (swing) => swing.toHit?.breakdown?.terms?.[0]?.dice?.length ?? 0;

@@ -18,7 +18,7 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
-import { tableFeat } from "@/lib/srd/feat-effects";
+import { featTwinOf, tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
@@ -955,6 +955,20 @@ function slotStyles(feature: { name: string; classId?: string }, classId?: strin
     return only;
   }
   return byClass ? (CLASS_STYLES[textKey(feature.classId ?? classId ?? "")] ?? null) : null;
+}
+
+// Fighting Initiate (src/lib/srd/authored-feats.json): one more fighting
+// style slot, open to every style a fighter may take, beside the slots the
+// classes open. Each door that counts slots adds these to the class's
+// (style-slots.ts, the regrant in features.ts, the builder), so a style the
+// feat chose is offered, kept and played like a class's.
+export function featStyleSlotFeatures(
+  feats: ReadonlyArray<string> | undefined,
+  campaignId?: string | null,
+): Array<{ name: string; classId: string }> {
+  return (feats ?? []).some((feat) => featTwinOf(feat, campaignId) === "fighting initiate")
+    ? [{ name: "Fighting Style", classId: "fighter" }]
+    : [];
 }
 
 export function fightingStyleSlots(features: Array<{ name: string }>): number {

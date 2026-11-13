@@ -13,6 +13,7 @@ import { textKey } from "@/lib/language/text-logic";
 import {
   FIGHTING_STYLES,
   chosenFightingStyles,
+  featStyleSlotFeatures,
   fightingStyleChoices,
   fightingStyleSlots,
   newStyleFits,
@@ -22,14 +23,19 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 
 export type StyleClassRow = { id: string; subclass?: string | null; level: number };
 
-// Each class's features at its level, tagged with the class they come from.
+// Each class's features at its level, tagged with the class they come from,
+// and the slot a feat opens (Fighting Initiate) where `feats` are given.
 export function styleSlotFeatures(
   classes: ReadonlyArray<StyleClassRow>,
   extras?: SubclassExtras,
+  feats?: ReadonlyArray<string>,
 ): Array<{ name: string; classId: string }> {
-  return classes.flatMap((entry) =>
-    classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, extras).map((feature) => ({ ...feature, classId: entry.id })),
-  );
+  return [
+    ...classes.flatMap((entry) =>
+      classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, extras).map((feature) => ({ ...feature, classId: entry.id })),
+    ),
+    ...featStyleSlotFeatures(feats),
+  ];
 }
 
 export type OpenStyleSlots = {
@@ -47,8 +53,9 @@ export function openStyleSlots(
   classes: ReadonlyArray<StyleClassRow>,
   heldFeatures: ReadonlyArray<{ name: string }>,
   extras?: SubclassExtras,
+  feats?: ReadonlyArray<string>,
 ): OpenStyleSlots {
-  const slotFeatures = styleSlotFeatures(classes, extras);
+  const slotFeatures = styleSlotFeatures(classes, extras, feats);
   const slots = fightingStyleSlots(slotFeatures);
   const held = chosenFightingStyles([...heldFeatures]);
   const heldKeys = held.map(textKey);

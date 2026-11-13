@@ -572,7 +572,8 @@ export function buildLevelUp(
     // one the sheet holds stays (features.ts pruneChoiceFeatures).
     const [style] = chosenFightingStyles([pick]);
     if (style !== undefined) {
-      const after = styleSlotFeatures(classes, context.subclassExtras);
+      // A feat taken now or before opens its own slot (Fighting Initiate).
+      const after = styleSlotFeatures(classes, context.subclassExtras, [...(sheet.feats ?? []), ...featsTaken]);
       const heldStyles = chosenFightingStyles(featuresWithPicks.filter((feature) => feature.name !== pick.name));
       if (!newStyleFits(heldStyles, style, after)) {
         const open = fightingStyleChoices(after).filter((entry) => newStyleFits(heldStyles, entry.name, after));

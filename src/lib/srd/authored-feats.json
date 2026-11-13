@@ -276,6 +276,21 @@
       "name": "Savage Attacker",
       "prerequisite": "",
       "desc": "Once on each of your turns, when you roll damage for a melee weapon attack, you can roll the weapon's damage dice a second time and keep whichever total you like."
+    },
+    {
+      "name": "Fighting Initiate",
+      "prerequisite": "Proficiency with a martial weapon",
+      "desc": "Your martial training has taught you a fighting technique of your own. Choose one Fighting Style from the fighter's list that you do not already have; you gain it."
+    },
+    {
+      "name": "Prodigy",
+      "prerequisite": "Half-elf, half-orc, or human",
+      "desc": "You have a knack for picking things up. You gain proficiency in one skill of your choice, proficiency with one tool of your choice, and you learn one language of your choice. You also gain expertise in one skill you are proficient in."
+    },
+    {
+      "name": "Grappler",
+      "prerequisite": "Strength 13 or higher",
+      "desc": "Attacks you make against a creature you are grappling have advantage. As an action you may attempt to pin a creature you have grappled with a second grapple check; on a success, both you and it are restrained until the grapple ends."
     }
   ]
 }

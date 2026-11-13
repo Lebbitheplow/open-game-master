@@ -611,6 +611,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "savage attacker", "poisoner", "athlete", "chef", "healer", "elven accuracy", "eldritch adept",
     // Mounted Combatant: the mount's area save and the redirected blow (mount-area.ts, mount-combat.ts).
     "mounted combatant",
+    // Fighting Initiate: its style is a fighting style slot (feature-effects.ts featStyleSlotFeatures).
+    "fighting initiate",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic"].includes(name)) return "[cast tools]";
   return null;

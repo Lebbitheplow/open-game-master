@@ -1358,5 +1358,97 @@
     "probe": "scripts/test-enforce-feat-combat.mjs: Savage Attacker (2014): once a turn a melee hit's weapon dice are rolled twice and the better kept; the second swing rolls once (issue #502)"
    }
   ]
+ },
+ "feat::Fighting Initiate": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "f20190e0c448",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with a martial weapon",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Your martial training has taught you a fighting technique of your own.",
+    "is": "flavor"
+   },
+   {
+    "c": "Choose one Fighting Style from the fighter's list that you do not already have; you gain it.",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts featStyleSlotFeatures: one more style slot of the fighter's list, read beside the class slots by style-slots.ts, the regrant (features.ts pruneChoiceFeatures), the save (sheet-legality.ts), the level-up and owed picks, and the builder (useBuilderDerived.ts styleSlots, reconcile.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.fighting-initiate.style"
+   }
+  ]
+ },
+ "feat::Prodigy": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "b912f92e5be1",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Half-elf, half-orc, or human",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "You have a knack for picking things up.",
+    "is": "flavor"
+   },
+   {
+    "c": "You gain proficiency in one skill of your choice, proficiency with one tool of your choice, and you learn one language of your choice.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec (a skill, a tool and a language to pick), applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prodigy.picks"
+   },
+   {
+    "c": "You also gain expertise in one skill you are proficient in.",
+    "is": "held",
+    "by": "src/lib/srd/feat-grant-text.ts featGrantSpec expertise, applied by feat-grants.ts applyFeatGrants",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prodigy.picks"
+   }
+  ]
+ },
+ "feat::Grappler": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "4fcbf4b15fdc",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Strength 13 or higher",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Attacks you make against a creature you are grappling have advantage.",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-situation.ts (advantage while featUsable, srd/feat-use.ts)",
+    "probe": "scripts/test-enforce-pc-attack-features.mjs: The Grappler feat gives advantage on attacks against a creature its holder is grappling."
+   },
+   {
+    "c": "As an action you may attempt to pin a creature you have grappled with a second grapple check; on a success, both you and it are restrained until the grapple ends.",
+    "is": "held",
+    "by": "src/lib/dm/grappler-pin.ts (take_action pin)",
+    "probe": "scripts/test-enforce-srd-adventuring.mjs: ADV-07: feats / Grappler"
+   }
+  ]
  }
 }

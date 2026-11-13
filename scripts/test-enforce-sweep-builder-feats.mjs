@@ -211,7 +211,14 @@ for (const row of feats) {
       const spec = featGrantSpec(featDescs[textKey(row.name)]);
       const featChoices = withFeatChoice(first.fields.featChoices ?? {}, row.name, await picksFor(spec, first.built));
       const optionPicks = optionPicksFor(first.built, first.fields);
-      const { fields, built } = withFeatAbility({ featChoices, optionPicks });
+      // A style slot the feat opens (Fighting Initiate), filled with the
+      // first styles its list offers.
+      const held = first.fields.stylePicks ?? [];
+      const stylePicks = [
+        ...held,
+        ...first.built.derived.styleChoices.map((style) => style.id).filter((id) => !held.includes(id)).slice(0, Math.max(0, first.built.derived.styleSlots - held.length)),
+      ];
+      const { fields, built } = withFeatAbility({ featChoices, optionPicks, stylePicks });
       assert.equal(built.blocker, null, `gate (${open.base.classId}): with every pick the card lists made, the builder still refuses: ${JSON.stringify(built.blocker)} :: picks ${JSON.stringify(featChoices)}`);
       const stored = await door.library(built);
       assert.ok(stored.ok, `library (${open.base.classId}): the server refused what the gate passed (${stored.status}): ${stored.error} :: asi ${JSON.stringify(fields.asiChoices)} picks ${JSON.stringify(featChoices)}`);

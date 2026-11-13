@@ -6,7 +6,7 @@
 // is taken once. SRD 5.1 prints one feat, Grappler (Strength 13 or higher).
 //
 // ODM ships the feat rule switched on: the content pack carries Grappler and
-// the third-party feats, and src/lib/srd/authored-feats.json adds 55 in
+// the third-party feats, and src/lib/srd/authored-feats.json adds 58 in
 // ODM's own wording. A feat is a name in sheet.feats. Two have a mechanic
 // the server applies to derived numbers (Alert, Observant); Elven Accuracy
 // says it has one; the rest are guidance the model narrates
@@ -170,12 +170,14 @@ await test("Alert and Observant, taken as feats, reach the numbers they change",
   assert.equal(entry.initiative, 10 + abilityMod(SCORES.dex) + 5);
 });
 
-await test("ODM's own feats: 55 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them), each named once, each with rules text", () => {
-  assert.equal(authoredFeats.length, 55);
+await test("ODM's own feats: 58 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them, Fighting Initiate and Prodigy, and SRD 5.1's Grappler), each named once, each with rules text", () => {
+  assert.equal(authoredFeats.length, 58);
   const names = authoredFeats.map((feat) => feat.name.toLowerCase());
   assert.equal(new Set(names).size, names.length);
-  // SRD 5.1's one feat comes from the content pack, not from this list.
-  assert.equal(names.includes("grappler"), false);
+  // SRD 5.1's one feat is restated here too: a server without the content
+  // pack offered no feat the SRD prints. With the pack, the importer keeps
+  // the pack's row under the same name.
+  assert.equal(names.includes("grappler"), true);
   for (const feat of authoredFeats) {
     assert.ok(feat.desc.length > 40, feat.name);
     assert.equal(typeof feat.prerequisite, "string", feat.name);
@@ -185,7 +187,7 @@ await test("ODM's own feats: 55 (the 2014 Alert, Magic Initiate, Savage Attacker
   for (const feat of authoredFeats.filter((entry) => entry.prerequisite)) {
     assert.match(
       feat.prerequisite,
-      /^(?:(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: or (?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma))? 13 or higher|Proficiency with (?:light|medium|heavy) armor|The ability to cast at least one spell|Spellcasting or Pact Magic|Elf or half-elf)$/,
+      /^(?:(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: or (?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma))? 13 or higher|Proficiency with (?:light|medium|heavy) armor|The ability to cast at least one spell|Spellcasting or Pact Magic|Elf or half-elf|Proficiency with a martial weapon|Half-elf, half-orc, or human)$/,
       feat.name,
     );
   }
