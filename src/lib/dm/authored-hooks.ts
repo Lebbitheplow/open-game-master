@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { regainHitPoints } from "@/lib/dm/regain";
 import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
@@ -88,15 +89,12 @@ function setTempHp(campaign: Campaign, sheet: CharacterSheet, amount: number): b
   return true;
 }
 
+// Through the one door every healing feature takes (regain.ts): Grim
+// Harvest, a death's heal and the Hexblade's Curse wrote currentHp straight,
+// so a mummy-rotted or Chill-Touched hero regained hit points the rules
+// deny, and the ceiling skipped exhaustion 4 and Pale Tincture.
 function heal(campaign: Campaign, sheet: CharacterSheet, amount: number): number {
-  const max = effectiveMaxHp(sheet);
-  const currentHp = Math.min(max, sheet.currentHp + Math.max(0, amount));
-  if (currentHp === sheet.currentHp) {
-    return 0;
-  }
-  patchSheet(sheet.id, { currentHp });
-  publishSheet(campaign, sheet.id);
-  return currentHp - sheet.currentHp;
+  return regainHitPoints(campaign, null, sheet, Math.max(0, amount), "a feature's healing");
 }
 
 // ---- an enemy attacks a character ----

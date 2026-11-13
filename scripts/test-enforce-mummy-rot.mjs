@@ -113,5 +113,29 @@ await test("A curse that brings the maximum to 0 kills", async () => {
   assert.equal(dead.currentHp, 0);
 });
 
+await test("A feature's healing goes through the same door: a mummy-rotted necromancer gains nothing from Grim Harvest", async () => {
+  // Grim Harvest, the Hexblade's Curse, a death's heal, Survivor, Blessed
+  // Healer and Spirit Projection wrote hit points straight and skipped what
+  // bars regaining them (src/lib/dm/regain.ts).
+  const { caster } = await import("./lib/enforce-spell-kit.mjs");
+  const hooks = await import("../src/lib/dm/authored-hooks.ts");
+  await kit.endFight();
+  const mage = world.addHero({ ...caster("wizard", "int", ["Ray of Sickness"], [], 9), maxHp: 60, subclass: "School of Necromancy" });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  const harvest = () => hooks.authoredOnKill(world.campaign(), world.encounter(), foe, mage.id, false, { level: 1, school: "necromancy" });
+  world.patch(mage.id, { currentHp: 10, conditions: [ROT], conditionMeta: { [ROT]: { source: "mummy" } } });
+  const cursed = harvest();
+  assert.equal(world.sheet(mage.id).currentHp, 10, JSON.stringify(cursed));
+  assert.ok(!cursed.some((line) => /regains/.test(line)), JSON.stringify(cursed));
+  // The same kill on a clean necromancer next turn heals three times the level.
+  await kit.endFight();
+  await kit.fight(1);
+  const [next] = world.enemies();
+  world.patch(mage.id, { currentHp: 10, conditions: [], conditionMeta: {} });
+  hooks.authoredOnKill(world.campaign(), world.encounter(), next, mage.id, false, { level: 1, school: "necromancy" });
+  assert.equal(world.sheet(mage.id).currentHp, 13);
+});
+
 world.close();
 finish();
