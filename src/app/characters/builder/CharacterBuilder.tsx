@@ -788,6 +788,7 @@ function CharacterBuilderForm({
             state={state}
             pack={pack}
             initial={initial}
+            background={background ?? null}
             paintsPortraits={paintsPortraits}
             onUploadPortrait={() => setCropping(true)}
             alignmentGroups={pickers.alignmentGroups}

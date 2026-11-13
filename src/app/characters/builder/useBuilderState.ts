@@ -4,12 +4,14 @@ import type { Gender } from "@/lib/gender";
 import { normalizeAttraction, type Attraction } from "@/lib/attraction";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
 import { toolChoiceOf } from "@/lib/srd/tool-choices";
+import { EMPTY_PERSONA } from "@/lib/backgrounds/persona-logic";
 import { useEffect, useRef, useState } from "react";
 import type {
   Ability,
   AbilityScores,
   AsiChoice,
   CreateSheetInput,
+  Persona,
   SheetAttachment,
 } from "@/lib/schemas/sheet";
 import { applyAsiChoices, earnedAsiCountFor, removeAsiChoices } from "@/lib/srd/asi";
@@ -118,6 +120,10 @@ export type BuilderDraftFields = {
   backstory: string;
   // The player's hopes for the story (src/lib/schemas/sheet.ts HOPES_MAX).
   hopes: string;
+  // Trait, ideal, bond and flaw (src/lib/backgrounds/persona-logic.ts).
+  // Optional only for a state written before the field (a saved draft, a
+  // test's double).
+  persona?: Persona;
   gender: Gender;
   attraction: Attraction;
   appearance: string;
@@ -335,6 +341,7 @@ export function useBuilderState({
   const [spellWarningAck, setSpellWarningAck] = useState(false);
   const [backstory, setBackstory] = useState(initial?.backstory ?? "");
   const [hopes, setHopes] = useState(initial?.hopes ?? "");
+  const [persona, setPersona] = useState<Persona>(initial?.persona ?? EMPTY_PERSONA);
   const [gender, setGender] = useState<Gender>(initial?.gender ?? "");
   // Who they are drawn to (issue 501), kept through an edit like the gender.
   const [attraction, setAttraction] = useState<Attraction>(() => normalizeAttraction(initial?.attraction));
@@ -966,6 +973,7 @@ export function useBuilderState({
     optionPicks: setOptionPicks,
     backstory: setBackstory,
     hopes: setHopes,
+    persona: (value) => setPersona(value ?? EMPTY_PERSONA),
     gender: setGender,
     attraction: setAttraction,
     appearance: setAppearance,
@@ -1052,6 +1060,7 @@ export function useBuilderState({
     optionPicks,
     backstory,
     hopes,
+    persona,
     gender,
     attraction,
     appearance,
@@ -1134,6 +1143,7 @@ export function useBuilderState({
     spellWarningAck, setSpellWarningAck,
     backstory, setBackstory,
     hopes, setHopes,
+    persona, setPersona,
     gender, setGender,
     attraction, setAttraction,
     appearance, setAppearance,

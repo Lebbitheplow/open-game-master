@@ -483,6 +483,20 @@ export const attractionSchema = z.object({
   open: z.boolean().optional(),
 });
 
+// A character's personality: one trait, one ideal, one bond and one flaw,
+// the four lines a 2014 background suggests (src/lib/backgrounds/
+// persona-logic.ts). Each optional; a blank one is none. Visible to the
+// party like the backstory, and read by the GM beside it every turn
+// (src/lib/dm/prompt.ts describeSheet).
+export const PERSONA_ENTRY_MAX = 300;
+export const personaSchema = z.object({
+  trait: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  ideal: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  bond: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  flaw: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+});
+export type Persona = z.infer<typeof personaSchema>;
+
 export const createSheetSchema = z.object({
   name: z.string().trim().min(1).max(60),
   race: z.string().trim().min(1).max(60),
@@ -599,6 +613,9 @@ export const createSheetSchema = z.object({
   // Player-authored backstory, visible to the whole party and woven into
   // the DM prompt (unlike notes, which stay private to the owner).
   backstory: z.string().trim().max(2000).default(""),
+  // Trait, ideal, bond and flaw (personaSchema). Optional rather than
+  // defaulted: a sheet written before the field simply has none.
+  persona: personaSchema.optional(),
   // What the player hopes this story holds for the character: a romance, a
   // rival, a redemption. Out of character and private like the notes (only
   // the owner and a DM seat read it, src/lib/dm/sheet-view.ts); the GM reads
@@ -683,6 +700,8 @@ export const patchSheetSchema = z.object({
   portrait: attachmentSchema.nullable().optional(),
   notes: z.string().max(4000).optional(),
   backstory: z.string().trim().max(2000).optional(),
+  // The personality, the owner's to change any time like the backstory.
+  persona: personaSchema.optional(),
   hopes: z.string().trim().max(HOPES_MAX).optional(),
 });
 export type PatchSheetInput = z.infer<typeof patchSheetSchema>;
@@ -935,6 +954,8 @@ export type CharacterSheet = {
   portrait: SheetAttachment | null;
   notes: string;
   backstory: string;
+  // Trait, ideal, bond and flaw (personaSchema); absent when none was given.
+  persona?: Persona;
   // The player's hopes for this story (createSheetSchema). Blanked like the
   // notes for anyone but the owner and a DM seat; optional only for test
   // doubles, every stored sheet reads one.

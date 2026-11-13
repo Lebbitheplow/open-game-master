@@ -52,6 +52,7 @@ import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCount
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { workshopClassName } from "@/lib/classes/workshop-registry";
 import { StoryHopes } from "@/app/campaigns/[campaignId]/StoryHopes";
+import { SheetPersonality } from "@/app/campaigns/[campaignId]/SheetPersonality";
 import { classWordsAfterLevel, isSplit } from "@/lib/characters/class-words";
 
 function titleCase(value: string) {
@@ -623,6 +624,8 @@ export function CharacterSheetDialog({
               <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-stone-300">{sheet.backstory}</p>
             </SheetBlock>
           ) : null}
+
+          <SheetPersonality sheet={sheet} mine={mine} />
 
           {sheet.isCompanion ? null : <StoryHopes sheet={sheet} mine={mine} />}
 

@@ -28,6 +28,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
 import { normalizeAttraction } from "@/lib/attraction";
+import { personaOrNothing } from "@/lib/backgrounds/persona-logic";
 
 export type BuilderResult = { level: number; sheet: CreateSheetInput };
 
@@ -859,6 +860,8 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         : null,
       notes: "",
       backstory: state.backstory.trim(),
+      // Trait, ideal, bond and flaw; a blank panel sends none.
+      persona: personaOrNothing(state.persona),
       // A state written before the field (a saved draft, a test's double)
       // has none.
       hopes: (state.hopes ?? "").trim(),

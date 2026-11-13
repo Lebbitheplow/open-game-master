@@ -91,6 +91,10 @@ export const SERVER_FEATURES = {
   // sheet in play): the `hopes` field an older host drops while answering
   // the save as done.
   storyHopes: true,
+  // A character's personality (trait, ideal, bond, flaw) in the builder's
+  // Identity step and on the sheet in play: the `persona` field an older
+  // host drops while answering the save as done.
+  persona: true,
   // "Add a second class" in the builder (backlog F9): a class list on a new
   // character, which an older host folds into one class.
   builderMulticlass: true,

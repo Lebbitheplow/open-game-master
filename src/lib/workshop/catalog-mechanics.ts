@@ -244,6 +244,9 @@ export function backgroundMechanicsOf(row: Row & { slug?: string; documentSlug?:
     },
     feature: option.feature ?? String(row.data.feature ?? ""),
     feature_desc: option.featureDesc ?? String(row.data.feature_desc ?? ""),
+    // Its suggested trait, ideal, bond and flaw tables, so the copy offers
+    // the same personality lines (src/lib/backgrounds/persona-logic.ts).
+    ...(option.persona ? { suggested_characteristics: String(row.data.suggested_characteristics ?? "") } : {}),
   };
 }
 

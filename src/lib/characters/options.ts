@@ -12,6 +12,7 @@ import {
   type RaceMechanics,
 } from "@/lib/content/mechanics";
 import { CUSTOM_BACKGROUNDS } from "@/lib/backgrounds";
+import { parseSuggestedCharacteristics, type PersonaLists } from "@/lib/backgrounds/persona-logic";
 import { CUSTOM_CLASSES } from "@/lib/classes";
 import { isWorkshopClassId, workshopClassFrom, type WorkshopClass } from "@/lib/homebrew/class-data";
 import type { Genre } from "@/lib/schemas/game-settings-options";
@@ -69,6 +70,9 @@ export type BackgroundOption = {
   featureDesc?: string;
   // The content pack's write-up, shown under the background select.
   desc?: string;
+  // A pack background's own suggested trait, ideal, bond and flaw tables,
+  // read from its text; the bundled ones' live in persona-data.ts.
+  persona?: PersonaLists;
   documentSlug?: string;
   source?: string;
 };
@@ -298,11 +302,13 @@ export function mergedBackgroundOptions(rows: ContentRow[]): BackgroundOption[] 
         grants && typeof grants.purse === "number"
           ? { equipment: mechanics.equipment, purse: grants.purse }
           : splitPurse(mechanics.equipment);
+      const persona = parseSuggestedCharacteristics(String(row.data?.suggested_characteristics ?? ""));
       return {
         id: row.slug,
         name: row.name,
         ...mechanics,
         ...kit,
+        ...(persona ? { persona } : {}),
         desc: String(row.data?.desc ?? ""),
         ...(feature ? { feature } : {}),
         ...(featureDesc ? { featureDesc } : {}),
