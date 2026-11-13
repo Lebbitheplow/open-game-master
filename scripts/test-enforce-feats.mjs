@@ -24,6 +24,7 @@ import { XP_BY_LEVEL, patchSheetAs } from "./lib/enforce-srd-progression.mjs";
 const { test, finish } = suite("test-enforce-feats");
 
 const { computeSheetDerived, speedFor } = await import("../src/lib/srd/index.ts");
+const srd = await import("../src/lib/srd/index.ts");
 const { hasElvenAccuracy } = await import("../src/lib/srd/feature-effects.ts");
 const { applyAsiChoices } = await import("../src/lib/srd/asi.ts");
 const authoredFeats = (
@@ -170,8 +171,8 @@ await test("Alert and Observant, taken as feats, reach the numbers they change",
   assert.equal(entry.initiative, 10 + abilityMod(SCORES.dex) + 5);
 });
 
-await test("ODM's own feats: 58 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them, Fighting Initiate and Prodigy, and SRD 5.1's Grappler), each named once, each with rules text", () => {
-  assert.equal(authoredFeats.length, 58);
+await test("ODM's own feats: 65 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them, Fighting Initiate, Prodigy, the species feats and Artificer Initiate, and SRD 5.1's Grappler), each named once, each with rules text", () => {
+  assert.equal(authoredFeats.length, 65);
   const names = authoredFeats.map((feat) => feat.name.toLowerCase());
   assert.equal(new Set(names).size, names.length);
   // SRD 5.1's one feat is restated here too: a server without the content
@@ -187,7 +188,7 @@ await test("ODM's own feats: 58 (the 2014 Alert, Magic Initiate, Savage Attacker
   for (const feat of authoredFeats.filter((entry) => entry.prerequisite)) {
     assert.match(
       feat.prerequisite,
-      /^(?:(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: or (?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma))? 13 or higher|Proficiency with (?:light|medium|heavy) armor|The ability to cast at least one spell|Spellcasting or Pact Magic|Elf or half-elf|Proficiency with a martial weapon|Half-elf, half-orc, or human)$/,
+      /^(?:(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: or (?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma))? 13 or higher|Proficiency with (?:light|medium|heavy) armor|The ability to cast at least one spell|Spellcasting or Pact Magic|Elf or half-elf|Proficiency with a martial weapon|Half-elf, half-orc, or human|Dwarf or a Small race|Tiefling|High elf|Wood elf|Drow|Dragonborn|Gnome|Dwarf|Half-orc|Halfling)$/,
       feat.name,
     );
   }
@@ -1107,6 +1108,69 @@ await test("a pack feat taken at a level-up grants the same: Diehard's Constitut
   const refused = await frail.patch({ ...oneLevel(frail.sheet()), asiChoices: [{ mode: "feat", feat: "Diehard" }] });
   assert.equal(refused.status, 400, "Diehard taken at Constitution 10");
   assert.match(refused.json.error, /Diehard requires Constitution 13 or higher/);
+});
+
+// The species feats (Xanathar's racial feats, restated in
+// authored-feats.json), each made at the table through the builder and read
+// back from the stored sheet by the engines that apply it.
+await test("the species feats land on the sheet and in the engines: a high elf's short-rest misty step and Sylvan, a drow's detect magic at will, a wood elf's druid cantrip and free casts, a tiefling's resistances and poison save, a halfling's speed and skill, a dragonborn's scales and claws, and an artificer's initiate spells", async () => {
+  const { pcResistances } = await import("../src/lib/dm/pc-defenses.ts");
+  const { heldSaveTraits } = await import("../src/lib/srd/trait-rules.ts");
+  const { deriveAc } = await import("../src/lib/srd/index.ts");
+  const { racialNaturalWeapon } = await import("../src/lib/srd/racial-weapons.ts");
+  const three = (feat, ability) => [{ mode: "feat", feat, ...(ability ? { ability } : {}) }, { mode: "plus2", ability: "str" }, { mode: "plus2", ability: "con" }];
+  const made = async (label, fields) => {
+    const built = madeFighter(fields);
+    assert.equal(built.blocker, null, `${label}: ${built.blocker?.message}`);
+    const at = await creation.atTable(built.sheet);
+    assert.equal(at.status, 201, `${label}: ${at.error}`);
+    return at.sheet;
+  };
+  const names = (sheet) => sheet.features.map((feature) => feature.name);
+
+  const fey = await made("Fey Teleportation", { race: "high_elf", chosenSkills: ["acrobatics", "survival"], racialCantrips: ["Light"], asiChoices: three("Fey Teleportation", "cha") });
+  assert.ok(names(fey).includes("Free cast (short rest): Misty Step (Fey Teleportation)"), names(fey).join(", "));
+  assert.deepEqual(fey.resources.free_cast_sr_misty_step, { max: 1, used: 0 });
+  assert.ok(fey.proficiencies.languages.includes("Sylvan"), fey.proficiencies.languages.join(", "));
+  assert.equal(srd.spellAbilityFor(fey, "Misty Step"), "int", "Intelligence, though the feat raised Charisma");
+
+  const drow = await made("Drow High Magic", { race: "drow", chosenSkills: ["acrobatics", "survival"], asiChoices: three("Drow High Magic") });
+  assert.ok(names(drow).includes("Free cast (at will): Detect Magic (Drow High Magic)"), names(drow).join(", "));
+  assert.ok(names(drow).includes("Free cast: Levitate (Drow High Magic)") && names(drow).includes("Free cast: Dispel Magic (Drow High Magic)"), names(drow).join(", "));
+  assert.equal(Object.keys(drow.resources).some((id) => id.includes("detect_magic")), false, "detect magic at will has no counter");
+  assert.equal(srd.spellAbilityFor(drow, "Dispel Magic"), "cha");
+
+  const wood = await made("Wood Elf Magic", { race: "wood_elf", chosenSkills: ["acrobatics", "survival"], asiChoices: three("Wood Elf Magic"), featChoices: { "wood elf magic": { cantrips: ["Druidcraft"] } } });
+  assert.ok(wood.spellcasting.cantrips.includes("Druidcraft"), JSON.stringify(wood.spellcasting));
+  assert.deepEqual(wood.resources.free_cast_longstrider, { max: 1, used: 0 });
+  assert.deepEqual(wood.resources.free_cast_pass_without_trace, { max: 1, used: 0 });
+  assert.equal(srd.spellAbilityFor(wood, "Pass without Trace"), "wis");
+
+  const tiefling = await made("Infernal Constitution", { race: "tiefling", asiChoices: three("Infernal Constitution") });
+  const resists = pcResistances(tiefling);
+  assert.ok(resists.includes("cold") && resists.includes("poison") && resists.includes("fire"), resists);
+  assert.ok(heldSaveTraits(tiefling).some((trait) => (trait.against ?? []).includes("poisoned")), "advantage against being poisoned");
+
+  const halfling = await made("Squat Nimbleness", {
+    race: "lightfoot_halfling", chosenSkills: ["perception", "survival"],
+    asiChoices: three("Squat Nimbleness", "dex"), featChoices: { "squat nimbleness": { skills: ["acrobatics"] } },
+  });
+  assert.equal(speedFor(halfling), 30, "a halfling's 25 feet and the feat's 5");
+  assert.ok(halfling.proficiencies.skills.includes("acrobatics"));
+
+  const dragon = await made("Dragon Hide", { race: "dragonborn", racialAncestry: "red", asiChoices: three("Dragon Hide", "con"), equipment: [] });
+  const bare = { ...dragon, equipment: dragon.equipment.filter((item) => !/armor|mail|plate|shield|leather|breastplate/i.test(item.name)), acOverride: false };
+  assert.equal(deriveAc(bare), 13 + abilityMod(bare.abilities.dex), "scales: 13 + Dexterity");
+  assert.equal(racialNaturalWeapon(dragon.features, "claws", dragon.feats)?.srd.damage, "1d4 slashing");
+
+  const initiate = await made("Artificer Initiate", {
+    asiChoices: three("Artificer Initiate"),
+    featChoices: { "artificer initiate": { cantrips: ["Thorn Whip"], spells: ["Snare"], tools: ["smith's tools"] } },
+  });
+  assert.ok(initiate.spellcasting.cantrips.includes("Thorn Whip"));
+  assert.deepEqual(initiate.resources.free_cast_snare, { max: 1, used: 0 });
+  assert.equal(srd.spellAbilityFor(initiate, "Snare"), "int");
+  assert.ok(initiate.proficiencies.tools.includes("smith's tools"));
 });
 
 creation.world.close();

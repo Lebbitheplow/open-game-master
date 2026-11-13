@@ -4,6 +4,7 @@
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
+import { d20Faces } from "./lib/enforce-combat.mjs";
 
 const rig = await clauseRig();
 const worn = (...names) => names.map((name) => ({ name, qty: 1, equipped: true }));
@@ -91,6 +92,12 @@ P["feat.prerequisites"] = async () => {
     Grappler: [who(), who({ abilities: { ...plainScores, str: 13 } })],
     "Fighting Initiate": [who({ weapons: ["simple"] }), who({ weapons: ["simple", "longswords"] })],
     Prodigy: [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "half_orc", raceName: "Half-Orc" })],
+    "Squat Nimbleness": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
+    "Infernal Constitution": [who(), who({ raceId: "tiefling", raceName: "Tiefling" })],
+    "Fey Teleportation": [who({ raceId: "wood_elf", raceName: "Wood Elf" }), who({ raceId: "high_elf", raceName: "High Elf" })],
+    "Wood Elf Magic": [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "wood_elf", raceName: "Wood Elf" })],
+    "Drow High Magic": [who({ raceId: "wood_elf", raceName: "Wood Elf" }), who({ raceId: "drow", raceName: "Drow" })],
+    "Dragon Hide": [who(), who({ raceId: "dragonborn", raceName: "Dragonborn" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -100,6 +107,23 @@ P["feat.prerequisites"] = async () => {
     else if (unmetPrerequisite(text, holder)) wrong.push(`${feat}: "${text}" refused with it`);
   }
   assert.deepEqual(wrong, []);
+};
+
+// Squat Nimbleness: advantage on the check to escape a grapple. The hero is
+// held by the dummy; the escape is rolled with two d20s, the higher kept.
+P["feat.squat-nimbleness.escape"] = async () => {
+  const thrown = {};
+  for (const [label, feats] of [["plain", []], ["nimble", ["Squat Nimbleness"]]]) {
+    const t = await rig.table();
+    const who = t.hero({ class: "fighter", level: 4, race: "hill_dwarf", feats });
+    const [foe] = await t.fight([who]);
+    t.world.patch(who.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: foe.id } } });
+    const out = await t.act(who, "escape", {}, [3, 18, 10, 10]);
+    assert.equal(out.ok, true, out.error);
+    const check = t.lastRolls(6).find((roll) => /escape/i.test(JSON.stringify(roll)) && /skill|ability|check/i.test(roll.kind ?? ""));
+    thrown[label] = check ? d20Faces(check).length : JSON.stringify(t.lastRolls(3)).slice(0, 300);
+  }
+  assert.deepEqual(thrown, { plain: 1, nimble: 2 }, "d20s on the escape check");
 };
 
 // Fighting Initiate: a barbarian, who has no fighting style of its own,

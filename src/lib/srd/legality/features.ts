@@ -295,6 +295,9 @@ export type PrerequisiteCheck = {
 // (Elven Accuracy names both), nor is a half-orc an orc.
 const SPECIES_WORDS: Record<string, string[]> = {
   elf: ["elf", "drow", "eladrin"],
+  "high elf": ["high elf"],
+  "wood elf": ["wood elf"],
+  drow: ["drow"],
   "half elf": ["half elf"],
   "half orc": ["half orc"],
   human: ["human"],

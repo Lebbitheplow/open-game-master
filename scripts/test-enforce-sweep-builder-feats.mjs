@@ -209,7 +209,11 @@ for (const row of feats) {
     await rows.row(`${prefix}:${row.name}:taken`, async () => {
       const first = withFeatAbility();
       const spec = featGrantSpec(featDescs[textKey(row.name)]);
-      const featChoices = withFeatChoice(first.fields.featChoices ?? {}, row.name, await picksFor(spec, first.built));
+      // The fill's own picks for this feat stay where the card's lists have
+      // nothing new left to offer (Squat Nimbleness's two skills, both
+      // held once the fill picked one of them for the feat).
+      const filledPicks = Object.entries(first.fields.featChoices ?? {}).find(([name]) => key(name) === key(row.name))?.[1] ?? {};
+      const featChoices = withFeatChoice(first.fields.featChoices ?? {}, row.name, { ...filledPicks, ...(await picksFor(spec, first.built)) });
       const optionPicks = optionPicksFor(first.built, first.fields);
       // A style slot the feat opens (Fighting Initiate), filled with the
       // first styles its list offers.

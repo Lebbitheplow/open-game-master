@@ -86,6 +86,10 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   if (holdsFeature(sheet, "fey ancestry")) {
     out.push({ roll: "save", against: ["charmed"], note: "Fey Ancestry: advantage on saves against being charmed" });
   }
+  // Infernal Constitution (a feat): advantage on saves against being poisoned.
+  if ((sheet.feats ?? []).some((feat) => feat.trim().toLowerCase() === "infernal constitution")) {
+    out.push({ roll: "save", against: ["poisoned"], note: "Infernal Constitution: advantage on saves against being poisoned" });
+  }
   if (holdsFeature(sheet, "dwarven resilience", "stout resilience", "duergar resilience") || isDwarf(sheet.race ?? "")) {
     out.push({ roll: "save", against: ["poison", "poisoned"], note: "advantage on saves against poison (resilience)" });
   }

@@ -119,7 +119,7 @@ export function buildAttackProfile(
   // null for a form the table does not know.
   const shapedAttacks = shapeAttacks(sheet.wildShape);
   // A lineage's bite or claws (src/lib/srd/racial-weapons.ts).
-  const racial = !granted && !natural && !args.spell?.trim() && !sheet.wildShape ? racialNaturalWeapon(sheet.features, weaponName) : null;
+  const racial = !granted && !natural && !args.spell?.trim() && !sheet.wildShape ? racialNaturalWeapon(sheet.features, weaponName, sheet.feats) : null;
   if (granted) {
     const grantedMeta = (sheet.conditionMeta as ConditionMetaMap)[granted.condition];
     // The spell the attack comes from: the one the casting recorded on the
