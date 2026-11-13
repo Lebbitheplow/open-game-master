@@ -21,6 +21,7 @@
 //
 // Called by authored-spend-effects.ts resolveSpendEffect (kind wild_magic_surge; the barbarian's Wild Surge is kind wild_surge).
 
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { getActiveEncounter, getEnemy, listEnemies } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -130,8 +131,9 @@ function burst(ctx: SpendContext, entry: SurgeEntry, effect: Extract<SurgeEntry[
   if (!encounter) {
     return [`No fight is on, so nobody is measured: the GM says who stands within ${effect.rangeFt} feet, and each makes a ${effect.save.toUpperCase()} save against DC ${computeSheetDerived(sheet).spellSaveDc ?? 10} for ${effect.dice} ${effect.type} damage, half on a success.`];
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.cha;
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(sheet, "cha");
   const foes = listEnemies(encounter.id).filter((enemy) => enemy.status === "alive" && withinFeet(encounter.id, sheet.id, enemy.id, effect.rangeFt));
   const friends = listSheets(campaign.id)
     .map((stale) => getSheetById(stale.id) ?? stale)
