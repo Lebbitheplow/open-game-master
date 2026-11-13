@@ -331,12 +331,16 @@
    },
    {
     "c": "curses targeting you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "probe": "none of its own: a curse is no record the engine keeps; the hook probe now answers for clause #0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "save_adv",
+     "ability": "wis,con",
+     "against": [
+      "curse"
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Anathema Ward (save_adv against curse, a save's against in src/lib/dm/roll-about.ts SAVE_AGAINST)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Anathema Ward#1"
    }
   ]
  },
@@ -1495,12 +1499,18 @@
    },
    {
     "c": "advantage against effects that would age, drain, or possess you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "no engine record marks an effect as aging, draining or possessing (a save's against names conditions and damage types only, src/lib/dm/roll-about.ts SAVE_AGAINST), so the advantage cannot be keyed; the hook probe passes on the feature's immunities",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Wight-Iron Will#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "save_adv",
+     "ability": "con,cha",
+     "against": [
+      "aging",
+      "drain",
+      "possession"
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Wight-Iron Will (save_adv against aging, drain and possession, a save's against in src/lib/dm/roll-about.ts SAVE_AGAINST)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Wight-Iron Will#1"
    }
   ]
  },
@@ -2230,9 +2240,12 @@
    },
    {
     "c": "enemies within 10 ft have disadvantage on their first save against fear each turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "src/lib/srd/authored-conditions.ts lists the condition as summaryOnly (\"a summary and nothing the engine reads\"): the buff is laid and its effect on a foe's or an ally's save is a line of text; the save itself was not staged"
+    "run": {
+     "k": "cc_hymn"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts ashenHymnSources, read by src/lib/dm/forced-save.ts rollEnemySave (the first save against frightened each turn within 10 feet of the chant)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ashen Hymn#2"
    }
   ]
  },

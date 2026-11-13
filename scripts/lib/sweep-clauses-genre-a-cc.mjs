@@ -516,6 +516,26 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Ashen Hymn: with the chant up, the foe beside the penitent rolls its first
+  // save against fear this turn at disadvantage (a 20 and a 1: it fails), its
+  // second as it falls (a 20: it holds); the foe 70 feet off rolls its first
+  // as it falls.
+  async cc_hymn(t, run, feature) {
+    const { rollEnemySave } = await load("lib/dm/forced-save.ts");
+    const scene = await t.stage(feature);
+    await spend(t, scene, "Ashen Hymn");
+    const save = (foe) => {
+      t.world.clearDice();
+      t.world.dice(20, 1);
+      const out = rollEnemySave(t.world.campaignId, t.kit.enemy(foe.id), "wis", 15, { against: "frightened" });
+      t.world.clearDice();
+      return out.success;
+    };
+    eq(`${save(scene.near)}/${save(scene.near)}/${save(scene.far)}`, "false/true/true", "the near foe's first and second fear saves this turn / the far foe's first");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

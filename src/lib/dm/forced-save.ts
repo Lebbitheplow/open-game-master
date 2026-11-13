@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { ashenHymnSources } from "@/lib/dm/genre-cc-a-saves";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
@@ -599,6 +600,8 @@ export function rollEnemySave(
     ...(options.disadvantage ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
+    // Ashen Hymn: the first save against fear each turn beside the chant (genre-cc-a-saves.ts).
+    ...ashenHymnSources(campaignId, enemy, options.against),
   ]);
   const purpose = { roller: "enemy" as const, kind: "save" as const, who: enemy.displayName };
   const expression = `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`;

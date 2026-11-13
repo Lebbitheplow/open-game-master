@@ -103,6 +103,10 @@ export const GENRE_CC_A_AUTHORED: GenreRow[] = [
   { feature: "Neutral Ground", classes: ["fixer"], entry: { subclass: "genre", spends: [{ name: "Neutral Ground", action: "none", does: { kind: "genre_cc", play: "parley", aim: "enemy" } }] } },
   { feature: "Exit Strategy", classes: ["fixer"], entry: { subclass: "genre", spends: [{ name: "Exit Strategy", action: "none", does: { kind: "genre_cc", play: "exit" } }] } },
 
+  // Anathema Ward's and Wight-Iron Will's saves ride their older rows
+  // (src/lib/srd/authored-effects-genre-a.ts), and Ashen Hymn's reach on the
+  // enemies' fear saves is src/lib/dm/genre-cc-a-saves.ts's.
+
   {
     feature: "Silver Tongue",
     classes: ["grifter"],

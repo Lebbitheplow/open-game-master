@@ -96,7 +96,9 @@ export const CHECK_KEY_PROPERTIES = {
 // What a save can resist: a condition, a damage type, a disease, or being
 // thrown from a mount (Born to the Saddle). Whether it is magic, and the
 // type of a spell's caster, are fields of their own (SaveAgainst).
-export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount"] as const;
+// "curse": a curse laid on the creature (Anathema Ward); "aging", "drain"
+// (of life or hit point maximum) and "possession" (Wight-Iron Will).
+export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount", "curse", "aging", "drain", "possession"] as const;
 export type SaveAgainstValue = (typeof SAVE_AGAINST)[number];
 
 // What one save resists, as the save-keyed traits read it.
