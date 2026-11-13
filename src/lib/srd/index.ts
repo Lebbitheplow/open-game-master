@@ -235,9 +235,10 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
     }
   }
   const armored = resolved.armorName !== null;
-  const featureBonus = riders.acBonus && (!riders.acBonusRequiresArmor || armored)
-    ? riders.acBonus
-    : 0;
+  // Only the bonuses that need armor wait for it: a warforged fighter with
+  // the Defense style lost Integrated Protection's +1 out of armor, since one
+  // armored bonus held the whole sum back.
+  const featureBonus = riders.acBonus - riders.acBonusArmored + (armored ? riders.acBonusArmored : 0);
   // Bracers of Defense: only while wearing no armor and no shield.
   const unarmoredBonus =
     !armored && !resolved.shieldName ? magic.acUnarmoredBonus : 0;

@@ -357,6 +357,16 @@ await test("every racial skill or tool pick is offered from the list its trait n
   assert.ok(alchemist.sheet.proficiencies.tools.includes("alchemist's supplies"));
 });
 
+await test("a lineage's own armor bonus holds out of armor beside the Defense style, which waits for armor", () => {
+  const none = { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: ["light", "medium", "heavy"], weapons: [] };
+  const ac = (features, equipment = []) =>
+    srd.deriveAc({ abilities: { ...BASE, dex: 14 }, equipment, features: features.map((name) => ({ name, source: "race" })), class: "fighter", level: 1, acOverride: false, proficiencies: none });
+  const plated = ["Integrated Protection (+1 AC)"];
+  const both = [...plated, "Fighting Style: Defense"];
+  const mail = [{ name: "Chain Mail", equipped: true }];
+  assert.deepEqual([ac([]), ac(plated), ac(both), ac(plated, mail), ac(both, mail)], [12, 13, 13, 17, 18]);
+});
+
 // The lineages players come to the builder asking for by concept, each
 // offered without a content pack: a teleporting fey elf, a sea elf, a gray
 // dwarf of the deep roads, a sea-dweller, a snake-blooded caster, a small
