@@ -400,6 +400,76 @@ Object.assign(CC, {
   },
 });
 
+// The rigger's drones, built before the fight.
+async function rigged(t, feature, level) {
+  t.fresh();
+  const hero = t.hero(feature.classId, level ?? feature.level);
+  const made = must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion").result;
+  const drones = (made?.result?.summoned ?? made?.summoned ?? []).map((entry) => entry.characterId);
+  if (!drones.length) throw new Error("the staged rigger has no drone");
+  await t.kit.fight(2, { heroFaces: { [hero.id]: 19, ...Object.fromEntries(drones.map((id) => [id, 15])) } });
+  const [near, far] = t.world.enemies();
+  for (const enemy of [near, far]) t.kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+  t.kit.place(hero.id, 5, 5);
+  t.kit.place(near.id, 5, 6);
+  t.kit.place(far.id, 15, 15);
+  drones.forEach((id, index) => t.kit.place(id, 4 + index, 4));
+  return { hero, drones, near, far };
+}
+
+Object.assign(CC, {
+  // Drone Swarm and Signal Boost: each drone has a turn of its own in the
+  // order, so no command spends the rigger's action, and a drone 70 feet
+  // off moves on its turn as one beside them does.
+  async cc_drone_command(t, run, feature) {
+    const { hero, drones } = await rigged(t, feature);
+    eq(drones.length >= 2, true, "the rigger has two drones");
+    const order = t.world.encounter().order.map((entry) => entry.characterId).filter(Boolean);
+    eq(drones.every((id) => order.includes(id)), true, "every drone has its own turn in the order");
+    t.kit.place(drones[1], 19, 14);
+    t.kit.freshTurn();
+    t.kit.giveTurn(drones[1]);
+    must(await t.world.invoke("move_token", { token: drones[1], x: 18, y: 13 }), "the far drone's move");
+    eq(Boolean(t.world.encounter().turnBudget?.actionUsed && t.world.encounter().turnBudget?.characterId === hero.id), false, "the rigger's action spent on a command");
+  },
+
+  // Evasive Subroutines: the drone makes its DEX save against a Burning Hands
+  // and takes nothing; failing it, half.
+  async cc_drone_evasion(t, run, feature) {
+    const { drones, near } = await rigged(t, feature);
+    const drone = drones[0];
+    t.kit.setEnemy(near.id, { stats: { ...t.kit.enemy(near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 4 }, spells: [{ name: "Burning Hands", level: 1 }] } } });
+    const burn = async (face) => {
+      t.world.patch(drone, { currentHp: 50, maxHp: 50 });
+      const encounter = t.world.encounter();
+      const place = encounter.order.findIndex((entry) => entry.enemyId === near.id);
+      t.encounters.saveEncounter({ ...encounter, turnIndex: place, turnBudget: null, reactionsUsed: [] });
+      t.kit.freshRound();
+      t.world.clearDice();
+      t.world.dice(4, 4, 4, face);
+      must(await t.world.invoke("aoe_damage", { casterEnemyId: near.id, spell: "Burning Hands", characterIds: [drone] }), "the foe's Burning Hands");
+      t.world.clearDice();
+      return 50 - t.hp(drone);
+    };
+    eq(`${await burn(20)}/${await burn(1)}`, "0/6", "fire the drone took making / failing its DEX save (3d6 on 4s)");
+  },
+
+  // Backup Frame: a destroyed drone is built again after a long rest, with
+  // nothing spent.
+  async cc_backup_frame(t, run, feature) {
+    t.fresh();
+    const hero = t.hero(feature.classId, feature.level);
+    const build = () => t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" });
+    const made = must(await build(), "Drone Companion").result;
+    const drone = (made?.result?.summoned ?? made?.summoned ?? [])[0]?.characterId;
+    t.world.patch(drone, { currentHp: 0 });
+    must(await t.world.invoke("take_rest", { kind: "long", characterIds: [hero.id] }), "the long rest");
+    const before = JSON.stringify(t.world.sheet(hero.id).resources);
+    const again = must(await build(), "Drone Companion after the rest").result;
+    eq(`${(again?.result?.summoned ?? again?.summoned ?? []).length > 0}/${JSON.stringify(t.world.sheet(hero.id).resources) === before}`, "true/true", "a drone built again / nothing spent");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

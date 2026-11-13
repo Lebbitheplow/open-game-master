@@ -91,6 +91,13 @@ export const GENRE_CC_A_AUTHORED: GenreRow[] = [
   { feature: "Grief Made Strength", classes: ["dirgesinger"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/pc-damage.ts", call: "griefMadeStrength(" } } },
   { feature: "Controlled Dosage", classes: ["plague_doctor"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/heal-spell.ts", call: "controlledDosage(" } } },
 
+  // "Advantage on saves against effects that would sever or hijack control
+  // of your drones": the rigger's saves against what takes their command
+  // away (charmed, and the conditions that leave them unable to act).
+  row("rigger", "Hardened Uplink", [{ kind: "save_adv", against: ["charmed", "stunned", "paralyzed", "incapacitated", "unconscious"] }]),
+  // Evasive Subroutines is the drones' (src/lib/dm/genre-cc-a-drones.ts).
+  { feature: "Evasive Subroutines", classes: ["rigger"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/aoe-characters.ts", call: "droneEvades(" } } },
+
   {
     feature: "Silver Tongue",
     classes: ["grifter"],

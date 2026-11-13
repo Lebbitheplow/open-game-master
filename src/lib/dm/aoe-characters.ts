@@ -4,6 +4,7 @@
 // apply_damage so audit, undo and the death engine all run. Split from
 // aoe-damage.ts, which rolls the blast once and calls this with it.
 
+import { droneEvades } from "@/lib/dm/genre-cc-a-drones";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
@@ -105,11 +106,14 @@ export function aoeOnCharacters(input: {
     // Evasion: on a Dexterity save for half, a made save takes nothing and a
     // failed one takes half. Only for DEX saves against effects that would
     // deal half on a success at all.
+    // Evasive Subroutines: a rigger's drone, "half damage from area effects,
+    // none on a successful DEX save" (genre-cc-a-drones.ts).
+    const evasive = droneEvades(sheet);
     const evasion =
       ability === "dex" &&
       halfOnSave &&
-      defenseRiders({ class: sheet.class, level: sheet.level, features: sheet.features }).evasion;
-    const taken = partsTaken(blast, evasion ? (success ? "none" : "half") : success ? (halfOnSave ? "half" : "none") : "full");
+      (evasive || defenseRiders({ class: sheet.class, level: sheet.level, features: sheet.features }).evasion);
+    const taken = partsTaken(blast, evasion ? (success ? "none" : "half") : success ? (halfOnSave ? "half" : "none") : evasive ? "half" : "full");
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: sheet.name,
