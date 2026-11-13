@@ -11,7 +11,7 @@ import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
-import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { freeCastResourceId, freeCastRestOf, heldFreeCastId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
@@ -585,10 +585,15 @@ export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType
       ? { free: false, line: "" }
       : { free: false, line: "", spent: `${name} is spent until a ${grant.rest ?? "long"} rest.` };
   }
-  const id = freeCastResourceId(facts?.name ?? name);
+  // A feat's free cast: at will (no counter), or a short or long rest's.
+  const held = heldFreeCastId(sheet.features, facts?.name ?? name);
+  if (held && freeCastRestOf(held) === "at will") {
+    return { free: true, castAt: facts?.level, line: "Free · at will" };
+  }
+  const id = held ?? freeCastResourceId(facts?.name ?? name);
   const state = sheet.resources?.[id];
   return state && state.used < state.max
-    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a long rest.` }
+    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a ${freeCastRestOf(id)} rest.` }
     : null;
 }
 

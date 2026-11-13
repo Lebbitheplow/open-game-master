@@ -10,7 +10,7 @@ import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
 import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
-import { freeCastOf, freeCastResourceId, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { freeCastOf, freeCastResourceId, freeCastRestOf, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { LATE_RESOURCE_DEFS } from "@/lib/srd/class-resources-late";
 import { UNLIMITED_USES } from "@/lib/srd/resource-limits";
 import { tableFeat } from "@/lib/srd/feat-effects";
@@ -1043,14 +1043,17 @@ export function resourceName(id: string): string {
 // the id, the rule is the same for every one of them.
 function freeCastDef(id: string): ResourceDef {
   const spell = freeCastSpellOf(id).replace(/(^|\s)([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`);
+  // The rest its id names (feat-spells.ts freeCastResourceId): a short
+  // rest's (Fey Teleportation's misty step) or a long one's.
+  const rest = freeCastRestOf(id) === "short" ? "short" : "long";
   return {
     id,
     match: [],
     displayName: `${spell} (free cast)`,
     maxFor: () => 1,
-    recharge: "long",
+    recharge: rest,
     effect: { kind: "narrative" },
-    guidance: `${spell} once without a spell slot, at its own level, and again after a long rest; the cast tool spends this use itself when the spell is cast, so use_resource is not needed. With a slot of its level or higher it can also be cast as usual.`,
+    guidance: `${spell} once without a spell slot, at its own level, and again after a ${rest} rest; the cast tool spends this use itself when the spell is cast, so use_resource is not needed. With a slot of its level or higher it can also be cast as usual.`,
   };
 }
 
@@ -1296,10 +1299,12 @@ export function populateResources(
   // A spell a feat lets the character cast once without a slot ("Free
   // cast: Misty Step (Fey Touched)", src/lib/srd/feat-spells.ts): one use,
   // back after a long rest, spent by the cast guard in place of a slot.
+  // A short rest's comes back on one (Fey Teleportation); one cast at will
+  // (Drow High Magic's detect magic) has no counter, as One with Shadows.
   for (const feature of features) {
     const free = freeCastOf(feature.name);
-    if (free) {
-      const id = freeCastResourceId(free.spell);
+    if (free && free.rest !== "at will") {
+      const id = freeCastResourceId(free.spell, free.rest);
       out[id] = { max: 1, used: Math.min(existing?.[id]?.used ?? 0, 1) };
     }
   }
