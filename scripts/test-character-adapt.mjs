@@ -348,6 +348,32 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
     assert.deepEqual(known.filter((name) => arcana.includes(name)), arcana.slice(0, 2), "the 6th- and 7th-level arcana stay, the 8th and 9th go");
     assert.equal(known.filter((name) => !arcana.includes(name)).length, 12, "the column's twelve spells at 13th");
   });
+
+  // What a class feature holds on top of the counts stays with it: the
+  // Book of Shadows' three cantrips (Pact of the Tome), Additional Magical
+  // Secrets' two spells (College of Lore). The trim held both to the bare
+  // column.
+  test("a Tome warlock and a Lore bard joining lower keep what their features hold beside the counts", () => {
+    const cantrips = ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Fire Bolt", "Light", "Guidance"];
+    const tome = sheet({
+      class: "warlock",
+      subclass: "The Fiend",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      hitDice: { total: 6, spent: 0 },
+      features: [{ name: "Pact Boon: Pact of the Tome", source: "choice" }],
+      spellcasting: { ability: "cha", slots: {}, cantrips, known: regular.slice(0, 7), prepared: [] },
+    });
+    assert.deepEqual(adaptSheetToLevel(tome, 6, 4).spellcasting.cantrips, cantrips, "three of the warlock's own and the book's three at 4th");
+    const bardSpells = checklistSpellsOn("bard").filter((spell) => spell.level >= 1 && spell.level <= 4).map((spell) => spell.name).slice(0, 14);
+    const lore = sheet({
+      class: "bard",
+      subclass: "College of Lore",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      hitDice: { total: 9, spent: 0 },
+      spellcasting: { ability: "cha", slots: {}, cantrips: ["Vicious Mockery", "Light", "Mage Hand"], known: bardSpells, prepared: [] },
+    });
+    assert.equal(adaptSheetToLevel(lore, 9, 8).spellcasting.known.length, 13, "eleven spells known at 8th and Additional Magical Secrets' two");
+  });
 }
 
 console.log(`character adapt: ${passed} assertions passed.`);

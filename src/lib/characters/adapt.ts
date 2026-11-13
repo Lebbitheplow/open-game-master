@@ -15,6 +15,7 @@ import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { findClass } from "@/lib/srd";
 import { spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
 import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
+import { classSpellGrants } from "@/lib/srd/class-spell-grants";
 import {
   cantripCapOf,
   casterViewsOf,
@@ -271,15 +272,23 @@ function trimToLevel(view: CasterView, abilities: CreateSheetInput["abilities"])
   };
   // A third caster's count (an Eldritch Knight's two) as much as a
   // class's own.
-  const cantripCap = cantripCapOf(view);
-  const cap = spellCapOf(view, abilities)?.count ?? null;
+  // What a class feature holds on top of the class's counts at the new
+  // level (src/lib/srd/class-spell-grants.ts): the Book of Shadows' three
+  // cantrips, Additional Magical Secrets' two spells. The trim held a Tome
+  // warlock or a Lore bard to the bare column and took them away.
+  const grants = classSpellGrants(view);
+  const baseCantrips = cantripCapOf(view);
+  const cantripCap = baseCantrips === null ? null : baseCantrips + grants.extraCantrips;
+  const baseCap = spellCapOf(view, abilities)?.count ?? null;
+  // The arcana are kept apart below, one of each level.
+  const cap = baseCap === null ? null : baseCap + grants.extraSpells - arcanumLevelsFor(view.classId, view.level).length;
   const cantrips = cantripCap === null ? view.cantrips : view.cantrips.slice(0, cantripCap);
   // A warlock keeps the first spell of each Mystic Arcanum its level still
   // has, on top of the spells known (src/lib/srd/mystic-arcanum.ts).
   const arcana = arcanumLevelsFor(view.classId, view.level).flatMap(
     (spellLevel) => view.known.find((name) => spellLevelOf(name) === spellLevel) ?? [],
   );
-  const known = [...capList(castable(view.known), cap), ...arcana];
+  const known = [...capList(castable(view.known).filter((name) => !arcana.includes(name)), cap), ...arcana];
   const prepared = capList(castable(view.prepared), cap);
   const room = cap === null ? Infinity : Math.max(0, cap - spellsAgainstLimit(prepared, granted));
   const pending = castable(view.pending).slice(0, room);
