@@ -199,5 +199,28 @@ await run("One With the Ruins: in ruins a scavenger is not surprised and not fla
   }
 });
 
+// ---- GB11: Chained Hook ----
+
+await run("Chained Hook: the road warrior's chain strikes a creature 15 feet off for 1d8 piercing and drags it 10 feet toward them; 20 feet off is out of reach, and without the feature there is no chain", async () => {
+  const row = feature("road_warrior", "Chained Hook", 3);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  kit.openField();
+  kit.place(rig.ally.id, 1, 9);
+  const lash = async (x) => {
+    rig.myTurn(hero);
+    kit.place(near.id, x, 2);
+    return kit.swing(hero.id, near.id, [15, 4, 3, 3, 3, 3], { weapon: "Chained Hook" });
+  };
+  const hit = await lash(8);
+  assert.ok(hit.ok, `the chain at 15 feet: ${hit.error}`);
+  assert.match(hit.damage?.expression ?? "", /1d8/, `the chain rolled ${hit.damage?.expression}`);
+  assert.equal(hit.result.damageType, "piercing");
+  assert.equal(kit.token(near.id).x, 6, `the creature stands at x ${kit.token(near.id).x}, not dragged 10 feet`);
+  assert.equal((await lash(9)).ok, false, "the chain reached 20 feet");
+  const off = await rig.without(hero, row, () => lash(6));
+  assert.equal(off.ok && /chain/i.test(off.result?.weapon ?? ""), false, "without the feature the chain struck");
+});
+
 rig.world.close();
 finish();

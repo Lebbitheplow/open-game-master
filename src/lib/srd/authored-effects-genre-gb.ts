@@ -69,6 +69,9 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
   gadget("Ear Trumpet", { kind: "buff", condition: EAR_TRUMPET, rounds: 10 }, [{ kind: "check_adv", skills: ["perception"], gate: { condition: EAR_TRUMPET } }]),
   gadget("Skeleton Key", { kind: "buff", condition: SKELETON_KEY, rounds: 1 }, [{ kind: "check_adv", abilities: ["dex"], gate: { condition: SKELETON_KEY } }]),
   gadget("Pocket Shield", { kind: "buff", condition: POCKET_SHIELD, rounds: 1 }, [{ kind: "ac", amount: 2, gate: { condition: POCKET_SHIELD } }]),
+  // "A hooked chain (1d8 piercing, 15-ft reach)": a weapon the feature is,
+  // proficient (src/lib/dm/genre-gb-hook.ts gives it its reach and drag).
+  row("Chained Hook", ["road_warrior"], { effects: [{ kind: "natural_weapon", weapon: { name: "Chained Hook", aliases: ["hooked chain", "chain"], dice: "1d8", type: "piercing", reach: true } }] }),
 ];
 
 function gadget(name: string, does: SpendDoes, effects: AuthoredEffect[] = []): GenreRow {
