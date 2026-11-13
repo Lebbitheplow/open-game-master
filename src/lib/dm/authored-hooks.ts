@@ -28,6 +28,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
+import { FLAMES_OF_PHLEGETHOS } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
@@ -257,6 +258,15 @@ export function authoredAfterHit(
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
       lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
+    }
+  }
+  // Flames of Phlegethos: a creature that hits the wreathed tiefling with a
+  // melee attack takes 1d4 fire (affinity-cast.ts markFlamesCast lays them).
+  const live = getEnemy(input.attacker.id);
+  if (!input.ranged && live?.status === "alive" && target.conditions.some((entry) => textKey(entry) === FLAMES_OF_PHLEGETHOS)) {
+    const burn = Number(rollCard(campaign, null, target.id, "damage", rollAgainst("Flames of Phlegethos", live.displayName), "1d4", sheetAttacker(target)).total);
+    if (burn > 0) {
+      lines.push(hurtEnemy(campaign, input.encounter, live, burn, "fire", "Flames of Phlegethos"));
     }
   }
   return lines;

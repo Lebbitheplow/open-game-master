@@ -8,7 +8,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
-import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
+import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -86,7 +86,11 @@ export function landSpellDamage(input: {
   const secondType = mech?.secondType;
   const [firstDice, secondDice] = splitDamageExpression(damageExpression, secondType) ?? [];
   const secondAdept = secondDice ? elementalAdeptApplies(sheet, secondType) : false;
-  const floored = (dice: string) => (adept || secondAdept ? floorDamageDice(dice) : dice);
+  // Flames of Phlegethos: the fire part's 1s are rolled again, before the floor.
+  const floored = (dice: string, type?: string) => {
+    const flamed = flamesOfPhlegethosApplies(sheet, type) ? rerollOnesDice(dice) : dice;
+    return adept || secondAdept ? floorDamageDice(flamed) : flamed;
+  };
   // Destructive Wrath, on the casting's one roll: the creatures after the first
   // take that roll (`sharedRoll`). Only the lightning or thunder part is dealt
   // at its maximum; the other type of a two-type spell is still rolled.
@@ -99,10 +103,10 @@ export function landSpellDamage(input: {
   const parts: SpellDicePart[] =
     firstDice && secondDice && damageType && secondType
       ? [
-          { type: damageType, dice: [floored(firstDice), ...riders.dice].join("+"), atMaximum: atMaximum || wrathOn(damageType) },
-          { type: secondType, dice: [floored(secondDice), ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(secondType) },
+          { type: damageType, dice: [floored(firstDice, damageType), ...riders.dice].join("+"), atMaximum: atMaximum || wrathOn(damageType) },
+          { type: secondType, dice: [floored(secondDice, secondType), ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(secondType) },
         ]
-      : [{ type: damageType ?? "", dice: [floored(damageExpression), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(damageType) }];
+      : [{ type: damageType ?? "", dice: [floored(damageExpression, damageType), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(damageType) }];
   if (parts.some((part) => wrathOn(part.type))) {
     spendWrath(campaign.id, sheet.id);
     base.destructiveWrath = WRATH_NOTE;

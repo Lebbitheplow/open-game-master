@@ -1842,5 +1842,51 @@
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.second-chance.refill"
    }
   ]
+ },
+ "feat::Flames of Phlegethos": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "eeba739d7ca4",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Tiefling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Intelligence or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When you roll fire damage for a spell you cast, any 1 on its fire damage dice is rolled again, and the new roll is used.",
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts rerollOnesDice on the fire dice of a spell attack (pc-attack-plan.ts), cast_at_enemy (cast-at-enemy-damage.ts) and aoe_damage (aoe-damage.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.reroll"
+   },
+   {
+    "c": "Whenever you cast a spell that deals fire damage, flames wreathe you until the end of your next turn.",
+    "is": "held",
+    "by": "src/lib/dm/affinity-cast.ts markFlamesCast: the 'flames of phlegethos' mark until the end of the caster's next turn, laid by the three spell damage doors",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.wreathe"
+   },
+   {
+    "c": "They don't harm you or anything you carry, they shed bright light for 30 feet and dim light for 30 feet more,",
+    "is": "flavor"
+   },
+   {
+    "c": "and a creature within 5 feet of you that hits you with a melee attack takes 1d4 fire damage.",
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts authoredAfterHit: a melee hit on the wreathed caster rolls 1d4 fire at the attacker",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.burn"
+   }
+  ]
  }
 }

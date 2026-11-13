@@ -8,7 +8,7 @@ import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { abilityAreaShape, areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { spellFactsFor } from "@/lib/content";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
+import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -540,7 +540,9 @@ export function handleAoeDamage(
       empoweredNote = empoweredLine(empowered.empower);
     }
     for (const [index, { expression, type }] of parts.entries()) {
-      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
+      // Flames of Phlegethos: a character's fire part rolls its 1s again, before the floor.
+      const flamed = plan && flamesOfPhlegethosApplies(plan.caster, type) ? rerollOnesDice(expression) : expression;
+      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(flamed) : flamed, undefined, index === 0 ? empowered : {});
       // Spell Bombardment: a die at its highest number is rolled again, once
       // a turn, on the roll's own card (src/lib/dm/ar-ws-bombardment.ts).
       const burst = plan ? spellBombardment({ campaign, turn, sheet: plan.caster, outcome: thrown, spell: plan.spell, card: false }) : null;
