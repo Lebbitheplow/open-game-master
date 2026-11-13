@@ -221,6 +221,21 @@ await test("Mounting costs half the rider's speed during their own move; the AI 
   assert.doesNotMatch(JSON.stringify(off2.result ?? off2), /movementSpent|costs half their movement/, "the console's uncharged dismount reported movement spent");
 });
 
+// SRD 5.1, Mounting and Dismounting: "costs an amount of movement equal to
+// half your speed". Half of 25 feet is 12.5: three squares of it are spent,
+// and the rider who rounded down kept a square the rule does not leave.
+await test("Mounting costs a 25-foot rider three squares, half their speed rounded up, not two.", async () => {
+  await stage();
+  world.patch(kara.id, { speed: 25 });
+  try {
+    const on = await ai.invoke("mount_up", { characterId: kara.id, mount: "Riding horse" });
+    assert.equal(on.ok, true, on.error);
+    assert.equal(kit.token(kara.id).movedThisRound, 3, "half of 25 feet was charged as 10");
+  } finally {
+    world.patch(kara.id, { speed: 30 });
+  }
+});
+
 await test("Mounting is the rider's move: a stunned rider is refused at the console and the AI's door alike, and nothing is charged.", async () => {
   await stage();
   const { setMount } = await import("../src/lib/db/mounts.ts");

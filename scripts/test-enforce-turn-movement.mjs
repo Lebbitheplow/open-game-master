@@ -214,8 +214,9 @@ await test("A prone goblin slowed to 15 ft stands for half of that and walks the
   kit.place(goblin.id, 2, 10);
   await world.invoke("move_token", { token: goblin.id, x: 16, y: 10 });
   assert.equal(kit.enemy(goblin.id).conditions.includes("prone"), false, "the goblin stayed down");
-  // Three squares slowed: one to stand, two to walk.
-  assert.equal(kit.token(goblin.id).x - 2, 2);
+  // Three squares slowed (15 feet): standing spends 7.5 feet, two squares of
+  // it, and the 7.5 feet left walk one square (SRD 5.1, Being Prone).
+  assert.equal(kit.token(goblin.id).x - 2, 1);
 });
 
 await test("The board's intent for an enemy reads the speed it really has: a slowed goblin seven squares off reaches for its bow.", async () => {
@@ -345,6 +346,22 @@ await test("The AI clearing a prone character on their own turn stands them up f
   assert.equal(out.ok, true, out.error);
   assert.equal(prone(fighter), false);
   assert.equal(lit(fighter), 3, "standing up cost no movement");
+});
+
+// SRD 5.1, Being Prone: standing "costs an amount of movement equal to half
+// your speed". A 25-foot dwarf spends 12.5 feet and has 12.5 left: two
+// squares. Half rounded down in squares charged two and left them three.
+await test("A 25-foot character standing up keeps two squares of their walk, not three, on the board and through the AI.", async () => {
+  await typedMoveStage();
+  world.patch(fighter.id, { speed: 25, conditions: ["prone"] });
+  try {
+    assert.equal(lit(fighter), 2, "the board lit three squares past a 12.5-foot stand");
+    const out = await ai.invoke("clear_condition", { characterId: fighter.id, condition: "prone" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(lit(fighter), 2, "standing up from a 25-foot speed left three squares");
+  } finally {
+    world.patch(fighter.id, { speed: 30, conditions: [] });
+  }
 });
 
 await test("A character cannot stand up with less than half their speed left, at speed 0, or off their own turn; the human DM's console still clears prone freely.", async () => {

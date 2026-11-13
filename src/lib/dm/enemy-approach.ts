@@ -114,7 +114,8 @@ export function standUpCost(encounterId: string, enemy: EncounterEnemy): number 
   const token = map ? getTokenByRef(map.id, enemy.id) : null;
   const budget = token ? enemyMoveBudget(getEncounter(encounterId), enemy, token) : null;
   const full = budget ? budget.speedTiles : enemySpeedTiles(enemy);
-  const half = Math.floor(full / 2);
+  // Rounded up in squares, as a character's is (authored-effects-more.ts standUpTiles).
+  const half = Math.ceil(full / 2);
   if (full <= 0 || (budget && budget.tilesLeft < half)) {
     return null;
   }

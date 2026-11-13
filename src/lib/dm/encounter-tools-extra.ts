@@ -376,7 +376,7 @@ function handleEnemyCondition(
       const speed = enemySpeedTiles(enemy) * 5;
       return {
         error: speed
-          ? `${enemy.displayName} has too little movement left this turn to stand: it costs half its speed (${Math.floor(speed / 10) * 5} ft). It stays prone and takes its turn from there.`
+          ? `${enemy.displayName} has too little movement left this turn to stand: it costs half its speed (${Math.ceil(speed / 10) * 5} ft). It stays prone and takes its turn from there.`
           : `${enemy.displayName} cannot stand up at speed 0. It stays prone and takes its turn from there.`,
         retry: true,
       };
