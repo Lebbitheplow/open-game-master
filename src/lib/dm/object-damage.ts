@@ -23,7 +23,14 @@ import type { ObjectRecord } from "@/lib/dm/march-state";
 import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst, rollOn } from "@/lib/roll-labels";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
+import { d20Expression, isValidExpression, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
+import { ragingMeleeBonus, type AttackProfile } from "@/lib/dm/attack-logic";
+import { exhaustionRollState, mergeAdvantage } from "@/lib/dm/condition-logic";
+import { wearsUntrainedArmor } from "@/lib/srd/armor";
+import { sizeForRace } from "@/lib/srd";
+import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
+import { hasHalflingLuck } from "@/lib/srd/feature-effects";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishWithSeq } from "@/lib/events";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
@@ -174,10 +181,17 @@ export function damageObject(
     }
     // The character's own attack roll (src/lib/dm/character-roll.ts): on
     // physical dice their player rolls it, and a miss waits on what they hold.
+    // What the attacker's own state does to any attack roll of theirs, as
+    // on a creature (pc-attack-situation.ts): exhaustion 3 or more, armor
+    // worn untrained, a heavy weapon in Small hands. Halfling Lucky rerolls
+    // a natural 1. The object's roll was a plain d20 whatever they were.
+    const own = objectSwingState(sheet, built.profile);
+    notes.push(...own.notes);
     const attack = rollCharacterD20(campaign, sheet, {
       kind: "attack",
-      expression: `1d20${built.profile.toHit >= 0 ? "+" : ""}${built.profile.toHit}`,
+      expression: d20Expression(built.profile.toHit, own.advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1"),
       detail: rollAgainst(built.profile.weapon, args.name ?? "an object"),
+      advantage: own.advantage,
       attack: { ac },
     });
     const striker: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
@@ -198,7 +212,14 @@ export function damageObject(
         note: `The attack (${attack.total}) misses AC ${ac}; the object takes nothing.`,
       };
     }
-    const expression = natural === 20 ? critDamageExpression(built.profile.damageExpression) : built.profile.damageExpression;
+    // Rage's bonus is for any melee weapon attack using Strength (SRD 5.1,
+    // Rage), a door's as much as a goblin's.
+    const rage = ragingMeleeBonus(sheet, built.profile);
+    const base = rage ? `${built.profile.damageExpression}+${rage}` : built.profile.damageExpression;
+    if (rage) {
+      notes.push(`raging: +${rage} melee damage`);
+    }
+    const expression = natural === 20 ? critDamageExpression(base) : base;
     const damage = rollCharacterD20(campaign, sheet, { kind: "damage", expression, detail: rollAgainst(built.profile.weapon, args.name ?? "an object") });
     publishRoll(campaign, turn, sheet.id, "damage", rollAgainst(built.profile.weapon, args.name ?? "an object"), damage, striker);
     dealt = Math.max(0, damage.total);
@@ -267,5 +288,21 @@ export function damageObject(
         : broken
           ? `${dealt} damage brings it to ${taken} of its ${hp} HP: it breaks. Narrate it giving way.`
           : `${dealt} damage holds (${taken} of ${hp} HP taken${args.name ? "; the server keeps the count for the next blow" : ""}).`,
+  };
+}
+
+// The attack roll's state from the attacker alone, for a swing at an object:
+// no creature on the other side to see, dodge or lie prone.
+function objectSwingState(sheet: CharacterSheet, profile: AttackProfile): { advantage: Advantage; notes: string[] } {
+  const exhaustion = exhaustionRollState(sheet.exhaustion ?? 0, "attack");
+  const untrained = wearsUntrainedArmor(sheet);
+  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
+  return {
+    advantage: mergeAdvantage([exhaustion.advantage, ...(untrained || smallWithHeavy ? ["disadvantage" as const] : [])]),
+    notes: [
+      ...(exhaustion.note ? [exhaustion.note] : []),
+      ...(untrained ? [`${sheet.name} wears armor they are not trained in: disadvantage`] : []),
+      ...(smallWithHeavy ? [`${profile.weapon} is a heavy weapon and ${sheet.name} is Small: disadvantage`] : []),
+    ],
   };
 }
