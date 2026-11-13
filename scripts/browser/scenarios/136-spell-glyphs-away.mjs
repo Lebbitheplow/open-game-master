@@ -1,6 +1,7 @@
 // Issue 845, away from the Hand: a spell wears the glyph its card wears
 // wherever else it is drawn, the party panel's concentration chip, the
-// sheet's spellbook and the workshop's homebrew list, and no per-spell
+// sheet's spellbook, the workshop's homebrew list and the research desk's
+// results, and no per-spell
 // painting is asked for. Sister Ama holds Spirit Guardians at the quiet
 // table (radiant), and her book holds Bless (a boon) and Cure Wounds
 // (healing). A workshop spell wears the glyph of the spell it runs as, and
@@ -132,6 +133,27 @@ export default {
         await api.delete(`${base}/api/homebrew/${id}?purge=1`).catch(() => undefined);
       }
       if (workshopId) await api.delete(`${base}/api/workshops/${workshopId}`).catch(() => undefined);
+    }
+
+    // ---- the research desk's spell results ----
+    // They drew the per-spell painting too, so the same spell had two faces.
+    await t.open(`/reference`);
+    const spellsTab = page.locator(`${root}[role="tab"]`).filter({ hasText: /^\s*Spells\s*$/ }).locator("visible=true").first();
+    await eventually(() => spellsTab.count(), { timeoutMs: 30_000, label: "the research desk's Spells tab" });
+    await t.tap(spellsTab);
+    const search = page.locator(`${root}input[aria-label="Search"]`).locator("visible=true").first();
+    await search.fill("Fireball");
+    const result = page.locator(`${root}li`).filter({ hasText: "Fireball" }).filter({ hasNotText: "Delayed" }).locator("visible=true").first();
+    const found = await eventually(() => result.count(), { timeoutMs: 15_000, label: "Fireball among the spells" }).then(() => true, () => false);
+    if (found) {
+      await untilStill(page);
+      // The school badge beside the name keeps its school mark.
+      const art = (await images(result)).filter((img) => !img.src.includes("/icons/family/"));
+      check(art.length === 1 && glyphOf(art[0].src) === "fire" && art[0].drawn, `the research desk's Fireball wears the fire glyph, alone (${art.map((img) => img.src).join(", ")})`);
+      await t.shot("reference");
+    } else {
+      // A server with no content pack lists no spells here to draw.
+      check(!(await page.locator(`${root}li img[src*="/icons/spell/"]`).count()), "no spell result draws a painting");
     }
 
     check(asked.length === 0, `no per-spell painting is asked for (${asked.slice(0, 5).join(", ")})`);

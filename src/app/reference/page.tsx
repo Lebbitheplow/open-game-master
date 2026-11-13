@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Calculator, Columns3, Loader2, MessageCircleQuestion, Search } from "lucide-react";
 import type { IconKind } from "@/lib/icons";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { PIXEL_ICONS, ui } from "@/lib/ui";
@@ -28,8 +29,8 @@ import { MAX_COMPARE, type CompareKind } from "@/lib/reference/compare";
 import { textKey } from "@/lib/language/text-logic";
 
 // Which painted icon set a reference category draws from (src/lib/icons.ts).
+// A spell is not here: it wears its glyph (ResultIcon).
 const REFERENCE_ICON_KIND: Record<string, IconKind | undefined> = {
-  spells: "spell",
   feats: "feat",
   items: "item",
   conditions: "condition",
@@ -99,7 +100,16 @@ function comparableKind(kind: Kind): CompareKind | null {
 // The plate at the head of a result. GameIcon draws nothing when a thing has
 // no painting (a homebrew spell), so the category's glyph sits underneath and
 // the row never loses its lead.
-function ResultIcon({ kind, name }: { kind: Kind; name: string }) {
+function ResultIcon({ kind, name, data }: { kind: Kind; name: string; data?: Record<string, unknown> }) {
+  // A spell wears the glyph its Hand card wears (issue 845), as in the
+  // spellbook and the workshop; a glyph always ships, so nothing sits under it.
+  if (kind === "spells") {
+    return (
+      <span className="relative inline-flex size-8 shrink-0">
+        <GameIcon icon={spellGlyphIcon(name, typeof data?.runsAs === "string" ? data.runsAs : null, data?.mech)} size="size-8" />
+      </span>
+    );
+  }
   const own = REFERENCE_ICON_KIND[kind];
   return (
     <span className="relative inline-flex size-8 shrink-0">
@@ -445,7 +455,7 @@ export default function ReferencePage() {
                       </button>
                     ) : null}
                     <button type="button" onClick={() => openRow(row)} className={cn(ROW, "min-w-0 flex-1")}>
-                      <ResultIcon kind={rowsKind} name={row.name} />
+                      <ResultIcon kind={rowsKind} name={row.name} data={row.data} />
                       <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
                         <span
                           className={cn(
