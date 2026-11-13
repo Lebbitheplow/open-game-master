@@ -552,6 +552,13 @@ export function rerollOnesDice(expression: string): string {
     .join("");
 }
 
+// Orcish Fury (a half-orc's feat): its counter, spent on a weapon hit for one
+// more of the weapon's damage dice (after-roll-table.ts orcish_fury), and the
+// mark Relentless Endurance leaves when it holds the half-orc up, which opens
+// the reaction's one weapon attack (feat-reactions.ts orcishFury).
+export const ORCISH_FURY = "feat_orcish_fury";
+export const ORCISH_FURY_STRIKE = "orcish fury strike";
+
 // ---- reactions and traps ----
 
 export function hasMageSlayer(sheet: FeatHolder): boolean {
@@ -622,7 +629,7 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
   // Inspiring Leader's temporary hit points and Metamagic Adept's sorcery
   // points are counters the server spends and applies (class-resources.ts).
   if (["inspiring leader", "metamagic adept", "fade away", "dragon fear"].includes(name)) return "[use_resource]";
-  if (["defensive duelist", "mage slayer", "sentinel", "second chance"].includes(name)) return "[use_reaction]";
+  if (["defensive duelist", "mage slayer", "sentinel", "second chance", "orcish fury"].includes(name)) return "[use_reaction]";
   if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack feature]";
   if (name === "stunning sniper") return "[pc_attack stunShot]";
   if (["tavern brawler", "shield master"].includes(name)) return "[take_action bonus]";

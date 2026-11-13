@@ -4,10 +4,14 @@
 // Flames of Phlegethos on a fire spell, Orcish Fury on a hit and after
 // Relentless Endurance, Bountiful Luck on an ally's natural 1.
 import { assert } from "./sweep-clauses-srd-rig.mjs";
+import { call } from "./enforce-campaign.mjs";
 
 export const SPECIES_PROBES = [
   "feat.flames-of-phlegethos.reroll", "feat.flames-of-phlegethos.wreathe", "feat.flames-of-phlegethos.burn",
+  "feat.orcish-fury.die", "feat.orcish-fury.rest", "feat.orcish-fury.strike",
 ];
+
+const worn = (...names) => names.map((name) => ({ name, qty: 1, equipped: true }));
 
 export function speciesProbes(rig, P) {
   // A tiefling wizard's Fire Bolt (1d10 at level 4) whose damage die lands on
@@ -52,5 +56,77 @@ export function speciesProbes(rig, P) {
       burned[label] = before - t.enemy(foe).currentHp;
     }
     assert.deepEqual(burned, { plain: 0, flames: 3 }, "fire dealt to the dummy whose club hit the caster (a 3 on the d4)");
+  };
+
+  // A half-orc fighter's longsword hit (1d8 + 3) waits on its card, which
+  // offers Orcish Fury; chosen, the weapon's d8 is rolled once more.
+  const furyHit = async (feats) => {
+    const t = await rig.table({ gameSettings: { dicePolicy: "real_allowed" } });
+    const who = t.hero({ class: "fighter", level: 4, race: "half_orc", feats, equipment: worn("Longsword") });
+    const [foe] = await t.fight([who]);
+    const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
+    const route = await t.world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+    const swing = async () => {
+      await t.swing(who, foe, [15], { weapon: "Longsword" });
+      const [pending] = listOpenPendingRolls(t.world.campaignId);
+      return { pending, offered: (pending?.thrown?.options ?? []).map((option) => option.id) };
+    };
+    const choose = async (pending, use, ...faces) => {
+      t.world.signIn({ id: t.sheet(who).userId });
+      t.world.dice(...faces);
+      const out = await call(route, "POST", { use }, { campaignId: t.world.campaignId, pendingRollId: pending.id });
+      t.world.clearDice();
+      return out;
+    };
+    return { t, who, foe, swing, choose };
+  };
+
+  P["feat.orcish-fury.die"] = async () => {
+    const plain = await furyHit([]);
+    assert.equal((await plain.swing()).offered.includes("orcish_fury"), false, "a half-orc without the feat was offered Orcish Fury");
+    const { t, who, foe, swing, choose } = await furyHit(["Orcish Fury"]);
+    assert.deepEqual(t.sheet(who).resources.feat_orcish_fury, { max: 1, used: 0 }, "the use");
+    const { pending, offered } = await swing();
+    assert.ok(offered.includes("orcish_fury"), `the hit's card offered ${JSON.stringify(offered)}`);
+    const before = t.enemy(foe).currentHp;
+    const out = await choose(pending, "orcish_fury", 5, 6);
+    assert.equal(out.status, 200, JSON.stringify(out.json));
+    assert.equal(before - t.enemy(foe).currentHp, 5 + 3 + 6, "the longsword's 5 + 3, and the fury's d8 of 6");
+    assert.equal(t.used(who, "feat_orcish_fury"), 1);
+  };
+
+  P["feat.orcish-fury.rest"] = async () => {
+    const { t, who, swing, choose } = await furyHit(["Orcish Fury"]);
+    const first = await swing();
+    assert.equal((await choose(first.pending, "orcish_fury", 5, 6)).status, 200);
+    t.kit.freshTurn();
+    const again = await swing();
+    assert.equal(again.offered.includes("orcish_fury"), false, "Orcish Fury was offered again before a rest");
+    const { resourceDef } = await import("../../src/lib/srd/class-resources.ts");
+    assert.equal(resourceDef("feat_orcish_fury").recharge, "short");
+    assert.equal(t.used(who, "feat_orcish_fury"), 1);
+  };
+
+  // Relentless Endurance holds the half-orc at 1 hit point; right after it,
+  // the reaction makes one weapon attack. Without the feat, or before the
+  // trait has held them, the reaction is refused.
+  P["feat.orcish-fury.strike"] = async () => {
+    const outcome = {};
+    for (const [label, feats, drop] of [["plain", [], true], ["unspent", ["Orcish Fury"], false], ["fury", ["Orcish Fury"], true]]) {
+      const t = await rig.table();
+      const who = t.hero({ class: "fighter", level: 4, race: "half_orc", feats, equipment: worn("Longsword") });
+      const [foe] = await t.fight([who]);
+      if (drop) {
+        t.world.patch(who.id, { currentHp: 3 });
+        t.foesTurn(foe);
+        const hit = await t.strike(foe, who, [16, 4]);
+        assert.equal(hit.ok, true, hit.error);
+        assert.equal(t.sheet(who).currentHp, 1, "the staging: Relentless Endurance held them at 1");
+      }
+      const before = t.enemy(foe).currentHp;
+      const out = await t.invoke("use_reaction", { characterId: who.id, feature: "orcish fury", targetEnemyId: foe.id }, [15, 5]);
+      outcome[label] = out.ok ? before - t.enemy(foe).currentHp : "refused";
+    }
+    assert.deepEqual(outcome, { plain: "refused", unspent: "refused", fury: 8 }, "the reaction's longsword hit (5 + 3)");
   };
 }

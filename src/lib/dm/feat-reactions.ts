@@ -25,7 +25,8 @@ import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { rollExpression } from "@/lib/dice";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
-import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
+import { defensiveDuelistBonus, hasMageSlayer, hasSentinel, ORCISH_FURY_STRIKE } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { listSheets } from "@/lib/db/sheets";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -111,6 +112,35 @@ export function mageSlayer(ctx: Ctx): ToolResult {
   return "error" in result ? result : { ...result, reaction: "Mage Slayer" };
 }
 
+// Orcish Fury: right after Relentless Endurance holds the half-orc up (the
+// mark pc-damage.ts leaves until their next turn), the reaction makes one
+// weapon attack, melee or ranged, through pc_attack's own rules as Mage
+// Slayer's does. It costs no use of the feat's counter.
+export function orcishFury(ctx: Ctx): ToolResult {
+  const { campaign, encounter, sheet, args } = ctx;
+  if (!holdsFeat(sheet, "Orcish Fury")) {
+    return { error: `${sheet.name} has no Orcish Fury; the reaction attack after Relentless Endurance is that feat's. Nothing was spent.`, refused: "rules" };
+  }
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  if (!fresh.conditions.some((entry) => textKey(entry) === ORCISH_FURY_STRIKE)) {
+    return { error: `Orcish Fury's attack comes right after Relentless Endurance holds ${sheet.name} at 1 hit point, and it has not just done so. Nothing was spent.`, refused: "rules" };
+  }
+  if (!encounter) {
+    return { error: "Orcish Fury's attack happens in a fight; there is no active encounter.", refused: "rules" };
+  }
+  if (!args.targetEnemyId) {
+    return { error: "Orcish Fury makes one weapon attack: pass its targetEnemyId. Nothing was spent.", retry: true };
+  }
+  addSheetCondition(campaign, fresh, READIED, { untilTurnOf: sheet.id }, "Orcish Fury");
+  const result = handlePcAttack(campaign, ctx.turn, JSON.stringify({ characterId: sheet.id, targetEnemyId: args.targetEnemyId }), ctx.sheets, ctx.sheetsById, new Set(), null);
+  const after = getSheetById(sheet.id);
+  if (after) {
+    const marks = "error" in result ? [READIED] : [READIED, ORCISH_FURY_STRIKE];
+    const cleared = removeConditions(after.conditions, after.conditionMeta, marks);
+    patchSheet(after.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+  }
+  return "error" in result ? result : { ...result, reaction: "Orcish Fury" };
+}
 
 // Sentinel (and Level Up's Guarded Warrior): a creature within 5 feet that
 // attacks someone other than the character draws one melee weapon attack

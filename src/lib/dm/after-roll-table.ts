@@ -50,14 +50,16 @@ export type AfterRollEffect = "extra_d20" | "add_die" | "add_dice" | "add_flat" 
 // How much an add_* or hit_damage row adds. `ability`: the holder's modifier
 // for it. `held`: the size of the die held on the sheet. `level`: 5 + twice
 // the class level (Touch of Death). `max`: lightning and thunder at their
-// maximum (Destructive Wrath).
+// maximum (Destructive Wrath). `weapon_die`: one more of the weapon's own
+// damage dice, of its type (Orcish Fury).
 export type AfterRollAmount =
   | { kind: "flat"; value: number }
   | { kind: "dice"; count: number; sides: number; type?: string }
   | { kind: "ability"; ability: "int" }
   | { kind: "held"; condition: "bardic inspiration" | "dark one's own luck"; fallback?: string }
   | { kind: "level"; className: string; base: number; per: number; type: string }
-  | { kind: "max" };
+  | { kind: "max" }
+  | { kind: "weapon_die" };
 
 // When it is offered: on a roll that falls short of its target (a miss, a
 // failed check or save, or one with no known target), or on a hit.
@@ -311,6 +313,25 @@ export const AFTER_ROLL_ROWS = [
     when: "hit",
     label: "Destructive Wrath: maximum lightning and thunder",
     note: "Spend a use of Channel Divinity: this hit's lightning and thunder dice are dealt at their maximum instead of rolled.",
+  },
+  {
+    // Orcish Fury (a half-orc's feat): once until a short or long rest, a
+    // weapon hit rolls one of the weapon's damage dice once more, paid when
+    // the hit stands (attack-swing.ts).
+    id: "orcish_fury",
+    feature: "Orcish Fury",
+    cost: "counter",
+    counter: "feat_orcish_fury",
+    reaction: false,
+    kinds: ["attack"],
+    whose: "own",
+    effect: "hit_damage",
+    amount: { kind: "weapon_die" },
+    when: "hit",
+    hitBy: "weapon",
+    cardOnly: true,
+    label: "Orcish Fury: add a weapon die",
+    note: "Spend your use of Orcish Fury: this hit rolls one of the weapon's damage dice once more and adds it.",
   },
   {
     // Violent Attraction (Graviturgy 10): when a creature in sight within 60
@@ -640,6 +661,7 @@ export function amountWords(row: AfterRollRow, input: { held?: string | null; mo
   if (amount.kind === "dice") return `${amount.count}d${amount.sides}`;
   if (amount.kind === "ability") return String(input.modifier ?? 0);
   if (amount.kind === "held") return input.held ?? "";
+  if (amount.kind === "weapon_die") return "a weapon die";
   return "";
 }
 

@@ -76,7 +76,7 @@ await test("The table owns the card's choices, the route's enum and the watch st
     assert.ok(row.label && row.note, `${row.id}: the card's words`);
     assert.ok((row.effect === "own") === Boolean(row.module), `${row.id}: a row of its own names the module that offers and spends it`);
   }
-  assert.deepEqual([...table.AFTER_ROLL_COUNTERS].sort(), ["art_flash_of_genius", "sub_favored_by_the_gods", "sub_master_duelist"]);
+  assert.deepEqual([...table.AFTER_ROLL_COUNTERS].sort(), ["art_flash_of_genius", "feat_orcish_fury", "sub_favored_by_the_gods", "sub_master_duelist"]);
 });
 
 await test("The route refuses a choice no row names, and asks again for one a row names that is not on offer.", async () => {

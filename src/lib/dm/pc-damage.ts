@@ -44,7 +44,8 @@ import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
 import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
+import { heavyArmorMasterReduction, holdsFeat } from "@/lib/srd/feat-effects";
+import { ORCISH_FURY_STRIKE } from "@/lib/srd/feat-combat";
 import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
@@ -438,7 +439,18 @@ export function applyPcDamage(
     }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
-      const patch: FullPatchSheetInput = { currentHp: 1, resources: spent };
+      // Orcish Fury: right after the trait holds, the reaction makes one
+      // weapon attack (feat-reactions.ts orcishFury takes this mark).
+      const fury = holdsFeat(sheet, "Orcish Fury");
+      const held = getSheetById(sheet.id) ?? sheet;
+      const patch: FullPatchSheetInput = fury
+        ? {
+            currentHp: 1,
+            resources: spent,
+            conditions: [...held.conditions.filter((entry) => entry !== ORCISH_FURY_STRIKE), ORCISH_FURY_STRIKE],
+            conditionMeta: { ...held.conditionMeta, [ORCISH_FURY_STRIKE]: { untilTurnOf: sheet.id, source: "Orcish Fury" } },
+          }
+        : { currentHp: 1, resources: spent };
       patchSheet(sheet.id, patch);
       audit(campaign, turnId, sheet, "apply_damage", { relentlessEndurance: true }, reason, patch);
       publishSheet(campaign, sheet.id);
@@ -446,7 +458,7 @@ export function applyPcDamage(
         ok: true,
         hp: `1/${effectiveMaxHp(sheet)}`,
         relentlessEndurance: true,
-        note: `${sheet.name} should have fallen, but Relentless Endurance holds them at 1 HP. The feature is now spent until a long rest.`,
+        note: `${sheet.name} should have fallen, but Relentless Endurance holds them at 1 HP. The feature is now spent until a long rest.${fury ? ` Orcish Fury: ${sheet.name} may use their reaction right now to make one weapon attack (use_reaction feature "Orcish Fury" with targetEnemyId).` : ""}`,
       });
     }
   }

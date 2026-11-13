@@ -171,8 +171,8 @@ await test("Alert and Observant, taken as feats, reach the numbers they change",
   assert.equal(entry.initiative, 10 + abilityMod(SCORES.dex) + 5);
 });
 
-await test("ODM's own feats: 70 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them, Fighting Initiate, Prodigy, the species feats and Artificer Initiate, and SRD 5.1's Grappler), each named once, each with rules text", () => {
-  assert.equal(authoredFeats.length, 70);
+await test("ODM's own feats: 71 (the 2014 Alert, Magic Initiate, Savage Attacker and Skilled among them, Fighting Initiate, Prodigy, the species feats and Artificer Initiate, and SRD 5.1's Grappler), each named once, each with rules text", () => {
+  assert.equal(authoredFeats.length, 71);
   const names = authoredFeats.map((feat) => feat.name.toLowerCase());
   assert.equal(new Set(names).size, names.length);
   // SRD 5.1's one feat is restated here too: a server without the content

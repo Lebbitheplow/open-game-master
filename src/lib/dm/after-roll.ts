@@ -103,7 +103,7 @@ export function optionsForPending(
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
-    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, weapon: record.weaponAttack === true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
     const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange, weapon: record.weaponAttack === true }, done);
     return [...own, ...allies];
   }
@@ -230,7 +230,7 @@ export function spendAfterRoll(
   // when the caller knows it: an Eloquence bard's die that leaves the roll
   // short of it is kept (ar-wbf-bard-dice-logic.ts).
   target: number | null = null,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean; helperHit?: string } | null {
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean; orcishFury?: boolean; helperHit?: string } | null {
   const row = afterRollRow(id);
   const giver = payer ?? sheet;
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
@@ -254,6 +254,10 @@ export function spendAfterRoll(
     // can still turn the roll as it lands, and a use spent here was lost then.
     if (row.whose === "other") {
       return payer && payer.id !== sheet.id && canReactNow(campaign.id, payer) && holdsRow(payer, row) ? { outcome, choosing: false, helperHit: payer.id } : null;
+    }
+    // Orcish Fury's use, as Touch of Death's, is paid when the hit lands.
+    if (row.amount?.kind === "weapon_die") {
+      return holdsRow(sheet, row) ? { outcome, choosing: false, orcishFury: true } : null;
     }
     const state = sheet.resources?.[CHANNEL_DIVINITY];
     if (!state || state.max - state.used < 1) return null;

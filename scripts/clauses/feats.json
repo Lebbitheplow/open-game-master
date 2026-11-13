@@ -1888,5 +1888,47 @@
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.burn"
    }
   ]
+ },
+ "feat::Orcish Fury": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a3dc635c5828",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Half-orc",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Strength or Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When you hit with a weapon attack, you can roll one of the weapon's damage dice one more time and add it to the damage, of the weapon's own type.",
+    "is": "held",
+    "by": "src/lib/dm/after-roll-table.ts orcish_fury: the weapon hit's card offers it, and attack-swing.ts adds one more of the weapon's dice when the hit lands",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.die"
+   },
+   {
+    "c": "Once you do so, you can't again until you finish a short or long rest.",
+    "is": "held",
+    "by": "the feat_orcish_fury counter (one use, back on a short rest); a spent counter takes it off the card",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.rest"
+   },
+   {
+    "c": "Right after you use your Relentless Endurance, you can use your reaction to make one weapon attack.",
+    "is": "held",
+    "by": "src/lib/dm/pc-damage.ts marks the half-orc when Relentless Endurance holds; feat-reactions.ts orcishFury (use_reaction 'orcish fury') swings through pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.strike"
+   }
+  ]
  }
 }

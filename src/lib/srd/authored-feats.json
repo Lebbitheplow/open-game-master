@@ -351,6 +351,11 @@
       "name": "Flames of Phlegethos",
       "prerequisite": "Tiefling",
       "desc": "Increase your Intelligence or Charisma by 1, to a maximum of 20. When you roll fire damage for a spell you cast, any 1 on its fire damage dice is rolled again, and the new roll is used. Whenever you cast a spell that deals fire damage, flames wreathe you until the end of your next turn. They don't harm you or anything you carry, they shed bright light for 30 feet and dim light for 30 feet more, and a creature within 5 feet of you that hits you with a melee attack takes 1d4 fire damage."
+    },
+    {
+      "name": "Orcish Fury",
+      "prerequisite": "Half-orc",
+      "desc": "Increase your Strength or Constitution by 1, to a maximum of 20. When you hit with a weapon attack, you can roll one of the weapon's damage dice one more time and add it to the damage, of the weapon's own type. Once you do so, you can't again until you finish a short or long rest. Right after you use your Relentless Endurance, you can use your reaction to make one weapon attack."
     }
   ]
 }

@@ -103,6 +103,7 @@ P["feat.prerequisites"] = async () => {
     "Fade Away": [who(), who({ raceId: "rock_gnome", raceName: "Rock Gnome" })],
     "Second Chance": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
     "Flames of Phlegethos": [who(), who({ raceId: "tiefling", raceName: "Tiefling" })],
+    "Orcish Fury": [who(), who({ raceId: "half_orc", raceName: "Half-Orc" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -410,7 +411,8 @@ assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules 
 
 // The species feats whose effects ride the fight's doors, written out for
 // the same reason: feat.flames-of-phlegethos.reroll, feat.flames-of-phlegethos.wreathe,
-// feat.flames-of-phlegethos.burn.
+// feat.flames-of-phlegethos.burn, feat.orcish-fury.die, feat.orcish-fury.rest,
+// feat.orcish-fury.strike.
 const { speciesProbes, SPECIES_PROBES } = await import("./lib/sweep-clauses-feats-species.mjs");
 speciesProbes(rig, P);
 assert.deepEqual(SPECIES_PROBES.filter((id) => !P[id]), [], "probes the species module no longer writes");
