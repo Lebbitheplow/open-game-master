@@ -200,9 +200,16 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
       // of 3rd level once the caster has it: a wizard who only ever wrote
       // the highest spell would hold one 3rd-level spell at 20 and owe a
       // Signature Spell with nothing to name.
-      const leveled = free.filter((spell) => spell.level > 0).sort((a, b) => b.level - a.level);
+      // A warlock's Mystic Arcanum, as the offer names it: one spell of each
+      // open arcanum level, the rest of the level's spells at most the
+      // level it gives for them.
+      const arcanum = choices.spells.arcanum;
+      const arcana = (arcanum?.levels ?? []).flatMap((spellLevel) => free.find((spell) => spell.level === spellLevel) ?? []);
+      const leveled = free
+        .filter((spell) => spell.level > 0 && (!arcanum || spell.level <= arcanum.otherSpellsUpTo))
+        .sort((a, b) => b.level - a.level);
       const rest = leveled.slice(1);
-      const spells = [...leveled.slice(0, 1), ...rest.filter((spell) => spell.level === 3), ...rest.filter((spell) => spell.level !== 3)].slice(0, choices.spells.newSpells);
+      const spells = [...arcana, ...leveled.slice(0, 1), ...rest.filter((spell) => spell.level === 3), ...rest.filter((spell) => spell.level !== 3)].slice(0, choices.spells.newSpells);
       const names = [...cantrips, ...spells].map((spell) => spell.name);
       if (names.length) body.levelUpSpells = names;
     }

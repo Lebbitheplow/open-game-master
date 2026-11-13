@@ -17,6 +17,7 @@ import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { cantripCapOf, spellCapOf } from "@/lib/srd/spell-prep";
 import { thirdCasterAbility, thirdCasterList, thirdCasterProfileOf, type ThirdCasterProfile } from "@/lib/srd/third-caster";
 import { subclassCastingProfileFor } from "@/lib/srd/features";
+import { arcanumTopFor } from "@/lib/srd/mystic-arcanum";
 
 type CastingClass = {
   id: string;
@@ -56,9 +57,14 @@ export function builderCasting(
   const ability = (profile ? thirdCasterAbility(profile) : klass.spellAbility || null) as BuilderCasting["ability"];
   const list = profile ? thirdCasterList(profile) : spellPoolKeyFor(klass.id);
   const rules = profile ? list : spellRulesClassFor(klass.id);
+  // A warlock's Mystic Arcanum reaches past its pact slots: one spell of
+  // each arcanum level, picked here with the rest (src/lib/srd/mystic-arcanum.ts).
   const maxSpellLevel =
     third || klass.casterType !== "none"
-      ? Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0)
+      ? Math.max(
+          Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0),
+          third ? 0 : arcanumTopFor(rules, level),
+        )
       : 0;
   const cantripCap = !ability
     ? null

@@ -33,6 +33,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
 import { originSwap } from "@/lib/dm/ar-ws-origin-swap";
+import { arcanaHeld, arcanumLevelsFor, arcanumProblems, arcanumTopFor } from "@/lib/srd/mystic-arcanum";
 
 // A name no list carries: a 2024-only spell says so, anything else is unknown.
 function unknownSpell(name: string, list: string): string {
@@ -80,14 +81,6 @@ export type SpellLevelUp = {
 
 export type SpellLevelUpResult = { view: CasterView } | { error: string };
 
-// A warlock's Mystic Arcanum reaches past pact slots.
-function arcanumTop(classList: string, level: number): number {
-  if (classList !== "warlock") {
-    return 0;
-  }
-  return level >= 17 ? 9 : level >= 15 ? 8 : level >= 13 ? 7 : level >= 11 ? 6 : 0;
-}
-
 export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   const { before, picks } = input;
   const label = `${classLabelOf(before.classId)} of level ${input.level}`;
@@ -110,7 +103,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   // The Mystic Arcanum is the warlock's tables', read for whatever counts
   // as one: the warlock, a workshop class on its list, or a pact caster with
   // a list of its own (issue #833).
-  const top = Math.max(maxSpellLevelOf(after), arcanumTop(spellRulesClassFor(before.classId), input.level));
+  const top = Math.max(maxSpellLevelOf(after), arcanumTopFor(spellRulesClassFor(before.classId), input.level));
 
   // ---- what the player asked for, as lists ----
   let removed: string[] = [];
@@ -352,10 +345,9 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
       };
     }
   } else if (cap) {
-    const held =
-      after.style === "known"
-        ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)).length
-        : preparedCount(after);
+    const heldNames =
+      after.style === "known" ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)) : [];
+    const held = after.style === "known" ? heldNames.length : preparedCount(after);
     const grew =
       newSpells.length > 0 ||
       held >
@@ -366,6 +358,21 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
       return {
         error: `A ${label} may hold ${cap.count} ${cap.label}; that list would have ${held}.`,
       };
+    }
+    // Mystic Arcanum's spells sit on top of the column, one of each arcanum
+    // level (src/lib/srd/mystic-arcanum.ts), and never stand in for a spell
+    // of 5th level or lower.
+    const levelled = heldNames.map((name) => ({ name, level: input.spellOf(name)?.level ?? null }));
+    const arcanumSlots = arcanumLevelsFor(before.classId, input.level).length;
+    const regular = held - arcanaHeld(before.classId, input.level, levelled);
+    if (grew && arcanumSlots && regular > cap.count - arcanumSlots) {
+      return {
+        error: `A ${label} may hold ${cap.count - arcanumSlots} ${cap.label} of 5th level or lower; that list would have ${regular}. Mystic Arcanum adds one spell of each arcanum level on top.`,
+      };
+    }
+    const [arcanum] = grew ? arcanumProblems(before.classId, input.level, levelled) : [];
+    if (arcanum) {
+      return { error: arcanum };
     }
   } else if (newSpells.length) {
     return { error: `A ${label} has no spells to learn yet.` };

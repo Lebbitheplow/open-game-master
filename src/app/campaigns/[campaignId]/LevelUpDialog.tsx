@@ -1,5 +1,6 @@
 "use client";
 
+import { arcanumLevelsFor, arcanumPickRefusal } from "@/lib/srd/mystic-arcanum";
 import {
   classFeaturesFor,
   subclassCastingProfileFor,
@@ -701,6 +702,12 @@ export function LevelUpDialog({
   });
   const anyLevelOf = (name: string) =>
     anyPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
+  const poolLevelOf = (name: string) =>
+    spellPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
+  // The arcanum levels a warlock has earned and holds no spell of yet.
+  const arcanumOpen = arcanumLevelsFor(classChoice, classLevelAfter).filter(
+    (spellLevel) => ![...knownList, ...spellPicks].some((name) => poolLevelOf(name) === spellLevel),
+  );
   // The class's name in the group's sentences ("the bard list above").
   const ownListName = (klass?.name ?? classChoice).toLowerCase();
   const rooms = spellPickRooms({
@@ -776,6 +783,22 @@ export function LevelUpDialog({
     }
     if (remainingPicks !== null && spellPicks.length >= remainingPicks) {
       return { short: "All new spells chosen", long: `That is every new spell for this level. Untick one to choose ${name}.` };
+    }
+    // A warlock's Mystic Arcanum: one spell of each arcanum level on top of
+    // the spells known (src/lib/srd/mystic-arcanum.ts), as the route counts.
+    const arcanum =
+      remainingPicks !== null && level !== null
+        ? arcanumPickRefusal({
+            classId: classChoice,
+            level: classLevelAfter,
+            held: knownList.map((known) => poolLevelOf(known)),
+            picked: spellPicks.map((pick) => poolLevelOf(pick)),
+            adding: level,
+            room: remainingPicks,
+          })
+        : null;
+    if (arcanum) {
+      return { short: "Mystic Arcanum", long: arcanum };
     }
     if (!isThirdCaster(classChoice, effectiveSubclass, progression)) {
       return null;
@@ -1617,6 +1640,14 @@ export function LevelUpDialog({
                             They are ready now; after any long rest you can swap them from your sheet.
                           </>
                         )}
+                      </li>
+                    ) : null}
+                    {remainingPicks && arcanumOpen.length ? (
+                      <li>
+                        <span className="text-amber-200">
+                          Mystic Arcanum: choose one spell of {arcanumOpen.map((spellLevel) => `${spellLevel}th`).join(", ")} level.
+                        </span>{" "}
+                        Your patron&apos;s secret, cast once a long rest with no slot, on top of your spells known.
                       </li>
                     ) : null}
                     {anyGroup ? (

@@ -27,6 +27,8 @@ import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
+import { arcanaHeld, arcanumLevelsFor, arcanumProblems } from "@/lib/srd/mystic-arcanum";
+import { spellLevelOf } from "@/lib/srd/spell-lists";
 import { normalizeAttraction } from "@/lib/attraction";
 
 export type BuilderResult = { level: number; sheet: CreateSheetInput };
@@ -392,7 +394,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & { klass: Pick<ClassOption, "name">; casterLevel: number };
+> & { klass: Pick<ClassOption, "name"> & Partial<Pick<ClassOption, "id">>; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -439,6 +441,35 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
     }
     if (spellsOver > 0) {
       owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
+    }
+    owed.push(...arcanumBlocks(desk, block));
+  }
+  return owed;
+}
+
+// A warlock's Mystic Arcanum (src/lib/srd/mystic-arcanum.ts): one spell of
+// each arcanum level, on top of the spells known, which the server holds to
+// 5th level or lower. The count above takes the arcana in; these say which
+// of the picks must be one.
+function arcanumBlocks(desk: DeskCounts, block: (target: BlockerTarget, message: string) => StepBlock): StepBlock[] {
+  const levels = arcanumLevelsFor(desk.klass.id ?? "", desk.casterLevel);
+  if (!levels.length || !desk.spellAdvice) {
+    return [];
+  }
+  const levelled = desk.chosenPrepared.map((name) => ({ name, level: spellLevelOf(name) }));
+  const owed = arcanumProblems(desk.klass.id ?? "", desk.casterLevel, levelled).map((line) => block("spells", line));
+  const missing = levels.filter((spellLevel) => !levelled.some((spell) => spell.level === spellLevel));
+  if (missing.length) {
+    owed.push(
+      block(
+        "spells",
+        `Choose your Mystic Arcanum: one warlock spell of ${missing.map((spellLevel) => `${spellLevel}th`).join(", ")} level${missing.length === 1 ? "" : "s"}, on top of your spells known.`,
+      ),
+    );
+    const regular = levelled.length - arcanaHeld(desk.klass.id ?? "", desk.casterLevel, levelled);
+    const room = desk.spellAdvice.count - levels.length;
+    if (regular > room) {
+      owed.push(block("spells", `Remove ${regular - room} ${regular - room === 1 ? "spell" : "spells"} of 5th level or lower to make room for the arcanum.`));
     }
   }
   return owed;
