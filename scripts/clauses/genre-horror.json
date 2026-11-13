@@ -483,15 +483,9 @@
   "clauses": [
    {
     "c": "Your light reveals invisible and ethereal creatures within 10 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Light Against the Dark#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-horror.mjs Light Against the Dark: an exorcist carrying a lit torch sees invisible and ethereal creatures within 10 feet",
+    "by": "src/lib/dm/genre-gb-horror.ts candleSightTiles (2 squares of truesight while carrying a light, src/lib/dm/light-timers.ts carriedLight), read by src/lib/dm/attack-light.ts characterSenses"
    }
   ]
  },
