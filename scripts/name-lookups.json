@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/genre-cc-a-saves.ts#partial": [["parse",1,"a die's faces read from its dice notation"]],
     "lib/dm/genre-cc-a-saves.ts#keyed": [["key",1,"a held condition's meta, by the condition's own stored name"]],
     "lib/dm/genre-cc-a-turns.ts#first": [["key",1,"the token of an enemy of the fight, by its id"]],
     "lib/dm/genre-cc-a-checks.ts#partial": [["parse",2,"the skill a check card names in the detail the engine wrote for it (the roll record keeps no skill field), read as Grease the Wheels reads it"]],
