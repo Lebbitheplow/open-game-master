@@ -63,6 +63,8 @@ import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-ret
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
+import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
+import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
 
 // Opportunity attacks: walking out of an enemy's reach is not free. Before
 // this, a player could stroll away from a troll with no consequence at all,
@@ -481,7 +483,7 @@ export function resolvePcOpportunityWalk(
 
   // Who has the walker in reach somewhere on the walk, and the square it is
   // on as they swing, in the order the walk meets those squares.
-  const reaches: Array<{ id: string; resolved: NonNullable<ReturnType<typeof meleeWeaponFor>>; token: XY; reachTiles: number; moverAt: XY; step: number }> = [];
+  const reaches: Array<{ id: string; resolved: NonNullable<ReturnType<typeof meleeWeaponFor>>; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
   for (const stale of listSheets(campaign.id)) {
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
@@ -519,12 +521,15 @@ export function resolvePcOpportunityWalk(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering ?? within ?? fromEcho;
+    const leaving = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint);
+    const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
     }
+    // Which of them it is, in the words the player is asked in (opportunity-ask-logic.ts).
+    const trigger: OpportunityTrigger = leaving ? "leaves" : entering ? "enters" : within ? "within" : "echo";
     const step = steps.findIndex((entry) => entry.x === moverAt.x && entry.y === moverAt.y);
-    reaches.push({ id: sheet.id, resolved, token, reachTiles: profile.reachTiles, moverAt, step: step < 0 ? steps.length : step });
+    reaches.push({ id: sheet.id, resolved, token, reachTiles: profile.reachTiles, moverAt, step: step < 0 ? steps.length : step, trigger });
   }
   reaches.sort((a, b) => a.step - b.step);
 
@@ -581,6 +586,16 @@ export function resolvePcOpportunityWalk(
       }
       continue;
     }
+    // The swing is theirs to take or let go (opportunity-ask.ts): a player at
+    // the table is asked here, after every check that could rule it out, so
+    // the card never asks about a swing that could not be made. Let go, it
+    // spends nothing and the walk goes on.
+    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: resolved.displayName, trigger: reach.trigger });
+    if (answer && !answer.strike) {
+      notes.push(letGoNote(sheet.name, walker));
+      continue;
+    }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactionKey];
     saveEncounter(encounter);
     // SRD 5.1, Rage: an attack on a hostile creature since the barbarian's
@@ -602,7 +617,7 @@ export function resolvePcOpportunityWalk(
       targetConditions: withLiveDodge(enemy.conditions),
       moverAt,
     });
-    notes.push(note);
+    notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();
     if (dropped) {
       break;

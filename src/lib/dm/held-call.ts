@@ -48,7 +48,8 @@ import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRol
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { DiceTapeCursor, nextDecided } from "@/lib/dm/held-call-logic";
+import { DiceTapeCursor, nextChoice, nextDecided } from "@/lib/dm/held-call-logic";
+import type { OpportunityAsk, OpportunityChoice } from "@/lib/dm/opportunity-ask-logic";
 import { settleAfterCall } from "@/lib/dm/ar-ws-after-call";
 import type { RollTag } from "@/lib/dice-script-logic";
 
@@ -62,9 +63,12 @@ export type HeldPark = {
   dc: number | null;
   reason: string;
   visibility: RollVisibility;
-  parkedFor: "real_dice" | "held" | "after_roll" | "foretold";
+  parkedFor: "real_dice" | "held" | "after_roll" | "foretold" | "opportunity";
   // The dice already thrown, for the after-the-roll card.
   thrown?: ThrownRoll;
+  // The question before an opportunity attack (opportunity-ask.ts): no roll,
+  // the player's answer.
+  ask?: OpportunityAsk;
   // What the call answers while it waits.
   note: string;
 };
@@ -155,6 +159,21 @@ export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | 
   trial.used.add(at);
   trial.taken.push({ at, characterId, kind });
   return trial.decided[at];
+}
+
+// The answer this run already has to the ask before this character's
+// opportunity attack on this walker (opportunity-ask.ts), if any.
+export function takeOpportunityChoice(characterId: string, walkerId: string): OpportunityChoice | null {
+  const trial = globalThis.__odmHeldTrial;
+  if (!trial) {
+    return null;
+  }
+  const at = nextChoice(trial.decided, trial.used, characterId, walkerId);
+  if (at < 0) {
+    return null;
+  }
+  trial.used.add(at);
+  return trial.decided[at].choice ?? null;
 }
 
 // A roll went on record (db/rolls.ts insertRoll calls this through
@@ -416,12 +435,15 @@ function parkCard(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: T
     visibility: park.visibility,
     parkedFor: park.parkedFor,
     ...(park.thrown ? { thrown: park.thrown } : {}),
-    carry: { call: held },
+    carry: { call: held, ...(park.ask ? { ask: park.ask } : {}) },
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
   if (park.thrown?.deadline) {
     // Loaded late: the timer lands the roll, and the landing imports this.
     void import("@/lib/dm/after-roll-timer").then(({ armAfterRollKeep }) => armAfterRollKeep(pending.id, park.thrown?.deadline));
+  }
+  if (park.ask?.deadline) {
+    void import("@/lib/dm/opportunity-ask-timer").then(({ armOpportunityAsk }) => armOpportunityAsk(pending.id, park.ask?.deadline));
   }
   const answer: ToolResult = { ok: true, parked: true, note: park.note };
   PARKED.add(answer);
@@ -484,12 +506,16 @@ export function runHeldAgain(
     return { roll: null, answer: null };
   }
   const since = nowIso();
+  // An ask before an opportunity attack holds no roll: what lands is the
+  // player's answer (opportunity-ask.ts), Strike unless they said otherwise.
+  const ask = pending.carry?.ask;
   const decided: DecidedRoll = {
     characterId: pending.characterId,
     kind: pending.kind,
     outcome,
     raw: !call.siteThrew,
     landing: { physical: landing.physical, source: landing.source },
+    ...(ask ? { choice: { walkerId: ask.walkerId, strike: ask.strike !== false, ...(ask.timedOut ? { timedOut: true } : {}) } } : {}),
   };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;
@@ -505,12 +531,12 @@ export function runHeldAgain(
   // The run records this character's rolls of this kind in the order it asked
   // for them: this card's is the one after those the call's earlier cards
   // were for.
-  const earlier = call.decided.filter((entry) => entry.characterId === pending.characterId && entry.kind === pending.kind).length;
+  const earlier = call.decided.filter((entry) => !entry.choice && entry.characterId === pending.characterId && entry.kind === pending.kind).length;
   // The roll this card's own dice became, when the run put them on record
   // through insertRoll; else, by order, the run's rolls of this character and
   // kind after those the call's earlier cards were for.
-  const own = waits ? undefined : previous.recorded?.get(call.decided.length);
-  const found = waits
+  const own = waits || ask ? undefined : previous.recorded?.get(call.decided.length);
+  const found = waits || ask
     ? undefined
     : own
       ? { id: own }
@@ -519,7 +545,7 @@ export function runHeldAgain(
         .get(campaign.id, pending.characterId, pending.kind, since, earlier) as { id: string } | undefined);
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;
   const recorded = Boolean(roll);
-  if (!roll && !waits) {
+  if (!roll && !waits && !ask) {
     roll = insertRoll({
       campaignId: campaign.id,
       characterId: pending.characterId,
@@ -542,7 +568,7 @@ export function runHeldAgain(
   // word of the card it answers, and a call that waits again sends no roll
   // yet: the table is told the card is done. Without this it stayed up,
   // asking for dice already entered, until the page was loaded again.
-  const answered = recorded || waits ? getPendingRoll(pending.id) : null;
+  const answered = recorded || waits || ask ? getPendingRoll(pending.id) : null;
   if (answered && answered.status !== "pending") {
     publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(answered) });
   }

@@ -46,13 +46,16 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 
 // What a landed roll leaves: its record, or, for dice whose call waits again
 // on another roll, the word that they are kept (held-call.ts runHeldAgain).
-export type Landed = StoredRoll | { waiting: string };
+// An answer to the ask before an opportunity attack (opportunity-ask.ts)
+// lands no roll of its own: it says so.
+export type Landed = StoredRoll | { waiting: string } | { answered: string };
 
 const KEPT = "The dice are in. The call they belong to waits on another roll, and records them when it finishes.";
+const ANSWERED = "Your answer is in, and the walk goes on.";
 
 // What a route answers the one who landed a roll.
-export function landedBody(landed: Landed): { roll: StoredRoll } | { waiting: string } {
-  return "waiting" in landed ? landed : { roll: landed };
+export function landedBody(landed: Landed): { roll: StoredRoll } | { waiting: string } | { answered: string } {
+  return "waiting" in landed || "answered" in landed ? landed : { roll: landed };
 }
 
 export type RollLanding = {
@@ -81,7 +84,7 @@ function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult,
   if (record && after) {
     postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
   }
-  return waits ? { waiting: KEPT } : roll;
+  return waits ? { waiting: KEPT } : (roll ?? (pending.carry?.ask ? { answered: ANSWERED } : null));
 }
 
 // An attack sent with endTurn ("and end the turn", the console's check box)

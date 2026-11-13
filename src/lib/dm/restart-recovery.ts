@@ -16,6 +16,7 @@ import { restoreXCardPauses } from "@/lib/dm/safety";
 import { restoreTableBreaks } from "@/lib/dm/table-break";
 import { restoreSessionHolds } from "@/lib/dm/session-hold";
 import { rearmAfterRollKeeps } from "@/lib/dm/after-roll-timer";
+import { rearmOpportunityAsks } from "@/lib/dm/opportunity-ask-timer";
 import { haltDmTurn, resumeDmTurn } from "@/lib/dm/turn";
 
 // What a restart leaves wrong in the DM's state, put right once when a
@@ -84,6 +85,8 @@ export function recoverDmAfterRestart(): RestartRecovery | null {
   // A roll waiting on its player's choice keeps waiting, on a timer again; its
   // turn resumes when it lands, so it is armed after the parked turns above.
   rearmAfterRollKeeps();
+  // So does an opportunity attack's ask, whose clock takes the swing.
+  rearmOpportunityAsks();
   // The map queue was in memory too: a place still waiting on a render
   // would chart forever under the narration that introduced it.
   const maps = failPendingLocationMaps(RESTART_MAP_FAILED);
