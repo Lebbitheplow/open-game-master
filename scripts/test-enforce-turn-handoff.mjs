@@ -89,6 +89,36 @@ await test("pc_attack with endTurn ends the attacker's turn with the attack, and
   assert.equal(current(), kara.id, "the pointer stayed on Avery");
 });
 
+// The model's own endTurn on one swing of a level 5 fighter's Attack action:
+// the player said only "I attack", and Extra Attack's second swing went with
+// the turn. The player's own "then I end my turn" still ends it.
+await test("pc_attack's endTurn keeps the turn open while Extra Attack's swing is left, unless the player's words end it", async () => {
+  const goblin = await stage();
+  world.patch(avery.id, { level: 5 });
+  try {
+    world.dice(15, 4);
+    await playerTurn("I attack the goblin.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword", endTurn: true })] }),
+      reply({ text: "Avery's longsword bites." }),
+    ]);
+    const attack = model.requests[1] && model.results(model.requests[1]).at(-1)?.result;
+    assert.equal(current(), avery.id, "the model's endTurn took the second attack of Extra Attack");
+    assert.match(String(attack?.turnNotEnded ?? ""), /1 attack of this turn's Attack action/, JSON.stringify(attack));
+    const second = await stage();
+    world.patch(avery.id, { level: 5 });
+    world.dice(15, 4);
+    await playerTurn("I cut at the goblin once, then I end my turn.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: second.id, weapon: "Longsword", endTurn: true })] }),
+      reply({ text: "Avery's longsword bites, and Avery falls back a step." }),
+    ]);
+    const ended = model.requests.at(-1) && model.results(model.requests.at(-1)).at(-1)?.result;
+    assert.match(String(ended?.turnEnded?.note ?? ""), /Avery's turn is over/, JSON.stringify(ended));
+    assert.equal(current(), kara.id, "the player's own words ended nothing");
+  } finally {
+    world.patch(avery.id, { level: 3 });
+  }
+});
+
 await test("approach with endTurn: a walk that falls short ends the turn as the player asked, nothing attacked", async () => {
   const goblin = await stage();
   kit.place(goblin.id, 16, 5);

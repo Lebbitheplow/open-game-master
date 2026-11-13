@@ -1,7 +1,7 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
-import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
+import { attacksLeft, budgetApplies, paidSwingsLeft, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
 import { lashOutTarget } from "@/lib/dm/confusion";
 import type { SystemGlyph } from "@/lib/system-glyphs";
@@ -105,7 +105,8 @@ import { enemyFalls } from "@/lib/dm/enemy-fall";
 import { enemyCallOutOfTurn } from "@/lib/dm/enemy-turn-order";
 import { forgetEnemyTurns } from "@/lib/dm/enemy-turn-logic";
 import { approachTurn, fleeTurn } from "@/lib/dm/enemy-flight";
-import { characterCallUnasked } from "@/lib/dm/player-word";
+import { characterCallUnasked, wordsThisTurn } from "@/lib/dm/player-word";
+import { englishEndsTurn } from "@/lib/dm/claims-logic";
 import {
   applyExtraEncounterCall,
   EXTRA_ENCOUNTER_TOOL_NAMES,
@@ -1311,6 +1312,13 @@ function handleEndTurn(
   };
 }
 
+// The swings a character's live turn has paid for and not made.
+function swingsLeftFor(campaignId: string, characterId: string): number {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget ?? null;
+  return encounter && budgetApplies(budget, characterId, encounter.round) ? paidSwingsLeft(budget) : 0;
+}
+
 // pc_attack's endTurn: the player said the attack ends their turn
 // (src/lib/dm/pc-attack-approach.ts). Once the attack resolved, or the walk
 // toward the target spent the turn's movement without reaching it
@@ -1363,6 +1371,18 @@ function endTurnAfterAttack(
     return {
       ...result,
       turnNotEnded: `Entr${again.length === 1 ? "y" : "ies"} ${again.join(", ")} can be sent again (at another creature, or with the id put right), so the turn stays open: end it with end_turn once those attacks are made or given up.`,
+    };
+  }
+  // The model's endTurn on an Attack action with Extra Attack's swings
+  // still to make: one swing declared as "I attack the goblin" ended a level
+  // 5 fighter's turn with the second attack unmade. Unless the player's own
+  // words end the turn, it stays open, and end_turn ends it if they give the
+  // swings up.
+  const left = turn.actor === "ai" ? swingsLeftFor(campaign.id, characterId) : 0;
+  if (left > 0 && !(campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, characterId)))) {
+    return {
+      ...result,
+      turnNotEnded: `${sheetsById.get(characterId)?.name ?? "They"} still ${left === 1 ? "has 1 attack" : `has ${left} attacks`} of this turn's Attack action to make, so the turn stays open: make ${left === 1 ? "it" : "them"} with pc_attack, or call end_turn if the player gives ${left === 1 ? "it" : "them"} up.`,
     };
   }
   const ended = handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, sheetsById);
