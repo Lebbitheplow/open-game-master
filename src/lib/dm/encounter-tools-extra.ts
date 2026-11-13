@@ -17,7 +17,7 @@ import { AI_BIND_REFUSAL, AI_CLEAR_REFUSAL, bindsCreature, engineKept } from "@/
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { setEnemyExhaustion } from "@/lib/dm/enemy-exhaustion";
-import { enemyCallOutOfTurn, enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
+import { enemyCallOutOfTurn, enemyFleeTurnRefusal, enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
@@ -140,6 +140,14 @@ function handleEnemyFlees(
   // and stays where it fell until it comes to, or is carried off.
   if (isKnockedOut(enemy)) {
     return { error: `${enemy.displayName} is knocked out: unconscious, they cannot flee. They stay where they fell.`, refused: "rules" };
+  }
+  // A creature goes on its own turn while initiative runs (SRD 5.1: it moves
+  // on its turn), at the console too (enemy-turn-order.ts
+  // enemyFleeTurnRefusal). A legendary creature may still go on a legendary
+  // action, as on move_token.
+  const early = encounter.legendary.pools[enemy.id] ? null : enemyFleeTurnRefusal(encounter, enemy, turn);
+  if (early) {
+    return early;
   }
   // Fleeing is a walk out of the fight, held to what holds its walk on the
   // board (can-act.ts canEnemyAct "move", and its speed): a Hold Person'd

@@ -55,7 +55,7 @@ import { placeByFormation } from "@/lib/dm/formation-logic";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
 import { resolveSheetRef } from "@/lib/dm/rolls";
-import { resolvePcOpportunityAttacks } from "@/lib/dm/opportunity";
+import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
@@ -821,6 +821,37 @@ export function handleMoveToken(
   if (standCost && resolved.enemy) {
     standUpIfProne(encounter.id, resolved.enemy);
   }
+  // An enemy breaking away from a character eats their opportunity attack,
+  // exactly as the reverse does when a player walks off. Forced movement
+  // (a shove, a gust of wind) provokes nothing. Taken before the token moves:
+  // a hit that leaves its speed at 0 (Sentinel, Hold the Line) or drops it
+  // ends the walk on the square the swing was taken on. The token used to go
+  // the whole way first, so a goblin Orin's Sentinel stopped still stood at
+  // the far end, with movement to spare.
+  const struck =
+    resolved.kind === "enemy" && !args.forced && (!allowance || allowance.provokes)
+      ? resolvePcOpportunityWalk(
+          campaign,
+          resolved.token.refId,
+          origin,
+          landing,
+          walkedPart(path, landing),
+          Boolean(disengaged),
+        )
+      : { notes: [] as string[] };
+  const opportunity = struck.notes;
+  const stoppedAt = struck.stoppedAt ?? null;
+  const intended = landing;
+  if (stoppedAt) {
+    landing = stoppedAt;
+  }
+  // The squares actually walked: none when it was stopped where it began.
+  const walked = stoppedAt && stoppedAt.x === origin.x && stoppedAt.y === origin.y ? [] : walkedPart(path, landing);
+  // What it drags comes with it only as far as it got; with no room there,
+  // they stay where they are.
+  const carriedNow = stoppedAt && drag
+    ? (walked.length ? (dragLandings({ map, tokens, mover: resolved.token, landing, walked: [origin, ...walked], held: drag.held, footprintOf: footprints }) ?? []) : [])
+    : carried;
   moveToken(
     resolved.token.id,
     landing.x,
@@ -833,7 +864,7 @@ export function handleMoveToken(
   if (allowance?.fly && resolved.token.movement !== "fly") {
     setTokenMovement(resolved.token.id, "fly");
   }
-  for (const entry of carried) {
+  for (const entry of carriedNow) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }
   // The Disengage and this walk were the turn it was owed; its own turn
@@ -858,24 +889,10 @@ export function handleMoveToken(
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
 
-  // An enemy breaking away from a character eats their opportunity attack,
-  // exactly as the reverse does when a player walks off. Forced movement
-  // (a shove, a gust of wind) provokes nothing.
-  const opportunity =
-    resolved.kind === "enemy" && !args.forced && (!allowance || allowance.provokes)
-      ? resolvePcOpportunityAttacks(
-          campaign,
-          resolved.token.refId,
-          origin,
-          landing,
-          walkedPart(path, landing),
-          Boolean(disengaged),
-        )
-      : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
-  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walkedPart(path, landing), { careful });
+  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).
-  recordMovesNear(campaign.id, tokens, resolved.token, origin, walkedPart(path, landing));
+  recordMovesNear(campaign.id, tokens, resolved.token, origin, walked);
   // An enemy entering an aura that asks once (Avenging Angel's aura of
   // menace, src/lib/dm/aura-menace.ts): its save as it comes in.
   if (resolved.kind === "enemy" && resolved.enemy) {
@@ -895,7 +912,13 @@ export function handleMoveToken(
             "The server already rolled and applied these; narrate them, and do not call pc_attack for them.",
         }
       : {}),
-    ...(clamped
+    ...(stoppedAt
+      ? {
+          note: getEnemy(resolved.token.refId)?.status === "alive"
+            ? `${resolved.token.name} was stopped at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}): its speed is 0 for the rest of the turn.`
+            : `${resolved.token.name} fell at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}).`,
+        }
+      : clamped
       ? {
           note: approachCut
             ? `Command draws ${resolved.token.name} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
@@ -908,7 +931,8 @@ export function handleMoveToken(
       : {}),
     ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks${opportunity.length ? " but a Sentinel's" : ""}.` } : {}),
     ...(allowance ? { legendaryMove: `A legendary move: none of its own turn's movement spent${allowance.provokes ? "" : ", and no opportunity attacks"}.` } : {}),
-    ...(walking && resolved.enemy && !allowance ? { movementLeft: movementLeft(campaign.id, resolved.enemy) } : {}),
+    // Read from the creature as it is now: a stop the swing laid is in it.
+    ...(walking && resolved.enemy && !allowance ? { movementLeft: movementLeft(campaign.id, getEnemy(resolved.enemy.id) ?? resolved.enemy) } : {}),
   };
 }
 

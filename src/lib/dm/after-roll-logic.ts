@@ -7,17 +7,19 @@
 // (src/lib/dm/forced-save.ts settleHeldDie).
 //
 // The table's ruling (issue #913): the card opens only on a roll that fails
-// as it stands, and says so ("As it stands, the attack misses"). The text
-// times Lucky, Bardic Inspiration, Guided Strike, War God's Blessing and
-// Chronal Shift before the outcome is known, so for those this is lenient:
-// a use is never spent on a roll that would have succeeded. It is kept
-// because the card could only stop telling by opening on rolls that succeed
-// too, often enough that its opening says nothing, and that pauses most
-// rolls of anyone holding one. Master Duelist ("if you miss with an attack
-// roll") and Favored by the Gods ("if you fail a saving throw or miss with
-// an attack roll") are chosen knowing the roll failed, and Dark One's Own
-// Luck only has to come before the roll's effects: for those the verdict on
-// the card is the rule. No setting, and the card keeps its words.
+// as it stands and that a choice could turn (a hit opens it only for what
+// adds to the damage, and a roll with no DC asks, below), and on an attack
+// it says so ("As it stands, the attack misses"). The text times Lucky,
+// Bardic Inspiration, Guided Strike, War God's Blessing and Chronal Shift
+// before the outcome is known, so for those this is lenient: a use is never
+// spent on a roll that would have succeeded. It is kept because the card
+// could only stop telling by opening on rolls that succeed too, often enough
+// that its opening says nothing, and that pauses most rolls of anyone
+// holding one. Master Duelist answers a missed attack and Favored by the
+// Gods a missed attack or a failed save, so both are chosen knowing the roll
+// failed, and Dark One's Own Luck only has to come before the roll's
+// effects: for those the verdict on the card is the rule. No setting, and
+// the card keeps its words.
 //
 // A pause costs the whole table its narration, so it is only offered when an
 // ability can change the result: never on a roll that already succeeds, and

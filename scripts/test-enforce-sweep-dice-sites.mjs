@@ -136,7 +136,7 @@ const row = (id, tool, stage, args, setup, say) => rows.push({ id, tool, stage, 
 // A creature's own act: the AI's door gives a creature its turn only through
 // end_turn's hand-off, so these rows go by the console's door, and the turn
 // loop's suite (test-enforce-sweep-dice-turn.mjs) plays them as the AI does.
-const CONSOLE_ONLY = new Set(["opportunity.enemy_walks_off", "cast_at_player.enemy", "aoe_damage.enemy_breath", "enemy_attack.rider_save"]);
+const CONSOLE_ONLY = new Set(["opportunity.enemy_walks_off", "opportunity.enemy_flees", "cast_at_player.enemy", "aoe_damage.enemy_breath", "enemy_attack.rider_save"]);
 // A name no earlier row used: a scene, a shop and a person outlive the row
 // that made them.
 let made = 0;
@@ -176,6 +176,8 @@ row("pc_attack.spell", "pc_attack", "fight", (c) => ({ characterId: c.heroId, ta
 row("cast_at_enemy.save_spell", "cast_at_enemy", "fight", (c) => ({ characterId: c.heroId, targetEnemyId: c.enemyId, spell: "Sacred Flame" }));
 row("damage_object.weapon", "damage_object", "out", (c) => ({ name: "a door", material: "wood", size: "medium", characterId: c.heroId, weapon: "Longsword", reason: "breaking in" }));
 row("opportunity.enemy_walks_off", "move_token", "fight-enemy-turn", (c) => ({ token: c.enemyId, x: 5, y: 12, reason: "it runs" }));
+// A creature fleeing the fight draws the same swing as its walk (enemy_flees, PR #930).
+row("opportunity.enemy_flees", "enemy_flees", "fight-enemy-turn", (c) => ({ enemyId: c.enemyId, reason: "it runs" }));
 row("use_reaction.opportunity_attack", "use_reaction", "fight-ally-first", (c) => ({ characterId: c.heroId, feature: "Opportunity attack", targetEnemyId: c.enemyId, reason: "it turned its back" }));
 
 // Saves something forces on the seat.
@@ -427,7 +429,7 @@ await test("every untagged d20 the rows met comes from a site this suite has cla
 const NO_ROW = {
   // Fights, creatures and the board: the creature's dice, or none.
   add_enemies: "adds creatures; their initiative is the GM's die",
-  enemy_flees: "a creature leaves", legendary_action: "a creature's action", declare_intent: "a creature's intent",
+  legendary_action: "a creature's action", declare_intent: "a creature's intent",
   legendary_resist: "a creature's resistance", lair_action: "the lair's action", set_movement: "the board's movement budget",
   end_encounter: "ends the fight",
   // Player spells and features whose d20, if any, is the creature's save.
