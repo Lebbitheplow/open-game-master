@@ -101,4 +101,73 @@ test("a multiclassed sheet checks each caster class at its own level", () => {
   assert.match(problems[0], /level 1 cleric knows 3 cantrips; that list has 4/);
 });
 
+// Mystic Arcanum (SRD 5.1, Warlock): "Choose one 6th-level spell from the
+// warlock spell list as this arcanum", and a 7th, 8th and 9th at 13th, 15th
+// and 17th level. The arcanum is the patron's secret beside the Spells Known
+// column, which stops at 5th-level spells: a level 20 warlock knows fifteen
+// spells and four arcana. The count used to take each arcanum out of the
+// fifteen, so every arcanum cost the warlock a spell it knew.
+{
+  const { levelUpSpells } = await import("../src/lib/srd/level-up-spells.ts");
+  const { checklistSpell, checklistSpellsOn } = await import("../src/lib/srd/spell-lists.ts");
+  const { classSpellGrants } = await import("../src/lib/srd/class-spell-grants.ts");
+  const prep = await import("../src/lib/srd/spell-prep.ts");
+  const listOf = (spellLevel) => checklistSpellsOn("warlock").filter((spell) => spell.level === spellLevel).map((spell) => spell.name);
+  const regular = (count) => [1, 2, 3, 4, 5].flatMap(listOf).slice(0, count);
+  const ARCANA = { 11: [6], 13: [6, 7], 15: [6, 7, 8], 17: [6, 7, 8, 9] };
+  const arcanaAt = (level) => ARCANA[Object.keys(ARCANA).map(Number).filter((at) => level >= at).pop()] ?? [];
+  const KNOWN = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
+  const cantrips = ["Eldritch Blast", "Minor Illusion", "Prestidigitation", "Chill Touch"];
+
+  test("every warlock level holds its Spells Known column and one arcanum of each level it has earned, on top", () => {
+    for (let level = 1; level <= 20; level += 1) {
+      const known = [...regular(KNOWN[level - 1]), ...arcanaAt(level).map((spellLevel) => listOf(spellLevel)[0])];
+      const problems = spellListProblems(sheet("warlock", level, { ability: "cha", cantrips: cantrips.slice(0, level >= 10 ? 4 : level >= 4 ? 3 : 2), known }));
+      assert.deepEqual(problems, [], `a level ${level} warlock with ${KNOWN[level - 1]} spells known and ${arcanaAt(level).length} arcana`);
+      assert.equal(classSpellGrants({ classId: "warlock", level, features: [] }).extraSpells, arcanaAt(level).length, `the arcana a level ${level} warlock holds on top of the count`);
+    }
+  });
+
+  test("an arcanum is one spell of its level, and never stands in for a spell of 5th level or lower", () => {
+    const twoSixth = sheet("warlock", 11, { ability: "cha", cantrips: cantrips.slice(0, 4), known: [...regular(10), ...listOf(6).slice(0, 2)] });
+    assert.match(spellListProblems(twoSixth).join(" "), /Mystic Arcanum/);
+    const noArcanum = sheet("warlock", 11, { ability: "cha", cantrips: cantrips.slice(0, 4), known: regular(12) });
+    assert.match(spellListProblems(noArcanum)[0], /may hold 11 spells known/);
+  });
+
+  test("a level-up at 11th, 13th, 15th and 17th learns the column's new spell and the arcanum both", () => {
+    const view = (level, known) => ({ classId: "warlock", ability: "cha", level, subclass: "", style: "known", known, prepared: [], cantrips: [], pending: [], spellbook: [] });
+    const abilities = { str: 10, dex: 14, con: 14, int: 10, wis: 10, cha: 18 };
+    for (const level of [11, 13, 15, 17]) {
+      const before = [...regular(KNOWN[level - 2]), ...arcanaAt(level - 1).map((spellLevel) => listOf(spellLevel)[0])];
+      const fresh = regular(KNOWN[level - 1]).filter((name) => !before.includes(name));
+      const arcanum = listOf(Math.max(...arcanaAt(level)))[0];
+      const picks = [...fresh, arcanum];
+      const result = levelUpSpells({ before: view(level - 1, before), level, subclass: "", list: "warlock", firstLevel: false, abilities, freeCantrips: 0, spellOf: checklistSpell, picks: { kind: "picks", spells: picks } });
+      assert.ok(!("error" in result), `warlock ${level}: ${picks.join(", ")}: ${result.error}`);
+      const second = listOf(Math.max(...arcanaAt(level)))[1];
+      const twice = levelUpSpells({ before: view(level - 1, before), level, subclass: "", list: "warlock", firstLevel: false, abilities, freeCantrips: 0, spellOf: checklistSpell, picks: { kind: "picks", spells: [arcanum, second] } });
+      assert.ok("error" in twice, `warlock ${level} learned two arcana of one level: ${arcanum}, ${second}`);
+    }
+    assert.equal(prep.spellCapOf(view(20, []), abilities).count, 15, "the column itself is unchanged");
+  });
+
+  test("a content pack's 6th-level spell is an arcanum too, by the level the pack gives it", () => {
+    const known = [...regular(11), "Astral Assembly Of The Test"];
+    const held = sheet("warlock", 11, { ability: "cha", cantrips: cantrips.slice(0, 4), known });
+    assert.deepEqual(spellListProblems(held, { spellLevelOf: (name) => (name === "Astral Assembly Of The Test" ? 6 : null) }), []);
+    assert.match(spellListProblems(held).join(" "), /may hold 11 spells known/, "a name of no known level counts as a spell known");
+  });
+
+  const { arcanumPickRefusal } = await import("../src/lib/srd/mystic-arcanum.ts");
+  test("the level-up dialog keeps room for the arcanum and takes one of its level", () => {
+    const at11 = { classId: "warlock", level: 11, held: [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], room: 2 };
+    assert.equal(arcanumPickRefusal({ ...at11, picked: [], adding: 5 }), null, "the column's new spell first");
+    assert.match(arcanumPickRefusal({ ...at11, picked: [5], adding: 4 }) ?? "", /Leave room for your Mystic Arcanum/);
+    assert.equal(arcanumPickRefusal({ ...at11, picked: [5], adding: 6 }), null, "the arcanum second");
+    assert.match(arcanumPickRefusal({ ...at11, picked: [6], adding: 6 }) ?? "", /one 6th-level spell/);
+    assert.equal(arcanumPickRefusal({ classId: "sorcerer", level: 11, held: [], picked: [], adding: 6, room: 1 }), null, "no arcanum outside the warlock");
+  });
+}
+
 console.log(`\ntest-spell-list-problems: ${passed} tests passed.`);

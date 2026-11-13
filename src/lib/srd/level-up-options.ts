@@ -11,6 +11,8 @@
 // decides what is allowed, the level-up does.
 //
 // Pure: the route supplies the table's settings and its subclass list.
+import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
+import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   casterPreview,
   expertiseOpen,
@@ -70,6 +72,9 @@ export type LevelUpOptionsContext = {
   // bundled list does not carry: a content pack's Mechanist was "Unknown
   // class" here while the PATCH took its level.
   classOf?: (classId: string) => { id: string; name: string; hitDie: number } | null;
+  // A spell's level as the level-up reads it (the pack's and the table's
+  // spells too); the bundled checklist's when absent.
+  spellLevelOf?: (name: string) => number | null;
 };
 
 type ClassRow = { id: string; subclass: string; level: number };
@@ -113,6 +118,9 @@ export type LevelUpOptions = {
     // the level-up refuses.
     featurePicks?: Array<{ label: string; count: number; options: string[]; notYet?: Array<{ option: string; reason: string }> }>;
     levelUpSkill?: { options: string[] };
+    // The tools a new class's grant leaves to the player (a bard's one
+    // musical instrument), sent back in levelUpTools.
+    levelUpTools?: { count: number; options: string[] };
     training?: Array<{ name: string; picks: string }>;
     spells?: {
       list: string;
@@ -128,6 +136,11 @@ export type LevelUpOptions = {
       // level-up enforces): `otherSchoolPicks` is how many of those are
       // still free.
       schools?: { from: string[]; otherSchoolPicks: number };
+      // A warlock's Mystic Arcanum (src/lib/srd/mystic-arcanum.ts), once it
+      // has one: the arcanum levels with no spell yet, one spell of each
+      // among newSpells; every other spell is of `otherSpellsUpTo` level or
+      // lower.
+      arcanum?: { levels: number[]; otherSpellsUpTo: number };
       note: string;
     };
   };
@@ -153,6 +166,15 @@ function notReadyReason(sheet: CharacterSheet, next: number): string | undefined
     return `Level ${next} takes ${XP_THRESHOLDS[next - 1]} experience points and ${sheet.name} has ${sheet.xp}. A level is earned in play, or granted by whoever runs the table.`;
   }
   return undefined;
+}
+
+// Mystic Arcanum's spells are counted in newSpells, one of each arcanum
+// level on top of the spells known (src/lib/srd/mystic-arcanum.ts).
+function arcanumNote(classId: string, level: number): string {
+  const levels = arcanumLevelsFor(classId, level);
+  return levels.length
+    ? `Mystic Arcanum: one warlock spell of each of level ${levels.join(", ")}, held on top of the spells known (the rest stay at 5th level or lower).`
+    : "";
 }
 
 export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsContext): LevelUpOptions | { error: string } {
@@ -316,6 +338,12 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
         choices.levelUpSkill = { options };
       }
     }
+    const toolChoices = splitToolGrants(grant.tools).choices;
+    if (toolChoices.length) {
+      const holding = new Set((sheet.proficiencies.tools ?? []).map(textKey));
+      const options = [...new Set(toolChoices.flatMap((choice) => choice.from))].filter((tool) => !holding.has(textKey(tool)));
+      choices.levelUpTools = { count: toolChoices.reduce((sum, choice) => sum + choice.count, 0), options };
+    }
   }
 
   // What the subclass trains the character in, arriving with this level: a
@@ -384,6 +412,15 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
           ),
         }
       : null;
+    const arcanumEarned = arcanumLevelsFor(klass.id, classLevelAfter);
+    const arcanum = arcanumEarned.length
+      ? {
+          levels: arcanumEarned.filter(
+            (spellLevel) => !knownBefore.some((name) => (context.spellLevelOf?.(name) ?? checklistSpell(name)?.level) === spellLevel),
+          ),
+          otherSpellsUpTo: Math.min(caster.maxLevel, Math.min(...arcanumEarned) - 1),
+        }
+      : null;
     choices.spells = {
       list: caster.list,
       maxSpellLevel: caster.maxLevel,
@@ -392,9 +429,11 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       style: caster.style,
       mayReplaceOne: caster.style === "known" && knownBefore.length > 0,
       ...(schools ? { schools } : {}),
+      ...(arcanum ? { arcanum } : {}),
       note: [
         STYLE_NOTE[caster.style],
         grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
+        arcanumNote(klass.id, classLevelAfter),
         schools
           ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
           : "",

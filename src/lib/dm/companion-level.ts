@@ -104,7 +104,9 @@ export function legalCompanionSheet(draft: CompanionDraft): CompanionSheet {
   const [casting] = castingClassesOf(classes, (classId) => classGrantsFor(classId, tableAuthors(campaign.id)), subclassExtrasFor(tableAuthors(campaign.id)));
   if (casting) {
     const spellOf = (name: string) => spellFactsFor(name, tableAuthors(campaign.id));
-    const before = emptyView(klass.id, casting.ability, level);
+    // With its subclass: a college or a domain may hold spells beside the
+    // class's counts (src/lib/srd/class-spell-grants.ts).
+    const before = { ...emptyView(klass.id, casting.ability, level), subclass };
     const picks = companionSpellPicks({
       before,
       level,
@@ -252,9 +254,10 @@ function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | 
       (view) => !sheet.spellcasting?.casters?.length || textKey(view.classId) === textKey(leading.id),
     );
     picks = companionSpellPicks({
-      before: held
-        ? { ...held, classId: leading.id, level: leading.level }
-        : emptyView(leading.id, casting.ability, leading.level),
+      before: {
+        ...(held ? { ...held, classId: leading.id, level: leading.level } : emptyView(leading.id, casting.ability, leading.level)),
+        subclass: companionSubclass(leading.id, leading.level + 1, leading.subclass),
+      },
       level: leading.level + 1,
       abilities,
       firstLevel: !held,

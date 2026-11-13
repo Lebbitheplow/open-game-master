@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
+import { arcanumPickRefusal } from "@/lib/srd/mystic-arcanum";
 import { customSpellsOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { bundledSpellSchool } from "@/lib/srd/spell-facts";
 import { thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
@@ -445,6 +446,25 @@ export function SpellsSection({
     const school = offSchool(name);
     if (school) {
       setLimitNote(school);
+      return;
+    }
+    // A warlock's Mystic Arcanum: one spell of each arcanum level, on top
+    // of the spells known (src/lib/srd/mystic-arcanum.ts), as the save holds.
+    const levelOfPick = (pick: string) => pool.find((spell) => textKey(spell.name) === textKey(pick))?.level ?? spellLevelOf(pick);
+    const addingLevel = levelOfPick(name);
+    const arcanum =
+      !wizard && spellCap !== null && addingLevel !== null
+        ? arcanumPickRefusal({
+            classId: klass.id,
+            level: derived.casterLevel ?? state.level,
+            held: [],
+            picked: chosenSpells.map(levelOfPick),
+            adding: addingLevel,
+            room: spellCap,
+          })
+        : null;
+    if (arcanum) {
+      setLimitNote(arcanum);
       return;
     }
     setSpells((current) => [...current, name]);

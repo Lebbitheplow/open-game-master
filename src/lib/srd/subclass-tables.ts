@@ -159,9 +159,35 @@ function castingProfileOf(data: Record<string, unknown>, levels: Record<string, 
 
 // One fetched archetype row as a table, or null when it says nothing a
 // grant could use.
+// An Open5e v2 archetype row lists its features with the levels they arrive
+// at (Black Flag's Metallurgist), and its desc may be only the flavour: read
+// as prose, it granted nothing, so the list is read when the prose gives no
+// feature. A feature the row repeats at later levels is
+// held once, from its first. Null for a row with no such list.
+function levelledFeatures(raw: unknown): Record<string, SubclassFeatureRow[]> | null {
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+  const levels: Record<string, SubclassFeatureRow[]> = {};
+  for (const feature of raw as Array<{ name?: unknown; desc?: unknown; levels?: unknown }>) {
+    const name = String(feature.name ?? "").trim().slice(0, 80);
+    const at = (Array.isArray(feature.levels) ? feature.levels : []).map(Number).filter((level) => Number.isInteger(level) && level >= 1 && level <= 20);
+    if (!name || !at.length) {
+      continue;
+    }
+    (levels[String(Math.min(...at))] ??= []).push({ n: name, d: String(feature.desc ?? "").trim() });
+  }
+  return Object.keys(levels).length ? levels : null;
+}
+
 export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | null {
   const homebrew = row.source === "homebrew";
-  const levels = homebrew ? homebrewLevels(row.data.levels) : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
+  const prose = homebrew ? {} : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
+  const levels = homebrew
+    ? homebrewLevels(row.data.levels)
+    : Object.keys(prose).length
+      ? prose
+      : (levelledFeatures(row.data.features) ?? prose);
   const spells = homebrew ? spellLevels(row.data.spells) : undefined;
   const expanded = homebrew ? spellLevels(row.data.expanded) : undefined;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);

@@ -15,6 +15,7 @@
 import namesJson from "@/lib/classes/feature-names.json";
 import { textKey } from "@/lib/language/text-logic";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
+import { packClassTable } from "@/lib/classes/pack-class-registry";
 
 export type RawFeature = { n: string; d: string };
 export type FeaturesFile = {
@@ -72,7 +73,7 @@ export function registerFeatureText(file: FeaturesFile): void {
 // A workshop class's words ride its registration (workshop-registry.ts).
 export function classFeatureDescription(classId: string, featureName: string): string | null {
   const key = textKey(featureName);
-  return TEXT[classId]?.[key] ?? workshopClassDef(classId)?.text[key] ?? null;
+  return TEXT[classId]?.[key] ?? workshopClassDef(classId)?.text[key] ?? packClassTable(classId)?.text[key] ?? null;
 }
 
 // Fetches the catalogs these classes' text lives in, once each. SRD and

@@ -37,6 +37,7 @@ import { listRollsVisibleTo } from "@/lib/db/rolls";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
 import { speciesAtTable } from "@/lib/characters/species-rules";
 import { subclassExtrasAtTable } from "@/lib/db/subclass-extras";
+import { packClassTables } from "@/lib/classes/pack-class-registry";
 import { tableFeatsFrom } from "@/lib/db/table-feats";
 import { getDatabase } from "@/lib/db/core";
 import { requestDmTurn } from "@/lib/dm/loop";
@@ -156,6 +157,9 @@ export async function GET(
     // The table's workshop classes, read in the browser as on the server: a
     // sheet holding one, and the level-up dialog's multiclass list.
     classes: workshopClassesFor(tableAuthors(campaignId)),
+    // The pack classes its sheets hold (a Mechanist): their features by
+    // level and their words (src/lib/classes/pack-class-registry.ts).
+    packClasses: packClassTables(sheets.flatMap((sheet) => [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)])),
     // The table's workshop feats: what each runs as, and its text.
     feats: Object.fromEntries(tableFeatsFrom(getDatabase(), campaignId)),
     // The character this user is playing when they have several (11.3).

@@ -33,6 +33,7 @@ import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { pickedVariant, withSpeciesVariant } from "@/lib/content/species-variants";
 import { checklistSpell, checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
 import { thirdCasterAnySchoolPicks, thirdCasterSchools } from "@/lib/srd/third-caster";
+import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
 import { classRoles, type ClassRole } from "@/lib/srd/class-roles";
 import { spellClassFor } from "@/lib/classes";
 import { builderCasting } from "./casting";
@@ -831,7 +832,17 @@ export function fillSpells(
       const room = Math.max(0, thirdCasterAnySchoolPicks(derived.casterLevel) - spells.filter(outside).length);
       candidates = [...candidates.filter((name) => !outside(name)), ...candidates.filter(outside).slice(0, room)];
     }
-    const add = spreadByLevel(candidates, listRoom, levelOf, starterSpells);
+    // A warlock's Mystic Arcanum: one spell of each arcanum level not yet
+    // held, the rest of the room from 5th level or lower
+    // (src/lib/srd/mystic-arcanum.ts).
+    const levelOfName = (name: string) => levelOf.get(textKey(name)) ?? spellLevelOf(name) ?? 1;
+    const arcana = arcanumLevelsFor(ctx.klass?.id ?? "", derived.casterLevel)
+      .filter((spellLevel) => !spells.some((name) => levelOfName(name) === spellLevel))
+      .flatMap((spellLevel) => candidates.find((name) => levelOfName(name) === spellLevel) ?? []);
+    if (arcanumLevelsFor(ctx.klass?.id ?? "", derived.casterLevel).length) {
+      candidates = candidates.filter((name) => levelOfName(name) <= 5);
+    }
+    const add = [...arcana.slice(0, listRoom), ...spreadByLevel(candidates, Math.max(0, listRoom - arcana.length), levelOf, starterSpells)];
     if (add.length) {
       spells = [...spells, ...add];
       patch.spells = spells;

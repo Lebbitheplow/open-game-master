@@ -45,6 +45,10 @@ export const MUSICAL_INSTRUMENTS = [
 
 export const GAMING_SETS = ["dice set", "dragonchess set", "playing card set", "three-dragon ante set"];
 
+// The kits SRD 5.1 lists beside the artisan's tools, the instruments and
+// the gaming sets.
+export const OTHER_TOOLS = ["disguise kit", "forgery kit", "herbalism kit", "navigator's tools", "poisoner's kit", "thieves' tools"];
+
 export type ToolChoice = { count: number; from: string[]; label: string };
 
 const COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, a: 1, any: 1 };
@@ -60,6 +64,12 @@ export function toolChoiceOf(entry: string): ToolChoice | null {
     if (tools.length > 1) {
       return { count: COUNTS[named[1]], from: tools, label: "tool" };
     }
+  }
+  // Any tool at all: "two additional tools your choice" (Black Flag's
+  // Mechanist), "two tools of your choice".
+  const any = /^(one|two|three|a|any) (?:additional |more |other )?tools? (?:of )?(?:your )?choice$/.exec(text);
+  if (any) {
+    return { count: COUNTS[any[1]], from: [...ARTISANS_TOOLS, ...OTHER_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS], label: "tool" };
   }
   const kinds: Array<[RegExp, string[], string]> = [
     [/artisan'?s? tools?/, ARTISANS_TOOLS, "artisan's tools"],

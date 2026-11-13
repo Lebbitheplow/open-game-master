@@ -64,12 +64,10 @@
     "archetype": {
       "entries": 218,
       "hand-written": 117,
-      "parsed": 95,
-      "missing": 6,
-      "with unread": 3,
-      "unread": {
-        "features": 3
-      }
+      "parsed": 101,
+      "missing": 0,
+      "with unread": 0,
+      "unread": {}
     }
   }
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { classGrantsFor, offeredSubclasses, raceGrantsFor } from "@/lib/characters/catalog";
+import { classGrantsFor, offeredSubclasses, raceGrantsFor, spellFactsFor } from "@/lib/characters/catalog";
 import { settingClassIds } from "@/lib/classes";
 import { packClassIds } from "@/lib/dm/companion-tools";
 import { tableAuthors } from "@/lib/db/homebrew";
@@ -72,6 +72,9 @@ export async function GET(
     freeCantrips: freeCantripCount(sheet, racialCantripChoice),
     subclassExtras: subclassExtrasFor(owner),
     settingClassIds: settingClassIds(context.campaign.gameSettings.genre, packClassIds(context.campaign.gameSettings)),
+    // A spell's level as the PATCH reads it, the pack's and the table's
+    // homebrew too (a Mystic Arcanum held, src/lib/srd/mystic-arcanum.ts).
+    spellLevelOf: (name) => spellFactsFor(name, owner)?.level ?? null,
   });
   if ("error" in options) {
     return Response.json({ error: options.error }, { status: 400 });

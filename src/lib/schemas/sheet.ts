@@ -661,6 +661,9 @@ export const patchSheetSchema = z.object({
   // The one class-skill pick some multiclass grants offer (rogue, ranger,
   // bard); validated server-side against the grant's list.
   levelUpSkill: z.string().trim().max(40).optional(),
+  // The tools a new class's grant leaves to the player (a bard's one musical
+  // instrument): validated server-side against the grant's choices.
+  levelUpTools: z.array(z.string().trim().min(1).max(60)).max(3).optional(),
   // New spell picks for the class taking the level, on the multiclass path
   // only (the single-class flow patches spellcasting whole, as ever). The
   // server checks them against that class's own allowance at ITS level.

@@ -17,6 +17,7 @@ import {
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
+import { arcanaHeld, arcanumLevelsFor, arcanumProblems, arcanumTopFor } from "@/lib/srd/mystic-arcanum";
 
 // How a caster's spell list works, and the 5e (SRD 5.1) timing for changing
 // it. Pure and database-free, shared by the sheet, the builder, the server
@@ -454,10 +455,7 @@ export function cantripCapOf(
 // A warlock's Mystic Arcanum reaches past pact slots: one spell of 6th level
 // at 11, 7th at 13, 8th at 15 and 9th at 17.
 function arcanumTop(view: Pick<CasterView, "classId" | "level">): number {
-  if (spellRulesClassFor(view.classId) !== "warlock") {
-    return 0;
-  }
-  return view.level >= 17 ? 9 : view.level >= 15 ? 8 : view.level >= 13 ? 7 : view.level >= 11 ? 6 : 0;
+  return arcanumTopFor(spellRulesClassFor(view.classId), view.level);
 }
 
 // Everything the 5e tables say is wrong with the spell lists a sheet arrives
@@ -483,6 +481,9 @@ export function spellListProblems(
     freeSpells?: string[];
     // The table's subclasses, for a workshop subclass's always-prepared spells.
     extras?: SubclassExtras;
+    // A spell's level the bundled checklist may not know (a pack spell held
+    // as a Mystic Arcanum); the checklist's when absent.
+    spellLevelOf?: (name: string) => number | null;
   } = {},
 ): string[] {
   const problems: string[] = [];
@@ -513,9 +514,20 @@ export function spellListProblems(
     const tableCap = spellCapOf(view, sheet.abilities);
     const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;
     const counted = spellsAgainstLimit(held, granted);
+    // Mystic Arcanum's spells sit on top of the count, one of each arcanum
+    // level (src/lib/srd/mystic-arcanum.ts): the rest are held to the
+    // column alone, so an arcanum never stands in for a spell known.
+    const levelled = held.map((name) => ({ name, level: spellLevelOf(name) ?? options.spellLevelOf?.(name) ?? null }));
+    const arcanumSlots = arcanumLevelsFor(view.classId, view.level).length;
+    const regular = counted - arcanaHeld(view.classId, view.level, levelled);
     if (cap && counted > cap.count) {
       problems.push(`A ${label} may hold ${cap.count} ${cap.label}; that list has ${counted}.`);
+    } else if (cap && arcanumSlots && regular > cap.count - arcanumSlots) {
+      problems.push(
+        `A ${label} may hold ${cap.count - arcanumSlots} ${cap.label} of 5th level or lower; that list has ${regular}. Mystic Arcanum adds one spell of each arcanum level on top, never another of 5th level or lower.`,
+      );
     }
+    problems.push(...arcanumProblems(view.classId, view.level, levelled));
     if (view.style === "spellbook" && options.bookAllowance !== false) {
       // A spell the school itself writes into the book sits on top of the six
       // and two a level, as a granted spell sits on top of a known caster's

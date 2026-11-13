@@ -631,6 +631,31 @@ export function clashesWithClassFeature(name: string): boolean {
   return CLASS_FEATURE_NAMES.has(textKey(name));
 }
 
+const REGISTERED_CLASS_FEATURES = new Set<string>();
+
+// A content pack class's feature, read into this table for that class
+// alone (src/lib/classes/pack-class-registry.ts): what its words say the
+// engine can hold, and an attack count by another name ("Multiattack: you
+// can make two attacks when you take the Attack action"). Its text is the
+// guidance either way. Called as the pack opens (src/lib/content/db.ts).
+export function registerPackClassFeature(classId: string, name: string, desc: string, extraAttacks: number): boolean {
+  const key = textKey(name);
+  const id = textKey(classId);
+  if (!key || REGISTERED_CLASS_FEATURES.has(`${id}|${key}`)) {
+    return false;
+  }
+  REGISTERED_CLASS_FEATURES.add(`${id}|${key}`);
+  const effects: FeatureEffect[] = [
+    ...parseFeatureEffects(desc),
+    ...(extraAttacks > 0 ? [{ kind: "extra_attack" as const, attacks: extraAttacks }] : []),
+  ];
+  if (!effects.length) {
+    return false;
+  }
+  FEATURE_EFFECTS.push({ match: [key], classes: [id], effects, guidance: desc });
+  return true;
+}
+
 const REGISTERED_FEATS = new Set<string>();
 
 // A content pack feat's rules, read into this table the way ODM's own feats
