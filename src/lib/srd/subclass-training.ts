@@ -197,7 +197,7 @@ const TABLE: Record<string, TableEntry> = {
     expertise: ["persuasion"],
     skillOtherwise: { skill: "persuasion", from: ["animal_handling", "insight", "intimidation", "performance"] },
   },
-  "barbarian|path of the giant|giant's power": { languages: ["Giant"] },
+  "barbarian|path of the giant|giant's power": { languages: ["Giant"], languageOtherwise: "Giant" },
   "druid|circle of the shepherd|speech of the woods": { languages: ["Sylvan"] },
   "sorcerer|storm sorcery|wind speaker": { languages: ["Primordial"] },
   // SRD 5.1, Dragon Ancestor: "You can speak, read, and write Draconic."
