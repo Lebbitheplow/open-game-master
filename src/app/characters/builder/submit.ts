@@ -261,6 +261,13 @@ export function srdClass(klass: ClassOption): boolean {
   return !klass.genres && SRD_CLASSES.some((entry) => entry.id === klass.id);
 }
 
+// Whether the class's skill count is owed at the class step: a core class's,
+// and a setting class's, whose own row names its skills as a core class's
+// does. Only a content pack's class, read from prose, is a suggestion.
+export function classSkillsRequired(klass: ClassOption): boolean {
+  return srdClass(klass) || Boolean(klass.genres);
+}
+
 // The class step's own picks: skills, the subclass once the level calls for
 // one, fighting styles and expertise. Every one of these used to be a
 // suggestion a player could scroll past; a character built without them
@@ -277,7 +284,7 @@ export function callingBlocks(
     return [];
   }
   const owed: StepBlock[] = [];
-  const strict = srdClass(klass);
+  const strict = classSkillsRequired(klass);
   const skillsLeft = klass.skillChoices.count - state.chosenSkills.length;
   if (strict && skillsLeft > 0) {
     owed.push(block("classSkills", `Pick ${skillsLeft} more ${skillsLeft === 1 ? "skill" : "skills"} your training taught you (class skills).`));

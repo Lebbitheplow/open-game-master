@@ -42,7 +42,7 @@ import { rollHeroName } from "./heroNames";
 import { EASY_CLASSES, PLAYSTYLES, fillClassSkills, type PlaystyleId } from "./playstyles";
 import { TARGET_WORDS } from "./owed";
 import { spellOnSavedList } from "./spellSupply";
-import { bonusLanguageCount, srdClass, type BlockerTarget } from "./submit";
+import { bonusLanguageCount, classSkillsRequired, srdClass, type BlockerTarget } from "./submit";
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDraftFields } from "./useBuilderState";
@@ -525,7 +525,7 @@ export function fillRound(ctx: FillContext): FillRound {
   }
 
   // The class's picks.
-  if (wants("classSkills") && srdClass(klass) && fields.chosenSkills.length < klass.skillChoices.count) {
+  if (wants("classSkills") && classSkillsRequired(klass) && fields.chosenSkills.length < klass.skillChoices.count) {
     const lean = QUIZ_OUTSIDE.find((entry) => entry.id === ctx.answers?.outside)?.skills ?? [];
     const granted = new Set([...proficient].filter((skill) => !fields.chosenSkills.includes(skill)));
     const leaning = lean.filter((skill) => klass!.skillChoices.from.includes(skill) && !granted.has(skill) && !fields.chosenSkills.includes(skill));
