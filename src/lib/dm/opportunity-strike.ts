@@ -43,14 +43,17 @@ import {
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
-import { shillelaghSwing } from "@/lib/dm/attack-features";
+import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
+import { otherHandArmed } from "@/lib/dm/attack-rules";
+import { wearsUntrainedArmor } from "@/lib/srd/armor";
+import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
 import { clearHitSpent } from "@/lib/dm/pc-attack-riders";
-import { computeSheetDerived } from "@/lib/srd";
+import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
-import { combatRiders } from "@/lib/srd/feature-effects";
+import { combatRiders, hasHalflingLuck } from "@/lib/srd/feature-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
@@ -129,11 +132,15 @@ export function pcOpportunitySwing(input: {
   const derived = computeSheetDerived(sheet);
   const riders = combatRiders(sheet);
   const shillelagh = shillelaghSwing(sheet, resolved, derived);
-  let profile = weaponAttackProfile(shillelagh?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
+  // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
+  const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
+  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
     riders,
     martialArts: martialArtsApplies(sheet),
     // A worn item's bonus rides the reaction's swing as it does the turn's.
     worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
+    // Dueling wants the other hand empty of weapons, here as on the turn.
+    otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
   });
   if (shillelagh) {
     profile = { ...profile, magicWeapon: true };
@@ -171,8 +178,15 @@ export function pcOpportunitySwing(input: {
   });
   const light = lightOnAttack(sight, { attacker: sheet.name, target: enemy.displayName });
   const attackRiders = conditionRollRiders(sheet.conditions, "attack");
+  // What the attacker's own body and gear do to any attack roll of theirs,
+  // as pc-attack-situation.ts reads them for the turn's swing: armor worn
+  // untrained, and a heavy weapon in Small hands, each disadvantage (SRD 5.1,
+  // Armor; Weapons, Heavy). The reaction's swing skipped both.
+  const untrained = wearsUntrainedArmor(sheet);
+  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
+    ...(untrained || smallWithHeavy ? ["disadvantage" as const] : []),
     exhaustionRollState(sheet.exhaustion ?? 0, "attack").advantage,
     ...light.sources,
     ...attackRiders.advantageSources,
@@ -198,7 +212,9 @@ export function pcOpportunitySwing(input: {
   // as a pc_attack's does.
   const hitOutcome = rollCharacterD20(campaign, sheet, {
     kind: "attack",
-    expression: `${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`,
+    // A halfling's Lucky rerolls a natural 1 on any attack roll (SRD 5.1,
+    // Halfling), this one too.
+    expression: `${d20Expression(profile.toHit, advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1")}${attackRiders.diceSuffix}`,
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
     advantage,
     attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },

@@ -278,4 +278,32 @@ await test("On physical dice the opportunity attack waits on its player, and the
   }
 });
 
+// An opportunity attack is an attack roll like the turn's: a halfling's Lucky
+// rerolls its natural 1 (SRD 5.1, Halfling), and armor worn untrained puts
+// it at disadvantage (SRD 5.1, Armor). The reaction's swing read neither.
+await test("The opportunity attack keeps the attacker's own d20 rules: a halfling's Lucky, and armor worn untrained.", async () => {
+  const before = world.sheet(hero.id);
+  try {
+    let [gnoll] = await stage(2);
+    kit.place(hero.id, 6, 7);
+    world.patch(hero.id, { race: "halfling", features: [...before.features, { name: "Lucky", source: "race" }] });
+    kit.dice(1, 15, 4);
+    let out = await flee(gnoll);
+    assert.match(out.result.opportunityAttacks?.[0] ?? "", /catches/, `the natural 1 was not rerolled: ${JSON.stringify(out.result.opportunityAttacks)}`);
+    world.patch(hero.id, { race: before.race, features: before.features });
+
+    [gnoll] = await stage(2);
+    kit.place(hero.id, 6, 7);
+    world.patch(hero.id, {
+      proficiencies: { ...before.proficiencies, armor: [] },
+      equipment: [...before.equipment, { name: "Chain Mail", qty: 1, equipped: true }],
+    });
+    kit.dice(15, 2);
+    out = await flee(gnoll);
+    assert.match(out.result.opportunityAttacks?.[0] ?? "", /misses/, `chain mail worn untrained gave no disadvantage: ${JSON.stringify(out.result.opportunityAttacks)}`);
+  } finally {
+    world.patch(hero.id, { race: before.race, features: before.features, proficiencies: before.proficiencies, equipment: before.equipment });
+  }
+});
+
 await finish();
