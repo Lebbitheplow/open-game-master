@@ -141,6 +141,10 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/fade-away": { kind: "spell", slug: "invisibility" },
   "feature/dragon-fear": { kind: "spell", slug: "fear" },
   "feature/stake-and-salt": { kind: "spell", slug: "protection-from-evil-and-good" },
+  // A half-orc's Orcish Fury the rage it rides, a derro's Tainted Blood the
+  // necrotic burst around the caster.
+  "feature/orcish-fury": { kind: "feature", slug: "rage" },
+  "feature/tainted-blood": { kind: "spell", slug: "arms-of-hadar" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {
