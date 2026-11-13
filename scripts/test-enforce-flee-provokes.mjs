@@ -10,10 +10,14 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
+import { call } from "./lib/enforce-campaign.mjs";
 
 const { test, finish } = suite("test-enforce-flee-provokes");
-const world = await openWorld({ campaign: { maxPlayers: 4 } });
+const world = await openWorld({ campaign: { maxPlayers: 4 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
+const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const pendingRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
 
 const hero = world.addHero({
   name: "Kara", class: "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
@@ -138,6 +142,25 @@ await test("A Sentinel's hit stops it where it stands: speed 0 for the turn, sti
   assert.equal(again.refused, "rules");
 });
 
+// SRD 5.1 has no Sentinel (it is the pack's); its stop holds for what is left
+// of the turn the hit lands in. It was laid as lasting to the end of the
+// creature's NEXT turn, so a goblin stopped on its way out stood still
+// through that turn too, and the flee it tried on it was refused.
+await test("A Sentinel's stop lasts the rest of the turn it lands in: once that turn ends, the creature is free to flee.", async () => {
+  const [gnoll] = await stage(2);
+  kit.place(warden.id, 6, 7);
+  kit.dice(15, 3);
+  const out = await flee(gnoll);
+  assert.equal(out.result.stopped, gnoll.displayName, JSON.stringify(out.result));
+  assert.equal(kit.current().characterId, hero.id, "it was stopped on Kara's turn");
+  assert.equal(kit.endTurn(world.sheet(hero.id).userId), true);
+  assert.equal(kit.enemy(gnoll.id).conditions.includes("stopped"), false, "the stop outlived the turn it was laid in");
+  kit.dice(2);
+  const later = await flee(gnoll);
+  assert.equal(later.ok, true, later.error);
+  assert.equal(later.result.fled, gnoll.displayName, JSON.stringify(later.result));
+});
+
 await test("One that teleports away draws nothing, from beside a character with their reaction ready.", async () => {
   const [mage] = await stage(2);
   kit.place(hero.id, 6, 7);
@@ -165,6 +188,37 @@ await test("A teleport is still held by what stops a creature acting: paralyzed,
   const out = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true });
   assert.equal(out.refused, "rules");
   assert.equal(kit.enemy(mage.id).status, "alive");
+});
+
+// A seat on physical dice rolls the swing its reaction makes (character-roll.ts,
+// as on move_token): the call waits on the to-hit, then on the damage, and only
+// then does the creature go, with the blow on it.
+await test("On physical dice the opportunity attack waits on its player, and the creature leaves only once the dice are in.", async () => {
+  const [gnoll] = await stage(2);
+  kit.place(hero.id, 6, 7);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    const out = await flee(gnoll);
+    assert.equal(out.result.parked, true, JSON.stringify(out.result));
+    assert.equal(kit.enemy(gnoll.id).status, "alive", "it left before the swing was rolled");
+    assert.ok(kit.token(gnoll.id), "its token left before the swing was rolled");
+    assert.equal(reacted(hero), false, "the reaction was spent before the dice were in");
+    world.signIn({ id: userId });
+    const [toHit] = listOpenPendingRolls(world.campaignId);
+    assert.match(toHit.detail, /opportunity attack/);
+    assert.equal((await call(pendingRoute, "POST", { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const [damage] = listOpenPendingRolls(world.campaignId);
+    assert.equal(damage?.kind, "damage", "a hit's damage is the seat's to roll too");
+    assert.equal((await call(pendingRoute, "POST", { dice: [5] }, { campaignId: world.campaignId, pendingRollId: damage.id })).status, 200);
+    assert.equal(listOpenPendingRolls(world.campaignId).length, 0);
+    const after = kit.enemy(gnoll.id);
+    assert.equal(after.status, "fled");
+    assert.equal(after.currentHp, 32, "the 8 the player rolled stayed on it");
+    assert.equal(reacted(hero), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
 });
 
 await finish();
