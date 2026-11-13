@@ -3,8 +3,8 @@
   "counts": {
     "spell": {
       "entries": 1795,
-      "hand-written": 458,
-      "parsed": 748,
+      "hand-written": 459,
+      "parsed": 747,
       "missing": 589,
       "with unread": 208,
       "unread": {
@@ -27,8 +27,8 @@
       }
     },
     "feat": {
-      "entries": 130,
-      "hand-written": 98,
+      "entries": 143,
+      "hand-written": 111,
       "parsed": 20,
       "missing": 12,
       "with unread": 7,
@@ -38,8 +38,8 @@
       }
     },
     "race": {
-      "entries": 81,
-      "hand-written": 37,
+      "entries": 95,
+      "hand-written": 51,
       "parsed": 44,
       "missing": 0,
       "with unread": 0,
@@ -62,8 +62,8 @@
       "unread": {}
     },
     "archetype": {
-      "entries": 218,
-      "hand-written": 117,
+      "entries": 219,
+      "hand-written": 118,
       "parsed": 101,
       "missing": 0,
       "with unread": 0,
