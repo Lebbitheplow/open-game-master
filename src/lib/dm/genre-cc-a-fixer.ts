@@ -44,3 +44,12 @@ export function exitAtInitiative(campaign: Campaign, sheetId: string): string[] 
   }
   return [`Exit Strategy: ${sheet.name} may move up to their speed now without provoking opportunity attacks (use_resource "Exit Strategy" with x and y).`];
 }
+
+// Jury-Rig (rigger): "10 minutes of tinkering ... gives a tool user +1d4 for
+// 1 hour": the mark the spend lays (src/lib/dm/genre-cc-a-spends.ts), read by
+// a check made with a tool (src/lib/dm/rolls.ts). Restoring a broken device
+// is the story's.
+export const JURY_RIGGED = "jury-rigged";
+export function juryRigged(sheet: Pick<CharacterSheet, "conditions">): boolean {
+  return sheet.conditions.some((entry) => isConditionNamed(entry, JURY_RIGGED));
+}

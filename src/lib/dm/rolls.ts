@@ -1,4 +1,5 @@
 import type { LentRoll } from "@/lib/srd/genre-a-lent";
+import { juryRigged } from "@/lib/dm/genre-cc-a-fixer";
 import { named } from "@/lib/dm/roll-about";
 import { LUCK_SPEND, computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
@@ -793,7 +794,8 @@ function resolveUnfloored(
       `$1${lucky ? "r1" : ""}${mightFloor ? `f${mightFloor}` : ""}`,
     );
     return {
-      expression: `${luckyBase}${bonusDie}`,
+      // Jury-Rig: "gives a tool user +1d4 for 1 hour" (genre-cc-a-spends.ts).
+      expression: `${luckyBase}${bonusDie}${args.kind === "ability_check" && args.tool && juryRigged(sheet) ? "+1d4" : ""}`,
       detail: args.ability,
       ...(abilityNotes.length ? { conditionNotes: abilityNotes } : {}),
       ...inspirationFields,

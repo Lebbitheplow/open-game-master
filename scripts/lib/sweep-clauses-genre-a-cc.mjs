@@ -536,6 +536,41 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Hot-Sim Focus: a known ritual program (Detect Magic) cast as a ritual,
+  // out of a fight, spends no slot; without the feature it is refused.
+  async cc_ritual(t, run, feature) {
+    t.fresh();
+    const casting = { ability: "int", slots: { 1: { max: 2, used: 0 } }, known: ["Detect Magic"], prepared: ["Detect Magic"], cantrips: [] };
+    const hero = t.hero(feature.classId, feature.level, { spellcasting: casting });
+    const ritual = () => t.world.invoke("use_spell_slot", { characterId: hero.id, spell: "Detect Magic", ritual: true });
+    const out = await ritual();
+    eq(`${out.ok}/${t.world.sheet(hero.id).spellcasting.slots[1].used}`, "true/0", `the ritual (${out.error ?? "cast"}) / slots spent`);
+    stripFeature(t, hero.id, feature.name);
+    eq((await ritual()).ok, false, "the ritual without Hot-Sim Focus");
+  },
+
+  // Miasma Mantle: the ward's poison resistance reaches an ally 15 feet off.
+  async cc_mantle(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.kit.place(scene.ally.id, 5, 2);
+    must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 10, type: "poison" }), "the poison");
+    eq(20 - t.hp(scene.ally.id), 5, "hit points an ally 15 feet away lost to 10 poison");
+  },
+
+  // Jury-Rig: the ally's check with thieves' tools adds 1d4; one with no tool does not.
+  async cc_jury(t, run, feature) {
+    const { listRecentRolls } = await load("lib/db/rolls.ts");
+    const scene = await t.stage(feature);
+    await spend(t, scene, "Jury-Rig", { targetCharacterId: scene.ally.id });
+    const roll = async (tool) => {
+      must(await t.world.invoke("request_roll", { characterId: scene.ally.id, kind: "ability_check", ability: "dex", dc: 10, reason: "a probe", ...(tool ? { tool } : {}) }), "the check");
+      return /1d4/.test(listRecentRolls(t.world.campaignId, 3).at(-1)?.expression ?? "");
+    };
+    eq(`${await roll("Thieves' Tools")}/${await roll(null)}`, "true/false", "a d4 on the check with a tool / with none");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

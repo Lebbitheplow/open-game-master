@@ -37,15 +37,12 @@
   "clauses": [
    {
     "c": "May run any known program with the ritual tag over 10 minutes without spending a slot",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "ritual casting by a genre caster is not staged by this sweep",
     "run": {
-     "k": "hook"
+     "k": "cc_ritual"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Hot-Sim Focus#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/cast-rules.ts canCastRituals (Hot-Sim Focus), read by the ritual guard ritualProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Hot-Sim Focus#0"
    }
   ]
  },
@@ -1048,10 +1045,12 @@
    },
    {
     "c": "10 minutes of tinkering restores a broken device or gives a tool user +1d4 for 1 hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:cyberpunk_jury_rig#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-jury-rig",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "run": {
+     "k": "cc_jury"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Jury-Rig (src/lib/dm/genre-cc-a-spends.ts juryRig, the jury-rigged mark for 600 rounds), read by src/lib/dm/rolls.ts on a check made with a tool",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Jury-Rig#1"
    }
   ]
  },

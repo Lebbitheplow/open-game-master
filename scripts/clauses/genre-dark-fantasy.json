@@ -922,12 +922,12 @@
   "clauses": [
    {
     "c": "Miasma Ward radius grows to 15 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "Miasma Ward's ally reach (plague_doctor::Miasma Ward#2) is itself a gap: an aura that lends a fixed resistance to allies in range has no reader (authored aura_resist lends spell damage or a type the holder's condition names), so its radius cannot be read; the hook probe passes on the mantle's own necrotic resistance",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Mantle#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_mantle"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts Miasma Mantle (aura_resist poison and aura_roll disease at 15 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Mantle#0"
    },
    {
     "c": "also grants resistance to necrotic damage",

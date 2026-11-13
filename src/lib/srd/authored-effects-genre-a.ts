@@ -50,7 +50,12 @@ const PASSIVES: GenreRow[] = [
   ]),
   row("plague_doctor", "Beaked Mask", [FEAR]),
   row("plague_doctor", "Iron Constitution", [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned", "diseased"] }]),
-  row("plague_doctor", "Miasma Mantle", [{ kind: "resist", types: ["necrotic"] }]),
+  // "Miasma Ward radius grows to 15 ft": the ward's aura again, 15 feet out.
+  row("plague_doctor", "Miasma Mantle", [
+    { kind: "resist", types: ["necrotic"] },
+    { kind: "aura_resist", rangeFt: 15, types: ["poison"] },
+    { kind: "aura_roll", rangeFt: 15, roll: "save", against: ["disease"] },
+  ]),
   row("grave_knight", "Knight of Dust", [{ kind: "resist", types: ["necrotic"] }]),
   // "advantage against effects that would age, drain, or possess you": the
   // saves whose `against` names them (src/lib/dm/roll-about.ts SAVE_AGAINST).

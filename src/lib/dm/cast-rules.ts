@@ -84,7 +84,10 @@ export function canCastRituals(sheet: Caster): boolean {
   return (
     classIds.some((id) => RITUAL_CASTERS.has(id.trim().toLowerCase())) ||
     holdsFeat(sheet, "ritual caster") ||
-    holdsFeat(sheet, "book of ancient secrets")
+    holdsFeat(sheet, "book of ancient secrets") ||
+    // Hot-Sim Focus (netrunner): "May run any known program with the ritual
+    // tag over 10 minutes without spending a slot".
+    holdsFeature(sheet as Parameters<typeof holdsFeature>[0], "Hot-Sim Focus")
   );
 }
 
@@ -289,6 +292,10 @@ function ritualHolderProblem(
   }
   const book = holdsFeat(sheet, "ritual caster") || holdsFeat(sheet, "book of ancient secrets");
   if (book && hasName(sheet.spellcasting?.spellbook, names)) {
+    return null;
+  }
+  // Hot-Sim Focus: "May run any known program with the ritual tag".
+  if (views.some(holds) && holdsFeature(sheet as Parameters<typeof holdsFeature>[0], "Hot-Sim Focus")) {
     return null;
   }
   const other = views.find(holds);

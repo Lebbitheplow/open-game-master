@@ -35,6 +35,7 @@ export const GRIEF_MARK = "slotless cast (2nd)";
 export const GENRE_CC_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "neutral_ground", match: ["neutral ground"], summary: "Neutral Ground: it accepted the fixer's parley and cannot attack them until the fixer's next turn." },
   { id: "exit_strategy", match: ["exit strategy"], summary: "Exit Strategy: the fixer may move up to their speed before their first turn, drawing no opportunity attacks." },
+  { id: "jury_rigged", match: ["jury-rigged"], summary: "Jury-Rig: +1d4 to checks made with a tool, for an hour." },
   { id: "quarry_slain", match: ["quarry slain"], summary: "No Rest for the Wicked: the branded quarry is dead; the extra full turn may be taken before this turn ends." },
   { id: "slotless_cast_2nd", match: [GRIEF_MARK], summary: "Grief Made Strength: the next dirge of 2nd level or lower this minute costs no slot." },
   { id: "candle_in_the_dark", match: [CANDLE], summary: "Candle in the Dark: bright warding light 20 feet around the witch hunter; hostile undead and fiends in it attack at disadvantage." },

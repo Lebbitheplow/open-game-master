@@ -41,7 +41,7 @@ import { sideOf } from "@/lib/dm/combatant";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CANDLE, ELEGY_MARK, SWARMED } from "@/lib/srd/genre-cc-a-conditions";
-import { EXIT, PARLEY } from "@/lib/dm/genre-cc-a-fixer";
+import { EXIT, JURY_RIGGED, PARLEY } from "@/lib/dm/genre-cc-a-fixer";
 import { reactionMove } from "@/lib/dm/authored-reactions-more";
 import { getEnemy, saveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -57,7 +57,7 @@ import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { isNamed } from "@/lib/srd/feature-names";
 
-export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit";
+export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit" | "jury_rig";
 
 type Resolution = ToolError | { patch?: Record<string, unknown>; result: Record<string, unknown> };
 
@@ -83,6 +83,8 @@ export function genreCcSpend(ctx: SpendContext, play: GenreCcPlay): Resolution {
       return parley(ctx);
     case "exit":
       return exitStrategy(ctx);
+    case "jury_rig":
+      return juryRig(ctx);
   }
 }
 
@@ -233,4 +235,16 @@ function exitStrategy(ctx: SpendContext): Resolution {
   }
   const left = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta as ConditionMetaMap, [held]);
   return { patch: { conditions: left.conditions, conditionMeta: left.meta }, result: { applied: [String((moved as { applied?: unknown }).applied ?? "")] } };
+}
+
+// Jury-Rig: the tinkered tool's +1d4 for an hour (600 rounds) on the
+// character named, or the rigger.
+function juryRig(ctx: SpendContext): Resolution {
+  const target = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : ctx.sheet;
+  if (!target || target.campaignId !== ctx.campaign.id) {
+    return { error: `${ctx.spend.name} tunes a tool for a character: name them by targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  const kept = target.conditions.filter((entry) => !isConditionNamed(entry, JURY_RIGGED));
+  patchSheetAudited(ctx.campaign.id, target.id, { conditions: [...kept, JURY_RIGGED], conditionMeta: { ...target.conditionMeta, [JURY_RIGGED]: { rounds: 600 } } as never }, { kind: "set_condition", reason: ctx.spend.name, delta: { condition: JURY_RIGGED } });
+  return { result: { applied: [`${ctx.spend.name}: ${target.name}'s checks with a tool gain +1d4 for an hour.`] } };
 }
