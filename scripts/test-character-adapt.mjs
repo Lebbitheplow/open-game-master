@@ -354,4 +354,25 @@ test("a library barbarian 19 joining a level 20 table still gains Primal Champio
   assert.equal(adapted.abilities.con, 20);
 });
 
+// Draconic Resilience: a hit point per sorcerer level, which the door counts
+// (featureHitPoints). The hit points worked out for the new level left it
+// out, so a draconic sorcerer joining a level 1 table was refused for one hit
+// point short, and one joining any other level came in a point per level
+// short of what the rules give.
+test("a draconic sorcerer's hit points at the new level keep Draconic Resilience's point per level", () => {
+  const sorcerer = sheet({
+    class: "sorcerer",
+    subclass: "Draconic Bloodline",
+    abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 17 },
+    features: libraryForm,
+    maxHp: 11 * 4 + 6 + 2 + 11 * 2 + 11,
+  });
+  // Level 1: 6 + 2 (Constitution) + 1.
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 1).maxHp, 9);
+  // Level 5: 9 + 4 x (4 + 2 + 1).
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 5).maxHp, 37);
+  // Any other sorcerer has no such point.
+  assert.equal(adaptSheetToLevel({ ...sorcerer, subclass: "Wild Magic" }, 11, 1).maxHp, 8);
+});
+
 console.log(`character adapt: ${passed} assertions passed.`);

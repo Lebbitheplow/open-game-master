@@ -6,6 +6,7 @@ import { derivedMaxHp, hpBonusPerLevelFor } from "@/lib/srd/hit-points";
 import { hpBonusPerLevel } from "@/lib/srd/race-id";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import {
+  featureHitPoints,
   holdsFeature,
   reachesPrimalChampion,
   withPrimalChampion,
@@ -171,6 +172,10 @@ export function adaptSheetToLevel(
           classes: dice,
           con: sheet.abilities.con,
           perLevelBonus: hpBonusPerLevelFor(hpBonusPerLevel(sheet.race) > 0, sheet.feats ?? []),
+          // Draconic Resilience's point per sorcerer level, which the door
+          // counts too: left out, a draconic sorcerer joining a level 1
+          // table was refused for one hit point short.
+          extraHp: featureHitPoints({ class: sheet.class, subclass: sheet.subclass, level, classes: classList, features: sheet.features }),
         })
       : Math.max(1, Math.round((sheet.maxHp / Math.max(1, fromLevel)) * level));
   }
