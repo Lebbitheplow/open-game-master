@@ -128,6 +128,9 @@ export function builderFeatCandidate({ state, derived, race, klass, background }
       ),
       raceId: race?.id ?? "",
       raceName: race?.name ?? "",
+      // A content pack species' size is on its row ("A Small or smaller
+      // race"); the bundled ones are read from their id.
+      ...(race?.size ? { size: /^(?:small|tiny)$/i.test(race.size) ? ("Small" as const) : ("Medium" as const) } : {}),
       skills: derived.training.skills,
       tools: derived.training.tools,
       weapons: [...new Set([...derived.training.weapons, ...derived.kitTraining.weapons])],

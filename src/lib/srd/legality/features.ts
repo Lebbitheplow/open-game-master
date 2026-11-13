@@ -9,7 +9,7 @@
 // may add none, because the engines read features by name and a name like
 // "Extra Attack (3)" carries the real mechanic whatever its source says.
 import type { Ability, AbilityScores, SheetFeature } from "@/lib/schemas/sheet";
-import { ALL_CLASSES, SRD_RACES } from "@/lib/srd";
+import { ALL_CLASSES, SRD_RACES, sizeForRace } from "@/lib/srd";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { readsAsRules } from "@/lib/srd/feat-text";
 import { SRD_ARMOR, isArmorProficient } from "@/lib/srd/armor";
@@ -224,6 +224,9 @@ export type FeatCandidate = {
   tools?: string[];
   weapons?: string[];
   level?: number;
+  // The species' size where the caller has its row (the builder's option);
+  // read from the race id otherwise (sizeForRace).
+  size?: "Small" | "Medium";
 };
 
 const ABILITY_BY_NAME = Object.fromEntries(
@@ -287,6 +290,66 @@ export type PrerequisiteCheck = {
   requirements: RequirementCheck[];
 };
 
+// The species a prerequisite may name, each with the words a race's id or
+// name carries for it. A drow or an eladrin is an elf; a half-elf is not
+// (Elven Accuracy names both), nor is a half-orc an orc.
+const SPECIES_WORDS: Record<string, string[]> = {
+  elf: ["elf", "drow", "eladrin"],
+  "half elf": ["half elf"],
+  "half orc": ["half orc"],
+  human: ["human"],
+  dwarf: ["dwarf", "duergar"],
+  halfling: ["halfling"],
+  gnome: ["gnome", "svirfneblin"],
+  dragonborn: ["dragonborn"],
+  tiefling: ["tiefling"],
+  orc: ["orc"],
+  goblin: ["goblin"],
+  hobgoblin: ["hobgoblin"],
+  bugbear: ["bugbear"],
+  kobold: ["kobold"],
+  aasimar: ["aasimar"],
+  genasi: ["genasi"],
+  goliath: ["goliath"],
+  firbolg: ["firbolg"],
+  tabaxi: ["tabaxi"],
+  kenku: ["kenku"],
+  tortle: ["tortle"],
+  lizardfolk: ["lizardfolk"],
+  changeling: ["changeling"],
+  warforged: ["warforged"],
+};
+
+// A species (or size) requirement read as a test of the candidate: "Elf or
+// half-elf", "Half-elf, half-orc, or human", "A Small or smaller race",
+// "Dwarf or a Small race". Null for anything else, which the readers after
+// this one take. Every alternative must be a species or a size this table
+// knows, or the requirement is not read as one.
+function speciesRequirement(part: string): ((who: FeatCandidate) => boolean) | null {
+  const text = part.replace(/\bsmall or smaller\b/g, "small").replace(/-/g, " ");
+  const alternatives = text
+    .split(/\s*,\s*(?:or\s+)?|\s+or\s+/)
+    .map((entry) => entry.replace(/^(?:a|an|the)\s+/, "").trim())
+    .filter(Boolean);
+  const tests = alternatives.map((alternative): ((who: FeatCandidate) => boolean) | null => {
+    if (/^(?:small|tiny)(?: race| species| creature)?$/.test(alternative)) {
+      return (who) => (who.size ?? sizeForRace(who.raceId)) === "Small";
+    }
+    const words = SPECIES_WORDS[alternative.replace(/(?<=[a-z])s$/, "").replace(/ (?:race|species)$/, "")] ?? SPECIES_WORDS[alternative];
+    if (!words) {
+      return null;
+    }
+    return (who) => {
+      const named = `${who.raceId} ${who.raceName}`.toLowerCase().replace(/[^a-z]+/g, " ");
+      return words.some((word) => new RegExp(word.startsWith("half ") ? `\\b${word}\\b` : `(?<!half )\\b${word}\\b`).test(named));
+    };
+  });
+  if (!tests.length || tests.some((entry) => entry === null)) {
+    return null;
+  }
+  return (who) => tests.some((entry) => entry!(who));
+}
+
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const phrase = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 const orList = (items: string[]) =>
@@ -341,8 +404,9 @@ function requirementCheck(requirement: string, who: FeatCandidate, waiting: Feat
   if (/^(?:ability to cast (?:at least )?one spell|ability to cast spells|spellcasting or pact magic)$/.test(part)) {
     return held(who.casts, waiting.casts, "your class");
   }
-  if (/^elf or half-elf$/.test(part)) {
-    return held(/elf|drow/i.test(`${who.raceId} ${who.raceName}`), waiting.race, "your race");
+  const species = speciesRequirement(part);
+  if (species) {
+    return held(Boolean(who.raceId || who.raceName) && species(who), waiting.race, "your race");
   }
   const level = /^(\d+)(?:st|nd|rd|th) level or higher$/.exec(part);
   if (level) {

@@ -263,4 +263,34 @@ test("the server's check is the same evaluator, so the two agree", () => {
   assert.equal(unmetPrerequisite("Requires Dexterity 13 or higher.", who), "Dexterity 13 or higher");
 });
 
+// A species or size a feat asks for is judged, never left to the table:
+// Tome of Heroes' Giant Foe ("A Small or smaller race") was open to a human,
+// and a list of three species ("Half-elf, half-orc, or human") to anyone.
+test("a feat that asks for a species or a size is refused to every other species, and open to each it names", () => {
+  const who = (raceId, raceName, size) => ({ abilities: { str: 14, dex: 14, con: 14, int: 14, wis: 14, cha: 14 }, armor: [], casts: false, raceId, raceName, ...(size ? { size } : {}) });
+  const cases = [
+    ["Elf or half-elf", [["high_elf", "High Elf"], ["half_elf", "Half-Elf"], ["drow", "Drow"]], [["human", "Human"], ["half_orc", "Half-Orc"]]],
+    ["Half-elf, half-orc, or human", [["human", "Human"], ["variant_human", "Variant Human"], ["half_orc", "Half-Orc"], ["half_elf", "Half-Elf"]], [["high_elf", "High Elf"], ["orc", "Orc"], ["hill_dwarf", "Hill Dwarf"]]],
+    ["*A Small or smaller race*", [["lightfoot_halfling", "Lightfoot Halfling"], ["rock_gnome", "Rock Gnome"], ["toh-kobold", "Kobold", "Small"]], [["human", "Human"], ["hill_dwarf", "Hill Dwarf"]]],
+    ["Dwarf or a Small race", [["hill_dwarf", "Hill Dwarf"], ["mountain_dwarf", "Mountain Dwarf"], ["forest_gnome", "Forest Gnome"]], [["human", "Human"], ["wood_elf", "Wood Elf"]]],
+    ["Dragonborn", [["dragonborn", "Dragonborn"]], [["tiefling", "Tiefling"]]],
+    ["Tiefling", [["tiefling", "Tiefling"]], [["dragonborn", "Dragonborn"]]],
+  ];
+  for (const [prerequisite, open, shut] of cases) {
+    for (const [id, name, size] of open) {
+      assert.equal(checkPrerequisite(prerequisite, who(id, name, size)).state, "met", `${prerequisite}: refused to a ${name}`);
+    }
+    for (const [id, name, size] of shut) {
+      const check = checkPrerequisite(prerequisite, who(id, name, size));
+      assert.equal(check.state, "unmet", `${prerequisite}: a ${name} may take it (${prerequisiteNoteOf(check)})`);
+    }
+    // A species not yet chosen waits.
+    assert.equal(checkPrerequisite(prerequisite, who("", ""), { race: true }).state, "waiting", `${prerequisite}: no species yet`);
+  }
+});
+
+function prerequisiteNoteOf(check) {
+  return check.requirements.map((entry) => entry.note).join("; ");
+}
+
 console.log(`\n${passed} passed`);
