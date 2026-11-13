@@ -137,11 +137,18 @@ export function adaptSheetToLevel(
   // sheet taken past 20 gains it, as the level-up there would have given
   // it; one taken below gives it back with the feature. Whether the scores
   // carry it is read off the feature, as the level-up reads it.
+  // A sheet that lists its class features says so by holding the feature.
+  // A library sheet lists none (they are written when it is read), and the
+  // door that stored it at barbarian 20 wrote the points on (sheet-legality
+  // adds them last), so its level is the answer. Read off the list alone, a
+  // library barbarian 20 kept the points below 20, and was refused for
+  // Strength 24, and took them a second time at a level 20 table.
+  const listsClassFeatures = (input.features ?? []).some((feature) => feature.source === "class");
   const wasChampion =
     reachesPrimalChampion({
       class: input.class,
       classes: (input.classes ?? []).length > 1 ? input.classes : [{ id: input.class, level: fromLevel }],
-    }) && holdsFeature(input, "primal champion");
+    }) && (holdsFeature(input, "primal champion") || !listsClassFeatures);
   const isChampion = reachesPrimalChampion({ class: sheet.class, classes: classList });
   if (wasChampion && !isChampion) {
     sheet.abilities = withoutPrimalChampion(sheet.abilities);

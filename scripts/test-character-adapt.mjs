@@ -327,4 +327,31 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
   assert.deepEqual(adaptSheetToLevel(barbarian(19, champion), 19, 20).abilities, barbarian(19).abilities);
 });
 
+// A sheet the library stores lists no class features (the door writes them
+// at read time), only the background's and the improvements' count, and the
+// door writes Primal Champion's points onto a barbarian 20's scores. Read off
+// the feature list alone, such a barbarian joining a level 20 table gained
+// the points twice (Constitution 23 became 24), and one joining below 20
+// kept them and was refused for Strength 24.
+const libraryForm = [{ name: "Shelter of the Faithful (Acolyte)", source: "background" }];
+
+test("a library barbarian 20 joining below 20 gives the points back, and at 20 gains nothing twice", () => {
+  const stored = barbarian(20, libraryForm);
+  stored.abilities = { ...stored.abilities, str: 24, con: 23 };
+  const lower = adaptSheetToLevel(stored, 20, 15);
+  assert.equal(lower.abilities.str, 20);
+  assert.equal(lower.abilities.con, 19);
+  const same = adaptSheetToLevel(stored, 20, 20);
+  assert.equal(same.abilities.str, 24);
+  assert.equal(same.abilities.con, 23, "Primal Champion was added a second time");
+});
+
+test("a library barbarian 19 joining a level 20 table still gains Primal Champion once", () => {
+  const nineteen = barbarian(19, libraryForm);
+  nineteen.abilities = { ...nineteen.abilities, str: 18, con: 16 };
+  const adapted = adaptSheetToLevel(nineteen, 19, 20);
+  assert.equal(adapted.abilities.str, 22);
+  assert.equal(adapted.abilities.con, 20);
+});
+
 console.log(`character adapt: ${passed} assertions passed.`);
