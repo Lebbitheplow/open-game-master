@@ -14,7 +14,7 @@ import {
 } from "@/lib/db/encounters";
 import { RAGING } from "@/lib/srd/class-resources";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
-import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -37,7 +37,8 @@ import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
-import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
+import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, WITNESSED, downConditions, standAsTimePasses } from "@/lib/dm/vitals-logic";
+import { freshDeathTrack } from "@/lib/dm/death-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { listEffects, tickEffectRound } from "@/lib/db/active-effects";
 import { rollEffectSaves } from "@/lib/dm/effect-saves";
@@ -632,6 +633,14 @@ function tickSheetConditions(
     // turn starts: it takes effect now (long-casting.ts), once the tick is
     // written below.
     const finishing = tick.expired.some((name) => name.toLowerCase() === CASTING) ? castingOf(sheet) : null;
+    // Witnessed's minute ran out at 0 hit points: the road warrior falls,
+    // unconscious and dying (vitals-logic.ts WITNESSED).
+    const fallsNow = tick.expired.some((name) => name.toLowerCase() === WITNESSED) && sheet.currentHp <= 0 && !sheet.deathSaves?.dead;
+    if (fallsNow) {
+      ({ conditions, conditionMeta: meta } = downConditions({ conditions, conditionMeta: meta }));
+      patchSheet(sheet.id, { deathSaves: freshDeathTrack() });
+      lines.push(`${sheet.name}'s Witnessed minute ends at 0 hit points: they fall unconscious and are dying.`);
+    }
     // Legend of the Pack's minute ran out: the beast's doubled hit points go.
     const shrunk = legendEnded(campaign, sheet, tick.expired);
     if (shrunk) {

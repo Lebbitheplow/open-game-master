@@ -222,5 +222,34 @@ await run("Chained Hook: the road warrior's chain strikes a creature 15 feet off
   assert.equal(off.ok && /chain/i.test(off.result?.weapon ?? ""), false, "without the feature the chain struck");
 });
 
+// ---- GB12: Witnessed ----
+
+await run("Witnessed: a road warrior dropped to 0 stays conscious and on their feet for a minute, the use spent and no death saves made, then falls dying; the second drop of the day knocks them down", async () => {
+  const row = feature("road_warrior", "Witnessed", 17);
+  const hero = rig.holder(row);
+  await rig.fight(hero);
+  const { tickClockConditions } = await load("lib/dm/condition-tick.ts");
+  const drop = async () => {
+    world.patch(hero.id, { currentHp: 5, tempHp: 0, conditions: [], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+    rig.must(await world.invoke("apply_damage", { characterId: hero.id, amount: 10, type: "slashing", reason: "test" }), "apply_damage");
+    return world.sheet(hero.id);
+  };
+  const down = await drop();
+  assert.equal(down.currentHp, 0);
+  assert.ok(down.conditions.includes("witnessed") && !down.conditions.includes("unconscious"), `at 0: ${JSON.stringify(down.conditions)}`);
+  assert.equal(down.deathSaves?.stable, true, `the death track: ${JSON.stringify(down.deathSaves)}`);
+  assert.equal(down.resources.post_apocalyptic_witnessed.used, 1, "the use was not spent");
+  // The fight ends (the rig's own end resets every sheet), and the minute runs on the clock.
+  rig.must(await world.invoke("end_encounter", { outcome: "truce" }), "end_encounter");
+  assert.ok(world.sheet(hero.id).conditions.includes("witnessed"), `after the fight: ${JSON.stringify(world.sheet(hero.id).conditions)}`);
+  tickClockConditions(world.campaign(), 1);
+  const fallen = world.sheet(hero.id);
+  assert.ok(fallen.conditions.includes("unconscious") && !fallen.conditions.includes("witnessed"), `after the minute: ${JSON.stringify(fallen.conditions)}`);
+  assert.equal(fallen.deathSaves?.stable, false, "the warrior fell stable, not dying");
+  await rig.fight(hero);
+  const again = await drop();
+  assert.ok(again.conditions.includes("unconscious"), `the second drop: ${JSON.stringify(again.conditions)}`);
+});
+
 rig.world.close();
 finish();

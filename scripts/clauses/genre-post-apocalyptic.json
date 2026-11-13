@@ -896,13 +896,15 @@
    },
    {
     "c": "when you drop to 0 HP, keep fighting: you remain conscious at 0 for 1 minute, then fall",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Witnessed: a road warrior dropped to 0 stays conscious and on their feet for a minute",
+    "by": "src/lib/dm/death.ts (the drop: Witnessed's use spent, the witnessed mark laid in place of unconscious, stable), src/lib/dm/vitals-logic.ts holdsOn, src/lib/dm/condition-tick.ts (the minute ends at 0: down and dying)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Witnessed: a road warrior dropped to 0 stays conscious and on their feet for a minute",
+    "by": "src/lib/dm/death.ts (the drop: Witnessed's use spent, the witnessed mark laid in place of unconscious, stable), src/lib/dm/vitals-logic.ts holdsOn, src/lib/dm/condition-tick.ts (the minute ends at 0: down and dying)"
    }
   ]
  },
