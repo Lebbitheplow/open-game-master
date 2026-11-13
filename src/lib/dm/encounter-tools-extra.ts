@@ -1,10 +1,11 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
-import { getActiveEncounter, listEnemies, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
+import { getBattleMapForEncounter, getTokenByRef, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { autoEndOnVictory, finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { resolvePcOpportunityAttacks } from "@/lib/dm/opportunity";
 import { addEnemiesTool, handleAddEnemies } from "@/lib/dm/encounter-spawn";
 import { handleLairAction, handleLegendaryAction, handleLegendaryResist, legendaryTools } from "@/lib/dm/legendary-tools";
 import { declareIntentTool, handleDeclareIntent } from "@/lib/dm/intent-tools";
@@ -19,7 +20,7 @@ import { setEnemyExhaustion } from "@/lib/dm/enemy-exhaustion";
 import { enemyCallOutOfTurn, enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { standUpIfProne } from "@/lib/dm/enemy-approach";
-import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
+import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { namesExhaustion, PRONE } from "@/lib/dm/vitals-logic";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -61,12 +62,13 @@ const enemyFleesTool: ToolDef = {
   function: {
     name: "enemy_flees",
     description:
-      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. When no enemies remain the encounter ends automatically with reduced XP.",
+      "Record an enemy escaping the fight: it runs, teleports away, dives underwater, or otherwise leaves. Call it BEFORE narrating the escape; its token leaves the map. The server rolls the opportunity attacks its going draws: the result lists them, and one may stop it. When no enemies remain the encounter ends automatically with reduced XP.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         enemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
+        teleport: { type: "boolean", description: "True when it teleports away: no opportunity attacks." },
         reason: { type: "string", description: "Short in-fiction cause." },
       },
       required: ["enemyId"],
@@ -99,8 +101,16 @@ const enemyRefArgsSchema = z.object({
   level: z.coerce.number().int().min(1).max(6).optional(),
   // From magic: Magic Resistance applies to the save against it.
   magical: z.coerce.boolean().optional(),
+  // enemy_flees only: it teleports out of the fight instead of walking out.
+  teleport: z.coerce.boolean().optional(),
   reason: z.string().optional(),
 });
+
+// A step no reach on this board follows: where a creature leaving the fight
+// goes, for the opportunity attacks its going draws.
+function pastEveryReach(map: { width: number; height: number }, from: { x: number; y: number }): { x: number; y: number } {
+  return { x: from.x, y: from.y - (map.width + map.height) };
+}
 
 function handleEnemyFlees(
   campaign: Campaign,
@@ -139,20 +149,62 @@ function handleEnemyFlees(
   if (!walks.ok) {
     return { error: `${walks.error} It cannot flee.`, refused: "rules" };
   }
-  if (enemySpeedTiles(enemy) === 0) {
+  // A teleport is not a walk: speed 0 does not hold it (a grappled mage's
+  // Misty Step), and it draws nothing (SRD 5.1, Opportunity Attacks: "You
+  // also don't provoke an opportunity attack when you teleport").
+  const teleports = args.teleport === true;
+  if (!teleports && enemySpeedTiles(enemy) === 0) {
     const held = enemy.conditions.find((entry) => isConditionNamed(entry, "grappled", "restrained"));
     return {
-      error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts.`,
+      error: `${enemy.displayName}'s speed is 0${held ? ` (${held})` : ""}: it cannot run from the fight. It breaks free first (take_action escape), or leaves by magic it casts (teleport: true).`,
       refused: "rules",
     };
   }
-  patchEnemyHp(enemy.id, enemy.currentHp, "fled");
+  // The walk out takes it out of every reach it stands in, and draws what any
+  // walk of its own draws (SRD 5.1, Opportunity Attacks: "when a hostile
+  // creature that you can see moves out of your reach"). The token was taken
+  // off the board where it stood, so a wounded gnoll beside the fighter left
+  // the fight untouched, and the swing asked for afterwards was refused: it
+  // had already fled. A Disengage it took this turn holds, as on move_token.
+  const map = getBattleMapForEncounter(encounter.id);
+  const token = map ? getTokenByRef(map.id, enemy.id) : null;
+  const struck = map && token && !teleports
+    ? resolvePcOpportunityAttacks(campaign, enemy.id, { x: token.x, y: token.y }, pastEveryReach(map, token), undefined, enemyMoveBudget(encounter, enemy, token).disengaged)
+    : [];
+  const swings = struck.length
+    ? { opportunityAttacks: struck, opportunityNote: "The server already rolled and applied these; narrate them, and do not call pc_attack for them." }
+    : {};
+  const after = getEnemy(enemy.id) ?? enemy;
+  // Cut down on the way out: it never left. The victory an opportunity
+  // attack holds for the turn's end is settled here, where the turn is.
+  if (after.status !== "alive" || isKnockedOut(after)) {
+    publishEncounter(campaign.id);
+    return {
+      ok: true,
+      stopped: enemy.displayName,
+      note: `${enemy.displayName} was struck down as it broke away: it did not escape.`,
+      ...swings,
+      ...autoEndOnVictory(campaign, turn, encounter, sheets, sheetsById),
+    };
+  }
+  // Stopped where it stands: Sentinel and Hold the Line leave a creature they
+  // hit with speed 0 for the rest of the turn (opportunity-strike.ts).
+  const live = getActiveEncounter(campaign.id) ?? encounter;
+  if (!teleports && (!canEnemyAct({ enemy: after, encounter: live, kind: "move" }).ok || enemySpeedTiles(after) === 0)) {
+    publishEncounter(campaign.id);
+    return {
+      ok: true,
+      stopped: enemy.displayName,
+      note: `${enemy.displayName} was stopped as it broke away: its speed is 0 for the rest of the turn, and it is still in the fight where it stood.`,
+      ...swings,
+    };
+  }
+  patchEnemyHp(after.id, after.currentHp, "fled");
   // Gone from the fight, it holds nobody (grapple.ts releaseGrapplesHeldByAny).
   releaseGrapplesHeldByAny(campaign, [enemy.id]);
   // What it swallowed stays, prone where it stood (swallow.ts): asked while
   // its token is still there to stand them beside.
   const behind = leftBehind(campaign, encounter.id, enemy, "flees");
-  const map = getBattleMapForEncounter(encounter.id);
   if (map) {
     removeTokenByRef(map.id, enemy.id);
     publishBattleMapUpdate(campaign.id);
@@ -162,14 +214,14 @@ function handleEnemyFlees(
     ok: true,
     fled: enemy.displayName,
     note: `${enemy.displayName} has escaped and is out of the fight.`,
+    ...swings,
     ...(behind ? { swallowedFreed: behind } : {}),
   };
   // The fight ends when nobody is left standing on the foes' side: one
   // lying knocked out does not hold it open (issue #667: it did, and the
   // fight never ended), nor does a creature the party dominates; a character
   // fighting against the party does (combatant.ts standingOn).
-  const live = getActiveEncounter(campaign.id) ?? encounter;
-  if (!standingOn(campaign.id, live, "foe").length) {
+  if (!standingOn(campaign.id, getActiveEncounter(campaign.id) ?? encounter, "foe").length) {
     Object.assign(
       base,
       finishEncounter(campaign, turn, encounter, "enemies_fled", sheets, sheetsById),
