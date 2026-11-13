@@ -297,5 +297,19 @@ await test("A03 A subclass language given 'or another if you already know it' be
   assert.deepEqual(problems, []);
 });
 
+// SRD 5.1, Backgrounds: a proficiency gained twice is a different one of the
+// same kind instead. A Peace cleric whose class, background and race already
+// gave Insight, Performance and Persuasion owed Implement of Peace's skill
+// with nothing on its list left (the merged builder sweep found it on a pack
+// species that trains Performance).
+await test("A training pick whose whole list is held already is a pick of any skill.", () => {
+  const grants = training.subclassGrants([{ id: "cleric", subclass: "Peace Domain", level: 1 }]).filter((grant) => grant.name === "Implement of Peace");
+  assert.equal(grants.length, 1);
+  const full = training.grantsForHeldTraining(grants, { skills: ["insight", "performance", "persuasion", "religion"] });
+  assert.deepEqual(full[0].spec.skillsFrom, [], "every listed skill held: any skill");
+  const open = training.grantsForHeldTraining(grants, { skills: ["insight", "religion"] });
+  assert.deepEqual(open[0].spec.skillsFrom, ["insight", "performance", "persuasion"], "one still open: the list stands");
+});
+
 creation.world.close();
 finish();
