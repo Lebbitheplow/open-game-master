@@ -71,5 +71,83 @@ await run("Heart of the Storm: a channeler's lightning spell deals full damage t
   assert.equal(await rig.damageLost(hero, "thunder"), 20, "the channeler resisted thunder");
 });
 
+// ---- GB02: the walk (Rigging Runner, Master of the High Wire, Juggernaut Frame, Hold the Line) ----
+
+const at = (id) => [kit.token(id).x, kit.token(id).y];
+// The holder walks three squares east over ground of one kind; what the walk
+// cost, in squares of movement.
+async function walkOver(hero, ch) {
+  // Three whole columns of it, so no way round is shorter.
+  const { getActiveBattleMap: board } = await load("lib/battlemap/view.ts");
+  const { height } = board(world.campaignId);
+  kit.openField(Array.from({ length: height }, (_, y) => [6, 7, 8].map((x) => [x, y, ch])).flat());
+  rig.myTurn(hero);
+  kit.place(hero.id, 5, 2);
+  // The player's own walk (the move route's door), on their turn.
+  const { walkCharacter } = await load("lib/dm/token-rules.ts");
+  const { getActiveBattleMap } = await load("lib/battlemap/view.ts");
+  const out = walkCharacter(world.campaign(), world.encounter(), getActiveBattleMap(world.campaignId), world.sheet(hero.id), kit.token(hero.id), { x: 8, y: 2 }, {});
+  if (out?.error) throw new Error(`walk: ${out.error}`);
+  assert.deepEqual(at(hero.id), [8, 2], "the walk did not arrive");
+  return kit.token(hero.id).movedThisRound;
+}
+
+await run("Rigging Runner: an aeronaut climbs at a foot a foot, where without it a climb costs double", async () => {
+  const row = feature("aeronaut", "Rigging Runner", 2);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  kit.place(near.id, 12, 8);
+  const { on, off } = await rig.both(hero, row, () => walkOver(hero, "^"));
+  assert.deepEqual([on, off], [3, 6], `three climb squares cost ${on} with Rigging Runner and ${off} without it`);
+});
+
+await run("Master of the High Wire: difficult ground costs an aeronaut nothing extra", async () => {
+  const row = feature("aeronaut", "Master of the High Wire", 18);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  kit.place(near.id, 12, 8);
+  const { on, off } = await rig.both(hero, row, () => walkOver(hero, ","));
+  assert.deepEqual([on, off], [3, 6], `three difficult squares cost ${on} with the feature and ${off} without it`);
+});
+
+await run("Juggernaut Frame: an armored steam knight crosses difficult ground at no extra cost and an unarmored one does not; a slowed knight keeps their speed", async () => {
+  const row = feature("steam_knight", "Juggernaut Frame", 14);
+  const hero = rig.holder(row, { gear: "armor" });
+  const { near } = await rig.fight(hero);
+  kit.place(near.id, 12, 8);
+  const { on, off } = await rig.both(hero, row, () => walkOver(hero, ","));
+  assert.deepEqual([on, off], [3, 6], `three difficult squares cost ${on} with the frame and ${off} without it`);
+  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+  assert.equal(await walkOver(hero, ","), 6, "an unarmored knight crossed difficult ground at no extra cost");
+  const { pcMoveBudget, getActiveBattleMap } = await load("lib/battlemap/view.ts");
+  const speed = () => pcMoveBudget(world.campaignId, world.encounter(), getActiveBattleMap(world.campaignId), world.sheet(hero.id), kit.token(hero.id)).speed;
+  const whole = speed();
+  world.patch(hero.id, { conditions: ["slowed"], exhaustion: 2 });
+  const slowed = await rig.both(hero, row, async () => speed());
+  assert.equal(slowed.on, whole, `a slowed, exhausted knight moves ${slowed.on} of ${whole} feet with the frame`);
+  assert.ok(slowed.off < whole, "without the frame the knight was not slowed");
+});
+
+await run("Hold the Line: a creature fighting the knight pays double for the squares within their reach, two squares deep with a reach weapon", async () => {
+  const row = feature("steam_knight", "Hold the Line", 3);
+  const hero = rig.holder(row, { gear: "armor" });
+  const { near } = await rig.fight(hero);
+  kit.place(rig.ally.id, 1, 9);
+  const walk = async (to) => {
+    kit.handOnEnemies();
+    kit.freshRound();
+    kit.openField();
+    kit.place(near.id, 10, 2);
+    const out = await world.invoke("move_token", { token: near.id, x: to, y: 2 });
+    if (!out.ok) throw new Error(`move_token: ${out.error}`);
+    return kit.token(near.id).movedThisRound;
+  };
+  const { on, off } = await rig.both(hero, row, () => walk(6));
+  assert.deepEqual([on, off], [5, 4], `four squares to the knight's side cost the creature ${on} with Hold the Line and ${off} without it`);
+  assert.equal(await walk(7), 3, "with a longsword the square two away was held");
+  world.patch(hero.id, { equipment: [{ name: "Glaive", qty: 1, equipped: true }, { name: "Chain Shirt", qty: 1, equipped: true }] });
+  assert.equal(await walk(7), 4, "with a glaive the square two away was not held");
+});
+
 rig.world.close();
 finish();

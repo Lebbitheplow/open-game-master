@@ -642,9 +642,9 @@
   "clauses": [
    {
     "c": "Climbing costs no extra movement",
-    "is": "gap",
-    "probe": "not run: the scratch board has no surface to climb; read from src/lib/srd/authored-effects-genre.ts, where the Rigging Runner row carries the bonus-action Dash and nothing about climbing",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Rigging Runner: an aeronaut climbs at a foot a foot",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (climbs), read by src/lib/battlemap/passage.ts pcMoveTraits"
    },
    {
     "c": "Dash as a bonus action",
@@ -906,11 +906,9 @@
    },
    {
     "c": "difficult terrain never slows you",
-    "is": "gap",
-    "probe": "not run: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
-    "observed": "nothing in the engine answers to Master of the High Wire: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost)."
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Master of the High Wire: difficult ground costs an aeronaut nothing extra",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (anyGround), read by src/lib/battlemap/passage.ts pcMoveTraits and src/lib/dm/zone-rules.ts withZoneSteps"
    }
   ],
   "name": {
@@ -2960,16 +2958,15 @@
   "clauses": [
    {
     "c": "Your speed cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Juggernaut Frame: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Juggernaut Frame: a slowed knight keeps their speed",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts frameSpeedWhole, read by src/lib/srd/genre-b-post-apocalyptic.ts speedCannotBeReduced (src/lib/battlemap/view.ts pcMoveBudget)"
    },
    {
     "c": "difficult terrain never slows you while armored",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Juggernaut Frame: an armored steam knight crosses difficult ground at no extra cost and an unarmored one does not",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (anyGround while armored), read by src/lib/battlemap/passage.ts pcMoveTraits"
    }
   ]
  },
@@ -3076,11 +3073,9 @@
   "clauses": [
    {
     "c": "Enemies within your reach treat the area as difficult terrain",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Hold the Line#0:unhooked",
-    "k": "unhooked",
-    "note": "No longer borrows the Cavalier's Hold the Line (heldAuthored keeps a genre feature to its own rows); nothing makes the ground within the knight's reach difficult for enemies.",
-    "kind": "rule-wrong"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Hold the Line: a creature fighting the knight pays double for the squares within their reach",
+    "by": "src/lib/dm/genre-b-steampunk-hold.ts withHoldTheLine, from src/lib/dm/zone-rules.ts withZoneSteps"
    }
   ]
  },
