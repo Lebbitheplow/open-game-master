@@ -7,6 +7,7 @@
 //   RULINGS[rowId][CODE] = where the ruling is written
 //   SKIP[rowId] = why the row is not walked
 export const KNOWN = {
+  "counter:feat_dragon_fear": { UNREACHED: { severity: "low", note: "Dragon Fear has no uses of its own and is paid from Breath Weapon, and the sweep stages a holder of no race that breathes: the clause probe feat.dragon-fear.roar (scripts/test-enforce-sweep-clauses-feats.mjs) plays it on a dragonborn and sees the breath spent" } },
   "spend:genre::ghost protocol::Ghost Protocol": { UNREACHED: { severity: "low", note: "the sweep stages no drone; Ghost Protocol hides the rigger's drone: the clause probe drone_ghost (scripts/lib/sweep-clauses-genre-a-cyberpunk.mjs) builds one and plays it" } },
   "spend:genre::grease the wheels::Grease the Wheels": { UNREACHED: { severity: "low", note: "the sweep stages no failed Charisma check, which Grease the Wheels rolls again: the clause probe grease (scripts/lib/sweep-clauses-genre-a-cyberpunk.mjs) plays it" } },
   "spend:genre::synaptic overload::Synaptic Overload": { UNREACHED: { severity: "low", note: "the sweep stages no spell attack hit, which Synaptic Overload answers: the clause probe synaptic plays it after a Fire Bolt hits" } },
