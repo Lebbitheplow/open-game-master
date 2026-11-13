@@ -68,8 +68,8 @@ import { judgeStartingGear, wealthCeilingGold } from "@/lib/srd/starting-wealth"
 import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
-import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
+import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickProblems, withHeldPickIds } from "@/lib/srd/subclass-choice-picks";
 import { SUBCLASS_CHOICE_RECORD } from "@/lib/content/subclass-choices";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
@@ -745,6 +745,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   // one the stored character holds stays, as the regrant keeps it.
   if (!policy.trustsHeld) {
     const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
+    const cantrips = sheetCantrips({ spellcasting: input.spellcasting ?? null });
     const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
     const classFeatures = styleSlotFeatures(classes, context.subclassExtras);
     const classStyles = fightingStyleChoices(classFeatures);
@@ -754,6 +755,21 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       const option = feature.source === "choice" ? findOptionByFeatureName(feature.name) : null;
       if (option && !pickInSpellbook(option, book)) {
         problems.push(`${option.n} is not in the spellbook; ${feature.name.split(":")[0]} names a spell written there.`);
+      }
+      // A new pick's prerequisite (a class level, a pact boon, a cantrip), as
+      // the level-up and the owed picks hold it: a 3rd-level Four Elements
+      // monk was stored with Breath of Winter, a 17th-level discipline. One
+      // the stored character holds stays, as the regrant keeps it.
+      const unmet =
+        option && !heldNames.has(textKey(feature.name))
+          ? optionReqProblem(option, {
+              classLevel: (id) => classes.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+              features: featured.features,
+              cantrips,
+            })
+          : null;
+      if (unmet) {
+        problems.push(unmet);
       }
       const [style] = feature.source === "choice" ? chosenFightingStyles([feature]) : [];
       // A style with no slot to take (a wizard's, a fighter's third) is

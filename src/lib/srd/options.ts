@@ -538,9 +538,12 @@ export function picksFromSpellbook(kind: OptionKind): boolean {
 // invocation, so Eldritch Adept takes none with a level). A requirement the
 // table judges ("hex or a curse feature") is met here. The owed picks and the
 // level-up both ask (issue #833 review).
+// `cantripsLater`: the builder's class step, whose cantrips are chosen on a
+// later step, leaves a cantrip prerequisite to the save.
 export function optionReqProblem(
   option: Pick<OptionDef, "k" | "n" | "req">,
   facts: { classLevel: (classId: string) => number; features: Array<{ name: string }>; cantrips: readonly string[] },
+  { cantripsLater = false }: { cantripsLater?: boolean } = {},
 ): string | null {
   const req = (option.req ?? "").trim();
   if (!req) {
@@ -562,7 +565,7 @@ export function optionReqProblem(
       continue;
     }
     const cantrip = /^(.+) cantrip$/i.exec(part);
-    if (cantrip && !facts.cantrips.some((name) => textKey(name) === textKey(cantrip[1]))) {
+    if (cantrip && !cantripsLater && !facts.cantrips.some((name) => textKey(name) === textKey(cantrip[1]))) {
       return `${option.n} needs the ${cantrip[1]} cantrip.`;
     }
   }
