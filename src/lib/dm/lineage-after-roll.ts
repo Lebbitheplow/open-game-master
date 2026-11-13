@@ -11,11 +11,14 @@ import { withBonusDie, withFlatBonus, type AfterRollId, type AfterRollOption } f
 import { canReactNow, inShiftReach } from "@/lib/dm/chronal-shift";
 import {
   footworkGrounded,
+  INGENUITY_FACE,
+  INSPIRED_INGENUITY,
   lineageOffers,
   LUCKY_FOOTWORK_DIE,
   SAVING_FACE,
   SAVING_FACE_FEET,
   savingFaceBonus,
+  withKeptFace,
 } from "@/lib/dm/lineage-after-roll-logic";
 import { inPlay } from "@/lib/dm/roster";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
@@ -38,7 +41,7 @@ type Roll =
 // The roller's own lineage choices on this roll (after-roll.ts allyChoicesFor
 // asks, beside the helpers'). `kept`: the roller already let it stand.
 export function lineageChoicesFor(campaignId: string, sheet: CharacterSheet, roll: Roll, kept = false): AfterRollOption[] {
-  if (kept || !holdsFeature(sheet, "Saving Face", "Lucky Footwork")) {
+  if (kept || !holdsFeature(sheet, "Saving Face", "Lucky Footwork", "Inspired Ingenuity")) {
     return [];
   }
   const outcome = roll.outcome;
@@ -75,6 +78,17 @@ export function spendLineageAfterRoll(campaign: Campaign, stale: CharacterSheet,
     }
     const die = { sides: LUCKY_FOOTWORK_DIE, value: rollExpression(`1d${LUCKY_FOOTWORK_DIE}`).total, kept: true };
     return { outcome: withBonusDie(outcome, die), choosing: false };
+  }
+  if (id === "inspired_ingenuity") {
+    const tenned = withKeptFace(outcome, INGENUITY_FACE);
+    if (!tenned || (outcome.natural ?? INGENUITY_FACE) >= INGENUITY_FACE || !canReactNow(campaign.id, sheet) || !spendFeatureUse(campaign, sheet.id, INSPIRED_INGENUITY, "Inspired Ingenuity", "player")) {
+      return null;
+    }
+    const encounter = getActiveEncounter(campaign.id);
+    if (encounter) {
+      markReactionUsed(encounter, sheet.id);
+    }
+    return { outcome: tenned, choosing: false };
   }
   return null;
 }

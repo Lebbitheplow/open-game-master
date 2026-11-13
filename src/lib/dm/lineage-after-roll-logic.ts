@@ -8,6 +8,10 @@
 //   Lucky Footwork (rabbitfolk): "on a failed Dexterity save, use your
 //   reaction to add 1d4; not while prone or at speed 0". Offered where a 4
 //   could carry the save.
+//   Inspired Ingenuity (a gearforged on a human chassis, its pack text):
+//   "When you roll a 9 or lower on the d20 for an ability check, you can use
+//   a reaction to change the roll to a 10", once a short rest. Offered where
+//   the 10 carries the check.
 //
 // Pure: the sheet, the roll and the allies the board shows in, the options
 // out. The spending and the count of allies are lineage-after-roll.ts.
@@ -17,13 +21,16 @@ import { rowWords } from "@/lib/dm/after-roll-table";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { RollResult } from "@/lib/dice";
 
 export const SAVING_FACE = "race_saving_face";
 export const SAVING_FACE_FEET = 30;
 export const SAVING_FACE_MOST = 5;
 export const LUCKY_FOOTWORK_DIE = 4;
+export const INSPIRED_INGENUITY = "race_inspired_ingenuity";
+export const INGENUITY_FACE = 10;
 
-export const LINEAGE_AFTER_ROLL: readonly AfterRollId[] = ["saving_face", "lucky_footwork"];
+export const LINEAGE_AFTER_ROLL: readonly AfterRollId[] = ["saving_face", "lucky_footwork", "inspired_ingenuity"];
 export const isLineageAfterRoll = (id: AfterRollId) => LINEAGE_AFTER_ROLL.includes(id);
 
 const ABILITY_WORDS: Record<string, string> = {
@@ -103,5 +110,32 @@ export function lineageOffers(sheet: CharacterSheet, roll: LineageRoll): AfterRo
   ) {
     options.push({ id: "lucky_footwork", ...rowWords("lucky_footwork", { kind: roll.kind }) });
   }
+  const natural = roll.natural;
+  if (
+    (roll.kind === "skill_check" || roll.kind === "ability_check") &&
+    natural !== undefined &&
+    natural < INGENUITY_FACE &&
+    roll.reactionFree &&
+    !roll.taken.has("inspired_ingenuity") &&
+    usesLeft(sheet, INSPIRED_INGENUITY) > 0 &&
+    holdsFeature(sheet, "Inspired Ingenuity") &&
+    carriedBy(roll, INGENUITY_FACE - natural)
+  ) {
+    options.push({ id: "inspired_ingenuity", ...rowWords("inspired_ingenuity", { kind: roll.kind }) });
+  }
   return options;
+}
+
+// The roll with its kept d20 counting as `face` (Inspired Ingenuity's 10).
+export function withKeptFace(outcome: RollResult, face: number): RollResult | null {
+  const lead = outcome.terms[0];
+  const at = lead && lead.kind === "dice" && lead.sides === 20 ? lead.dice.findIndex((die) => die.kept !== false) : -1;
+  if (!lead || lead.kind !== "dice" || at < 0) {
+    return null;
+  }
+  const was = lead.dice[at].value;
+  const dice = lead.dice.map((die, index) => (index === at ? { ...die, value: face } : die));
+  const rest = { ...outcome };
+  delete rest.crit;
+  return { ...rest, total: outcome.total - was + face, terms: [{ ...lead, dice, subtotal: lead.subtotal - was + face }, ...outcome.terms.slice(1)], natural: face };
 }

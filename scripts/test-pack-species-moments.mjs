@@ -49,4 +49,32 @@ await test("Tainted Blood answers a cut with the derro's level in necrotic damag
   );
 });
 
+// A gearforged on a human chassis: Inspired Ingenuity turns a check's d20 of
+// 9 or lower into a 10 for the reaction, once a short rest, offered on the
+// card the check waits on where the 10 carries it.
+await test("Inspired Ingenuity makes a low d20 on a check a 10", async () => {
+  const { allyChoicesFor, spendAfterRoll } = await import("../src/lib/dm/after-roll.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const { rollExpression } = await import("../src/lib/dice.ts");
+  const t = await rig.table();
+  const race = options.find((option) => option.id === "human-chassis");
+  const who = t.hero({ class: "fighter", level: 5, race: race.id, equipment: [], features: race.traitNames.map((name) => ({ name, source: "race" })) });
+  await t.fight([who]);
+  const thrown = (face) => {
+    t.world.clearDice();
+    t.world.dice(face);
+    const out = rollExpression("1d20+3");
+    t.world.clearDice();
+    return out;
+  };
+  const offered = (face, dc) => allyChoicesFor(t.world.campaignId, t.sheet(who), { kind: "skill_check", outcome: thrown(face), dc, detail: "athletics" }).filter((option) => option.id === "inspired_ingenuity").length;
+  const seen = [offered(6, 12), offered(6, 14), offered(12, 16)];
+  const paid = spendAfterRoll(getCampaignById(t.world.campaignId), t.sheet(who), "inspired_ingenuity", thrown(6));
+  same(
+    [seen, paid?.outcome.total, paid?.outcome.natural, t.used(who, "race_inspired_ingenuity"), t.world.encounter().reactionsUsed.includes(who.id), offered(6, 12)],
+    [[1, 0, 0], 13, 10, 1, true, 0],
+    "a 6 (+3) against DC 12 and DC 14, a 12 against DC 16; the 6 made a 10; then again",
+  );
+});
+
 finish();
