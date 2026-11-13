@@ -22,8 +22,24 @@ export const ADAPTED = "adapted";
 export const SHIELD_NODE = "salvaged shield node";
 export const LAST_RIDE = "last ride of the reaver";
 export const DEATH_OR_GLORY = "death or glory";
+// The same reckless turn once Ride Eternal is held: it grants enemies nothing.
+export const DEATH_OR_GLORY_ETERNAL = "death or glory (ride eternal)";
 
 export const GENRE_B_PA_CONDITION_EFFECTS: ConditionEffectRow[] = [
+  // Death or Glory: "attacks against you have advantage until your next turn"
+  // (the road warrior's own advantage is pc-attack-options.ts recklessAdvantage).
+  {
+    id: "death_or_glory",
+    match: [DEATH_OR_GLORY],
+    summary: "Death or Glory: advantage on melee attacks this turn, and attack rolls against them have advantage until their next turn.",
+    attacksAgainstAdvantage: true,
+  },
+  // Ride Eternal: "Death or Glory no longer grants enemies advantage against you".
+  {
+    id: "death_or_glory_eternal",
+    match: [DEATH_OR_GLORY_ETERNAL],
+    summary: "Death or Glory (Ride Eternal): advantage on melee attacks this turn, and it grants enemies nothing.",
+  },
   {
     // Legend of the Pack: "your beast grows monstrous for 1 minute: double HP,
     // +10 ft speed, attacks deal +2d8 and frighten (WIS save)". The hit points

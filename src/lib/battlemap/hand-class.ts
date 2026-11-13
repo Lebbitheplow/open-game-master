@@ -6,6 +6,7 @@
 // src/lib/dm/pc-attack-options.ts, spendAttack and spendAction in
 // src/lib/dm/action-budget.ts), so a refusal on a card is the sentence
 // pc_attack would give. Pure; scripts/test-hand-engine.mjs drives it.
+import { holdsDeathOrGlory } from "@/lib/dm/genre-death-or-glory";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { spendAttack } from "@/lib/dm/action-budget";
 import { hasOpenHandTechnique, hurlProblem, OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
@@ -143,11 +144,16 @@ export function attackOptionsFor(
       options.push({ ...option, group: "openHand", disabled: flurry ? null : OPEN_HAND_NOT_FLURRY.error });
     }
   }
-  if (holds(sheet, "reckless attack") && melee) {
+  // A road warrior's Death or Glory is the same option, on any melee attack
+  // (src/lib/dm/genre-death-or-glory.ts).
+  const glory = !holds(sheet, "reckless attack") && holdsDeathOrGlory(sheet);
+  if ((holds(sheet, "reckless attack") || glory) && melee) {
     options.push({
       id: "reckless",
-      label: "Reckless",
-      note: "Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn.",
+      label: glory ? "Death or Glory" : "Reckless",
+      note: glory
+        ? `Advantage on your melee attacks this turn${holds(sheet, "ride eternal") ? "" : "; attacks against you have advantage until your next turn"}.`
+        : "Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn.",
       disabled: optionRefusal(sheet, turn, profile, derived, { reckless: true }),
     });
   }

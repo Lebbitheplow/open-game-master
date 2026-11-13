@@ -679,9 +679,10 @@ function markAttackOptions(plan: AttackPlan) {
   const fresh = getSheetById(sheet.id) ?? sheet;
   const meta = { ...(fresh.conditionMeta as ConditionMetaMap) };
   const conditions = [...fresh.conditions];
-  if (options.declaresReckless && !conditions.some((entry) => entry.toLowerCase() === RECKLESS)) {
-    conditions.push(RECKLESS);
-    meta[RECKLESS] = { untilTurnOf: sheet.id };
+  const reckless = options.recklessCondition ?? RECKLESS;
+  if (options.declaresReckless && !conditions.some((entry) => entry.toLowerCase() === reckless)) {
+    conditions.push(reckless);
+    meta[reckless] = { untilTurnOf: sheet.id };
   }
   if (options.bonusAttack === "frenzy" && !conditions.some((entry) => entry.toLowerCase() === FRENZIED)) {
     conditions.push(FRENZIED);
