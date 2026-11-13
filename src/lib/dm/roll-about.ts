@@ -103,6 +103,9 @@ export type SaveAgainst = {
   // it from the creature it knows (forced-save.ts rollCharacterSave); a save
   // with no known source has none.
   sourceType?: string;
+  // The school of the spell forcing the save, lower case ("illusion": a
+  // duergar's resilience), named by the engine that knows the spell.
+  school?: string;
 };
 
 // An engine's own condition or damage type as a save's `against`, or none
@@ -115,11 +118,13 @@ export function listedAgainst(value: string | undefined): SaveAgainstValue | und
 // damage it lays (the condition first: a poisoned spell's save is against
 // being poisoned), whether it is magic, and a spell caster's stat-block type
 // (Holy Nimbus: advantage against spells cast by fiends or undead).
-export function saveAgainst(parts: { condition?: string; damageType?: string; magical?: boolean; spellBy?: string }): SaveAgainst {
+// `school`: the spell's school, when the engine knows the spell.
+export function saveAgainst(parts: { condition?: string; damageType?: string; magical?: boolean; spellBy?: string; school?: string | null }): SaveAgainst {
   const casterType = parts.spellBy ? normalizeCreatureType(parts.spellBy) : null;
   return {
     against: listedAgainst(parts.condition) ?? listedAgainst(parts.damageType),
     ...(parts.magical || casterType ? { magical: true } : {}),
     ...(casterType ? { casterType } : {}),
+    ...(parts.school ? { school: parts.school.toLowerCase() } : {}),
   };
 }

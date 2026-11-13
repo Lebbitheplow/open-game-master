@@ -217,13 +217,29 @@ for (const row of RACES) {
       );
     });
   }
+  // Duergar Resilience against illusions: a save against an illusion
+  // spell (Phantasmal Force) is made with two d20s, a save against another
+  // school's (Feeblemind, enchantment) with one, and a human's with one.
+  if (holds(row, "duergar resilience")) {
+    probe("illusions", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, other]);
+      const saveFaces = async (target, spell) => {
+        await t.invoke("cast_at_player", { characterId: target.id, spell, saveAbility: "int", dc: 25, damage: "1d6", damageType: "psychic" }, [15, 3, 2, 2]);
+        return d20Faces(t.lastRolls(8).filter((entry) => entry.kind === "saving_throw").at(-1)).length;
+      };
+      same([await saveFaces(who, "Phantasmal Force"), await saveFaces(who, "Feeblemind"), await saveFaces(other, "Phantasmal Force")], [2, 1, 1], `${row.name}: d20s on an Intelligence save against Phantasmal Force, against Feeblemind, and a human's against Phantasmal Force`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
-  "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes",
+  "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

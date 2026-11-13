@@ -87,8 +87,8 @@ for (const row of RACES) {
   }
 
   // Duergar Resilience: advantage on saves against being charmed or
-  // paralyzed (and against illusions, which a save names no word for: the
-  // GM's).
+  // paralyzed (against an illusion spell: the picks suite's
+  // species.duergar.illusions).
   if (holds(row, "duergar resilience")) {
     P[`species.${row.id}.duergar-resilience`] = async () => {
       const t = await rig.table();

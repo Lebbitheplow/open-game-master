@@ -140,7 +140,7 @@ export function rollFeatureRiders(
   // (condition-tick.ts).
   const traitSaves =
     sheet && derivationKind === "saving_throw"
-      ? traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType })
+      ? traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType, school: args.school })
       : [];
   // A cursed item against the creature forcing the save (Demon Armor
   // against a demon's spells and special abilities).

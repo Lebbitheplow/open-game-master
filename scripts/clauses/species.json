@@ -209,8 +209,9 @@
    },
    {
     "c": "adv. vs illusions",
-    "is": "left",
-    "why": "The GM's: a save carries no word for an illusion (src/lib/dm/roll-about.ts SAVE_AGAINST holds conditions, damage types, disease), so the GM grants this advantage on the roll by hand."
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts heldSaveTraits (Duergar Resilience keyed to the illusion school), the school named by the engines that know the spell (src/lib/dm/cast-at-player.ts, aoe-characters.ts through roll-about.ts saveAgainst)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.duergar.illusions"
    },
    {
     "c": "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",

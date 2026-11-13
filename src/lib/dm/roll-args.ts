@@ -102,7 +102,10 @@ export const rollArgsSchema = z.object({
   return args;
 });
 
-export type RollArgs = z.infer<typeof rollArgsSchema>;
+// `school`: the school of the spell a save resists (Duergar Resilience
+// against illusions), named by the engines that know the spell
+// (roll-about.ts saveAgainst), never asked of a call.
+export type RollArgs = z.infer<typeof rollArgsSchema> & { school?: string };
 
 // The DC of a request_roll at this table. A named difficulty moves with the
 // table's strictness (two points a step, docs/rules-coverage.md), as it does
