@@ -2,7 +2,7 @@ import { easeOrdeal } from "@/lib/dm/ordeal";
 import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
 import { COSMIC_OMEN, omenOfFace, OMEN_SIDES } from "@/lib/dm/before-roll-logic";
 import { rollExpression } from "@/lib/dice";
-import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, maxHpRiders, pruneMeta, removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
 import { TENDED } from "@/lib/dm/stabilize";
@@ -221,6 +221,15 @@ export function longRestPatch(
       patch.resources = { ...patch.resources, [id]: { ...held } };
     }
   }
+  // "Regains all lost hit points" up to the maximum the rest itself leaves: a
+  // Life Drain that ends with this rest gives its points back to the maximum
+  // (patchSheet moves maxHp with the rider), and the current hit points come
+  // up with it. Read from the maximum as the hero lay down, a drained hero
+  // woke short by exactly what the drain had taken.
+  const ridersBefore = maxHpRiders(sheet.conditions, sheet.conditionMeta as ConditionMetaMap);
+  const ridersAfter = maxHpRiders(patch.conditions ?? sheet.conditions, (patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap);
+  const restedMax = sheet.maxHp + (ridersAfter.bonus - ridersBefore.bonus) - (ridersAfter.drain - ridersBefore.drain);
+  patch.currentHp = effectiveMaxHp({ ...sheet, maxHp: restedMax, exhaustion: exhaustionAfter });
   return patch;
 }
 
