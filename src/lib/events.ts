@@ -23,6 +23,10 @@ declare global {
   // loaded. Undefined on a server where voice has never been used, in which
   // case the calls below are no-ops.
   var __odmVoiceEventHook: ((campaignId: string, type: string) => void) | undefined;
+  // Set by src/lib/dm/turn.ts: a table changed between turns, or someone sat
+  // down at it, so the next turn's first message is checked against what
+  // the narrator holds (src/lib/dm/turn-warmup.ts scheduleNextTurnCheck).
+  var __odmTurnHeadHook: ((campaignId: string) => void) | undefined;
   // Deliveries waiting on a held call's first run (src/lib/dm/held-call.ts):
   // sent if the run stands, dropped with it if it waits for a player's dice.
   var __odmHeldDeliveries: Array<() => void> | null | undefined;
@@ -106,6 +110,9 @@ export function subscribe(
     // about its own arrival and needs no separate snapshot of the set.
     if (next === 1) {
       announcePresence(campaignId);
+      // Someone sat down: the narrator may hold nothing of this table yet
+      // (the server or the narrator restarted, another table ran since).
+      globalThis.__odmTurnHeadHook?.(campaignId);
     }
   }
   // Guarded so a double-unsubscribe cannot drive a presence count negative.
@@ -173,6 +180,7 @@ export function publishWithSeq(campaignId: string, seq: number, type: string, pa
   send(() => {
     deliver(campaignId, seq, type, stored, payload);
     globalThis.__odmVoiceEventHook?.(campaignId, type);
+    globalThis.__odmTurnHeadHook?.(campaignId);
   });
   return seq;
 }
@@ -254,6 +262,11 @@ export function publishEphemeral(campaignId: string, type: string, payload: unkn
   send(() => {
     deliver(campaignId, undefined, type, stored, payload);
     globalThis.__odmVoiceEventHook?.(campaignId, type);
+    // A roster or world change is ephemeral too; the narration's own stream
+    // and the DM's status are not table changes.
+    if (type !== "dm_delta" && type !== "dm_status") {
+      globalThis.__odmTurnHeadHook?.(campaignId);
+    }
   });
 }
 
