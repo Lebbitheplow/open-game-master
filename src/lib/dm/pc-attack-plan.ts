@@ -683,7 +683,9 @@ export function planPcAttack(input: {
   }
   // Mounted Combatant: advantage in melee against an unmounted creature
   // smaller than the mount (src/lib/dm/ar-wbf-feat-doors.ts).
-  const ridden = mountedAdvantage(campaign.id, sheet, enemy, !profile.ranged);
+  // A melee attack is one made in reach: a handaxe thrown from the saddle is
+  // a ranged attack and gets nothing (as Rage's bonus, X01).
+  const ridden = mountedAdvantage(campaign.id, sheet, enemy, !atRange);
   if (ridden) {
     sources.push("advantage");
     context.notes.push(ridden);
@@ -796,7 +798,8 @@ export function planPcAttack(input: {
     // hits (pc-attack.ts leaves the hiding in place for the roll).
     hitSpent: [
       ...folded.hitSpent,
-      ...(hasSkulker(sheet) && profile.ranged && weaponAttack && sheet.conditions.some((entry) => entry.toLowerCase() === "hidden") ? ["hidden"] : []),
+      // A dagger thrown from hiding is a ranged weapon attack too.
+      ...(hasSkulker(sheet) && atRange && weaponAttack && sheet.conditions.some((entry) => entry.toLowerCase() === "hidden") ? ["hidden"] : []),
     ],
     targetSpent: conditionsSpentAgainst(enemy.conditions),
     maneuver,
