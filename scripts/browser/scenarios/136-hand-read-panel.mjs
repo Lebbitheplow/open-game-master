@@ -60,12 +60,16 @@ export default {
     check(read.rules === onCard, `it writes the card's whole rules line ("${read.rules}")`);
     check(read.size >= 12, `at a size that reads (${read.size}px)`);
 
-    // Escape lets the panel go, as it lets an aimed card go, and the keyboard
-    // lands back on the card that opened it.
+    // Close and Escape hand the keyboard back to the card that opened the
+    // panel (a frame later), so the next key lands on it and not on the page.
+    const backOnShield = () =>
+      eventually(() => shield.evaluate((button) => button === document.activeElement), { label: "the keyboard back on Shield" });
+
+    // Escape lets the panel go, as it lets an aimed card go.
     if (!t.touch) {
       await page.keyboard.press("Escape");
       await eventually(async () => !(await panel.count()), { label: "Escape closed the read panel" });
-      check(await shield.evaluate((button) => button === document.activeElement), "the keyboard is back on Shield");
+      await backOnShield();
       await press(shield);
       await eventually(() => panel.count(), { label: "the read panel, opened again" });
     }
@@ -92,6 +96,7 @@ export default {
       check(!(await opener.count()), "with no content pack the held card offers no full text to open");
       await t.tap(panel.first().getByRole("button", { name: "Close" }));
       await eventually(async () => !(await panel.count()), { label: "the read panel closed" });
+      await backOnShield();
       await press(card("Magic Missile"));
       const aim = visible(page.locator(`${root}.hand-aim:not(.hand-read)`)).first();
       await eventually(() => aim.count(), { label: "the aim bar of Magic Missile" });
@@ -120,6 +125,7 @@ export default {
 
     await t.tap(panel.first().getByRole("button", { name: "Close" }));
     await eventually(async () => !(await panel.count()), { label: "the read panel closed" });
+    await backOnShield();
 
     // A card that can be played: the aim bar opens its full text too, here
     // with what changes at higher levels.
