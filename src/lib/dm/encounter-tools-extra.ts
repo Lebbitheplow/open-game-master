@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
-import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { autoEndOnVictory, finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
@@ -320,11 +320,16 @@ function handleEnemyCondition(
     }
     const source = (args.sourceCharacterId ?? args.sourceEnemyId ?? "").trim();
     const wakes = wakesOnDamage(wanted, enemy.currentHp);
+    // Counted on the turn it began on when no combatant of the fight is its
+    // source (condition-logic.ts countsOn): a "stunned for 1 round" counted
+    // at the wrap ran out before the creature's turn came.
+    const countsOn = args.rounds ? turnCounterFor(campaign.id, source || undefined) : undefined;
     const incoming =
       args.rounds || (args.saveAbility && args.saveDc) || source || wakes
         ? {
             ...(source ? { source } : {}),
             ...(args.rounds ? { rounds: args.rounds } : {}),
+            ...(countsOn ? { countsOn } : {}),
             ...(args.saveAbility && args.saveDc
               ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc } }
               : {}),

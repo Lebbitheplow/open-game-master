@@ -5,7 +5,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { currentTurnId } from "@/lib/dm/job-control";
-import { getActiveEncounter, shiftEnemyMaxHp } from "@/lib/db/encounters";
+import { getActiveEncounter, shiftEnemyMaxHp, turnCounterFor } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { publishPersisted } from "@/lib/events";
 import { ROUNDS_PER_MINUTE } from "@/lib/dm/condition-logic";
@@ -42,6 +42,8 @@ type Row = {
   visible: number;
   created_at: string;
   aura_json: string | null;
+  anchor_id: string | null;
+  anchor_rounds: number | null;
 };
 
 function mapRow(row: Row): ActiveEffect {
@@ -61,6 +63,8 @@ function mapRow(row: Row): ActiveEffect {
     saveDc: row.save_dc,
     visible: row.visible === 1,
     createdAt: row.created_at,
+    anchorId: row.anchor_id ?? null,
+    anchorRounds: row.anchor_rounds ?? 0,
   };
 }
 
@@ -184,6 +188,12 @@ type EffectInput = {
   aura?: ActiveEffect["aura"];
 };
 
+// Whose turn it is in the fight under way, which an effect begun now is
+// counted by (effects-logic.ts tickRound). None outside a fight.
+function turnAnchor(campaignId: string): string | null {
+  return turnCounterFor(campaignId) ?? null;
+}
+
 // The row alone. Its callers run it inside followingMaxHp, so the stored
 // maximum moves with it.
 function writeEffect(input: EffectInput, id: string, now: string) {
@@ -191,8 +201,8 @@ function writeEffect(input: EffectInput, id: string, now: string) {
     .prepare(
       `INSERT INTO active_effects
         (id, campaign_id, target_kind, target_id, name, source, modifiers_json,
-         duration, remaining, save_ability, save_dc, visible, created_at, aura_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         duration, remaining, save_ability, save_dc, visible, created_at, aura_json, anchor_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -209,6 +219,7 @@ function writeEffect(input: EffectInput, id: string, now: string) {
       input.visible ? 1 : 0,
       now,
       input.aura ? JSON.stringify(input.aura) : null,
+      turnAnchor(input.campaignId),
     );
   // An effect a GM turn started ends with the turn's revert (issue 685).
   keepNew("active_effects", id, input.campaignId);
@@ -298,11 +309,11 @@ function persistTick(
 ): ActiveEffect[] {
   const db = getDatabase();
   [...result.kept, ...result.expired].forEach((effect) => keepRow("active_effects", effect.id));
-  const update = db.prepare(`UPDATE active_effects SET remaining = ? WHERE id = ?`);
+  const update = db.prepare(`UPDATE active_effects SET remaining = ?, anchor_rounds = ? WHERE id = ?`);
   const remove = db.prepare(`DELETE FROM active_effects WHERE id = ?`);
   const run = db.transaction(() => {
     for (const effect of result.kept) {
-      update.run(effect.remaining, effect.id);
+      update.run(effect.remaining, effect.anchorRounds ?? 0, effect.id);
     }
     for (const effect of result.expired) {
       remove.run(effect.id);
@@ -318,12 +329,12 @@ function persistTick(
   return result.expired;
 }
 
-// One combat round passing, the fight's `round` the one now starting. Called
-// from the same place condition durations tick, so an effect and a condition
-// applied together end together; every tenth round is a minute gone.
-export function tickEffectRound(campaignId: string, round: number): ActiveEffect[] {
-  const minutePassed = round > 1 && (round - 1) % ROUNDS_PER_MINUTE === 0;
-  return persistTick(campaignId, tickRound(listEffects(campaignId), minutePassed));
+// A round of the fight passing for the effects begun on a turn of whom
+// `counts` names: the wrap counts those begun on no turn in the order, and a
+// turn starting those begun on it (src/lib/dm/condition-tick.ts), so an
+// effect and a condition applied together end together.
+export function tickEffectRound(campaignId: string, counts: (anchorId: string | null) => boolean): ActiveEffect[] {
+  return persistTick(campaignId, tickRound(listEffects(campaignId), counts, ROUNDS_PER_MINUTE));
 }
 
 // The fight is over: what lasted "until the fight ends" ends with it, its

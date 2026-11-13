@@ -361,5 +361,30 @@ await test("an enemy caster concentrates, saves on damage, and loses the spell o
 for (const world of worlds) {
   world.clearDice();
 }
+// T05 (audit 2026-11-13): Haste's lethargy is the incapacitated condition,
+// and an incapacitated creature's concentration ends (SRD 5.1,
+// Concentration). Written straight to the conditions where Haste ends, it
+// left a hasted cleric concentrating on Bless, whether the wizard's
+// concentration broke or Haste's minute ran out.
+await test("T05: Haste ending leaves its target lethargic, and the lethargy ends the target's own concentration", async () => {
+  const { world, sheets: [mage, priest, friend] } = await party(wizard(9), cleric(5), cleric(5));
+  const { breakConcentration } = await import("../src/lib/dm/concentration.ts");
+  const { tickClockConditions } = await import("../src/lib/dm/condition-tick.ts");
+  const stage = (rounds) => {
+    world.patch(mage.id, { concentratingOn: rounds ? null : "Haste" });
+    world.patch(priest.id, { concentratingOn: "Bless", conditions: ["hasted"], conditionMeta: { hasted: { spell: "Haste", source: mage.id, ...(rounds ? { rounds } : {}) } } });
+    world.patch(friend.id, { conditions: ["blessed"], conditionMeta: { blessed: { spell: "Bless", source: priest.id, rounds: 10 } } });
+  };
+  stage(0);
+  breakConcentration(world.campaign(), null, mage.id, "a failed save");
+  assert.ok(world.sheet(priest.id).conditions.includes("incapacitated"), "lethargic");
+  assert.equal(world.sheet(priest.id).concentratingOn, null, "still concentrating while incapacitated");
+  assert.equal(world.sheet(friend.id).conditions.includes("blessed"), false, "Bless held on");
+  stage(1);
+  tickClockConditions(world.campaign(), 0.1);
+  assert.ok(world.sheet(priest.id).conditions.includes("incapacitated"), "lethargic as the minute ran out");
+  assert.equal(world.sheet(priest.id).concentratingOn, null, "still concentrating after Haste ran out");
+});
+
 worlds[0].close();
 finish();

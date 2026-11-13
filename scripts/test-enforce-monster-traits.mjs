@@ -114,6 +114,34 @@ await test("Regeneration: the troll regains 10 hit points at the start of its tu
   assert.equal(kit.enemy(troll.id).currentHp, 60);
 });
 
+// T02 (audit 2026-11-13): the turn start read the troll before Spirit
+// Guardians hurt it, and Regeneration counted from that row put the damage
+// back, or raised it from 0 when the damage dropped it there.
+await test("Regeneration counts from the hit points the troll has after what hurt it as its turn began (Spirit Guardians).", async () => {
+  const [troll] = await stage(TROLL);
+  const guardians = { "spirit guardians": { spell: "Spirit Guardians", source: tank.id, slotLevel: 3 } };
+  world.patch(tank.id, { conditions: ["spirit guardians"], conditionMeta: guardians });
+  try {
+    for (const [from, left] of [[50, 36], [20, 0]]) {
+      kit.setEnemy(troll.id, { currentHp: from, conditions: [], conditionMeta: {} });
+      kit.place(troll.id, 5, 6);
+      while (kit.current()?.characterId !== other.id) {
+        assert.equal(kit.endTurn(kit.current().userId), true);
+      }
+      // The troll's WIS save fails (1), and the guardians deal 3d8 = 24.
+      world.clearDice();
+      world.dice(1, 8, 8, 8);
+      assert.equal(kit.endTurn(other.userId), true);
+      world.clearDice();
+      // From 20 the guardians drop it; what happens at 0 is the down path's,
+      // but never the 30 the stale row's 20 regenerated to.
+      assert.ok(left ? kit.enemy(troll.id).currentHp === left : kit.enemy(troll.id).currentHp <= 10, `from ${from}: 24 radiant, then at most 10 regenerated (${kit.enemy(troll.id).currentHp})`);
+    }
+  } finally {
+    world.patch(tank.id, { conditions: [], conditionMeta: {} });
+  }
+});
+
 await test("Sunlight Sensitivity: a creature with the trait attacks at disadvantage in direct sunlight.", async () => {
   const [kobold] = await stage(KOBOLD);
   const { getClock, setClock } = await import("../src/lib/db/clock.ts");

@@ -22,6 +22,7 @@ import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import {
   ROUNDS_PER_MINUTE,
   effectiveMaxHp,
+  incapacitatedBy,
   instanceIdentity,
   instancesOf,
   likelierSave,
@@ -34,7 +35,7 @@ import {
 import { tickConcentrationClocks } from "@/lib/dm/concentration-clock";
 import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
-import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
+import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
 import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
@@ -84,19 +85,20 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   // (src/lib/dm/effects-logic.ts). One the party could not tell was there
   // ends as quietly as it began, and still counts as a change below: its end
   // can move an enemy's maximum on the tracker.
-  const expired = tickEffectRound(campaign.id, encounter.round);
+  // What belongs to a turn is counted there (startTurnConditions, and the
+  // saves at endTurnSaves): an instance whose source is in the order counts
+  // as that source's turn starts, and a holder in the order saves at the end
+  // of its own turn. The wrap counts the rest: an instance with no source in
+  // the fight, a holder the order does not hold. An active effect likewise,
+  // by the turn it began on.
+  const inOrder = new Set(encounter.order.map((entry) => orderEntryId(entry)));
+  const expired = tickEffectRound(campaign.id, (anchor) => !anchor || !inOrder.has(anchor));
   for (const effect of expired) {
     if (effect.visible) {
       lines.push(`${effect.name} wears off.`);
     }
   }
 
-  // What belongs to a turn is counted there (startTurnConditions, and the
-  // saves at endTurnSaves): an instance whose source is in the order counts
-  // as that source's turn starts, and a holder in the order saves at the end
-  // of its own turn. The wrap counts the rest: an instance with no source in
-  // the fight, a holder the order does not hold.
-  const inOrder = new Set(encounter.order.map((entry) => orderEntryId(entry)));
   const outside: HolderTick = {
     counts: (source) => !source || !inOrder.has(source),
     saves: (holderId) => !inOrder.has(holderId),
@@ -202,6 +204,36 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   return deathSaves;
 }
 
+// The fight is over: what lasted until the start or the end of somebody's
+// next turn (Dodge, Shield, a readied action, Haste's lethargy, a Guiding
+// Bolt's mark) has no turn left to wait for, as on the clock
+// (tickClockConditions). Left on the sheet it ran on until the clock next
+// moved, and into the next fight: a hero who dodged in the last round was
+// still dodging when an ambush came (audit 2026-11-13, T03).
+export function endTurnBoundAtFightEnd(campaign: Campaign): void {
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    if (!sheet.conditions.length) {
+      continue;
+    }
+    const tick = tickConditions(sheet.conditions, sheet.conditionMeta, 0, { endTurnBound: true, saves: false });
+    if (!tick.expired.length && JSON.stringify(tick.meta) === JSON.stringify(sheet.conditionMeta)) {
+      continue;
+    }
+    // A readied spell never released is lost, and its concentration with it
+    // (readied-spell.ts), as when the turn it waited for starts.
+    const lostSpell = tick.expired.some((name) => name.toLowerCase() === "readied") ? readiedSpellOf(sheet)?.spell : undefined;
+    if (lostSpell && textKey(sheet.concentratingOn ?? "") === textKey(lostSpell)) {
+      breakConcentration(campaign, null, sheet.id, "the readied spell was never released");
+    }
+    patchSheetAudited(campaign.id, sheet.id, { conditions: tick.conditions, conditionMeta: tick.meta }, {
+      kind: "condition_clock",
+      reason: tick.expired.length ? `no longer ${tick.expired.join(" or ")} as the fight ends` : "a hold that lasted until a turn ended with the fight",
+      delta: { ended: tick.expired, added: [] },
+    });
+  }
+}
+
 // The rounds a creature stays senseless from now: none awake, its
 // unconscious's own count (a stable creature's 1d4 hours, a Sleep spell's
 // minute), the longest 1d4 hours for a stable creature with no count kept,
@@ -239,26 +271,30 @@ export function startTurnConditions(
   // take their turns (src/lib/dm/held-turn.ts): what lasts until the start
   // of their turn holds until those enemies have acted.
   held: string[] = [],
-) {
+): { lostTurns: string[] } {
   if (!combatantIds.length) {
-    return;
+    return { lostTurns: [] };
   }
   endTurnRage(campaign, encounter, combatantIds[0], endedTurn);
   startTurnFeatures(campaign, combatantIds);
-  const starting = new Set(combatantIds);
   let enemiesChanged = endTurnStartHolds(campaign, encounter.id, new Set(combatantIds.filter((id) => !held.includes(id))));
   // A count that belongs to these turns runs down now: "for 1 minute" from
   // a caster's (or a monster's) turn ends ten of its turns later, where it
-  // began (SRD 5.1); a concentration spell's clock with them.
-  const counted: string[] = [];
-  const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
-  tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
-  tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
-  counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
-  if (counted.length) {
-    endSpentConcentration(campaign, counted);
-    enemiesChanged = true;
-    noteAtTable(campaign.id, counted);
+  // began (SRD 5.1); a concentration spell's clock with them. The turns
+  // walked past start before the one landed on, so theirs count first, and an
+  // enemy among them that cannot act as its turn comes has lost that turn
+  // (audit 2026-11-13, T04): counted together, "stunned for 1 round" from the
+  // character landed on ran out as that character's turn began, before the
+  // enemy walked past it had played the turn it was meant to cost, and the
+  // enemy acted. A held landing (held-turn.ts) counts once its turn begins.
+  const landing = combatantIds[combatantIds.length - 1];
+  const before = combatantIds.slice(0, -1);
+  enemiesChanged = countTurnStarts(campaign, encounter, before) || enemiesChanged;
+  const lostTurns = listEnemies(encounter.id)
+    .filter((enemy) => before.includes(enemy.id) && enemy.status === "alive" && incapacitatedBy(enemy.conditions))
+    .map((enemy) => enemy.id);
+  if (!held.includes(landing)) {
+    enemiesChanged = countTurnStarts(campaign, encounter, [landing]) || enemiesChanged;
   }
   // Running spells act at the start of a turn: Spirit Guardians around its
   // caster, Phantasmal Killer's dread, Heroism's temporary hit points
@@ -277,6 +313,33 @@ export function startTurnConditions(
   if (spellLines.length) {
     noteAtTable(campaign.id, spellLines);
   }
+  return { lostTurns };
+}
+
+// The counts that belong to these combatants' turns run down a round: the
+// conditions they are the source of (or whose count began on their turn),
+// their concentration clocks, and the active effects begun on their turns.
+// Returns whether anything changed. Exported for the held turn that begins
+// later (held-turn.ts startHeldTurn).
+export function countTurnStarts(campaign: Campaign, encounter: Encounter, ids: string[]): boolean {
+  if (!ids.length) {
+    return false;
+  }
+  const starting = new Set(ids);
+  const counted: string[] = [];
+  const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
+  tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
+  tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
+  counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
+  // An active effect begun on one of these turns counts its round now: "for
+  // 1 round" from a turn lasts until that turn comes again, not to the wrap.
+  const worn = tickEffectRound(campaign.id, (anchor) => Boolean(anchor && starting.has(anchor)));
+  counted.push(...worn.filter((effect) => effect.visible).map((effect) => `${effect.name} wears off.`));
+  if (counted.length) {
+    endSpentConcentration(campaign, counted);
+    noteAtTable(campaign.id, counted);
+  }
+  return counted.length > 0 || worn.length > 0;
 }
 
 // Whatever lasted "until the start of the next turn" of these combatants
@@ -478,6 +541,7 @@ function heldClose(encounter: Encounter | undefined, holderId: string, instance:
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
+  const lethargic: string[] = [];
   for (const enemy of listEnemies(encounter.id)) {
     if (enemy.status !== "alive" || !enemy.conditions.length || (options.only && !options.only.has(enemy.id))) {
       continue;
@@ -497,6 +561,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
     if (hastedAs) {
       ({ conditions, meta } = withLethargy(conditions, meta, lethargyMeta(enemy.id)));
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
+      lethargic.push(enemy.id);
     }
     // One effect, one save, as a character's below: conditions one source laid
     // together with the same save (the Stone Rune's charm, incapacitation and
@@ -572,6 +637,8 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       patchEnemyConditions(enemy.id, conditions, meta);
     }
   }
+  // Once every row is written: the lethargy incapacitates (endLethargicConcentration).
+  lines.push(...endLethargicConcentration(campaign, [], lethargic));
 }
 
 function tickSheetConditions(
@@ -732,6 +799,11 @@ function tickSheetConditions(
         reason: ended.length ? `no longer ${ended.join(" or ")}${when}` : "time counted down on their conditions",
         delta: { ended, added: conditions.filter((name) => !sheet.conditions.includes(name)) },
       });
+    }
+    // The lethargy incapacitates, and that ends their own concentration
+    // (endLethargicConcentration), once this tick is written.
+    if (hastedAs && by - hasteLeft < 1) {
+      lines.push(...endLethargicConcentration(campaign, [sheet.id]));
     }
     const finished = finishing ? finishCasting(campaign, sheet.id, finishing, Boolean(options?.encounter)) : null;
     if (finished) {

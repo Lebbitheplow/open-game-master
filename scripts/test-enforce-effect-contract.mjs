@@ -16,13 +16,14 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 import { layMap } from "./lib/enforce-spells.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-effect-contract");
 const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
 const { enemySpeedTiles } = await import("../src/lib/dm/enemy-speed.ts");
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { listTokens } = await import("../src/lib/db/battle-maps.ts");
-const { endTurnSaves, tickEncounterConditions } = await import("../src/lib/dm/condition-tick.ts");
+const { endTurnSaves, startTurnConditions, tickEncounterConditions } = await import("../src/lib/dm/condition-tick.ts");
 const { contestOpponent, rollContest } = await import("../src/lib/dm/roll-gates.ts");
 
 const effectsOn = (world, kind, id) => listEffects(world.campaignId, { kind, id });
@@ -163,16 +164,60 @@ await test("F28: a one-minute effect ends after ten rounds of a fight, and the c
   await world.invoke("set_effect", { characterId: hero.id, name: "Minute", modifiers: [{ field: "ac", mode: "add", value: 1 }], duration: "minutes", remaining: 1 });
   await world.invoke("set_effect", { characterId: hero.id, name: "Rounds", modifiers: [{ field: "ac", mode: "add", value: 1 }], duration: "rounds", remaining: 30 });
   await world.invoke("pass_time", { amount: 1, unit: "minutes" });
-  assert.equal(effectsOn(world, "character", hero.id).length, 2, "the round wrap owns time in a fight");
-  const encounter = world.encounter();
+  assert.equal(effectsOn(world, "character", hero.id).length, 2, "the rounds own time in a fight");
+  // Begun on the hero's turn, each counts a round as that turn comes again.
+  const heroTurn = () => startTurnConditions(world.campaign(), world.encounter(), [hero.id]);
   for (let round = 2; round <= 10; round++) {
-    tickEncounterConditions(world.campaign(), { ...encounter, round });
+    heroTurn();
+    tickEncounterConditions(world.campaign(), { ...world.encounter(), round });
   }
   assert.ok(effectsOn(world, "character", hero.id).some((effect) => effect.name === "Minute"), "nine rounds are not a minute");
-  tickEncounterConditions(world.campaign(), { ...encounter, round: 11 });
+  heroTurn();
   const left = effectsOn(world, "character", hero.id);
   assert.deepEqual(left.map((effect) => effect.name), ["Rounds"]);
   assert.equal(left[0].remaining, 20);
+});
+
+// T01 (audit 2026-11-13): a "minutes" effect lost its minute at every tenth
+// round of the FIGHT, so one begun in round 9 ended at the wrap into round
+// 11; and every round effect counted at the wrap, so "1 round" set by the
+// last in the order ended the moment their turn did.
+await test("T01: an effect begun mid-fight lasts its own rounds, counted as the turn it began on comes again", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const kit = await combatKit(world);
+  const hero = world.addHero({ class: "fighter", level: 5, abilities: { str: 16 } });
+  const ally = world.addHero({ class: "fighter", level: 5, abilities: { str: 16 } });
+  await kit.fight(1, { heroFaces: { [hero.id]: 18, [ally.id]: 10 } });
+  kit.setEnemy(world.enemies()[0].id, { maxHp: 500, currentHp: 500 });
+  const rounds = (count) => {
+    const end = world.encounter().round + count;
+    while (world.encounter().round < end) {
+      assert.equal(kit.endTurn(kit.current().userId), true);
+      kit.handOnEnemies();
+    }
+  };
+  const names = () => effectsOn(world, "character", hero.id).map((effect) => effect.name).sort();
+  rounds(8);
+  assert.equal(world.encounter().round, 9);
+  await world.invoke("set_effect", { characterId: hero.id, name: "Minute", modifiers: [{ field: "ac", mode: "add", value: 1 }], duration: "minutes", remaining: 1 });
+  // The last hero in the order sets "1 round" on their own turn.
+  assert.equal(kit.endTurn(hero.userId), true);
+  kit.handOnEnemies();
+  assert.equal(kit.current().characterId, ally.id);
+  await world.invoke("set_effect", { characterId: hero.id, name: "Round", modifiers: [{ field: "ac", mode: "add", value: 1 }], duration: "rounds", remaining: 1 });
+  assert.equal(kit.endTurn(ally.userId), true);
+  kit.handOnEnemies();
+  assert.deepEqual(names(), ["Minute", "Round"], "a round set by the last in the order outlived the wrap");
+  while (kit.current().characterId !== ally.id) {
+    assert.equal(kit.endTurn(kit.current().userId), true);
+    kit.handOnEnemies();
+  }
+  assert.deepEqual(names(), ["Minute"], "the round ends as the ally's turn comes again");
+  rounds(8);
+  assert.deepEqual(names(), ["Minute"], "a minute begun in round 9 still runs in round 18");
+  rounds(1);
+  assert.deepEqual(names(), [], "and ends with the tenth round");
+  world.close();
 });
 
 closeTables();

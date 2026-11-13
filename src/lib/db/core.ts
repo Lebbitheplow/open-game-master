@@ -2056,6 +2056,10 @@ function ensureSchema(db: SqliteDatabase) {
     // Guardians): radius in feet and a tone for the ring the board draws.
     // Null for the ordinary effect that touches one creature.
     ["aura_json", `TEXT`],
+    // Whose turn it was in the fight when it began, and the rounds counted
+    // toward its next minute (src/lib/dm/effects-logic.ts tickRound).
+    ["anchor_id", `TEXT`],
+    ["anchor_rounds", `INTEGER NOT NULL DEFAULT 0`],
   ]);
 
   addColumns("encounters", [

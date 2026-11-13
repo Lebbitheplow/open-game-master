@@ -80,6 +80,7 @@ import { holdsThiefsReflexes } from "@/lib/dm/bonus-routes";
 import {
   actingCombatantId,
   canEnemyAct,
+  markEnemyActed,
   oweEnemiesAnAction,
 } from "@/lib/dm/can-act";
 import { acWithEffects, enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -1899,7 +1900,7 @@ function advancePointer(
   encounter.reactionsUsed = encounter.reactionsUsed.filter(
     (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`) || id.startsWith(`${PET_REACTION_PREFIX}${owner}:`)),
   );
-  startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
+  const { lostTurns } = startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
   if (heldTurn) {
     encounter.legendary.turnStart = heldTurn;
   }
@@ -1939,6 +1940,15 @@ function advancePointer(
       resetTurnBudgets(map.id, starting);
       publishBattleMapUpdate(campaign.id);
     }
+  }
+  // An enemy handed its turn while it could not act lost that turn, though
+  // what held it may end as the turn landed on begins (condition-tick.ts):
+  // a stun of one round from that character's turn has cost the turn it was
+  // meant to cost, and the creature does not take it once freed. Marked now
+  // the round the turn belongs to is the encounter's.
+  for (const id of lostTurns.filter((each) => handedOut.includes(each))) {
+    markEnemyActed(encounter, id);
+    encounter.legendary.lost = [...new Set([...(encounter.legendary.lost ?? []), id])];
   }
   // The saves rolled in this move write the encounter row themselves (a
   // Legendary Resistance spent, the failed save legendary_resist answers);

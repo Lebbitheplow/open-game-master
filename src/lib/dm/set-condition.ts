@@ -8,7 +8,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, turnCounterFor } from "@/lib/db/encounters";
 // Registers the board's landing for a flyer the condition grounds
 // (db/flight-watch.ts), which this module's writes call on.
 import "@/lib/dm/token-state";
@@ -395,12 +395,16 @@ export function handleSetCondition(
   // An effect's own meta says whether damage ends it; only a sleep laid by
   // name has the rule to go by.
   const wakes = !options?.spellEffect && wakesOnDamage(normalized, sheet.currentHp);
+  // A count with no combatant to count it is counted on the turn it began
+  // on (condition-logic.ts countsOn), not at the round's wrap.
+  const countsOn = rounds && !options?.spellEffect?.source ? turnCounterFor(campaign.id, source || undefined) : undefined;
   const incoming: ConditionMeta | undefined =
     rounds || saveEnds || source || options?.spellEffect || wakes
       ? {
           ...(rounds ? { rounds } : {}),
           ...(saveEnds ? { saveEnds } : {}),
           ...(source ? { source } : {}),
+          ...(countsOn ? { countsOn } : {}),
           ...(options?.spellEffect ?? {}),
           ...(wakes ? { endsOnDamage: true } : {}),
         }
