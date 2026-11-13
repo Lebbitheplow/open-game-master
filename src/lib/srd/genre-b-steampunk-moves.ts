@@ -21,9 +21,11 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isWorn, matchArmor } from "@/lib/srd/armor";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { GRAPNEL } from "@/lib/srd/genre-gb-conditions";
 
 // Any sheet-shaped walker: the board's mover carries only some of a sheet.
-export type StrideHolder = { features: Array<{ name: string }>; class?: string; classes?: Array<{ id: string }>; equipment?: ReadonlyArray<object> };
+export type StrideHolder = { features: Array<{ name: string }>; class?: string; classes?: Array<{ id: string }>; equipment?: ReadonlyArray<object>; conditions?: string[] };
 
 // Any body armor on (a shield is not armor the frame is built into).
 function armored(sheet: StrideHolder): boolean {
@@ -39,7 +41,8 @@ const holds = (sheet: StrideHolder, classId: string, name: string) => Boolean(sh
 export function steampunkStride(sheet: StrideHolder): { anyGround: boolean; climbs: boolean } {
   return {
     anyGround: holds(sheet, "aeronaut", "Master of the High Wire") || (holds(sheet, "steam_knight", "Juggernaut Frame") && armored(sheet)),
-    climbs: holds(sheet, "aeronaut", "Rigging Runner"),
+    // The Grapnel gadget's round (genre-gb-conditions.ts) climbs the same way.
+    climbs: holds(sheet, "aeronaut", "Rigging Runner") || (sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GRAPNEL)),
   };
 }
 

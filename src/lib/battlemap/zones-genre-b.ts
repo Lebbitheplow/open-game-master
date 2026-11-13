@@ -10,6 +10,18 @@ import type { ZoneRow } from "@/lib/battlemap/zones-spells";
 const MINUTE = 10;
 
 export const GENRE_B_ZONE_ROWS: Record<string, ZoneRow> = {
+  // A gadgeteer's Smoke Bomb: "thrown up to 30 feet, a 10-foot radius of
+  // smoke that blocks sight for a minute"; Smoke Discipline: "Your smoke
+  // bombs fill a 15-ft radius and you see through your own smoke" (the zone
+  // is laid seen through by its thrower: src/lib/dm/genre-b-zones.ts).
+  "smoke bomb": {
+    shape: "sphere", feet: 10, level: 0, concentration: false, rounds: MINUTE, obscured: "heavy", gas: true, mundane: true, tone: "fog",
+    summary: "smoke: heavily obscured (blocks sight)",
+  },
+  "disciplined smoke": {
+    shape: "sphere", feet: 15, level: 0, concentration: false, rounds: MINUTE, obscured: "heavy", gas: true, mundane: true, tone: "fog",
+    summary: "smoke: heavily obscured (blocks sight), its thrower sees through it",
+  },
   // Gear Swarm: "a 15-ft cube becomes difficult terrain and deals 2d6 slashing
   // to creatures entering it, for 1 minute".
   "gear swarm": {

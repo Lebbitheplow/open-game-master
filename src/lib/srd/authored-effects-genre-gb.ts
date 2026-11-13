@@ -6,9 +6,9 @@
 // GENRE_AUTHORED (src/lib/srd/authored-effects-genre.ts) with one line.
 //
 // Pure data; no database.
-import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import type { AuthoredEffect, AuthoredEntry, SpendDoes } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
-import { LAST_RIDE } from "@/lib/srd/genre-gb-conditions";
+import { ARC_LAMP, EAR_TRUMPET, GRAPNEL, LAST_RIDE, POCKET_SHIELD, SKELETON_KEY } from "@/lib/srd/genre-gb-conditions";
 
 const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "subclass">): GenreRow => ({
   feature,
@@ -54,4 +54,28 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     ],
     spends: [{ name: "Last Ride of the Reaver", pool: { id: "post_apocalyptic_last_ride_of_the_reaver" }, action: "none", does: { kind: "buff", condition: LAST_RIDE, rounds: 10 } }],
   }),
+
+  // ---- the gadgeteer's gadgets (src/lib/srd/options.ts "gadget") ----
+  // "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton
+  // key, pocket shield); each usable INT-mod times per rest with sensible
+  // effects": each pick is held as "Gadget: <name>" with a counter of its own
+  // (src/lib/srd/authored-resources.json, INT-mod uses back on any rest), and
+  // its use is a bonus action that does what the pick's line says. Each is
+  // once a turn: Chain Deployment's second use is a different gadget
+  // (src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey).
+  gadget("Grapnel", { kind: "buff", condition: GRAPNEL, rounds: 1 }),
+  gadget("Smoke Bomb", { kind: "zone", lays: "smoke bomb", rangeFt: 30, upgrade: { feature: "Smoke Discipline", lays: "disciplined smoke", seesThrough: true } }),
+  gadget("Arc Lamp", { kind: "light", brightFt: 30, dimFt: 30, condition: ARC_LAMP }),
+  gadget("Ear Trumpet", { kind: "buff", condition: EAR_TRUMPET, rounds: 10 }, [{ kind: "check_adv", skills: ["perception"], gate: { condition: EAR_TRUMPET } }]),
+  gadget("Skeleton Key", { kind: "buff", condition: SKELETON_KEY, rounds: 1 }, [{ kind: "check_adv", abilities: ["dex"], gate: { condition: SKELETON_KEY } }]),
+  gadget("Pocket Shield", { kind: "buff", condition: POCKET_SHIELD, rounds: 1 }, [{ kind: "ac", amount: 2, gate: { condition: POCKET_SHIELD } }]),
 ];
+
+function gadget(name: string, does: SpendDoes, effects: AuthoredEffect[] = []): GenreRow {
+  const counter = `steampunk_gadget_${name.toLowerCase().replace(/ /g, "_")}`;
+  return row(`Gadget: ${name}`, ["gadgeteer"], {
+    counter,
+    ...(effects.length ? { effects } : {}),
+    spends: [{ name, pool: { id: counter }, action: "bonus", oncePerTurn: true, does }],
+  });
+}

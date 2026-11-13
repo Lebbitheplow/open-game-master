@@ -18,7 +18,7 @@ import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { freeSpendKey } from "@/lib/srd/genre-b-steampunk-attacks";
+import { freeSpendKey, mayBeFree } from "@/lib/srd/genre-b-steampunk-attacks";
 
 export function freeSpendThisTurn(sheet: CharacterSheet, spendName: string, encounter: Encounter | null): string | null {
   if (!encounter || (encounter.kind ?? "fight") !== "fight") {
@@ -26,7 +26,7 @@ export function freeSpendThisTurn(sheet: CharacterSheet, spendName: string, enco
   }
   // Asked before the budget: budgetFor begins a held turn, and only a spend
   // that could be free at all may do that.
-  if (!freeSpendKey(sheet, spendName, [])) {
+  if (!mayBeFree(sheet, spendName)) {
     return null;
   }
   if (!canAct({ sheet, encounter, kind: "bonus" }).ok || heldTurnRefusal(encounter, sheet)) {

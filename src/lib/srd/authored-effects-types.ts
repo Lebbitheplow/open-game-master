@@ -1024,7 +1024,9 @@ export type SpendNeed = "shadows" | "unarmed_in_action" | "flurry_harm" | "attac
 // reach; without it the area stands on the holder. `dcAbility`: its save DC is
 // 8 + proficiency + this modifier. `upgrade`: the row laid instead while the
 // holder has that feature (The Last Dawn Rises' burning light).
-export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string } };
+// `upgrade.seesThrough`: with the upgrade held the area is laid seen through
+// by its holder (Smoke Discipline: "you see through your own smoke").
+export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string; seesThrough?: boolean } };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

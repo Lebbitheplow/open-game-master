@@ -1641,23 +1641,15 @@
   "clauses": [
    {
     "c": "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton key, pocket shield)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Utility Gadgets: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget (the picks) and A picked gadget is a bonus action with INT-mod uses back on any rest",
+    "by": "src/lib/srd/options.ts (kind gadget, granted to the gadgeteer: 2/3/4/5 picks at 1/6/10/14) with src/lib/srd/options.json, each pick's counter in src/lib/srd/authored-resources.json and its use in src/lib/srd/authored-effects-genre-gb.ts"
    },
    {
     "c": "each usable INT-mod times per rest with sensible effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#1:uses",
-    "k": "uses",
-    "p": {
-     "id": "steampunk_utility_gadgets",
-     "ability": "int",
-     "rest": "any"
-    },
-    "observed": "a level 1 gadgeteer holds no counter steampunk_utility_gadgets (counters: steampunk_overclock)"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget (the picks) and A picked gadget is a bonus action with INT-mod uses back on any rest",
+    "by": "src/lib/srd/options.ts (kind gadget, granted to the gadgeteer: 2/3/4/5 picks at 1/6/10/14) with src/lib/srd/options.json, each pick's counter in src/lib/srd/authored-resources.json and its use in src/lib/srd/authored-effects-genre-gb.ts"
    }
   ]
  },
@@ -1755,11 +1747,9 @@
   "clauses": [
    {
     "c": "Learn a third gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Third Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: three at 6th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    },
    {
     "c": "gadget saves against your effects use 8 + proficiency + INT",
@@ -1800,16 +1790,15 @@
   "clauses": [
    {
     "c": "Your smoke bombs fill a 15-ft radius and you see through your own smoke",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Smoke Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Smoke Discipline: the gadgeteer's smoke bomb fills a 15-foot radius they see through",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Gadget: Smoke Bomb (zone, upgrade Smoke Discipline seen through), src/lib/battlemap/zones-genre-b.ts (smoke bomb, disciplined smoke), src/lib/dm/genre-b-zones.ts layGenreZone"
    },
    {
     "c": "15-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Smoke Discipline: the gadgeteer's smoke bomb fills a 15-foot radius they see through",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Gadget: Smoke Bomb (zone, upgrade Smoke Discipline seen through), src/lib/battlemap/zones-genre-b.ts (smoke bomb, disciplined smoke), src/lib/dm/genre-b-zones.ts layGenreZone"
    }
   ]
  },
@@ -1821,11 +1810,9 @@
   "clauses": [
    {
     "c": "Learn a fourth gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fourth Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Fourth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: four at 10th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    },
    {
     "c": "Overclock has 2 uses per rest",
@@ -1906,11 +1893,9 @@
   "clauses": [
    {
     "c": "Learn a fifth gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fifth Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Fifth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: five at 14th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    }
   ]
  },
@@ -1922,11 +1907,9 @@
   "clauses": [
    {
     "c": "Use two different gadgets with the same bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Chain Deployment#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Chain Deployment: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Chain Deployment: a second, different gadget rides the bonus action the first spent",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey and mayBeFree, read by src/lib/dm/genre-b-steampunk-turn.ts freeSpendThisTurn"
    }
   ]
  },
@@ -1956,11 +1939,9 @@
   "clauses": [
    {
     "c": "All gadget uses recharge on a short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Perpetual Toolkit#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perpetual Toolkit: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs A picked gadget ...: the uses come back on a short rest",
+    "by": "every gadget counter in src/lib/srd/authored-resources.json recharges on a short rest (recharge short)"
    }
   ]
  },

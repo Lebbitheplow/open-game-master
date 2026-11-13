@@ -56,7 +56,8 @@ export function layGenreZone(input: Lay, spec: GenreZoneSpec): ToolError | strin
   if (at && "error" in at) {
     return at;
   }
-  const lays = spec.upgrade && input.sheet.features.some((feature) => isNamed(feature.name, spec.upgrade!.feature)) ? spec.upgrade.lays : spec.lays;
+  const upgraded = Boolean(spec.upgrade && input.sheet.features.some((feature) => isNamed(feature.name, spec.upgrade!.feature)));
+  const lays = upgraded && spec.upgrade ? spec.upgrade.lays : spec.lays;
   const derived = computeSheetDerived(input.sheet);
   const dc = spec.dcAbility ? 8 + derived.proficiencyBonus + derived.abilityMods[spec.dcAbility] : undefined;
   const line = placeSpellZone(input.campaign, {
@@ -65,6 +66,7 @@ export function layGenreZone(input: Lay, spec: GenreZoneSpec): ToolError | strin
     caster: { kind: "pc", id: input.sheet.id, name: input.sheet.name },
     ...(dc ? { dc } : {}),
     ...(at ? { at } : {}),
+    ...(upgraded && spec.upgrade?.seesThrough ? { seenThroughBy: input.sheet.id } : {}),
   });
   return [line ?? `${input.name}: there is no board, so the GM places the area in the story.`];
 }

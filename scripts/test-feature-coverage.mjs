@@ -457,6 +457,8 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
     "dark_fantasy_purging_flame", "dark_fantasy_the_crown_descends",
     "horror_bleeding_power",
     "post_apocalyptic_call_the_wild",
+    // Its +4d6 rides Ram Speed under the authored spend's condition (authored-effects-genre-gb.ts), not an fx of the counter.
+    "post_apocalyptic_last_ride_of_the_reaver",
     "post_apocalyptic_percussive_maintenance", "post_apocalyptic_the_pack_provides",
     "steampunk_arc_coil", "steampunk_catalyst_stone", "steampunk_field_repair",
     "steampunk_full_throttle", "steampunk_galvanic_discharge", "steampunk_gear_swarm",

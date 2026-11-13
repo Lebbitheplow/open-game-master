@@ -2572,6 +2572,78 @@
    "recharge": "short",
    "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll that hit them or a creature they can see within 60 feet to disadvantage (use_reaction \"Prophetic State\"), or gives advantage to an attack roll, save or check such a creature has just rolled, on its card.",
    "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_grapnel",
+   "displayName": "Grapnel",
+   "match": [
+    "gadget: grapnel"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Grapnel): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_smoke_bomb",
+   "displayName": "Smoke Bomb",
+   "match": [
+    "gadget: smoke bomb"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Smoke Bomb): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_arc_lamp",
+   "displayName": "Arc Lamp",
+   "match": [
+    "gadget: arc lamp"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Arc Lamp): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_ear_trumpet",
+   "displayName": "Ear Trumpet",
+   "match": [
+    "gadget: ear trumpet"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Ear Trumpet): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_skeleton_key",
+   "displayName": "Skeleton Key",
+   "match": [
+    "gadget: skeleton key"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Skeleton Key): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_pocket_shield",
+   "displayName": "Pocket Shield",
+   "match": [
+    "gadget: pocket shield"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Pocket Shield): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
   }
  ]
 }

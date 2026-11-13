@@ -41,7 +41,11 @@ export type OptionKind =
   | "land_circle"
   | "spell_mastery_1"
   | "spell_mastery_2"
-  | "signature_spell";
+  | "signature_spell"
+  // The gadgeteer's gadgets (steampunk): Utility Gadgets picks two, Third,
+  // Fourth and Fifth Gadget one more each (src/lib/srd/authored-effects-genre-gb.ts
+  // gives each pick its use).
+  | "gadget";
 
 export type OptionDef = {
   k: OptionKind;
@@ -329,6 +333,19 @@ const GRANTS: Grant[] = [
   { kind: "spell_mastery_1", classId: "wizard", opens: ["Spell Mastery"], steps: [[18, 1]] },
   { kind: "spell_mastery_2", classId: "wizard", opens: ["Spell Mastery"], steps: [[18, 1]] },
   { kind: "signature_spell", classId: "wizard", opens: ["Signature Spells"], steps: [[20, 2]] },
+  // "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton
+  // key, pocket shield)", then "Learn a third gadget" (6), a fourth (10) and
+  // a fifth (14).
+  {
+    kind: "gadget",
+    classId: "gadgeteer",
+    steps: [
+      [14, 5],
+      [10, 4],
+      [6, 3],
+      [1, 2],
+    ],
+  },
   {
     kind: "discipline",
     classId: "monk",
