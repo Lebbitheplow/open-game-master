@@ -136,6 +136,10 @@ export type AuthoredEffect = Base &
     // The holder's damage of these types ignores resistance.
     // `spells`: only the damage of the holder's spells (Perfected Instability's mutations).
     | { kind: "ignore_resist"; types: string[]; spells?: boolean }
+    // The holder's damage of these types treats a creature's immunity as
+    // resistance (Universal Solvent, Heart of the Storm). `spells`: only a
+    // spell's damage (src/lib/dm/genre-b-steampunk-defenses.ts).
+    | { kind: "soften_immune"; types: string[]; spells?: boolean }
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     // `besideDowned`: while an ally at 0 HP stands within 5 feet (Shield the Fallen).

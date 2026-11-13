@@ -1630,11 +1630,9 @@
   "clauses": [
    {
     "c": "Your acid formulae treat immunity as resistance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Universal Solvent#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Universal Solvent: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Universal Solvent: an alchemist's acid spell halves on a creature immune to acid",
+    "by": "src/lib/srd/authored-effects-genre-b-steampunk.ts (soften_immune acid, spells), read by src/lib/dm/genre-b-steampunk-defenses.ts authoredSoftensImmunity from src/lib/dm/enemy-defenses.ts enemyDefenseLines"
    },
    {
     "c": "Etching Acid stacks to -3 AC",
@@ -2587,12 +2585,9 @@
   "clauses": [
    {
     "c": "Your lightning arts ignore resistance and treat immunity as resistance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Heart of the Storm#0:stray",
-    "k": "stray",
-    "observed": "by its name the engine also gives Heart of the Storm: effect resistance(lightning,thunder)",
-    "note": "the Storm Sorcery feature of the same name (src/lib/srd/feature-effects.ts, parsed from src/lib/srd/subclasses.json) answers for it: the aether channeler gains resistance to lightning and thunder damage, which this text does not give, and nothing does what it does say",
-    "kind": "rule-wrong"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Heart of the Storm: a channeler's lightning spell deals full damage through resistance and half through immunity",
+    "by": "src/lib/srd/authored-effects-genre-b-steampunk.ts (ignore_resist and soften_immune lightning, spells), read by src/lib/dm/authored-saves.ts authoredIgnoresResistance and src/lib/dm/genre-b-steampunk-defenses.ts from src/lib/dm/enemy-defenses.ts; its own GENRE_B_FEATURE_DEFS row (src/lib/srd/authored-effects-genre-b.ts) keeps Storm Sorcery's resistance off it"
    }
   ]
  },

@@ -10,6 +10,16 @@ import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 import { GALVANIC } from "@/lib/srd/genre-b-steampunk-conditions";
 
 export const GENRE_B_STEAMPUNK_AUTHORED: GenreRow[] = [
+  // "Your acid formulae treat immunity as resistance": a formula is the
+  // alchemist's spell (src/lib/dm/genre-b-steampunk-defenses.ts).
+  { feature: "Universal Solvent", classes: ["alchemist"], entry: { subclass: "genre", effects: [{ kind: "soften_immune", types: ["acid"], spells: true }] } },
+  // "Your lightning arts ignore resistance and treat immunity as resistance":
+  // an art is the channeler's spell.
+  {
+    feature: "Heart of the Storm",
+    classes: ["aether_channeler"],
+    entry: { subclass: "genre", effects: [{ kind: "ignore_resist", types: ["lightning"], spells: true }, { kind: "soften_immune", types: ["lightning"], spells: true }] },
+  },
   // "1/rest, charge your skin for 1 minute: the next creature that touches or
   // melee-hits you takes 1d8 lightning": the charge is a mark the first melee
   // hit spends (src/lib/dm/genre-b-steampunk-ends.ts spendRetaliateMark); a

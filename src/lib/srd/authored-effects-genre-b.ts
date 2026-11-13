@@ -346,6 +346,11 @@ export const GENRE_B_FEATURE_DEFS: Def[] = [
   // src/lib/srd/genre-b-combat.ts genreWornRiders).
   { match: ["masterwork arsenal"], classes: ["gadgeteer"], effects: [{ kind: "crit_range", low: 19 }], guidance: "Masterwork Arsenal: weapon attacks score a critical hit on a 19 or 20, which the server applies." },
   { match: ["reinforced chassis"], classes: ["machinist"], effects: [{ kind: "ac_bonus", amount: 1, requiresArmor: true }], guidance: "Reinforced Chassis: +1 AC while armored, which the server adds." },
+  // Heart of the Storm (aether channeler): its own row, so the Storm Sorcery
+  // feature of the same name (lightning and thunder resistance, parsed from
+  // subclasses.json) never answers for it. What it does is its authored row
+  // (authored-effects-genre-b-steampunk.ts).
+  { match: ["heart of the storm"], classes: ["aether_channeler"], effects: [], guidance: "Heart of the Storm: the channeler's lightning spells ignore resistance and treat immunity as resistance, which the server applies." },
 ];
 
 // What a trigger-shaped genre counter answers (src/lib/srd/trigger-table.ts
