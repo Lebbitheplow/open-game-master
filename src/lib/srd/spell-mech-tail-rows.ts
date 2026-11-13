@@ -405,8 +405,11 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
   },
   "greater restoration": {
     resolution: "buff",
-    cures: { conditions: ["exhaustion", "charmed", "petrified", "cursed", "indefinite madness"] },
-    note: "Ends one: a level of exhaustion, charmed, petrified, a curse, or an indefinite madness (name it in variant). Reduced ability scores and hit point maximums are narrated back.",
+    // SRD 5.1: "One effect reducing the target's hit point maximum" is one
+    // of its five. Narrated back alone, the sheet kept a wight's drain until
+    // the next long rest while the story said it was lifted.
+    cures: { conditions: ["exhaustion", "charmed", "petrified", "cursed", "indefinite madness", "max hp reduced"] },
+    note: "Ends one: a level of exhaustion, charmed, petrified, a curse, an indefinite madness, or a reduced hit point maximum (name it in variant: max hp reduced). Reduced ability scores are narrated back.",
   },
   "remove curse": {
     resolution: "buff",

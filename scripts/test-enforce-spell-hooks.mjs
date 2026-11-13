@@ -366,6 +366,21 @@ await test("Greater Restoration takes away one level of exhaustion (or one charm
   assert.equal(world.sheet(fighter.id).exhaustion, 1);
 });
 
+await test("Greater Restoration ends one effect reducing the hit point maximum: the drain is lifted, and nothing is healed (SRD 5.1).", async () => {
+  // The spell's list ends "One effect reducing the target's hit point
+  // maximum". It was narrated back while the sheet kept the drain.
+  const world = await openWorld();
+  const cleric = world.addHero({ ...caster("cleric", "wis", ["Greater Restoration"]), gold: 200 });
+  const fighter = world.addHero({ ...FIGHTER, maxHp: 40 });
+  const name = "max hp reduced (-10)";
+  world.patch(fighter.id, { currentHp: 20, conditions: [name], conditionMeta: { [name]: { source: "wight", untilLongRest: true } } });
+  assert.equal(world.sheet(fighter.id).maxHp, 30);
+  const out = await world.invoke("cast_buff", { characterId: cleric.id, spell: "Greater Restoration", targetCharacterIds: [fighter.id], variant: "max hp reduced", level: 5 });
+  assert.equal(out.ok, true, out.error);
+  const restored = world.sheet(fighter.id);
+  assert.deepEqual([restored.maxHp, restored.currentHp, restored.conditions], [40, 20, []]);
+});
+
 await test("Remove Curse ends every curse on its target (Bestow Curse's among them).", async () => {
   const { world, sheets: [cleric, fighter] } = await table([caster("cleric", "wis", ["Remove Curse"]), FIGHTER]);
   await world.invoke("set_condition", { characterId: fighter.id, condition: "cursed (wis)", rounds: 10 });
