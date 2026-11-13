@@ -772,7 +772,7 @@ export function handleMoveToken(
       approachCut = drawn.cut;
     }
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
-    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token);
+    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
       return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }

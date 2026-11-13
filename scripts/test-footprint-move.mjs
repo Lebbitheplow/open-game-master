@@ -18,7 +18,7 @@ const {
   footprintSide,
 } = await import("../src/lib/battlemap/footprint.ts");
 
-const { findPath, reachableTiles } = await import("../src/lib/battlemap/movement.ts");
+const { findPath, reachableTiles, walkPathWithBudget } = await import("../src/lib/battlemap/movement.ts");
 const { tileIndex } = await import("../src/lib/battlemap/types.ts");
 
 let passed = 0;
@@ -152,6 +152,25 @@ test("the default footprint keeps every old caller's answer", () => {
   const a = findPath(TERRAIN, WIDTH, HEIGHT, new Set(), { x: 1, y: 1 }, { x: 8, y: 5 });
   const b = findPath(TERRAIN, WIDTH, HEIGHT, new Set(), { x: 1, y: 1 }, { x: 8, y: 5 }, 1);
   assert.deepEqual(a, b);
+});
+
+// SRD 5.1, Difficult Terrain and Squeezing into a Smaller Space: an ogre's
+// whole space pays the ground under it, and a step it takes squeezed costs
+// double. Its top-left square alone paid before.
+test("an ogre crossing rubble under its second row pays for it, and a squeezed step costs double", () => {
+  const width = 8;
+  // A wall above: every way east puts rubble under one of its rows.
+  const rows = ["########", "........", ",,,,,,,,", "........"];
+  const rough = rows.join("");
+  const costs = reachableTiles(rough, width, 4, new Set(), { x: 0, y: 1 }, 20, 2);
+  assert.equal(costs.get(tileIndex(width, 3, 1)), 6, "rubble under the ogre's second row cost nothing");
+  const walked = walkPathWithBudget(rough, width, [{ x: 1, y: 1 }, { x: 2, y: 1 }], 20, false, { x: 0, y: 1 }, { height: 4, occupied: new Set(), footprint: 2 });
+  assert.equal(walked.spent, 4);
+  // A one-square gap at x=3, y=1 in a wall on column 3.
+  const gap = ["...#....", "........", "...#....", "...#...."].join("");
+  const squeezed = walkPathWithBudget(gap, width, [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }], 20, false, { x: 0, y: 1 }, { height: 4, occupied: new Set(), footprint: 2 });
+  // (2,1) and (3,1) put a square of the ogre on the wall: squeezed.
+  assert.equal(squeezed.spent, 6, "squeezing through the gap cost no more than walking");
 });
 
 console.log(`test-footprint-move: ${passed} passed`);

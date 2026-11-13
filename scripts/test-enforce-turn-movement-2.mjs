@@ -217,6 +217,32 @@ await test("A character frightened of a Huge creature cannot step closer to its 
   }
 });
 
+// ---- a large creature walking in to strike ----
+
+// SRD 5.1, Squeezing into a Smaller Space: a Large creature squeezes through
+// a space 5 feet wide, and "each foot of movement it uses costs 1 extra
+// foot". enemy_attack's walk-up walked an ogre as one square: through the
+// gap at full price, 35 feet, and into its swing.
+await test("An ogre walking in to attack squeezes a one-square gap at double cost, as move_token walks it, and falls short of a hero it would otherwise reach.", async () => {
+  const paint = [];
+  for (let y = 0; y < 9; y += 1) if (y !== 4) paint.push([8, y, "#"]);
+  const goblin = await stage(paint);
+  kit.setEnemy(goblin.id, { stats: { size: "Large", speed: "40 ft.", attacks: [{ name: "Greatclub", toHit: 6, damage: "2d8+4", type: "bludgeoning", mode: "melee", reach: 5 }] } });
+  try {
+    kit.place(goblin.id, 3, 4);
+    kit.place(kara.id, 12, 4);
+    kit.place(brom.id, 20, 8);
+    kit.freshRound();
+    const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: kara.id });
+    assert.equal(out.ok, false, "the ogre squeezed through the gap at full speed and swung");
+    // Three open squares, two squeezed at double, one more: 40 feet.
+    assert.deepEqual(at(goblin.id), [9, 4]);
+    assert.equal(kit.token(goblin.id).movedThisRound, 8);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { size: "Small", speed: "30 ft." } });
+  }
+});
+
 // ---- mounting ----
 
 await test("Mounting costs half the rider's speed during their own move; the AI is refused off their turn, the console is not.", async () => {
