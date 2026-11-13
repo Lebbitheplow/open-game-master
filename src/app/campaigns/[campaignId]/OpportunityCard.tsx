@@ -101,7 +101,7 @@ export function OpportunityCard({
   }
 
   return (
-    <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
+    <CheckFrame className="opportunity-ask mb-2 animate-fade-up px-3 py-2.5">
       <p id={lineId} className="text-sm">{askLine(ask)}</p>
       <div role="group" aria-labelledby={lineId} className="mt-2 flex flex-wrap items-center gap-2">
         <button
