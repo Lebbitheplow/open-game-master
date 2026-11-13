@@ -1896,6 +1896,7 @@
     "lib/dm/rest-tools.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/retry-turn-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",4,"chat message roles and the context trace's block ids (protocol)"]],
     "lib/dm/roll-about.ts#str-list": [["key",4,"fixed choices a check or a save names (tool enums)"]],
+    "lib/srd/travel.ts#str-list": [["key",1,"the vehicles travel's aboard names (a tool enum)"]],
     "lib/dm/roll-args.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-feature-riders.ts#re-word": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-feature-riders.ts#toLowerCase": [["key",2,"die notation, skill id"]],

@@ -239,7 +239,7 @@ const ENGLISH_INTENT: Array<[ToolGroupId, RegExp]> = [
   // Trading words, and the places that sell: walking into a smithy has to
   // offer open_shop before the DM describes its shelf.
   ["shop", /\b(buy|buys|buying|bought|sell|sells|selling|sold|shop|shops|shopping|merchants?|wares|browse|browsing|haggle|haggling|barter|bartering|prices?|(?:black|weapon)?smiths?|smithy|smithies|forges?|armou?rers?|stores?|stalls?|stand|stands|vendors?|traders?|trading post|markets?|marketplace|bazaars?|apothecary|apothecaries|herbalists?|alchemists?|outfitters?|provisioners?|fletchers?)\b/i],
-  ["world", /\b(travel|journey|road|ride (?:to|north|south|east|west)|march|days? (?:later|pass)|wait (?:until|for)|treasure|hoard|loot|break (?:down|open|the)|smash|weather)\b/i],
+  ["world", /\b(travel|journey|road|ride (?:to|north|south|east|west)|march|wagons?|carriages?|coach|caravan|sail(?:s|ed|ing)?|voyage|ferry|boat|ship|days? (?:later|pass)|wait (?:until|for)|treasure|hoard|loot|break (?:down|open|the)|smash|weather)\b/i],
   ["explore", /\b(craft|crafting|downtime|research|train(?:ing)?|lifestyle|carouse|lift|drag|push|haul|disease|poison(?:ed)?|madness)\b/i],
   ["hazards", /\b(trap|traps|fall|falls|jump|leap|climb|drown|swim|lava|fire|burning|freezing|suffocat\w*)\b/i],
   ["mounts", /\b(horse|horses|mount|mounts|saddle|steed|pony)\b/i],

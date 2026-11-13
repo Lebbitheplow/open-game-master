@@ -300,6 +300,10 @@ export const SERVER_FEATURES = {
   // card beyond the tentacle's 10 feet. An older host sends none and the
   // card is dealt as before, the engine judging the reach.
   ownZoneFeet: true,
+  // "Riding in" on the console's Travel (travel `aboard`): riders aboard a
+  // wagon or a ship make no forced-march saves. An older host drops it
+  // unread and counts the ride as a march, so the field stays hidden there.
+  carriedTravel: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
