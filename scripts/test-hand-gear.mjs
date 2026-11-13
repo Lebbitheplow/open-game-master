@@ -21,7 +21,7 @@ const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
 const { defaultHeld, keepHeldGuess } = await import("../src/lib/dm/held-default.ts");
-const { guessedRehand } = await import("../src/lib/dm/gear-hands.ts");
+const { guessedRehand, handsFullError, handsFullForPlayer } = await import("../src/lib/dm/gear-hands.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -420,6 +420,31 @@ test("any change to what is held or worn ends the guess on every row; a write th
   assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS())), []);
   // The guess itself writes its marks.
   assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS(), true)), ["Shortsword", "Longbow"]);
+});
+
+// ---- a player never reads a tool's name ----
+// The hands-full refusal told players "Dropping one is free (handle_item
+// drop)": the storyteller's words, on the Hand's card and the sheet.
+const TOOL_NAME = /\b[a-z]+_[a-z_]+\b/;
+
+test("the hands-full reasons a player reads name no tool; the storyteller's still names handle_item", () => {
+  const marked = ARCHER_GUESS().map(({ heldGuess, ...row }) => (void heldGuess, row));
+  const reasons = [
+    byId(deriveHand(sheet({ equipment: marked }), FRESH_TURN), "attack:longbow").disabled,
+    byId(deriveHand(sheet({ equipment: ARMED }), FRESH_TURN), "gear:draw").disabled,
+    byId(deriveHand(sheet({ equipment: ARMED }), FRESH_TURN), "attack:dagger").disabled,
+  ];
+  for (const reason of reasons) {
+    assert.match(reason ?? "", /hands are full .*Dropping one is free; putting one away takes your object interaction this turn\./);
+    assert.doesNotMatch(reason ?? "", TOOL_NAME);
+  }
+  const told = handsFullError("Kael", "Greatsword", ["Longsword"]);
+  assert.match(told, /\(handle_item drop\)/);
+  // A tool's refusal a person reads (a card the GM's seat played) is turned
+  // into the player's words, and anything else passes through.
+  assert.doesNotMatch(handsFullForPlayer(`${told} Something else.`), TOOL_NAME);
+  assert.match(handsFullForPlayer(`${told} Something else.`), /takes your object interaction this turn\. Something else\.$/);
+  assert.equal(handsFullForPlayer("Out of range."), "Out of range.");
 });
 
 console.log(`test-hand-gear: ${passed} passed`);

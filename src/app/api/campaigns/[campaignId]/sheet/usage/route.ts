@@ -213,7 +213,7 @@ export async function POST(
       }
       const full = handsFullFor(after, row);
       if (full.length) {
-        return refuse(handsFullError(sheet.name, name, full, kind === "shield" ? "strapped on" : "drawn"));
+        return refuse(handsFullError(sheet.name, name, full, kind === "shield" ? "strapped on" : "drawn", "player"));
       }
     }
   }

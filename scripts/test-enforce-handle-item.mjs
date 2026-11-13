@@ -489,6 +489,8 @@ await test("A sheet the player marked gets no free change: the bow's attack is r
   assert.equal(shot.ok, false);
   assert.match(shot.error, /hands are full \(Shortsword\)/);
   assert.equal(budget()?.interaction, undefined);
+  // The storyteller's refusal names the tool that drops.
+  assert.match(shot.error, /\(handle_item drop\)/);
 });
 
 await test("handle_item's draw while the guess stands is free too, and says what it put away", async () => {
@@ -538,6 +540,9 @@ await test("The sheet's weapon row: In hand from the guess is a free change that
   const bow = await toggle({ Longbow: { equipped: true } });
   assert.equal(bow.status, 409);
   assert.match(bow.json.error, /Ayla's hands are full \(Shortsword\), so Longbow cannot be drawn yet/);
+  // A player reads it: no tool's name, the ways out in plain words.
+  assert.doesNotMatch(bow.json.error, /\b[a-z]+_[a-z_]+\b/);
+  assert.match(bow.json.error, /Dropping one is free; putting one away takes your object interaction this turn\./);
   // The player's mark stands when the next fight starts.
   await kit.fight(1);
   assert.deepEqual(heldNames(archer), ["Leather Armor", "Shortsword"]);

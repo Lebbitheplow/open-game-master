@@ -90,6 +90,8 @@ export default {
     await t.tap(toggle("Shortsword"));
     const refused = sheet.getByRole("alert").filter({ hasText: "Ayla Venn's hands are full (Longbow), so Shortsword cannot be drawn yet" });
     await eventually(() => refused.count(), { timeoutMs: 15_000, label: "the sword refused for full hands" });
+    const words = (await refused.first().textContent()) ?? "";
+    check(!/\b[a-z]+_[a-z_]+\b/.test(words), `the refusal names no tool (${words})`);
     check((await gear()).Shortsword?.equipped === false, "the sword stayed packed");
     await t.shot("refused");
   },

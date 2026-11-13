@@ -120,10 +120,31 @@ export function rehandLine(who: string, putAway: readonly string[], taken: strin
   return `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`;
 }
 
+// The ways out of full hands, for each reader: the storyteller is told the
+// tool that drops, a player never sees a tool's name (the Hand's card, the
+// sheet's refusal, a card the GM's seat played).
+const WAYS_OUT: Record<"storyteller" | "player", string> = {
+  storyteller: "Dropping one is free (handle_item drop); putting one away takes the object interaction.",
+  player: "Dropping one is free; putting one away takes your object interaction this turn.",
+};
+
 // The refusal for a draw with no hand free, with the ways out: dropping
 // costs nothing, putting one away is the object interaction.
-export function handsFullError(who: string, what: string, full: readonly string[], verb: "drawn" | "strapped on" = "drawn"): string {
-  return `${who}'s hands are full (${full.join(" and ")}), so ${what} cannot be ${verb} yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.`;
+export function handsFullError(
+  who: string,
+  what: string,
+  full: readonly string[],
+  verb: "drawn" | "strapped on" = "drawn",
+  reader: keyof typeof WAYS_OUT = "storyteller",
+): string {
+  return `${who}'s hands are full (${full.join(" and ")}), so ${what} cannot be ${verb} yet. ${WAYS_OUT[reader]}`;
+}
+
+// A tool's refusal shown to a person rather than the storyteller (a card the
+// GM's seat played resolves through the tools): the hands-full ways out in
+// a player's words.
+export function handsFullForPlayer(text: string): string {
+  return text.split(WAYS_OUT.storyteller).join(WAYS_OUT.player);
 }
 
 // Takes a weapon in hand: the row marked equipped. A hand must be free for
