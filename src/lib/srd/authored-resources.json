@@ -2586,6 +2586,18 @@
    "passive": true
   },
   {
+   "id": "race_tainted_blood",
+   "displayName": "Tainted Blood",
+   "match": [
+    "tainted blood"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "A reaction to piercing or slashing damage just taken: the derro's blood sprays, and the derro and each creature within 5 feet take necrotic damage equal to the derro's level. Once a short rest. The server deals the damage."
+  },
+  {
    "id": "race_rabbit_hop",
    "displayName": "Rabbit Hop",
    "match": [

@@ -16,6 +16,10 @@
 //     end of a turn on which they moved 0 feet (mt-species-turns.ts).
 //   - Celestial Revelation (aasimar): the form named, a bonus action, a
 //     minute; Necrotic Shroud's saves as it comes down.
+//   - Tainted Blood (a mutated derro's Otherworldly Influence, read from its
+//     pack text by species-prose-logic.ts): a reaction to piercing or
+//     slashing damage just taken, once a short rest; the derro and each
+//     creature within 5 feet take necrotic damage equal to its level.
 //   - Shifting (shifter) with a subtype picked: the subtype's own form
 //     ("shifted (beasthide)"...), Beasthide's extra 1d6 temporary hit points
 //     with it. A shifter with no subtype on the sheet takes the counter's
@@ -26,22 +30,25 @@
 import { holdsTinker, tinker } from "@/lib/dm/rock-gnome-tinker";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { priceTheAction, publishSheet } from "@/lib/dm/combat-features";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { rollEnemySave } from "@/lib/dm/forced-save";
-import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { computeSheetDerived } from "@/lib/srd";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHIFT_FORMS, SHIFTED, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
-import { isConditionNamed } from "@/lib/srd/feature-names";
 import { rollOwnDice } from "@/lib/dm/character-roll";
+import { freshLastHit, writeLastHit, type LastHit } from "@/lib/dm/last-hit";
+import { canReactNow } from "@/lib/dm/chronal-shift";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
 
 export type SpeciesSpendArgs = { variant?: string };
 
@@ -61,6 +68,7 @@ export function speciesTraitSpend(
   if (name === "celestial revelation" && sheet.resources?.[REVELATION_COUNTER]) return celestialRevelation(campaign, turnId, sheet, args.variant);
   // A rock gnome's clockwork devices (rock-gnome-tinker.ts).
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
+  if (name === "tainted blood" && sheet.resources?.[TAINTED_BLOOD]) return taintedBlood(campaign, turnId, sheet);
   const form = shiftFormOf(sheet);
   if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;
@@ -305,5 +313,70 @@ function shifting(campaign: Campaign, sheet: CharacterSheet, form: (typeof SHIFT
     left: `${state.max - state.used - 1}/${state.max}`,
     refills: "on a long rest",
     applied: [`${sheet.name} shifts (${form.subtype}) for a minute${tempHp > sheet.tempHp ? `, with ${tempHp} temporary hit points` : `, keeping their ${sheet.tempHp} temporary hit points`}.`],
+  };
+}
+
+// ---- Tainted Blood ----
+
+const TAINTED_BLOOD = "race_tainted_blood";
+const TAINTED_FEET = 5;
+const TAINTED_ANSWER = "tainted blood";
+
+function taintedBlood(campaign: Campaign, turnId: string, sheet: CharacterSheet): ToolResult {
+  const state = sheet.resources[TAINTED_BLOOD];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Tainted Blood left until a short or long rest. Nothing was spent.`, refused: "rules" };
+  }
+  // The wound it answers: piercing or slashing damage just taken, not yet answered by it.
+  const cut = (record: LastHit) => !record.answered.includes(TAINTED_ANSWER) && /\b(piercing|slashing)\b/i.test(record.type ?? "");
+  const wound = freshLastHit(campaign.id, sheet.id, cut);
+  if (!wound) {
+    return { error: `Tainted Blood answers piercing or slashing damage ${sheet.name} has just taken, and none has landed. Nothing was spent.`, refused: "rules" };
+  }
+  if (!canReactNow(campaign.id, sheet)) {
+    return { error: `${sheet.name} has no reaction to spend on Tainted Blood now. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const turn = getDmTurn(turnId);
+  patchSheet(sheet.id, { resources: { ...sheet.resources, [TAINTED_BLOOD]: { max: state.max, used: state.used + 1 } } });
+  if (encounter) {
+    markReactionUsed(encounter, sheet.id);
+  }
+  writeLastHit(campaign.id, { ...wound, answered: [...wound.answered, TAINTED_ANSWER] });
+  const amount = Math.max(1, sheet.level);
+  const near = (ref: string) => {
+    if (!encounter) return false;
+    const apart = tilesBetween(encounter.id, sheet.id, ref);
+    return apart !== null && apart * 5 <= TAINTED_FEET;
+  };
+  const struck: string[] = [];
+  const self = getSheetById(sheet.id) ?? sheet;
+  applyPcDamage(campaign, turnId, self, { amount, type: "necrotic", reason: "Tainted Blood" });
+  struck.push(sheet.name);
+  const sheets = listSheets(campaign.id).map((stale) => getSheetById(stale.id) ?? stale);
+  for (const other of sheets) {
+    if (other.id !== sheet.id && !other.deathSaves?.dead && near(other.id)) {
+      applyPcDamage(campaign, turnId, other, { amount, type: "necrotic", reason: `${sheet.name}'s Tainted Blood` });
+      struck.push(other.name);
+    }
+  }
+  if (encounter && turn) {
+    const sheetsById = new Map(sheets.map((entry) => [entry.id, entry]));
+    for (const enemy of listEnemies(encounter.id)) {
+      if (enemy.status === "alive" && near(enemy.id)) {
+        applyEnemyDamage(campaign, turn, encounter, enemy, amount, sheets, sheetsById, "necrotic");
+        struck.push(enemy.displayName);
+      }
+    }
+    publishEncounter(campaign.id);
+  }
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    resource: "Tainted Blood",
+    cost: "their reaction",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a short or long rest",
+    applied: [`${sheet.name}'s blood sprays from the wound: ${amount} necrotic damage to ${struck.join(", ")}.`],
   };
 }
