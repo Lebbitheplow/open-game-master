@@ -10,7 +10,7 @@ import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
-import { defaultHeld, keepHeldGuess, unguessed } from "@/lib/dm/held-default";
+import { defaultHeld, keepHeldGuess, unguessed, wearGained } from "@/lib/dm/held-default";
 import { guessStands } from "@/lib/dm/gear-hands";
 import { lastAttackDetail } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -1078,7 +1078,12 @@ export function patchSheet(
   // A mark set by anyone ends the engine's guess at what is in hand, on
   // every path that writes the pack (src/lib/dm/held-default.ts). An undo
   // puts back the pack as it was, guess and all.
-  next.equipment = capAttunement(keepHeldGuess(existing.equipment, next.equipment, options.guessing || options.restoring), next);
+  // Gear gained unmarked arrives as wearGained says (a cloak worn, a sword
+  // packed); an undo puts the pack back exactly as it was.
+  const gained = options.restoring
+    ? next.equipment
+    : wearGained(existing.equipment, next.equipment, hydrateHomebrewGear(existing.userId, next.equipment, { campaignId: existing.campaignId }));
+  next.equipment = capAttunement(keepHeldGuess(existing.equipment, gained, options.guessing || options.restoring), next);
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,

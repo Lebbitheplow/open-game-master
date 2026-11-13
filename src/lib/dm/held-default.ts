@@ -27,6 +27,7 @@ import { gearKindOf, guessStands, handsFor, weaponRowOf } from "@/lib/dm/gear-ha
 import { implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { wearConflict, wearSlotOf } from "@/lib/srd/wear-slots";
 import { isWeaponProficient } from "@/lib/srd/weapons";
 
 // The pack with every row marked worn or not, or null when it already says
@@ -89,7 +90,10 @@ export function keepHeldGuess(before: readonly EquipmentItem[], after: Equipment
   if (guessing || !after.some((item) => item.heldGuess === true)) {
     return after;
   }
-  const held = (rows: readonly EquipmentItem[]) => rows.filter((item) => item.equipped === true).map((item) => item.name).sort();
+  // Only rows the sheet already had: gaining a cloak that arrives worn
+  // (wearGained) is nobody setting a mark, and leaves the guess standing.
+  const had = new Set(before.map((item) => item.name));
+  const held = (rows: readonly EquipmentItem[]) => rows.filter((item) => item.equipped === true && had.has(item.name)).map((item) => item.name).sort();
   const was = held(before);
   const now = held(after);
   const moved = !guessStands(before) || was.length !== now.length || was.some((name, at) => name !== now[at]);
@@ -102,4 +106,55 @@ export function keepHeldGuess(before: readonly EquipmentItem[], after: Equipment
     void _guess;
     return rest;
   });
+}
+
+// What gained gear arrives as on a sheet that says what it wears. A sheet
+// with no marks reads every row as worn (armor.ts isWorn), which is how a
+// bought cloak always counted; now that every sheet carries marks, a row
+// gained unmarked read as packed, and a magic cloak from the shop added
+// nothing until the player found its toggle. So a gained row with a place on
+// the body other than armor or a shield arrives worn when its place has room,
+// as it did before. A suit, a shield and a weapon arrive packed: donning one
+// takes minutes or an action, and drawing a weapon is the turn's object
+// interaction (gear-hands.ts). A row is gained when it carries no mark and
+// the pack did not already hold an unmarked row of its name: a sheet marked
+// before every row was (one toggle pressed on an older sheet) keeps its
+// unmarked rows as they read, packed.
+export function wearGained(
+  before: readonly EquipmentItem[],
+  after: EquipmentItem[],
+  // The same rows with a workshop item's gear stamped on (db/homebrew.ts
+  // hydrateHomebrewGear, one for one): a bought homebrew cloak says it is a
+  // cloak only there. The marks are written on `after`.
+  seen: readonly EquipmentItem[] = after,
+): EquipmentItem[] {
+  // A write whose pack marks nothing (a lead's whole pack typed in, an import)
+  // says the sheet has not said what it wears; it stays that way.
+  if (!wearingIsExplicit(before) || !wearingIsExplicit(after) || !after.some((item) => item.equipped === undefined)) {
+    return after;
+  }
+  const unmarked = new Map<string, number>();
+  for (const item of before) {
+    if (item.equipped === undefined) {
+      unmarked.set(item.name, (unmarked.get(item.name) ?? 0) + 1);
+    }
+  }
+  const next = [...after];
+  const view = after.map((item, at) => (seen[at]?.name === item.name ? seen[at] : item));
+  next.forEach((item, at) => {
+    if (item.equipped !== undefined) {
+      return;
+    }
+    const left = unmarked.get(item.name) ?? 0;
+    if (left > 0) {
+      unmarked.set(item.name, left - 1);
+      return;
+    }
+    const row = view[at];
+    const slot = wearSlotOf(row);
+    const worn = Boolean(slot) && slot !== "armor" && slot !== "shield" && gearKindOf(row) !== "weapon" && !wearConflict(row, view);
+    next[at] = { ...item, equipped: worn };
+    view[at] = { ...row, equipped: worn };
+  });
+  return next;
 }

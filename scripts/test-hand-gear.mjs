@@ -20,7 +20,7 @@ const { intentTools, describeIntent, messageIntentSchema } = await import("../sr
 const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
-const { defaultHeld, keepHeldGuess } = await import("../src/lib/dm/held-default.ts");
+const { defaultHeld, keepHeldGuess, wearGained } = await import("../src/lib/dm/held-default.ts");
 const { guessedRehand, handsFullError, handsFullForPlayer } = await import("../src/lib/dm/gear-hands.ts");
 const { cardFullText } = await import("../src/lib/battlemap/hand-full-text-logic.ts");
 
@@ -466,6 +466,27 @@ test("the hands-full reasons a player reads name no tool; the storyteller's stil
   assert.doesNotMatch(handsFullForPlayer(`${told} Something else.`), TOOL_NAME);
   assert.match(handsFullForPlayer(`${told} Something else.`), /takes your object interaction this turn\. Something else\.$/);
   assert.equal(handsFullForPlayer("Out of range."), "Out of range.");
+});
+
+// The journey's shop cloak (63-journey-artifact-to-shop): every sheet now
+// says what it wears, so a row gained unmarked read as packed and a bought
+// magic cloak added nothing to AC until its toggle was found.
+test("gained gear arrives as it did before the marks: a cloak worn while its place has room, a weapon, a suit and a second cloak packed, and the guess stands", () => {
+  const before = ARCHER_GUESS();
+  const cloak = (name) => ({ name, qty: 1, gear: { wornOn: "cloak" } });
+  const gained = wearGained(before, [...before, cloak("Cloak of the Ferry"), { name: "Longsword", qty: 1 }, { name: "Chain Mail", qty: 1 }]);
+  const mark = (rows, name) => rows.find((row) => row.name === name)?.equipped;
+  assert.equal(mark(gained, "Cloak of the Ferry"), true, "the bought cloak arrives worn");
+  assert.equal(mark(gained, "Longsword"), false, "a weapon arrives packed: drawing it is the object interaction");
+  assert.equal(mark(gained, "Chain Mail"), false, "a suit arrives packed: donning it takes minutes");
+  const second = wearGained(gained, [...gained, cloak("Spare Cloak")]);
+  assert.equal(mark(second, "Spare Cloak"), false, "a second cloak waits for the first to come off");
+  assert.deepEqual(flagsOf(keepHeldGuess(before, gained)), ["Shortsword", "Longbow"], "gaining a cloak is nobody setting a mark");
+  // An older sheet marked one row and left the rest unmarked: those read as
+  // packed, and a patch does not put them on.
+  const older = [{ name: "Shortsword", qty: 1, equipped: true }, cloak("Old Cloak")];
+  assert.equal(mark(wearGained(older, older.map((row) => ({ ...row }))), "Old Cloak"), undefined);
+  assert.equal(wearGained([{ name: "Rope", qty: 1 }], [{ name: "Rope", qty: 1 }, cloak("New Cloak")])[1].equipped, undefined, "a sheet that never said wears everything already");
 });
 
 console.log(`test-hand-gear: ${passed} passed`);
