@@ -16,6 +16,7 @@ import { weaponAttackProfile } from "@/lib/dm/attack-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
 import type { IconRef } from "@/lib/icons";
+import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
 
 // The library row the hero page reads: the sheet as saved, with its level.
 export type LibraryHero = {
@@ -233,7 +234,7 @@ function spellTip(card: HandCard, sheet: CharacterSheet): HeroTip {
   } else if (slotLevel === null) {
     note = "A cantrip: no slot, cast it as often as you like";
   }
-  return { kind: "spell", text: `Cast ${card.name}${how}${what ? `: ${what}` : ""}`, note, icon: card.icon };
+  return { kind: "spell", text: `Cast ${card.name}${how}${what ? `: ${what}` : ""}`, note, icon: cardIcon(card) };
 }
 
 // A limited-use feature from the resource table (Second Wind, Rage, Bardic

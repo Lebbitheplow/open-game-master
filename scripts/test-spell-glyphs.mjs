@@ -6,6 +6,7 @@
 // beside it are the area or the count the dealt card carries. Pure.
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { register } from "node:module";
 
@@ -263,6 +264,37 @@ test("the glyph's class names are worn by the card's glyph alone", () => {
     const text = readFileSync(path.join(dir, file), "utf8");
     for (const name of classes) assert.ok(!new RegExp(`["'\\s]${name}["'\\s]`).test(text), `${file} wears ${name}, the spell glyph's own class`);
   }
+});
+
+// Away from the Hand (the spellbook, the party panel, the workshop, the
+// arrange list, a group card, a hero tip) a spell wears the glyph its card
+// wears, read from the table scripts/build-spell-glyph-table.mjs writes.
+const { listedSpellGlyph, spellGlyphIcon } = await import("../src/lib/battlemap/spell-glyph-table.ts");
+const { cardIcon } = glyphs;
+
+test("the glyph table is current and gives every spell the glyph its card wears", () => {
+  const check = spawnSync(process.execPath, [path.join(ROOT, "scripts/build-spell-glyph-table.mjs"), "--check"], { encoding: "utf8" });
+  assert.equal(check.status, 0, check.stderr);
+  for (const spell of MANIFEST) assert.equal(listedSpellGlyph(spell.n), namedSpellGlyph(spell.n), spell.n);
+  assert.equal(listedSpellGlyph("fireBALL"), "fire", "read by the whole name, as textKey reads it");
+  assert.equal(listedSpellGlyph("Fire"), "unknown", "never by a word of a name");
+});
+
+test("a workshop spell away from the Hand wears the glyph of the spell it runs as", () => {
+  assert.equal(listedSpellGlyph("Frostfire Orb", "Ice Storm"), "cold");
+  assert.equal(listedSpellGlyph("Frostfire Orb"), "unknown");
+  assert.equal(listedSpellGlyph("Cure Wounds", "Fireball"), "heal", "a published name keeps its own glyph");
+  assert.deepEqual(iconCandidates(spellGlyphIcon("Shield")), [spellGlyphSrc("guard")]);
+});
+
+test("a card drawn small wears its glyph, and a card with none its own icon", () => {
+  const hand = deriveHand(wizard, FRESH_TURN);
+  const fireball = hand.find((entry) => entry.name === "Fireball");
+  assert.deepEqual(cardIcon(fireball), { kind: "glyph", key: "spell-fire" });
+  const plain = hand.find((entry) => !entry.glyph);
+  assert.equal(cardIcon(plain), plain.icon);
+  // No spell card is drawn with a per-spell painting anywhere it is listed.
+  for (const card of hand.filter((entry) => entry.glyph)) assert.notEqual(cardIcon(card).kind, "spell", card.name);
 });
 
 console.log(`spell glyphs: ${passed} checks passed`);

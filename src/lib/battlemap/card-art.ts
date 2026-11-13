@@ -1,5 +1,6 @@
 import { iconSlug, isPainted, iconPath, type IconRef } from "@/lib/icons";
 import { weaponNamed } from "@/lib/srd/weapons";
+import { cardIcon, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import itemArtwork from "./card-art.json";
 
 const ITEM_ART = new Map<string, string>(Object.entries(itemArtwork));
@@ -56,6 +57,6 @@ export function cardArtwork(icon: IconRef, genre?: string | null): IconRef {
 
 // A Hand card's picture in a list row (the More sheet): a spell's glyph
 // (issue 845, spell-glyph-logic.ts), else the card's own artwork.
-export function handCardArtwork(card: { icon: IconRef; glyph?: string }, genre?: string | null): IconRef {
-  return card.glyph ? { kind: "glyph", key: `spell-${card.glyph}` } : cardArtwork(card.icon, genre);
+export function handCardArtwork(card: { icon: IconRef; glyph?: SpellGlyph }, genre?: string | null): IconRef {
+  return cardArtwork(cardIcon(card), genre);
 }

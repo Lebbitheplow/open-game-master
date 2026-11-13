@@ -20,6 +20,7 @@ import { resourceName } from "@/lib/srd/class-resources";
 import { lowestSlot, type HandCard, type HandCardType, type HandCost } from "@/lib/battlemap/hand-core";
 import { END_TURN_ID, isUrgentCard } from "@/lib/battlemap/hand-layout";
 import { textKey } from "@/lib/language/text-logic";
+import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
 
 export const GROUP_FOLD_MIN = 4;
 // A group's own search box shows once it holds more cards than this.
@@ -222,7 +223,7 @@ function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSh
     sections,
     left,
     tone,
-    icons: [...playable, ...cards.filter((card) => card.disabled)].slice(0, 3).map((card) => card.icon),
+    icons: [...playable, ...cards.filter((card) => card.disabled)].slice(0, 3).map(cardIcon),
     costs: PIP_COSTS.filter((cost) => cards.some((card) => card.cost === cost)).map((cost) => ({
       cost,
       open: playable.some((card) => card.cost === cost),
