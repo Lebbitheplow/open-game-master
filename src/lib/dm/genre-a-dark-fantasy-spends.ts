@@ -279,7 +279,9 @@ function mortify(ctx: SpendContext): Resolution {
   const prof = computeSheetDerived(ctx.sheet).proficiencyBonus;
   const greater = holdsFeature(ctx.sheet, "Greater Mortification");
   const most = greater ? 2 * prof : prof;
-  const amount = Math.floor(Number(ctx.args.amount ?? 0));
+  // The Hand's card names no amount: the press pays the most it may, as a
+  // spell's dice or a pool's spend default to their full measure.
+  const amount = ctx.args.amount === undefined || ctx.args.amount === null ? most : Math.floor(Number(ctx.args.amount));
   if (!amount || amount < 1 || amount > most) {
     return { error: `${ctx.spend.name} pays 1 to ${most} hit points: pass amount. Nothing was spent.`, retry: true };
   }
