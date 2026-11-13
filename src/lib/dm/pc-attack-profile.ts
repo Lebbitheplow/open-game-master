@@ -4,7 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
-import { isPactWeapon, holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
+import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
