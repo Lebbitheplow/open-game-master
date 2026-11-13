@@ -1,0 +1,55 @@
+import type { Locale } from "./translate";
+
+export const LOCALE_COOKIE = "odm_locale";
+
+export function parseLocale(raw: string | null | undefined): Locale | null {
+  if (raw === "fr" || raw === "en") return raw;
+  return null;
+}
+
+export function localeFromAcceptLanguage(header: string | null | undefined): Locale {
+  if (!header) return "en";
+  for (const part of header.split(",")) {
+    const tag = part.split(";")[0].trim().toLowerCase();
+    if (tag === "fr" || tag.startsWith("fr-")) return "fr";
+    if (tag === "en" || tag.startsWith("en-")) return "en";
+  }
+  return "en";
+}
+
+function cookieValue(cookieHeader: string | null, name: string): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === name) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return null;
+}
+
+// Server-side locale resolution (per @mcerina's design in #919):
+// 1. User's saved profile setting (when signed in)
+// 2. `odm_locale` cookie (set by the client when switching language / pre-login)
+// 3. `Accept-Language` header
+// 4. Default `"en"`
+export function resolveLocale(options: {
+  savedLocale?: string | null;
+  cookieHeader?: string | null;
+  acceptLanguage?: string | null;
+}): Locale {
+  return (
+    parseLocale(options.savedLocale) ??
+    parseLocale(cookieValue(options.cookieHeader ?? null, LOCALE_COOKIE)) ??
+    localeFromAcceptLanguage(options.acceptLanguage)
+  );
+}
+
+export function resolveRequestLocale(request: Request, savedLocale?: string | null): Locale {
+  return resolveLocale({
+    savedLocale,
+    cookieHeader: request.headers.get("cookie"),
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+}
