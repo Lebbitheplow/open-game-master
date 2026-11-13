@@ -456,5 +456,76 @@ await test("A01 A storm's environment chosen in the builder changes at a barbari
   assert.equal(slot?.remaining, 0);
 });
 
+const { packSubclassExtras } = await import("../src/lib/content/archetype-tables.ts");
+const { getContentDb } = await import("../src/lib/content/db.ts");
+const { spellHeldProblem } = await import("../src/lib/dm/cast-rules.ts");
+const { hasPack } = await import("./lib/enforce-world.mjs");
+
+const UNPRINTED = ["Bloodbound"];
+
+await test(
+  "A02 A content-pack subclass whose text prints a spell table grants it: a domain's, an oath's, a circle's or a ranger conclave's spells always prepared from the class level each row names, a patron's added to the warlock's list from the level its spells can be cast.",
+  () => {
+    if (!hasPack) return;
+    const db = getContentDb();
+    const extras = packSubclassExtras();
+    const rows = db.prepare("SELECT name, class_slug, document_slug, data_json FROM archetypes WHERE document_slug != 'odm-expanded'").all();
+    const known = new Set(db.prepare("SELECT name FROM spells").all().map((row) => textKey(row.name)));
+    const problems = [];
+    const unknown = [];
+    let tables = 0;
+    for (const row of rows) {
+      const classId = row.class_slug;
+      if (!SRD_CLASSES[classId] || subclassNamesFor(classId).includes(row.name)) continue;
+      const desc = JSON.parse(row.data_json).desc ?? "";
+      // A table of spells by level, not a third caster's slots table.
+      const table = /^\s*\|\s*(spell level|[a-z]* ?level)\s*\|[^\n]*spells[^\n]*\|/im.exec(desc);
+      if (!table || /cantrips known/i.test(table[0])) continue;
+      tables += 1;
+      const expandedList = /^\s*\|\s*spell level/i.test(table[0]);
+      const at20 = expandedList ? subclassExpandedSpellsFor(classId, row.name, 20, extras) : subclassSpellsFor(classId, row.name, 20, extras);
+      // Every table here starts by 3rd level (a druid circle's at 3, past
+      // the druid's subclass level).
+      const first = (expandedList ? subclassExpandedSpellsFor : subclassSpellsFor)(classId, row.name, Math.max(3, SRD_CLASSES[classId].subclassAt), extras);
+      if (at20.length < 5) problems.push(`${row.name} (${classId}) grants ${at20.length} of its table's spells at 20`);
+      if (!first.length) problems.push(`${row.name} (${classId}) grants none of its spells when it is chosen`);
+      for (const spell of at20) {
+        if (!known.has(textKey(spell))) unknown.push(spell);
+      }
+    }
+    assert.ok(tables >= 30, `only ${tables} spell tables were read`);
+    // The pack prints these books' subclasses without every spell they name
+    // (Tome of Heroes' own spells): the name is kept, as the book gives it.
+    assert.deepEqual([...new Set(unknown)].sort(), UNPRINTED);
+    // The rows by name: the levels the tables print.
+    const expect = (classId, name, level, spells, expandedList = false) => {
+      const got = (expandedList ? subclassExpandedSpellsFor : subclassSpellsFor)(classId, name, level, extras).map(textKey);
+      for (const spell of spells) if (!got.includes(textKey(spell))) problems.push(`${name} at ${classId} ${level} lacks ${spell}`);
+    };
+    expect("cleric", "Hunt Domain", 1, ["Bloodbound", "Illuminate Spoor"]);
+    expect("paladin", "Oath of Justice", 3, ["Color Spray", "Guiding Bolt"]);
+    expect("warlock", "Ancient Dragons", 1, ["Inflict Wounds", "Magic Missile"], true);
+    expect("druid", "Circle of the Green", 2, ["Entangle", "Goodberry"]);
+    expect("ranger", "Grove Warden", 3, ["Entangle"]);
+    if (subclassExpandedSpellsFor("warlock", "Ancient Dragons", 2, extras).length !== subclassExpandedSpellsFor("warlock", "Ancient Dragons", 1, extras).length) {
+      problems.push("Ancient Dragons adds 2nd-level spells before warlock 3");
+    }
+    // The engine: a Hunt Domain cleric casts its domain spell unprepared, as
+    // a Life Domain cleric casts Bless.
+    const cleric = {
+      name: "Hunter",
+      class: "cleric",
+      subclass: "Hunt Domain",
+      level: 1,
+      classes: [],
+      features: classFeaturesFor("cleric", "Hunt Domain", 1, extras),
+      spellcasting: { ability: "wis", cantrips: [], known: [], prepared: [], slots: { 1: 2 }, slotsUsed: {} },
+    };
+    if (spellHeldProblem(cleric, "Illuminate Spoor", null, { extras })) problems.push("a Hunt Domain cleric cannot cast Illuminate Spoor unprepared");
+    if (!spellHeldProblem(cleric, "Sleep", null, { extras })) problems.push("a Hunt Domain cleric casts Sleep unprepared");
+    assert.equal(problems.length, 0, problems.join("; "));
+  },
+);
+
 world.close();
 finish();

@@ -105,6 +105,61 @@ const SENTENCE_ORDINAL = /(?:^|[.!?]\s+)(?:at|beginning at|starting at|when you 
 
 type Row = { name: string; source: string; data: Record<string, unknown> };
 
+// A spell's name as a table cell prints it ("*find familiar* (snakes only)",
+// "*longstrider,*"), in the catalog's capitals.
+const MINOR_WORDS = new Set(["a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on", "or", "the", "to", "with", "without"]);
+function spellCellNames(cell: string): string[] {
+  return cell
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[*_]/g, "")
+    .split(/,|;/)
+    .map((name) => name.replace(/[^a-z'/ -]/gi, " ").replace(/\s+/g, " ").trim())
+    .filter((name) => name && name !== "-")
+    .map((name) =>
+      name
+        .toLowerCase()
+        .split(" ")
+        .map((word, index) => (index && MINOR_WORDS.has(word) ? word : word.replace(/^[a-z]/, (first) => first.toUpperCase()).replace(/\/[a-z]/, (rest) => rest.toUpperCase())))
+        .join(" "),
+    );
+}
+
+// The spell table a content-pack subclass prints in its prose: a domain's,
+// an oath's, a circle's or a conclave's by class level ("| Cleric Level |
+// Spells |", "| 3rd | *color spray*, *guiding bolt* |"), always prepared; a
+// patron's by spell level ("| Spell Level | Spells |"), added to the spells
+// a warlock may learn from the class level that casts that level (1st at 1,
+// 2nd at 3, ...). The first spell column only: Tome of Heroes' Animal Lords
+// add a column per affinity, a choice this reading cannot make. Several
+// tables are a choice too (the Circle of the Land's terrains), and give
+// none. A third caster's slots table ("Cantrips Known") is no spell list.
+// Without this a pack domain, oath or patron granted none of its spells.
+export function proseSpellTables(desc: string): { spells?: Record<string, string[]>; expanded?: Record<string, string[]> } {
+  const lines = String(desc ?? "").split("\n");
+  const found: Array<{ byspell: boolean; levels: Record<string, string[]> }> = [];
+  for (let at = 0; at < lines.length; at += 1) {
+    const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map((cell) => cell.trim());
+    if (!/^\s*\|/.test(lines[at]) || !/^\s*\|[\s|:-]+$/.test(lines[at + 1] ?? "")) continue;
+    const head = cells(lines[at]);
+    if (!/\blevel\b/i.test(head[0] ?? "") || head.some((cell) => /known|slots|max\.? cr/i.test(cell))) continue;
+    const column = head.findIndex((cell, index) => index > 0 && /\bspells\b/i.test(cell));
+    if (column < 0) continue;
+    const byspell = /^spell level$/i.test(head[0]);
+    const levels: Record<string, string[]> = {};
+    for (let row = at + 2; row < lines.length && /^\s*\|/.test(lines[row]); row += 1) {
+      const line = cells(lines[row]);
+      const ordinal = /^(\d{1,2})/.exec(line[0] ?? "");
+      const names = spellCellNames(line[column] ?? "");
+      if (!ordinal || !names.length) continue;
+      const level = byspell ? Number(ordinal[1]) * 2 - 1 : Number(ordinal[1]);
+      if (level >= 1 && level <= 20) (levels[String(level)] ??= []).push(...names);
+    }
+    if (Object.keys(levels).length) found.push({ byspell, levels });
+  }
+  if (found.length !== 1) return {};
+  return found[0].byspell ? { expanded: found[0].levels } : { spells: found[0].levels };
+}
+
 function homebrewLevels(raw: unknown): Record<string, SubclassFeatureRow[]> {
   const out: Record<string, SubclassFeatureRow[]> = {};
   for (const [level, rows] of Object.entries((raw ?? {}) as Record<string, unknown>)) {
@@ -162,8 +217,9 @@ function castingProfileOf(data: Record<string, unknown>, levels: Record<string, 
 export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | null {
   const homebrew = row.source === "homebrew";
   const levels = homebrew ? homebrewLevels(row.data.levels) : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
-  const spells = homebrew ? spellLevels(row.data.spells) : undefined;
-  const expanded = homebrew ? spellLevels(row.data.expanded) : undefined;
+  const printed = homebrew ? {} : proseSpellTables(String(row.data.desc ?? ""));
+  const spells = homebrew ? spellLevels(row.data.spells) : printed.spells;
+  const expanded = homebrew ? spellLevels(row.data.expanded) : printed.expanded;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
   const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
   if (!Object.keys(levels).length && !spells && !expanded && !choices.length) {
