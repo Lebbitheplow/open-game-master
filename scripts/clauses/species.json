@@ -1331,7 +1331,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "f8004d06b6b9",
+  "sha": "300362ac168f",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -1358,7 +1358,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.grants"
    },
    {
-    "c": "\"skillChoice\":{\"count\":2}",
+    "c": "\"skillChoice\":{\"count\":2,\"from\":[\"acrobatics\",\"deception\",\"sleight_of_hand\",\"stealth\"]}",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.choices"
@@ -1375,7 +1375,7 @@
     "why": "The GM's: reproducing a sound once heard states no number, save, condition, damage, healing, movement or refusal for the engine to hold; whether a listener is fooled is a contest the GM calls with request_roll."
    },
    {
-    "c": "Kenku Training (two skills of your choice)",
+    "c": "Kenku Training (two skills from Acrobatics, Deception, Sleight of Hand, Stealth)",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.choices"
@@ -1684,7 +1684,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "da691ea7cf54",
+  "sha": "bc2dea29a283",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -1711,7 +1711,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.grants"
    },
    {
-    "c": "\"skillChoice\":{\"count\":2}",
+    "c": "\"skillChoice\":{\"count\":2,\"from\":[\"deception\",\"insight\",\"intimidation\",\"persuasion\"]}",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.choices"
@@ -1723,7 +1723,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.changeling.shapechanger"
    },
    {
-    "c": "Changeling Instincts (two social or insight skills of your choice)",
+    "c": "Changeling Instincts (two skills from Deception, Insight, Intimidation, Persuasion)",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.choices"
@@ -1734,7 +1734,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "769e4760f170",
+  "sha": "28f90f11adfb",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -1767,7 +1767,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.choices"
    },
    {
-    "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"tinker's tools\",\"thieves' tools\",\"carpenter's tools\"]}",
+    "c": "\"toolChoice\":{\"count\":1,\"from\":[\"alchemist's supplies\",\"brewer's supplies\",\"calligrapher's supplies\",\"carpenter's tools\",\"cartographer's tools\",\"cobbler's tools\",\"cook's utensils\",\"glassblower's tools\",\"jeweler's tools\",\"leatherworker's tools\",\"mason's tools\",\"painter's supplies\",\"potter's tools\",\"smith's tools\",\"tinker's tools\",\"weaver's tools\",\"woodcarver's tools\",\"bagpipes\",\"drum\",\"dulcimer\",\"flute\",\"lute\",\"lyre\",\"horn\",\"pan flute\",\"shawm\",\"viol\",\"dice set\",\"dragonchess set\",\"playing card set\",\"three-dragon ante set\",\"thieves' tools\",\"disguise kit\",\"forgery kit\",\"herbalism kit\",\"navigator's tools\",\"poisoner's kit\",\"vehicles (land)\",\"vehicles (water)\"]}",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.choices"
@@ -1920,7 +1920,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "ec1b4cbdfff9",
+  "sha": "bc21fb57ed25",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -1947,7 +1947,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.grants"
    },
    {
-    "c": "\"skillChoice\":{\"count\":2}",
+    "c": "\"skillChoice\":{\"count\":2,\"from\":[\"animal_handling\",\"nature\",\"perception\",\"stealth\",\"survival\"]}",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.choices"
@@ -1983,10 +1983,15 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.lizardfolk.hungry-jaws"
    },
    {
-    "c": "Two skills from a survival list (Cunning Artisan)",
+    "c": "Hunter's Lore (two skills from Animal Handling, Nature, Perception, Stealth, Survival)",
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.choices"
+   },
+   {
+    "c": "Cunning Artisan (on a short rest, shape a shield, a club, a javelin or darts from the bone and hide of a slain creature)",
+    "is": "left",
+    "why": "Crafting from a carcass is the GM's to allow and to describe: the item made is added to the sheet by hand like any other found gear."
    }
   ]
  },

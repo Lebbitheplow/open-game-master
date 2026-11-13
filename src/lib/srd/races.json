@@ -585,14 +585,20 @@
       "traits": [
         "Expert Forgery (advantage on checks to duplicate writing and craftwork)",
         "Mimicry (reproduce any sound you have heard)",
-        "Kenku Training (two skills of your choice)"
+        "Kenku Training (two skills from Acrobatics, Deception, Sleight of Hand, Stealth)"
       ],
       "languages": [
         "Common",
         "Auran"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "acrobatics",
+          "deception",
+          "sleight_of_hand",
+          "stealth"
+        ]
       }
     },
     {
@@ -759,13 +765,19 @@
       },
       "traits": [
         "Shapechanger (alter your appearance as an action, no action economy cost to revert)",
-        "Changeling Instincts (two social or insight skills of your choice)"
+        "Changeling Instincts (two skills from Deception, Insight, Intimidation, Persuasion)"
       ],
       "languages": [
         "Common"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "deception",
+          "insight",
+          "intimidation",
+          "persuasion"
+        ]
       }
     },
     {
@@ -792,10 +804,45 @@
       "toolChoice": {
         "count": 1,
         "from": [
+          "alchemist's supplies",
+          "brewer's supplies",
+          "calligrapher's supplies",
+          "carpenter's tools",
+          "cartographer's tools",
+          "cobbler's tools",
+          "cook's utensils",
+          "glassblower's tools",
+          "jeweler's tools",
+          "leatherworker's tools",
+          "mason's tools",
+          "painter's supplies",
+          "potter's tools",
           "smith's tools",
           "tinker's tools",
+          "weaver's tools",
+          "woodcarver's tools",
+          "bagpipes",
+          "drum",
+          "dulcimer",
+          "flute",
+          "lute",
+          "lyre",
+          "horn",
+          "pan flute",
+          "shawm",
+          "viol",
+          "dice set",
+          "dragonchess set",
+          "playing card set",
+          "three-dragon ante set",
           "thieves' tools",
-          "carpenter's tools"
+          "disguise kit",
+          "forgery kit",
+          "herbalism kit",
+          "navigator's tools",
+          "poisoner's kit",
+          "vehicles (land)",
+          "vehicles (water)"
         ]
       }
     },
@@ -857,14 +904,22 @@
         "Hold Breath (up to 15 minutes)",
         "30 ft swim speed",
         "Hungry Jaws (a bonus-action bite granting temporary hit points, 1/short rest)",
-        "Two skills from a survival list (Cunning Artisan)"
+        "Hunter's Lore (two skills from Animal Handling, Nature, Perception, Stealth, Survival)",
+        "Cunning Artisan (on a short rest, shape a shield, a club, a javelin or darts from the bone and hide of a slain creature)"
       ],
       "languages": [
         "Common",
         "Draconic"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "animal_handling",
+          "nature",
+          "perception",
+          "stealth",
+          "survival"
+        ]
       }
     },
     {

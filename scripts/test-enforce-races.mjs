@@ -309,6 +309,54 @@ await test("the Orc's Primal Intuition picks two skills from its seven, never an
   assert.ok(["medicine", "nature"].every((skill) => onList.sheet.proficiencies.skills.includes(skill)));
 });
 
+// Every SRD 5.1 tool (Equipment, Tools), for a trait that leaves the tool to
+// the player.
+const EVERY_TOOL = (await import("../src/lib/srd/feat-grant-text.ts")).KNOWN_TOOLS;
+await test("every racial skill or tool pick is offered from the list its trait names, and a trait that names none leaves every one open", () => {
+  // Kenku Training, Changeling Instincts and Hunter's Lore name their skills;
+  // offered any skill, a kenku could take Arcana and a changeling Athletics.
+  // Specialized Design leaves the tool to the player; offered four, a
+  // warforged could not be an alchemist.
+  // The lists the source traits give (VGtM Kenku Training and Hunter's Lore,
+  // ERLW Changeling Instincts, ODM's Orc), and the picks they leave open
+  // (Skill Versatility, the variant human's skill, Specialized Design). A new
+  // lineage with a skill pick is classed here before this passes.
+  const LISTED = {
+    kenku: ["acrobatics", "deception", "sleight_of_hand", "stealth"],
+    changeling: ["deception", "insight", "intimidation", "persuasion"],
+    lizardfolk: ["animal_handling", "nature", "perception", "stealth", "survival"],
+    orc: ["animal_handling", "insight", "intimidation", "medicine", "nature", "perception", "survival"],
+  };
+  const OPEN = ["half_elf", "variant_human", "warforged"];
+  const label = (id) => id.replace(/_/g, " ");
+  const wrong = [];
+  for (const row of srd.SRD_RACES) {
+    const offered = builder.races.find((entry) => entry.id === row.id);
+    if (row.skillChoice) {
+      const want = LISTED[row.id] ?? (OPEN.includes(row.id) ? [] : null);
+      const from = sorted(offered.skillChoice?.from);
+      const trait = row.traits.find((line) => /skill/i.test(line) && !/proficiency \(/i.test(line)) ?? "";
+      const unnamed = (want ?? []).filter((id) => !new RegExp(`\\b${label(id)}\\b`, "i").test(trait));
+      if (!want) wrong.push(`${row.id}: a skill pick this test has not classed as listed or open`);
+      else if (JSON.stringify(from) !== JSON.stringify(sorted(want))) wrong.push(`${row.id} skills: offered ${from.join(", ") || "any"}, the trait's list is ${want.join(", ") || "any"}`);
+      else if (unnamed.length) wrong.push(`${row.id}: its trait "${trait}" does not name ${unnamed.join(", ")}`);
+    }
+    if (row.toolChoice) {
+      const trait = row.traits.find((line) => /\btools?\b/i.test(line)) ?? "";
+      const open = /tool of your choice/i.test(trait);
+      const from = sorted(offered.toolChoice?.from);
+      if (open && JSON.stringify(from) !== JSON.stringify(sorted(EVERY_TOOL))) wrong.push(`${row.id} tools: "${trait}" offers ${from.length} tools, not every one`);
+    }
+  }
+  assert.deepEqual(wrong, []);
+  // And the server holds a pick to that list.
+  const offList = buildRace("kenku", { racialSkills: ["arcana", "stealth"] });
+  assert.equal(offList.blocker?.kind, "error", "a kenku took Arcana from Kenku Training");
+  const alchemist = buildRace("warforged", { racialTool: "alchemist's supplies", racialSkills: ["arcana"] });
+  assert.equal(alchemist.blocker, null, alchemist.blocker?.message);
+  assert.ok(alchemist.sheet.proficiencies.tools.includes("alchemist's supplies"));
+});
+
 await test("with the content pack, the SRD's races come through its rows unchanged", () => {
   // Without a pack the bundled rows above are the same check.
   if (!hasPack) {

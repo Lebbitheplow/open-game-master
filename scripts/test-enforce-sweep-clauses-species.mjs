@@ -8,6 +8,7 @@ import fs from "node:fs";
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
+import { ledgerProblems } from "./lib/sweep-clauses-srd.mjs";
 
 const rig = await clauseRig();
 const { srdRaceOptions } = await import("../src/lib/characters/options.ts");
@@ -104,5 +105,8 @@ const NAMES = [
   "species.hill_dwarf.save-advantage", "species.mountain_dwarf.save-advantage", "species.high_elf.save-advantage", "species.wood_elf.save-advantage", "species.drow.save-advantage", "species.lightfoot_halfling.save-advantage", "species.stout_halfling.save-advantage",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
+// The ledger is read against the rows it was written for: a row changed or
+// added without its clauses split again is caught here, not at the table.
+assert.deepEqual(ledgerProblems("species"), [], "scripts/clauses/species.json against src/lib/srd/races.json");
 
 await runOrSurvey("scripts/test-enforce-sweep-clauses-species.mjs", P);
